@@ -38,8 +38,7 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- semantic formatting actions over cross-paragraph ranges, and generic mark
-  attributes;
+- generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
@@ -173,9 +172,10 @@ operation with a closed same-type inverse. Version `0.0.13` lifts semantic text
 insertion over direct-root cross-paragraph selections through that operation.
 Version `0.0.14` lifts extended backward deletion over the same range shape.
 Version `0.0.15` lifts semantic paragraph breaks over that range with a
-two-fragment atomic replacement. None of these checkpoints changes document
-format version `1`, introduces an executable capability cache, or defines a
-durable action-state wire format.
+two-fragment atomic replacement. Version `0.0.16` preserves every selected
+paragraph boundary while lifting strong formatting over cross-paragraph text.
+None of these checkpoints changes document format version `1`, introduces an
+executable capability cache, or defines a durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -569,18 +569,23 @@ Three base actions take no input, while text insertion accepts one typed input:
   explicit pending formats take precedence; otherwise the focus endpoint's
   affinity chooses the adjacent run, with the other side as an edge fallback.
   The action publishes an explicit pending-format set without rewriting the
-  document. For an extended same-paragraph range, all-strong content is made
-  plain while inactive or mixed content is made strong. One exact guarded
-  `TextSplice` preserves text, other formats, directional anchor/focus roles,
-  and endpoint affinities, clears pending formats, and records one independent
-  history event. Cross-paragraph ranges remain mutation-disabled but still
-  report truthful inactive, active, or mixed state across the selected text.
+  document. For every extended range, all-strong selected text is made plain,
+  while inactive or mixed selected text is made uniformly strong. A local
+  range uses one exact guarded `TextSplice`. A cross-paragraph range uses one
+  guarded `RootTextReplace` with one toggled selected fragment per guarded
+  paragraph, retaining the first prefix and last suffix and preserving every
+  paragraph boundary one-for-one. Both paths preserve text, directional
+  anchor/focus roles, and endpoint affinities; point aliases canonicalize
+  against the result's run topology. Both clear pending formats and record one
+  independent history event. A cross-paragraph range containing no selected
+  text reports inactive and is disabled as `breditor/no-selected-text`; empty
+  paragraphs inside a range containing other text remain intact and do not
+  affect activation.
 
 All four actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
 survives. Empty paragraphs and formatted seams have explicit behavior.
-Cross-paragraph strong-format mutation remains disabled until its block-boundary
-distribution contract is frozen. Backward deletion is scalar-based,
+Backward deletion is scalar-based,
 not grapheme-based: combining marks and components of a zero-width-joiner emoji
 can be deleted separately. Text insertion, paragraph break, and backward delete
 advertise stateless observations; strong formatting uses the same evaluation
@@ -952,9 +957,14 @@ checked global deltas instead of rescanning a matching-profile document, but:
 - strong-format evaluation scans the applicable selected text every time its
   declared inputs invalidate. An extended same-paragraph toggle rebuilds the
   affected paragraph's canonical run sequence in one bounded pass and may
-  merge large equal-format seams; cross-paragraph activation scans selected
-  direct-root paragraphs until it proves mixed state or reaches the range end,
-  even though mutation is disabled;
+  merge large equal-format seams. A cross-paragraph toggle captures every
+  guarded paragraph, scans all selected fragments for one global decision, then
+  builds the per-paragraph replacements and complete predicted results in a
+  series of subsequent bounded passes. Its forward operation and history retain
+  that complete guarded slice; the shared source proof also retains the two
+  selected endpoint fragments transiently for cross actions that do not consume
+  them. Boundary splits can add at most one run to each endpoint paragraph,
+  while canonicalized seams can merge large equal-format text;
 - insertion plans and applies in time proportional to the affected paragraph's
   runs plus copied seam text for a local splice. Cross-paragraph type-over also
   scans and guards every selected paragraph, and retained history keeps those
@@ -1030,11 +1040,11 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Freeze cross-paragraph strong-format semantics, then lift
-`breditor/toggle-strong` through one guarded `RootTextReplace` while preserving
-every selected paragraph boundary. Activation, direction, endpoint aliases,
-affinities, non-selected boundary text, other formats, and exact undo/redo state
-must remain coherent. Browser `beforeinput`, composition ownership, IME
+Freeze a durable operation-record contract for the four native operation kinds
+as the first replay-log layer. Records must remain distinct from runtime
+operations, reject unknown versions and noncanonical fragments, preserve exact
+guards and fixed-width coordinates, and decode only through the active schema
+and limits before replay. Browser `beforeinput`, composition ownership, IME
 buffering, and paste chunking remain adapter concerns. Keep presentation
 metadata and delivery outside the deterministic core; subscriber lifecycle,
 catalog replacement, backpressure, and coalescing still require a separate

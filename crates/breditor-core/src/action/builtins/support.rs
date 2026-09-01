@@ -59,7 +59,8 @@ pub(super) struct CrossParagraphTextSource {
     guards: Vec<TextFragment>,
     prefix: TextFragment,
     suffix: TextFragment,
-    first_selected_formats: Option<FormatSet>,
+    selected_start: TextFragment,
+    selected_end: TextFragment,
     guard_run_count: usize,
     guard_text_bytes: usize,
 }
@@ -85,10 +86,22 @@ impl CrossParagraphTextSource {
         &self.suffix
     }
 
+    /// Iterates the selected fragment of every guarded paragraph in spatial
+    /// order without cloning the complete middle-paragraph guards.
+    pub(super) fn selected_fragments(&self) -> impl Iterator<Item = &TextFragment> {
+        let middle_end = self.guards.len().saturating_sub(1);
+        let middle = self.guards.get(1..middle_end).unwrap_or_default();
+        std::iter::once(&self.selected_start)
+            .chain(middle)
+            .chain(std::iter::once(&self.selected_end))
+    }
+
     /// Returns the first spatially selected text run's formats, when any text is
     /// selected.
-    pub(super) const fn first_selected_formats(&self) -> Option<&FormatSet> {
-        self.first_selected_formats.as_ref()
+    pub(super) fn first_selected_formats(&self) -> Option<&FormatSet> {
+        self.selected_fragments()
+            .find_map(|fragment| fragment.iter().next())
+            .map(crate::document::TextRun::formats)
     }
 
     /// Returns the exact number of text runs in all complete guards.
@@ -193,15 +206,6 @@ pub(super) fn capture_cross_paragraph_text_source(
         .map_err(|_| CrossParagraphTextSourceError::Source)?;
     let (last_selected, suffix) =
         last.split_at(range.end().offset()).map_err(|_| CrossParagraphTextSourceError::Source)?;
-    let last_guard_index =
-        guards.len().checked_sub(1).ok_or(CrossParagraphTextSourceError::Source)?;
-    let first_selected_formats = first_selected
-        .iter()
-        .next()
-        .or_else(|| guards[1..last_guard_index].iter().find_map(|fragment| fragment.iter().next()))
-        .or_else(|| last_selected.iter().next())
-        .map(|run| run.formats().clone());
-
     let (guard_run_count, guard_text_bytes) = guards
         .iter()
         .try_fold((0_usize, 0_usize), |(runs, bytes), fragment| {
@@ -214,7 +218,8 @@ pub(super) fn capture_cross_paragraph_text_source(
         guards,
         prefix,
         suffix,
-        first_selected_formats,
+        selected_start: first_selected,
+        selected_end: last_selected,
         guard_run_count,
         guard_text_bytes,
     })

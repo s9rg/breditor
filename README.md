@@ -44,7 +44,8 @@ This repository currently contains the first end-to-end Rust-core slice:
   keyboard, toolbar, palette, and API adapters; typed insertion consumes
   pending formats, insertion, paragraph breaks, and extended deletion
   atomically replace cross-paragraph selections, while `toggle-strong`
-  publishes tracked inactive/active/mixed state;
+  publishes tracked inactive/active/mixed state and preserves selected block
+  boundaries during cross-paragraph formatting;
 - a synchronous `EditorSession` publication boundary with exact-base commit
   acceptance, intent/action execution, bounded linear history, deterministic
   merge groups, and atomic undo/redo replay;
@@ -52,7 +53,8 @@ This repository currently contains the first end-to-end Rust-core slice:
 - document, fragment, and per-transaction operation limits.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
-direct-root base-paragraph text structure, semantic cross-paragraph formatting,
+direct-root base-paragraph text structure, generic formatting kinds and
+attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, persistent operation/state/history codecs and
 reload replay, Wasm bindings, a DOM bridge, collaboration-aware or selective

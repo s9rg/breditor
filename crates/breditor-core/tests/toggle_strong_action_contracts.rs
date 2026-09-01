@@ -724,55 +724,6 @@ fn resource_limits_disable_before_preflight_while_zero_operation_collapsed_toggl
 }
 
 #[test]
-fn cross_paragraph_ranges_are_disabled_with_truthful_activation() -> TestResult {
-    let registry = base_action_registry()?;
-    let context = EditorContext::default();
-    for (lineage, first_strong, second_strong, expected) in [
-        ("strong-cross-inactive", false, false, ActionActivation::Inactive),
-        ("strong-cross-active", true, true, ActionActivation::Active),
-        ("strong-cross-mixed", false, true, ActionActivation::Mixed),
-    ] {
-        let initial = state(
-            &context,
-            &[paragraph_value(&[("a", first_strong)]), paragraph_value(&[("B", second_strong)])],
-            selected(text_point(0, 0, 0, Affinity::Before)?, text_point(1, 0, 1, Affinity::After)?),
-            None,
-            lineage,
-        )?;
-        assert_disabled(&registry, &initial, "breditor/cross-paragraph-selection", expected)?;
-    }
-
-    let backward = state(
-        &context,
-        &[paragraph_value(&[("za", false)]), paragraph_value(&[("Bz", true)])],
-        selected(text_point(1, 0, 1, Affinity::Before)?, text_point(0, 0, 1, Affinity::After)?),
-        None,
-        "strong-cross-mixed-backward",
-    )?;
-    assert_disabled(
-        &registry,
-        &backward,
-        "breditor/cross-paragraph-selection",
-        ActionActivation::Mixed,
-    )?;
-
-    let empty = state(
-        &context,
-        &[paragraph_value(&[]), paragraph_value(&[])],
-        selected(child_point(0, 0, Affinity::Before)?, child_point(1, 0, Affinity::After)?),
-        None,
-        "strong-cross-empty",
-    )?;
-    assert_disabled(
-        &registry,
-        &empty,
-        "breditor/cross-paragraph-selection",
-        ActionActivation::Inactive,
-    )?;
-    Ok(())
-}
-
-#[test]
 fn extended_toggle_is_one_exact_undo_unit_and_replays_complete_boundaries() -> TestResult {
     let registry = base_action_registry()?;
     let context = EditorContext::default();

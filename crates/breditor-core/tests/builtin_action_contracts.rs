@@ -658,18 +658,6 @@ fn builtins_report_stable_disabled_reasons_without_changing_state_or_revision() 
         assert_disabled(&registry, &no_selection, id, "breditor/no-selection")?;
     }
 
-    let cross_paragraph = state(
-        &context,
-        &[paragraph_value(&[("a", false)]), paragraph_value(&[("b", false)])],
-        Some(selected(
-            text_point(0, 0, 0, Affinity::Before)?,
-            text_point(1, 0, 0, Affinity::After)?,
-        )),
-        None,
-        "disabled-cross-paragraph",
-    )?;
-    assert_disabled(&registry, &cross_paragraph, strong_id, "breditor/cross-paragraph-selection")?;
-
     let no_operations = EditorContext::default().with_max_operations_per_transaction(0);
     let no_budget = state(
         &no_operations,
