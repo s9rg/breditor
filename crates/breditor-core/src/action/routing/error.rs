@@ -1,6 +1,11 @@
+use std::fmt;
+
 use thiserror::Error;
 
-use crate::action::{ActionId, ActionInputContract, ActionInputError, ActionPrepareError};
+use crate::action::{
+    ActionEffects, ActionId, ActionInputContract, ActionInputError, ActionPrepareError,
+    ActionStateContract,
+};
 
 use super::{BindingId, BindingPriority, IntentBinding, IntentId};
 
@@ -48,6 +53,12 @@ pub enum IntentRouterError {
         /// Conflicting binding identity.
         id: BindingId,
     },
+    /// An intent claimed to read session history its bound actions cannot observe.
+    #[error("intent {intent} cannot declare the HISTORY read domain")]
+    UnsupportedHistoryRead {
+        /// Lexically first invalid semantic intent.
+        intent: IntentId,
+    },
     /// A binding referred to an undeclared semantic intent.
     #[error("binding {binding} refers to undeclared intent {intent}")]
     UnknownIntent {
@@ -78,6 +89,34 @@ pub enum IntentRouterError {
         /// Exact contract advertised by the action.
         actual: Option<ActionInputContract>,
     },
+    /// A target action's observable shape differed from its intent declaration.
+    #[error("binding {binding} action {action} does not match intent {intent} state contract")]
+    StateContractMismatch {
+        /// Declared semantic intent.
+        intent: IntentId,
+        /// Invalid binding identity.
+        binding: BindingId,
+        /// Mismatched action identity.
+        action: ActionId,
+        /// Exact observable contract declared by the intent.
+        expected: ActionStateContract,
+        /// Observable contract advertised by the action.
+        actual: ActionStateContract,
+    },
+    /// An intent's declared effects did not cover one target action.
+    #[error("binding {binding} action {action} effects exceed intent {intent} declaration")]
+    EffectsNotCovered {
+        /// Declared semantic intent.
+        intent: IntentId,
+        /// Invalid binding identity.
+        binding: BindingId,
+        /// Action whose effects are not fully covered.
+        action: ActionId,
+        /// Conservative effects advertised by the intent.
+        declared: ActionEffects,
+        /// Conservative effects advertised by the action.
+        required: ActionEffects,
+    },
     /// Two bindings under one intent used an equal priority.
     #[error("intent {intent} has more than one binding at priority {priority}")]
     DuplicatePriority {
@@ -105,7 +144,9 @@ pub enum IntentRouterError {
 /// Expected action inapplicability is represented by unhandled or blocked route
 /// outcomes. This error is reserved for undeclared intents, malformed input,
 /// action faults, and invalid action plans; none permit fallback.
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
+/// Its Debug output retains route identities and safe failure categories without
+/// formatting document fragments or handler-detail payloads.
+#[derive(Clone, Eq, Error, PartialEq)]
 pub enum IntentRouteError {
     /// The invocation named an intent absent from the frozen router.
     #[error("intent {intent} is not declared")]
@@ -133,6 +174,28 @@ pub enum IntentRouteError {
         /// Terminal action preparation failure.
         source: Box<ActionPrepareError>,
     },
+}
+
+impl fmt::Debug for IntentRouteError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownIntent { intent } => {
+                formatter.debug_struct("UnknownIntent").field("intent", intent).finish()
+            }
+            Self::InvalidInput { intent, source } => formatter
+                .debug_struct("InvalidInput")
+                .field("intent", intent)
+                .field("source", source)
+                .finish(),
+            Self::Action { intent, binding, action, source } => formatter
+                .debug_struct("Action")
+                .field("intent", intent)
+                .field("binding", binding)
+                .field("action", action)
+                .field("source", source)
+                .finish_non_exhaustive(),
+        }
+    }
 }
 
 /// Why an evaluated semantic route no longer matches the supplied current state.

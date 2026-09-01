@@ -2,7 +2,8 @@ use std::fmt;
 
 use crate::{
     action::{
-        ActionId, ActionPreparation, DisabledReason, PreparedAction, PreparedActionExecutionError,
+        ActionId, ActionPreparation, ActionStateDomains, ActionStateIndicator,
+        DisabledActionPreparation, DisabledReason, PreparedAction, PreparedActionExecutionError,
         capability::validate_prepared_base,
     },
     state::{EditorState, SnapshotId},
@@ -73,8 +74,7 @@ impl fmt::Debug for UnhandledIntent {
 pub struct BlockedIntent {
     intent_id: IntentId,
     binding: IntentBinding,
-    base: Box<EditorState>,
-    reason: DisabledReason,
+    preparation: DisabledActionPreparation,
     fallthroughs: Box<[IntentFallThrough]>,
 }
 
@@ -82,17 +82,10 @@ impl BlockedIntent {
     pub(crate) fn new(
         intent_id: IntentId,
         binding: IntentBinding,
-        base: EditorState,
-        reason: DisabledReason,
+        preparation: DisabledActionPreparation,
         fallthroughs: Vec<IntentFallThrough>,
     ) -> Self {
-        Self {
-            intent_id,
-            binding,
-            base: Box::new(base),
-            reason,
-            fallthroughs: fallthroughs.into_boxed_slice(),
-        }
+        Self { intent_id, binding, preparation, fallthroughs: fallthroughs.into_boxed_slice() }
     }
 
     /// Returns the declared semantic intent.
@@ -128,19 +121,30 @@ impl BlockedIntent {
     /// Returns the exact state against which routing ran.
     #[must_use]
     pub const fn base_state(&self) -> &EditorState {
-        &self.base
+        self.preparation.base_state()
     }
 
     /// Returns the exact snapshot against which routing ran.
     #[must_use]
     pub const fn base_snapshot(&self) -> &SnapshotId {
-        self.base.snapshot()
+        self.preparation.base_state().snapshot()
     }
 
     /// Returns the exact expected-disabled reason that stopped routing.
     #[must_use]
     pub const fn reason(&self) -> &DisabledReason {
-        &self.reason
+        self.preparation.reason()
+    }
+
+    /// Returns the complete disabled action preparation that stopped routing.
+    pub const fn disabled_preparation(&self) -> &DisabledActionPreparation {
+        &self.preparation
+    }
+
+    /// Returns activation and optional typed value from the blocking evaluation.
+    #[must_use]
+    pub const fn indicator(&self) -> &ActionStateIndicator {
+        self.preparation.indicator()
     }
 
     /// Returns earlier disabled candidates in priority evaluation order.
@@ -157,7 +161,8 @@ impl fmt::Debug for BlockedIntent {
             .field("intent_id", &self.intent_id)
             .field("binding", &self.binding)
             .field("base_snapshot", &self.base_snapshot())
-            .field("reason", &self.reason)
+            .field("reason_code", &self.reason().code())
+            .field("indicator", &self.indicator())
             .field("fallthroughs", &self.fallthroughs)
             .finish_non_exhaustive()
     }
@@ -220,6 +225,18 @@ impl RoutedAction {
     /// Returns the exact generated transaction and cached preflight result.
     pub const fn prepared_action(&self) -> &PreparedAction {
         &self.prepared
+    }
+
+    /// Returns activation and optional typed value from the selected evaluation.
+    #[must_use]
+    pub const fn indicator(&self) -> &ActionStateIndicator {
+        self.prepared.indicator()
+    }
+
+    /// Returns domains actually changed by the selected preflight commit.
+    #[must_use]
+    pub const fn actual_writes(&self) -> ActionStateDomains {
+        self.prepared.actual_writes()
     }
 
     /// Returns the exact state against which routing ran.
@@ -312,6 +329,25 @@ impl IntentRouteOutcome {
         }
     }
 
+    /// Returns activation and optional typed value when routing reached a binding.
+    #[must_use]
+    pub const fn indicator(&self) -> Option<&ActionStateIndicator> {
+        match self {
+            Self::Unhandled(_) => None,
+            Self::Blocked(outcome) => Some(outcome.indicator()),
+            Self::Prepared(outcome) => Some(outcome.indicator()),
+        }
+    }
+
+    /// Returns actual written domains for a successfully prepared route.
+    #[must_use]
+    pub const fn actual_writes(&self) -> Option<ActionStateDomains> {
+        match self {
+            Self::Prepared(outcome) => Some(outcome.actual_writes()),
+            Self::Unhandled(_) | Self::Blocked(_) => None,
+        }
+    }
+
     /// Consumes this evaluated route into an exact execution receipt.
     ///
     /// The complete exact base is checked before every receipt is returned, so
@@ -338,7 +374,8 @@ impl IntentRouteOutcome {
                 })
             }
             Self::Blocked(outcome) => {
-                let BlockedIntent { intent_id, binding, base, reason, fallthroughs } = outcome;
+                let BlockedIntent { intent_id, binding, preparation, fallthroughs } = outcome;
+                let (base, reason, _indicator) = preparation.into_parts();
                 validate_route_base(&intent_id, Some(&binding), &base, current)?;
                 Ok(IntentExecutionOutcome::Blocked {
                     intent: intent_id,

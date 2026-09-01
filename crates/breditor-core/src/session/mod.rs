@@ -10,9 +10,13 @@ mod editor_session;
 mod error;
 mod history;
 mod history_entry;
+mod history_stamp;
+mod history_status;
 
 pub use capacity::{
     DEFAULT_HISTORY_CAPACITY, HistoryCapacity, HistoryCapacityError, MAX_HISTORY_CAPACITY,
 };
 pub use editor_session::EditorSession;
 pub use error::{HistoryReplayError, SessionCommitError};
+pub use history_stamp::HistoryStamp;
+pub use history_status::SessionHistoryStatus;

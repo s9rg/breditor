@@ -4,14 +4,18 @@
 //! runtime, or mutable editor state. A frozen registry evaluates pure typed
 //! handlers against immutable [`crate::state::EditorState`] values and funnels
 //! every enabled plan through the authoritative transaction reducer.
+//! Ordinary handlers receive editor state but not session history, so frozen
+//! action and intent construction rejects history-read declarations.
 //!
 //! A separate semantic router adds explicit priority and disabled fallback over
-//! the registry without introducing host event syntax. Active/mixed toolbar
-//! state, labels, icons, and plugin lifecycle remain separate contracts rather
-//! than implicit registration-order behavior.
+//! the registry without introducing host event syntax. The same evaluation owns
+//! capability plus typed active/mixed/value observation, while a frozen catalog
+//! derives presentation-independent read batches. Labels, icons, layout, and
+//! plugin lifecycle remain separate contracts.
 
 pub mod builtins;
 pub mod routing;
+pub mod state;
 
 mod capability;
 mod error;
@@ -40,6 +44,23 @@ pub use input::{
 pub use input_version::{ActionInputVersion, ActionInputVersionError};
 pub use plan::ActionPlan;
 pub use registry::ActionRegistry;
+pub use state::{
+    ActionActivation, ActionActivationContract, ActionEffects, ActionEvaluation,
+    ActionStateActionFault, ActionStateBatch, ActionStateBatchSummary, ActionStateCatalog,
+    ActionStateCatalogError, ActionStateContract, ActionStateDeriveError, ActionStateDescriptor,
+    ActionStateDomains, ActionStateEntry, ActionStateFault, ActionStateHistoryBoundaryFault,
+    ActionStateHistoryFault, ActionStateId, ActionStateIndicator, ActionStateOperationFault,
+    ActionStateOutcome, ActionStatePlanFault, ActionStateProvenance, ActionStateRegistration,
+    ActionStateRelocationFault, ActionStateResourceError, ActionStateResultFault,
+    ActionStateRouteFault, ActionStateSelectionRelocationFault, ActionStateSource, ActionStateSpec,
+    ActionStateTransactionFault, ActionStateValidationError, ActionStateValue,
+    ActionStateValueContract, ActionStateValueVersion, ActionStateValueVersionError,
+    MAX_ACTION_STATE_BATCH_FALLTHROUGHS, MAX_ACTION_STATE_BATCH_TEXT_BYTES,
+    MAX_ACTION_STATE_BATCH_VALUE_COUNT, MAX_ACTION_STATE_ENTRIES,
+    MAX_ACTION_STATE_ENTRY_TEXT_BYTES, MAX_ACTION_STATE_ENTRY_VALUE_COUNT,
+    MAX_ACTION_STATE_INPUT_TEXT_BYTES, MAX_ACTION_STATE_INPUT_VALUE_COUNT, ObservedAvailability,
+    ResolvedActionState, UnhandledActionState,
+};
 pub use value::{
     ActionObject, ActionObjectIter, ActionValue, ActionValueKind, ActionValueSummary,
     MAX_ACTION_VALUE_CONTAINER_ENTRIES, MAX_ACTION_VALUE_COUNT, MAX_ACTION_VALUE_DEPTH,

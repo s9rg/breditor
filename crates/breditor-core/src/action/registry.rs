@@ -11,6 +11,7 @@ use super::{
     handler::{ActionDescriptor, ActionRegistration, ErasedAction, ErasedActionError},
     id::ActionId,
     input::ActionInvocation,
+    state::{ActionStateDomains, validate_indicator},
 };
 
 struct RegistryEntry {
@@ -20,10 +21,10 @@ struct RegistryEntry {
 
 /// Immutable deterministic registry of pure action handlers.
 ///
-/// Entries are enumerated in lexical [`ActionId`] order. Duplicate identities
-/// reject the complete build; registration order and priority never choose a
-/// winner. When several IDs conflict, the lexical first conflict is reported so
-/// diagnostics are also independent of registration order.
+/// Entries are enumerated in lexical [`ActionId`] order. Construction first
+/// rejects duplicate identities and then unsupported history-read declarations.
+/// Each phase selects the lexical first invalid action, so caller registration
+/// order never chooses the diagnostic.
 #[derive(Clone, Default)]
 pub struct ActionRegistry {
     entries: Arc<BTreeMap<ActionId, RegistryEntry>>,
@@ -35,20 +36,40 @@ impl ActionRegistry {
     /// # Errors
     ///
     /// Returns [`ActionRegistryError::DuplicateActionId`] when two registrations
-    /// claim the same identity. No partial registry is returned.
+    /// claim the same identity, or [`ActionRegistryError::UnsupportedHistoryRead`]
+    /// when an ordinary action claims to read session history even though
+    /// [`crate::action::Action::evaluate`] receives only an editor state. No
+    /// partial registry is returned.
     pub fn try_new(
         mut registrations: Vec<ActionRegistration>,
     ) -> Result<Self, ActionRegistryError> {
         registrations.sort_by(|left, right| left.descriptor().id().cmp(right.descriptor().id()));
-        let mut entries = BTreeMap::new();
-        for registration in registrations {
-            let ActionRegistration { descriptor, handler } = registration;
-            let id = descriptor.id().clone();
-            if entries.contains_key(&id) {
-                return Err(ActionRegistryError::DuplicateActionId { id });
+        for pair in registrations.windows(2) {
+            if pair[0].descriptor().id() == pair[1].descriptor().id() {
+                return Err(ActionRegistryError::DuplicateActionId {
+                    id: pair[0].descriptor().id().clone(),
+                });
             }
-            entries.insert(id, RegistryEntry { descriptor, handler });
         }
+        if let Some(registration) = registrations.iter().find(|registration| {
+            registration
+                .descriptor()
+                .state_spec()
+                .effects()
+                .reads()
+                .contains(ActionStateDomains::HISTORY)
+        }) {
+            return Err(ActionRegistryError::UnsupportedHistoryRead {
+                id: registration.descriptor().id().clone(),
+            });
+        }
+        let entries = registrations
+            .into_iter()
+            .map(|registration| {
+                let ActionRegistration { descriptor, handler } = registration;
+                (descriptor.id().clone(), RegistryEntry { descriptor, handler })
+            })
+            .collect::<BTreeMap<_, _>>();
         Ok(Self { entries: Arc::new(entries) })
     }
 
@@ -76,7 +97,7 @@ impl ActionRegistry {
         self.entries.values().map(|entry| &entry.descriptor)
     }
 
-    /// Runs the sole capability/execution query path and preflights enabled plans.
+    /// Runs the sole capability/state query path and preflights enabled plans.
     ///
     /// Disabled handlers preserve their exact reason. Enabled plans are bound to
     /// `state`, stamped with the invoked action name, and applied once. The exact
@@ -85,7 +106,8 @@ impl ActionRegistry {
     /// # Errors
     ///
     /// Returns [`ActionPrepareError`] for an unknown action, malformed typed
-    /// input, deterministic handler fault, failed transaction, or enabled no-op.
+    /// input, invalid observable indicator, deterministic handler fault, failed
+    /// transaction, undeclared write effect, or enabled no-op.
     pub fn prepare(
         &self,
         state: &EditorState,
@@ -96,7 +118,7 @@ impl ActionRegistry {
             .entries
             .get(id)
             .ok_or_else(|| ActionPrepareError::UnknownAction { id: id.clone() })?;
-        let decision =
+        let evaluation =
             entry.handler.evaluate(state, invocation.input()).map_err(|error| match error {
                 ErasedActionError::Input(source) => {
                     ActionPrepareError::InvalidInput { id: id.clone(), source }
@@ -105,12 +127,16 @@ impl ActionRegistry {
                     ActionPrepareError::Fault { id: id.clone(), source }
                 }
             })?;
+        let (decision, indicator) = evaluation.into_parts();
+        validate_indicator(entry.descriptor.state_spec().contract(), &indicator)
+            .map_err(|source| ActionPrepareError::InvalidState { id: id.clone(), source })?;
         let plan = match decision {
             ActionDecision::Disabled(reason) => {
                 return Ok(ActionPreparation::Disabled(DisabledActionPreparation::new(
                     id.clone(),
                     state.clone(),
                     reason,
+                    indicator,
                 )));
             }
             ActionDecision::Enabled(plan) => plan,
@@ -131,7 +157,24 @@ impl ActionRegistry {
         })?;
         match outcome {
             TransactionOutcome::Committed(commit) => {
-                Ok(ActionPreparation::Enabled(PreparedAction::new(id.clone(), transaction, commit)))
+                let actual_writes = actual_writes(&commit);
+                let declared = entry.descriptor.state_spec().effects().may_write();
+                if !declared.contains(actual_writes) {
+                    return Err(ActionPrepareError::InvalidPlan {
+                        id: id.clone(),
+                        source: InvalidActionPlan::UndeclaredWrites {
+                            declared,
+                            actual: actual_writes,
+                        },
+                    });
+                }
+                Ok(ActionPreparation::Enabled(PreparedAction::new(
+                    id.clone(),
+                    transaction,
+                    commit,
+                    indicator,
+                    actual_writes,
+                )))
             }
             TransactionOutcome::Unchanged => Err(ActionPrepareError::InvalidPlan {
                 id: id.clone(),
@@ -139,6 +182,20 @@ impl ActionRegistry {
             }),
         }
     }
+}
+
+fn actual_writes(commit: &crate::transaction::Commit) -> ActionStateDomains {
+    let mut domains = ActionStateDomains::HISTORY;
+    if !commit.forward_operations().is_empty() {
+        domains |= ActionStateDomains::DOCUMENT;
+    }
+    if commit.before().selection() != commit.after().selection() {
+        domains |= ActionStateDomains::SELECTION;
+    }
+    if commit.before().pending_formats() != commit.after().pending_formats() {
+        domains |= ActionStateDomains::PENDING_FORMATS;
+    }
+    domains
 }
 
 impl fmt::Debug for ActionRegistry {

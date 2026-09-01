@@ -50,7 +50,9 @@ impl LinearHistory {
         }
 
         match commit.metadata().history() {
-            HistoryIntent::Ignore => self.clear(),
+            HistoryIntent::Ignore => {
+                let _ = self.clear();
+            }
             HistoryIntent::Record => {
                 self.redo.clear();
                 self.open_merge_group = None;
@@ -88,21 +90,24 @@ impl LinearHistory {
         self.open_merge_group = None;
     }
 
-    pub(crate) fn close_merge_group(&mut self) {
-        self.open_merge_group = None;
+    pub(crate) fn close_merge_group(&mut self) -> bool {
+        self.open_merge_group.take().is_some()
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) -> bool {
+        let changed =
+            !self.undo.is_empty() || !self.redo.is_empty() || self.open_merge_group.is_some();
         self.undo.clear();
         self.redo.clear();
         self.open_merge_group = None;
+        changed
     }
 
     fn observe_state_only(&mut self, state: &EditorState) {
         let undo_matches = self.undo.back().is_none_or(|entry| entry.after_matches(state));
         let redo_matches = self.redo.back().is_none_or(|entry| entry.before_matches(state));
         if !undo_matches || !redo_matches {
-            self.clear();
+            let _ = self.clear();
             return;
         }
         if let Some(entry) = self.undo.back_mut() {

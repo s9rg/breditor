@@ -12,13 +12,16 @@ use std::{
 
 use breditor_core::{
     action::{
-        Action, ActionDecision, ActionExecutionError, ActionFault, ActionId, ActionInput,
+        Action, ActionActivation, ActionActivationContract, ActionDecision, ActionEffects,
+        ActionEvaluation, ActionExecutionError, ActionFault, ActionId, ActionInput,
         ActionInputContract, ActionInputError, ActionInputVersion, ActionInputVersionError,
         ActionInvocation, ActionPlan, ActionPreparation, ActionPrepareError, ActionRegistration,
-        ActionRegistry, ActionRegistryError, ActionValue, ActionValueError, Capability,
-        DecodeActionInput, DisabledReason, InvalidActionPlan, MAX_ACTION_VALUE_CONTAINER_ENTRIES,
-        MAX_ACTION_VALUE_COUNT, MAX_ACTION_VALUE_DEPTH, MAX_ACTION_VALUE_OBJECT_KEY_BYTES,
-        MAX_ACTION_VALUE_TEXT_BYTES, PreparedActionExecutionError, TypedActionInput,
+        ActionRegistry, ActionRegistryError, ActionStateContract, ActionStateDomains,
+        ActionStateIndicator, ActionStateSpec, ActionStateValidationError, ActionStateValue,
+        ActionValue, ActionValueError, Capability, DecodeActionInput, DisabledReason,
+        InvalidActionPlan, MAX_ACTION_VALUE_CONTAINER_ENTRIES, MAX_ACTION_VALUE_COUNT,
+        MAX_ACTION_VALUE_DEPTH, MAX_ACTION_VALUE_OBJECT_KEY_BYTES, MAX_ACTION_VALUE_TEXT_BYTES,
+        PreparedActionExecutionError, TypedActionInput,
     },
     codec::DocumentJsonCodec,
     document::{FormatSet, TextFragment, TextRun},
@@ -95,13 +98,16 @@ impl Action for InsertAction {
         &self,
         state: &EditorState,
         (): &Self::Input,
-    ) -> Result<ActionDecision, ActionFault> {
+    ) -> Result<ActionEvaluation, ActionFault> {
         self.evaluations.fetch_add(1, Ordering::SeqCst);
         let range = range(0, 0).map_err(|_| self.fault.clone())?;
         let replacement = text_fragment("x").map_err(|_| self.fault.clone())?;
         let operation = TextSplice::capture(state.context(), state.document(), range, replacement)
             .map_err(|_| self.fault.clone())?;
-        Ok(ActionDecision::Enabled(plan(vec![operation.into()], HistoryIntent::Record)))
+        Ok(ActionEvaluation::stateless(ActionDecision::Enabled(plan(
+            vec![operation.into()],
+            HistoryIntent::Record,
+        ))))
     }
 }
 
@@ -113,8 +119,8 @@ struct DisabledAction {
 impl Action for DisabledAction {
     type Input = ();
 
-    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionDecision, ActionFault> {
-        Ok(ActionDecision::Disabled(self.reason.clone()))
+    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionEvaluation, ActionFault> {
+        Ok(ActionEvaluation::stateless(ActionDecision::Disabled(self.reason.clone())))
     }
 }
 
@@ -126,7 +132,7 @@ struct FaultAction {
 impl Action for FaultAction {
     type Input = ();
 
-    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionDecision, ActionFault> {
+    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionEvaluation, ActionFault> {
         Err(self.fault.clone())
     }
 }
@@ -137,27 +143,52 @@ struct NoOpAction;
 impl Action for NoOpAction {
     type Input = ();
 
-    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionDecision, ActionFault> {
-        Ok(ActionDecision::Enabled(plan(Vec::new(), HistoryIntent::Record)))
+    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionEvaluation, ActionFault> {
+        Ok(ActionEvaluation::stateless(ActionDecision::Enabled(plan(
+            Vec::new(),
+            HistoryIntent::Record,
+        ))))
+    }
+}
+
+#[derive(Clone)]
+struct InvalidIndicatorAction {
+    reason: DisabledReason,
+}
+
+impl Action for InvalidIndicatorAction {
+    type Input = ();
+
+    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionEvaluation, ActionFault> {
+        Ok(ActionEvaluation::new(
+            ActionDecision::Disabled(self.reason.clone()),
+            ActionStateIndicator::new(ActionActivation::Active, ActionStateValue::Unsupported),
+        ))
     }
 }
 
 #[derive(Clone)]
 struct InvalidPlanAction {
     fault: ActionFault,
+    expected_removed: &'static str,
 }
 
 impl Action for InvalidPlanAction {
     type Input = ();
 
-    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionDecision, ActionFault> {
+    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionEvaluation, ActionFault> {
+        let end = u64::try_from(self.expected_removed.encode_utf16().count())
+            .map_err(|_| self.fault.clone())?;
         let operation = TextSplice::try_new(
-            range(0, 1).map_err(|_| self.fault.clone())?,
-            text_fragment("z").map_err(|_| self.fault.clone())?,
+            range(0, end).map_err(|_| self.fault.clone())?,
+            text_fragment(self.expected_removed).map_err(|_| self.fault.clone())?,
             text_fragment("x").map_err(|_| self.fault.clone())?,
         )
         .map_err(|_| self.fault.clone())?;
-        Ok(ActionDecision::Enabled(plan(vec![operation.into()], HistoryIntent::Record)))
+        Ok(ActionEvaluation::stateless(ActionDecision::Enabled(plan(
+            vec![operation.into()],
+            HistoryIntent::Record,
+        ))))
     }
 }
 
@@ -196,9 +227,12 @@ impl Action for BooleanAction {
         &self,
         _: &EditorState,
         input: &Self::Input,
-    ) -> Result<ActionDecision, ActionFault> {
+    ) -> Result<ActionEvaluation, ActionFault> {
         let detail = ActionValue::boolean(input.0);
-        Ok(ActionDecision::Disabled(DisabledReason::new(self.reason.code().clone(), Some(detail))))
+        Ok(ActionEvaluation::stateless(ActionDecision::Disabled(DisabledReason::new(
+            self.reason.code().clone(),
+            Some(detail),
+        ))))
     }
 }
 
@@ -242,6 +276,42 @@ fn duplicate_rejection_is_independent_of_registration_order() -> TestResult {
 }
 
 #[test]
+fn history_read_rejection_is_lexical_and_follows_duplicate_validation() -> TestResult {
+    let first = action_id("test/a-history-reader")?;
+    let last = action_id("test/z-history-reader")?;
+    let effects =
+        ActionEffects::new(ActionStateDomains::HISTORY, ActionEffects::conservative().may_write());
+    for ids in [vec![last.clone(), first.clone()], vec![first.clone(), last.clone()]] {
+        let registrations = ids
+            .into_iter()
+            .map(|id| {
+                ActionRegistration::without_input(id, NoOpAction).with_state_spec(
+                    ActionStateSpec::new(ActionStateContract::stateless(), effects),
+                )
+            })
+            .collect();
+        assert_eq!(
+            ActionRegistry::try_new(registrations).err(),
+            Some(ActionRegistryError::UnsupportedHistoryRead { id: first.clone() })
+        );
+    }
+
+    let duplicate = action_id("test/z-duplicate-history-phase")?;
+    let invalid = ActionRegistration::without_input(first, NoOpAction)
+        .with_state_spec(ActionStateSpec::new(ActionStateContract::stateless(), effects));
+    assert_eq!(
+        ActionRegistry::try_new(vec![
+            ActionRegistration::without_input(duplicate.clone(), NoOpAction),
+            invalid,
+            ActionRegistration::without_input(duplicate.clone(), NoOpAction),
+        ])
+        .err(),
+        Some(ActionRegistryError::DuplicateActionId { id: duplicate })
+    );
+    Ok(())
+}
+
+#[test]
 fn descriptors_are_lexical_and_expose_input_contracts() -> TestResult {
     let contract = input_contract("test/boolean-input", 3)?;
     let reason = DisabledReason::new(name("test/disabled")?, None);
@@ -266,6 +336,24 @@ fn descriptors_are_lexical_and_expose_input_contracts() -> TestResult {
 fn action_input_versions_reserve_zero() {
     assert_eq!(ActionInputVersion::try_new(0), Err(ActionInputVersionError::Zero));
     assert_eq!(ActionInputVersion::one().get(), 1);
+}
+
+#[test]
+fn action_input_and_invocation_debug_redact_typed_payloads() -> TestResult {
+    let secret = "secret-action-invocation-payload";
+    let input = ActionInput::typed(
+        input_contract("test/debug-input", 7)?,
+        ActionValue::try_from_string(secret)?,
+    );
+    let invocation = ActionInvocation::new(action_id("test/debug-action")?, input.clone());
+
+    let debug = format!("{input:?}\n{invocation:?}");
+    assert!(!debug.contains(secret));
+    assert!(debug.contains("test/debug-input"));
+    assert!(debug.contains("test/debug-action"));
+    assert!(debug.contains("String"));
+    assert!(debug.contains("<redacted>"));
+    Ok(())
 }
 
 #[test]
@@ -315,6 +403,9 @@ fn disabled_reason_is_identical_for_capability_and_execution() -> TestResult {
     )])?;
     let preparation = registry.prepare(&state, &ActionInvocation::without_input(id))?;
     assert_eq!(preparation.capability(), Capability::Disabled(reason.clone()));
+    assert_eq!(preparation.indicator(), &ActionStateIndicator::stateless());
+    assert_eq!(preparation.actual_writes(), None);
+    assert!(!format!("{preparation:?}").contains("at-boundary"));
     assert_eq!(preparation.execute(&state), Err(ActionExecutionError::Disabled { reason }));
     Ok(())
 }
@@ -350,7 +441,7 @@ fn faults_failed_transactions_and_enabled_no_ops_are_invalid_preparations() -> T
         ActionRegistration::without_input(fault_id.clone(), FaultAction { fault: fault.clone() }),
         ActionRegistration::without_input(
             invalid_id.clone(),
-            InvalidPlanAction { fault: fault.clone() },
+            InvalidPlanAction { fault: fault.clone(), expected_removed: "z" },
         ),
         ActionRegistration::without_input(no_op_id.clone(), NoOpAction),
     ])?;
@@ -378,8 +469,118 @@ fn faults_failed_transactions_and_enabled_no_ops_are_invalid_preparations() -> T
 }
 
 #[test]
+fn preparation_error_debug_redacts_handler_and_transaction_payloads() -> TestResult {
+    let document_secret = "direct-secret";
+    let expected_secret = "wrong-content";
+    let fault_secret = "secret-handler-fault-detail";
+    let state = state("action-error-debug-redaction", document_secret)?;
+    let fault_id = action_id("test/debug-fault-action")?;
+    let invalid_id = action_id("test/debug-invalid-plan")?;
+    let handler_fault = ActionFault::new(
+        name("test/debug-handler-fault")?,
+        Some(ActionValue::try_from_string(fault_secret)?),
+    );
+    let planning_fault = ActionFault::new(name("test/debug-planning-fault")?, None);
+    let registry = ActionRegistry::try_new(vec![
+        ActionRegistration::without_input(fault_id.clone(), FaultAction { fault: handler_fault }),
+        ActionRegistration::without_input(
+            invalid_id.clone(),
+            InvalidPlanAction { fault: planning_fault, expected_removed: expected_secret },
+        ),
+    ])?;
+
+    let Err(fault_error) = registry.prepare(&state, &ActionInvocation::without_input(fault_id))
+    else {
+        return Err(test_error("faulting action unexpectedly prepared").into());
+    };
+    let fault_debug = format!("{fault_error:?}");
+    assert!(!fault_debug.contains(fault_secret));
+    assert!(fault_debug.contains("test/debug-handler-fault"));
+
+    let Err(plan_error) = registry.prepare(&state, &ActionInvocation::without_input(invalid_id))
+    else {
+        return Err(test_error("mismatched action plan unexpectedly prepared").into());
+    };
+    let plan_debug = format!("{plan_error:?}");
+    assert!(!plan_debug.contains(document_secret));
+    assert!(!plan_debug.contains(expected_secret));
+    assert!(plan_debug.contains("operation"));
+    Ok(())
+}
+
+#[test]
+fn indicator_shape_is_validated_before_capability_is_published() -> TestResult {
+    let state = state("action-invalid-indicator", "a")?;
+    let id = action_id("test/invalid-indicator")?;
+    let reason = DisabledReason::new(name("test/disabled")?, None);
+    let registry = ActionRegistry::try_new(vec![ActionRegistration::without_input(
+        id.clone(),
+        InvalidIndicatorAction { reason },
+    )])?;
+
+    assert_eq!(
+        registry.prepare(&state, &ActionInvocation::without_input(id.clone())).err(),
+        Some(ActionPrepareError::InvalidState {
+            id,
+            source: ActionStateValidationError::UnexpectedActivation {
+                actual: ActionActivation::Active,
+            },
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn disabled_but_active_indicator_survives_authoritative_preparation() -> TestResult {
+    let state = state("action-disabled-active", "a")?;
+    let id = action_id("test/disabled-active")?;
+    let reason = DisabledReason::new(name("test/disabled")?, None);
+    let spec = ActionStateSpec::new(
+        ActionStateContract::new(ActionActivationContract::Tracked, None),
+        ActionEffects::conservative(),
+    );
+    let registration = ActionRegistration::without_input(
+        id.clone(),
+        InvalidIndicatorAction { reason: reason.clone() },
+    )
+    .with_state_spec(spec);
+    let registry = ActionRegistry::try_new(vec![registration])?;
+
+    let preparation = registry.prepare(&state, &ActionInvocation::without_input(id))?;
+    assert_eq!(preparation.capability(), Capability::Disabled(reason));
+    assert_eq!(preparation.indicator().activation(), ActionActivation::Active);
+    assert_eq!(preparation.actual_writes(), None);
+    Ok(())
+}
+
+#[test]
+fn successful_preflight_rejects_writes_outside_declared_effects() -> TestResult {
+    let state = state("action-undeclared-writes", "a")?;
+    let id = action_id("test/undeclared-write")?;
+    let registration = insert_registration(id.clone(), Arc::new(AtomicUsize::new(0)))?
+        .with_state_spec(ActionStateSpec::new(
+            ActionStateContract::stateless(),
+            ActionEffects::new(ActionEffects::conservative().reads(), ActionStateDomains::HISTORY),
+        ));
+    let registry = ActionRegistry::try_new(vec![registration])?;
+
+    assert_eq!(
+        registry.prepare(&state, &ActionInvocation::without_input(id.clone())).err(),
+        Some(ActionPrepareError::InvalidPlan {
+            id,
+            source: InvalidActionPlan::UndeclaredWrites {
+                declared: ActionStateDomains::HISTORY,
+                actual: ActionStateDomains::DOCUMENT.union(ActionStateDomains::HISTORY),
+            },
+        })
+    );
+    Ok(())
+}
+
+#[test]
 fn one_evaluation_stamps_metadata_and_execution_returns_the_cached_commit() -> TestResult {
-    let state = state("action-one-evaluation", "a")?;
+    let secret = "secret-preparation-document";
+    let state = state("action-one-evaluation", secret)?;
     let id = action_id("test/insert")?;
     let evaluations = Arc::new(AtomicUsize::new(0));
     let registry =
@@ -389,6 +590,12 @@ fn one_evaluation_stamps_metadata_and_execution_returns_the_cached_commit() -> T
     let ActionPreparation::Enabled(prepared) = preparation else {
         return Err(Box::new(test_error("enabled insertion was disabled")));
     };
+    assert_eq!(prepared.indicator(), &ActionStateIndicator::stateless());
+    assert_eq!(
+        prepared.actual_writes(),
+        ActionStateDomains::DOCUMENT.union(ActionStateDomains::HISTORY)
+    );
+    assert!(!format!("{prepared:?}").contains(secret));
     assert_eq!(prepared.transaction().metadata().action(), Some(id.qualified_name()));
     assert_eq!(evaluations.load(Ordering::SeqCst), 1);
     let commit = prepared.execute(&state)?;

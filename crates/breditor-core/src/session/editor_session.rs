@@ -15,6 +15,8 @@ use super::{
     capacity::HistoryCapacity,
     error::{HistoryReplayError, SessionCommitError},
     history::LinearHistory,
+    history_stamp::HistoryStamp,
+    history_status::SessionHistoryStatus,
 };
 
 /// Authoritative synchronous owner of one current state and linear history.
@@ -25,6 +27,7 @@ use super::{
 pub struct EditorSession {
     state: EditorState,
     history: LinearHistory,
+    history_stamp: HistoryStamp,
 }
 
 impl fmt::Debug for EditorSession {
@@ -52,7 +55,11 @@ impl EditorSession {
         initial_state: EditorState,
         history_capacity: HistoryCapacity,
     ) -> Self {
-        Self { state: initial_state, history: LinearHistory::new(history_capacity) }
+        Self {
+            state: initial_state,
+            history: LinearHistory::new(history_capacity),
+            history_stamp: HistoryStamp::new(),
+        }
     }
 
     /// Returns the authoritative current immutable state.
@@ -89,6 +96,21 @@ impl EditorSession {
     #[must_use]
     pub fn can_redo(&self) -> bool {
         self.redo_depth() != 0
+    }
+
+    /// Returns an immutable exact observation of the current linear history.
+    ///
+    /// The status remains unchanged after failed work and history operations
+    /// that have no effect. Its opaque stamp changes after every published
+    /// commit, successful replay, or effective explicit history boundary.
+    #[must_use]
+    pub fn history_status(&self) -> SessionHistoryStatus {
+        SessionHistoryStatus::new(
+            self.history_stamp.clone(),
+            self.history_capacity(),
+            self.undo_depth(),
+            self.redo_depth(),
+        )
     }
 
     /// Accepts one already-proven commit only at its exact source state.
@@ -202,20 +224,44 @@ impl EditorSession {
     /// A host can call this at a recorded IME, paste, focus, or timer boundary;
     /// the Rust core never reads a wall clock itself.
     pub fn close_history_group(&mut self) {
-        self.history.close_merge_group();
+        if self.history.close_merge_group() {
+            self.rotate_history_stamp();
+        }
     }
 
     /// Drops all retained undo and redo entries without changing editor state.
     pub fn clear_history(&mut self) {
-        self.history.clear();
+        if self.history.clear() {
+            self.rotate_history_stamp();
+        }
     }
 
     fn publish(&mut self, commit: &Commit) {
         self.history.observe_commit(commit, self.state.context().max_operations_per_transaction());
         self.state = commit.after().clone();
+        self.rotate_history_stamp();
     }
 
     fn replay(&mut self, direction: ReplayDirection) -> Result<Option<Commit>, HistoryReplayError> {
+        let Some(commit) = self.preflight_replay(direction)? else {
+            return Ok(None);
+        };
+        let state = commit.after().clone();
+        match direction {
+            ReplayDirection::Undo => self.history.finish_undo(&state),
+            ReplayDirection::Redo => self.history.finish_redo(&state),
+        }
+        self.state = state;
+        self.rotate_history_stamp();
+        Ok(Some(*commit))
+    }
+
+    /// Prepares and proves the currently authoritative replay without changing
+    /// editor state, history stacks, merge boundaries, or history identity.
+    pub(crate) fn preflight_replay(
+        &self,
+        direction: ReplayDirection,
+    ) -> Result<Option<Box<Commit>>, HistoryReplayError> {
         let transaction = match direction {
             ReplayDirection::Undo => self
                 .history
@@ -249,12 +295,11 @@ impl EditorSession {
         if !result_matches {
             return Err(HistoryReplayError::ResultMismatch { direction });
         }
-        match direction {
-            ReplayDirection::Undo => self.history.finish_undo(&state),
-            ReplayDirection::Redo => self.history.finish_redo(&state),
-        }
-        self.state = state;
-        Ok(Some(commit))
+        Ok(Some(Box::new(commit)))
+    }
+
+    fn rotate_history_stamp(&mut self) {
+        self.history_stamp = HistoryStamp::new();
     }
 }
 
@@ -311,6 +356,23 @@ mod tests {
         assert_eq!(session.undo_depth(), 1);
         let state_before = session.state.clone();
         let history_before = session.history.clone();
+        let stamp_before = session.history_stamp.clone();
+
+        let Err(preflight_error) = session.preflight_replay(ReplayDirection::Undo) else {
+            return Err(
+                io::Error::other("overflowing undo preflight unexpectedly succeeded").into()
+            );
+        };
+        assert_eq!(
+            preflight_error,
+            HistoryReplayError::Transaction {
+                direction: ReplayDirection::Undo,
+                source: Box::new(TransactionApplyError::Revision(RevisionError::Overflow)),
+            }
+        );
+        assert_eq!(session.state, state_before);
+        assert_eq!(session.history, history_before);
+        assert_eq!(session.history_stamp, stamp_before);
 
         let Err(error) = session.undo() else {
             return Err(io::Error::other("overflowing undo unexpectedly succeeded").into());
@@ -324,6 +386,7 @@ mod tests {
         );
         assert_eq!(session.state, state_before);
         assert_eq!(session.history, history_before);
+        assert_eq!(session.history_stamp, stamp_before);
         Ok(())
     }
 }

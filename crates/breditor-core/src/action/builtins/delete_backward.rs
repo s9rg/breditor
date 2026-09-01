@@ -1,5 +1,5 @@
 use crate::{
-    action::{Action, ActionDecision, ActionFault, ActionId, ActionPlan},
+    action::{Action, ActionDecision, ActionEvaluation, ActionFault, ActionId, ActionPlan},
     document::TextFragment,
     identity::QualifiedName,
     operation::{
@@ -41,59 +41,60 @@ impl Action for DeleteBackwardAction {
         &self,
         state: &EditorState,
         (): &Self::Input,
-    ) -> Result<ActionDecision, ActionFault> {
-        let range = match require_base_range(state)? {
-            Ok(range) => range,
-            Err(reason) => return Ok(ActionDecision::Disabled(reason)),
-        };
-        let paragraph_path = range.start().paragraph_path();
-        if !range.is_collapsed() {
-            if let Some(decision) = require_operation_budget(state, 1) {
-                return Ok(decision);
-            }
-            return delete_text_range(state, &range);
-        }
-        if range.start().offset() != TextOffset::ZERO {
-            if let Some(decision) = require_operation_budget(state, 1) {
-                return Ok(decision);
-            }
-            return delete_previous_scalar(state, paragraph_path, range.start().offset());
-        }
+    ) -> Result<ActionEvaluation, ActionFault> {
+        evaluate_delete_backward(state).map(ActionEvaluation::stateless)
+    }
+}
 
-        let Some(previous_path) = previous_paragraph_path(paragraph_path)
-            .map_err(|_| fault("breditor/previous-paragraph-path-fault"))?
-        else {
-            return Ok(disabled("breditor/at-document-start"));
-        };
+fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, ActionFault> {
+    let range = match require_base_range(state)? {
+        Ok(range) => range,
+        Err(reason) => return Ok(ActionDecision::Disabled(reason)),
+    };
+    let paragraph_path = range.start().paragraph_path();
+    if !range.is_collapsed() {
         if let Some(decision) = require_operation_budget(state, 1) {
             return Ok(decision);
         }
-        let join = match ParagraphJoin::capture(
-            state.context(),
-            state.document(),
-            previous_path.clone(),
-        ) {
+        return delete_text_range(state, &range);
+    }
+    if range.start().offset() != TextOffset::ZERO {
+        if let Some(decision) = require_operation_budget(state, 1) {
+            return Ok(decision);
+        }
+        return delete_previous_scalar(state, paragraph_path, range.start().offset());
+    }
+
+    let Some(previous_path) = previous_paragraph_path(paragraph_path)
+        .map_err(|_| fault("breditor/previous-paragraph-path-fault"))?
+    else {
+        return Ok(disabled("breditor/at-document-start"));
+    };
+    if let Some(decision) = require_operation_budget(state, 1) {
+        return Ok(decision);
+    }
+    let join =
+        match ParagraphJoin::capture(state.context(), state.document(), previous_path.clone()) {
             Ok(join) => join,
             Err(ParagraphJoinApplyError::Contract(ParagraphJoinError::Fragment(_))) => {
                 return Ok(disabled("breditor/result-limit-exceeded"));
             }
             Err(_) => return Err(fault("breditor/paragraph-join-capture-fault")),
         };
-        let seam = join.expected_left().utf16_len();
-        let Ok(joined) = join.expected_left().try_concat(join.expected_right()) else {
-            return Ok(disabled("breditor/result-limit-exceeded"));
-        };
-        let removed_runs = join
-            .expected_left()
-            .len()
-            .checked_add(join.expected_right().len())
-            .ok_or_else(|| fault("breditor/result-node-count-fault"))?;
-        if !base_shape_fits(state, 2, removed_runs, &[&joined]) {
-            return Ok(disabled("breditor/result-limit-exceeded"));
-        }
-        let selection = collapsed_selection_at(&previous_path, &joined, seam)?;
-        Ok(delete_plan(state, Operation::from(join), selection))
+    let seam = join.expected_left().utf16_len();
+    let Ok(joined) = join.expected_left().try_concat(join.expected_right()) else {
+        return Ok(disabled("breditor/result-limit-exceeded"));
+    };
+    let removed_runs = join
+        .expected_left()
+        .len()
+        .checked_add(join.expected_right().len())
+        .ok_or_else(|| fault("breditor/result-node-count-fault"))?;
+    if !base_shape_fits(state, 2, removed_runs, &[&joined]) {
+        return Ok(disabled("breditor/result-limit-exceeded"));
     }
+    let selection = collapsed_selection_at(&previous_path, &joined, seam)?;
+    Ok(delete_plan(state, Operation::from(join), selection))
 }
 
 fn delete_text_range(

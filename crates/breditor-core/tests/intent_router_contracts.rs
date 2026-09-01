@@ -12,10 +12,12 @@ use std::{
 
 use breditor_core::{
     action::{
-        Action, ActionDecision, ActionFault, ActionId, ActionInput, ActionInputContract,
-        ActionInputError, ActionInputVersion, ActionInvocation, ActionPlan, ActionPrepareError,
-        ActionRegistration, ActionRegistry, ActionValue, DecodeActionInput, DisabledReason,
-        InvalidActionPlan, TypedActionInput,
+        Action, ActionActivationContract, ActionDecision, ActionEffects, ActionEvaluation,
+        ActionFault, ActionId, ActionInput, ActionInputContract, ActionInputError,
+        ActionInputVersion, ActionInvocation, ActionPlan, ActionPrepareError, ActionRegistration,
+        ActionRegistry, ActionStateContract, ActionStateDomains, ActionStateIndicator,
+        ActionStateSpec, ActionValue, DecodeActionInput, DisabledReason, InvalidActionPlan,
+        TypedActionInput,
         routing::{
             BindingId, BindingPriority, DisabledRouting, IntentBinding, IntentDeclaration,
             IntentExecutionOutcome, IntentFallThrough, IntentId, IntentInvocation,
@@ -101,6 +103,7 @@ enum ProbeBehavior {
     Insert(&'static str),
     Disabled(DisabledReason),
     Fault(ActionFault),
+    ExpectedRemovedMismatch(&'static str),
     InvalidNoOp,
 }
 
@@ -118,16 +121,37 @@ impl Action for ProbeAction {
         &self,
         state: &EditorState,
         (): &Self::Input,
-    ) -> Result<ActionDecision, ActionFault> {
+    ) -> Result<ActionEvaluation, ActionFault> {
         self.evaluations.fetch_add(1, Ordering::SeqCst);
-        match &self.behavior {
+        let decision = match &self.behavior {
             ProbeBehavior::Insert(text) => {
                 insertion(state, text, &self.insertion_fault).map(ActionDecision::Enabled)
             }
             ProbeBehavior::Disabled(reason) => Ok(ActionDecision::Disabled(reason.clone())),
             ProbeBehavior::Fault(fault) => Err(fault.clone()),
+            ProbeBehavior::ExpectedRemovedMismatch(expected_removed) => {
+                let end = u64::try_from(expected_removed.encode_utf16().count())
+                    .map_err(|_| self.insertion_fault.clone())?;
+                let range = TextRange::try_new(
+                    NodePath::try_from_indices(vec![0])
+                        .map_err(|_| self.insertion_fault.clone())?,
+                    TextOffset::ZERO,
+                    TextOffset::try_new(end).map_err(|_| self.insertion_fault.clone())?,
+                )
+                .map_err(|_| self.insertion_fault.clone())?;
+                let expected = TextRun::try_new(*expected_removed, FormatSet::default())
+                    .map(TextFragment::from)
+                    .map_err(|_| self.insertion_fault.clone())?;
+                let replacement = TextRun::try_new("x", FormatSet::default())
+                    .map(TextFragment::from)
+                    .map_err(|_| self.insertion_fault.clone())?;
+                let operation = TextSplice::try_new(range, expected, replacement)
+                    .map_err(|_| self.insertion_fault.clone())?;
+                Ok(ActionDecision::Enabled(plan(vec![operation.into()])))
+            }
             ProbeBehavior::InvalidNoOp => Ok(ActionDecision::Enabled(plan(Vec::new()))),
-        }
+        }?;
+        Ok(ActionEvaluation::stateless(decision))
     }
 }
 
@@ -192,9 +216,9 @@ struct FalseOnlyProbeAction {
 impl Action for FalseOnlyProbeAction {
     type Input = FalseOnlyInput;
 
-    fn evaluate(&self, _: &EditorState, _: &Self::Input) -> Result<ActionDecision, ActionFault> {
+    fn evaluate(&self, _: &EditorState, _: &Self::Input) -> Result<ActionEvaluation, ActionFault> {
         self.evaluations.fetch_add(1, Ordering::SeqCst);
-        Ok(ActionDecision::Disabled(self.reason.clone()))
+        Ok(ActionEvaluation::stateless(ActionDecision::Disabled(self.reason.clone())))
     }
 }
 
@@ -205,13 +229,13 @@ impl Action for TypedProbeAction {
         &self,
         _: &EditorState,
         input: &Self::Input,
-    ) -> Result<ActionDecision, ActionFault> {
+    ) -> Result<ActionEvaluation, ActionFault> {
         self.evaluations.fetch_add(1, Ordering::SeqCst);
         self.values.lock().map_err(|_| self.lock_fault.clone())?.push(input.0);
-        Ok(ActionDecision::Disabled(DisabledReason::new(
+        Ok(ActionEvaluation::stateless(ActionDecision::Disabled(DisabledReason::new(
             self.reason_code.clone(),
             Some(ActionValue::boolean(input.0)),
-        )))
+        ))))
     }
 }
 
@@ -445,6 +469,43 @@ fn construction_conflicts_are_canonical_and_registration_order_independent() -> 
 }
 
 #[test]
+fn intent_history_read_rejection_is_lexical_and_follows_identity_validation() -> TestResult {
+    let first = intent_id("test/a-history-reader")?;
+    let last = intent_id("test/z-history-reader")?;
+    let effects =
+        ActionEffects::new(ActionStateDomains::HISTORY, ActionEffects::conservative().may_write());
+    let declaration = |id| {
+        IntentDeclaration::new(id)
+            .with_state_spec(ActionStateSpec::new(ActionStateContract::stateless(), effects))
+    };
+    for declarations in [
+        vec![declaration(last.clone()), declaration(first.clone())],
+        vec![declaration(first.clone()), declaration(last.clone())],
+    ] {
+        assert_eq!(
+            IntentRouter::try_new(ActionRegistry::default(), declarations, Vec::new()).err(),
+            Some(IntentRouterError::UnsupportedHistoryRead { intent: first.clone() })
+        );
+    }
+
+    let duplicate = intent_id("test/z-duplicate-history-phase")?;
+    assert_eq!(
+        IntentRouter::try_new(
+            ActionRegistry::default(),
+            vec![
+                IntentDeclaration::new(duplicate.clone()),
+                declaration(first),
+                IntentDeclaration::new(duplicate.clone()),
+            ],
+            Vec::new(),
+        )
+        .err(),
+        Some(IntentRouterError::DuplicateIntentId { id: duplicate })
+    );
+    Ok(())
+}
+
+#[test]
 fn construction_rejects_unknown_references_and_contract_mismatch() -> TestResult {
     let intent = intent_id("test/intent")?;
     let missing_intent = intent_id("test/missing-intent")?;
@@ -517,6 +578,68 @@ fn construction_rejects_unknown_references_and_contract_mismatch() -> TestResult
             action,
             expected: Some(expected),
             actual: None,
+        })
+    );
+    Ok(())
+}
+
+#[test]
+fn construction_requires_exact_state_contracts_and_covering_intent_effects() -> TestResult {
+    let intent = intent_id("test/state-intent")?;
+    let action = action_id("test/state-action")?;
+    let binding_id = binding_id("test/state-binding")?;
+    let registry = ActionRegistry::try_new(vec![probe_registration(
+        action.clone(),
+        Arc::new(AtomicUsize::new(0)),
+        ProbeBehavior::InvalidNoOp,
+    )?])?;
+    let binding = IntentBinding::new(
+        binding_id.clone(),
+        intent.clone(),
+        action.clone(),
+        BindingPriority::new(0),
+        DisabledRouting::Block,
+    );
+    let tracked = ActionStateContract::new(ActionActivationContract::Tracked, None);
+
+    assert_eq!(
+        IntentRouter::try_new(
+            registry.clone(),
+            vec![IntentDeclaration::new(intent.clone()).with_state_spec(ActionStateSpec::new(
+                tracked.clone(),
+                ActionEffects::conservative(),
+            ))],
+            vec![binding.clone()],
+        )
+        .err(),
+        Some(IntentRouterError::StateContractMismatch {
+            intent: intent.clone(),
+            binding: binding_id.clone(),
+            action: action.clone(),
+            expected: tracked,
+            actual: ActionStateContract::stateless(),
+        })
+    );
+
+    let narrow = ActionEffects::new(ActionStateDomains::NONE, ActionStateDomains::NONE);
+    assert_eq!(
+        IntentRouter::try_new(
+            registry,
+            vec![
+                IntentDeclaration::new(intent.clone()).with_state_spec(ActionStateSpec::new(
+                    ActionStateContract::stateless(),
+                    narrow,
+                ))
+            ],
+            vec![binding],
+        )
+        .err(),
+        Some(IntentRouterError::EffectsNotCovered {
+            intent,
+            binding: binding_id,
+            action,
+            declared: narrow,
+            required: ActionEffects::conservative(),
         })
     );
     Ok(())
@@ -813,6 +936,11 @@ fn fallthrough_reaches_first_enabled_candidate_and_preserves_the_trace() -> Test
     assert_eq!(selected.binding_id(), &enabled_binding);
     assert_eq!(selected.action_id(), &enabled_action);
     assert_eq!(selected.priority(), BindingPriority::new(-1));
+    assert_eq!(selected.indicator(), &ActionStateIndicator::stateless());
+    assert_eq!(
+        selected.actual_writes(),
+        ActionStateDomains::DOCUMENT.union(ActionStateDomains::HISTORY)
+    );
     assert_eq!(selected.fallthroughs().len(), 1);
     assert_eq!(selected.fallthroughs()[0].binding_id(), &disabled_binding);
     assert_eq!(selected.fallthroughs()[0].action_id(), &disabled_action);
@@ -888,6 +1016,8 @@ fn blocking_candidate_stops_before_lower_priority_actions() -> TestResult {
     assert_eq!(blocked.intent_id(), &intent);
     assert_eq!(blocked.binding(), &blocking_binding);
     assert_eq!(blocked.reason(), &blocking_reason);
+    assert_eq!(blocked.disabled_preparation().id(), &blocking_action);
+    assert_eq!(blocked.indicator(), &ActionStateIndicator::stateless());
     assert_eq!(blocked.base_state(), &initial);
     assert_eq!(blocked.fallthroughs().len(), 1);
     assert_eq!(blocked.fallthroughs()[0].binding_id(), fallthrough_binding.id());
@@ -906,6 +1036,26 @@ fn blocking_candidate_stops_before_lower_priority_actions() -> TestResult {
     assert_eq!(receipt.fallthroughs().len(), 1);
     assert_eq!(receipt.fallthroughs()[0].binding_id(), fallthrough_binding.id());
     assert_eq!(receipt.commit(), None);
+    Ok(())
+}
+
+#[test]
+fn intent_invocation_debug_redacts_typed_payloads() -> TestResult {
+    let secret = "secret-intent-invocation-payload";
+    let invocation = IntentInvocation::new(
+        intent_id("test/debug-intent")?,
+        ActionInput::typed(
+            input_contract("test/debug-intent-input", 9)?,
+            ActionValue::try_from_string(secret)?,
+        ),
+    );
+
+    let debug = format!("{invocation:?}");
+    assert!(!debug.contains(secret));
+    assert!(debug.contains("test/debug-intent"));
+    assert!(debug.contains("test/debug-intent-input"));
+    assert!(debug.contains("String"));
+    assert!(debug.contains("<redacted>"));
     Ok(())
 }
 
@@ -1257,6 +1407,44 @@ fn invalid_plans_are_terminal_and_never_fall_through() -> TestResult {
     ));
     assert_eq!(count(&invalid_count), 1);
     assert_eq!(count(&fallback_count), 0);
+    Ok(())
+}
+
+#[test]
+fn routed_error_debug_redacts_transaction_and_document_payloads() -> TestResult {
+    let document_secret = "routed-secret";
+    let expected_secret = "wrong-content";
+    let intent = intent_id("test/debug-error-intent")?;
+    let action = action_id("test/debug-error-action")?;
+    let binding = binding_id("test/debug-error-binding")?;
+    let registry = ActionRegistry::try_new(vec![probe_registration(
+        action.clone(),
+        Arc::new(AtomicUsize::new(0)),
+        ProbeBehavior::ExpectedRemovedMismatch(expected_secret),
+    )?])?;
+    let router = IntentRouter::try_new(
+        registry,
+        vec![IntentDeclaration::new(intent.clone())],
+        vec![IntentBinding::new(
+            binding,
+            intent.clone(),
+            action,
+            BindingPriority::default(),
+            DisabledRouting::Block,
+        )],
+    )?;
+    let state = state("router-error-debug-redaction", document_secret)?;
+
+    let Err(error) = router.route(&state, &IntentInvocation::without_input(intent)) else {
+        return Err(test_error("mismatched routed action unexpectedly prepared").into());
+    };
+    let debug = format!("{error:?}");
+    assert!(!debug.contains(document_secret));
+    assert!(!debug.contains(expected_secret));
+    assert!(debug.contains("test/debug-error-intent"));
+    assert!(debug.contains("test/debug-error-binding"));
+    assert!(debug.contains("test/debug-error-action"));
+    assert!(debug.contains("operation"));
     Ok(())
 }
 

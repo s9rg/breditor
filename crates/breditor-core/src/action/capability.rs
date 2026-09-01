@@ -1,3 +1,5 @@
+use std::fmt;
+
 use thiserror::Error;
 
 use crate::{
@@ -10,14 +12,25 @@ use super::{
     error::{ActionExecutionError, PreparedActionExecutionError},
     id::ActionId,
     plan::ActionPlan,
+    state::{ActionStateDomains, ActionStateIndicator},
     value::ActionValue,
 };
 
 /// Stable expected reason an action is unavailable in one exact state.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct DisabledReason {
     code: QualifiedName,
     detail: Option<ActionValue>,
+}
+
+impl fmt::Debug for DisabledReason {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("DisabledReason")
+            .field("code", &self.code)
+            .field("has_detail", &self.detail.is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 impl DisabledReason {
@@ -41,11 +54,21 @@ impl DisabledReason {
 }
 
 /// Stable unexpected fault reported by an action handler.
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
+#[derive(Clone, Eq, Error, PartialEq)]
 #[error("action handler fault {code}")]
 pub struct ActionFault {
     code: QualifiedName,
     detail: Option<ActionValue>,
+}
+
+impl fmt::Debug for ActionFault {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ActionFault")
+            .field("code", &self.code)
+            .field("has_detail", &self.detail.is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 impl ActionFault {
@@ -92,16 +115,22 @@ pub enum Capability {
 /// preparations are: a later state may make the action available. Consuming a
 /// cached disabled result against any other state is therefore rejected.
 #[must_use = "a disabled preparation must be inspected or discarded explicitly"]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct DisabledActionPreparation {
     id: ActionId,
     base: Box<EditorState>,
     reason: DisabledReason,
+    indicator: ActionStateIndicator,
 }
 
 impl DisabledActionPreparation {
-    pub(crate) fn new(id: ActionId, base: EditorState, reason: DisabledReason) -> Self {
-        Self { id, base: Box::new(base), reason }
+    pub(crate) fn new(
+        id: ActionId,
+        base: EditorState,
+        reason: DisabledReason,
+        indicator: ActionStateIndicator,
+    ) -> Self {
+        Self { id, base: Box::new(base), reason, indicator }
     }
 
     /// Returns the evaluated action identity.
@@ -122,8 +151,14 @@ impl DisabledActionPreparation {
         &self.reason
     }
 
-    pub(crate) fn into_base_and_reason(self) -> (EditorState, DisabledReason) {
-        (*self.base, self.reason)
+    /// Returns activation and optional typed value from the same evaluation.
+    #[must_use]
+    pub const fn indicator(&self) -> &ActionStateIndicator {
+        &self.indicator
+    }
+
+    pub(crate) fn into_parts(self) -> (EditorState, DisabledReason, ActionStateIndicator) {
+        (*self.base, self.reason, self.indicator)
     }
 
     fn execute(self, current: &EditorState) -> Result<Commit, ActionExecutionError> {
@@ -132,21 +167,41 @@ impl DisabledActionPreparation {
     }
 }
 
+impl fmt::Debug for DisabledActionPreparation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("DisabledActionPreparation")
+            .field("id", &self.id)
+            .field("base_snapshot", &self.base.snapshot())
+            .field("reason_code", &self.reason.code())
+            .field("indicator", &self.indicator)
+            .finish_non_exhaustive()
+    }
+}
+
 /// One exact-base transaction and its cached successful preflight commit.
 ///
 /// This value is deliberately one-shot and not cloneable. Execution never calls
 /// the action handler or transaction reducer again.
 #[must_use = "a prepared action must be executed or discarded explicitly"]
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct PreparedAction {
     id: ActionId,
     transaction: Box<Transaction>,
     commit: Box<Commit>,
+    indicator: ActionStateIndicator,
+    actual_writes: ActionStateDomains,
 }
 
 impl PreparedAction {
-    pub(crate) fn new(id: ActionId, transaction: Transaction, commit: Box<Commit>) -> Self {
-        Self { id, transaction: Box::new(transaction), commit }
+    pub(crate) fn new(
+        id: ActionId,
+        transaction: Transaction,
+        commit: Box<Commit>,
+        indicator: ActionStateIndicator,
+        actual_writes: ActionStateDomains,
+    ) -> Self {
+        Self { id, transaction: Box::new(transaction), commit, indicator, actual_writes }
     }
 
     /// Returns the prepared action identity.
@@ -173,6 +228,18 @@ impl PreparedAction {
         self.transaction.base_state()
     }
 
+    /// Returns activation and optional typed value from the same evaluation.
+    #[must_use]
+    pub const fn indicator(&self) -> &ActionStateIndicator {
+        &self.indicator
+    }
+
+    /// Returns domains actually changed by the cached preflight commit.
+    #[must_use]
+    pub const fn actual_writes(&self) -> ActionStateDomains {
+        self.actual_writes
+    }
+
     /// Consumes the cached commit after verifying the exact current state.
     ///
     /// # Errors
@@ -182,6 +249,19 @@ impl PreparedAction {
     pub fn execute(self, current: &EditorState) -> Result<Commit, PreparedActionExecutionError> {
         validate_prepared_base(self.transaction.base_state(), current)?;
         Ok(*self.commit)
+    }
+}
+
+impl fmt::Debug for PreparedAction {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("PreparedAction")
+            .field("id", &self.id)
+            .field("base_snapshot", &self.base_snapshot())
+            .field("result_snapshot", &self.commit.snapshot())
+            .field("indicator", &self.indicator)
+            .field("actual_writes", &self.actual_writes)
+            .finish_non_exhaustive()
     }
 }
 
@@ -226,6 +306,24 @@ impl ActionPreparation {
         match self {
             Self::Disabled(prepared) => Capability::Disabled(prepared.reason().clone()),
             Self::Enabled(_) => Capability::Enabled,
+        }
+    }
+
+    /// Returns activation and optional typed value from the same evaluation.
+    #[must_use]
+    pub const fn indicator(&self) -> &ActionStateIndicator {
+        match self {
+            Self::Disabled(prepared) => prepared.indicator(),
+            Self::Enabled(prepared) => prepared.indicator(),
+        }
+    }
+
+    /// Returns actual written domains for an enabled preflighted action.
+    #[must_use]
+    pub const fn actual_writes(&self) -> Option<ActionStateDomains> {
+        match self {
+            Self::Disabled(_) => None,
+            Self::Enabled(prepared) => Some(prepared.actual_writes()),
         }
     }
 

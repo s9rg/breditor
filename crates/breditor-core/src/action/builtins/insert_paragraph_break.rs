@@ -1,5 +1,5 @@
 use crate::{
-    action::{Action, ActionDecision, ActionFault, ActionId, ActionPlan},
+    action::{Action, ActionDecision, ActionEvaluation, ActionFault, ActionId, ActionPlan},
     document::TextFragment,
     identity::QualifiedName,
     operation::{Operation, ParagraphSplit, TextRange, TextSplice},
@@ -42,74 +42,76 @@ impl Action for InsertParagraphBreakAction {
         &self,
         state: &EditorState,
         (): &Self::Input,
-    ) -> Result<ActionDecision, ActionFault> {
-        let range = match require_base_range(state)? {
-            Ok(range) => range,
-            Err(reason) => return Ok(ActionDecision::Disabled(reason)),
-        };
-        let operation_count = if range.is_collapsed() { 1 } else { 2 };
-        if let Some(decision) = require_operation_budget(state, operation_count) {
-            return Ok(decision);
-        }
-
-        let paragraph_path = range.start().paragraph_path();
-        let split_offset = range.start().offset();
-        let source = paragraph_fragment(state, paragraph_path, split_offset)?;
-        let operations = if range.is_collapsed() {
-            let (left, right) = source
-                .split_at(split_offset)
-                .map_err(|_| fault("breditor/fragment-split-fault"))?;
-            if !base_shape_fits(state, 1, source.len(), &[&left, &right]) {
-                return Ok(disabled("breditor/result-limit-exceeded"));
-            }
-            let split = ParagraphSplit::try_new(paragraph_path.clone(), split_offset, source)
-                .map_err(|_| fault("breditor/paragraph-split-construction-fault"))?;
-            vec![Operation::from(split)]
-        } else {
-            let (prefix, selected, suffix) =
-                fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
-            if !base_shape_fits(state, 1, source.len(), &[&prefix, &suffix]) {
-                return Ok(disabled("breditor/result-limit-exceeded"));
-            }
-            let tail = selected
-                .try_concat(&suffix)
-                .map_err(|_| fault("breditor/fragment-concat-fault"))?;
-            if base_shape_fits(state, 1, source.len(), &[&prefix, &tail]) {
-                split_then_delete(paragraph_path, split_offset, source, selected)?
-            } else {
-                let Ok(without_selection) = prefix.try_concat(&suffix) else {
-                    return Ok(disabled("breditor/intermediate-limit-exceeded"));
-                };
-                if !base_shape_fits(state, 1, source.len(), &[&without_selection]) {
-                    return Ok(disabled("breditor/intermediate-limit-exceeded"));
-                }
-                delete_then_split(
-                    state,
-                    paragraph_path,
-                    range.start().offset(),
-                    range.end().offset(),
-                    split_offset,
-                    without_selection,
-                )?
-            }
-        };
-
-        let result_paragraph = right_paragraph_path(paragraph_path)
-            .map_err(|_| fault("breditor/result-paragraph-path-fault"))?;
-        let caret = Point::Children {
-            parent_path: result_paragraph,
-            child_index: 0,
-            affinity: Affinity::After,
-        };
-        let selection: Selection = collapsed_selection(caret);
-        Ok(ActionDecision::Enabled(ActionPlan::new(
-            operations,
-            strict_relocation(),
-            SelectionUpdate::Set(Some(selection)),
-            PendingFormatsUpdate::Set(state.pending_formats().cloned()),
-            HistoryIntent::Record,
-        )))
+    ) -> Result<ActionEvaluation, ActionFault> {
+        evaluate_insert_paragraph_break(state).map(ActionEvaluation::stateless)
     }
+}
+
+fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision, ActionFault> {
+    let range = match require_base_range(state)? {
+        Ok(range) => range,
+        Err(reason) => return Ok(ActionDecision::Disabled(reason)),
+    };
+    let operation_count = if range.is_collapsed() { 1 } else { 2 };
+    if let Some(decision) = require_operation_budget(state, operation_count) {
+        return Ok(decision);
+    }
+
+    let paragraph_path = range.start().paragraph_path();
+    let split_offset = range.start().offset();
+    let source = paragraph_fragment(state, paragraph_path, split_offset)?;
+    let operations = if range.is_collapsed() {
+        let (left, right) =
+            source.split_at(split_offset).map_err(|_| fault("breditor/fragment-split-fault"))?;
+        if !base_shape_fits(state, 1, source.len(), &[&left, &right]) {
+            return Ok(disabled("breditor/result-limit-exceeded"));
+        }
+        let split = ParagraphSplit::try_new(paragraph_path.clone(), split_offset, source)
+            .map_err(|_| fault("breditor/paragraph-split-construction-fault"))?;
+        vec![Operation::from(split)]
+    } else {
+        let (prefix, selected, suffix) =
+            fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
+        if !base_shape_fits(state, 1, source.len(), &[&prefix, &suffix]) {
+            return Ok(disabled("breditor/result-limit-exceeded"));
+        }
+        let tail =
+            selected.try_concat(&suffix).map_err(|_| fault("breditor/fragment-concat-fault"))?;
+        if base_shape_fits(state, 1, source.len(), &[&prefix, &tail]) {
+            split_then_delete(paragraph_path, split_offset, source, selected)?
+        } else {
+            let Ok(without_selection) = prefix.try_concat(&suffix) else {
+                return Ok(disabled("breditor/intermediate-limit-exceeded"));
+            };
+            if !base_shape_fits(state, 1, source.len(), &[&without_selection]) {
+                return Ok(disabled("breditor/intermediate-limit-exceeded"));
+            }
+            delete_then_split(
+                state,
+                paragraph_path,
+                range.start().offset(),
+                range.end().offset(),
+                split_offset,
+                without_selection,
+            )?
+        }
+    };
+
+    let result_paragraph = right_paragraph_path(paragraph_path)
+        .map_err(|_| fault("breditor/result-paragraph-path-fault"))?;
+    let caret = Point::Children {
+        parent_path: result_paragraph,
+        child_index: 0,
+        affinity: Affinity::After,
+    };
+    let selection: Selection = collapsed_selection(caret);
+    Ok(ActionDecision::Enabled(ActionPlan::new(
+        operations,
+        strict_relocation(),
+        SelectionUpdate::Set(Some(selection)),
+        PendingFormatsUpdate::Set(state.pending_formats().cloned()),
+        HistoryIntent::Record,
+    )))
 }
 
 fn split_then_delete(

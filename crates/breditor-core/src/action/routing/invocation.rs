@@ -1,12 +1,26 @@
+use std::fmt;
+
 use crate::action::ActionInput;
 
 use super::IntentId;
 
 /// One host-normalized request to route a declared semantic intent.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// Debug output delegates to the payload-redacting [`ActionInput`] formatter.
+#[derive(Clone, Eq, PartialEq)]
 pub struct IntentInvocation {
     id: IntentId,
     input: ActionInput,
+}
+
+impl fmt::Debug for IntentInvocation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("IntentInvocation")
+            .field("id", &self.id)
+            .field("input", &self.input)
+            .finish()
+    }
 }
 
 impl IntentInvocation {

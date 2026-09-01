@@ -35,18 +35,22 @@ impl IntentRouter {
     ///
     /// Validation runs in fixed canonical phases: declaration count, total
     /// binding count, per-intent binding count, declaration identities, binding
-    /// identities, references and contracts, priority conflicts, then repeated
-    /// actions. Per-intent overflow selects the lexical first intent. Identity
-    /// and reference phases use lexical IDs; priority and repeated-action phases
-    /// use their ordered `(intent, priority)` and `(intent, action)` keys.
-    /// Registration order never selects the reported conflict.
+    /// identities, unsupported declaration reads, references and
+    /// input/state/effect contracts, priority conflicts, then repeated actions.
+    /// Per-intent overflow selects the lexical first intent. Identity,
+    /// history-read, and reference phases use lexical IDs; priority and
+    /// repeated-action phases use their ordered `(intent, priority)` and
+    /// `(intent, action)` keys. Registration order never selects the reported
+    /// conflict.
     ///
     /// # Errors
     ///
     /// Returns [`IntentRouterError`] when a fixed graph bound is exceeded, an
     /// identity is duplicated, a binding names an unknown declaration or action,
-    /// contracts differ, priorities tie, or one intent targets an action more
-    /// than once. No partial router is returned.
+    /// intent claims to read unobservable session history, input or observable
+    /// contracts differ, intent effects fail to cover an action, priorities
+    /// tie, or one intent targets an action more than once. No partial router
+    /// is returned.
     pub fn try_new(
         actions: ActionRegistry,
         mut declarations: Vec<IntentDeclaration>,
@@ -66,6 +70,18 @@ impl IntentRouter {
             if pair[0].id() == pair[1].id() {
                 return Err(IntentRouterError::DuplicateBindingId { id: pair[0].id().clone() });
             }
+        }
+
+        if let Some(declaration) = declarations.iter().find(|declaration| {
+            declaration
+                .state_spec()
+                .effects()
+                .reads()
+                .contains(crate::action::ActionStateDomains::HISTORY)
+        }) {
+            return Err(IntentRouterError::UnsupportedHistoryRead {
+                intent: declaration.id().clone(),
+            });
         }
 
         let declarations = declarations
@@ -93,6 +109,26 @@ impl IntentRouter {
                     action: binding.action_id().clone(),
                     expected: declaration.input_contract().cloned(),
                     actual: descriptor.input_contract().cloned(),
+                });
+            }
+            if declaration.state_spec().contract() != descriptor.state_spec().contract() {
+                return Err(IntentRouterError::StateContractMismatch {
+                    intent: binding.intent_id().clone(),
+                    binding: binding.id().clone(),
+                    action: binding.action_id().clone(),
+                    expected: declaration.state_spec().contract().clone(),
+                    actual: descriptor.state_spec().contract().clone(),
+                });
+            }
+            let declared = declaration.state_spec().effects();
+            let required = descriptor.state_spec().effects();
+            if !declared.covers(required) {
+                return Err(IntentRouterError::EffectsNotCovered {
+                    intent: binding.intent_id().clone(),
+                    binding: binding.id().clone(),
+                    action: binding.action_id().clone(),
+                    declared,
+                    required,
                 });
             }
         }
@@ -228,16 +264,15 @@ impl IntentRouter {
                     )));
                 }
                 ActionPreparation::Disabled(disabled) => {
-                    let (base, reason) = disabled.into_base_and_reason();
                     if binding.disabled_routing() == DisabledRouting::Block {
                         return Ok(IntentRouteOutcome::Blocked(BlockedIntent::new(
                             invocation.id().clone(),
                             binding.clone(),
-                            base,
-                            reason,
+                            disabled,
                             fallthroughs,
                         )));
                     }
+                    let (_base, reason, _indicator) = disabled.into_parts();
                     fallthroughs.push(IntentFallThrough::new(
                         binding.id().clone(),
                         binding.action_id().clone(),

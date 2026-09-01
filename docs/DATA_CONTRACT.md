@@ -24,17 +24,19 @@ The implemented Rust slice owns:
   snapshot-bound capability preparation, and bounded cross-language inputs;
 - a frozen semantic intent router with canonical priority/fallback behavior and
   exact-state-bound outcomes;
+- one-call action observation contracts plus a frozen, bounded direct/routed/
+  history action-state catalog and immutable exact-base batches;
 - semantic base actions for paragraph breaks and backward deletion; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
-  linear undo/redo history.
+  linear undo/redo history and opaque history-observation identity.
 
 The following remain deliberately unimplemented:
 
 - structural operations beyond direct-root base-paragraph split/join, including
   arbitrary block insertion, list changes, metadata conflict rules, and node
   movement;
-- action active/mixed/value state, presentation metadata, keymaps, plugin
-  dependencies/lifecycle, and durable registry manifests;
+- action-state caching, deltas, subscriptions, presentation metadata, keymaps,
+  plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
   reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
@@ -453,11 +455,12 @@ paragraphs, formatted seams, and non-BMP scalar boundaries. Cross-paragraph
 extended ranges are disabled until a native guarded block-range replacement
 operation exists. Backward deletion is scalar-based, not grapheme-based:
 combining marks and components of a zero-width-joiner emoji can be deleted
-separately. DOM `beforeinput`, `preventDefault`, IME ownership, shortcut
-precedence, labels, icons, and active/mixed/value toolbar state remain host or
-future-runtime concerns. Replay does not rerun action callbacks, route IDs, or
-post-hooks; it applies the previously proven transaction operations and state
-boundaries.
+separately. These two actions advertise stateless observations; future format
+actions can use the same evaluation for active/mixed/value state. DOM
+`beforeinput`, `preventDefault`, IME ownership, shortcut precedence, labels,
+icons, and layout remain host concerns. Replay does not rerun action callbacks,
+route IDs, or post-hooks; it applies the previously proven transaction
+operations and state boundaries.
 
 ## Semantic intent routing
 
@@ -548,6 +551,113 @@ Dynamic plugin ownership, unload/revocation epochs, dependency policy, priority
 authorization, reason-selective fallback, observers, nested routing, and atomic
 multi-action composition remain future contracts.
 
+## Observable action state
+
+Action capability and observable state are one pure evaluation. An action
+returns an `ActionEvaluation` containing its authoritative `ActionDecision` and
+one `ActionStateIndicator`; there is no second `is_active`, `query_value`, or
+toolbar callback. The registry validates the indicator before acting on the
+decision, so malformed state is a terminal extension fault and cannot fall
+through routing. Disabled actions can still be active or mixed. This is
+important for controls such as an active formatting mark that is temporarily
+unavailable for the current selection.
+
+Every action descriptor has a frozen `ActionStateSpec`. Its contract distinguishes
+stateless controls from tracked `Inactive`, `Active`, and `Mixed` activation.
+Activation `Mixed` means the applicable logical targets contain both active and
+inactive targets; it is not an unknown or error state. State values separately
+distinguish unsupported, contract-supported but unset, one uniform bounded
+`ActionValue`, and mixed values. Uniform null remains different from unset. Each
+value carries an `ActionStateValueContract` whose nonzero `u32` version is
+independent from action-input, document-format, and schema versions even when
+their names or numeric versions happen to match.
+
+The same spec declares conservative read and possible-write domains for
+document, selection, pending formats, editor context, and linear history.
+Ordinary `Action::evaluate` calls receive only `EditorState`, not
+`SessionHistoryStatus`; action-registry construction therefore rejects
+`HISTORY` reads and reports the lexical first invalid action after duplicate-ID
+validation. Intent-router construction likewise rejects `HISTORY` reads on
+intent declarations, including declarations with no bindings, and reports the
+lexical first invalid intent after identity validation. This prevents an
+invalidation contract from claiming an input its evaluator cannot observe.
+Synthesized catalog undo/redo descriptors are session-backed and may read
+`HISTORY`. Other native read claims remain trusted invalidation hints because
+handlers receive the complete immutable editor state. Enabled transaction
+preflight mechanically derives actual writes: non-empty forward operations
+write `DOCUMENT`, changed selection or pending formats write their respective
+domains, and session publication may write `HISTORY`. An actual write outside
+the declaration invalidates the plan. Domains describe effects and
+invalidation; neither the registry nor router is a permission sandbox.
+
+Intent declarations carry the same state contract and a conservative effects
+envelope. Every bound action must have the exact activation/value contract, and
+the intent effects must cover every candidate's declared reads and writes. Thus
+an intent-backed toolbar control has one stable output shape and route-wide
+invalidation contract regardless of which priority candidate currently wins.
+Prepared and blocking routes retain the selected action's indicator; an
+all-fallthrough unhandled route has no invented indicator. A control that must
+retain an indicator while unavailable needs an explicit blocking binding.
+
+`ActionStateId` is independent from `ActionId`, `IntentId`, and `BindingId`.
+Several controls can observe the same immutable source without sharing
+presentation identity. A frozen `ActionStateCatalog` maps these identities to a
+direct `ActionInvocation`, routed `IntentInvocation`, or undo/redo direction.
+Labels, icons, localization, ARIA data, grouping, layout, and shortcut syntax
+remain a separate presentation manifest keyed by `ActionStateId`. Catalogs are
+canonical in lexical state-ID order, reject duplicate IDs and unknown or
+mismatched fixed invocations, allow duplicate sources intentionally, and cap
+themselves at 512 entries. Fixed invocation inputs additionally share a 65,536
+value and 1 MiB UTF-8 payload budget. Construction totals every fixed input
+before descriptor validation, so an over-limit error reports the complete
+catalog aggregate rather than the prefix that first crossed the limit.
+
+Batch derivation is synchronous and exact-base. Direct sources call
+`ActionRegistry::prepare`; routed sources call `IntentRouter::route`; history
+sources run the same replay preflight used by `EditorSession::undo` and `redo`.
+One entry's deterministic action, route, or replay fault does not erase other
+entries. Resolved results retain enabled, disabled, or blocking availability,
+the same-call indicator, declared effects, exact actual writes when enabled,
+and direct/routed/history provenance. Unhandled routing remains a separate
+outcome with its ordered fallthrough trace. A batch clones the complete base
+`EditorState` once, retains a `SessionHistoryStatus`, and never contains a
+`PreparedAction`, route executable, mutable command object, or callback. A user
+activation must prepare again against the current session.
+
+History status contains fixed-width capacity and undo/redo depths plus an
+opaque process-local `HistoryStamp`. Stamp equality uses in-memory identity,
+not an exposed counter, ordering, hash, or wire value. It changes after every
+published commit and successful replay, and after an effective explicit clear
+or merge-group close. It does not change for failed/unavailable work or no-op
+history boundaries. This distinguishes equal-depth history replacements and
+history-only changes without pretending that hidden history entries have a
+durable identity.
+
+Dynamic output has both per-entry and batch-wide budgets. One entry may retain
+at most 4,096 bounded values and 256 KiB of UTF-8 value/reason detail; overflow
+becomes that entry's resource fault. A complete batch may retain at most 65,536
+values, 1 MiB of UTF-8 detail, and 16,384 fallthrough records; aggregate failure
+returns no partial batch. Accounting includes uniform indicator values,
+disabled/blocking details, fallthrough reasons, and nested handler-fault detail,
+counting every occurrence rather than shared-pointer identity. Entry faults
+retain exact bounded input, observable-state, and handler errors plus stable
+action, intent, binding, and history provenance. Transaction, operation,
+selection, and result-validation failures are reduced to public, non-exhaustive
+typed categories; they cannot retain document fragments or validation reports
+outside those budgets. Action-state, invocation, preparation, and routing Debug
+output redacts documents, payloads, uniform values, reason details, and cached
+commits.
+
+Version `0.0.8` deliberately performs eager planning and transaction preflight
+for every derived executable source. Duplicate sources evaluate independently,
+and an ordinary routed query can temporarily construct its individually bounded
+trace before batch accounting rejects or replaces it. There are no retained
+prepared tokens, duplicate-query coalescing, memoization, dependency-based
+invalidation, deltas, subscriptions, composite projectors, plugin revocation,
+panic/trap isolation, durable action-state codec, or Wasm ABI yet. Native
+activation, mixed, and editor-state read-domain claims remain trusted handler
+semantics; mechanically unobservable `HISTORY` reads are rejected.
+
 ## Session publication and bounded linear history
 
 `EditorSession` exclusively owns one current `EditorState`, retained undo/redo
@@ -608,9 +718,10 @@ handler or restores an old snapshot number. A low-level content commit marked
 merged entries in the complete linear history and immediately evicts the oldest
 entry. It is not a memory-byte limit: guarded operations and structurally shared
 documents may retain substantial payloads. The session exposes synchronous
-`can_undo`, `can_redo`, and fixed-width depths; an adapter is responsible for
-notifying observable toolbar state after returned commits or explicit history
-changes.
+`can_undo`, `can_redo`, fixed-width depths, and an exact opaque history stamp;
+the catalog can preflight undo/redo state, while a future observer or current
+adapter remains responsible for deciding when to derive and deliver a new
+batch.
 
 This checkpoint is local, linear, and in-memory. It has no branching UI,
 selective undo, durable reload replay, foreign-operation mapping, collaboration
@@ -633,8 +744,9 @@ checked global deltas instead of rescanning a matching-profile document, but:
   are specified;
 - every enabled action capability query eagerly applies its generated
   transaction once to prove and cache the result; repeated toolbar queries for
-  one unchanged state therefore repeat planning and validation unless the host
-  retains the `PreparedAction`;
+  one unchanged state therefore repeat planning and validation. Observable
+  batch derivation deliberately discards each temporary preparation and repeats
+  it on activation until a later exact cache contract exists;
 - intent fallback attempts each visited action in descending priority. Disabled
   candidates run input decoding and the planner but no transaction reducer; the
   first enabled candidate is preflighted once. Each fallthrough retains IDs,
@@ -706,12 +818,11 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add an immutable observable action-state contract. It must use toolbar-facing
-identities independent from actions and bindings, preserve direct and blocking
-disabled reasons, retain routed fallthrough provenance, and represent
-unhandled routing explicitly. It must distinguish stateless from
-active/inactive/mixed controls, carry an independently versioned bounded value,
-and conservatively declare read/write domains. Batch derivation must share the
-authoritative action/intent preparation paths and project synchronous undo/redo
-availability without mutable command objects. Labels, icons, localization, DOM
-events, IME, and platform shortcut syntax remain adapter/presentation data.
+Add exact action-state reuse without weakening the one-evaluation contract. A
+cache must key complete editor state plus exact history identity, invalidate
+from conservative read domains, coalesce duplicate immutable sources, and keep
+display snapshots separate from one-shot executable preparations. Define
+deterministic full-snapshot versus delta delivery, subscriber lifecycle,
+backpressure/coalescing, and catalog-generation rules before exposing an
+observer API. No optimization may turn a stale capability or routed winner into
+an executable result.

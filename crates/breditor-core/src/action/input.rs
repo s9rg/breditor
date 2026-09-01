@@ -40,7 +40,10 @@ impl fmt::Display for ActionInputContract {
 }
 
 /// Wire-friendly input supplied to one action invocation.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+///
+/// [`std::fmt::Debug`] exposes the contract and value kind but redacts the
+/// complete typed value payload.
+#[derive(Clone, Default, Eq, PartialEq)]
 pub enum ActionInput {
     /// The action takes no arguments.
     #[default]
@@ -52,6 +55,20 @@ pub enum ActionInput {
         /// Canonical bounded input value.
         value: ActionValue,
     },
+}
+
+impl fmt::Debug for ActionInput {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::None => formatter.write_str("None"),
+            Self::Typed { contract, value } => formatter
+                .debug_struct("Typed")
+                .field("contract", contract)
+                .field("value_kind", &value.kind())
+                .field("value", &"<redacted>")
+                .finish(),
+        }
+    }
 }
 
 impl ActionInput {
@@ -152,10 +169,22 @@ impl DecodeActionInput for () {
 }
 
 /// One immutable request to evaluate a registered action.
-#[derive(Clone, Debug, Eq, PartialEq)]
+///
+/// Debug output delegates to the payload-redacting [`ActionInput`] formatter.
+#[derive(Clone, Eq, PartialEq)]
 pub struct ActionInvocation {
     id: ActionId,
     input: ActionInput,
+}
+
+impl fmt::Debug for ActionInvocation {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ActionInvocation")
+            .field("id", &self.id)
+            .field("input", &self.input)
+            .finish()
+    }
 }
 
 impl ActionInvocation {

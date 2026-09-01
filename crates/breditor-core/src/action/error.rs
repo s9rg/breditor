@@ -1,3 +1,5 @@
+use std::fmt;
+
 use thiserror::Error;
 
 use crate::{identity::QualifiedName, state::SnapshotId, transaction::TransactionApplyError};
@@ -6,6 +8,7 @@ use super::{
     capability::{ActionFault, DisabledReason},
     id::ActionId,
     input::ActionInputContract,
+    state::{ActionStateDomains, ActionStateValidationError},
 };
 
 /// Why a deterministic action value could not be constructed.
@@ -129,10 +132,19 @@ pub enum ActionRegistryError {
         /// Conflicting action identity.
         id: ActionId,
     },
+    /// An ordinary action claimed to read session history it cannot observe.
+    #[error("action {id} cannot declare the HISTORY read domain")]
+    UnsupportedHistoryRead {
+        /// Lexically first invalid action identity.
+        id: ActionId,
+    },
 }
 
 /// Why an enabled action plan failed exact transaction preflight.
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
+///
+/// Debug output retains stable categories and domain sets but never formats a
+/// transaction failure's document-bearing source fields.
+#[derive(Clone, Eq, Error, PartialEq)]
 pub enum InvalidActionPlan {
     /// Applying the generated exact-base transaction failed.
     #[error("generated transaction failed preflight: {source}")]
@@ -143,10 +155,38 @@ pub enum InvalidActionPlan {
     /// The handler called the action enabled but produced no state change.
     #[error("enabled action plan produced an unchanged transaction")]
     Unchanged,
+    /// The successful preflight changed a domain outside the advertised effects.
+    #[error("enabled action changed {actual:?}, outside declared writes {declared:?}")]
+    UndeclaredWrites {
+        /// Frozen domains the action advertised as possible writes.
+        declared: ActionStateDomains,
+        /// Domains actually changed by the preflighted commit.
+        actual: ActionStateDomains,
+    },
+}
+
+impl fmt::Debug for InvalidActionPlan {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Transaction { source } => formatter
+                .debug_struct("Transaction")
+                .field("category", &transaction_apply_error_category(source))
+                .finish_non_exhaustive(),
+            Self::Unchanged => formatter.write_str("Unchanged"),
+            Self::UndeclaredWrites { declared, actual } => formatter
+                .debug_struct("UndeclaredWrites")
+                .field("declared", declared)
+                .field("actual", actual)
+                .finish(),
+        }
+    }
 }
 
 /// Why an action invocation could not be prepared.
-#[derive(Clone, Debug, Eq, Error, PartialEq)]
+///
+/// Debug output retains action identities, safe contracts, and stable failure
+/// categories while redacting handler details and document-bearing plan errors.
+#[derive(Clone, Eq, Error, PartialEq)]
 pub enum ActionPrepareError {
     /// No handler owns the requested action identity.
     #[error("action {id} is not registered")]
@@ -170,6 +210,14 @@ pub enum ActionPrepareError {
         /// Stable handler fault.
         source: ActionFault,
     },
+    /// The handler returned an indicator that violated its frozen descriptor.
+    #[error("action {id} returned invalid observable state: {source}")]
+    InvalidState {
+        /// Invoked action identity.
+        id: ActionId,
+        /// Exact shape or output-contract mismatch.
+        source: ActionStateValidationError,
+    },
     /// An enabled plan failed exact transaction preflight.
     #[error("action {id} produced an invalid plan: {source}")]
     InvalidPlan {
@@ -178,6 +226,50 @@ pub enum ActionPrepareError {
         /// Exact plan failure.
         source: InvalidActionPlan,
     },
+}
+
+impl fmt::Debug for ActionPrepareError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UnknownAction { id } => {
+                formatter.debug_struct("UnknownAction").field("id", id).finish()
+            }
+            Self::InvalidInput { id, source } => formatter
+                .debug_struct("InvalidInput")
+                .field("id", id)
+                .field("source", source)
+                .finish(),
+            Self::Fault { id, source } => formatter
+                .debug_struct("Fault")
+                .field("id", id)
+                .field("fault_code", source.code())
+                .finish_non_exhaustive(),
+            Self::InvalidState { id, source } => formatter
+                .debug_struct("InvalidState")
+                .field("id", id)
+                .field("source", source)
+                .finish(),
+            Self::InvalidPlan { id, source } => formatter
+                .debug_struct("InvalidPlan")
+                .field("id", id)
+                .field("source", source)
+                .finish_non_exhaustive(),
+        }
+    }
+}
+
+fn transaction_apply_error_category(error: &TransactionApplyError) -> &'static str {
+    match error {
+        TransactionApplyError::ContextSchemaMismatch { .. } => "context-schema-mismatch",
+        TransactionApplyError::ContextConfigurationMismatch => "context-configuration-mismatch",
+        TransactionApplyError::StaleSnapshot { .. } => "stale-snapshot",
+        TransactionApplyError::BaseStateMismatch { .. } => "base-state-mismatch",
+        TransactionApplyError::OperationLimit { .. } => "operation-limit",
+        TransactionApplyError::Operation { .. } => "operation",
+        TransactionApplyError::SelectionRelocation(_) => "selection-relocation",
+        TransactionApplyError::InvalidResultState(_) => "invalid-result-state",
+        TransactionApplyError::Revision(_) => "revision",
+    }
 }
 
 /// Why a cached prepared action cannot be consumed against a supplied state.

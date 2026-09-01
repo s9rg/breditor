@@ -16,8 +16,11 @@ authoritative integration path for semantic capability and execution: it
 preflights and caches an exact transaction result against one immutable state.
 Intent routing layers explicit priority, disabled fallthrough/block policy, and
 unhandled/blocked/prepared outcomes over that same path without accepting
-browser-event syntax. A synchronous `EditorSession` owns exact commit
-publication plus bounded
-deterministic linear undo/redo history. The crate is intentionally smaller than
-the eventual editor runtime and has no observable toolbar-state store, browser
+browser-event syntax. Actions produce activation and typed observable values in
+that same evaluation, and a frozen catalog derives immutable direct, routed,
+undo, and redo state batches without retaining executable preparations. A
+synchronous `EditorSession` owns exact commit publication plus bounded
+deterministic linear undo/redo history and an opaque history-observation stamp.
+The crate is intentionally smaller than the eventual editor runtime and has no
+action-state cache/delta subscription layer, presentation manifest, browser
 queue, durable replay log, collaboration transform, or Wasm adapter yet.

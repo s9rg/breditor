@@ -3,13 +3,14 @@ use std::{fmt, sync::Arc};
 use crate::state::EditorState;
 
 use super::{
-    capability::{ActionDecision, ActionFault},
+    capability::ActionFault,
     error::ActionInputError,
     id::ActionId,
     input::{
         ActionInput, ActionInputContract, DecodeActionInput, TypedActionInput,
         validate_input_contract,
     },
+    state::{ActionEvaluation, ActionStateSpec},
 };
 
 /// Pure typed action handler compiled into the Rust core or Wasm module.
@@ -17,11 +18,13 @@ pub trait Action: Send + Sync + 'static {
     /// Concrete decoded input accepted by this action.
     type Input: DecodeActionInput;
 
-    /// Evaluates capability and, when enabled, produces a complete action plan.
+    /// Evaluates capability, observable state, and any complete action plan.
     ///
     /// Implementations must be deterministic and side-effect free. Expected
-    /// state/input inapplicability belongs in [`ActionDecision::Disabled`];
-    /// unexpected deterministic failures use [`ActionFault`].
+    /// state/input inapplicability belongs in
+    /// [`crate::action::ActionDecision::Disabled`];
+    /// unexpected deterministic failures use [`ActionFault`]. The returned
+    /// indicator must satisfy this registration's frozen [`ActionStateSpec`].
     ///
     /// # Errors
     ///
@@ -30,7 +33,7 @@ pub trait Action: Send + Sync + 'static {
         &self,
         state: &EditorState,
         input: &Self::Input,
-    ) -> Result<ActionDecision, ActionFault>;
+    ) -> Result<ActionEvaluation, ActionFault>;
 }
 
 /// Stable registry metadata exposed without exposing an erased handler.
@@ -38,6 +41,7 @@ pub trait Action: Send + Sync + 'static {
 pub struct ActionDescriptor {
     id: ActionId,
     input_contract: Option<ActionInputContract>,
+    state_spec: ActionStateSpec,
 }
 
 impl ActionDescriptor {
@@ -51,6 +55,12 @@ impl ActionDescriptor {
     #[must_use]
     pub const fn input_contract(&self) -> Option<&ActionInputContract> {
         self.input_contract.as_ref()
+    }
+
+    /// Returns the observable state contract and conservative effects.
+    #[must_use]
+    pub const fn state_spec(&self) -> &ActionStateSpec {
+        &self.state_spec
     }
 }
 
@@ -94,9 +104,23 @@ impl ActionRegistration {
         A: Action,
     {
         Self {
-            descriptor: ActionDescriptor { id, input_contract: input_contract.clone() },
+            descriptor: ActionDescriptor {
+                id,
+                input_contract: input_contract.clone(),
+                state_spec: ActionStateSpec::stateless(),
+            },
             handler: Arc::new(TypedAction { action, input_contract }),
         }
+    }
+
+    /// Replaces the default stateless, conservative observable specification.
+    ///
+    /// Registry construction rejects a spec that claims to read session
+    /// history because ordinary handlers receive only [`EditorState`].
+    #[must_use]
+    pub fn with_state_spec(mut self, state_spec: ActionStateSpec) -> Self {
+        self.descriptor.state_spec = state_spec;
+        self
     }
 
     /// Returns registration metadata.
@@ -120,7 +144,7 @@ pub(crate) trait ErasedAction: Send + Sync {
         &self,
         state: &EditorState,
         input: &ActionInput,
-    ) -> Result<ActionDecision, ErasedActionError>;
+    ) -> Result<ActionEvaluation, ErasedActionError>;
 }
 
 struct TypedAction<A> {
@@ -136,7 +160,7 @@ where
         &self,
         state: &EditorState,
         input: &ActionInput,
-    ) -> Result<ActionDecision, ErasedActionError> {
+    ) -> Result<ActionEvaluation, ErasedActionError> {
         validate_input_contract(self.input_contract.as_ref(), input)
             .map_err(ErasedActionError::Input)?;
         let input = A::Input::decode(self.input_contract.as_ref(), input)
