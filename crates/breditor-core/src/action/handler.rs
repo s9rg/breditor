@@ -6,7 +6,10 @@ use super::{
     capability::{ActionDecision, ActionFault},
     error::ActionInputError,
     id::ActionId,
-    input::{ActionInput, ActionInputContract, DecodeActionInput, TypedActionInput},
+    input::{
+        ActionInput, ActionInputContract, DecodeActionInput, TypedActionInput,
+        validate_input_contract,
+    },
 };
 
 /// Pure typed action handler compiled into the Rust core or Wasm module.
@@ -139,31 +142,6 @@ where
         let input = A::Input::decode(self.input_contract.as_ref(), input)
             .map_err(ErasedActionError::Input)?;
         self.action.evaluate(state, &input).map_err(ErasedActionError::Fault)
-    }
-}
-
-fn validate_input_contract(
-    expected: Option<&ActionInputContract>,
-    input: &ActionInput,
-) -> Result<(), ActionInputError> {
-    match (expected, input) {
-        (None, ActionInput::None) => Ok(()),
-        (None, ActionInput::Typed { contract, .. }) => {
-            Err(ActionInputError::ExpectedNone { actual: contract.clone() })
-        }
-        (Some(expected), ActionInput::None) => {
-            Err(ActionInputError::ExpectedTyped { expected: expected.clone() })
-        }
-        (Some(expected), ActionInput::Typed { contract, .. }) => {
-            if expected == contract {
-                Ok(())
-            } else {
-                Err(ActionInputError::ContractMismatch {
-                    expected: expected.clone(),
-                    actual: contract.clone(),
-                })
-            }
-        }
     }
 }
 

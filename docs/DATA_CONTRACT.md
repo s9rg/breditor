@@ -21,7 +21,9 @@ The implemented Rust slice owns:
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
 - an immutable typed action registry with fail-closed identity conflicts,
-  snapshot-bound capability preparation, and bounded cross-language inputs; and
+  snapshot-bound capability preparation, and bounded cross-language inputs;
+- a frozen semantic intent router with canonical priority/fallback behavior and
+  exact-state-bound outcomes;
 - semantic base actions for paragraph breaks and backward deletion; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
   linear undo/redo history.
@@ -31,9 +33,8 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph split/join, including
   arbitrary block insertion, list changes, metadata conflict rules, and node
   movement;
-- action active/mixed/value state, intent-binding fallback/priority routing,
-  presentation metadata, keymaps, plugin dependencies/lifecycle, and a durable
-  registry manifest;
+- action active/mixed/value state, presentation metadata, keymaps, plugin
+  dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
   reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
@@ -66,6 +67,17 @@ ActionInvocation + immutable ActionRegistry + exact EditorState
     -> Disabled(stable reason) or build one explicit ActionPlan
     -> preflight one exact-base Transaction
     -> PreparedAction(transaction + cached Commit) or typed fault
+
+IntentInvocation + immutable IntentRouter + exact EditorState
+    -> validate one declared intent input contract
+    -> evaluate named bindings in canonical priority order
+    -> explicit disabled fallthrough or terminal block
+    -> IntentRouteOutcome::Unhandled, Blocked, Prepared(cached action), or typed fault
+
+current IntentRouteOutcome + EditorSession
+    -> reject stale/reused exact base
+    -> IntentExecutionOutcome::Unhandled or Blocked without publication
+    -> IntentExecutionOutcome::Committed with one published cached Commit
 
 EditorSession + exact-base Commit or Transaction
     -> reject stale/reused state before mutation
@@ -134,6 +146,10 @@ durable codec. Publication was still a host responsibility at that checkpoint.
 Version `0.0.6` adds exact synchronous session publication and bounded linear
 history. It does not change document format version `1`: session state, history
 entries, group boundaries, and replay commands remain in-memory runtime values.
+
+Version `0.0.7` adds an in-memory semantic intent router. It does not define a
+keyboard, DOM-event, toolbar, plugin, or durable replay protocol, and it does
+not change document format version `1`.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -360,8 +376,8 @@ event callback and cannot publish state directly. `ActionId` wraps a validated
 qualified name. `ActionRegistry` is constructed once from typed registrations,
 stores entries in lexical ID order, and rejects the complete build when two
 registrations claim the same ID. Registration order, load timing, and a hidden
-priority do not select a winner. A host that wants fallback behavior must name
-and implement that routing explicitly outside the registry.
+priority do not select a winner. Contextual fallback and priority belong to the
+separate intent router; multiple handlers never compete under one `ActionId`.
 
 The registry remains outside `EditorContext` and `EditorState`. Rust trait
 objects are runtime extension policy and are neither content equality nor replay
@@ -391,23 +407,28 @@ They are ordered by those bytes. Integer-like and non-ASCII keys are therefore
 not accepted, and a TypeScript adapter must preserve ordered entries rather
 than substituting JavaScript object-enumeration semantics.
 
-`ActionRegistry::prepare` is the only capability path. It decodes the input and
-evaluates the handler exactly once. A disabled result preserves its stable code
-and optional bounded detail. An enabled plan is stamped with the invoked action
-ID, bound to the complete base state, and passed through the authoritative
-transaction reducer immediately. A failed transaction or enabled no-op is an
-invalid-plan error, never an enabled capability. A successful preparation owns
-the exact transaction and its cached `Commit`; consuming it verifies both the
-snapshot and complete state equality, then returns that cached commit without
-calling either handler or reducer again. A toolbar, keymap, command palette, or
-API adapter therefore invokes the same ID and must not maintain a second
-enablement implementation.
+`ActionRegistry::prepare` is the authoritative registry capability path. It
+attempts one input decode and, when decoding succeeds, evaluates the handler
+exactly once. A disabled result preserves its stable code and optional bounded
+detail. An enabled plan is stamped with the invoked action ID, bound to the
+complete base state, and passed through the authoritative transaction reducer
+immediately. A failed transaction or enabled no-op is an invalid-plan error,
+never an enabled capability. A
+successful preparation owns the exact transaction and its cached `Commit`;
+consuming it verifies both the snapshot and complete state equality, then
+returns that cached commit without calling either handler or reducer again. A
+direct action adapter uses this same `ActionId` and preparation path. An intent
+adapter uses its `IntentId` and consumes `IntentRouter::route`; neither should
+maintain a parallel enablement implementation. Native code can call the public
+`Action::evaluate` trait directly, so bypassing registry preflight is another
+trusted-plugin responsibility rather than a mechanically sealed boundary.
 
 Preparation alone is not shared-state publication. Two preparations made from
 the same base can each produce a valid branch with the same successor revision.
 `EditorSession::execute_prepared_action` consumes one preparation against its
 authoritative current state and rejects the other as stale. A host queue must
-still serialize calls to the session and discard/reprepare stale queued intent.
+still serialize calls to the session and discard/reprepare a stale queued
+action or intent.
 `Send` and `Sync` make values thread-safe; they do not make parallel editor
 histories linear.
 
@@ -434,9 +455,98 @@ operation exists. Backward deletion is scalar-based, not grapheme-based:
 combining marks and components of a zero-width-joiner emoji can be deleted
 separately. DOM `beforeinput`, `preventDefault`, IME ownership, shortcut
 precedence, labels, icons, and active/mixed/value toolbar state remain host or
-future-runtime concerns. Action callbacks, IDs, and post-hooks are not replayed;
-only their proven transaction operations and state outcomes cross the reducer
-boundary.
+future-runtime concerns. Replay does not rerun action callbacks, route IDs, or
+post-hooks; it applies the previously proven transaction operations and state
+boundaries.
+
+## Semantic intent routing
+
+An intent is a normalized semantic request, not a browser event. `IntentId`
+and `BindingId` are independent qualified identities: an intent names what a
+host is asking for, a binding names one candidate route, and an `ActionId`
+names the semantic planner reached by that route. Rust receives no
+`KeyboardEvent`, key-code string, `beforeinput` object, IME phase, platform
+shortcut syntax, or `preventDefault` callback. Browser adapters must normalize
+those concerns before routing and consume the returned outcome explicitly.
+
+`IntentRouter` is frozen from an immutable `ActionRegistry`, explicit intent
+declarations, and explicit bindings. Each intent declares exactly one optional
+versioned `ActionInputContract`; every bound action must declare that same
+contract, and the bounded `ActionInput` is forwarded unchanged. Version
+`0.0.7` has no coercion, defaults, fixed binding arguments, input transforms,
+guards, or arbitrary routing callbacks. A caller needing different input may
+invoke an action under its own declared contract directly, or define another
+intent whose bound actions all advertise the other contract. The router cannot
+transform or re-contract an action.
+
+Construction rejects the complete router for duplicate intent IDs, duplicate
+global binding IDs, unknown intent/action references, repeated action targets
+within one intent, mismatched input contracts, or equal priorities within one
+intent. Fixed bounds reject more than 1,024 intent declarations, 4,096 total
+bindings, or 256 bindings for one intent before graph/reference validation.
+Limit constants and error counts use `u32`, and priority uses `i32`, on native
+and Wasm; Rust collection counts and slice lengths remain `usize`. Diagnostics
+and descriptor enumeration are independent of registration order.
+Declarations enumerate by lexical `IntentId`, global bindings by lexical
+`BindingId`, and each route by descending priority; identity is never a hidden
+priority tie-break. Negative, zero, and positive priorities are all ordinary
+values. Declaring an intent with zero bindings is valid and returns an
+exact-base `Unhandled` outcome with an empty trace. Invoking an undeclared
+intent instead returns typed `UnknownIntent`.
+
+Version `0.0.7` requires one trusted host compositor to own shared intent
+declarations and allocate distinct priorities. Two plugins cannot each package
+the same declaration, even when identical, and equal priorities reject the
+whole router. Future plugin manifests need explicit ownership/coalescing plus
+dependency, before/after, or authorized priority-band policy; registration
+order will not become the fallback.
+
+Every binding explicitly chooses whether an expected disabled action falls
+through or blocks. Routing first validates the invocation envelope and exact
+declared contract before visiting a binding. Each visited action then decodes
+the shared payload through ordinary action preparation; decoder failure is
+terminal and does not fall through. Each fallthrough retains binding ID, action
+ID, priority, and its exact `DisabledReason`. `Prepared` retains the selected
+binding and cached `PreparedAction`; `Blocked` retains the complete blocking
+binding and reason separately from earlier fallthroughs. Exhausting a declared
+route returns `Unhandled`. An undeclared intent, malformed input, handler fault,
+invalid plan, or transaction failure is a typed terminal error and never
+silently reaches a lower-priority handler. This distinguishes expected
+contextual inapplicability from extension defects.
+
+Prepared, blocked, and unhandled route outcomes retain the exact evaluated base
+state and ordered fallthrough trace. Session execution validates snapshot
+identity and complete base-state equality, then returns an ordinary
+`IntentExecutionOutcome`: `Committed` publishes the cached commit, while
+`Blocked` and `Unhandled` publish nothing and are not errors. Only stale or
+reused base state returns neutral `IntentRouteBaseError`. Execution receipts
+retain the evaluated base snapshot and non-normative routing provenance for
+telemetry. Each visited binding is prepared once. Its handler evaluates at most
+once and evaluates zero times if typed decoding fails. Unvisited bindings
+evaluate zero times; executing a prepared route reruns neither handler nor
+reducer.
+
+`IntentId`, `BindingId`, priority, and fallthrough trace are deliberately absent
+from transaction metadata and history. The selected `ActionId` still enters
+transaction metadata through ordinary action preparation. History replay uses
+retained operations and boundary states and never reruns routing, consults
+current bindings, or depends on a keyboard chord. Router replacement does not
+invalidate prior outcomes mechanically: there is no router generation or
+revocation epoch, and an old outcome can execute if its editor base remains
+exact. Discarding outcomes from a replaced router is host policy.
+
+The router is not a permission boundary. `ActionRegistry::prepare` remains
+directly callable, so a host treating routing priority as policy must control
+that bypass itself. Matching input-contract identities are also a semantic
+promise: the core cannot prove that independently implemented action decoders
+interpret the same contract identically. The fixed route-count bounds do not
+add an aggregate byte budget across retained disabled-reason details, and the
+action registry itself has no fixed entry cap. Router construction remains
+trusted native configuration; an untrusted plugin or Wasm boundary still needs
+memory, fuel/time, stack, and panic/trap isolation.
+Dynamic plugin ownership, unload/revocation epochs, dependency policy, priority
+authorization, reason-selective fallback, observers, nested routing, and atomic
+multi-action composition remain future contracts.
 
 ## Session publication and bounded linear history
 
@@ -446,8 +556,11 @@ publication boundary; there is no mutable-state escape. `accept_commit` first
 requires both the exact current `SnapshotId` and complete `Commit::before`
 state. Reusing a snapshot identity for different document, selection, pending
 formats, context, or limits fails without changing state or history.
-`apply_transaction` applies against that same current state, and
-`execute_prepared_action` joins cached action execution to exact publication.
+`apply_transaction` applies against that same current state;
+`execute_prepared_action` and `execute_intent_route` join cached preparation to
+exact publication. Blocked and unhandled execution are successful no-publication
+receipts; stale execution is an error. `Blocked`, `Unhandled`, and stale-base
+results leave both state and history unchanged; `Committed` publishes both.
 An unchanged transaction publishes nothing, consumes no revision, and does not
 implicitly close a merge group.
 
@@ -522,6 +635,15 @@ checked global deltas instead of rescanning a matching-profile document, but:
   transaction once to prove and cache the result; repeated toolbar queries for
   one unchanged state therefore repeat planning and validation unless the host
   retains the `PreparedAction`;
+- intent fallback attempts each visited action in descending priority. Disabled
+  candidates run input decoding and the planner but no transaction reducer; the
+  first enabled candidate is preflighted once. Each fallthrough retains IDs,
+  priority, and one individually bounded `DisabledReason`. Route length is
+  capped at 256, but aggregate trace bytes have no tighter shared budget than
+  that count multiplied by each reason's individual value bounds;
+- the frozen router retains each small binding descriptor in both its lexical
+  global index and its per-intent priority route; total duplication is bounded
+  by the 4,096-binding cap;
 - history is bounded by logical entry count rather than retained bytes, and a
   merged entry copies bounded operation recipes while immutable document
   payloads remain structurally shared;
@@ -584,12 +706,12 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add a deterministic intent-binding router and observable action-state contract.
-The router must name bindings independently from actions, define explicit
-priority plus `Unhandled`/`Blocked`/`Prepared` fallback outcomes, and never use
-registration or load order as hidden policy. Action state must cover enabled,
-active/inactive/mixed, typed value, and read/write effect so expandable toolbar
-controls consume one derivation path. Labels, icons, localization, DOM events,
-IME, and platform shortcut syntax remain adapter/presentation data; undo/redo
-availability should project the session's synchronous state through the same
-observable boundary.
+Add an immutable observable action-state contract. It must use toolbar-facing
+identities independent from actions and bindings, preserve direct and blocking
+disabled reasons, retain routed fallthrough provenance, and represent
+unhandled routing explicitly. It must distinguish stateless from
+active/inactive/mixed controls, carry an independently versioned bounded value,
+and conservatively declare read/write domains. Batch derivation must share the
+authoritative action/intent preparation paths and project synchronous undo/redo
+availability without mutable command objects. Labels, icons, localization, DOM
+events, IME, and platform shortcut syntax remain adapter/presentation data.

@@ -1,7 +1,10 @@
 use std::fmt;
 
 use crate::{
-    action::{ActionExecutionError, ActionPreparation},
+    action::{
+        ActionExecutionError, ActionPreparation,
+        routing::{IntentExecutionOutcome, IntentRouteBaseError, IntentRouteOutcome},
+    },
     state::EditorState,
     transaction::{
         Commit, ReplayDirection, Transaction, TransactionApplyError, TransactionOutcome,
@@ -145,6 +148,27 @@ impl EditorSession {
         let commit = preparation.execute(&self.state)?;
         self.publish(&commit);
         Ok(commit)
+    }
+
+    /// Consumes one cached semantic route into a publication receipt.
+    ///
+    /// A committed receipt publishes its already-preflighted commit. Blocked and
+    /// unhandled receipts leave both state and history unchanged. Every route
+    /// validates its complete exact base before either effect.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`IntentRouteBaseError`] only when the route base is stale or
+    /// unequal. No session state or history changes on failure.
+    pub fn execute_intent_route(
+        &mut self,
+        route: IntentRouteOutcome,
+    ) -> Result<IntentExecutionOutcome, IntentRouteBaseError> {
+        let outcome = route.execute(&self.state)?;
+        if let Some(commit) = outcome.commit() {
+            self.publish(commit);
+        }
+        Ok(outcome)
     }
 
     /// Replays the nearest undo entry as one atomic transaction.

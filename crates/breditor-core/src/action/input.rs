@@ -91,6 +91,28 @@ impl ActionInput {
     }
 }
 
+pub(crate) fn validate_input_contract(
+    expected: Option<&ActionInputContract>,
+    input: &ActionInput,
+) -> Result<(), ActionInputError> {
+    match (expected, input) {
+        (None, ActionInput::None) => Ok(()),
+        (None, ActionInput::Typed { contract, .. }) => {
+            Err(ActionInputError::ExpectedNone { actual: contract.clone() })
+        }
+        (Some(expected), ActionInput::None) => {
+            Err(ActionInputError::ExpectedTyped { expected: expected.clone() })
+        }
+        (Some(expected), ActionInput::Typed { contract, .. }) if expected == contract => Ok(()),
+        (Some(expected), ActionInput::Typed { contract, .. }) => {
+            Err(ActionInputError::ContractMismatch {
+                expected: expected.clone(),
+                actual: contract.clone(),
+            })
+        }
+    }
+}
+
 /// Decodes a stable action input into one concrete Rust argument type.
 pub trait DecodeActionInput: Sized + Send + Sync + 'static {
     /// Decodes and validates one invocation input.

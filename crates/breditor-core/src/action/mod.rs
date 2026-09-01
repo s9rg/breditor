@@ -5,12 +5,13 @@
 //! handlers against immutable [`crate::state::EditorState`] values and funnels
 //! every enabled plan through the authoritative transaction reducer.
 //!
-//! This registry is a unique-ID action catalog, not yet an input-binding router.
-//! Contextual shortcut priority, fallback/blocked propagation, active/mixed
-//! toolbar state, labels, icons, and plugin lifecycle remain separate future
-//! contracts rather than implicit registration-order behavior.
+//! A separate semantic router adds explicit priority and disabled fallback over
+//! the registry without introducing host event syntax. Active/mixed toolbar
+//! state, labels, icons, and plugin lifecycle remain separate contracts rather
+//! than implicit registration-order behavior.
 
 pub mod builtins;
+pub mod routing;
 
 mod capability;
 mod error;

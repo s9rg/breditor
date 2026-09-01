@@ -122,6 +122,10 @@ impl DisabledActionPreparation {
         &self.reason
     }
 
+    pub(crate) fn into_base_and_reason(self) -> (EditorState, DisabledReason) {
+        (*self.base, self.reason)
+    }
+
     fn execute(self, current: &EditorState) -> Result<Commit, ActionExecutionError> {
         validate_prepared_base(&self.base, current)?;
         Err(ActionExecutionError::Disabled { reason: self.reason })
@@ -239,7 +243,7 @@ impl ActionPreparation {
     }
 }
 
-fn validate_prepared_base(
+pub(crate) fn validate_prepared_base(
     expected: &EditorState,
     current: &EditorState,
 ) -> Result<(), PreparedActionExecutionError> {

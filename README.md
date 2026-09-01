@@ -27,17 +27,20 @@ This repository currently contains the first end-to-end Rust-core slice:
 - an immutable, deterministic action registry with namespaced identities,
   bounded versioned inputs, exact prepared capabilities, and fail-closed
   extension conflicts;
-- semantic `insert-paragraph-break` and `delete-backward` actions shared by
-  keyboard, toolbar, palette, and API adapters;
+- a frozen semantic intent router with declared input contracts, named
+  bindings, explicit priority and disabled fallback policy, and distinct
+  unhandled, blocked, and prepared outcomes;
+- semantic `insert-paragraph-break` and `delete-backward` actions exposed for
+  future keyboard, toolbar, palette, and API adapters;
 - a synchronous `EditorSession` publication boundary with exact-base commit
-  acceptance, bounded linear history, deterministic merge groups, and atomic
-  undo/redo replay;
+  acceptance, intent/action execution, bounded linear history, deterministic
+  merge groups, and atomic undo/redo replay;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, and per-transaction operation limits.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
-direct-root paragraph split/join, cross-paragraph range replacement, action
-presentation state and plugin lifecycle management, persistent
+direct-root paragraph split/join, cross-paragraph range replacement, observable
+action presentation state and plugin lifecycle management, persistent
 operation/state/history codecs and reload replay, Wasm bindings, a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
