@@ -44,7 +44,8 @@ pub(super) fn require_operation_budget(
     state: &EditorState,
     required: usize,
 ) -> Option<ActionDecision> {
-    (required > state.context().max_operations_per_transaction())
+    let required = u64::try_from(required).unwrap_or(u64::MAX);
+    (required > u64::from(state.context().max_operations_per_transaction()))
         .then(|| ActionDecision::Disabled(disabled_reason("breditor/operation-budget-exceeded")))
 }
 

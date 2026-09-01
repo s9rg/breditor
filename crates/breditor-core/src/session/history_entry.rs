@@ -31,7 +31,7 @@ impl HistoryEntry {
         }
     }
 
-    pub(crate) fn try_merge(&mut self, commit: &Commit, maximum_operations: usize) -> bool {
+    pub(crate) fn try_merge(&mut self, commit: &Commit, maximum_operations: u32) -> bool {
         if self.after != *commit.before() {
             return false;
         }
@@ -45,7 +45,12 @@ impl HistoryEntry {
         else {
             return false;
         };
-        if forward_count > maximum_operations || inverse_count > maximum_operations {
+        let maximum_operations = u64::from(maximum_operations);
+        let forward_count_for_limit = u64::try_from(forward_count).unwrap_or(u64::MAX);
+        let inverse_count_for_limit = u64::try_from(inverse_count).unwrap_or(u64::MAX);
+        if forward_count_for_limit > maximum_operations
+            || inverse_count_for_limit > maximum_operations
+        {
             return false;
         }
 

@@ -112,11 +112,19 @@ pub enum CodecErrorCode {
     InvalidSchemaVersion,
     /// The record targets a different compiled schema.
     SchemaMismatch,
+    /// The caller supplied a runtime context incompatible with the codec.
+    ContextMismatch,
+    /// A request targets a different immutable snapshot.
+    SnapshotMismatch,
+    /// A record exceeds a semantic resource ceiling.
+    ResourceLimit,
     /// The decoded or supplied runtime value violates complete document
     /// validation or context-static operation limits.
     ValidationFailed,
     /// A wire operation could not be reconstructed through checked contracts.
     InvalidOperation,
+    /// A transaction field could not be reconstructed through checked contracts.
+    InvalidTransaction,
     /// A validated runtime value could not be serialized.
     EncodingFailed,
 }
@@ -134,8 +142,12 @@ impl CodecErrorCode {
             Self::InvalidSchemaName => "codec.invalid_schema_name",
             Self::InvalidSchemaVersion => "codec.invalid_schema_version",
             Self::SchemaMismatch => "codec.schema_mismatch",
+            Self::ContextMismatch => "codec.context_mismatch",
+            Self::SnapshotMismatch => "codec.snapshot_mismatch",
+            Self::ResourceLimit => "codec.resource_limit",
             Self::ValidationFailed => "codec.validation_failed",
             Self::InvalidOperation => "codec.invalid_operation",
+            Self::InvalidTransaction => "codec.invalid_transaction",
             Self::EncodingFailed => "codec.encoding_failed",
         }
     }
@@ -238,11 +250,36 @@ mod tests {
 
     use crate::codec::MAX_DIAGNOSTIC_PREVIEW_BYTES;
 
-    use super::JsonFailure;
+    use super::{CodecErrorCode, JsonFailure};
 
     #[derive(Debug, Deserialize)]
     #[serde(deny_unknown_fields)]
     struct EmptyRecord {}
+
+    #[test]
+    fn codec_error_code_strings_are_stable() {
+        let cases = [
+            (CodecErrorCode::InputTooLarge, "codec.input_too_large"),
+            (CodecErrorCode::OutputTooLarge, "codec.output_too_large"),
+            (CodecErrorCode::InvalidJson, "codec.invalid_json"),
+            (CodecErrorCode::UnsupportedFormat, "codec.unsupported_format"),
+            (CodecErrorCode::UnsupportedFormatVersion, "codec.unsupported_format_version"),
+            (CodecErrorCode::InvalidSchemaName, "codec.invalid_schema_name"),
+            (CodecErrorCode::InvalidSchemaVersion, "codec.invalid_schema_version"),
+            (CodecErrorCode::SchemaMismatch, "codec.schema_mismatch"),
+            (CodecErrorCode::ContextMismatch, "codec.context_mismatch"),
+            (CodecErrorCode::SnapshotMismatch, "codec.snapshot_mismatch"),
+            (CodecErrorCode::ResourceLimit, "codec.resource_limit"),
+            (CodecErrorCode::ValidationFailed, "codec.validation_failed"),
+            (CodecErrorCode::InvalidOperation, "codec.invalid_operation"),
+            (CodecErrorCode::InvalidTransaction, "codec.invalid_transaction"),
+            (CodecErrorCode::EncodingFailed, "codec.encoding_failed"),
+        ];
+
+        for (code, expected) in cases {
+            assert_eq!(code.as_str(), expected);
+        }
+    }
 
     #[test]
     fn serde_failure_retains_only_a_bounded_message_preview() -> Result<(), Box<dyn Error>> {

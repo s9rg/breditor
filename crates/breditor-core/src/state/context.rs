@@ -11,7 +11,7 @@ use crate::schema::{CompiledSchema, DocumentLimits};
 pub struct EditorContext {
     schema: Arc<CompiledSchema>,
     limits: DocumentLimits,
-    max_operations_per_transaction: usize,
+    max_operations_per_transaction: u32,
 }
 
 impl EditorContext {
@@ -35,13 +35,13 @@ impl EditorContext {
 
     /// Returns the maximum operations executed by one atomic transaction.
     #[must_use]
-    pub const fn max_operations_per_transaction(&self) -> usize {
+    pub const fn max_operations_per_transaction(&self) -> u32 {
         self.max_operations_per_transaction
     }
 
     /// Sets the maximum operations executed by one atomic transaction.
     #[must_use]
-    pub const fn with_max_operations_per_transaction(mut self, maximum: usize) -> Self {
+    pub const fn with_max_operations_per_transaction(mut self, maximum: u32) -> Self {
         self.max_operations_per_transaction = maximum;
         self
     }

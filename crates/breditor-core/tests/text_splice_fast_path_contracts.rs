@@ -78,7 +78,7 @@ fn committed(outcome: TransactionOutcome) -> Result<Commit, Box<dyn std::error::
 
 fn invalid_result_report(
     result: Result<TransactionOutcome, TransactionApplyError>,
-) -> Result<(usize, ValidationReport), Box<dyn std::error::Error>> {
+) -> Result<(u64, ValidationReport), Box<dyn std::error::Error>> {
     match result {
         Err(TransactionApplyError::Operation {
             operation_index,

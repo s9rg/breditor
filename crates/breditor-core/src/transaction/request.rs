@@ -32,13 +32,36 @@ impl Transaction {
     /// the whole transaction instead of silently choosing a fallback.
     #[must_use]
     pub fn new(base: &EditorState, operations: Vec<Operation>) -> Self {
+        Self::from_parts(
+            base.clone(),
+            operations,
+            SelectionRelocationPolicy::default(),
+            SelectionUpdate::default(),
+            PendingFormatsUpdate::default(),
+            TransactionMetadata::default(),
+        )
+    }
+
+    /// Reconstructs a transaction with every policy supplied explicitly.
+    ///
+    /// Keeping this constructor exhaustive prevents internal durable codecs
+    /// and replay adapters from silently inheriting builder defaults.
+    #[must_use]
+    pub(crate) fn from_parts(
+        base: EditorState,
+        operations: Vec<Operation>,
+        selection_relocation: SelectionRelocationPolicy,
+        selection_update: SelectionUpdate,
+        pending_formats_update: PendingFormatsUpdate,
+        metadata: TransactionMetadata,
+    ) -> Self {
         Self {
-            base: base.clone(),
+            base,
             operations: Arc::from(operations),
-            selection_relocation: SelectionRelocationPolicy::default(),
-            selection_update: SelectionUpdate::default(),
-            pending_formats_update: PendingFormatsUpdate::default(),
-            metadata: TransactionMetadata::default(),
+            selection_relocation,
+            selection_update,
+            pending_formats_update,
+            metadata,
         }
     }
 
@@ -118,21 +141,11 @@ impl Transaction {
         self
     }
 
-    /// Applies every operation atomically and publishes at most one commit.
-    ///
-    /// The input state is immutable. If any operation, selection relocation, or
-    /// final-state proof fails, no partial state, inverse, or change set is
-    /// returned.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TransactionApplyError`] for schema/snapshot mismatch or any
-    /// failed proof in the batch.
-    pub fn apply(
+    fn validate_target(
         &self,
         context: &EditorContext,
         state: &EditorState,
-    ) -> Result<TransactionOutcome, TransactionApplyError> {
+    ) -> Result<(), TransactionApplyError> {
         if self.schema() != context.schema().id() {
             return Err(TransactionApplyError::ContextSchemaMismatch {
                 transaction_schema: self.schema().clone(),
@@ -153,12 +166,33 @@ impl Transaction {
                 snapshot: state.snapshot().clone(),
             });
         }
-        if self.operations.len() > context.max_operations_per_transaction() {
+        let operation_count = u64::try_from(self.operations.len()).unwrap_or(u64::MAX);
+        let maximum_operations = context.max_operations_per_transaction();
+        if operation_count > u64::from(maximum_operations) {
             return Err(TransactionApplyError::OperationLimit {
-                actual: self.operations.len(),
-                maximum: context.max_operations_per_transaction(),
+                actual: operation_count,
+                maximum: maximum_operations,
             });
         }
+        Ok(())
+    }
+
+    /// Applies every operation atomically and publishes at most one commit.
+    ///
+    /// The input state is immutable. If any operation, selection relocation, or
+    /// final-state proof fails, no partial state, inverse, or change set is
+    /// returned.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TransactionApplyError`] for schema/snapshot mismatch or any
+    /// failed proof in the batch.
+    pub fn apply(
+        &self,
+        context: &EditorContext,
+        state: &EditorState,
+    ) -> Result<TransactionOutcome, TransactionApplyError> {
+        self.validate_target(context, state)?;
 
         let mut current = state.document().clone();
         let mut forward = Vec::new();
@@ -166,11 +200,14 @@ impl Transaction {
         let mut steps = Vec::new();
         let mut changes = Vec::new();
         for (operation_index, operation) in self.operations.iter().enumerate() {
+            let diagnostic_operation_index = u64::try_from(operation_index).unwrap_or(u64::MAX);
             let before = current.clone();
-            match operation
-                .apply(context, &current)
-                .map_err(|source| TransactionApplyError::Operation { operation_index, source })?
-            {
+            match operation.apply(context, &current).map_err(|source| {
+                TransactionApplyError::Operation {
+                    operation_index: diagnostic_operation_index,
+                    source,
+                }
+            })? {
                 AppliedOperation::Unchanged => {}
                 AppliedOperation::Changed(change) => {
                     let crate::operation::AppliedChange { document, inverse, relocation, change } =
@@ -271,15 +308,15 @@ pub enum TransactionApplyError {
     #[error("transaction has {actual} operations; the configured maximum is {maximum}")]
     OperationLimit {
         /// Actual operation count.
-        actual: usize,
+        actual: u64,
         /// Configured maximum.
-        maximum: usize,
+        maximum: u32,
     },
     /// One operation failed; the complete batch is rejected.
     #[error("operation {operation_index} failed: {source}")]
     Operation {
         /// Zero-based operation index.
-        operation_index: usize,
+        operation_index: u64,
         /// Typed operation failure.
         source: OperationApplyError,
     },

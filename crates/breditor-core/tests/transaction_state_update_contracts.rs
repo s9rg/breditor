@@ -233,12 +233,17 @@ fn transaction_operation_budget_rejects_work_before_execution() -> TestResult {
         None,
         None,
     )?;
-    assert_eq!(context.max_operations_per_transaction(), 0);
+    let configured_maximum: u32 = context.max_operations_per_transaction();
+    assert_eq!(configured_maximum, 0);
     let transaction = Transaction::new(&initial, vec![insert_at_start("X")?.into()]);
-    assert_eq!(
-        transaction_error(transaction.apply(&context, &initial))?,
-        TransactionApplyError::OperationLimit { actual: 1, maximum: 0 }
-    );
+    let error = transaction_error(transaction.apply(&context, &initial))?;
+    let (actual, maximum) = match error {
+        TransactionApplyError::OperationLimit { actual, maximum } => (actual, maximum),
+        error => return Err(test_error(format!("expected operation limit, got {error}")).into()),
+    };
+    let actual: u64 = actual;
+    let maximum: u32 = maximum;
+    assert_eq!((actual, maximum), (1, 0));
     assert_single_text(initial.document(), "abc")?;
     assert_eq!(initial.snapshot().revision(), Revision::ZERO);
     Ok(())

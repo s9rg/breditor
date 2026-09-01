@@ -43,7 +43,7 @@ impl LinearHistory {
         self.redo.back()
     }
 
-    pub(crate) fn observe_commit(&mut self, commit: &Commit, maximum_operations: usize) {
+    pub(crate) fn observe_commit(&mut self, commit: &Commit, maximum_operations: u32) {
         if commit.forward_operations().is_empty() {
             self.observe_state_only(commit.after());
             return;

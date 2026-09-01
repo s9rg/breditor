@@ -643,7 +643,7 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
         TransactionApplyError::OperationLimit { .. } => ActionStateTransactionFault::OperationLimit,
         TransactionApplyError::Operation { operation_index, source } => {
             ActionStateTransactionFault::Operation {
-                operation_index: u64::try_from(operation_index).unwrap_or(u64::MAX),
+                operation_index,
                 source: project_operation_error(source),
             }
         }

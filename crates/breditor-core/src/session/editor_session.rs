@@ -140,6 +140,10 @@ impl EditorSession {
     /// An unchanged transaction leaves history grouping untouched because no
     /// revision or editor state was published.
     ///
+    /// Callers applying decoded untrusted requests must authorize or sanitize
+    /// metadata first. `HistoryIntent::Ignore` can clear both history branches
+    /// after a content commit, while `HistoryIntent::Merge` changes grouping.
+    ///
     /// # Errors
     ///
     /// Returns [`TransactionApplyError`] without changing session state or

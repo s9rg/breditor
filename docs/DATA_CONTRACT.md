@@ -4,6 +4,7 @@ Status: implemented vertical proof; not yet a permanent public wire
 compatibility promise
 Document format: `breditor/document`, version `1`
 Operation format: `breditor/operation`, version `1`
+Transaction-request format: `breditor/transaction-request`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -21,6 +22,8 @@ The implemented Rust slice owns:
   inverses;
 - a singular, strict, versioned operation JSON codec that preserves every
   optimistic guard and validates statically knowable schema and resource laws;
+- a strict contextual transaction-request codec that binds ordered V1 operation
+  payloads and every state/metadata policy to one caller-supplied exact base;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -44,8 +47,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- persistent editor-state, transaction, commit, and history codecs, durable
-  ordered logs, and reload replay;
+- persistent editor-state, commit, and history codecs, durable ordered logs,
+  deduplicated delivery, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -73,6 +76,13 @@ untrusted operation JSON
     -> checked coordinates, canonical fragments, and active static limits
     -> one guarded runtime Operation
     -> ordinary atomic Transaction application against an exact EditorState
+
+untrusted transaction-request JSON + caller-supplied exact EditorState
+    -> caller context, byte, format/version, exact-shape, and schema checks
+    -> canonical lineage/revision match against the supplied base snapshot
+    -> allocation-preflighted streaming decode of ordered operation V1 payloads
+    -> checked selection, pending-format, and metadata reconstruction
+    -> unapplied exact-base runtime Transaction
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -196,7 +206,15 @@ operation payload allocation growth in a streaming preflight before it owns
 record vectors, and stops recursive
 strict-property parsing from reserving a deserializer's untrusted sequence-size
 hint. The raw JSON byte cap remains the absolute input boundary, not a claim
-that peak decoder memory equals the input size. None of these
+that peak decoder memory equals the input size. Version `0.0.18` adds the
+distinct `breditor/transaction-request@1` contextual format. It keeps the full
+base `EditorState` out of the record and therefore requires decode callers to
+supply the exact state named by the canonical lineage/revision pair. It streams
+the bounded operation array, preserves all state-update and metadata variants,
+and returns an unapplied `Transaction`; it is not a commit, history entry,
+content hash, delivery identity, or ordered log record. The same checkpoint
+makes the transaction operation ceiling `u32` and public counts/indexes `u64`.
+None of these
 checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -300,9 +318,10 @@ caller contract violation that no process-local core can globally detect.
 
 `Revision` is a checked monotonic `u64` within a lineage. Initial state is
 revision zero, a committed state transition consumes one successor revision,
-and an unchanged transaction consumes none. A future Wasm/wire representation
-will encode the full `u64` as a decimal string rather than a JavaScript number;
-that encoding is planned, not implemented.
+and an unchanged transaction consumes none. Transaction-request V1 encodes the
+full `u64` as a canonical decimal string rather than a lossy JavaScript number.
+A future complete state checkpoint and Wasm adapter must preserve that same
+fixed-width value and string boundary.
 
 Pending formats are an explicit typing override. `None` means derive formatting
 from context, while `Some(empty)` explicitly means unformatted. An override is
@@ -1163,8 +1182,78 @@ Schema-semantic changes increment `schema.version`. A future schema fingerprint
 must additionally pin compiled definitions before user-defined schema identity
 can be treated as a compatibility proof. Canonical document/operation hashing
 is deliberately deferred until its cross-language byte specification is written
-and tested. Documents and singular operations have persistent formats today;
-snapshots, transactions, commits, selections, and history do not.
+and tested. Documents, singular operations, and contextually decoded transaction
+requests have persistent formats today; complete editor-state checkpoints,
+commits, and history do not.
+
+### Transaction request V1
+
+An atomic request uses a distinct envelope. Its operation entries are bare V1
+operation payloads rather than nested `breditor/operation` envelopes:
+
+```json
+{
+  "format": "breditor/transaction-request",
+  "formatVersion": 1,
+  "schema": { "name": "breditor/base", "version": 1 },
+  "baseSnapshot": { "lineage": "editor-123", "revision": "42" },
+  "operations": [],
+  "selectionRelocation": { "anchor": "reject", "focus": "reject" },
+  "selectionUpdate": { "kind": "relocate" },
+  "pendingFormatsUpdate": { "kind": "preserve" },
+  "metadata": {
+    "action": null,
+    "history": { "kind": "record" }
+  }
+}
+```
+
+`baseSnapshot.revision` is the canonical decimal string
+`0|[1-9][0-9]*` across the full `u64` range; using a string avoids JavaScript's
+lossy integer range. `selectionUpdate` is either `relocate` or `set` with a
+required nullable selection. V1 selections are directional ranges whose text
+and child-boundary points retain path, `u32` offset/index, and before/after
+affinity exactly. `pendingFormatsUpdate` distinguishes `preserve`, `set` to
+`null`, and `set` to an empty or non-empty canonical property-free format set.
+Metadata always carries a required nullable action and one `record`,
+`merge(group)`, or `ignore` history intent. Every fixed object and tagged union
+fails closed on missing, duplicate, unknown, null-in-place-of-value, or
+wrong-type fields.
+
+`TransactionJsonCodec` is bound to an `EditorContext`, and decode also receives
+the complete immutable base `EditorState`. Its honest round-trip law is
+`decode(encode(transaction), transaction.base_state()) == transaction`. Context
+misuse is rejected before parsing. The decoder then enforces the raw byte cap,
+routes the header, parses an exact borrowed envelope, validates schema and the
+canonical base identity, and preflights the operation count and every nested
+allocation. It streams one raw operation payload at a time, retaining only
+checked runtime operations. At most the first count excess reaches the typed
+fixed-width operation-limit error; further excess fails at allocation
+preflight. State and metadata names/paths use the same protocol-first-excess
+admission rule. Nested raw-payload JSON locations are payload-local; stable
+codes, indexes, and typed record locations are the control-flow contract.
+Encode counts JSON bytes while converting at most one operation payload at a
+time, aborts on the first over-budget serializer chunk, and allocates the output
+string only when the count fits the same decode budget. Output-too-large reports
+the observed lower bound; counter overflow saturates that bound.
+
+Decode does not apply the request, resolve an explicit selection against a
+future result document, or return a `Commit`. `Transaction::apply` and
+`EditorSession::apply_transaction` remain the authoritative all-or-nothing
+replay boundary. The base snapshot is an identity reference, not a content
+hash; supplying the base state is what binds the reconstructed runtime request
+to complete content and configuration.
+
+This V1 record intentionally has no result snapshot, result document, inverse
+operations, filtered forward operations, relocation map, change set, request or
+sequence ID, deduplication key, checksum/signature, author, timestamp, history
+stack, or durable log position. It provides neither exactly-once delivery nor
+dishonest lineage/revision reuse detection. Undo/redo transactions encoded
+through it are ordinary exact-base requests and do not reconstruct a session's
+history. A host accepting untrusted metadata must authorize or sanitize history
+intent: `ignore` can clear both local history branches after a content commit,
+and `merge` changes grouping behavior. Schema identity is also not yet a
+compiled-context fingerprint.
 
 The operation envelope has no base snapshot/hash, lineage/revision, sequence,
 replay identity, checksum, signature, author, transaction boundary, or
@@ -1176,14 +1265,14 @@ cross-language canonicalization promise.
 
 ## Next gate
 
-Freeze an atomic transaction record around ordered operation V1 payloads. It
-must bind one explicit base-state identity, bounded operation count, state
-update, metadata, and all-or-nothing replay semantics without confusing a
-runtime `Commit` or mutable history entry with a wire record. A later ordered
-log still needs sequence/replay identity, snapshot/checkpoint policy,
-integrity/authenticity, migration, and crash-tail rules before reload replay is
-shippable. Browser `beforeinput`, composition ownership, IME buffering, and
-paste chunking remain adapter concerns. Keep presentation metadata and delivery
-outside the deterministic core; subscriber lifecycle, catalog replacement,
-backpressure, and coalescing still require a separate contract before exposing
-an observer API.
+Freeze a contextual editor-state checkpoint record containing snapshot identity,
+the existing document V1 value, selection, and pending formats. It must prove
+the same complete runtime state under a caller-supplied `EditorContext` without
+silently changing document or transaction formats. A later commit/log layer
+still needs sequence/replay identity, snapshot/checkpoint policy,
+integrity/authenticity, migration, deduplication, and crash-tail rules before
+reload replay is shippable. Browser `beforeinput`, composition ownership, IME
+buffering, and paste chunking remain adapter concerns. Keep presentation
+metadata and delivery outside the deterministic core; subscriber lifecycle,
+catalog replacement, backpressure, and coalescing still require a separate
+contract before exposing an observer API.
