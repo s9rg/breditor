@@ -13,7 +13,8 @@ This repository currently contains the first end-to-end Rust-core slice:
 - a minimal compiled schema for document, paragraph, text, and strong formatting;
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
-  editor-state checkpoints plus self-contained replay-proved commit records;
+  editor-state checkpoints, self-contained replay-proved commit records, and
+  compact replay-proved bounded session/history checkpoints;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -50,17 +51,18 @@ This repository currently contains the first end-to-end Rust-core slice:
   boundaries during cross-paragraph formatting;
 - a synchronous `EditorSession` publication boundary with exact-base commit
   acceptance, intent/action execution, bounded linear history, deterministic
-  merge groups, and atomic undo/redo replay;
+  merge groups, atomic undo/redo replay, and durable local checkpoint restore;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
-  operation limits.
+  operation limits plus host-configurable aggregate session-checkpoint
+  admission budgets.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, persistent history/session codecs, ordered
-durable logs, deduplicated delivery and reload replay, Wasm bindings,
+and plugin lifecycle management, ordered durable logs, delivery identities,
+deduplicated incremental replay and crash-tail recovery, Wasm bindings,
 a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See

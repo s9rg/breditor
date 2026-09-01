@@ -97,6 +97,12 @@ pub(crate) struct OperationSequencePreflight {
     expected_count: u64,
 }
 
+impl OperationSequencePreflight {
+    pub(crate) const fn operation_count(self) -> u64 {
+        self.expected_count
+    }
+}
+
 pub(crate) fn validate_operation_sequence_count(
     operations: &[Operation],
     context: &EditorContext,

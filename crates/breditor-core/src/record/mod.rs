@@ -5,6 +5,7 @@ mod document_record;
 mod editor_state_record;
 mod editor_value_record;
 mod operation_record;
+mod session_checkpoint_record;
 mod strict_json;
 mod transaction_record;
 
@@ -21,6 +22,10 @@ pub(crate) use operation_record::{
     EmptyPropertyMapRecord, OperationEnvelopeHeader, OperationFormatRecordV1,
     OperationRecordEnvelopeV1, OperationRecordV1, RootTextBoundaryRecordV1, RootTextRangeRecordV1,
     TextFragmentRecordV1, TextRangeRecordV1, TextRunRecordV1,
+};
+pub(crate) use session_checkpoint_record::{
+    SESSION_CHECKPOINT_FORMAT, SESSION_CHECKPOINT_FORMAT_VERSION, SessionCheckpointRecordV1,
+    SessionHistoryEntryRecordV1,
 };
 pub(crate) use strict_json::{PropertyMapRecord, PropertyValueRecord};
 pub(crate) use transaction_record::{

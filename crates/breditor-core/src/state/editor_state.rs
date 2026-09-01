@@ -5,7 +5,7 @@ use crate::{
     identity::QualifiedName,
     schema::{SchemaId, ValidationReport},
     selection::{ResolvedSelection, Selection, SelectionError},
-    state::{EditorContext, SnapshotId},
+    state::{EditorContext, Revision, SnapshotId},
 };
 
 /// A complete immutable editor snapshot.
@@ -47,6 +47,23 @@ impl EditorState {
             document,
             selection: selection.as_ref(),
             pending_formats: pending_formats.as_ref(),
+        }
+    }
+
+    /// Clones this exact semantic state under another lineage-local revision.
+    ///
+    /// Session-checkpoint reconstruction uses this only to normalize private
+    /// historical boundaries and to install the separately persisted current
+    /// revision. Revision does not participate in document, selection, or
+    /// pending-format validity, so no validation work is repeated.
+    pub(crate) fn with_checkpoint_revision(&self, revision: Revision) -> Self {
+        let Self { context, snapshot, document, selection, pending_formats } = self;
+        Self {
+            context: context.clone(),
+            snapshot: SnapshotId::new(snapshot.lineage().clone(), revision),
+            document: document.clone(),
+            selection: selection.clone(),
+            pending_formats: pending_formats.clone(),
         }
     }
 

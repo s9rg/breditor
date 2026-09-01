@@ -7,6 +7,7 @@ Operation format: `breditor/operation`, version `1`
 Transaction-request format: `breditor/transaction-request`, version `1`
 Editor-state format: `breditor/editor-state`, version `1`
 Commit format: `breditor/commit`, version `1`
+Session-checkpoint format: `breditor/session-checkpoint`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -32,6 +33,9 @@ The implemented Rust slice owns:
 - a strict self-contained commit codec that restores one before checkpoint,
   replays canonical forward operations, applies explicit result editor values,
   and publishes only the fully derived transition;
+- a strict contextual session-checkpoint codec that restores one exact current
+  state plus bounded chronological linear history, redo position, capacity,
+  and merge continuity while deriving historical documents and inverses;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -55,8 +59,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- persistent history/session codecs, durable ordered logs, deduplicated
-  delivery, and reload replay;
+- durable ordered logs, delivery identities, deduplicated incremental replay,
+  integrity/authenticity, migration, and crash-tail recovery;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -107,6 +111,15 @@ untrusted commit JSON + caller-supplied EditorContext
     -> atomic replay from the exact before state
     -> reject unchanged or filtered operation recipes
     -> publish one derived Commit or publish nothing
+
+untrusted session-checkpoint JSON + caller-supplied EditorContext and admission policy
+    -> byte, format/version, exact-shape, entry-count, and topology checks
+    -> authoritative decode of a revision-zero history-base Editor State V1
+    -> chronological streaming preflight of compact non-empty history recipes
+    -> replay every entry while deriving documents, inverses, and exact boundaries
+    -> select the cursor state and install the asserted current revision
+    -> reconstruct bounded undo/redo branches and a fresh process-local history stamp
+    -> publish one EditorSession or publish nothing
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -258,6 +271,17 @@ filtered as unchanged are rejected. Replay failures are projected into bounded
 typed diagnostics so codec errors retain no guarded document fragments. A
 commit record is still not a history stack, ordered log, delivery identity,
 authorization decision, hash, signature, or exactly-once protocol.
+Version `0.0.21` adds the distinct `breditor/session-checkpoint@1` contextual
+record. It stores one revision-zero history base, a compact oldest-to-newest
+chain of retained content recipes and exact result editor values, the current
+cursor and revision, bounded history capacity, and optional open merge group.
+Decode replays the chain to derive documents and inverse operations, restores
+the exact cursor state, normalizes private historical revisions, aligns both
+cursor-adjacent boundaries, and allocates a fresh process-local history stamp.
+Host-selected checkpoint limits independently bound installed capacity,
+aggregate operations, and retained logical document resources. The checkpoint
+is still not an ordered log, delivery identity, authenticity proof, migration
+protocol, or crash-recovery policy.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -988,11 +1012,13 @@ the catalog can preflight undo/redo state, while a future observer or current
 adapter remains responsible for deciding when to derive and deliver a new
 batch.
 
-This checkpoint is local, linear, and in-memory. It has no branching UI,
-selective undo, durable reload replay, foreign-operation mapping, collaboration
-undo manager, browser FIFO, or clock/IME policy. Collaboration must eventually
-map inverse operations and cursor boundaries through remote changes or use a
-collaboration-aware history protocol; it cannot silently reuse this stack.
+This runtime remains local and linear. Session Checkpoint V1 can now restore
+its exact bounded state and replay behavior after reload, but it adds no
+branching UI, selective undo, incremental log, foreign-operation mapping,
+collaboration undo manager, browser FIFO, or clock/IME policy. Collaboration
+must eventually map inverse operations and cursor boundaries through remote
+changes or use a collaboration-aware history protocol; it cannot silently
+reuse this stack.
 
 ## Current performance limitations
 
@@ -1072,6 +1098,16 @@ checked global deltas instead of rescanning a matching-profile document, but:
 - history is bounded by logical entry count rather than retained bytes, and a
   merged entry copies bounded operation recipes while immutable document
   payloads remain structurally shared;
+- session-checkpoint encoding walks the retained logical history in
+  chronological order, normalizes its earliest boundary, and serializes every
+  retained forward recipe and result editor value twice: once for exact byte
+  counting and once for output. Decode streams entry admission with a bounded
+  initial reservation, then replays the complete chain while retaining derived
+  boundary documents and inverse recipes. The outer JSON cap plus independent
+  host-configurable ceilings for installed history capacity, aggregate forward
+  operations, and retained logical nodes, text bytes, and property values bound
+  admission; they do not promise a fixed peak-memory multiple or make a large
+  valid live session encodable under a smaller checkpoint policy;
 - split/join scans the complete guarded paragraphs and currently reboxes text
   `NodeRef`s inside affected paragraphs, although their immutable string/format
   payloads remain shared;
@@ -1231,7 +1267,10 @@ operation rejection uses `OperationValidationError`. Commit result-field
 reconstruction exposes `CommitRecordErrorCode` and `CommitRecordLocation`;
 replay failure exposes `CommitApplicationErrorCode`, an optional operation
 index, and a bounded diagnostic projection that retains no document-bearing
-transaction source. Complete document
+transaction source. Session-checkpoint reconstruction additionally reports
+fixed-width chronological entry and nested operation indexes while projecting
+entry replay failures into bounded diagnostics rather than retaining guarded
+document payloads. Complete document
 validation issues separately expose a stable code, node path, typed subject
 (child, format, property/value path, entity identity, or limit), and structured
 detail such as the exceeded size or duplicate-ID origin. Human messages are
@@ -1251,9 +1290,9 @@ must additionally pin compiled definitions before user-defined schema identity
 can be treated as a compatibility proof. Canonical document/operation hashing
 is deliberately deferred until its cross-language byte specification is written
 and tested. Documents, singular operations, contextually decoded transaction
-requests, contextually decoded complete editor-state checkpoints, and
-replay-proved commits have persistent formats today; history and sessions do
-not.
+requests, contextually decoded complete editor-state checkpoints,
+replay-proved commits, and bounded local linear-history sessions have
+persistent formats today. None of these formats is an ordered delivery log.
 
 ### Transaction request V1
 
@@ -1572,18 +1611,179 @@ session. Hosts must authorize metadata before publication: `ignore` and
 but is not yet an RFC 8785 or cryptographic cross-language canonicalization
 contract.
 
+### Session checkpoint V1
+
+A session checkpoint persists one complete bounded local linear-history
+observation in exactly eight required fields:
+
+```json
+{
+  "format": "breditor/session-checkpoint",
+  "formatVersion": 1,
+  "historyBase": {
+    "format": "breditor/editor-state",
+    "formatVersion": 1,
+    "snapshot": { "lineage": "editor-123", "revision": "0" },
+    "document": {
+      "format": "breditor/document",
+      "formatVersion": 1,
+      "schema": { "name": "breditor/base", "version": 1 },
+      "root": {
+        "kind": "element",
+        "type": "breditor/document",
+        "entityId": null,
+        "properties": {},
+        "children": [
+          {
+            "kind": "element",
+            "type": "breditor/paragraph",
+            "entityId": null,
+            "properties": {},
+            "children": []
+          }
+        ]
+      }
+    },
+    "selection": null,
+    "pendingFormats": null
+  },
+  "currentRevision": "42",
+  "historyCapacity": 100,
+  "cursor": 0,
+  "entries": [],
+  "openMergeGroup": null
+}
+```
+
+`historyBase` is a complete Editor State V1 value for the earliest retained
+logical boundary, but its revision is canonically and necessarily `"0"`.
+`currentRevision` separately preserves the exact current `u64` revision as a
+canonical decimal string. The base lineage is the restored session lineage.
+The current document, selection, and pending formats are not redundant wire
+claims: decode derives them by replaying the chronological prefix ending at
+`cursor`, then publishes that derived value at the asserted current revision.
+
+`entries` contains retained logical history entries in oldest-to-newest order.
+Each entry is exactly:
+
+```json
+{
+  "forwardOperations": [
+    {
+      "kind": "textSplice",
+      "range": { "containerPath": [0], "start": 0, "end": 0 },
+      "expectedRemoved": { "runs": [] },
+      "replacement": { "runs": [{ "text": "x", "formats": [] }] }
+    }
+  ],
+  "resultSelection": null,
+  "resultPendingFormats": null
+}
+```
+
+The operation values are bare Operation V1 payloads rather than nested
+operation or commit envelopes. Every entry recipe is non-empty, ordered, and
+already filtered. Decode applies it from the preceding derived boundary,
+explicitly sets the two required-nullable result values, rejects an unchanged
+or partially filtered recipe, and derives the result document, inverse recipe,
+relocation, and changes. It then replays the locally derived inverse and rejects
+an unchanged or noncanonical inverse or any semantic boundary mismatch. Forward
+and inverse application failures carry an explicit replay direction. A
+non-empty recipe whose net result document equals its source remains a valid
+history event. Metadata is absent: a merged history entry can span several
+original actions and the runtime entry retains no canonical transaction
+metadata.
+
+`cursor` is the undo depth. Entries before it form the undo prefix; entries at
+and after it form the redo suffix in forward chronological order. Runtime redo
+storage reverses that suffix only after the complete chain is proved.
+`historyCapacity` is the capacity restored into the live session. Entry count
+must not exceed capacity, cursor must not exceed entry count, and capacity zero
+requires an empty chain, zero cursor, and null open group. A non-null
+`openMergeGroup` is valid only at the end of a non-empty chain with positive
+capacity. It preserves exact same-group merge continuation; decode aligns both
+cursor-adjacent runtime boundaries to the exact restored current state so
+private normalized revisions cannot accidentally split the next merge.
+
+History contains only content entries. Selection/pending-format-only commits
+therefore never become empty recipes. Their latest values are folded into the
+single shared logical boundary: the base values at cursor zero or the preceding
+entry's result values elsewhere. This preserves both adjacent undo/redo cursor
+results and closes merge continuity exactly as the live session does.
+
+Historical snapshot revisions are deliberately normalized out of the format.
+They are rewritten asymmetrically during ordinary replay and do not participate
+in history applicability or result identity. Decode uses safe private revisions
+while proving the chain, then installs only `currentRevision` at the cursor.
+There is intentionally no `currentRevision >= entries.length` law: the value is
+a caller-owned identity assertion, not provenance or a count of persisted
+events. Revision `u64::MAX` is valid to restore; the next changed transaction or
+history replay can then fail atomically with revision overflow.
+
+`SessionCheckpointJsonCodec` is bound to one exact caller-supplied
+`EditorContext` and a caller-authoritative `SessionCheckpointLimits` policy.
+The wire selects neither. The runtime `HistoryCapacity` hard maximum remains
+10,000, while the default checkpoint policy accepts at most capacity 100,
+16,384 aggregate forward operations, 1,000,000 logical retained nodes, 64 MiB
+of logical retained text, and 100,000 retained property values. Hosts can set
+these checkpoint ceilings independently. Every entry also remains under the
+context's per-transaction operation ceiling. Retained-resource admission sums
+the cached summary of the history base and each derived entry-result boundary;
+the first crossing identifies the rejected boundary. It measures logical
+retention rather than deduplicated `Arc` allocations. Encode enforces the same
+context and checkpoint policy as decode, so a valid live session can be
+rejected when its installed capacity, retained resources, operation recipes,
+or compact JSON exceed the chosen durable admission budget.
+Aggregate arithmetic is checked and fails closed with a distinct overflow
+category even when a host deliberately configures a `u64::MAX` policy.
+
+Decode first enforces the complete-input JSON byte cap, routes format and
+version, and parses the exact borrowed outer shape. It validates the requested
+capacity against the runtime and host policy, streams an allocation-free entry
+count bounded by that capacity, and checks cursor and open-group topology. It
+then reconstructs the current revision and open-group name before preflighting
+the strict nested entries, per-entry operations, and aggregate recipe budget;
+the later retained vector uses a capped initial reservation. Only after those
+fail-fast topology and resource checks does it route and decode the required
+revision-zero base and replay entries in chronological index order. The first
+rejected entry and nested operation use fixed-width `u64` indexes. Replay
+failures are projected into stable direction/category codes and bounded
+diagnostics rather than retaining guarded document-bearing errors. All
+reconstruction is private until the complete chain and cursor boundary are
+proved; failure publishes no partial session.
+
+The process-local `HistoryStamp` is not serialized. Decode always creates a
+fresh stamp, so equality across a source and restored session is meaningless.
+The behavioral round-trip law is exact current state, capacity, undo/redo
+depths and availability, deterministic future merge behavior, and identical
+undo/redo replay results. Re-encoding a successfully decoded canonical
+checkpoint is byte-stable even though private historical revisions were
+normalized.
+
+This is a replaceable snapshot, not an append-only log. It has no session ID,
+sequence or log position, delivery/replay ID, deduplication key, causal parent,
+author, timestamp, checksum, hash, signature, authorization, migration chain,
+transaction tail, fsync rule, or crash-truncation policy. A valid altered chain
+is merely another internally consistent checkpoint; operation guards and the
+lineage/revision assertion do not prove provenance, freshness, or permission.
+`openMergeGroup` is behaviorally active untrusted data, so a host that does not
+trust the source must authorize it or close the restored group before accepting
+new edits. Compact Rust output is deterministic but is not RFC 8785 or a
+cryptographic cross-language canonicalization contract. Admission budgets
+limit resource use; they do not authenticate content or guarantee a fixed
+peak-memory multiple.
+
 ## Next gate
 
-Freeze a durable bounded linear-history/session checkpoint without confusing a
-checkpoint with an append-only log. It must preserve the current state, undo
-and redo boundaries, history capacity, merge-group continuity, and exact replay
-semantics while deriving redundant commit internals. The design must specify
-chain continuity, entry and aggregate operation ceilings, failure precedence,
-state-only boundary behavior, and whether a checkpoint stores complete commits
-or compact history entries. Ordered external delivery remains a later layer
-requiring sequence/replay identity, integrity/authenticity, migration,
-deduplication, and crash-tail rules. Browser `beforeinput`, composition
-ownership, IME buffering, and paste chunking remain adapter concerns. Keep
-presentation metadata and delivery outside the deterministic core; subscriber
-lifecycle, catalog replacement, backpressure, and coalescing still require a
-separate contract before exposing an observer API.
+Freeze a durable ordered local log and delivery-identity boundary around the
+existing commit and session-checkpoint formats. It must define stable log and
+session identities, monotonic sequence and replay IDs, idempotent duplicate
+handling, checkpoint/log-prefix linkage, compaction, migration, integrity and
+optional authenticity, authorization ownership, atomic append/fsync behavior,
+crash-tail detection and truncation, and deterministic recovery precedence.
+The log must not silently treat optimistic operation guards or caller-owned
+lineage/revision values as exactly-once delivery. Browser `beforeinput`,
+composition ownership, IME buffering, and paste chunking remain adapter
+concerns. Presentation metadata stays outside the deterministic core;
+subscriber lifecycle, catalog replacement, backpressure, and coalescing still
+require a separate contract before exposing an observer API.

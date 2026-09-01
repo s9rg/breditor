@@ -5,6 +5,7 @@ use crate::{
         ActionExecutionError, ActionPreparation,
         routing::{IntentExecutionOutcome, IntentRouteBaseError, IntentRouteOutcome},
     },
+    identity::QualifiedName,
     state::EditorState,
     transaction::{
         Commit, ReplayDirection, Transaction, TransactionApplyError, TransactionOutcome,
@@ -14,7 +15,8 @@ use crate::{
 use super::{
     capacity::HistoryCapacity,
     error::{HistoryReplayError, SessionCommitError},
-    history::LinearHistory,
+    history::{HistoryCheckpointInvariantError, LinearHistory, LinearHistoryCheckpointParts},
+    history_entry::HistoryEntry,
     history_stamp::HistoryStamp,
     history_status::SessionHistoryStatus,
 };
@@ -28,6 +30,16 @@ pub struct EditorSession {
     state: EditorState,
     history: LinearHistory,
     history_stamp: HistoryStamp,
+}
+
+/// Exhaustive borrowed view of one session's durable checkpoint state.
+///
+/// The process-local history stamp is deliberately excluded. The exhaustive
+/// destructuring in [`EditorSession::checkpoint_parts`] still accounts for it,
+/// so adding session state requires an explicit persistence decision.
+pub(crate) struct EditorSessionCheckpointParts<'a> {
+    pub(crate) state: &'a EditorState,
+    pub(crate) history: LinearHistoryCheckpointParts<'a>,
 }
 
 impl fmt::Debug for EditorSession {
@@ -60,6 +72,39 @@ impl EditorSession {
             history: LinearHistory::new(history_capacity),
             history_stamp: HistoryStamp::new(),
         }
+    }
+
+    /// Returns all durable session fields while excluding process-local identity.
+    pub(crate) fn checkpoint_parts(&self) -> EditorSessionCheckpointParts<'_> {
+        let Self {
+            state,
+            history,
+            // A restored session must begin with a fresh observation identity.
+            history_stamp: _,
+        } = self;
+        EditorSessionCheckpointParts { state, history: history.checkpoint_parts() }
+    }
+
+    /// Restores a session from replay-proved chronological history entries.
+    ///
+    /// This constructor checks stack topology and replay-boundary continuity,
+    /// aligns both cursor-adjacent boundaries to `state`, and always allocates a
+    /// fresh process-local history observation stamp.
+    pub(crate) fn try_from_checkpoint_parts(
+        state: EditorState,
+        history_capacity: HistoryCapacity,
+        entries: Vec<HistoryEntry>,
+        cursor: u32,
+        open_merge_group: Option<QualifiedName>,
+    ) -> Result<Self, HistoryCheckpointInvariantError> {
+        let history = LinearHistory::try_from_chronological_entries(
+            history_capacity,
+            entries,
+            cursor,
+            open_merge_group,
+            &state,
+        )?;
+        Ok(Self { state, history, history_stamp: HistoryStamp::new() })
     }
 
     /// Returns the authoritative current immutable state.

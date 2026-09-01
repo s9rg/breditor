@@ -21,6 +21,19 @@ pub(crate) struct HistoryEntry {
     inverse_operations: Vec<Operation>,
 }
 
+/// Exhaustive borrowed view of one retained logical history entry.
+///
+/// The durable session boundary persists only the chronological forward recipe
+/// and boundary editor values. Keeping the derived inverse recipe in this view
+/// makes a future field addition fail compilation until the checkpoint codec
+/// explicitly classifies it.
+pub(crate) struct HistoryEntryCheckpointParts<'a> {
+    pub(crate) before: &'a EditorState,
+    pub(crate) after: &'a EditorState,
+    pub(crate) forward_operations: &'a [Operation],
+    pub(crate) inverse_operations: &'a [Operation],
+}
+
 impl HistoryEntry {
     pub(crate) fn from_commit(commit: &Commit) -> Self {
         Self {
@@ -29,6 +42,12 @@ impl HistoryEntry {
             forward_operations: commit.forward_operations().to_vec(),
             inverse_operations: commit.inverse_operations().to_vec(),
         }
+    }
+
+    /// Returns every retained entry field for deterministic checkpointing.
+    pub(crate) fn checkpoint_parts(&self) -> HistoryEntryCheckpointParts<'_> {
+        let Self { before, after, forward_operations, inverse_operations } = self;
+        HistoryEntryCheckpointParts { before, after, forward_operations, inverse_operations }
     }
 
     pub(crate) fn try_merge(&mut self, commit: &Commit, maximum_operations: u32) -> bool {
@@ -119,7 +138,7 @@ fn same_replay_boundary(current: &EditorState, expected: &EditorState) -> bool {
         && current.document() == expected.document()
 }
 
-fn same_replay_result(actual: &EditorState, expected: &EditorState) -> bool {
+pub(super) fn same_replay_result(actual: &EditorState, expected: &EditorState) -> bool {
     same_replay_boundary(actual, expected)
         && actual.context() == expected.context()
         && actual.selection() == expected.selection()

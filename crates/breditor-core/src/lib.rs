@@ -2,8 +2,8 @@
 //!
 //! The crate currently owns immutable document values, the minimal compiled
 //! proof schema, strict versioned document, singular-operation, exact-base
-//! transaction-request, contextual complete editor-state, and replay-proved
-//! durable commit JSON decoding,
+//! transaction-request, contextual complete editor-state, replay-proved
+//! durable commit, and bounded session-checkpoint JSON decoding,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -22,8 +22,9 @@
 //! Runtime [`document::Document`], [`document::NodeRef`], and
 //! [`operation::Operation`] values cannot be deserialized directly. Untrusted
 //! data must pass through [`codec::DocumentJsonCodec`],
-//! [`codec::OperationJsonCodec`], [`codec::TransactionJsonCodec`], or
-//! [`codec::EditorStateJsonCodec`]. Durable transitions pass through
+//! [`codec::OperationJsonCodec`], [`codec::TransactionJsonCodec`],
+//! [`codec::EditorStateJsonCodec`], or
+//! [`codec::SessionCheckpointJsonCodec`]. Durable transitions pass through
 //! [`codec::CommitJsonCodec`]. The
 //! document codec checks its versioned record, schema identity, canonicality,
 //! limits, and complete tree before publishing a runtime document. That same
@@ -41,6 +42,10 @@
 //! forward recipe, explicitly restores result editor values, and publishes
 //! only the newly derived [`transaction::Commit`]. It does not trust redundant
 //! after-state, inverse, relocation, or change-set claims.
+//! The session-checkpoint codec instead proves a compact chronological history
+//! chain in both directions, derives every later document and inverse recipe,
+//! and restores one bounded [`session::EditorSession`] with a fresh process-local
+//! history identity. It is neither an ordered log nor an authenticity proof.
 
 pub mod action;
 pub mod codec;

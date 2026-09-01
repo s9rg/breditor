@@ -17,6 +17,10 @@ mod operation_json;
 mod operation_payload_v1;
 mod operation_preflight;
 mod operation_sequence_v1;
+mod session_checkpoint_entries_v1;
+mod session_checkpoint_error;
+mod session_checkpoint_json;
+mod session_checkpoint_limits;
 mod transaction_error;
 mod transaction_json;
 mod transaction_payload_v1;
@@ -41,6 +45,22 @@ pub use operation_error::{
     OperationRecordError, OperationRecordErrorCode, OperationRecordLocation,
 };
 pub use operation_json::{OPERATION_FORMAT, OPERATION_FORMAT_VERSION, OperationJsonCodec};
+pub use session_checkpoint_error::{
+    RetainedResourceKind, SessionCheckpointApplicationError, SessionCheckpointApplicationErrorCode,
+    SessionCheckpointCodecError, SessionCheckpointRecordError, SessionCheckpointRecordErrorCode,
+    SessionCheckpointRecordLocation, SessionCheckpointReplayDirection,
+    SessionCheckpointResourceLimit, SessionCheckpointResourceLimitCode,
+    SessionCheckpointTopologyError, SessionCheckpointTopologyErrorCode,
+};
+pub use session_checkpoint_json::{
+    SESSION_CHECKPOINT_FORMAT, SESSION_CHECKPOINT_FORMAT_VERSION, SessionCheckpointJsonCodec,
+};
+pub use session_checkpoint_limits::{
+    DEFAULT_SESSION_CHECKPOINT_MAX_AGGREGATE_FORWARD_OPERATIONS,
+    DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY, DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
+    DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_VALUES,
+    DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_TEXT_BYTES, SessionCheckpointLimits,
+};
 pub use transaction_error::{
     TransactionCodecError, TransactionRecordError, TransactionRecordErrorCode,
     TransactionRecordLocation,

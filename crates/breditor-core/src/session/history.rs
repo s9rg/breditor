@@ -1,4 +1,7 @@
-use std::collections::VecDeque;
+use std::{
+    collections::{VecDeque, vec_deque},
+    iter::FusedIterator,
+};
 
 use crate::{
     identity::QualifiedName,
@@ -6,7 +9,10 @@ use crate::{
     transaction::{Commit, HistoryIntent},
 };
 
-use super::{capacity::HistoryCapacity, history_entry::HistoryEntry};
+use super::{
+    capacity::HistoryCapacity,
+    history_entry::{HistoryEntry, same_replay_result},
+};
 
 /// Bounded branch-local event storage. The back of each deque is nearest the
 /// current cursor.
@@ -18,9 +24,142 @@ pub(crate) struct LinearHistory {
     open_merge_group: Option<QualifiedName>,
 }
 
+/// Exhaustive borrowed view of one complete linear history checkpoint.
+pub(crate) struct LinearHistoryCheckpointParts<'a> {
+    pub(crate) capacity: HistoryCapacity,
+    pub(crate) cursor: u32,
+    pub(crate) entry_count: u32,
+    pub(crate) entries: ChronologicalHistoryEntries<'a>,
+    pub(crate) open_merge_group: Option<&'a QualifiedName>,
+}
+
+/// Borrowed retained entries in canonical oldest-to-newest logical order.
+///
+/// Undo storage already uses that order. Redo storage keeps its nearest entry
+/// at the back, so this iterator reverses redo before joining the two branches.
+#[derive(Clone)]
+pub(crate) struct ChronologicalHistoryEntries<'a> {
+    undo: vec_deque::Iter<'a, HistoryEntry>,
+    redo: std::iter::Rev<vec_deque::Iter<'a, HistoryEntry>>,
+}
+
+impl<'a> Iterator for ChronologicalHistoryEntries<'a> {
+    type Item = &'a HistoryEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.undo.next().or_else(|| self.redo.next())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let length = self.len();
+        (length, Some(length))
+    }
+}
+
+impl ExactSizeIterator for ChronologicalHistoryEntries<'_> {
+    fn len(&self) -> usize {
+        self.undo.len().saturating_add(self.redo.len())
+    }
+}
+
+impl FusedIterator for ChronologicalHistoryEntries<'_> {}
+
+/// Which replay recipe violates a restored entry's operation ceiling.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HistoryRecipeDirection {
+    Forward,
+    Inverse,
+}
+
+/// Why proved chronological entries cannot form one runtime linear history.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HistoryCheckpointInvariantError {
+    EntryLimit {
+        actual: u64,
+        capacity: HistoryCapacity,
+    },
+    CursorOutOfBounds {
+        cursor: u32,
+        entry_count: u64,
+    },
+    InvalidOpenMergeGroup,
+    EmptyEntry {
+        entry_index: u32,
+    },
+    OperationCountMismatch {
+        entry_index: u32,
+        forward: u64,
+        inverse: u64,
+    },
+    OperationLimit {
+        entry_index: u32,
+        direction: HistoryRecipeDirection,
+        actual: u64,
+        maximum: u32,
+    },
+    ContextMismatch {
+        entry_index: u32,
+    },
+    LineageMismatch {
+        entry_index: u32,
+    },
+    DisconnectedEntries {
+        left_entry_index: u32,
+    },
+    CurrentBoundaryMismatch,
+}
+
 impl LinearHistory {
     pub(crate) fn new(capacity: HistoryCapacity) -> Self {
         Self { capacity, undo: VecDeque::new(), redo: VecDeque::new(), open_merge_group: None }
+    }
+
+    /// Returns every retained history field in canonical logical order.
+    pub(crate) fn checkpoint_parts(&self) -> LinearHistoryCheckpointParts<'_> {
+        let Self { capacity, undo, redo, open_merge_group } = self;
+        let entry_count = undo.len().saturating_add(redo.len());
+        LinearHistoryCheckpointParts {
+            capacity: *capacity,
+            cursor: usize_to_u32(undo.len()),
+            entry_count: usize_to_u32(entry_count),
+            entries: ChronologicalHistoryEntries { undo: undo.iter(), redo: redo.iter().rev() },
+            open_merge_group: open_merge_group.as_ref(),
+        }
+    }
+
+    /// Reconstructs the two runtime branches from proved chronological entries.
+    ///
+    /// `entries` must run oldest to newest. `cursor` divides the undo prefix
+    /// from the redo suffix. Historical snapshot revisions are deliberately
+    /// ignored when proving boundary continuity; both boundaries adjacent to
+    /// the cursor are replaced with the exact authoritative current state.
+    pub(crate) fn try_from_chronological_entries(
+        capacity: HistoryCapacity,
+        mut entries: Vec<HistoryEntry>,
+        cursor: u32,
+        open_merge_group: Option<QualifiedName>,
+        current: &EditorState,
+    ) -> Result<Self, HistoryCheckpointInvariantError> {
+        validate_checkpoint_entries(
+            capacity,
+            &entries,
+            cursor,
+            open_merge_group.as_ref(),
+            current,
+        )?;
+
+        let cursor = cursor as usize;
+        if let Some(entry) = cursor.checked_sub(1).and_then(|index| entries.get_mut(index)) {
+            entry.update_after_boundary(current);
+        }
+        if let Some(entry) = entries.get_mut(cursor) {
+            entry.update_before_boundary(current);
+        }
+
+        let redo_chronological = entries.split_off(cursor);
+        let undo = VecDeque::from(entries);
+        let redo = redo_chronological.into_iter().rev().collect();
+        Ok(Self { capacity, undo, redo, open_merge_group })
     }
 
     pub(crate) const fn capacity(&self) -> HistoryCapacity {
@@ -135,3 +274,97 @@ impl LinearHistory {
 // This branch is unreachable because capacity is fixed below 10,001, but it
 // keeps the status query total on hypothetical targets with narrower `usize`.
 const MAX_DEPTH_FALLBACK: u32 = super::capacity::MAX_HISTORY_CAPACITY;
+
+fn validate_checkpoint_entries(
+    capacity: HistoryCapacity,
+    entries: &[HistoryEntry],
+    cursor: u32,
+    open_merge_group: Option<&QualifiedName>,
+    current: &EditorState,
+) -> Result<(), HistoryCheckpointInvariantError> {
+    let entry_count = usize_to_u64(entries.len());
+    if entry_count > u64::from(capacity.get()) {
+        return Err(HistoryCheckpointInvariantError::EntryLimit { actual: entry_count, capacity });
+    }
+    if u64::from(cursor) > entry_count {
+        return Err(HistoryCheckpointInvariantError::CursorOutOfBounds { cursor, entry_count });
+    }
+    if open_merge_group.is_some()
+        && (capacity == HistoryCapacity::DISABLED
+            || entry_count == 0
+            || u64::from(cursor) != entry_count)
+    {
+        return Err(HistoryCheckpointInvariantError::InvalidOpenMergeGroup);
+    }
+
+    let maximum_operations = current.context().max_operations_per_transaction();
+    for (entry_index, entry) in entries.iter().enumerate() {
+        let entry_index = usize_to_u32(entry_index);
+        let parts = entry.checkpoint_parts();
+        let forward_count = usize_to_u64(parts.forward_operations.len());
+        let inverse_count = usize_to_u64(parts.inverse_operations.len());
+        if forward_count == 0 || inverse_count == 0 {
+            return Err(HistoryCheckpointInvariantError::EmptyEntry { entry_index });
+        }
+        if forward_count != inverse_count {
+            return Err(HistoryCheckpointInvariantError::OperationCountMismatch {
+                entry_index,
+                forward: forward_count,
+                inverse: inverse_count,
+            });
+        }
+        for (direction, actual) in [
+            (HistoryRecipeDirection::Forward, forward_count),
+            (HistoryRecipeDirection::Inverse, inverse_count),
+        ] {
+            if actual > u64::from(maximum_operations) {
+                return Err(HistoryCheckpointInvariantError::OperationLimit {
+                    entry_index,
+                    direction,
+                    actual,
+                    maximum: maximum_operations,
+                });
+            }
+        }
+        if parts.before.context() != current.context() || parts.after.context() != current.context()
+        {
+            return Err(HistoryCheckpointInvariantError::ContextMismatch { entry_index });
+        }
+        if parts.before.snapshot().lineage() != current.snapshot().lineage()
+            || parts.after.snapshot().lineage() != current.snapshot().lineage()
+        {
+            return Err(HistoryCheckpointInvariantError::LineageMismatch { entry_index });
+        }
+    }
+
+    for (left_entry_index, entries) in entries.windows(2).enumerate() {
+        let left = entries[0].checkpoint_parts();
+        let right = entries[1].checkpoint_parts();
+        if !same_replay_result(left.after, right.before) {
+            return Err(HistoryCheckpointInvariantError::DisconnectedEntries {
+                left_entry_index: usize_to_u32(left_entry_index),
+            });
+        }
+    }
+
+    let cursor = cursor as usize;
+    let undo_matches = cursor
+        .checked_sub(1)
+        .and_then(|index| entries.get(index))
+        .is_none_or(|entry| same_replay_result(entry.checkpoint_parts().after, current));
+    let redo_matches = entries
+        .get(cursor)
+        .is_none_or(|entry| same_replay_result(entry.checkpoint_parts().before, current));
+    if !undo_matches || !redo_matches {
+        return Err(HistoryCheckpointInvariantError::CurrentBoundaryMismatch);
+    }
+    Ok(())
+}
+
+fn usize_to_u32(value: usize) -> u32 {
+    u32::try_from(value).unwrap_or(MAX_DEPTH_FALLBACK)
+}
+
+fn usize_to_u64(value: usize) -> u64 {
+    u64::try_from(value).unwrap_or(u64::MAX)
+}
