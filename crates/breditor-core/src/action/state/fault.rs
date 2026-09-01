@@ -10,7 +10,7 @@ use crate::{
     identity::QualifiedName,
     operation::{
         OperationApplyError, ParagraphJoinApplyError, ParagraphSplitApplyError, RelocationError,
-        SelectionRelocationError, TextSpliceApplyError,
+        RootTextReplaceApplyError, SelectionRelocationError, TextSpliceApplyError,
     },
     selection::{RangeEndpoint, SelectionError},
     session::HistoryReplayError,
@@ -288,6 +288,60 @@ pub enum ActionStateOperationFault {
     /// A paragraph-join result failed authoritative validation.
     #[error("paragraph-join invalid result")]
     ParagraphJoinInvalidResult,
+    /// A root-text replacement value violated its construction contract.
+    #[error("root-text replacement contract")]
+    RootTextReplaceContract,
+    /// A root-text replacement used a different schema.
+    #[error("root-text replacement schema mismatch")]
+    RootTextReplaceSchemaMismatch,
+    /// Root-text replacement is undefined for the active schema.
+    #[error("root-text replacement unsupported schema")]
+    RootTextReplaceUnsupportedSchema,
+    /// A guarded root-text paragraph path did not resolve.
+    #[error("root-text replacement node lookup")]
+    RootTextReplaceNodeLookup,
+    /// A guarded root-text paragraph target was invalid.
+    #[error("root-text replacement invalid target")]
+    RootTextReplaceInvalidTarget,
+    /// A complete root-text paragraph guard did not match.
+    #[error("root-text replacement expected mismatch")]
+    RootTextReplaceExpectedMismatch,
+    /// A root-text fragment slice contained too many paragraphs.
+    #[error("root-text replacement paragraph-count limit")]
+    RootTextReplaceParagraphCountLimit,
+    /// A root-text fragment slice exceeded the total text-byte limit.
+    #[error("root-text replacement total-text limit")]
+    RootTextReplaceTotalTextBytesLimit,
+    /// One root-text paragraph fragment contained too many runs.
+    #[error("root-text replacement fragment run-count limit")]
+    RootTextReplaceFragmentRunCountLimit,
+    /// One root-text fragment run exceeded its byte limit.
+    #[error("root-text replacement fragment text limit")]
+    RootTextReplaceFragmentTextBytesLimit,
+    /// One root-text fragment run contained too many formats.
+    #[error("root-text replacement fragment format-count limit")]
+    RootTextReplaceFragmentFormatCountLimit,
+    /// A root-text fragment used a disallowed format.
+    #[error("root-text replacement fragment format not allowed")]
+    RootTextReplaceFragmentFormatNotAllowed,
+    /// A root-text fragment used disallowed format properties.
+    #[error("root-text replacement fragment format properties not allowed")]
+    RootTextReplaceFragmentFormatPropertiesNotAllowed,
+    /// Reading or rebuilding a root-text fragment failed.
+    #[error("root-text replacement fragment")]
+    RootTextReplaceFragment,
+    /// Constructing the exact root-text inverse failed.
+    #[error("root-text replacement inverse")]
+    RootTextReplaceInverse,
+    /// Checked root-text coordinate arithmetic failed.
+    #[error("root-text replacement coordinate overflow")]
+    RootTextReplaceCoordinateOverflow,
+    /// Persistent root-text rebuilding violated an invariant.
+    #[error("root-text replacement tree invariant")]
+    RootTextReplaceTreeInvariant,
+    /// A root-text replacement result failed authoritative validation.
+    #[error("root-text replacement invalid result")]
+    RootTextReplaceInvalidResult,
 }
 
 /// Bounded category projection of automatic selection relocation failure.
@@ -729,6 +783,62 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             }
             ParagraphJoinApplyError::InvalidResult(_) => {
                 ActionStateOperationFault::ParagraphJoinInvalidResult
+            }
+        },
+        OperationApplyError::RootTextReplace(source) => match source {
+            RootTextReplaceApplyError::Contract(_) => {
+                ActionStateOperationFault::RootTextReplaceContract
+            }
+            RootTextReplaceApplyError::SchemaMismatch { .. } => {
+                ActionStateOperationFault::RootTextReplaceSchemaMismatch
+            }
+            RootTextReplaceApplyError::UnsupportedSchema { .. } => {
+                ActionStateOperationFault::RootTextReplaceUnsupportedSchema
+            }
+            RootTextReplaceApplyError::NodeLookup(_) => {
+                ActionStateOperationFault::RootTextReplaceNodeLookup
+            }
+            RootTextReplaceApplyError::InvalidTarget { .. } => {
+                ActionStateOperationFault::RootTextReplaceInvalidTarget
+            }
+            RootTextReplaceApplyError::ExpectedMismatch { .. } => {
+                ActionStateOperationFault::RootTextReplaceExpectedMismatch
+            }
+            RootTextReplaceApplyError::ParagraphCountLimit { .. } => {
+                ActionStateOperationFault::RootTextReplaceParagraphCountLimit
+            }
+            RootTextReplaceApplyError::TotalTextBytesLimit { .. } => {
+                ActionStateOperationFault::RootTextReplaceTotalTextBytesLimit
+            }
+            RootTextReplaceApplyError::FragmentRunCountLimit { .. } => {
+                ActionStateOperationFault::RootTextReplaceFragmentRunCountLimit
+            }
+            RootTextReplaceApplyError::FragmentTextBytesLimit { .. } => {
+                ActionStateOperationFault::RootTextReplaceFragmentTextBytesLimit
+            }
+            RootTextReplaceApplyError::FragmentFormatCountLimit { .. } => {
+                ActionStateOperationFault::RootTextReplaceFragmentFormatCountLimit
+            }
+            RootTextReplaceApplyError::FragmentFormatNotAllowed { .. } => {
+                ActionStateOperationFault::RootTextReplaceFragmentFormatNotAllowed
+            }
+            RootTextReplaceApplyError::FragmentFormatPropertiesNotAllowed { .. } => {
+                ActionStateOperationFault::RootTextReplaceFragmentFormatPropertiesNotAllowed
+            }
+            RootTextReplaceApplyError::Fragment(_) => {
+                ActionStateOperationFault::RootTextReplaceFragment
+            }
+            RootTextReplaceApplyError::Inverse(_) => {
+                ActionStateOperationFault::RootTextReplaceInverse
+            }
+            RootTextReplaceApplyError::CoordinateOverflow => {
+                ActionStateOperationFault::RootTextReplaceCoordinateOverflow
+            }
+            RootTextReplaceApplyError::TreeInvariant { .. } => {
+                ActionStateOperationFault::RootTextReplaceTreeInvariant
+            }
+            RootTextReplaceApplyError::InvalidResult(_) => {
+                ActionStateOperationFault::RootTextReplaceInvalidResult
             }
         },
     }

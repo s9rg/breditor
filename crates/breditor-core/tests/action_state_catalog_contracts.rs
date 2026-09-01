@@ -31,7 +31,10 @@ use breditor_core::{
     codec::DocumentJsonCodec,
     document::{FormatSet, TextFragment, TextRun},
     identity::QualifiedName,
-    operation::{Operation, SelectionRelocationPolicy, TextRange, TextSplice},
+    operation::{
+        Operation, RootTextBoundary, RootTextRange, RootTextReplace, SelectionRelocationPolicy,
+        TextRange, TextSplice,
+    },
     position::{NodePath, TextOffset},
     session::EditorSession,
     state::{EditorContext, EditorState, LineageId},
@@ -775,6 +778,65 @@ fn transaction_failures_are_bounded_typed_projections_without_document_payloads(
                 ActionStateTransactionFault::Operation {
                     operation_index: 0,
                     source: ActionStateOperationFault::TextSpliceExpectedRemovedMismatch,
+                },
+            )),
+        })
+    );
+    assert_eq!(batch.summary().value_count(), 0);
+    assert_eq!(batch.summary().text_bytes(), 0);
+    assert!(!format!("{entry:?}\n{batch:?}").contains(secret));
+    Ok(())
+}
+
+#[test]
+fn root_text_failures_are_bounded_typed_projections_without_guard_payloads() -> TestResult {
+    let secret = "root-secret";
+    let operation_state = editor_state("catalog-projected-root-operation", secret)?;
+    let paragraph_path = NodePath::try_from_indices(vec![0])?;
+    let range = RootTextRange::try_new(
+        RootTextBoundary::try_new(paragraph_path.clone(), TextOffset::ZERO)?,
+        RootTextBoundary::try_new(
+            paragraph_path,
+            TextOffset::try_new(u64::try_from(secret.encode_utf16().count())?)?,
+        )?,
+    )?;
+    let replacement = TextFragment::from(TextRun::try_new("x", FormatSet::default())?);
+    let operation = RootTextReplace::capture(
+        operation_state.context(),
+        operation_state.document(),
+        range,
+        vec![replacement],
+    )?;
+    let plan = ActionPlan::new(
+        vec![operation.into()],
+        SelectionRelocationPolicy::default(),
+        SelectionUpdate::Relocate,
+        PendingFormatsUpdate::Preserve,
+        HistoryIntent::Record,
+    );
+    let action = action_id("test/project-invalid-root-transaction")?;
+    let registry = ActionRegistry::try_new(vec![ActionRegistration::without_input(
+        action.clone(),
+        FixedPlanAction { plan },
+    )])?;
+    let id = state_id("test/project-invalid-root-transaction-control")?;
+    let catalog = ActionStateCatalog::try_new(
+        registry,
+        vec![direct_registration(id.clone(), action.clone())],
+    )?;
+    let session =
+        EditorSession::new(editor_state("catalog-projected-root-operation", "public-data")?);
+    let batch = catalog.derive(&session)?;
+    let entry = batch.entry(&id).ok_or_else(|| test_error("missing projected fault entry"))?;
+
+    assert_eq!(
+        entry.outcome(),
+        &ActionStateOutcome::Fault(ActionStateFault::Direct {
+            action,
+            source: ActionStateActionFault::InvalidPlan(ActionStatePlanFault::Transaction(
+                ActionStateTransactionFault::Operation {
+                    operation_index: 0,
+                    source: ActionStateOperationFault::RootTextReplaceExpectedMismatch,
                 },
             )),
         })

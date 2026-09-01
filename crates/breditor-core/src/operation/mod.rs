@@ -6,6 +6,8 @@ mod paragraph_join;
 mod paragraph_split;
 mod paragraph_support;
 mod relocation;
+mod root_text_range;
+mod root_text_replace;
 mod text_range;
 mod text_splice;
 
@@ -20,6 +22,13 @@ pub use relocation::{
     DeletedPointPolicy, PointRelocation, RelocationError, RelocationMap, SelectionRelocationError,
     SelectionRelocationPolicy,
 };
+pub use root_text_range::{
+    RootTextBoundary, RootTextBoundaryError, RootTextRange, RootTextRangeError,
+};
+pub use root_text_replace::{
+    RootTextFragmentRole, RootTextRangeBoundary, RootTextReplace, RootTextReplaceApplyError,
+    RootTextReplaceError,
+};
 pub use text_range::{TextRange, TextRangeError};
 pub use text_splice::{
     FragmentRole, TextSplice, TextSpliceApplyError, TextSpliceError, TextSpliceTargetRule,
@@ -28,5 +37,6 @@ pub use text_splice::{
 
 pub(crate) use kind::{AppliedChange, AppliedOperation};
 pub(crate) use relocation::{
-    ParagraphJoinMap, ParagraphSplitMap, RelocationStep, RelocationStepMap, TextSpliceMap,
+    ParagraphJoinMap, ParagraphSplitMap, RelocationStep, RelocationStepMap, RootTextReplaceMap,
+    TextSpliceMap,
 };

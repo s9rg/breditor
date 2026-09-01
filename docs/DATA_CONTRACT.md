@@ -15,8 +15,9 @@ The implemented Rust slice owns:
   selections;
 - `EditorContext`, `EditorState`, lineage-local snapshots, and pending typing
   formats;
-- paragraph-local `TextSplice` and direct-root `ParagraphSplit`/`ParagraphJoin`
-  operations with closed exact content inverses;
+- paragraph-local `TextSplice`, direct-root `ParagraphSplit`/`ParagraphJoin`,
+  and guarded root-text range replacement operations with closed exact content
+  inverses;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -34,11 +35,11 @@ The implemented Rust slice owns:
 
 The following remain deliberately unimplemented:
 
-- structural operations beyond direct-root base-paragraph split/join, including
-  arbitrary block insertion, list changes, metadata conflict rules, and node
-  movement;
-- cross-paragraph range replacement and formatting, and generic mark
-  attributes;
+- structural operations beyond direct-root base-paragraph text structure,
+  including arbitrary block kinds, list changes, metadata conflict rules, and
+  node movement;
+- semantic cross-paragraph insertion, deletion, and formatting actions, and
+  generic mark attributes;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
@@ -167,9 +168,10 @@ adds a process-local synchronous cache and local deltas over those batches.
 Version `0.0.10` adds the first tracked formatting control and guarded
 same-paragraph strong-format mutation. Version `0.0.11` adds bounded semantic
 text insertion, including pending-format consumption and deterministic typing
-history grouping. None of these checkpoints changes document format version
-`1`, introduces an executable capability cache, or defines a durable
-action-state wire format.
+history grouping. Version `0.0.12` adds one guarded root-text range replacement
+operation with a closed same-type inverse. None of these checkpoints changes
+document format version `1`, introduces an executable capability cache, or
+defines a durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -330,12 +332,45 @@ content and cached summaries even when a seam was represented by one merged text
 leaf. Whole-paragraph guards also make later operations in a multi-operation
 transaction fail deterministically against unexpected intermediates.
 
-Both operations rebuild the affected paragraph content and root child vector,
-retain untouched sibling `NodeRef` allocations, and submit the complete candidate
-to the authoritative schema validator. Candidate limit/schema-rule
-failures carry that validator's unchanged `ValidationReport`; schema identity or
-unsupported-schema failures remain distinct typed errors. The transaction stays
-atomic in every case.
+`RootTextReplace` is the general guarded text-structure primitive for a range
+whose endpoints are aggregate UTF-16 scalar boundaries in direct-root base
+paragraphs. `RootTextRange` stores affinity-free start/end paragraph paths and
+offsets in source order. The operation stores the complete expected paragraph
+slice for that inclusive span and a non-empty replacement paragraph-fragment
+slice. One empty fragment means an empty paragraph; the replacement slice itself
+can never be empty, so the base document's one-or-more-paragraph invariant is not
+an accidental postcondition.
+
+The first expected paragraph's prefix before the start and the last expected
+paragraph's suffix after the end survive. With one replacement fragment the
+result is `prefix + replacement + suffix`. With several, the prefix joins the
+first replacement, the suffix joins the last, and replacement middles become
+complete paragraphs. Equal-format seams are canonicalized. Complete source
+guards make a stale paragraph fail at its first deterministic span offset.
+Same-paragraph source ranges are allowed because the inverse of a
+cross-paragraph collapse must insert several paragraphs back into one result
+paragraph.
+
+Its inverse is another `RootTextReplace`. The inverse guards every complete
+generated result paragraph, selects exactly the inserted replacement slice, and
+replaces it with the removed first tail, complete middle paragraphs, and last
+prefix. Aggregate UTF-16 coordinates recover the exact formatted slices even
+when result seams merged into one text leaf. Forward then inverse restores the
+exact document, and the inverse's inverse reconstructs the original operation.
+An operation whose completely derived paragraph slice already equals its guard
+is filtered as unchanged and emits no inverse, relocation step, or change.
+
+All three structural operation forms rebuild affected paragraph content and the
+root child vector, retain untouched sibling `NodeRef` allocations, and submit
+the complete candidate to the authoritative schema validator. Root-text
+replacement publishes once, without split/join intermediates, so a valid final
+tree cannot fail merely because a temporary representation exceeded a limit.
+Candidate limit/schema-rule failures carry the validator's unchanged
+`ValidationReport`; schema identity or unsupported-schema failures remain
+distinct typed errors. The transaction stays atomic in every case. These
+operations intentionally support only the exact base schema. A future schema
+with block properties, entity identities, or heterogeneous block shells needs
+an explicit metadata policy rather than silently inheriting this contract.
 
 ## Transactions, relocation, and commits
 
@@ -369,6 +404,22 @@ relocation as hidden UI policy. If relocation expands a previously collapsed
 selection while pending typing formats are preserved, final-state validation
 rejects the transaction; an action must explicitly choose both intended
 selection and pending-format outcomes.
+
+Root-text replacement maps positions before the guarded paragraph span exactly
+and shifts later root-child paths by the checked difference between replacement
+and source paragraph counts. Retained first-prefix and last-suffix positions
+move into the corresponding first/last result paragraphs. The source start is
+an insertion boundary: `Before` stays before the replacement and `After` moves
+after it. A non-empty source range's end moves after the replacement; a
+collapsed range has only the affinity-owned insertion boundary. Points strictly
+inside removed text or complete middle paragraphs expose
+`Deleted { before, after }`; root child boundaries strictly inside the replaced
+span do the same. Paragraph exit, the
+intervening root boundary, and the next paragraph entry remain distinct
+structural positions, as they are in document-aware point ordering. Result
+points preserve affinity and use valid canonical text/child encodings. The map
+is intentionally non-bijective; history restores recorded selections rather
+than pretending relocation can recover deleted provenance.
 
 `ChangeSet` entries are deliberately heterogeneous and operation-relative.
 `Change::Text` carries text and conservative text-child ranges;
@@ -834,9 +885,14 @@ checked global deltas instead of rescanning a matching-profile document, but:
 
 - any profile/schema/path the local proof cannot establish falls back to
   full-tree schema and resource validation;
-- every paragraph split/join performs full-tree validation and carries complete
-  paragraph guards until structural subtree proofs and durable operation records
-  are specified;
+- every paragraph split/join and root-text replacement performs full-tree
+  validation and carries complete paragraph guards until structural subtree
+  proofs and durable operation records are specified. A wide cross-paragraph
+  replacement therefore scans and retains the complete affected paragraph
+  slice in both the forward operation and its inverse. Construction and
+  application also derive and canonicalize those slices repeatedly to prove
+  same-type inverse closure; a private proof-carrying/cached derivation can
+  remove that repeated allocation without changing the public contract;
 - every enabled action capability query eagerly applies its generated
   transaction once to prove and cache the result. The eager catalog path still
   repeats planning for every descriptor; the synchronous action-state cache
@@ -934,14 +990,14 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add a native guarded cross-paragraph range-replacement operation. It must own
-exact source-paragraph guards, collapse the selected block span into one valid
-result paragraph, provide a closed inverse that restores every removed
-paragraph, relocate points deterministically, preserve authoritative
-diagnostics, and enforce limits atomically. Then lift semantic insertion and
-backward deletion over multi-paragraph selections; paragraph break and
-formatting can build on the same primitive. Browser `beforeinput`, composition
-ownership, IME buffering, and paste chunking remain adapter concerns. Keep
-presentation metadata and delivery outside the deterministic core; subscriber
-lifecycle, catalog replacement, backpressure, and coalescing still require a
-separate contract before exposing an observer API.
+Lift `breditor/insert-text` over cross-paragraph range selections through one
+guarded `RootTextReplace`. Preserve the action's bounded input, spatial-first
+format inheritance, pending-format consumption, deterministic result caret,
+and typing-history laws while replacing the selected structural span with one
+inline paragraph fragment. Backward deletion and paragraph break can follow in
+separate checkpoints; formatting needs an explicit decision about preserving
+or distributing block boundaries. Browser `beforeinput`, composition ownership,
+IME buffering, and paste chunking remain adapter concerns. Keep presentation
+metadata and delivery outside the deterministic core; subscriber lifecycle,
+catalog replacement, backpressure, and coalescing still require a separate
+contract before exposing an observer API.

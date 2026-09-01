@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{
     document::{Document, NodeLookupError},
-    operation::TextRange,
+    operation::{RootTextRange, TextRange},
     position::{Affinity, NodePath, Point, PointError, TextOffset, TextOffsetError},
     selection::{RangeEndpoint, RangeSelection, Selection},
     state::{EditorState, SnapshotId},
@@ -260,6 +260,7 @@ pub(crate) enum RelocationStepMap {
     TextSplice(TextSpliceMap),
     ParagraphSplit(ParagraphSplitMap),
     ParagraphJoin(ParagraphJoinMap),
+    RootTextReplace(RootTextReplaceMap),
 }
 
 impl RelocationStepMap {
@@ -273,6 +274,7 @@ impl RelocationStepMap {
             Self::TextSplice(map) => map.relocate(before, after, point),
             Self::ParagraphSplit(map) => map.relocate(before, after, point),
             Self::ParagraphJoin(map) => map.relocate(before, after, point),
+            Self::RootTextReplace(map) => map.relocate(before, after, point),
         }
     }
 }
@@ -292,6 +294,12 @@ impl From<ParagraphSplitMap> for RelocationStepMap {
 impl From<ParagraphJoinMap> for RelocationStepMap {
     fn from(value: ParagraphJoinMap) -> Self {
         Self::ParagraphJoin(value)
+    }
+}
+
+impl From<RootTextReplaceMap> for RelocationStepMap {
+    fn from(value: RootTextReplaceMap) -> Self {
+        Self::RootTextReplace(value)
     }
 }
 
@@ -536,6 +544,245 @@ impl ParagraphJoinMap {
     }
 }
 
+/// Relocation data for replacing one root-level text range with paragraphs.
+///
+/// The replacement operation retains the source prefix before `range.start()`
+/// in its first result paragraph and the source suffix after `range.end()` in
+/// its last result paragraph. Only the replacement count and its boundary
+/// paragraph lengths are needed to identify the two sides of deleted content.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RootTextReplaceMap {
+    range: RootTextRange,
+    replacement_paragraph_count: u32,
+    first_replacement_utf16_len: TextOffset,
+    last_replacement_utf16_len: TextOffset,
+}
+
+impl RootTextReplaceMap {
+    pub(crate) const fn new(
+        range: RootTextRange,
+        replacement_paragraph_count: u32,
+        first_replacement_utf16_len: TextOffset,
+        last_replacement_utf16_len: TextOffset,
+    ) -> Self {
+        Self {
+            range,
+            replacement_paragraph_count,
+            first_replacement_utf16_len,
+            last_replacement_utf16_len,
+        }
+    }
+
+    fn relocate(
+        &self,
+        before: &Document,
+        after: &Document,
+        point: &Point,
+    ) -> Result<PointRelocation, RelocationError> {
+        point.resolve(before).map_err(RelocationError::InvalidSourcePoint)?;
+        let start_index = self.range.start().paragraph_index();
+        let end_index = self.range.end().paragraph_index();
+        if end_index < start_index || self.replacement_paragraph_count == 0 {
+            return Err(RelocationError::CoordinateOverflow);
+        }
+
+        if let Point::Children { parent_path, child_index, affinity } = point
+            && parent_path.is_root()
+        {
+            if *child_index <= start_index {
+                return exact_result_point(after, point.clone());
+            }
+            let source_after =
+                end_index.checked_add(1).ok_or(RelocationError::CoordinateOverflow)?;
+            if *child_index >= source_after {
+                let mapped_index = self.map_after_root_index(*child_index)?;
+                return exact_result_point(
+                    after,
+                    Point::Children {
+                        parent_path: NodePath::root(),
+                        child_index: mapped_index,
+                        affinity: *affinity,
+                    },
+                );
+            }
+            return self.deleted_result(after, *affinity);
+        }
+
+        let point_index = point_root_child_index(point)?;
+        if point_index < start_index {
+            return exact_result_point(after, point.clone());
+        }
+        if point_index > end_index {
+            return exact_result_point(
+                after,
+                map_point_root_index(point, self.map_after_root_index(point_index)?)?,
+            );
+        }
+
+        let affinity = point.affinity();
+        let source_path = if point_index == start_index {
+            self.range.start().paragraph_path()
+        } else if point_index == end_index {
+            self.range.end().paragraph_path()
+        } else {
+            return self.deleted_result(after, affinity);
+        };
+        ensure_point_in_container(point, source_path)?;
+        let offset = point_offset_in_container(before, source_path, point)?;
+
+        if start_index == end_index {
+            return self.relocate_same_paragraph(after, offset, affinity);
+        }
+        if point_index == start_index {
+            return match offset.cmp(&self.range.start().offset()) {
+                Ordering::Less => Self::exact_at(after, start_index, offset, affinity),
+                Ordering::Equal => self.start_result(after, affinity),
+                Ordering::Greater => self.deleted_result(after, affinity),
+            };
+        }
+
+        match offset.cmp(&self.range.end().offset()) {
+            Ordering::Less => self.deleted_result(after, affinity),
+            Ordering::Equal => self.end_result(after, affinity),
+            Ordering::Greater => self.suffix_result(after, offset, affinity),
+        }
+    }
+
+    fn relocate_same_paragraph(
+        &self,
+        after: &Document,
+        offset: TextOffset,
+        affinity: Affinity,
+    ) -> Result<PointRelocation, RelocationError> {
+        let start = self.range.start().offset();
+        let end = self.range.end().offset();
+        if end < start {
+            return Err(RelocationError::CoordinateOverflow);
+        }
+        if offset < start {
+            return Self::exact_at(after, self.range.start().paragraph_index(), offset, affinity);
+        }
+        if offset > end {
+            return self.suffix_result(after, offset, affinity);
+        }
+        if offset == start {
+            return self.start_result(after, affinity);
+        }
+        if offset == end {
+            return self.end_result(after, affinity);
+        }
+        self.deleted_result(after, affinity)
+    }
+
+    fn start_result(
+        &self,
+        after: &Document,
+        affinity: Affinity,
+    ) -> Result<PointRelocation, RelocationError> {
+        match affinity {
+            Affinity::Before => self.before_point(after, affinity).map(PointRelocation::Exact),
+            Affinity::After => self.after_point(after, affinity).map(PointRelocation::Exact),
+        }
+    }
+
+    fn end_result(
+        &self,
+        after: &Document,
+        affinity: Affinity,
+    ) -> Result<PointRelocation, RelocationError> {
+        self.after_point(after, affinity).map(PointRelocation::Exact)
+    }
+
+    fn deleted_result(
+        &self,
+        after: &Document,
+        affinity: Affinity,
+    ) -> Result<PointRelocation, RelocationError> {
+        Ok(PointRelocation::Deleted {
+            before: self.before_point(after, affinity)?,
+            after: self.after_point(after, affinity)?,
+        })
+    }
+
+    fn suffix_result(
+        &self,
+        after: &Document,
+        source_offset: TextOffset,
+        affinity: Affinity,
+    ) -> Result<PointRelocation, RelocationError> {
+        let suffix_offset = source_offset
+            .get()
+            .checked_sub(self.range.end().offset().get())
+            .ok_or(RelocationError::CoordinateOverflow)?;
+        let result_offset = self.after_offset()?.checked_add(suffix_offset)?;
+        Self::exact_at(after, self.result_last_index()?, result_offset, affinity)
+    }
+
+    fn before_point(&self, after: &Document, affinity: Affinity) -> Result<Point, RelocationError> {
+        result_point_at_offset(
+            after,
+            self.range.start().paragraph_index(),
+            self.range.start().offset(),
+            affinity,
+        )
+    }
+
+    fn after_point(&self, after: &Document, affinity: Affinity) -> Result<Point, RelocationError> {
+        result_point_at_offset(after, self.result_last_index()?, self.after_offset()?, affinity)
+    }
+
+    fn exact_at(
+        after: &Document,
+        paragraph_index: u32,
+        offset: TextOffset,
+        affinity: Affinity,
+    ) -> Result<PointRelocation, RelocationError> {
+        result_point_at_offset(after, paragraph_index, offset, affinity).map(PointRelocation::Exact)
+    }
+
+    fn result_last_index(&self) -> Result<u32, RelocationError> {
+        let replacement_tail = self
+            .replacement_paragraph_count
+            .checked_sub(1)
+            .ok_or(RelocationError::CoordinateOverflow)?;
+        self.range
+            .start()
+            .paragraph_index()
+            .checked_add(replacement_tail)
+            .ok_or(RelocationError::CoordinateOverflow)
+    }
+
+    fn after_offset(&self) -> Result<TextOffset, RelocationError> {
+        if self.replacement_paragraph_count == 1 {
+            self.range
+                .start()
+                .offset()
+                .checked_add(self.first_replacement_utf16_len.get())
+                .map_err(Into::into)
+        } else {
+            Ok(self.last_replacement_utf16_len)
+        }
+    }
+
+    fn map_after_root_index(&self, source_index: u32) -> Result<u32, RelocationError> {
+        let source_after = self
+            .range
+            .end()
+            .paragraph_index()
+            .checked_add(1)
+            .ok_or(RelocationError::CoordinateOverflow)?;
+        let distance =
+            source_index.checked_sub(source_after).ok_or(RelocationError::CoordinateOverflow)?;
+        let result_after = self
+            .range
+            .start()
+            .paragraph_index()
+            .checked_add(self.replacement_paragraph_count)
+            .ok_or(RelocationError::CoordinateOverflow)?;
+        result_after.checked_add(distance).ok_or(RelocationError::CoordinateOverflow)
+    }
+}
+
 fn exact_result_point(after: &Document, point: Point) -> Result<PointRelocation, RelocationError> {
     point.resolve(after).map_err(RelocationError::InvalidResultPoint)?;
     Ok(PointRelocation::Exact(point))
@@ -584,6 +831,21 @@ fn shift_point_root_index(point: &Point, shift: IndexShift) -> Result<Point, Rel
     })
 }
 
+fn map_point_root_index(point: &Point, root_index: u32) -> Result<Point, RelocationError> {
+    Ok(match point {
+        Point::Text { text_path, utf16_offset, affinity } => Point::Text {
+            text_path: replace_root_child_index(text_path, root_index)?,
+            utf16_offset: *utf16_offset,
+            affinity: *affinity,
+        },
+        Point::Children { parent_path, child_index, affinity } => Point::Children {
+            parent_path: replace_root_child_index(parent_path, root_index)?,
+            child_index: *child_index,
+            affinity: *affinity,
+        },
+    })
+}
+
 fn shift_root_child_path(path: &NodePath, shift: IndexShift) -> Result<NodePath, RelocationError> {
     let mut indices = path.to_vec();
     let first = indices.first_mut().ok_or(RelocationError::CoordinateOverflow)?;
@@ -591,6 +853,13 @@ fn shift_root_child_path(path: &NodePath, shift: IndexShift) -> Result<NodePath,
         IndexShift::Next => first.checked_add(1).ok_or(RelocationError::CoordinateOverflow)?,
         IndexShift::Previous => first.checked_sub(1).ok_or(RelocationError::CoordinateOverflow)?,
     };
+    NodePath::try_from_indices(indices).map_err(|_| RelocationError::CoordinateOverflow)
+}
+
+fn replace_root_child_index(path: &NodePath, root_index: u32) -> Result<NodePath, RelocationError> {
+    let mut indices = path.to_vec();
+    let first = indices.first_mut().ok_or(RelocationError::CoordinateOverflow)?;
+    *first = root_index;
     NodePath::try_from_indices(indices).map_err(|_| RelocationError::CoordinateOverflow)
 }
 
@@ -691,6 +960,17 @@ fn point_at_offset(
         return text_point(container_path, index, length, affinity);
     }
     Err(RelocationError::OffsetOutOfBounds { offset, length: cursor })
+}
+
+fn result_point_at_offset(
+    document: &Document,
+    paragraph_index: u32,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<Point, RelocationError> {
+    let paragraph_path = NodePath::try_from_indices(vec![paragraph_index])
+        .map_err(|_| RelocationError::CoordinateOverflow)?;
+    point_at_offset(document, &paragraph_path, offset, affinity)
 }
 
 fn text_point(

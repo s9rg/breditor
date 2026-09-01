@@ -9,7 +9,8 @@ measurements, the fixed base schema used by the first proof, a strict JSON
 codec, UTF-16-safe points and selections, paragraph-local text splices, atomic
 transactions, direct-root paragraph split/join operations, proof-backed local
 validation for fixed-base text edits, structural relocation, heterogeneous
-change notifications, exact in-memory undo/redo requests, an immutable typed
+change notifications, guarded root-text range replacement with a closed
+same-type inverse, exact in-memory undo/redo requests, an immutable typed
 action registry, a frozen semantic intent router, and base text-insertion,
 paragraph-break, backward-delete, and strong-format actions. Registry
 preparation is the authoritative integration path for semantic capability and
@@ -33,4 +34,5 @@ same-paragraph range, and offers adjacent edits to the `breditor/typing` history
 group.
 The crate is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-durable replay log, collaboration transform, or Wasm adapter yet.
+semantic cross-paragraph action planners, durable replay log, collaboration
+transform, or Wasm adapter yet.

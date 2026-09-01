@@ -4,7 +4,8 @@ use crate::{
     document::Document,
     operation::{
         Change, ParagraphJoin, ParagraphJoinApplyError, ParagraphSplit, ParagraphSplitApplyError,
-        RelocationStepMap, TextSplice, TextSpliceApplyError,
+        RelocationStepMap, RootTextReplace, RootTextReplaceApplyError, TextSplice,
+        TextSpliceApplyError,
     },
     state::EditorContext,
 };
@@ -22,6 +23,8 @@ pub enum Operation {
     ParagraphSplit(ParagraphSplit),
     /// Join two adjacent direct-root base paragraphs.
     ParagraphJoin(ParagraphJoin),
+    /// Replace one guarded text range across direct-root base paragraphs.
+    RootTextReplace(RootTextReplace),
 }
 
 impl From<TextSplice> for Operation {
@@ -42,6 +45,12 @@ impl From<ParagraphJoin> for Operation {
     }
 }
 
+impl From<RootTextReplace> for Operation {
+    fn from(value: RootTextReplace) -> Self {
+        Self::RootTextReplace(value)
+    }
+}
+
 impl Operation {
     // Transaction execution supplies a document proved by this exact context.
     // Individual operations still guard schema identity; publication either
@@ -57,6 +66,9 @@ impl Operation {
                 operation.apply(context, document).map_err(Into::into)
             }
             Self::ParagraphJoin(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
+            Self::RootTextReplace(operation) => {
                 operation.apply(context, document).map_err(Into::into)
             }
         }
@@ -88,4 +100,7 @@ pub enum OperationApplyError {
     /// A paragraph-join contract or application rule failed.
     #[error(transparent)]
     ParagraphJoin(#[from] ParagraphJoinApplyError),
+    /// A root-text replacement contract or application rule failed.
+    #[error(transparent)]
+    RootTextReplace(#[from] RootTextReplaceApplyError),
 }
