@@ -12,6 +12,8 @@ mod editor_state_json;
 mod editor_value_payload_v1;
 mod error;
 mod json_size;
+mod local_log_entry_error;
+mod local_log_entry_json;
 mod operation_error;
 mod operation_json;
 mod operation_payload_v1;
@@ -40,6 +42,13 @@ pub use editor_state_json::{
     EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION, EditorStateJsonCodec,
 };
 pub use error::{CodecErrorCode, DocumentCodecError, JsonFailure, JsonFailureKind};
+pub use local_log_entry_error::{
+    LocalLogCommitEventKind, LocalLogEntryCodecError, LocalLogEntryRecordError,
+    LocalLogEntryRecordErrorCode, LocalLogEntryRecordLocation,
+};
+pub use local_log_entry_json::{
+    LOCAL_LOG_ENTRY_FORMAT, LOCAL_LOG_ENTRY_FORMAT_VERSION, LocalLogEntryJsonCodec,
+};
 pub use operation_error::{
     OperationCodecError, OperationFragmentField, OperationOffsetField, OperationPathField,
     OperationRecordError, OperationRecordErrorCode, OperationRecordLocation,

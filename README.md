@@ -14,7 +14,8 @@ This repository currently contains the first end-to-end Rust-core slice:
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
   editor-state checkpoints, self-contained replay-proved commit records, and
-  compact replay-proved bounded session/history checkpoints;
+  compact replay-proved bounded session/history checkpoints plus strict
+  replay-identified local-log event envelopes;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -61,8 +62,9 @@ This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, ordered durable logs, delivery identities,
-deduplicated incremental replay and crash-tail recovery, Wasm bindings,
+and plugin lifecycle management, ordered log-stream verification and storage,
+deduplicated incremental recovery, checkpoint linkage, and crash-tail recovery,
+Wasm bindings,
 a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See

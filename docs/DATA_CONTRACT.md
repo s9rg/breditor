@@ -8,6 +8,7 @@ Transaction-request format: `breditor/transaction-request`, version `1`
 Editor-state format: `breditor/editor-state`, version `1`
 Commit format: `breditor/commit`, version `1`
 Session-checkpoint format: `breditor/session-checkpoint`, version `1`
+Local-log-entry format: `breditor/local-log-entry`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -36,6 +37,9 @@ The implemented Rust slice owns:
 - a strict contextual session-checkpoint codec that restores one exact current
   state plus bounded chronological linear history, redo position, capacity,
   and merge continuity while deriving historical documents and inverses;
+- a strict single-entry local-log envelope that assigns independent durable
+  session, append-generation, sequence, and retry identities to ordinary
+  commits, undo/redo replays, and explicit history-boundary commands;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -59,8 +63,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- durable ordered logs, delivery identities, deduplicated incremental replay,
-  integrity/authenticity, migration, and crash-tail recovery;
+- ordered stream validation, deduplicated incremental recovery, checkpoint/log
+  linkage, integrity/authenticity, migration, and crash-tail recovery;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -120,6 +124,13 @@ untrusted session-checkpoint JSON + caller-supplied EditorContext and admission 
     -> select the cursor state and install the asserted current revision
     -> reconstruct bounded undo/redo branches and a fresh process-local history stamp
     -> publish one EditorSession or publish nothing
+
+untrusted local-log-entry JSON + caller-supplied EditorContext
+    -> whole-entry byte cap, format/version routing, and exact outer shape
+    -> checked durable session/log/replay identities and one-based sequence
+    -> exact event-shape routing and authoritative Commit V1 replay proof
+    -> exact undo/redo metadata classification
+    -> publish one independently valid LocalLogEntry or publish nothing
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -282,6 +293,15 @@ Host-selected checkpoint limits independently bound installed capacity,
 aggregate operations, and retained logical document resources. The checkpoint
 is still not an ordered log, delivery identity, authenticity proof, migration
 protocol, or crash-recovery policy.
+Version `0.0.22` adds the distinct `breditor/local-log-entry@1` contextual
+envelope and invariant-bearing runtime identities/events. It separates one
+session-global logical sequence and retry identity from editor-state revision,
+history grouping, and one append generation. The five event kinds distinguish
+ordinary publication, undo, redo, claimed merge-group closure, and claimed
+history clearing. Commit-bearing events embed and prove Commit V1; undo and
+redo additionally require their exact action metadata and ignored-history
+intent. This checkpoint is one entry boundary, not yet a stream, store,
+deduplication index, recovery engine, or durability claim.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -1773,14 +1793,126 @@ cryptographic cross-language canonicalization contract. Admission budgets
 limit resource use; they do not authenticate content or guarantee a fixed
 peak-memory multiple.
 
+### Local log entry V1
+
+Local Log Entry V1 is one independently decodable, replay-identified session
+event. It requires exactly seven fields regardless of input object-member
+order; the canonical encoder emits them in this order:
+
+```json
+{
+  "format": "breditor/local-log-entry",
+  "formatVersion": 1,
+  "sessionId": "session-01",
+  "logId": "generation-01",
+  "sequence": "42",
+  "replayId": "request-42",
+  "event": { "kind": "closeHistoryGroup" }
+}
+```
+
+`LocalSessionId`, `LocalLogId`, and `ReplayId` are separate caller-supplied
+opaque types. Each is 1 through 128 ASCII bytes, begins with an ASCII letter or
+digit, and thereafter admits ASCII letters, digits, `.`, `_`, `:`, and `-`.
+The deterministic core never invents one from time, randomness, an address, a
+node key, document content, or editor-state identity.
+
+The session ID names one durable editor-session lineage. A log ID names one
+append generation and changes when a future compaction protocol creates a new
+generation. A replay ID is the idempotency identity of one logical event: the
+host must keep it stable across an uncertain retry and unique within the
+session, including across generations. V1 validates only syntax; uniqueness,
+membership, and retry equivalence require the future ordered-stream boundary.
+
+`LocalLogSequence` is a distinct one-based `u64`. It is session-global and must
+continue across log generations. JSON uses the same canonical decimal-string
+grammar as snapshot revisions, but the values are unrelated. Every event,
+including a history-boundary command that changes no editor-state revision,
+consumes one sequence. Zero is reserved for the future empty-prefix checkpoint
+anchor. `u64::MAX` is a valid final value and has no successor.
+
+The exact event union is:
+
+```json
+{"kind":"commit","commit":{}}
+{"kind":"undo","commit":{}}
+{"kind":"redo","commit":{}}
+{"kind":"closeHistoryGroup"}
+{"kind":"clearHistory"}
+```
+
+The `{}` values above denote an embedded complete Commit V1 value rather than
+literal empty objects. Local Log Entry V1 pins `breditor/commit@1`; a future
+default commit codec cannot silently widen this composition boundary. Missing,
+duplicate, unknown, null-in-place-of-value, and wrong-type fields fail closed
+at both outer and event shapes.
+
+An ordinary `commit` event accepts any replay-proved Commit V1, including a
+state-only commit or a content commit with `Record`, `Merge`, or `Ignore`
+history intent. The intent remains behaviorally active and must be authorized
+by the eventual log owner. An `undo` or `redo` event requires a non-empty
+applied operation recipe, exact action `breditor/undo` or `breditor/redo`, and
+`HistoryIntent::Ignore`. This classification rejects accidental or mislabeled
+ordinary commits; attacker-authored metadata can still imitate it. It does not
+prove that the commit came from the named session: future recovery must call
+the corresponding `EditorSession::undo` or `redo` method and require the
+locally derived commit to equal the embedded proof. Accepting that replay
+commit through the ordinary commit path would clear history instead of moving
+the cursor.
+
+`closeHistoryGroup` and `clearHistory` deliberately have no commit payload.
+They exist because both commands can change future session behavior without
+changing the document or consuming an editor-state revision. Honest producers
+emit them only when the command is effective. V1 cannot establish effectiveness
+from an isolated entry; the future recovery verifier must reject or explicitly
+classify a redundant command against the recovered session.
+
+`LocalLogEntryJsonCodec` is bound to one caller-supplied `EditorContext`. Decode
+enforces the whole-entry byte cap, routes outer format and version, parses the
+exact borrowed outer shape, reconstructs the bounded identities and sequence,
+then routes the exact event shape and delegates a nested commit to
+`CommitJsonCodec`. It validates undo/redo classification and publishes only a
+complete runtime entry. Public record and event-classification
+failures use stable codes and bounded diagnostics. No failure retains a decoded
+commit or document-bearing transaction error. Encode rechecks the runtime
+event, counts the complete wrapper before allocating its result string, and
+emits deterministic compact Rust JSON. A commit that fits its standalone cap
+can still be rejected when the wrapper pushes the complete entry over that same
+context limit.
+
+The format separates four concepts that other editors often keep in different
+runtime layers: log order, retry identity, undo grouping, and serialization
+version. CKEditor operations and batches are a useful example of separating
+document version from undo grouping; ProseMirror's authority demonstrates
+fail-closed base-version ordering; and Lexical explicitly keeps its editor
+state rather than DOM as source of truth. Their collaboration and history
+protocols are not adopted here. In particular, ProseMirror client IDs are not
+durable idempotency keys, Lexical history stacks are not an append log, and
+Tiptap/Yjs collaboration updates solve a different multi-writer problem.
+
+This format is only one event envelope. It does not enforce contiguous or
+monotonic sequences, session/log membership, replay-ID uniqueness, duplicate
+payload equivalence, idempotent append, event applicability, checkpoint-prefix
+linkage, framing, complete-frame versus torn-tail classification, append/flush/
+fsync/ack order, compaction, migration, checksums, hashes, signatures,
+authorization, writer fencing, or cross-generation deduplication. IDs and
+sequence are unauthenticated assertions, not revisions or content hashes.
+Commit-bearing entries also repeat Commit V1's complete before state, so a
+naive tail costs roughly entry count times document size. Filesystem durability
+belongs to a platform adapter; a browser/Wasm host cannot inherit native
+`fsync` semantics from this deterministic crate.
+
 ## Next gate
 
-Freeze a durable ordered local log and delivery-identity boundary around the
-existing commit and session-checkpoint formats. It must define stable log and
-session identities, monotonic sequence and replay IDs, idempotent duplicate
-handling, checkpoint/log-prefix linkage, compaction, migration, integrity and
+Build the ordered recovery verifier over Local Log Entry V1. It must establish
+session/log membership, contiguous sequence, replay-ID uniqueness, exact
+duplicate equivalence, and deterministic application of all five event kinds
+without publishing a partial recovered session. The following checkpoint must
+bind Session Checkpoint V1 to a covered log prefix and define cross-generation
+compaction and retained deduplication state. Framing, migration, integrity and
 optional authenticity, authorization ownership, atomic append/fsync behavior,
-crash-tail detection and truncation, and deterministic recovery precedence.
+crash-tail detection/truncation, and multi-writer fencing remain separate
+storage-layer gates.
 The log must not silently treat optimistic operation guards or caller-owned
 lineage/revision values as exactly-once delivery. Browser `beforeinput`,
 composition ownership, IME buffering, and paste chunking remain adapter

@@ -3,7 +3,8 @@
 //! The crate currently owns immutable document values, the minimal compiled
 //! proof schema, strict versioned document, singular-operation, exact-base
 //! transaction-request, contextual complete editor-state, replay-proved
-//! durable commit, and bounded session-checkpoint JSON decoding,
+//! durable commit, bounded session-checkpoint, and replay-identified local-log
+//! entry JSON decoding,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -46,11 +47,16 @@
 //! chain in both directions, derives every later document and inverse recipe,
 //! and restores one bounded [`session::EditorSession`] with a fresh process-local
 //! history identity. It is neither an ordered log nor an authenticity proof.
+//! The local-log-entry codec adds separate durable session, append-generation,
+//! session-global sequence, and retry identities around ordinary commit,
+//! undo/redo, and history-boundary events. One entry does not prove stream
+//! membership, ordering, deduplication, durability, or authorization.
 
 pub mod action;
 pub mod codec;
 pub mod document;
 pub mod identity;
+pub mod local_log;
 pub mod operation;
 pub mod position;
 mod record;

@@ -8,7 +8,7 @@ The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, strict versioned
 document, singular guarded-operation, exact-base transaction-request,
 contextual complete editor-state, replay-proved commit, and bounded durable
-session-checkpoint JSON codecs,
+session-checkpoint plus replay-identified local-log-entry JSON codecs,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -49,5 +49,5 @@ plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-generic formatting-kind or attribute actions, durable ordered replay log,
+generic formatting-kind or attribute actions, ordered log storage/recovery,
 collaboration transform, or Wasm adapter yet.

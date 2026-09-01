@@ -4,6 +4,7 @@ mod commit_record;
 mod document_record;
 mod editor_state_record;
 mod editor_value_record;
+mod local_log_entry_record;
 mod operation_record;
 mod session_checkpoint_record;
 mod strict_json;
@@ -17,6 +18,10 @@ pub(crate) use editor_state_record::{EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VE
 pub(crate) use editor_value_record::{
     AffinityRecordV1, DecimalU64Record, DecimalU64RecordError, PendingFormatRecordV1,
     PointRecordV1, SelectionRecordV1, SnapshotIdRecordV1,
+};
+pub(crate) use local_log_entry_record::{
+    LOCAL_LOG_ENTRY_FORMAT, LOCAL_LOG_ENTRY_FORMAT_VERSION, LocalLogEntryRecordV1,
+    LocalLogEventRecordV1,
 };
 pub(crate) use operation_record::{
     EmptyPropertyMapRecord, OperationEnvelopeHeader, OperationFormatRecordV1,
