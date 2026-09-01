@@ -2,7 +2,7 @@ use crate::{
     action::{ActionDecision, ActionFault, DisabledReason},
     document::{FormatSet, TextFragment},
     identity::QualifiedName,
-    operation::{ParagraphSplit, SelectionRelocationPolicy},
+    operation::{ParagraphSplit, RootTextBoundary, RootTextRange, SelectionRelocationPolicy},
     position::{Affinity, NodePath, Point, TextOffset},
     selection::{RangeSelection, Selection},
     state::EditorState,
@@ -62,6 +62,178 @@ pub(super) fn require_operation_budget(
 ) -> Option<ActionDecision> {
     (required > state.context().max_operations_per_transaction())
         .then(|| ActionDecision::Disabled(disabled_reason("breditor/operation-budget-exceeded")))
+}
+
+/// Allocation-safe source proof for one genuine cross-paragraph text range.
+///
+/// The value owns every complete guarded paragraph plus the retained boundary
+/// fragments and exact removal totals needed for authoritative result-limit
+/// prediction. Construction proves the inclusive range against the actual root
+/// before allocating from its protocol-derived paragraph count.
+pub(super) struct CrossParagraphTextSource {
+    range: RootTextRange,
+    guards: Vec<TextFragment>,
+    prefix: TextFragment,
+    suffix: TextFragment,
+    first_selected_formats: Option<FormatSet>,
+    guard_run_count: usize,
+    guard_text_bytes: usize,
+}
+
+impl CrossParagraphTextSource {
+    /// Returns the checked direct-root source range.
+    pub(super) const fn range(&self) -> &RootTextRange {
+        &self.range
+    }
+
+    /// Returns every complete source-paragraph guard in spatial order.
+    pub(super) fn guards(&self) -> &[TextFragment] {
+        &self.guards
+    }
+
+    /// Returns the retained start-paragraph prefix.
+    pub(super) const fn prefix(&self) -> &TextFragment {
+        &self.prefix
+    }
+
+    /// Returns the retained end-paragraph suffix.
+    pub(super) const fn suffix(&self) -> &TextFragment {
+        &self.suffix
+    }
+
+    /// Returns the first spatially selected text run's formats, when any text is
+    /// selected.
+    pub(super) const fn first_selected_formats(&self) -> Option<&FormatSet> {
+        self.first_selected_formats.as_ref()
+    }
+
+    /// Returns the exact number of text runs in all complete guards.
+    pub(super) const fn guard_run_count(&self) -> usize {
+        self.guard_run_count
+    }
+
+    /// Returns the exact UTF-8 text bytes in all complete guards.
+    pub(super) const fn guard_text_bytes(&self) -> usize {
+        self.guard_text_bytes
+    }
+
+    /// Consumes the proof into the exact operation range and complete guards.
+    pub(super) fn into_range_and_guards(self) -> (RootTextRange, Vec<TextFragment>) {
+        (self.range, self.guards)
+    }
+}
+
+/// Why a published cross-paragraph selection could not become one source proof.
+pub(super) enum CrossParagraphTextSourceError {
+    /// Checked range, path, count, or root-bound arithmetic failed.
+    Span,
+    /// Constructing the checked root-text operation range failed.
+    Range,
+    /// Splitting one normalized boundary fragment unexpectedly failed.
+    Source,
+    /// Capturing one complete paragraph failed with its existing stable action
+    /// fault.
+    Paragraph(ActionFault),
+}
+
+/// Captures one genuine cross-paragraph selection in a single root-bounded
+/// document pass.
+pub(super) fn capture_cross_paragraph_text_source(
+    state: &EditorState,
+    range: &TextRangeSelection,
+) -> Result<CrossParagraphTextSource, CrossParagraphTextSourceError> {
+    if range.is_same_paragraph() {
+        return Err(CrossParagraphTextSourceError::Span);
+    }
+    let start_index =
+        range.start().paragraph_path().last_index().ok_or(CrossParagraphTextSourceError::Span)?;
+    let end_index =
+        range.end().paragraph_path().last_index().ok_or(CrossParagraphTextSourceError::Span)?;
+    let paragraph_count = end_index
+        .checked_sub(start_index)
+        .and_then(|distance| distance.checked_add(1))
+        .ok_or(CrossParagraphTextSourceError::Span)?;
+    let paragraph_count =
+        usize::try_from(paragraph_count).map_err(|_| CrossParagraphTextSourceError::Span)?;
+    if paragraph_count < 2 {
+        return Err(CrossParagraphTextSourceError::Span);
+    }
+
+    let root = state.document().root().as_element().ok_or(CrossParagraphTextSourceError::Span)?;
+    let start_native =
+        usize::try_from(start_index).map_err(|_| CrossParagraphTextSourceError::Span)?;
+    let end_native = usize::try_from(end_index).map_err(|_| CrossParagraphTextSourceError::Span)?;
+    if start_native >= root.children().len()
+        || end_native >= root.children().len()
+        || paragraph_count > root.children().len()
+    {
+        return Err(CrossParagraphTextSourceError::Span);
+    }
+
+    let start_boundary =
+        RootTextBoundary::try_new(range.start().paragraph_path().clone(), range.start().offset())
+            .map_err(|_| CrossParagraphTextSourceError::Range)?;
+    let end_boundary =
+        RootTextBoundary::try_new(range.end().paragraph_path().clone(), range.end().offset())
+            .map_err(|_| CrossParagraphTextSourceError::Range)?;
+    let root_range = RootTextRange::try_new(start_boundary, end_boundary)
+        .map_err(|_| CrossParagraphTextSourceError::Range)?;
+
+    // The actual-root proof above precedes allocation from the fixed-width
+    // range count; this remains safe for hostile protocol coordinates.
+    let mut guards = Vec::with_capacity(paragraph_count);
+    for paragraph_offset in 0..paragraph_count {
+        let paragraph_offset =
+            u32::try_from(paragraph_offset).map_err(|_| CrossParagraphTextSourceError::Span)?;
+        let paragraph_index =
+            start_index.checked_add(paragraph_offset).ok_or(CrossParagraphTextSourceError::Span)?;
+        let paragraph_path = NodePath::try_from_indices(vec![paragraph_index])
+            .map_err(|_| CrossParagraphTextSourceError::Span)?;
+        let boundary = if paragraph_index == start_index {
+            range.start().offset()
+        } else if paragraph_index == end_index {
+            range.end().offset()
+        } else {
+            TextOffset::ZERO
+        };
+        guards.push(
+            paragraph_fragment(state, &paragraph_path, boundary)
+                .map_err(CrossParagraphTextSourceError::Paragraph)?,
+        );
+    }
+
+    let first = guards.first().ok_or(CrossParagraphTextSourceError::Source)?;
+    let last = guards.last().ok_or(CrossParagraphTextSourceError::Source)?;
+    let (prefix, first_selected) = first
+        .split_at(range.start().offset())
+        .map_err(|_| CrossParagraphTextSourceError::Source)?;
+    let (last_selected, suffix) =
+        last.split_at(range.end().offset()).map_err(|_| CrossParagraphTextSourceError::Source)?;
+    let last_guard_index =
+        guards.len().checked_sub(1).ok_or(CrossParagraphTextSourceError::Source)?;
+    let first_selected_formats = first_selected
+        .iter()
+        .next()
+        .or_else(|| guards[1..last_guard_index].iter().find_map(|fragment| fragment.iter().next()))
+        .or_else(|| last_selected.iter().next())
+        .map(|run| run.formats().clone());
+
+    let (guard_run_count, guard_text_bytes) = guards
+        .iter()
+        .try_fold((0_usize, 0_usize), |(runs, bytes), fragment| {
+            Some((runs.checked_add(fragment.len())?, bytes.checked_add(fragment.text_bytes())?))
+        })
+        .ok_or(CrossParagraphTextSourceError::Span)?;
+
+    Ok(CrossParagraphTextSource {
+        range: root_range,
+        guards,
+        prefix,
+        suffix,
+        first_selected_formats,
+        guard_run_count,
+        guard_text_bytes,
+    })
 }
 
 pub(super) fn paragraph_fragment(

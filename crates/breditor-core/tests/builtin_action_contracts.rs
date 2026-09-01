@@ -668,7 +668,7 @@ fn builtins_report_stable_disabled_reasons_without_changing_state_or_revision() 
         None,
         "disabled-cross-paragraph",
     )?;
-    for id in [delete_id.clone(), enter_id.clone(), strong_id] {
+    for id in [enter_id.clone(), strong_id] {
         assert_disabled(&registry, &cross_paragraph, id, "breditor/cross-paragraph-selection")?;
     }
 

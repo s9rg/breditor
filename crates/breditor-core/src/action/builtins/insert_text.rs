@@ -11,10 +11,8 @@ use crate::{
     },
     document::{FormatSet, TextFragment, TextFragmentError, TextRun, TextRunError},
     identity::QualifiedName,
-    operation::{
-        Operation, RootTextBoundary, RootTextRange, RootTextReplace, TextRange, TextSplice,
-    },
-    position::{Affinity, NodePath, TextOffset},
+    operation::{Operation, RootTextReplace, TextRange, TextSplice},
+    position::Affinity,
     selection::{RangeSelection, Selection},
     state::EditorState,
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
@@ -22,7 +20,8 @@ use crate::{
 
 use super::super::text_position::TextRangeSelection;
 use super::support::{
-    base_shape_fits, base_total_text_fits, collapsed_selection_at_with_affinity, disabled,
+    CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
+    capture_cross_paragraph_text_source, collapsed_selection_at_with_affinity, disabled,
     effective_typing_formats, fault, fragment_range_parts, paragraph_fragment,
     require_base_text_range, require_operation_budget, strict_relocation,
 };
@@ -327,8 +326,17 @@ fn evaluate_cross_paragraph_insert(
     input: &InsertTextInput,
     range: &TextRangeSelection,
 ) -> Result<ActionDecision, ActionFault> {
-    let source = capture_cross_paragraph_source(state, range)?;
-    let replacement = match replacement_fragment(input, source.formats) {
+    let source =
+        capture_cross_paragraph_text_source(state, range).map_err(map_insert_cross_source_error)?;
+    // Extended selection formatting is spatial and affinity-independent. Only
+    // a text-empty structural selection consults its surviving seam, left first.
+    let formats = source
+        .first_selected_formats()
+        .cloned()
+        .or_else(|| source.prefix().iter().next_back().map(|run| run.formats().clone()))
+        .or_else(|| source.suffix().iter().next().map(|run| run.formats().clone()))
+        .unwrap_or_default();
+    let replacement = match replacement_fragment(input, formats) {
         Ok(replacement) => replacement,
         Err(ReplacementError::Capacity) => {
             return Ok(disabled("breditor/result-limit-exceeded"));
@@ -337,24 +345,15 @@ fn evaluate_cross_paragraph_insert(
             return Err(fault("breditor/insert-text-input-invariant-fault"));
         }
     };
-    let Some(result) = concat_result(&source.prefix, &replacement, &source.suffix)? else {
+    let Some(result) = concat_result(source.prefix(), &replacement, source.suffix())? else {
         return Ok(disabled("breditor/result-limit-exceeded"));
     };
-    if !base_shape_fits(state, source.guards.len(), source.removed_text_runs, &[&result])
-        || !base_total_text_fits(state, source.removed_text_bytes, result.text_bytes())
+    if !base_shape_fits(state, source.guards().len(), source.guard_run_count(), &[&result])
+        || !base_total_text_fits(state, source.guard_text_bytes(), result.text_bytes())
     {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }
 
-    let operation_range = RootTextRange::try_new(
-        RootTextBoundary::try_new(range.start().paragraph_path().clone(), range.start().offset())
-            .map_err(|_| fault("breditor/insert-text-root-range-fault"))?,
-        RootTextBoundary::try_new(range.end().paragraph_path().clone(), range.end().offset())
-            .map_err(|_| fault("breditor/insert-text-root-range-fault"))?,
-    )
-    .map_err(|_| fault("breditor/insert-text-root-range-fault"))?;
-    let operation = RootTextReplace::try_new(operation_range, source.guards, vec![replacement])
-        .map_err(|_| fault("breditor/insert-text-root-replace-fault"))?;
     let result_caret = range
         .start()
         .offset()
@@ -366,6 +365,9 @@ fn evaluate_cross_paragraph_insert(
         result_caret,
         Affinity::Before,
     )?;
+    let (operation_range, guards) = source.into_range_and_guards();
+    let operation = RootTextReplace::try_new(operation_range, guards, vec![replacement])
+        .map_err(|_| fault("breditor/insert-text-root-replace-fault"))?;
 
     Ok(ActionDecision::Enabled(ActionPlan::new(
         vec![Operation::from(operation)],
@@ -378,115 +380,13 @@ fn evaluate_cross_paragraph_insert(
     )))
 }
 
-struct CrossParagraphSource {
-    guards: Vec<TextFragment>,
-    prefix: TextFragment,
-    suffix: TextFragment,
-    formats: FormatSet,
-    removed_text_runs: usize,
-    removed_text_bytes: usize,
-}
-
-fn capture_cross_paragraph_source(
-    state: &EditorState,
-    range: &TextRangeSelection,
-) -> Result<CrossParagraphSource, ActionFault> {
-    let start_index = range
-        .start()
-        .paragraph_path()
-        .last_index()
-        .ok_or_else(|| fault("breditor/insert-text-cross-span-fault"))?;
-    let end_index = range
-        .end()
-        .paragraph_path()
-        .last_index()
-        .ok_or_else(|| fault("breditor/insert-text-cross-span-fault"))?;
-    let paragraph_count = end_index
-        .checked_sub(start_index)
-        .and_then(|distance| distance.checked_add(1))
-        .ok_or_else(|| fault("breditor/insert-text-cross-span-fault"))?;
-    let paragraph_count = usize::try_from(paragraph_count)
-        .map_err(|_| fault("breditor/insert-text-cross-span-fault"))?;
-    if paragraph_count < 2 {
-        return Err(fault("breditor/insert-text-cross-span-fault"));
+fn map_insert_cross_source_error(error: CrossParagraphTextSourceError) -> ActionFault {
+    match error {
+        CrossParagraphTextSourceError::Span => fault("breditor/insert-text-cross-span-fault"),
+        CrossParagraphTextSourceError::Range => fault("breditor/insert-text-root-range-fault"),
+        CrossParagraphTextSourceError::Source => fault("breditor/insert-text-cross-source-fault"),
+        CrossParagraphTextSourceError::Paragraph(fault) => fault,
     }
-
-    let root = state
-        .document()
-        .root()
-        .as_element()
-        .ok_or_else(|| fault("breditor/insert-text-cross-span-fault"))?;
-    let start_native =
-        usize::try_from(start_index).map_err(|_| fault("breditor/insert-text-cross-span-fault"))?;
-    let end_native =
-        usize::try_from(end_index).map_err(|_| fault("breditor/insert-text-cross-span-fault"))?;
-    if start_native >= root.children().len()
-        || end_native >= root.children().len()
-        || paragraph_count > root.children().len()
-    {
-        return Err(fault("breditor/insert-text-cross-span-fault"));
-    }
-
-    // Prove the complete inclusive span against the actual root before using
-    // its protocol-derived count as an allocation request.
-    let mut guards = Vec::with_capacity(paragraph_count);
-    for paragraph_offset in 0..paragraph_count {
-        let paragraph_offset = u32::try_from(paragraph_offset)
-            .map_err(|_| fault("breditor/insert-text-cross-span-fault"))?;
-        let paragraph_index = start_index
-            .checked_add(paragraph_offset)
-            .ok_or_else(|| fault("breditor/insert-text-cross-span-fault"))?;
-        let paragraph_path = NodePath::try_from_indices(vec![paragraph_index])
-            .map_err(|_| fault("breditor/insert-text-cross-span-fault"))?;
-        let boundary = if paragraph_index == start_index {
-            range.start().offset()
-        } else if paragraph_index == end_index {
-            range.end().offset()
-        } else {
-            TextOffset::ZERO
-        };
-        guards.push(paragraph_fragment(state, &paragraph_path, boundary)?);
-    }
-
-    let first = guards.first().ok_or_else(|| fault("breditor/insert-text-cross-source-fault"))?;
-    let last = guards.last().ok_or_else(|| fault("breditor/insert-text-cross-source-fault"))?;
-    let (prefix, first_selected) = first
-        .split_at(range.start().offset())
-        .map_err(|_| fault("breditor/insert-text-cross-source-fault"))?;
-    let (last_selected, suffix) = last
-        .split_at(range.end().offset())
-        .map_err(|_| fault("breditor/insert-text-cross-source-fault"))?;
-    let last_guard_index = guards
-        .len()
-        .checked_sub(1)
-        .ok_or_else(|| fault("breditor/insert-text-cross-source-fault"))?;
-    // Extended selection formatting is spatial and affinity-independent. Only
-    // a text-empty structural selection consults its surviving seam, left first.
-    let formats = first_selected
-        .iter()
-        .next()
-        .or_else(|| guards[1..last_guard_index].iter().find_map(|fragment| fragment.iter().next()))
-        .or_else(|| last_selected.iter().next())
-        .or_else(|| prefix.iter().next_back())
-        .or_else(|| suffix.iter().next())
-        .map_or_else(FormatSet::default, |run| run.formats().clone());
-
-    let Some((removed_text_runs, removed_text_bytes)) =
-        guards.iter().try_fold((0_usize, 0_usize), |(runs, bytes), fragment| {
-            Some((runs.checked_add(fragment.len())?, bytes.checked_add(fragment.text_bytes())?))
-        })
-    else {
-        return Err(fault("breditor/insert-text-cross-span-fault"));
-    };
-
-    Ok(CrossParagraphSource {
-        guards,
-        prefix,
-        suffix,
-        formats,
-        removed_text_runs,
-        removed_text_bytes,
-    })
 }
 
 fn source_range(state: &EditorState) -> Result<&RangeSelection, ActionFault> {

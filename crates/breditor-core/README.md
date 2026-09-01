@@ -33,7 +33,9 @@ override, inherits deterministic context otherwise, replaces one exact
 direct-root text range, and offers adjacent edits to the `breditor/typing`
 history group. Same-paragraph insertion stays on the local splice path, while
 cross-paragraph type-over uses one guarded root-text replacement.
+Extended backward deletion likewise uses one guarded root-text replacement for
+cross-paragraph selections while preserving its local splice/join paths.
 The crate is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-semantic cross-paragraph deletion/break/formatting planners, durable replay log,
+semantic cross-paragraph break/formatting planners, durable replay log,
 collaboration transform, or Wasm adapter yet.

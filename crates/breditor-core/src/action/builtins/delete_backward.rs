@@ -3,8 +3,8 @@ use crate::{
     document::TextFragment,
     identity::QualifiedName,
     operation::{
-        Operation, ParagraphJoin, ParagraphJoinApplyError, ParagraphJoinError, TextRange,
-        TextSplice,
+        Operation, ParagraphJoin, ParagraphJoinApplyError, ParagraphJoinError, RootTextReplace,
+        TextRange, TextSplice,
     },
     position::TextOffset,
     state::EditorState,
@@ -14,17 +14,21 @@ use crate::{
 use super::{
     super::text_position::previous_paragraph_path,
     support::{
-        base_shape_fits, collapsed_selection_at, disabled, fault, fragment_range_parts,
-        paragraph_fragment, require_base_range, require_operation_budget, strict_relocation,
+        CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
+        capture_cross_paragraph_text_source, collapsed_selection_at, disabled, fault,
+        fragment_range_parts, paragraph_fragment, require_base_text_range,
+        require_operation_budget, strict_relocation,
     },
 };
 
-/// Semantic action that deletes content immediately before a same-paragraph range.
+/// Semantic action that deletes selected content or content immediately before a caret.
 ///
-/// Extended ranges are removed atomically. A collapsed range deletes one
-/// Unicode scalar, or joins with the previous paragraph when it is at paragraph
-/// offset zero. Grapheme-cluster deletion is intentionally deferred to a future
-/// deterministic segmentation service.
+/// Same-paragraph extended ranges remain one [`TextSplice`]. Cross-paragraph
+/// extended ranges collapse through one empty-fragment [`RootTextReplace`],
+/// including selections that contain only structural paragraph breaks. A
+/// collapsed range deletes one Unicode scalar, or joins with the previous
+/// paragraph when it is at paragraph offset zero. Grapheme-cluster deletion is
+/// intentionally deferred to a future deterministic segmentation service.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeleteBackwardAction;
 
@@ -47,7 +51,7 @@ impl Action for DeleteBackwardAction {
 }
 
 fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_range(state)? {
+    let range = match require_base_text_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
@@ -55,6 +59,9 @@ fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, Actio
     if !range.is_collapsed() {
         if let Some(decision) = require_operation_budget(state, 1) {
             return Ok(decision);
+        }
+        if !range.is_same_paragraph() {
+            return delete_cross_paragraph_range(state, &range);
         }
         return delete_text_range(state, &range);
     }
@@ -95,6 +102,43 @@ fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, Actio
     }
     let selection = collapsed_selection_at(&previous_path, &joined, seam)?;
     Ok(delete_plan(state, Operation::from(join), selection))
+}
+
+fn delete_cross_paragraph_range(
+    state: &EditorState,
+    range: &super::super::text_position::TextRangeSelection,
+) -> Result<ActionDecision, ActionFault> {
+    let source =
+        capture_cross_paragraph_text_source(state, range).map_err(map_delete_cross_source_error)?;
+    let Ok(result) = source.prefix().try_concat(source.suffix()) else {
+        return Ok(disabled("breditor/result-limit-exceeded"));
+    };
+    if !base_shape_fits(state, source.guards().len(), source.guard_run_count(), &[&result])
+        || !base_total_text_fits(state, source.guard_text_bytes(), result.text_bytes())
+    {
+        return Ok(disabled("breditor/result-limit-exceeded"));
+    }
+
+    let selection = collapsed_selection_at(
+        source.range().start().paragraph_path(),
+        &result,
+        source.range().start().offset(),
+    )?;
+    let (operation_range, guards) = source.into_range_and_guards();
+    let operation = RootTextReplace::try_new(operation_range, guards, vec![TextFragment::empty()])
+        .map_err(|_| fault("breditor/delete-backward-root-replace-fault"))?;
+    Ok(delete_plan(state, Operation::from(operation), selection))
+}
+
+fn map_delete_cross_source_error(error: CrossParagraphTextSourceError) -> ActionFault {
+    match error {
+        CrossParagraphTextSourceError::Span => fault("breditor/delete-backward-cross-span-fault"),
+        CrossParagraphTextSourceError::Range => fault("breditor/delete-backward-root-range-fault"),
+        CrossParagraphTextSourceError::Source => {
+            fault("breditor/delete-backward-cross-source-fault")
+        }
+        CrossParagraphTextSourceError::Paragraph(fault) => fault,
+    }
 }
 
 fn delete_text_range(
