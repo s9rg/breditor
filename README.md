@@ -17,8 +17,10 @@ This repository currently contains the first end-to-end Rust-core slice:
   compact replay-proved bounded session/history checkpoints plus strict
   replay-identified local-log event envelopes and atomic genesis-prefix
   recovery, compact runtime prefix anchors, checked successor-generation
-  recovery, repeated consuming generation compaction with cumulative replay
-  retention, and a strict expected-binding durable local-log-checkpoint codec;
+  batch recovery, recoverable one-observation successor admission with fixed
+  cumulative budgets, repeated consuming generation compaction with cumulative
+  replay retention, and a strict expected-binding durable local-log-checkpoint
+  codec;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -68,7 +70,7 @@ direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log framing and storage,
-checkpoint/log atomic replacement, incremental live append,
+checkpoint/log atomic replacement, durable append and acknowledgement,
 integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -76,7 +78,9 @@ a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
-current performance limitations.
+current performance limitations. Fresh-genesis admission remains batch-only;
+hosts that need one-entry admission can compact an empty genesis generation
+into its first successor.
 
 ## Development
 

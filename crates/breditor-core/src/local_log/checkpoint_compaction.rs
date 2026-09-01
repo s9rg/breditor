@@ -188,15 +188,15 @@ fn checked_cumulative_tombstone_count(
 
 fn tombstones_from_entries(entries: Box<[LocalLogEntry]>) -> BTreeMap<ReplayId, LocalLogSequence> {
     let mut tombstones = BTreeMap::new();
-    extend_tombstones(&mut tombstones, entries);
+    extend_tombstones(&mut tombstones, entries.into_vec());
     tombstones
 }
 
 fn extend_tombstones(
     tombstones: &mut BTreeMap<ReplayId, LocalLogSequence>,
-    entries: Box<[LocalLogEntry]>,
+    entries: Vec<LocalLogEntry>,
 ) {
-    for entry in entries.into_vec() {
+    for entry in entries {
         let (replay_id, sequence) = entry.into_replay_tombstone();
         match tombstones.entry(replay_id) {
             Entry::Vacant(slot) => {

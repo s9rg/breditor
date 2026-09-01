@@ -4,7 +4,7 @@ use super::{
     LocalLogEventApplicationError, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId,
 };
 
-/// Stable category for one failed genesis or checkpoint-linked local-log recovery.
+/// Stable category for one failed genesis recovery or successor observation.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LocalLogRecoveryErrorCode {
@@ -82,19 +82,22 @@ impl LocalLogRecoveryCounter {
     }
 }
 
-/// Why one owned local-log recovery could not publish a session.
+/// Why one local-log recovery or observation could not publish its transition.
 ///
 /// The error never returns the consumed session and never retains an entry,
 /// event, commit, editor state, operation guard, or document-bearing session
-/// error. A failed recovery therefore cannot expose its privately applied
-/// prefix through this API.
+/// error. Complete-batch recovery therefore cannot expose its privately applied
+/// prefix through this value. Incremental admission wraps this small error in
+/// [`super::LocalLogObservationFailure`], which separately returns the
+/// unchanged active owner and rejected entry while keeping diagnostics
+/// redacted.
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum LocalLogRecoveryError {
     /// Physical inputs exceed the host-selected ceiling.
     #[error("local-log recovery has {actual} observations; the maximum is {maximum}")]
     ObservationLimit {
-        /// Complete physical input count, including exact duplicates.
+        /// Attempted cumulative physical input count, including exact duplicates.
         actual: u64,
         /// Host-selected maximum.
         maximum: u64,

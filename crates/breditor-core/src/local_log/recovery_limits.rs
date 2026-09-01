@@ -1,13 +1,13 @@
-/// Default maximum physical local-log observations admitted by one recovery.
+/// Default maximum physical local-log observations admitted by one phase.
 pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_OBSERVATIONS: u64 = 10_000;
 
-/// Default maximum first-seen logical events retained by one recovery.
+/// Default maximum first-seen logical events retained by one phase.
 pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_UNIQUE_EVENTS: u64 = 10_000;
 
 /// Default maximum operations applied across all first-seen events.
 pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_APPLIED_OPERATIONS: u64 = 16_384;
 
-/// Host-authoritative resource policy for one local-log recovery batch.
+/// Host-authoritative resource policy for one local-log admission phase.
 ///
 /// Observations count every physical input, including exact retries. Unique
 /// events count only the first occurrence of each replay ID. Applied operations
@@ -15,8 +15,11 @@ pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_APPLIED_OPERATIONS: u64 = 16_384;
 /// authoritative retained local recipe. Recovery charges history recipe size
 /// before cloning or deriving it and separately requires the logged proof to
 /// match. Control events contribute no operations. All limits may be zero.
-/// Genesis and checkpoint-linked successor recovery apply independent policies;
-/// the latter does not recharge the already owned compacted prefix.
+/// Genesis recovery charges one complete batch. Checkpoint-linked successor
+/// admission fixes one policy when the active owner begins and charges accepted
+/// observations cumulatively across incremental calls; rejected attempts do
+/// not consume it. Neither successor path recharges the already owned compacted
+/// prefix.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LocalLogRecoveryLimits {
     observations: u64,
@@ -25,7 +28,7 @@ pub struct LocalLogRecoveryLimits {
 }
 
 impl LocalLogRecoveryLimits {
-    /// Creates one complete explicit recovery resource policy.
+    /// Creates one complete explicit admission resource policy.
     #[must_use]
     pub const fn new(
         max_observations: u64,

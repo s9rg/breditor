@@ -6,25 +6,29 @@ use std::{
 use crate::session::EditorSession;
 
 use super::{
-    LocalLogCompactionLimits, LocalLogEntry, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId,
+    LocalLogCompactionLimits, LocalLogEntry, LocalLogId, LocalLogRecoveryLimits, LocalLogSequence,
+    LocalSessionId, ReplayId,
 };
 
-/// Atomically recovered successor generation linked to one checked checkpoint prefix.
+/// Active successor generation linked to one checked checkpoint prefix.
 ///
-/// The value owns the exact final session, every compacted replay tombstone,
-/// and every first-seen full entry from the successor batch. Exact duplicates
-/// inside that batch are counted but not retained twice. Consuming compaction
-/// can rotate this owner into another anchor while enforcing the lifetime
-/// replay-retention policy inherited from its checkpoint.
+/// The value owns the exact current session, every compacted replay tombstone,
+/// and every first-seen full entry admitted into the successor. Exact
+/// duplicates across batch or incremental calls are counted but not retained
+/// twice. Recovery limits are fixed when admission begins and charged
+/// cumulatively. Consuming compaction can rotate this owner into another anchor
+/// while enforcing the lifetime replay-retention policy inherited from its
+/// checkpoint.
 pub struct ContinuedLocalLog {
     session_id: LocalSessionId,
     checkpoint_log_id: LocalLogId,
     active_log_id: LocalLogId,
     compaction_limits: LocalLogCompactionLimits,
+    recovery_limits: LocalLogRecoveryLimits,
     session: EditorSession,
     compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
-    active_entries: Box<[LocalLogEntry]>,
-    active_replay_index: BTreeMap<ReplayId, usize>,
+    active_entries: Vec<LocalLogEntry>,
+    active_replay_index: BTreeMap<ReplayId, (u64, usize)>,
     observation_count: u64,
     unique_event_count: u64,
     exact_duplicate_count: u64,
@@ -38,7 +42,25 @@ pub(super) struct ContinuedLocalLogCompactionParts {
     pub(super) active_log_id: LocalLogId,
     pub(super) session: EditorSession,
     pub(super) compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
-    pub(super) active_entries: Box<[LocalLogEntry]>,
+    pub(super) active_entries: Vec<LocalLogEntry>,
+    pub(super) covered_through: Option<LocalLogSequence>,
+}
+
+pub(super) struct ContinuedLocalLogObservationParts {
+    pub(super) session_id: LocalSessionId,
+    pub(super) checkpoint_log_id: LocalLogId,
+    pub(super) active_log_id: LocalLogId,
+    pub(super) compaction_limits: LocalLogCompactionLimits,
+    pub(super) recovery_limits: LocalLogRecoveryLimits,
+    pub(super) session: EditorSession,
+    pub(super) compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
+    pub(super) active_entries: Vec<LocalLogEntry>,
+    pub(super) active_replay_index: BTreeMap<ReplayId, (u64, usize)>,
+    pub(super) observation_count: u64,
+    pub(super) unique_event_count: u64,
+    pub(super) exact_duplicate_count: u64,
+    pub(super) applied_operation_count: u64,
+    pub(super) checkpoint_covered_through: Option<LocalLogSequence>,
     pub(super) covered_through: Option<LocalLogSequence>,
 }
 
@@ -49,10 +71,11 @@ impl ContinuedLocalLog {
         checkpoint_log_id: LocalLogId,
         active_log_id: LocalLogId,
         compaction_limits: LocalLogCompactionLimits,
+        recovery_limits: LocalLogRecoveryLimits,
         session: EditorSession,
         compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
-        active_entries: Box<[LocalLogEntry]>,
-        active_replay_index: BTreeMap<ReplayId, usize>,
+        active_entries: Vec<LocalLogEntry>,
+        active_replay_index: BTreeMap<ReplayId, (u64, usize)>,
         observation_count: u64,
         unique_event_count: u64,
         exact_duplicate_count: u64,
@@ -65,6 +88,7 @@ impl ContinuedLocalLog {
             checkpoint_log_id,
             active_log_id,
             compaction_limits,
+            recovery_limits,
             session,
             compacted_replays,
             active_entries,
@@ -90,7 +114,7 @@ impl ContinuedLocalLog {
         &self.checkpoint_log_id
     }
 
-    /// Returns the recovered successor generation.
+    /// Returns the active successor generation.
     #[must_use]
     pub const fn active_log_id(&self) -> &LocalLogId {
         &self.active_log_id
@@ -102,13 +126,23 @@ impl ContinuedLocalLog {
         self.compaction_limits
     }
 
-    /// Returns the privately recovered final editor session.
+    /// Returns the fixed cumulative policy for this active generation.
+    ///
+    /// Physical observations, first-seen events, and applied operations are
+    /// charged across every incremental call. The policy is selected once when
+    /// successor admission begins and cannot drift between calls.
+    #[must_use]
+    pub const fn recovery_limits(&self) -> LocalLogRecoveryLimits {
+        self.recovery_limits
+    }
+
+    /// Returns the privately owned current editor session.
     #[must_use]
     pub const fn session(&self) -> &EditorSession {
         &self.session
     }
 
-    /// Consumes the owner and returns its final editor session.
+    /// Consumes the owner and returns its current editor session.
     ///
     /// This deliberately drops compacted tombstones and active full replay
     /// bindings. The returned bare session cannot safely continue the log.
@@ -174,34 +208,36 @@ impl ContinuedLocalLog {
     /// Returns first-seen successor entries in contiguous sequence order.
     #[must_use]
     pub const fn active_entries(&self) -> &[LocalLogEntry] {
-        &self.active_entries
+        self.active_entries.as_slice()
     }
 
     /// Returns the exact successor entry for one active replay identity.
     #[must_use]
     pub fn active_entry_for_replay_id(&self, replay_id: &ReplayId) -> Option<&LocalLogEntry> {
-        self.active_replay_index.get(replay_id).and_then(|index| self.active_entries.get(*index))
+        self.active_replay_index
+            .get(replay_id)
+            .and_then(|(_, entry_index)| self.active_entries.get(*entry_index))
     }
 
-    /// Returns physical observations admitted in the successor batch.
+    /// Returns physical observations admitted in this active generation.
     #[must_use]
     pub const fn observation_count(&self) -> u64 {
         self.observation_count
     }
 
-    /// Returns first-seen events applied from the successor batch.
+    /// Returns first-seen events applied in this active generation.
     #[must_use]
     pub const fn unique_event_count(&self) -> u64 {
         self.unique_event_count
     }
 
-    /// Returns exact active-batch duplicates skipped before application.
+    /// Returns exact active-generation duplicates skipped before application.
     #[must_use]
     pub const fn exact_duplicate_count(&self) -> u64 {
         self.exact_duplicate_count
     }
 
-    /// Returns aggregate forward operations charged in the successor batch.
+    /// Returns aggregate forward operations charged in this active generation.
     #[must_use]
     pub const fn applied_operation_count(&self) -> u64 {
         self.applied_operation_count
@@ -213,6 +249,7 @@ impl ContinuedLocalLog {
             checkpoint_log_id: _,
             active_log_id,
             compaction_limits: _,
+            recovery_limits: _,
             session,
             compacted_replays,
             active_entries,
@@ -234,6 +271,80 @@ impl ContinuedLocalLog {
         }
     }
 
+    pub(super) fn into_observation_parts(self) -> ContinuedLocalLogObservationParts {
+        let Self {
+            session_id,
+            checkpoint_log_id,
+            active_log_id,
+            compaction_limits,
+            recovery_limits,
+            session,
+            compacted_replays,
+            active_entries,
+            active_replay_index,
+            observation_count,
+            unique_event_count,
+            exact_duplicate_count,
+            applied_operation_count,
+            checkpoint_covered_through,
+            covered_through,
+        } = self;
+        ContinuedLocalLogObservationParts {
+            session_id,
+            checkpoint_log_id,
+            active_log_id,
+            compaction_limits,
+            recovery_limits,
+            session,
+            compacted_replays,
+            active_entries,
+            active_replay_index,
+            observation_count,
+            unique_event_count,
+            exact_duplicate_count,
+            applied_operation_count,
+            checkpoint_covered_through,
+            covered_through,
+        }
+    }
+
+    pub(super) fn from_observation_parts(parts: ContinuedLocalLogObservationParts) -> Self {
+        let ContinuedLocalLogObservationParts {
+            session_id,
+            checkpoint_log_id,
+            active_log_id,
+            compaction_limits,
+            recovery_limits,
+            session,
+            compacted_replays,
+            active_entries,
+            active_replay_index,
+            observation_count,
+            unique_event_count,
+            exact_duplicate_count,
+            applied_operation_count,
+            checkpoint_covered_through,
+            covered_through,
+        } = parts;
+        Self::new(
+            session_id,
+            checkpoint_log_id,
+            active_log_id,
+            compaction_limits,
+            recovery_limits,
+            session,
+            compacted_replays,
+            active_entries,
+            active_replay_index,
+            observation_count,
+            unique_event_count,
+            exact_duplicate_count,
+            applied_operation_count,
+            checkpoint_covered_through,
+            covered_through,
+        )
+    }
+
     pub(super) fn compaction_topology_is_valid(&self) -> bool {
         if self.checkpoint_log_id == self.active_log_id {
             return false;
@@ -250,11 +361,15 @@ impl ContinuedLocalLog {
         };
         if prefix != compacted_count
             || self.active_replay_index.len() != self.active_entries.len()
+            || (self.active_entries.is_empty() && self.observation_count != 0)
             || self.unique_event_count != active_count
             || self.unique_event_count.checked_add(self.exact_duplicate_count)
                 != Some(self.observation_count)
             || self.represented_replay_count() != represented
             || compacted_count > self.compaction_limits.max_replay_tombstones()
+            || self.observation_count > self.recovery_limits.max_observations()
+            || self.unique_event_count > self.recovery_limits.max_unique_events()
+            || self.applied_operation_count > self.recovery_limits.max_applied_operations()
             || (represented == 0 && !self.session.has_genesis_empty_history())
         {
             return false;
@@ -266,6 +381,7 @@ impl ContinuedLocalLog {
                 return false;
             }
         }
+        let mut prior_first_delivery_index = None;
         for (index, entry) in self.active_entries.iter().enumerate() {
             let Ok(offset) = u64::try_from(index) else {
                 return false;
@@ -274,14 +390,23 @@ impl ContinuedLocalLog {
             else {
                 return false;
             };
+            let Some(&(first_delivery_index, indexed_entry)) =
+                self.active_replay_index.get(entry.replay_id())
+            else {
+                return false;
+            };
             if entry.session_id() != &self.session_id
                 || entry.log_id() != &self.active_log_id
                 || entry.sequence().get() != expected
                 || self.compacted_replays.contains_key(entry.replay_id())
-                || self.active_replay_index.get(entry.replay_id()) != Some(&index)
+                || indexed_entry != index
+                || first_delivery_index >= self.observation_count
+                || (index == 0 && first_delivery_index != 0)
+                || prior_first_delivery_index.is_some_and(|prior| prior >= first_delivery_index)
             {
                 return false;
             }
+            prior_first_delivery_index = Some(first_delivery_index);
         }
         true
     }
@@ -295,6 +420,7 @@ impl fmt::Debug for ContinuedLocalLog {
             .field("checkpoint_log_id", &self.checkpoint_log_id)
             .field("active_log_id", &self.active_log_id)
             .field("compaction_limits", &self.compaction_limits)
+            .field("recovery_limits", &self.recovery_limits)
             .field("checkpoint_covered_through", &self.checkpoint_covered_through)
             .field("covered_through", &self.covered_through)
             .field("next_sequence", &self.next_sequence())
@@ -317,7 +443,8 @@ mod tests {
     use super::ContinuedLocalLog;
     use crate::local_log::{
         LocalLogCompactionErrorCode, LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent,
-        LocalLogId, LocalLogSequence, LocalSessionId, ReplayId, test_support::empty_session,
+        LocalLogId, LocalLogRecoveryLimits, LocalLogSequence, LocalSessionId, ReplayId,
+        test_support::empty_session,
     };
 
     fn entry(
@@ -348,10 +475,11 @@ mod tests {
             first_log,
             active_log,
             LocalLogCompactionLimits::new(2),
+            LocalLogRecoveryLimits::new(1, 1, 0),
             empty_session("invalid-continued-topology")?,
             BTreeMap::from([(compacted_replay, LocalLogSequence::FIRST)]),
-            vec![active_entry].into_boxed_slice(),
-            BTreeMap::from([(active_replay, 0)]),
+            vec![active_entry],
+            BTreeMap::from([(active_replay, (0, 0))]),
             1,
             1,
             0,
@@ -397,8 +525,7 @@ mod tests {
             LocalLogSequence::try_new(3)?,
             replay_id,
             LocalLogEvent::close_history_group(),
-        )]
-        .into_boxed_slice();
+        )];
 
         let continued = assert_invalid_topology(continued, successor_log)?;
         assert_eq!(continued.active_entries[0].sequence().get(), 3);
@@ -416,13 +543,46 @@ mod tests {
             LocalLogSequence::try_new(2)?,
             replay_id.clone(),
             LocalLogEvent::close_history_group(),
-        )]
-        .into_boxed_slice();
-        continued.active_replay_index = BTreeMap::from([(replay_id.clone(), 0)]);
+        )];
+        continued.active_replay_index = BTreeMap::from([(replay_id.clone(), (0, 0))]);
 
         let continued = assert_invalid_topology(continued, successor_log)?;
         assert_eq!(continued.active_entries[0].replay_id(), &replay_id);
         assert_eq!(continued.compacted_replays.get(&replay_id), Some(&LocalLogSequence::FIRST));
+        Ok(())
+    }
+
+    #[test]
+    fn compaction_rejects_a_private_phantom_duplicate_before_the_first_binding()
+    -> Result<(), Box<dyn Error>> {
+        let (mut continued, successor_log) = fixture()?;
+        let replay_id = ReplayId::try_new("request:active")?;
+        continued.recovery_limits = LocalLogRecoveryLimits::new(2, 1, 0);
+        continued.observation_count = 2;
+        continued.exact_duplicate_count = 1;
+        continued.active_replay_index = BTreeMap::from([(replay_id, (1, 0))]);
+
+        let continued = assert_invalid_topology(continued, successor_log)?;
+        assert_eq!(continued.observation_count, 2);
+        assert_eq!(continued.exact_duplicate_count, 1);
+        Ok(())
+    }
+
+    #[test]
+    fn compaction_rejects_private_duplicate_counts_without_an_active_binding()
+    -> Result<(), Box<dyn Error>> {
+        let (mut continued, successor_log) = fixture()?;
+        continued.recovery_limits = LocalLogRecoveryLimits::new(1, 0, 0);
+        continued.active_entries.clear();
+        continued.active_replay_index.clear();
+        continued.observation_count = 1;
+        continued.unique_event_count = 0;
+        continued.exact_duplicate_count = 1;
+        continued.covered_through = continued.checkpoint_covered_through;
+
+        let continued = assert_invalid_topology(continued, successor_log)?;
+        assert!(continued.active_entries.is_empty());
+        assert_eq!(continued.observation_count, 1);
         Ok(())
     }
 }

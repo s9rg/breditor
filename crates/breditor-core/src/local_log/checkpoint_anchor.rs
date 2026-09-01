@@ -24,6 +24,9 @@ use super::{LocalLogCompactionLimits, LocalLogId, LocalLogSequence, LocalSession
 /// [`crate::codec::LocalLogCheckpointJsonCodec`] can restore it. A separately
 /// encoded [`crate::codec::SessionCheckpointJsonCodec`] value omits every log
 /// field here and cannot restore this anchor by itself.
+/// [`Self::begin_successor`] consumes the anchor into a bounded active owner for
+/// recoverable one-observation admission; [`Self::recover_successor`] preserves
+/// the all-or-nothing complete-vector compatibility boundary.
 pub struct LocalLogCheckpointAnchor {
     session_id: LocalSessionId,
     checkpoint_log_id: LocalLogId,

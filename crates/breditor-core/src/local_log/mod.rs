@@ -1,13 +1,15 @@
 //! Runtime values for one durable, ordered, single-writer local editor log.
 //!
 //! This module defines identities, sequence numbers, event values, and an
-//! atomic genesis recovery boundary, checkpoint-linked successor recovery, and
-//! repeated consuming compaction. Runtime compaction retains exact replay-ID
-//! tombstones under a cumulative lifetime policy while dropping old event
-//! proofs. The codec module can serialize one
-//! independently valid entry and one complete expected-binding checkpoint. It
-//! does not append, persist, frame, authenticate, fence, or crash-recover a
-//! stream; storage must preserve the scopes and ordering documented here.
+//! atomic genesis recovery boundary, checkpoint-linked batch and incremental
+//! successor admission, and repeated consuming compaction. Incremental typed
+//! rejection returns the unchanged active owner and exact rejected entry.
+//! Runtime compaction retains exact replay-ID tombstones under a cumulative
+//! lifetime policy while dropping old event proofs. The codec module can
+//! serialize one independently valid entry and one complete expected-binding
+//! checkpoint. It does not append, persist, frame, authenticate, fence, or
+//! crash-recover a stream; storage must preserve the scopes and ordering
+//! documented here.
 
 mod application;
 mod application_error;
@@ -21,8 +23,11 @@ mod continued;
 mod entry;
 mod event;
 mod identity;
+mod incremental_observation;
 mod local_log_id;
 mod local_session_id;
+mod observation_failure;
+mod observation_outcome;
 mod recovered;
 mod recovery;
 mod recovery_error;
@@ -55,6 +60,8 @@ pub use identity::{
 };
 pub use local_log_id::LocalLogId;
 pub use local_session_id::LocalSessionId;
+pub use observation_failure::LocalLogObservationFailure;
+pub use observation_outcome::LocalLogObservationOutcome;
 pub use recovered::RecoveredLocalLog;
 pub use recovery::LocalLogRecovery;
 pub use recovery_error::{

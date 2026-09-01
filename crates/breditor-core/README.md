@@ -10,8 +10,9 @@ document, singular guarded-operation, exact-base transaction-request,
 contextual complete editor-state, replay-proved commit, and bounded durable
 session-checkpoint plus replay-identified local-log-entry JSON codecs and
 bounded atomic recovery of one supplied genesis-anchored log prefix plus a
-compact runtime anchor, checked successor generations, repeated cumulative
-compaction, and a strict trusted-scope local-log-checkpoint JSON codec,
+compact runtime anchor, checked batch or recoverable one-observation successor
+admission with fixed cumulative budgets, repeated cumulative compaction, and a
+strict trusted-scope local-log-checkpoint JSON codec,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -53,8 +54,16 @@ selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log framing/storage,
-checkpoint/log atomic replacement, incremental live append,
+checkpoint/log atomic replacement, durable append/acknowledgement,
 collaboration transform, or Wasm adapter yet.
+
+Checkpoint-linked one-observation admission is synchronous and in-memory. A
+typed rejection returns the unchanged active owner and exact rejected entry, so
+the caller can retain and retry it after relevant prerequisites change, or
+construct another entry without reconstructing the checkpoint. Fresh genesis
+is still a complete-vector boundary; an empty genesis generation can be
+compacted to bootstrap this successor path. The core does not queue, schedule,
+persist, flush, acknowledge, or rate-limit attempts.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch
