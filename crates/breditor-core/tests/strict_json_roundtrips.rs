@@ -3,19 +3,30 @@
 mod support;
 
 use breditor_core::{
-    codec::{CodecErrorCode, DocumentCodecError},
-    schema::{ValidationCode, ValidationSubject},
+    codec::{CodecErrorCode, DocumentCodecError, DocumentJsonCodec},
+    schema::{
+        CompiledSchema, DocumentLimits, LimitKind, ValidationCode, ValidationDetail,
+        ValidationSubject,
+    },
 };
-use serde_json::Value;
+use serde_json::{Value, json};
 use support::{
     TestResult, assert_codec_error_code, assert_validation_issue, codec, document_json,
-    minimal_document_json, paragraph, text_node,
+    document_with_root, minimal_document_json, paragraph, text_node,
 };
 
 const CANONICAL_EMPTY_DOCUMENT: &str = concat!(
     r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":["#,
     r#"{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}"#,
     r#"]}}"#,
+);
+
+const CANONICAL_FORMATTED_DOCUMENT: &str = concat!(
+    r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":["#,
+    r#"{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":["#,
+    r#"{"kind":"text","text":"a\"\\\n😀","formats":[]},"#,
+    r#"{"kind":"text","text":"strong","formats":[{"type":"breditor/strong","properties":{}}]}"#,
+    r#"]},{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}]}}"#,
 );
 
 fn document_with_root_properties(properties: &str) -> String {
@@ -38,6 +49,38 @@ fn canonical_documents_round_trip_to_stable_compact_json() -> TestResult {
 
     let pretty_input = serde_json::to_string_pretty(&serde_json::from_str::<Value>(&encoded)?)?;
     assert_eq!(codec.encode(&codec.decode(&pretty_input)?)?, encoded);
+    Ok(())
+}
+
+#[test]
+fn borrowed_encoding_preserves_the_complete_document_v1_byte_shape() -> TestResult {
+    let codec = codec();
+    let document = codec.decode(CANONICAL_FORMATTED_DOCUMENT)?;
+
+    assert_eq!(codec.encode(&document)?, CANONICAL_FORMATTED_DOCUMENT);
+    Ok(())
+}
+
+#[test]
+fn document_encoding_enforces_the_same_exact_byte_budget_as_decode() -> TestResult {
+    let document = codec().decode(CANONICAL_FORMATTED_DOCUMENT)?;
+    let encoded_len = CANONICAL_FORMATTED_DOCUMENT.len();
+    let limited = DocumentJsonCodec::new(CompiledSchema::breditor_base())
+        .with_limits(DocumentLimits::default().with_max_json_bytes(encoded_len - 1));
+    match limited.encode(&document) {
+        Err(DocumentCodecError::OutputTooLarge { minimum, maximum }) => {
+            assert!(minimum > maximum);
+            assert_eq!(maximum, encoded_len - 1);
+        }
+        other => {
+            return Err(format!("expected output-too-large document error, got {other:?}").into());
+        }
+    }
+
+    let exact = DocumentJsonCodec::new(CompiledSchema::breditor_base())
+        .with_limits(DocumentLimits::default().with_max_json_bytes(encoded_len));
+    assert_eq!(exact.encode(&document)?, CANONICAL_FORMATTED_DOCUMENT);
+    assert_eq!(exact.decode(CANONICAL_FORMATTED_DOCUMENT)?, document);
     Ok(())
 }
 
@@ -206,4 +249,79 @@ fn validation_errors_keep_their_typed_report() -> TestResult {
     assert!(report.contains(ValidationCode::EmptyText));
     assert_eq!(report.issue_count(), 1);
     Ok(())
+}
+
+#[test]
+fn allocation_preflight_preserves_first_node_excess_and_stops_the_next() -> TestResult {
+    let limits = DocumentLimits::default().with_max_nodes(1);
+    let codec = DocumentJsonCodec::new(CompiledSchema::breditor_base()).with_limits(limits);
+    let first_excess = document_json(&[paragraph(&[])]);
+    let Err(DocumentCodecError::Validation(report)) = codec.decode(&first_excess) else {
+        return Err("first node-count excess did not reach complete validation".into());
+    };
+    assert!(report.iter().any(|issue| {
+        matches!(
+            issue.detail(),
+            ValidationDetail::Limit { kind: LimitKind::NodeCount, actual: 2, maximum: 1 }
+        )
+    }));
+
+    let larger = document_json(&[paragraph(&[]), paragraph(&[])]);
+    assert!(matches!(codec.decode(&larger), Err(DocumentCodecError::InvalidJson(_))));
+    Ok(())
+}
+
+#[test]
+fn allocation_preflight_preserves_first_property_value_excess_and_stops_the_next() -> TestResult {
+    let limits = DocumentLimits::default().with_max_property_values(1);
+    let codec = DocumentJsonCodec::new(CompiledSchema::breditor_base()).with_limits(limits);
+    let root_with_properties = |properties| {
+        document_with_root(&json!({
+            "kind": "element",
+            "type": "breditor/document",
+            "entityId": null,
+            "properties": properties,
+            "children": [paragraph(&[])],
+        }))
+    };
+
+    let first_excess = root_with_properties(json!({"test/value": [null]}));
+    let Err(DocumentCodecError::Validation(report)) = codec.decode(&first_excess) else {
+        return Err("first property-value excess did not reach complete validation".into());
+    };
+    assert!(report.iter().any(|issue| {
+        matches!(
+            issue.detail(),
+            ValidationDetail::Limit { kind: LimitKind::PropertyValueCount, actual: 2, maximum: 1 }
+        )
+    }));
+
+    let larger = root_with_properties(json!({"test/value": [null, null]}));
+    assert!(matches!(codec.decode(&larger), Err(DocumentCodecError::InvalidJson(_))));
+    Ok(())
+}
+
+#[test]
+fn property_object_keys_cannot_select_document_preflight_contexts() {
+    let limits = DocumentLimits::default()
+        .with_max_children_per_element(0)
+        .with_max_text_bytes(0)
+        .with_max_formats_per_text(0);
+    let codec = DocumentJsonCodec::new(CompiledSchema::breditor_base()).with_limits(limits);
+    let input = document_with_root(&json!({
+        "kind": "element",
+        "type": "breditor/document",
+        "entityId": null,
+        "properties": {
+            "test/value": {
+                "children": [null, null],
+                "formats": [null, null],
+                "properties": {"text": "still a property string"},
+                "text": "not document text"
+            }
+        },
+        "children": [paragraph(&[])],
+    }));
+
+    assert!(matches!(codec.decode(&input), Err(DocumentCodecError::Validation(_))));
 }

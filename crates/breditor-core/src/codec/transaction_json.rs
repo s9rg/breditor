@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     cell::{Cell, RefCell},
-    fmt, io,
+    fmt,
 };
 
 use serde::{
@@ -19,18 +19,22 @@ use crate::{
     identity::QualifiedName,
     operation::{Operation, OperationValidationError},
     record::{
-        DecimalU64Record, OperationRecordV1, PendingFormatsUpdateRecordV1, SchemaIdRecord,
-        SelectionRelocationRecordV1, SelectionUpdateRecordV1, SnapshotIdRecordV1,
+        OperationRecordV1, PendingFormatsUpdateRecordV1, SchemaIdRecord,
+        SelectionRelocationRecordV1, SelectionUpdateRecordV1,
         TRANSACTION_REQUEST_FORMAT as RECORD_FORMAT,
         TRANSACTION_REQUEST_FORMAT_VERSION as RECORD_FORMAT_VERSION, TransactionMetadataRecordV1,
         TransactionRequestRecordV1,
     },
     schema::{SchemaId, SchemaVersion},
-    state::{EditorContext, EditorState, LineageId, Revision, SnapshotId},
+    state::{EditorContext, EditorState, SnapshotId},
     transaction::Transaction,
 };
 
 use super::{
+    editor_value_payload_v1::{
+        SnapshotValueRecordError, decode_snapshot_id_v1, encode_snapshot_id_v1,
+    },
+    json_size::JsonByteCounter,
     operation_payload_v1::{decode_operation_payload_v1, encode_operation_payload_v1},
     operation_preflight::{preflight_operation_payload, preflight_operation_payloads},
     transaction_payload_v1::{
@@ -213,10 +217,7 @@ impl TransactionJsonCodec {
                 name: schema.name().as_str().to_owned(),
                 version: schema.version().get(),
             },
-            base_snapshot: SnapshotIdRecordV1 {
-                lineage: snapshot.lineage().as_str().to_owned(),
-                revision: DecimalU64Record::new(snapshot.revision().get()),
-            },
+            base_snapshot: encode_snapshot_id_v1(snapshot),
             operations: OperationSequenceEncoding::new(transaction.operations(), &self.context),
             selection_relocation: encode_selection_relocation_v1(
                 transaction.selection_relocation(),
@@ -231,9 +232,9 @@ impl TransactionJsonCodec {
         let maximum = self.context.limits().max_json_bytes();
         let mut byte_counter = JsonByteCounter::new(maximum);
         let count_result = serde_json::to_writer(&mut byte_counter, &record);
-        if byte_counter.exceeded {
+        if byte_counter.exceeded() {
             return Err(TransactionCodecError::OutputTooLarge {
-                minimum: byte_counter.bytes,
+                minimum: byte_counter.bytes(),
                 maximum,
             });
         }
@@ -292,39 +293,6 @@ impl Serialize for OperationSequenceEncoding<'_> {
             self.validation_complete.set(true);
         }
         Ok(result)
-    }
-}
-
-struct JsonByteCounter {
-    bytes: usize,
-    maximum: usize,
-    exceeded: bool,
-}
-
-impl JsonByteCounter {
-    const fn new(maximum: usize) -> Self {
-        Self { bytes: 0, maximum, exceeded: false }
-    }
-}
-
-impl io::Write for JsonByteCounter {
-    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
-        if let Some(bytes) = self.bytes.checked_add(buffer.len()) {
-            self.bytes = bytes;
-        } else {
-            self.bytes = usize::MAX;
-            self.exceeded = true;
-            return Err(io::Error::other("transaction JSON byte count overflowed"));
-        }
-        if self.bytes > self.maximum {
-            self.exceeded = true;
-            return Err(io::Error::other("transaction JSON byte budget exceeded"));
-        }
-        Ok(buffer.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }
 
@@ -392,22 +360,19 @@ fn schema_id_from_raw(raw: &RawValue) -> Result<SchemaId, TransactionCodecError>
 
 fn snapshot_id_from_raw(raw: &RawValue) -> Result<SnapshotId, TransactionCodecError> {
     let record: BorrowedSnapshotIdRecord<'_> = decode_raw_record(raw)?;
-    let lineage = LineageId::try_new(record.lineage.as_ref()).map_err(|error| {
-        TransactionRecordError::new(
-            TransactionRecordErrorCode::InvalidBaseLineage,
-            TransactionRecordLocation::BaseLineage,
-            error.to_string(),
-        )
-    })?;
-    let revision =
-        DecimalU64Record::try_from_decimal(record.revision.as_ref()).map_err(|error| {
-            TransactionRecordError::new(
+    decode_snapshot_id_v1(record.lineage.as_ref(), record.revision.as_ref()).map_err(|error| {
+        let (code, location) = match error {
+            SnapshotValueRecordError::InvalidLineage(_) => (
+                TransactionRecordErrorCode::InvalidBaseLineage,
+                TransactionRecordLocation::BaseLineage,
+            ),
+            SnapshotValueRecordError::InvalidRevision(_) => (
                 TransactionRecordErrorCode::InvalidBaseRevision,
                 TransactionRecordLocation::BaseRevision,
-                error.to_string(),
-            )
-        })?;
-    Ok(SnapshotId::new(lineage, Revision::new(revision.get())))
+            ),
+        };
+        TransactionRecordError::new(code, location, error.to_string()).into()
+    })
 }
 
 fn decode_raw_record<'de, T>(raw: &'de RawValue) -> Result<T, TransactionCodecError>
@@ -549,11 +514,12 @@ fn initial_operation_capacity(expected_count: u64) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::Cell, io::Write as _};
+    use std::cell::Cell;
 
     use serde::{Serialize, ser::SerializeSeq};
 
-    use super::{JsonByteCounter, MAX_INITIAL_OPERATION_CAPACITY, initial_operation_capacity};
+    use super::{MAX_INITIAL_OPERATION_CAPACITY, initial_operation_capacity};
+    use crate::codec::json_size::JsonByteCounter;
 
     #[test]
     fn untrusted_operation_count_cannot_drive_an_unbounded_initial_reservation() {
@@ -566,33 +532,12 @@ mod tests {
     }
 
     #[test]
-    fn encoded_byte_count_overflow_is_distinct_from_the_exact_usize_maximum() {
-        let mut counter =
-            JsonByteCounter { bytes: usize::MAX, maximum: usize::MAX, exceeded: false };
-        assert!(counter.write_all(&[0]).is_err());
-
-        assert_eq!(counter.bytes, usize::MAX);
-        assert!(counter.exceeded);
-    }
-
-    #[test]
-    fn encoded_byte_counter_stops_at_the_first_over_budget_chunk() -> std::io::Result<()> {
-        let mut counter = JsonByteCounter::new(3);
-        counter.write_all(&[0, 1])?;
-        assert!(counter.write_all(&[2, 3]).is_err());
-
-        assert_eq!(counter.bytes, 4);
-        assert!(counter.exceeded);
-        Ok(())
-    }
-
-    #[test]
     fn over_budget_serialization_never_visits_later_sequence_items() {
         let visits = Cell::new(0_u32);
         let mut counter = JsonByteCounter::new(2);
         assert!(serde_json::to_writer(&mut counter, &VisitSequence(&visits)).is_err());
 
-        assert!(counter.exceeded);
+        assert!(counter.exceeded());
         assert_eq!(visits.get(), 1);
     }
 

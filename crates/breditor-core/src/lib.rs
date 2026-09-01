@@ -1,8 +1,8 @@
 //! Deterministic content kernel for the Breditor rich-text editor.
 //!
 //! The crate currently owns immutable document values, the minimal compiled
-//! proof schema, strict versioned document, singular-operation, and exact-base
-//! transaction-request JSON decoding,
+//! proof schema, strict versioned document, singular-operation, exact-base
+//! transaction-request, and contextual complete editor-state JSON decoding,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -21,7 +21,8 @@
 //! Runtime [`document::Document`], [`document::NodeRef`], and
 //! [`operation::Operation`] values cannot be deserialized directly. Untrusted
 //! data must pass through [`codec::DocumentJsonCodec`],
-//! [`codec::OperationJsonCodec`], or [`codec::TransactionJsonCodec`]. The
+//! [`codec::OperationJsonCodec`], [`codec::TransactionJsonCodec`], or
+//! [`codec::EditorStateJsonCodec`]. The
 //! document codec checks its versioned record, schema identity, canonicality,
 //! limits, and complete tree before publishing a runtime document. That same
 //! successful validation derives the document's exact cached [`document::DocumentSummary`];
@@ -31,7 +32,9 @@
 //! The transaction-request codec additionally requires the complete immutable
 //! base state, preserves ordered operations and explicit state/history intent,
 //! and never applies the reconstructed request. Snapshot applicability remains
-//! an atomic transaction concern.
+//! an atomic transaction concern. The editor-state codec instead restores one
+//! complete state, including its exact snapshot identity, against a
+//! caller-supplied authoritative context; it contains no history or commit.
 
 pub mod action;
 pub mod codec;

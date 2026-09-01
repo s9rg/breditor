@@ -730,7 +730,7 @@ fn replacement_fragment_envelope_limits_fail_before_publication() -> TestResult 
 fn derived_leaf_and_paragraph_child_limits_match_authoritative_validation() -> TestResult {
     let leaf_context = EditorContext::new(
         CompiledSchema::breditor_base(),
-        DocumentLimits::default().with_max_text_bytes(5),
+        DocumentLimits::default().with_max_text_bytes(6),
     );
     let leaf_initial =
         state(&leaf_context, &[paragraph(&[text_node("abcd", false)])], "root-result-leaf")?;
@@ -748,12 +748,12 @@ fn derived_leaf_and_paragraph_child_limits_match_authoritative_validation() -> T
     let leaf_authoritative =
         authoritative_report(&leaf_context, &[paragraph(&[text_node("abXYZcd", false)])])?;
     assert_eq!(leaf_report, leaf_authoritative);
-    assert_limit(&leaf_report, &path(&[0, 0])?, LimitKind::TextBytes, 7, 5);
+    assert_limit(&leaf_report, &path(&[0, 0])?, LimitKind::TextBytes, 7, 6);
     assert_eq!(leaf_initial, leaf_original);
 
     let child_context = EditorContext::new(
         CompiledSchema::breditor_base(),
-        DocumentLimits::default().with_max_children_per_element(2),
+        DocumentLimits::default().with_max_children_per_element(3),
     );
     let child_source = [paragraph(&[text_node("a", false), text_node("B", true)])];
     let child_initial = state(&child_context, &child_source, "root-result-child")?;
@@ -778,7 +778,7 @@ fn derived_leaf_and_paragraph_child_limits_match_authoritative_validation() -> T
         ])],
     )?;
     assert_eq!(child_report, child_authoritative);
-    assert_limit(&child_report, &path(&[0])?, LimitKind::ChildCount, 4, 2);
+    assert_limit(&child_report, &path(&[0])?, LimitKind::ChildCount, 4, 3);
     assert_eq!(child_initial, child_original);
     Ok(())
 }

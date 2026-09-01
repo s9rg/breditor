@@ -232,6 +232,35 @@ fn nullable_state_fields_are_required_and_null_remains_distinct_from_empty() -> 
 }
 
 #[test]
+fn noncanonical_pending_formats_keep_the_legacy_aggregate_location() -> TestResult {
+    let context = EditorContext::default();
+    let base = state(&context, "pending-format-location", None)?;
+    let codec = TransactionJsonCodec::new(context);
+    let mut request = request_value(&base, Vec::new());
+    request["pendingFormatsUpdate"] = json!({
+        "kind": "set",
+        "formats": [
+            {"type": "breditor/strong", "properties": {}},
+            {"type": "breditor/strong", "properties": {}}
+        ]
+    });
+
+    match rejected(&codec, &base, &serde_json::to_string(&request)?)? {
+        TransactionCodecError::InvalidTransaction(error) => {
+            assert_eq!(error.code(), TransactionRecordErrorCode::NonCanonicalPendingFormats);
+            assert_eq!(error.location(), TransactionRecordLocation::PendingFormats);
+        }
+        other => {
+            return Err(test_error(format!(
+                "expected aggregate pending-format record error, got {other}"
+            ))
+            .into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn routing_precedence_is_format_then_version_before_exact_v1_shape() -> TestResult {
     let context = EditorContext::default();
     let base = state(&context, "routing-precedence", None)?;

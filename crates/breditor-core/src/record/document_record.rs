@@ -1,11 +1,14 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::record::PropertyMapRecord;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DocumentEnvelopeHeader {
-    pub(crate) format: String,
+pub(crate) struct DocumentEnvelopeHeader<'a> {
+    #[serde(borrow)]
+    pub(crate) format: Cow<'a, str>,
     pub(crate) format_version: u32,
 }
 

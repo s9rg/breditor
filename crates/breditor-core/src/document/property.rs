@@ -10,6 +10,9 @@ pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
 /// Smallest negative integer that every JavaScript number represents exactly.
 pub const MIN_SAFE_INTEGER: i64 = -MAX_SAFE_INTEGER;
 
+/// Maximum UTF-8 bytes in one nested property-object key.
+pub(crate) const MAX_PROPERTY_OBJECT_KEY_BYTES: usize = 128;
+
 /// An integer represented exactly by both Rust `i64` and JavaScript `number`.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct PropertyInteger(i64);
@@ -227,7 +230,7 @@ impl PropertyObject {
 }
 
 fn is_valid_object_key(key: &str) -> bool {
-    if key.is_empty() || key.len() > 128 {
+    if key.is_empty() || key.len() > MAX_PROPERTY_OBJECT_KEY_BYTES {
         return false;
     }
     let mut bytes = key.bytes();

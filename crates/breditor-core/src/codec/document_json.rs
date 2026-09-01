@@ -1,16 +1,22 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+
+use serde::{Deserialize, de::IgnoredAny};
+use serde_json::value::RawValue;
 
 use crate::{
-    codec::{DocumentCodecError, JsonFailure, error::schema_name_from_record},
+    codec::{
+        BoundedDiagnostic, DocumentCodecError, JsonFailure, document_encoding::DocumentEncoding,
+        document_preflight::preflight_document_root,
+    },
     document::{
         Document, ElementNode, Format, FormatSet, LocalInvariantError, NodeRef, PropertyInteger,
-        PropertyMap, PropertyObject, PropertyValue, PropertyValueInner, TextNode,
+        PropertyMap, PropertyObject, PropertyValue, TextNode,
     },
     identity::{EntityId, QualifiedName},
     position::{MAX_PATH_DEPTH, NodePath},
     record::{
         DocumentEnvelopeHeader, DocumentRecordV1, FormatRecordV1, NodeRecordV1, PropertyMapRecord,
-        PropertyValueRecord, SchemaIdRecord,
+        PropertyValueRecord,
     },
     schema::{
         CompiledSchema, DocumentLimits, LimitKind, PropertyPathSegment, SchemaId, SchemaVersion,
@@ -18,6 +24,8 @@ use crate::{
         child_count_fits_point_protocol, point_protocol_child_count_maximum,
     },
 };
+
+use super::json_size::JsonByteCounter;
 
 /// Stable identifier for Breditor's original document envelope.
 pub const DOCUMENT_FORMAT: &str = "breditor/document";
@@ -76,12 +84,12 @@ impl DocumentJsonCodec {
             });
         }
 
-        let header: DocumentEnvelopeHeader = serde_json::from_str(json)
+        let header: DocumentEnvelopeHeader<'_> = serde_json::from_str(json)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(DocumentCodecError::InvalidJson)?;
         if header.format != DOCUMENT_FORMAT {
             return Err(DocumentCodecError::UnsupportedFormat {
-                found: header.format.into(),
+                found: BoundedDiagnostic::from(header.format.as_ref()),
                 expected: DOCUMENT_FORMAT,
             });
         }
@@ -92,16 +100,23 @@ impl DocumentJsonCodec {
             });
         }
 
-        let record: DocumentRecordV1 = serde_json::from_str(json)
+        let envelope: BorrowedDocumentEnvelopeV1<'_> = serde_json::from_str(json)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(DocumentCodecError::InvalidJson)?;
-        let schema = schema_id_from_record(record.schema)?;
+        let schema = schema_id_from_raw(envelope.schema)?;
         if &schema != self.schema.id() {
             return Err(DocumentCodecError::SchemaMismatch {
                 expected: self.schema.id().clone(),
                 found: schema,
             });
         }
+
+        preflight_document_root(envelope.root.get(), &self.limits)
+            .map_err(|error| JsonFailure::from_serde(&error))
+            .map_err(DocumentCodecError::InvalidJson)?;
+        let record: DocumentRecordV1 = serde_json::from_str(json)
+            .map_err(|error| JsonFailure::from_serde(&error))
+            .map_err(DocumentCodecError::InvalidJson)?;
 
         let root = RecordBuilder::new().build_root(&record.root)?;
         Document::try_new(&self.schema, root, &self.limits).map_err(DocumentCodecError::from)
@@ -115,8 +130,9 @@ impl DocumentJsonCodec {
     /// # Errors
     ///
     /// Returns [`DocumentCodecError::SchemaMismatch`] if the document belongs to
-    /// another schema, or [`DocumentCodecError::Encoding`] on serialization
-    /// failure.
+    /// another schema, [`DocumentCodecError::OutputTooLarge`] when its encoding
+    /// exceeds the decode byte budget, or [`DocumentCodecError::Encoding`] on
+    /// serialization failure.
     pub fn encode(&self, document: &Document) -> Result<String, DocumentCodecError> {
         if document.schema() != self.schema.id() {
             return Err(DocumentCodecError::SchemaMismatch {
@@ -124,83 +140,60 @@ impl DocumentJsonCodec {
                 found: document.schema().clone(),
             });
         }
-        serde_json::to_string(&record_from_document(document))
+        let encoding = DocumentEncoding::new(document);
+        let maximum = self.limits.max_json_bytes();
+        let mut byte_counter = JsonByteCounter::new(maximum);
+        let count_result = serde_json::to_writer(&mut byte_counter, &encoding);
+        if byte_counter.exceeded() {
+            return Err(DocumentCodecError::OutputTooLarge {
+                minimum: byte_counter.bytes(),
+                maximum,
+            });
+        }
+        count_result
+            .map_err(|error| JsonFailure::from_serde(&error))
+            .map_err(DocumentCodecError::Encoding)?;
+        serde_json::to_string(&encoding)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(DocumentCodecError::Encoding)
     }
 }
 
-fn schema_id_from_record(record: SchemaIdRecord) -> Result<SchemaId, DocumentCodecError> {
-    let name = schema_name_from_record(record.name)?;
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct BorrowedDocumentEnvelopeV1<'a> {
+    #[serde(rename = "format")]
+    _format: IgnoredAny,
+    #[serde(rename = "formatVersion")]
+    _format_version: IgnoredAny,
+    #[serde(borrow)]
+    schema: &'a RawValue,
+    #[serde(borrow)]
+    root: &'a RawValue,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BorrowedSchemaIdRecord<'a> {
+    #[serde(borrow)]
+    name: Cow<'a, str>,
+    version: u32,
+}
+
+fn schema_id_from_raw(raw: &RawValue) -> Result<SchemaId, DocumentCodecError> {
+    let record: BorrowedSchemaIdRecord<'_> = serde_json::from_str(raw.get())
+        .map_err(|error| JsonFailure::from_serde(&error))
+        .map_err(DocumentCodecError::InvalidJson)?;
+    let name = QualifiedName::try_new(record.name.as_ref()).map_err(|source| {
+        DocumentCodecError::InvalidSchemaName {
+            value: BoundedDiagnostic::from(record.name.as_ref()),
+            source,
+        }
+    })?;
     let version = SchemaVersion::try_new(record.version).map_err(|source| {
         DocumentCodecError::InvalidSchemaVersion { value: record.version, source }
     })?;
     Ok(SchemaId::new(name, version))
-}
-
-fn record_from_document(document: &Document) -> DocumentRecordV1 {
-    DocumentRecordV1 {
-        format: DOCUMENT_FORMAT.to_owned(),
-        format_version: DOCUMENT_FORMAT_VERSION,
-        schema: SchemaIdRecord {
-            name: document.schema().name().as_str().to_owned(),
-            version: document.schema().version().get(),
-        },
-        root: record_from_node(document.root()),
-    }
-}
-
-fn record_from_node(node: &NodeRef) -> NodeRecordV1 {
-    if let Some(element) = node.as_element() {
-        return NodeRecordV1::Element {
-            element_type: element.kind().as_str().to_owned(),
-            entity_id: element.entity_id().map(ToString::to_string),
-            properties: record_from_properties(element.properties()),
-            children: element.children().iter().map(record_from_node).collect(),
-        };
-    }
-    if let Some(text) = node.as_text() {
-        return NodeRecordV1::Text {
-            text: text.text().to_owned(),
-            formats: text
-                .formats()
-                .iter()
-                .map(|format| FormatRecordV1 {
-                    format_type: format.kind().as_str().to_owned(),
-                    properties: record_from_properties(format.properties()),
-                })
-                .collect(),
-        };
-    }
-    unreachable!("NodeRef has exactly one private runtime variant")
-}
-
-fn record_from_properties(properties: &PropertyMap) -> PropertyMapRecord {
-    PropertyMapRecord(
-        properties
-            .iter()
-            .map(|(name, value)| (name.as_str().to_owned(), record_from_property_value(value)))
-            .collect(),
-    )
-}
-
-fn record_from_property_value(value: &PropertyValue) -> PropertyValueRecord {
-    match value.inner() {
-        PropertyValueInner::Null => PropertyValueRecord::Null,
-        PropertyValueInner::Boolean(value) => PropertyValueRecord::Boolean(*value),
-        PropertyValueInner::Integer(value) => PropertyValueRecord::Integer(value.get()),
-        PropertyValueInner::String(value) => PropertyValueRecord::String(value.to_string()),
-        PropertyValueInner::Array(values) => {
-            PropertyValueRecord::Array(values.iter().map(record_from_property_value).collect())
-        }
-        PropertyValueInner::Object(values) => {
-            PropertyValueRecord::Object(record_from_object(values))
-        }
-    }
-}
-
-fn record_from_object(values: &PropertyObject) -> BTreeMap<String, PropertyValueRecord> {
-    values.iter().map(|(key, value)| (key.to_owned(), record_from_property_value(value))).collect()
 }
 
 #[derive(Clone, Copy)]

@@ -21,7 +21,7 @@ pub(crate) use local_invariant::LocalInvariantError;
 pub(crate) use local_paragraph_structure::LocalParagraphStructureError;
 pub(crate) use local_text_splice::LocalTextPublicationError;
 pub use node_ref::{NodeKind, NodeRef};
-pub(crate) use property::PropertyValueInner;
+pub(crate) use property::{MAX_PROPERTY_OBJECT_KEY_BYTES, PropertyValueInner};
 pub use property::{
     MAX_SAFE_INTEGER, MIN_SAFE_INTEGER, PropertyInteger, PropertyIntegerError, PropertyMap,
     PropertyMapIter, PropertyObject, PropertyObjectIter, PropertyValue, PropertyValueKind,

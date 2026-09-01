@@ -5,6 +5,7 @@ compatibility promise
 Document format: `breditor/document`, version `1`
 Operation format: `breditor/operation`, version `1`
 Transaction-request format: `breditor/transaction-request`, version `1`
+Editor-state format: `breditor/editor-state`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -24,6 +25,9 @@ The implemented Rust slice owns:
   optimistic guard and validates statically knowable schema and resource laws;
 - a strict contextual transaction-request codec that binds ordered V1 operation
   payloads and every state/metadata policy to one caller-supplied exact base;
+- a strict contextual editor-state checkpoint codec that restores the complete
+  snapshot, existing Document V1 value, selection, and pending-format option
+  under one caller-supplied context;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -47,8 +51,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- persistent editor-state, commit, and history codecs, durable ordered logs,
-  deduplicated delivery, and reload replay;
+- persistent commit and history codecs, durable ordered logs, deduplicated
+  delivery, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -83,6 +87,13 @@ untrusted transaction-request JSON + caller-supplied exact EditorState
     -> allocation-preflighted streaming decode of ordered operation V1 payloads
     -> checked selection, pending-format, and metadata reconstruction
     -> unapplied exact-base runtime Transaction
+
+untrusted editor-state JSON + caller-supplied EditorContext
+    -> byte, format/version, and exact-shape checks
+    -> canonical snapshot reconstruction
+    -> allocation preflight and authoritative decode of the embedded Document V1 value
+    -> checked selection and pending-format reconstruction against that document
+    -> complete immutable EditorState at the exact restored snapshot
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -214,8 +225,17 @@ the bounded operation array, preserves all state-update and metadata variants,
 and returns an unapplied `Transaction`; it is not a commit, history entry,
 content hash, delivery identity, or ordered log record. The same checkpoint
 makes the transaction operation ceiling `u32` and public counts/indexes `u64`.
-None of these
-checkpoints changes document format version `1`, introduces an
+Version `0.0.19` adds the distinct `breditor/editor-state@1` contextual
+checkpoint. It persists every current `EditorState` value field while keeping
+the compiled schema and resource limits in the authoritative caller-supplied
+`EditorContext`. The embedded document remains an ordinary complete
+`breditor/document@1` value. The same checkpoint makes document and state
+encoding walk borrowed runtime values rather than first cloning a parallel
+owned record tree, and adds a typed streaming document preflight before the
+owned document record is allocated. A checkpoint is still not a commit,
+session, history stack, log entry, delivery identity, content hash, or
+integrity/authenticity proof.
+None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
@@ -318,9 +338,9 @@ caller contract violation that no process-local core can globally detect.
 
 `Revision` is a checked monotonic `u64` within a lineage. Initial state is
 revision zero, a committed state transition consumes one successor revision,
-and an unchanged transaction consumes none. Transaction-request V1 encodes the
-full `u64` as a canonical decimal string rather than a lossy JavaScript number.
-A future complete state checkpoint and Wasm adapter must preserve that same
+and an unchanged transaction consumes none. Transaction-request V1 and
+editor-state V1 encode the full `u64` as a canonical decimal string rather than
+a lossy JavaScript number. A future Wasm adapter must preserve that same
 fixed-width value and string boundary.
 
 Pending formats are an explicit typing override. `None` means derive formatting
@@ -969,6 +989,19 @@ checked global deltas instead of rescanning a matching-profile document, but:
   application also derive and canonicalize those slices repeatedly to prove
   same-type inverse closure; a private proof-carrying/cached derivation can
   remove that repeated allocation without changing the public contract;
+- document JSON decoding routes a borrowed header and exact outer envelope,
+  then walks the raw root once with a typed streaming preflight before parsing
+  the owned record and rebuilding immutable nodes. The preflight bounds node,
+  child, format, property, name, text, and nesting allocations using the active
+  document limits while admitting the first semantic excess for an
+  authoritative typed validation failure. Escaped strings can still require
+  transient decoder allocation, and the owned record coexists briefly with the
+  reconstructed runtime document. Document and editor-state encoding walk
+  borrowed runtime values directly rather than cloning a second complete
+  encoding tree, but still serialize twice—once into a byte counter and once
+  into the returned string. A complete document or editor-state wrapper plus
+  JSON escaping can make a valid in-memory value exceed `max_json_bytes`, so
+  both encoders can return a typed output-too-large failure;
 - operation JSON decoding performs one lightweight format/version header pass,
   parses a strict outer envelope with a borrowed raw payload, checks schema,
   streams through that payload once for allocation admission, then parses one
@@ -1182,9 +1215,9 @@ Schema-semantic changes increment `schema.version`. A future schema fingerprint
 must additionally pin compiled definitions before user-defined schema identity
 can be treated as a compatibility proof. Canonical document/operation hashing
 is deliberately deferred until its cross-language byte specification is written
-and tested. Documents, singular operations, and contextually decoded transaction
-requests have persistent formats today; complete editor-state checkpoints,
-commits, and history do not.
+and tested. Documents, singular operations, contextually decoded transaction
+requests, and contextually decoded complete editor-state checkpoints have
+persistent formats today; commits and history do not.
 
 ### Transaction request V1
 
@@ -1263,16 +1296,128 @@ provide exactly-once delivery or prevent ABA matches. Stable compact Rust V1
 encoding is deterministic, but it is not yet an RFC 8785 or cryptographic
 cross-language canonicalization promise.
 
+### Editor state V1
+
+A complete checkpoint uses its own exact six-field envelope and embeds an
+ordinary complete Document V1 value:
+
+```json
+{
+  "format": "breditor/editor-state",
+  "formatVersion": 1,
+  "snapshot": { "lineage": "editor-123", "revision": "42" },
+  "document": {
+    "format": "breditor/document",
+    "formatVersion": 1,
+    "schema": { "name": "breditor/base", "version": 1 },
+    "root": {
+      "kind": "element",
+      "type": "breditor/document",
+      "entityId": null,
+      "properties": {},
+      "children": [
+        {
+          "kind": "element",
+          "type": "breditor/paragraph",
+          "entityId": null,
+          "properties": {},
+          "children": []
+        }
+      ]
+    }
+  },
+  "selection": null,
+  "pendingFormats": null
+}
+```
+
+All six fields are required. The two state options are required-nullable:
+`selection: null` means no active selection, while `pendingFormats: null` means
+derive typing formats from context. `pendingFormats: []` is distinct and means
+an explicit unformatted override. As elsewhere, fixed objects reject unknown,
+missing, duplicate, null-in-place-of-value, and wrong-type fields. Snapshot
+revision uses the same canonical decimal `u64` string as transaction-request
+V1. Selection uses the same directional range and UTF-16 point records, and
+pending formats use the same ascending, unique, property-free V1 records.
+Node, grid, multi-range, and attributed pending-format values are not silently
+downcast; they require a future state format version after corresponding
+runtime semantics exist.
+
+The closed non-null V1 shapes are:
+
+```json
+{
+  "kind": "range",
+  "anchor": {
+    "kind": "text",
+    "textPath": [0, 0],
+    "utf16Offset": 1,
+    "affinity": "before"
+  },
+  "focus": {
+    "kind": "children",
+    "parentPath": [0],
+    "childIndex": 1,
+    "affinity": "after"
+  }
+}
+```
+
+A point is exactly one `text` shape with `textPath` and `utf16Offset`, or one
+`children` shape with `parentPath` and `childIndex`; affinity is exactly
+`before` or `after`. Each non-null pending-format array entry is exactly
+`{"type":"breditor/strong","properties":{}}` under the base schema. The
+qualified format kind remains schema-selected, but V1 requires the explicit
+empty properties object.
+
+`EditorStateJsonCodec` is bound to one complete `EditorContext`. The context is
+not selected by the wire: its compiled schema definitions, document/resource
+limits, and transaction operation ceiling remain caller-authoritative. Decode
+checks the outer byte cap and exact envelope, reconstructs the canonical
+snapshot, allocation-preflights state values, and passes the borrowed nested
+document unchanged through `DocumentJsonCodec`. It then reconstructs selection
+and pending formats and proves them together against that exact document before
+publishing one immutable state. Encode rejects even a schema-equal state when
+the rest of its context differs. Its honest law is
+`decode(encode(state)) == state` for one exact context.
+
+After outer routing, deterministic failure precedence is snapshot
+reconstruction, selection preflight, pending-format preflight, embedded
+document decode, typed selection reconstruction, typed pending-format
+reconstruction, then complete state validation. First-excess admission applies
+to each independent preflight counter in that traversal order; it does not
+promise to report every simultaneous violation.
+Outer-envelope JSON failures use complete-input coordinates. Failures produced
+while parsing a borrowed snapshot, selection, pending-format, document, or
+document-root sub-value use coordinates local to that sub-value; stable error
+codes and typed locations, not parser line/column, are the control-flow
+contract.
+
+The checkpoint owns no redundant top-level schema field: Document V1 remains
+the sole persisted schema identity and the supplied context remains the source
+of compiled semantics. It owns no history capacity or cursor, undo/redo stack,
+commit, operations, action registry/cache, intent router, presentation state,
+focus owner, DOM selection, composition buffer, queue position, request ID,
+deduplication key, checksum, signature, author, or timestamp. Restoring a high
+or maximum revision is valid; the next changed transaction can still fail with
+revision overflow. A lineage/revision pair is caller-owned identity, not a
+content hash, globally unique provenance proof, or defense against dishonest
+reuse. Byte and structural limits bound admission but do not authenticate the
+checkpoint or promise a fixed peak-memory multiple of its input size. Property
+string values have no narrower semantic byte ceiling and rely on the complete
+checkpoint/document `max_json_bytes` envelope.
+
 ## Next gate
 
-Freeze a contextual editor-state checkpoint record containing snapshot identity,
-the existing document V1 value, selection, and pending formats. It must prove
-the same complete runtime state under a caller-supplied `EditorContext` without
-silently changing document or transaction formats. A later commit/log layer
-still needs sequence/replay identity, snapshot/checkpoint policy,
-integrity/authenticity, migration, deduplication, and crash-tail rules before
-reload replay is shippable. Browser `beforeinput`, composition ownership, IME
-buffering, and paste chunking remain adapter concerns. Keep presentation
-metadata and delivery outside the deterministic core; subscriber lifecycle,
-catalog replacement, backpressure, and coalescing still require a separate
-contract before exposing an observer API.
+Freeze a durable commit record that links one exact before checkpoint to one
+exact after checkpoint and preserves the already-filtered forward and inverse
+operation recipes plus commit metadata. The design must decide whether the
+record embeds complete states or references separately verified checkpoints,
+and it must not imply ordered, exactly-once replay merely by persisting one
+commit. A later log layer still needs sequence/replay identity,
+snapshot/checkpoint policy, integrity/authenticity, migration, deduplication,
+and crash-tail rules before reload replay is shippable. Browser `beforeinput`,
+composition ownership, IME buffering, and paste chunking remain adapter
+concerns. Keep presentation metadata and delivery outside the deterministic
+core; subscriber lifecycle, catalog replacement, backpressure, and coalescing
+still require a separate contract before exposing an observer API.

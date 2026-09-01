@@ -18,6 +18,15 @@ pub struct EditorState {
     pending_formats: Option<FormatSet>,
 }
 
+/// Exhaustive borrowed view used by the persistent editor-state boundary.
+pub(crate) struct EditorStateCheckpointParts<'a> {
+    pub(crate) context: &'a EditorContext,
+    pub(crate) snapshot: &'a SnapshotId,
+    pub(crate) document: &'a Document,
+    pub(crate) selection: Option<&'a Selection>,
+    pub(crate) pending_formats: Option<&'a FormatSet>,
+}
+
 /// One exhaustively classified field of [`EditorState`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum EditorStateField {
@@ -29,6 +38,18 @@ pub(crate) enum EditorStateField {
 }
 
 impl EditorState {
+    /// Returns every persisted state field as one exhaustive borrowed view.
+    pub(crate) fn checkpoint_parts(&self) -> EditorStateCheckpointParts<'_> {
+        let Self { context, snapshot, document, selection, pending_formats } = self;
+        EditorStateCheckpointParts {
+            context,
+            snapshot,
+            document,
+            selection: selection.as_ref(),
+            pending_formats: pending_formats.as_ref(),
+        }
+    }
+
     /// Classifies every field that differs from `previous`.
     pub(crate) fn changed_fields_from(
         &self,

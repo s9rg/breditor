@@ -3,7 +3,7 @@ use std::{error::Error, fmt};
 use thiserror::Error;
 
 use crate::{
-    identity::{QualifiedName, QualifiedNameError},
+    identity::QualifiedNameError,
     schema::{SchemaId, SchemaVersionError, ValidationReport},
 };
 
@@ -125,6 +125,8 @@ pub enum CodecErrorCode {
     InvalidOperation,
     /// A transaction field could not be reconstructed through checked contracts.
     InvalidTransaction,
+    /// An editor-state field could not be reconstructed through checked contracts.
+    InvalidEditorState,
     /// A validated runtime value could not be serialized.
     EncodingFailed,
 }
@@ -148,6 +150,7 @@ impl CodecErrorCode {
             Self::ValidationFailed => "codec.validation_failed",
             Self::InvalidOperation => "codec.invalid_operation",
             Self::InvalidTransaction => "codec.invalid_transaction",
+            Self::InvalidEditorState => "codec.invalid_editor_state",
             Self::EncodingFailed => "codec.encoding_failed",
         }
     }
@@ -162,6 +165,16 @@ pub enum DocumentCodecError {
         /// Actual input size.
         actual: usize,
         /// Maximum accepted input size.
+        maximum: usize,
+    },
+    /// A deterministic encoding would exceed the codec's decoding budget.
+    #[error(
+        "encoded document JSON exceeds the configured maximum {maximum}; at least {minimum} bytes were observed"
+    )]
+    OutputTooLarge {
+        /// Lower bound observed before serialization stopped, saturated at `usize::MAX`.
+        minimum: usize,
+        /// Maximum accepted input size for the same codec.
         maximum: usize,
     },
     /// The JSON syntax or strict record shape is invalid.
@@ -223,6 +236,7 @@ impl DocumentCodecError {
     pub const fn code(&self) -> CodecErrorCode {
         match self {
             Self::InputTooLarge { .. } => CodecErrorCode::InputTooLarge,
+            Self::OutputTooLarge { .. } => CodecErrorCode::OutputTooLarge,
             Self::InvalidJson(_) => CodecErrorCode::InvalidJson,
             Self::UnsupportedFormat { .. } => CodecErrorCode::UnsupportedFormat,
             Self::UnsupportedFormatVersion { .. } => CodecErrorCode::UnsupportedFormatVersion,
@@ -233,13 +247,6 @@ impl DocumentCodecError {
             Self::Encoding(_) => CodecErrorCode::EncodingFailed,
         }
     }
-}
-
-pub(crate) fn schema_name_from_record(value: String) -> Result<QualifiedName, DocumentCodecError> {
-    QualifiedName::try_new(&value).map_err(|source| DocumentCodecError::InvalidSchemaName {
-        value: BoundedDiagnostic::from(value),
-        source,
-    })
 }
 
 #[cfg(test)]
@@ -273,6 +280,7 @@ mod tests {
             (CodecErrorCode::ValidationFailed, "codec.validation_failed"),
             (CodecErrorCode::InvalidOperation, "codec.invalid_operation"),
             (CodecErrorCode::InvalidTransaction, "codec.invalid_transaction"),
+            (CodecErrorCode::InvalidEditorState, "codec.invalid_editor_state"),
             (CodecErrorCode::EncodingFailed, "codec.encoding_failed"),
         ];
 

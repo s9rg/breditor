@@ -165,7 +165,7 @@ fn assert_full_revalidation_parity(context: &EditorContext, document: &Document)
 
 #[test]
 fn seam_merge_cannot_hide_an_oversized_result_leaf() -> TestResult {
-    let limits = DocumentLimits::default().with_max_text_bytes(5).with_max_total_text_bytes(100);
+    let limits = DocumentLimits::default().with_max_text_bytes(6).with_max_total_text_bytes(100);
     let context = EditorContext::new(CompiledSchema::breditor_base(), limits);
     let source = state(
         &context,
@@ -180,7 +180,7 @@ fn seam_merge_cannot_hide_an_oversized_result_leaf() -> TestResult {
     let transaction = Transaction::new(&source, vec![splice.into()]);
     let (operation_index, report) = invalid_result_report(transaction.apply(&context, &source))?;
     assert_eq!(operation_index, 0);
-    assert_limit(&report, &path(&[0, 0])?, LimitKind::TextBytes, 7, 5);
+    assert_limit(&report, &path(&[0, 0])?, LimitKind::TextBytes, 7, 6);
     let authoritative =
         authoritative_validation_report(&context, &[paragraph(&[text_node("aaacbbb", false)])])?;
     assert_eq!(report, authoritative);

@@ -16,6 +16,18 @@ pub(crate) fn preflight_operation_payload(
     deserializer.end()
 }
 
+/// Preflights a direct nullable pending-format array outside an operation.
+pub(crate) fn preflight_pending_formats_payload(
+    json: &str,
+    context: &EditorContext,
+) -> Result<(), serde_json::Error> {
+    let mut budget = PreflightBudget::new(context, 1);
+    let mut deserializer = serde_json::Deserializer::from_str(json);
+    ValueSeed { budget: &mut budget, context: ValueContext::Formats }
+        .deserialize(&mut deserializer)?;
+    deserializer.end()
+}
+
 /// Preflights one raw JSON array of transaction operation payloads.
 ///
 /// The returned count uses a fixed width and no operation record is
