@@ -18,6 +18,19 @@ pub trait Action: Send + Sync + 'static {
     /// Concrete decoded input accepted by this action.
     type Input: DecodeActionInput;
 
+    /// Returns the handler's default observable-state and effect contract.
+    ///
+    /// Registration freezes this value into the descriptor. Stateless actions
+    /// inherit the conservative default; stateful actions should override it so
+    /// direct registration cannot accidentally discard their toolbar shape.
+    #[must_use]
+    fn state_spec() -> ActionStateSpec
+    where
+        Self: Sized,
+    {
+        ActionStateSpec::stateless()
+    }
+
     /// Evaluates capability, observable state, and any complete action plan.
     ///
     /// Implementations must be deterministic and side-effect free. Expected
@@ -103,17 +116,14 @@ impl ActionRegistration {
     where
         A: Action,
     {
+        let state_spec = A::state_spec();
         Self {
-            descriptor: ActionDescriptor {
-                id,
-                input_contract: input_contract.clone(),
-                state_spec: ActionStateSpec::stateless(),
-            },
+            descriptor: ActionDescriptor { id, input_contract: input_contract.clone(), state_spec },
             handler: Arc::new(TypedAction { action, input_contract }),
         }
     }
 
-    /// Replaces the default stateless, conservative observable specification.
+    /// Replaces the handler's default observable specification.
     ///
     /// Registry construction rejects a spec that claims to read session
     /// history because ordinary handlers receive only [`EditorState`].

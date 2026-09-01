@@ -168,6 +168,29 @@ impl Action for InvalidIndicatorAction {
 }
 
 #[derive(Clone)]
+struct DeclaredTrackedAction {
+    reason: DisabledReason,
+}
+
+impl Action for DeclaredTrackedAction {
+    type Input = ();
+
+    fn state_spec() -> ActionStateSpec {
+        ActionStateSpec::new(
+            ActionStateContract::new(ActionActivationContract::Tracked, None),
+            ActionEffects::new(ActionStateDomains::DOCUMENT, ActionStateDomains::NONE),
+        )
+    }
+
+    fn evaluate(&self, _: &EditorState, (): &Self::Input) -> Result<ActionEvaluation, ActionFault> {
+        Ok(ActionEvaluation::new(
+            ActionDecision::Disabled(self.reason.clone()),
+            ActionStateIndicator::new(ActionActivation::Active, ActionStateValue::Unsupported),
+        ))
+    }
+}
+
+#[derive(Clone)]
 struct InvalidPlanAction {
     fault: ActionFault,
     expected_removed: &'static str,
@@ -329,6 +352,44 @@ fn descriptors_are_lexical_and_expose_input_contracts() -> TestResult {
     assert_eq!(descriptors[0].input_contract(), None);
     assert_eq!(descriptors[1].id(), &action_id("test/z-last")?);
     assert_eq!(descriptors[1].input_contract(), Some(&contract));
+    Ok(())
+}
+
+#[test]
+fn registration_captures_the_handler_state_spec_before_an_explicit_override() -> TestResult {
+    let declared_id = action_id("test/a-declared-state")?;
+    let overridden_id = action_id("test/z-overridden-state")?;
+    let reason = DisabledReason::new(name("test/disabled")?, None);
+    let registry = ActionRegistry::try_new(vec![
+        ActionRegistration::without_input(
+            declared_id.clone(),
+            DeclaredTrackedAction { reason: reason.clone() },
+        ),
+        ActionRegistration::without_input(overridden_id.clone(), DeclaredTrackedAction { reason })
+            .with_state_spec(ActionStateSpec::stateless()),
+    ])?;
+
+    let declared = registry
+        .descriptor(&declared_id)
+        .ok_or_else(|| test_error("declared-state descriptor was missing"))?;
+    assert_eq!(declared.state_spec(), &DeclaredTrackedAction::state_spec());
+    let overridden = registry
+        .descriptor(&overridden_id)
+        .ok_or_else(|| test_error("overridden-state descriptor was missing"))?;
+    assert_eq!(overridden.state_spec(), &ActionStateSpec::stateless());
+
+    let state = state("action-declared-state", "a")?;
+    let declared = registry.prepare(&state, &ActionInvocation::without_input(declared_id))?;
+    assert_eq!(declared.indicator().activation(), ActionActivation::Active);
+    assert!(matches!(
+        registry.prepare(&state, &ActionInvocation::without_input(overridden_id)),
+        Err(ActionPrepareError::InvalidState {
+            source: ActionStateValidationError::UnexpectedActivation {
+                actual: ActionActivation::Active,
+            },
+            ..
+        })
+    ));
     Ok(())
 }
 

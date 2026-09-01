@@ -9,8 +9,8 @@ use crate::{
 };
 
 use super::super::text_position::{
-    TextPositionError, TextRangeSelection, normalize_same_paragraph_selection,
-    point_at_fragment_offset,
+    TextPositionError, TextRangeSelection, normalize_range_selection,
+    normalize_same_paragraph_selection, point_at_fragment_offset,
 };
 
 pub(super) fn require_base_range(
@@ -21,18 +21,38 @@ pub(super) fn require_base_range(
     }
     match normalize_same_paragraph_selection(state) {
         Ok(range) => Ok(Ok(range)),
-        Err(TextPositionError::NoSelection) => Ok(Err(disabled_reason("breditor/no-selection"))),
-        Err(TextPositionError::UnsupportedSelection) => {
+        Err(error) => map_text_position_error(error),
+    }
+}
+
+pub(super) fn require_base_text_range(
+    state: &EditorState,
+) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
+    if !state.context().schema().is_exact_breditor_base() {
+        return Ok(Err(disabled_reason("breditor/unsupported-schema")));
+    }
+    match normalize_range_selection(state) {
+        Ok(range) => Ok(Ok(range)),
+        Err(error) => map_text_position_error(error),
+    }
+}
+
+fn map_text_position_error(
+    error: TextPositionError,
+) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
+    match error {
+        TextPositionError::NoSelection => Ok(Err(disabled_reason("breditor/no-selection"))),
+        TextPositionError::UnsupportedSelection => {
             Ok(Err(disabled_reason("breditor/unsupported-selection")))
         }
-        Err(TextPositionError::CrossParagraph { .. }) => {
+        TextPositionError::CrossParagraph { .. } => {
             Ok(Err(disabled_reason("breditor/cross-paragraph-selection")))
         }
-        Err(
-            TextPositionError::UnsupportedPosition { .. }
-            | TextPositionError::NotDirectRootParagraph { .. },
-        ) => Ok(Err(disabled_reason("breditor/unsupported-text-position"))),
-        Err(error) => Err(fault_with_error("breditor/text-position-fault", &error)),
+        TextPositionError::UnsupportedPosition { .. }
+        | TextPositionError::NotDirectRootParagraph { .. } => {
+            Ok(Err(disabled_reason("breditor/unsupported-text-position")))
+        }
+        error => Err(fault_with_error("breditor/text-position-fault", &error)),
     }
 }
 
@@ -88,7 +108,10 @@ pub(super) fn base_shape_fits(
     if result_paragraphs.iter().any(|fragment| {
         fragment.len() > limits.max_children_per_element()
             || u32::try_from(fragment.len()).is_err()
-            || fragment.iter().any(|run| run.text().len() > limits.max_text_bytes())
+            || fragment.iter().any(|run| {
+                run.text().len() > limits.max_text_bytes()
+                    || run.formats().len() > limits.max_formats_per_text()
+            })
     }) {
         return false;
     }

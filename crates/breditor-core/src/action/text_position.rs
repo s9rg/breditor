@@ -46,7 +46,6 @@ impl TextRangeSelection {
     }
 
     /// Returns the source range's resolved anchor/focus direction.
-    #[cfg(test)]
     pub(crate) const fn order(&self) -> RangeOrder {
         self.order
     }

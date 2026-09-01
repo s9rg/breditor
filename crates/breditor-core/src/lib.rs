@@ -7,10 +7,10 @@
 //! proof-backed local text validation, structural relocation, and exact
 //! in-memory undo/redo requests. It also owns a deterministic typed action
 //! registry, a frozen semantic intent router, the first semantic
-//! paragraph-break/backward-delete actions, and a synchronous exact-publication
-//! session with bounded linear history. It deliberately contains no browser,
-//! framework, asynchronous queue, clock, random-number, collaboration, or Wasm
-//! binding code.
+//! paragraph-break, backward-delete, and strong-format actions, and a
+//! synchronous exact-publication session with bounded linear history. It
+//! deliberately contains no browser, framework, asynchronous queue, clock,
+//! random-number, collaboration, or Wasm binding code.
 //!
 //! # Construction boundary
 //!

@@ -3,9 +3,11 @@
 mod delete_backward;
 mod insert_paragraph_break;
 mod support;
+mod toggle_strong;
 
 pub use delete_backward::{DeleteBackwardAction, delete_backward_action_id};
 pub use insert_paragraph_break::{InsertParagraphBreakAction, insert_paragraph_break_action_id};
+pub use toggle_strong::{ToggleStrongAction, toggle_strong_action_id};
 
 use crate::action::{ActionRegistration, ActionRegistry, ActionRegistryError};
 
@@ -19,6 +21,7 @@ pub fn base_action_registrations() -> Vec<ActionRegistration> {
     vec![
         ActionRegistration::new(delete_backward_action_id(), DeleteBackwardAction),
         ActionRegistration::new(insert_paragraph_break_action_id(), InsertParagraphBreakAction),
+        ActionRegistration::new(toggle_strong_action_id(), ToggleStrongAction),
     ]
 }
 

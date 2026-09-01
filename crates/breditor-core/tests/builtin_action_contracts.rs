@@ -1,4 +1,4 @@
-//! Black-box contracts for the base paragraph-break and backward-delete actions.
+//! Black-box contracts for the base editing actions.
 
 mod support;
 
@@ -6,10 +6,11 @@ use std::error::Error;
 
 use breditor_core::{
     action::{
-        ActionExecutionError, ActionId, ActionInvocation, ActionPreparation, ActionRegistry,
-        PreparedAction,
+        ActionActivationContract, ActionExecutionError, ActionId, ActionInvocation,
+        ActionPreparation, ActionRegistry, ActionStateDomains, PreparedAction,
         builtins::{
             base_action_registry, delete_backward_action_id, insert_paragraph_break_action_id,
+            toggle_strong_action_id,
         },
     },
     codec::DocumentJsonCodec,
@@ -193,13 +194,38 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
     let registry = base_action_registry()?;
     let delete_id = delete_backward_action_id();
     let enter_id = insert_paragraph_break_action_id();
+    let strong_id = toggle_strong_action_id();
     assert_eq!(delete_id.as_str(), "breditor/delete-backward");
     assert_eq!(enter_id.as_str(), "breditor/insert-paragraph-break");
-    assert_eq!(registry.len(), 2);
+    assert_eq!(strong_id.as_str(), "breditor/toggle-strong");
+    assert_eq!(registry.len(), 3);
     let descriptors = registry.descriptors().collect::<Vec<_>>();
     assert_eq!(descriptors[0].id(), &delete_id);
     assert_eq!(descriptors[1].id(), &enter_id);
+    assert_eq!(descriptors[2].id(), &strong_id);
     assert!(descriptors.iter().all(|descriptor| descriptor.input_contract().is_none()));
+    assert_eq!(
+        descriptors[2].state_spec().contract().activation_contract(),
+        ActionActivationContract::Tracked
+    );
+    assert_eq!(descriptors[2].state_spec().contract().value_contract(), None);
+    let strong_effects = descriptors[2].state_spec().effects();
+    assert_eq!(
+        strong_effects.reads(),
+        ActionStateDomains::DOCUMENT
+            | ActionStateDomains::SELECTION
+            | ActionStateDomains::PENDING_FORMATS
+            | ActionStateDomains::CONTEXT
+            | ActionStateDomains::SNAPSHOT
+    );
+    assert_eq!(
+        strong_effects.may_write(),
+        ActionStateDomains::DOCUMENT
+            | ActionStateDomains::SELECTION
+            | ActionStateDomains::PENDING_FORMATS
+            | ActionStateDomains::HISTORY
+            | ActionStateDomains::SNAPSHOT
+    );
 
     let context = EditorContext::default();
     let initial = state(
@@ -210,7 +236,7 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
         "builtin-parity",
     )?;
     let original = initial.clone();
-    for id in [delete_id, enter_id] {
+    for id in [delete_id, enter_id, strong_id] {
         let keyboard = prepared(&registry, &initial, id.clone())?;
         let toolbar = prepared(&registry, &initial, id)?;
         assert_eq!(keyboard.transaction(), toolbar.transaction());
@@ -592,6 +618,7 @@ fn builtins_report_stable_disabled_reasons_without_changing_state_or_revision() 
     let context = EditorContext::default();
     let delete_id = delete_backward_action_id();
     let enter_id = insert_paragraph_break_action_id();
+    let strong_id = toggle_strong_action_id();
 
     let document_start = state(
         &context,
@@ -604,7 +631,7 @@ fn builtins_report_stable_disabled_reasons_without_changing_state_or_revision() 
 
     let no_selection =
         state(&context, &[paragraph_value(&[("a", false)])], None, None, "disabled-no-selection")?;
-    for id in [delete_id.clone(), enter_id.clone()] {
+    for id in [delete_id.clone(), enter_id.clone(), strong_id.clone()] {
         assert_disabled(&registry, &no_selection, id, "breditor/no-selection")?;
     }
 
@@ -618,7 +645,7 @@ fn builtins_report_stable_disabled_reasons_without_changing_state_or_revision() 
         None,
         "disabled-cross-paragraph",
     )?;
-    for id in [delete_id.clone(), enter_id.clone()] {
+    for id in [delete_id.clone(), enter_id.clone(), strong_id] {
         assert_disabled(&registry, &cross_paragraph, id, "breditor/cross-paragraph-selection")?;
     }
 
