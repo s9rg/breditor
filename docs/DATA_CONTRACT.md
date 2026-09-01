@@ -27,8 +27,8 @@ The implemented Rust slice owns:
 - one-call action observation contracts plus a frozen, bounded direct/routed/
   history action-state catalog, immutable exact-base batches, and a
   synchronous single-observation cache with bounded local deltas;
-- semantic base actions for paragraph breaks, backward deletion, and strong
-  formatting; and
+- semantic base actions for exact text insertion, paragraph breaks, backward
+  deletion, and strong formatting; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
   linear undo/redo history and opaque history-observation identity.
 
@@ -37,8 +37,8 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph split/join, including
   arbitrary block insertion, list changes, metadata conflict rules, and node
   movement;
-- cross-paragraph range replacement and formatting, generic mark attributes,
-  and text insertion that consumes pending typing formats;
+- cross-paragraph range replacement and formatting, and generic mark
+  attributes;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
@@ -165,9 +165,11 @@ not change document format version `1`.
 Version `0.0.8` adds immutable, bounded action-state batches. Version `0.0.9`
 adds a process-local synchronous cache and local deltas over those batches.
 Version `0.0.10` adds the first tracked formatting control and guarded
-same-paragraph strong-format mutation. None of these checkpoints changes
-document format version `1`, introduces an executable capability cache, or
-defines a durable action-state wire format.
+same-paragraph strong-format mutation. Version `0.0.11` adds bounded semantic
+text insertion, including pending-format consumption and deterministic typing
+history grouping. None of these checkpoints changes document format version
+`1`, introduces an executable capability cache, or defines a durable
+action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -450,7 +452,24 @@ action or intent.
 `Send` and `Sync` make values thread-safe; they do not make parallel editor
 histories linear.
 
-The three base actions take no input:
+Three base actions take no input, while text insertion accepts one typed input:
+
+- `breditor/insert-text` accepts input contract
+  `breditor/insert-text-input@1`, whose complete value is one non-empty string
+  of at most 65,536 UTF-8 bytes and 65,536 UTF-16 code units. The second
+  ceiling is an explicit but currently redundant version-1 bound under the
+  UTF-8 envelope; retaining it prevents a future envelope change from silently
+  widening the contract. Unicode is preserved exactly without normalization.
+  Newlines and control scalars remain literal inline text rather than becoming
+  structural paragraph breaks. At a collapsed range, an explicit pending
+  format set wins; otherwise the focus affinity selects the adjacent source
+  run, with the other side as an edge fallback. An extended replacement uses
+  the first spatially selected run, independent of selection direction and
+  endpoint affinities. The action emits one exact guarded `TextSplice`, places
+  a collapsed `Affinity::Before` caret at the inserted text's end, consumes the
+  pending override with `Set(None)`, and requests merge group
+  `breditor/typing`. Empty input is invalid input, never deletion, a no-op, or
+  a disabled capability.
 
 - `breditor/insert-paragraph-break` replaces an extended same-paragraph range
   with nothing and splits at its spatial start, or performs one split for a
@@ -477,18 +496,25 @@ The three base actions take no input:
   history event. Cross-paragraph ranges remain mutation-disabled but still
   report truthful inactive, active, or mixed state across the selected text.
 
-All three actions support point aliases and non-BMP scalar boundaries; the
-content-changing paths preserve forward/backward range direction. Empty
-paragraphs and formatted seams have explicit behavior. Cross-paragraph
-extended mutations are disabled until a native guarded block-range replacement
-operation exists. Backward deletion is scalar-based, not grapheme-based:
-combining marks and components of a zero-width-joiner emoji can be deleted
-separately. Paragraph break and backward delete advertise stateless
-observations; strong formatting uses the same evaluation for capability and
-inactive/active/mixed state. A collapsed pending-format-only toggle rotates the
+All four actions support point aliases and non-BMP scalar boundaries; the
+content-changing paths preserve forward/backward range direction where a range
+survives. Empty paragraphs and formatted seams have explicit behavior.
+Cross-paragraph extended mutations are disabled until a native guarded
+block-range replacement operation exists. Backward deletion is scalar-based,
+not grapheme-based: combining marks and components of a zero-width-joiner emoji
+can be deleted separately. Text insertion, paragraph break, and backward delete
+advertise stateless observations; strong formatting uses the same evaluation
+for capability and inactive/active/mixed state. The parameterized text action
+has no generic toolbar entry: a catalog may observe only an exact fixed-string
+invocation, such as an intentional snippet or macro control. If an extended
+replacement already contains exactly the requested text with the inherited
+formats, canonical operation filtering produces a selection-only commit. That
+commit creates no undo entry, preserves redo, and closes the active history
+merge group. A collapsed pending-format-only toggle likewise rotates the
 snapshot and history-observation identity but creates no undo entry and does
 not clear redo, because the current history contract records only document
-operations. DOM
+operations. The host must close `breditor/typing` at timer, paste, composition,
+focus, and other semantic typing boundaries. DOM
 `beforeinput`, `preventDefault`, IME ownership, shortcut precedence, labels,
 icons, and layout remain host concerns. Replay does not rerun action callbacks,
 route IDs, or post-hooks; it applies the previously proven transaction
@@ -844,6 +870,14 @@ checked global deltas instead of rescanning a matching-profile document, but:
   merge large equal-format seams; cross-paragraph activation scans selected
   direct-root paragraphs until it proves mixed state or reaches the range end,
   even though mutation is disabled;
+- insertion plans and applies in time proportional to the affected paragraph's
+  runs plus copied seam text. Because text leaves are immutable strings,
+  repeated one-scalar typing into one growing same-format leaf copies that
+  leaf on every action and can be quadratic over a long typing sequence. Rust
+  or Wasm does not remove this representation cost; a piece table, rope, or
+  equivalent persistent text store is required before claiming large-document
+  typing performance. The 65,536-byte action envelope also makes larger paste
+  chunking or a separate structural-paste contract a host/future concern;
 - a multi-operation transaction retains structurally shared intermediate
   documents in its composed relocation map; and
 - path copying clones the complete child vector of every ancestor on the edited
@@ -900,15 +934,14 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add semantic text insertion as the first consumer of pending typing formats.
-The action should replace an extended same-paragraph selection or insert at a
-collapsed range through one exact guarded splice, choose pending versus
-contextual formats by the same explicit caret rule as `toggle-strong`, place the
-result caret deterministically, and form well-specified typing history groups.
-Browser `beforeinput`, composition ownership, and IME buffering remain adapter
-concerns; the Rust input must be a bounded semantic string rather than an event.
-Cross-paragraph replacement remains fail-closed until a native guarded
-block-range operation exists. Keep presentation metadata and delivery outside
-the deterministic core; subscriber lifecycle, catalog replacement,
-backpressure, and coalescing still require a separate contract before exposing
-an observer API.
+Add a native guarded cross-paragraph range-replacement operation. It must own
+exact source-paragraph guards, collapse the selected block span into one valid
+result paragraph, provide a closed inverse that restores every removed
+paragraph, relocate points deterministically, preserve authoritative
+diagnostics, and enforce limits atomically. Then lift semantic insertion and
+backward deletion over multi-paragraph selections; paragraph break and
+formatting can build on the same primitive. Browser `beforeinput`, composition
+ownership, IME buffering, and paste chunking remain adapter concerns. Keep
+presentation metadata and delivery outside the deterministic core; subscriber
+lifecycle, catalog replacement, backpressure, and coalescing still require a
+separate contract before exposing an observer API.

@@ -1,6 +1,6 @@
 use crate::{
     action::{ActionDecision, ActionFault, DisabledReason},
-    document::TextFragment,
+    document::{FormatSet, TextFragment},
     identity::QualifiedName,
     operation::{ParagraphSplit, SelectionRelocationPolicy},
     position::{Affinity, NodePath, Point, TextOffset},
@@ -98,6 +98,47 @@ pub(super) fn fragment_range_parts(
     Ok((prefix, selected, suffix))
 }
 
+pub(super) fn effective_typing_formats(
+    state: &EditorState,
+    fragment: &TextFragment,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<FormatSet, ActionFault> {
+    match state.pending_formats() {
+        Some(formats) => Ok(formats.clone()),
+        None => contextual_formats(fragment, offset, affinity),
+    }
+}
+
+pub(super) fn contextual_formats(
+    fragment: &TextFragment,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<FormatSet, ActionFault> {
+    let mut cursor = 0_u64;
+    let mut left = None;
+    let mut right = None;
+    for run in fragment {
+        let end = cursor
+            .checked_add(u64::from(run.utf16_len()))
+            .ok_or_else(|| fault("breditor/contextual-format-offset-fault"))?;
+        if cursor < offset.get() && offset.get() <= end {
+            left = Some(run.formats().clone());
+        }
+        if cursor <= offset.get() && offset.get() < end {
+            right = Some(run.formats().clone());
+        }
+        cursor = end;
+    }
+    if offset.get() > cursor {
+        return Err(fault("breditor/contextual-format-offset-fault"));
+    }
+    Ok(match affinity {
+        Affinity::Before => left.or(right).unwrap_or_default(),
+        Affinity::After => right.or(left).unwrap_or_default(),
+    })
+}
+
 pub(super) fn base_shape_fits(
     state: &EditorState,
     removed_paragraphs: usize,
@@ -156,12 +197,43 @@ pub(super) fn base_shape_fits(
     result_nodes <= limits.max_nodes()
 }
 
+pub(super) fn base_total_text_fits(
+    state: &EditorState,
+    removed_text_bytes: usize,
+    result_text_bytes: usize,
+) -> bool {
+    let Ok(removed) = u64::try_from(removed_text_bytes) else {
+        return false;
+    };
+    let Ok(result) = u64::try_from(result_text_bytes) else {
+        return false;
+    };
+    let maximum =
+        u64::try_from(state.context().limits().max_total_text_bytes()).unwrap_or(u64::MAX);
+    state
+        .document()
+        .summary()
+        .total_text_bytes()
+        .checked_sub(removed)
+        .and_then(|retained| retained.checked_add(result))
+        .is_some_and(|total| total <= maximum)
+}
+
 pub(super) fn collapsed_selection_at(
     paragraph_path: &NodePath,
     fragment: &TextFragment,
     offset: TextOffset,
 ) -> Result<Selection, ActionFault> {
-    let point = point_at_fragment_offset(paragraph_path, fragment, offset, Affinity::After)
+    collapsed_selection_at_with_affinity(paragraph_path, fragment, offset, Affinity::After)
+}
+
+pub(super) fn collapsed_selection_at_with_affinity(
+    paragraph_path: &NodePath,
+    fragment: &TextFragment,
+    offset: TextOffset,
+    affinity: Affinity,
+) -> Result<Selection, ActionFault> {
+    let point = point_at_fragment_offset(paragraph_path, fragment, offset, affinity)
         .map_err(|error| fault_with_error("breditor/caret-construction-fault", &error))?;
     Ok(collapsed_selection(point))
 }

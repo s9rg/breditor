@@ -7,7 +7,7 @@ use crate::{
     document::{Format, FormatSet, PropertyMap, TextFragment, TextFragmentError, TextRun},
     identity::QualifiedName,
     operation::{Operation, TextRange, TextSplice},
-    position::{Affinity, NodePath, TextOffset},
+    position::{NodePath, TextOffset},
     selection::{RangeOrder, RangeSelection, Selection},
     state::EditorState,
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
@@ -16,8 +16,8 @@ use crate::{
 use super::{
     super::text_position::{TextRangeSelection, direct_paragraph_index, point_at_fragment_offset},
     support::{
-        base_shape_fits, disabled, fault, fragment_range_parts, paragraph_fragment,
-        require_base_text_range, require_operation_budget, strict_relocation,
+        base_shape_fits, disabled, effective_typing_formats, fault, fragment_range_parts,
+        paragraph_fragment, require_base_text_range, require_operation_budget, strict_relocation,
     },
 };
 
@@ -90,10 +90,11 @@ fn evaluate_collapsed(
     range: &TextRangeSelection,
     strong: &QualifiedName,
 ) -> Result<ActionEvaluation, ActionFault> {
-    let formats = match state.pending_formats() {
-        Some(formats) => formats.clone(),
-        None => collapsed_document_formats(state, range)?,
-    };
+    let fragment =
+        paragraph_fragment(state, range.start().paragraph_path(), range.start().offset())?;
+    let focus_affinity = source_range(state)?.focus().affinity();
+    let formats =
+        effective_typing_formats(state, &fragment, range.start().offset(), focus_affinity)?;
     let activation = activation_for_formats(&formats, strong);
     let Some(toggled) = toggle_formats(
         &formats,
@@ -168,45 +169,6 @@ fn evaluation(decision: ActionDecision, activation: ActionActivation) -> ActionE
         decision,
         ActionStateIndicator::new(activation, ActionStateValue::Unsupported),
     )
-}
-
-fn collapsed_document_formats(
-    state: &EditorState,
-    range: &TextRangeSelection,
-) -> Result<FormatSet, ActionFault> {
-    let fragment =
-        paragraph_fragment(state, range.start().paragraph_path(), range.start().offset())?;
-    let focus_affinity = source_range(state)?.focus().affinity();
-    let (left, right) = formats_around(&fragment, range.start().offset())?;
-    Ok(match focus_affinity {
-        Affinity::Before => left.or(right).unwrap_or_default(),
-        Affinity::After => right.or(left).unwrap_or_default(),
-    })
-}
-
-fn formats_around(
-    fragment: &TextFragment,
-    offset: TextOffset,
-) -> Result<(Option<FormatSet>, Option<FormatSet>), ActionFault> {
-    let mut cursor = 0_u64;
-    let mut left = None;
-    let mut right = None;
-    for run in fragment {
-        let end = cursor
-            .checked_add(u64::from(run.utf16_len()))
-            .ok_or_else(|| fault("breditor/toggle-strong-offset-fault"))?;
-        if cursor < offset.get() && offset.get() <= end {
-            left = Some(run.formats().clone());
-        }
-        if cursor <= offset.get() && offset.get() < end {
-            right = Some(run.formats().clone());
-        }
-        cursor = end;
-    }
-    if offset.get() > cursor {
-        return Err(fault("breditor/toggle-strong-offset-fault"));
-    }
-    Ok((left, right))
 }
 
 fn activation_for_formats(formats: &FormatSet, strong: &QualifiedName) -> ActionActivation {
