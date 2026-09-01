@@ -1,0 +1,25 @@
+---
+description: Keep every Breditor action and primitive operation isolated, documented, and auditable
+alwaysApply: true
+---
+
+# Action and operation modules
+
+- Put every semantic action in its own lower-snake-case file under `src/action/`.
+- Put every primitive operation in its own lower-snake-case file under `src/operation/`.
+- Match the filename to the primary Rust type: `InsertText` belongs in
+  `action/insert_text.rs`; `TextSplice` belongs in `operation/text_splice.rs`.
+- Keep `mod.rs` limited to declarations, a closed routing enum when needed, and
+  curated re-exports. It must contain no action or operation semantics.
+- Actions plan standard operations; they never mutate document nodes directly.
+- Do not create an action before its required operation and relocation laws exist.
+
+Every action file must document its stable ID/version, payload validation,
+structural preconditions, planned operations, selection and pending-format
+behavior, history boundaries, stale/replay behavior, structured failures, and
+representative laws/tests.
+
+Every operation file must own its checked apply behavior, canonical applied
+record, actual inverse, relocation, coalescing rule, encoding, and property tests.
+
+Do not add catch-all `types.rs`, `utils.rs`, `helpers.rs`, or `misc.rs` files.
