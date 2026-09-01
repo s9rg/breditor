@@ -8,7 +8,7 @@ protocol.
 This repository currently contains the first end-to-end Rust-core slice:
 
 - immutable, structurally shared document values;
-- validator-derived cached document measurements for node count, maximum depth,
+- proof-derived cached document measurements for node count, maximum depth,
   total UTF-8 text bytes, and recursive property-value count;
 - a minimal compiled schema for document, paragraph, text, and strong formatting;
 - strict versioned JSON records;
@@ -19,16 +19,19 @@ This repository currently contains the first end-to-end Rust-core slice:
 - paragraph-local `TextSplice` operations over canonical formatted fragments,
   including source guards, exact inverse operations, and proof-backed local
   result validation with authoritative fallback;
+- direct-root base-paragraph `ParagraphSplit` and `ParagraphJoin` operations
+  with whole-paragraph guards, exact content inverses, and structural
+  relocation laws;
 - atomic transactions, explicit state updates, relocation maps,
-  operation-relative change sets, and typed failures;
+  heterogeneous operation-relative change sets, and typed failures;
 - `Commit` helpers that construct undo and redo transactions; and
 - document, fragment, and per-transaction operation limits.
 
-This is still a proof slice, not a complete editor. Structural operations, an
-action/plugin registry, an actual history stack and coalescer, persistent
-operation/state codecs and reload replay, Wasm bindings, a DOM bridge,
-collaboration, and generic incremental validation for structural or custom-schema
-edits are not implemented. See
+This is still a proof slice, not a complete editor. Structural edits beyond
+direct-root paragraph split/join, an action/plugin registry, an actual history
+stack and coalescer, persistent operation/state codecs and reload replay, Wasm
+bindings, a DOM bridge, collaboration, and generic incremental validation for
+structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations.
 

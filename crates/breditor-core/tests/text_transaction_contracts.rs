@@ -176,6 +176,7 @@ fn cross_run_deletion_merges_seams_and_inverse_replay_restores_the_exact_documen
         .changes()
         .iter()
         .next()
+        .and_then(breditor_core::operation::Change::as_text)
         .ok_or_else(|| test_error("commit omitted its text change"))?;
     assert_eq!(change.old_text_range(), &range);
     assert_eq!(change.new_text_range().start(), offset(1)?);

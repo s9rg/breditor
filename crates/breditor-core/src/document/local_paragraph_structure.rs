@@ -1,0 +1,276 @@
+use std::ops::Range;
+
+use thiserror::Error;
+
+use crate::{
+    document::{Document, LocalInvariantError, NodeRef},
+    schema::{CompiledSchema, DocumentLimits, SchemaId, ValidationReport},
+};
+
+/// Why authoritative base-paragraph structural publication failed.
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
+pub(crate) enum LocalParagraphStructureError {
+    /// The source document and active compiled schema have different identities.
+    #[error("document schema {document_schema} does not match active schema {active_schema}")]
+    SchemaMismatch {
+        /// Schema recorded on the source document.
+        document_schema: SchemaId,
+        /// Schema requested by the caller.
+        active_schema: SchemaId,
+    },
+    /// This deliberately narrow boundary only supports the exact base schema.
+    #[error("paragraph structure publication does not support schema {active_schema}")]
+    UnsupportedSchema {
+        /// Unsupported active schema.
+        active_schema: SchemaId,
+    },
+    /// The validated source document unexpectedly had a non-element root.
+    #[error("the validated document root was not an element")]
+    ExpectedRootElement,
+    /// A half-open root-child range ran backward.
+    #[error("paragraph range start {start} follows end {end}")]
+    ReversedRange {
+        /// Inclusive range start.
+        start: usize,
+        /// Exclusive range end.
+        end: usize,
+    },
+    /// A half-open root-child range exceeded the source paragraph count.
+    #[error(
+        "paragraph range {start}..{end} exceeds the document's {paragraph_count} root children"
+    )]
+    RangeOutOfBounds {
+        /// Inclusive range start.
+        start: usize,
+        /// Exclusive range end.
+        end: usize,
+        /// Number of source root children.
+        paragraph_count: usize,
+    },
+    /// Rebuilding the root violated a record-independent local invariant.
+    #[error(transparent)]
+    LocalInvariant(#[from] LocalInvariantError),
+    /// The authoritative complete validator rejected the candidate document.
+    #[error(transparent)]
+    InvalidResult(#[from] ValidationReport),
+}
+
+impl Document {
+    /// Replaces a half-open range of base-document paragraphs.
+    ///
+    /// This is the authoritative structural publication boundary for the fixed
+    /// base schema. It preserves untouched root-child allocations, rebuilds the
+    /// root, and always subjects the complete candidate tree to
+    /// [`Document::try_new`] before publishing it.
+    pub(crate) fn try_replace_base_paragraph_range(
+        &self,
+        schema: &CompiledSchema,
+        limits: &DocumentLimits,
+        old_range: Range<usize>,
+        replacements: Vec<NodeRef>,
+    ) -> Result<Self, LocalParagraphStructureError> {
+        ensure_supported_schema(self.schema(), schema)?;
+
+        let root =
+            self.root().as_element().ok_or(LocalParagraphStructureError::ExpectedRootElement)?;
+        let Range { start, end } = old_range;
+        if start > end {
+            return Err(LocalParagraphStructureError::ReversedRange { start, end });
+        }
+        let paragraph_count = root.children().len();
+        if end > paragraph_count {
+            return Err(LocalParagraphStructureError::RangeOutOfBounds {
+                start,
+                end,
+                paragraph_count,
+            });
+        }
+
+        let mut children = root.children().to_vec();
+        drop(children.splice(start..end, replacements));
+        let candidate_root = root.try_with_children(children).map(NodeRef::element)?;
+        Self::try_new(schema, candidate_root, limits).map_err(Into::into)
+    }
+}
+
+fn ensure_supported_schema(
+    document_schema: &SchemaId,
+    active_schema: &CompiledSchema,
+) -> Result<(), LocalParagraphStructureError> {
+    if document_schema != active_schema.id() {
+        return Err(LocalParagraphStructureError::SchemaMismatch {
+            document_schema: document_schema.clone(),
+            active_schema: active_schema.id().clone(),
+        });
+    }
+    if !active_schema.is_exact_breditor_base() {
+        return Err(LocalParagraphStructureError::UnsupportedSchema {
+            active_schema: active_schema.id().clone(),
+        });
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, io};
+
+    use crate::{
+        document::{
+            Document, ElementNode, FormatSet, NodeRef, PropertyMap, TextNode,
+            local_paragraph_structure::{LocalParagraphStructureError, ensure_supported_schema},
+        },
+        identity::QualifiedName,
+        schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion, ValidationCode},
+    };
+
+    fn paragraph(text: &str) -> Result<NodeRef, Box<dyn Error>> {
+        let children = if text.is_empty() {
+            Vec::new()
+        } else {
+            vec![NodeRef::text(TextNode::try_new(text.to_owned(), FormatSet::default())?)]
+        };
+        ElementNode::try_new(
+            QualifiedName::from_known_static("breditor/paragraph"),
+            None,
+            PropertyMap::default(),
+            children,
+        )
+        .map(NodeRef::element)
+        .map_err(Into::into)
+    }
+
+    fn source_document(
+        schema: &CompiledSchema,
+        limits: &DocumentLimits,
+        paragraphs: Vec<NodeRef>,
+    ) -> Result<Document, Box<dyn Error>> {
+        let root = ElementNode::try_new(
+            QualifiedName::from_known_static("breditor/document"),
+            None,
+            PropertyMap::default(),
+            paragraphs,
+        )
+        .map(NodeRef::element)?;
+        Document::try_new(schema, root, limits).map_err(Into::into)
+    }
+
+    #[test]
+    fn replacement_preserves_untouched_sibling_allocations() -> Result<(), Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let limits = DocumentLimits::default();
+        let left = paragraph("left")?;
+        let middle = paragraph("middle")?;
+        let right = paragraph("right")?;
+        let replacement = paragraph("new")?;
+        let source = source_document(&schema, &limits, vec![left.clone(), middle, right.clone()])?;
+
+        let result = source.try_replace_base_paragraph_range(
+            &schema,
+            &limits,
+            1..2,
+            vec![replacement.clone()],
+        )?;
+        let result_root = result.root().as_element().ok_or_else(|| {
+            io::Error::other("published structural result did not have an element root")
+        })?;
+        let result_left = result_root
+            .children()
+            .get(0)
+            .ok_or_else(|| io::Error::other("published result omitted the left paragraph"))?;
+        let result_replacement = result_root
+            .children()
+            .get(1)
+            .ok_or_else(|| io::Error::other("published result omitted the replacement"))?;
+        let result_right = result_root
+            .children()
+            .get(2)
+            .ok_or_else(|| io::Error::other("published result omitted the right paragraph"))?;
+        assert!(result_left.shares_allocation_with(&left));
+        assert!(result_replacement.shares_allocation_with(&replacement));
+        assert!(result_right.shares_allocation_with(&right));
+        assert_eq!(result.summary().node_count(), source.summary().node_count());
+        Ok(())
+    }
+
+    #[test]
+    fn malformed_ranges_are_rejected_before_splicing() -> Result<(), Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let limits = DocumentLimits::default();
+        let source = source_document(&schema, &limits, vec![paragraph("a")?, paragraph("b")?])?;
+
+        let reversed_start = 2;
+        let reversed_end = 1;
+        assert_eq!(
+            source.try_replace_base_paragraph_range(
+                &schema,
+                &limits,
+                reversed_start..reversed_end,
+                Vec::new(),
+            ),
+            Err(LocalParagraphStructureError::ReversedRange { start: 2, end: 1 })
+        );
+        assert_eq!(
+            source.try_replace_base_paragraph_range(&schema, &limits, 1..3, Vec::new()),
+            Err(LocalParagraphStructureError::RangeOutOfBounds {
+                start: 1,
+                end: 3,
+                paragraph_count: 2,
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn schema_identity_guard_rejects_a_foreign_document_identity() -> Result<(), Box<dyn Error>> {
+        let active = CompiledSchema::breditor_base();
+        let foreign =
+            SchemaId::new(QualifiedName::try_new("example/schema")?, SchemaVersion::try_new(1)?);
+        assert_eq!(
+            ensure_supported_schema(&foreign, &active),
+            Err(LocalParagraphStructureError::SchemaMismatch {
+                document_schema: foreign,
+                active_schema: active.id().clone(),
+            })
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn authoritative_validation_report_is_passed_through_unchanged() -> Result<(), Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let limits = DocumentLimits::default();
+        let original_paragraph = paragraph("valid")?;
+        let source = source_document(&schema, &limits, vec![original_paragraph.clone()])?;
+        let invalid_root_child =
+            NodeRef::text(TextNode::try_new("not-a-paragraph".to_owned(), FormatSet::default())?);
+
+        let source_root = source
+            .root()
+            .as_element()
+            .ok_or_else(|| io::Error::other("source did not have an element root"))?;
+        let candidate_root = source_root
+            .try_with_children(vec![invalid_root_child.clone()])
+            .map(NodeRef::element)?;
+        let expected = Document::try_new(&schema, candidate_root, &limits)
+            .err()
+            .ok_or_else(|| io::Error::other("independent full validation accepted invalid root"))?;
+        assert!(expected.contains(ValidationCode::InvalidChild));
+
+        assert_eq!(
+            source.try_replace_base_paragraph_range(
+                &schema,
+                &limits,
+                0..1,
+                vec![invalid_root_child],
+            ),
+            Err(LocalParagraphStructureError::InvalidResult(expected))
+        );
+        assert!(source.root().as_element().is_some_and(|root| {
+            root.children()
+                .get(0)
+                .is_some_and(|child| child.shares_allocation_with(&original_paragraph))
+        }));
+        Ok(())
+    }
+}

@@ -175,11 +175,12 @@ impl Transaction {
                 AppliedOperation::Changed(change) => {
                     let crate::operation::AppliedChange { document, inverse, relocation, change } =
                         *change;
+                    let forward_operation_index = forward.len();
                     steps.push(RelocationStep::new(before, document.clone(), relocation));
                     current = document;
                     forward.push(operation.clone());
                     inverses.push(inverse);
-                    changes.push(change.with_operation_index(operation_index));
+                    changes.push(change.with_operation_index(forward_operation_index));
                 }
             }
         }

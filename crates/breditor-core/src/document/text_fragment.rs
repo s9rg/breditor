@@ -3,7 +3,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::{
-    document::{TextRun, TextRunError},
+    document::{TextRun, TextRunError, Utf16BoundaryError},
     position::{TextOffset, TextOffsetError},
 };
 
@@ -81,6 +81,82 @@ impl TextFragment {
     pub fn iter(&self) -> TextFragmentIter<'_> {
         TextFragmentIter(self.runs.iter())
     }
+
+    /// Splits this fragment at one aggregate UTF-16 scalar boundary.
+    ///
+    /// Either result may be empty. A split within a run preserves its exact
+    /// format set on both sides; no Unicode normalization is performed.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TextFragmentSplitError`] when `offset` is outside this
+    /// fragment, lands inside a surrogate pair, or rebuilding either canonical
+    /// half violates the cross-language fragment contract.
+    pub fn split_at(&self, offset: TextOffset) -> Result<(Self, Self), TextFragmentSplitError> {
+        if offset > self.utf16_length {
+            return Err(TextFragmentSplitError::OffsetOutOfBounds {
+                requested: offset,
+                length: self.utf16_length,
+            });
+        }
+
+        let mut left = Vec::new();
+        let mut right = Vec::new();
+        let mut cursor = TextOffset::ZERO;
+        for run in self.runs.iter() {
+            let end = cursor.checked_add(u64::from(run.utf16_len()))?;
+            if offset <= cursor {
+                right.push(run.clone());
+            } else if offset >= end {
+                left.push(run.clone());
+            } else {
+                let local = u32::try_from(offset.get() - cursor.get())
+                    .map_err(|_| TextFragmentSplitError::CoordinateOverflow)?;
+                if let Some(run) =
+                    run.slice_utf16(0, local).map_err(|error| map_split_boundary(error, offset))?
+                {
+                    left.push(run);
+                }
+                if let Some(run) = run
+                    .slice_utf16(local, run.utf16_len())
+                    .map_err(|error| map_split_boundary(error, offset))?
+                {
+                    right.push(run);
+                }
+            }
+            cursor = end;
+        }
+
+        Ok((Self::try_from_runs(left)?, Self::try_from_runs(right)?))
+    }
+
+    /// Concatenates two canonical fragments and merges an equal-format seam.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TextFragmentError`] when the merged seam cannot fit one text
+    /// leaf or the aggregate fragment exceeds a fixed-width protocol bound.
+    pub fn try_concat(&self, other: &Self) -> Result<Self, TextFragmentError> {
+        let mut runs: Vec<_> = self.iter().cloned().collect();
+        for run in other {
+            match runs.last_mut() {
+                Some(left) if left.formats() == run.formats() => {
+                    *left = left.clone().merge(run)?;
+                }
+                _ => runs.push(run.clone()),
+            }
+        }
+        Self::try_from_runs(runs)
+    }
+}
+
+fn map_split_boundary(error: Utf16BoundaryError, requested: TextOffset) -> TextFragmentSplitError {
+    match error {
+        Utf16BoundaryError::SplitsScalar { .. } => {
+            TextFragmentSplitError::OffsetSplitsScalar { requested }
+        }
+        Utf16BoundaryError::OutOfBounds { .. } => TextFragmentSplitError::CoordinateOverflow,
+    }
 }
 
 impl From<TextRun> for TextFragment {
@@ -144,4 +220,32 @@ pub enum TextFragmentError {
     /// Merging two canonical neighboring runs exceeded the leaf protocol.
     #[error(transparent)]
     TextRun(#[from] TextRunError),
+}
+
+/// Why a canonical text fragment cannot be split at a requested boundary.
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
+pub enum TextFragmentSplitError {
+    /// The aggregate offset exceeds the fragment length.
+    #[error("text-fragment split offset {requested:?} exceeds fragment length {length:?}")]
+    OffsetOutOfBounds {
+        /// Rejected split boundary.
+        requested: TextOffset,
+        /// Complete fragment length.
+        length: TextOffset,
+    },
+    /// The aggregate offset lands inside a non-BMP scalar's surrogate pair.
+    #[error("text-fragment split offset {requested:?} splits a Unicode scalar")]
+    OffsetSplitsScalar {
+        /// Rejected split boundary.
+        requested: TextOffset,
+    },
+    /// Checked local-run coordinate conversion failed.
+    #[error("text-fragment split coordinate arithmetic overflowed")]
+    CoordinateOverflow,
+    /// Aggregate UTF-16 arithmetic exceeded the protocol boundary.
+    #[error(transparent)]
+    TextOffset(#[from] TextOffsetError),
+    /// Rebuilding one canonical half failed.
+    #[error(transparent)]
+    Fragment(#[from] TextFragmentError),
 }

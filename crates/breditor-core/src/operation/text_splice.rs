@@ -168,8 +168,8 @@ impl TextSplice {
         Ok(AppliedOperation::Changed(Box::new(AppliedChange {
             document: result,
             inverse: Operation::TextSplice(inverse),
-            relocation,
-            change,
+            relocation: relocation.into(),
+            change: change.into(),
         })))
     }
 }

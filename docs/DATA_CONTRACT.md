@@ -10,20 +10,22 @@ Base schema: `breditor/base`, version `1`
 The implemented Rust slice owns:
 
 - the canonical immutable AST and validated `Document`;
-- exact validator-derived document measurements cached on each `Document`;
+- exact proof-derived document measurements cached on each `Document`;
 - snapshot-local points, document-aware point ordering, and directional range
   selections;
 - `EditorContext`, `EditorState`, lineage-local snapshots, and pending typing
   formats;
-- one paragraph-local operation, `TextSplice`, with a closed exact inverse;
+- paragraph-local `TextSplice` and direct-root `ParagraphSplit`/`ParagraphJoin`
+  operations with closed exact content inverses;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets; and
 - immutable commits with helpers that construct undo and redo transactions.
 
 The following remain deliberately unimplemented:
 
-- structural operations such as paragraph split/join, block insertion, list
-  changes, and node movement;
+- structural operations beyond direct-root base-paragraph split/join, including
+  arbitrary block insertion, list changes, metadata conflict rules, and node
+  movement;
 - an action/command/plugin registry and toolbar-facing capability queries;
 - an actual undo/redo stack, grouping, coalescing, and history retention policy;
 - persistent operation and editor-state codecs, durable logs, and reload replay;
@@ -98,6 +100,11 @@ arithmetic. A profile mismatch, unsupported schema/path, failed proof consistenc
 check, overflow, or possible limit violation sends the same candidate root to
 complete validation. The fallback constructs no synthetic report, so existing
 issue paths, ordering, and messages remain authoritative.
+
+Version `0.0.4` deliberately publishes paragraph split/join candidates only
+through complete validation. This establishes the structural operation,
+inverse, relocation, summary, and diagnostic laws before introducing a second
+incremental proof. Untouched root siblings remain allocation-shared.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -237,6 +244,34 @@ budgets: fragment run count, aggregate fragment bytes, per-run text bytes,
 per-run formats, permitted format kinds/properties, checked UTF-16 coordinates,
 the transaction operation cap, and all final document limits.
 
+## Structural paragraph operation contract
+
+`ParagraphSplit` and `ParagraphJoin` are the first structural primitives. They
+support only paragraphs that are direct children of the exact
+`breditor/base@1` root. That restriction is explicit: copying or reconciling
+entity identities, properties, and arbitrary block metadata has not been
+specified, so other schemas fail instead of inheriting accidental behavior.
+
+`ParagraphSplit` carries a direct-root paragraph path, one aggregate UTF-16
+scalar boundary, and the complete canonical paragraph expected at that path. It
+partitions the paragraph into two, allowing either half to be empty. Its inverse
+is a `ParagraphJoin` guarded by the exact resulting left and right fragments.
+
+`ParagraphJoin` carries the left paragraph path and complete left/right guards;
+the right target is the immediate sibling. It concatenates both fragments and
+merges an equal-format seam. Its inverse is a split at the original left length,
+guarded by the exact joined fragment. Split/join therefore restore exact document
+content and cached summaries even when a seam was represented by one merged text
+leaf. Whole-paragraph guards also make later operations in a multi-operation
+transaction fail deterministically against unexpected intermediates.
+
+Both operations rebuild the affected paragraph content and root child vector,
+retain untouched sibling `NodeRef` allocations, and submit the complete candidate
+to the authoritative schema validator. Candidate limit/schema-rule
+failures carry that validator's unchanged `ValidationReport`; schema identity or
+unsupported-schema failures remain distinct typed errors. The transaction stays
+atomic in every case.
+
 ## Transactions, relocation, and commits
 
 A `Transaction` is authored against one exact base `EditorState`, not merely a
@@ -252,14 +287,33 @@ relocate the existing selection or set a result selection explicitly, and may
 preserve or explicitly replace pending formats. A point strictly inside deleted
 content relocates to an explicit `Deleted { before, after }` result. Selection
 relocation defaults to rejection and requires an endpoint-specific before/after
-policy before it will discard that ambiguity. Direction and affinity are
-preserved.
+policy before it will discard that ambiguity. Anchor/focus roles and affinity
+are preserved, and endpoints are never sorted. Resolved spatial order or
+collapsedness may still change across a structural boundary.
 
-`ChangeSet` entries are deliberately operation-relative. Each entry names its
-forward operation index; its old coordinates belong to that operation's
-immediate input document and its new coordinates belong to that operation's
-immediate output document. Consumers must not interpret every entry as being in
-the outer commit's before/after coordinate space.
+Structural relocation is affinity-aware. A split boundary belongs to the left
+paragraph for `Before` and the right paragraph for `After`; later root-child
+paths shift by one. A join moves points from both source paragraphs into the
+joined text coordinate space, shifts later paths back by one, and maps the
+removed root boundary to the joined seam. That join mapping is intentionally
+many-to-one: content and mapped positions remain valid, but a subsequent inverse
+split cannot recover whether a seam point originally came from the left
+end, the root boundary, or the right start. Affinity chooses its split side.
+Actions such as Enter must explicitly set their intended caret instead of using
+relocation as hidden UI policy. If relocation expands a previously collapsed
+selection while pending typing formats are preserved, final-state validation
+rejects the transaction; an action must explicitly choose both intended
+selection and pending-format outcomes.
+
+`ChangeSet` entries are deliberately heterogeneous and operation-relative.
+`Change::Text` carries text and conservative text-child ranges;
+`Change::Children` carries replaced/inserted child ranges in one parent. Each
+entry names its forward operation index; its old coordinates belong to that
+operation's immediate input document and its new coordinates belong to that
+operation's immediate output document. The index addresses
+`Commit::forward_operations`; request operations that produced no change are
+absent from both lists. Consumers must not interpret every entry as being in the
+outer commit's before/after coordinate space.
 
 A successful `Commit` retains exact before/after states, forward operations,
 inverse operations already in undo order, composed relocation, changes, and
@@ -279,6 +333,12 @@ checked global deltas instead of rescanning a matching-profile document, but:
 
 - any profile/schema/path the local proof cannot establish falls back to
   full-tree schema and resource validation;
+- every paragraph split/join performs full-tree validation and carries complete
+  paragraph guards until structural subtree proofs and durable operation records
+  are specified;
+- split/join scans the complete guarded paragraphs and currently reboxes text
+  `NodeRef`s inside affected paragraphs, although their immutable string/format
+  payloads remain shared;
 - a multi-operation transaction retains structurally shared intermediate
   documents in its composed relocation map; and
 - path copying clones the complete child vector of every ancestor on the edited
@@ -335,9 +395,11 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add the first structural operation pair for splitting and joining base
-paragraphs. It must define exact inverse and relocation laws, reuse immutable
-off-spine nodes, enforce the same runtime profile boundary, and fall back to the
-authoritative validator whenever a local structural proof is incomplete. Only
-after those primitive laws should the action/plugin layer map Enter, Backspace,
-paste, and expandable toolbar commands into transactions.
+Add the deterministic action/command boundary that maps editor intent onto
+transactions without putting DOM or toolbar policy in the reducer. It must
+define namespaced action identities, typed inputs, enabled/disabled capability
+results, deterministic registry ordering/conflict rules, explicit selection and
+pending-format outcomes, and history intent. Built-in Enter and boundary
+Backspace actions should compose the proven split/join primitives; an expandable
+toolbar must query the same action capabilities rather than owning a second
+command path.

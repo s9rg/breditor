@@ -2,12 +2,20 @@
 
 mod change_set;
 mod kind;
+mod paragraph_join;
+mod paragraph_split;
+mod paragraph_support;
 mod relocation;
 mod text_range;
 mod text_splice;
 
-pub use change_set::{ChangeSet, ChildRange, TextChange};
+pub use change_set::{Change, ChangeSet, ChildRange, ChildrenChange, TextChange};
 pub use kind::{Operation, OperationApplyError};
+pub use paragraph_join::{
+    ParagraphJoin, ParagraphJoinApplyError, ParagraphJoinError, ParagraphJoinSide,
+};
+pub use paragraph_split::{ParagraphSplit, ParagraphSplitApplyError, ParagraphSplitError};
+pub use paragraph_support::{ParagraphStructureInvariantRule, ParagraphTargetRule};
 pub use relocation::{
     DeletedPointPolicy, PointRelocation, RelocationError, RelocationMap, SelectionRelocationError,
     SelectionRelocationPolicy,
@@ -19,4 +27,6 @@ pub use text_splice::{
 };
 
 pub(crate) use kind::{AppliedChange, AppliedOperation};
-pub(crate) use relocation::{RelocationStep, TextSpliceMap};
+pub(crate) use relocation::{
+    ParagraphJoinMap, ParagraphSplitMap, RelocationStep, RelocationStepMap, TextSpliceMap,
+};

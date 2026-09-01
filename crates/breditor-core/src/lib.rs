@@ -2,8 +2,9 @@
 //!
 //! The crate currently owns immutable document values, the minimal compiled
 //! proof schema, strict versioned JSON decoding, snapshot-local points and
-//! selections, immutable editor states, paragraph-local text splices, atomic
-//! transactions, proof-backed local result validation, relocation, and exact
+//! selections, immutable editor states, paragraph-local text splices,
+//! direct-root paragraph split/join operations, atomic transactions,
+//! proof-backed local text validation, structural relocation, and exact
 //! in-memory undo/redo requests. It deliberately contains no browser, framework,
 //! asynchronous queue, clock, random-number, collaboration, or Wasm binding
 //! code.

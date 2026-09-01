@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{cmp::Ordering, sync::Arc};
 
 use thiserror::Error;
 
@@ -13,7 +13,11 @@ use crate::{
 /// Explicit result of moving one point through committed content changes.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PointRelocation {
-    /// The source boundary survived and has one exact result position.
+    /// The source has one unambiguous result position.
+    ///
+    /// Structural representation or provenance need not survive. For example,
+    /// a removed between-paragraph boundary maps unambiguously to a joined text
+    /// seam.
     Exact(Point),
     /// The source boundary was strictly inside deleted content.
     Deleted {
@@ -141,7 +145,9 @@ impl RelocationMap {
 
     /// Relocates a range selection using explicit deletion choices.
     ///
-    /// Direction and affinity are preserved; endpoints are never sorted.
+    /// Anchor/focus roles and affinity are preserved; endpoints are never
+    /// sorted. Spatial order and collapsedness may change when opposite
+    /// affinities own different sides of a structural boundary.
     ///
     /// # Errors
     ///
@@ -203,12 +209,16 @@ fn choose_endpoint(
 pub(crate) struct RelocationStep {
     before: Document,
     after: Document,
-    map: TextSpliceMap,
+    map: RelocationStepMap,
 }
 
 impl RelocationStep {
-    pub(crate) const fn new(before: Document, after: Document, map: TextSpliceMap) -> Self {
-        Self { before, after, map }
+    pub(crate) fn new(
+        before: Document,
+        after: Document,
+        map: impl Into<RelocationStepMap>,
+    ) -> Self {
+        Self { before, after, map: map.into() }
     }
 
     fn relocate_outcome(
@@ -241,6 +251,47 @@ impl RelocationStep {
                 })
             }
         }
+    }
+}
+
+/// One primitive operation's point-relocation law.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) enum RelocationStepMap {
+    TextSplice(TextSpliceMap),
+    ParagraphSplit(ParagraphSplitMap),
+    ParagraphJoin(ParagraphJoinMap),
+}
+
+impl RelocationStepMap {
+    fn relocate(
+        &self,
+        before: &Document,
+        after: &Document,
+        point: &Point,
+    ) -> Result<PointRelocation, RelocationError> {
+        match self {
+            Self::TextSplice(map) => map.relocate(before, after, point),
+            Self::ParagraphSplit(map) => map.relocate(before, after, point),
+            Self::ParagraphJoin(map) => map.relocate(before, after, point),
+        }
+    }
+}
+
+impl From<TextSpliceMap> for RelocationStepMap {
+    fn from(value: TextSpliceMap) -> Self {
+        Self::TextSplice(value)
+    }
+}
+
+impl From<ParagraphSplitMap> for RelocationStepMap {
+    fn from(value: ParagraphSplitMap) -> Self {
+        Self::ParagraphSplit(value)
+    }
+}
+
+impl From<ParagraphJoinMap> for RelocationStepMap {
+    fn from(value: ParagraphJoinMap) -> Self {
+        Self::ParagraphJoin(value)
     }
 }
 
@@ -348,6 +399,201 @@ impl TextSpliceMap {
     }
 }
 
+/// Relocation data for replacing one paragraph with its two split halves.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ParagraphSplitMap {
+    paragraph_path: NodePath,
+    split_offset: TextOffset,
+}
+
+impl ParagraphSplitMap {
+    pub(crate) const fn new(paragraph_path: NodePath, split_offset: TextOffset) -> Self {
+        Self { paragraph_path, split_offset }
+    }
+
+    fn relocate(
+        &self,
+        before: &Document,
+        after: &Document,
+        point: &Point,
+    ) -> Result<PointRelocation, RelocationError> {
+        point.resolve(before).map_err(RelocationError::InvalidSourcePoint)?;
+        let paragraph_index = direct_root_child_index(&self.paragraph_path)?;
+
+        if let Point::Children { parent_path, child_index, affinity } = point
+            && parent_path.is_root()
+        {
+            let mapped_index = if *child_index <= paragraph_index {
+                *child_index
+            } else {
+                child_index.checked_add(1).ok_or(RelocationError::CoordinateOverflow)?
+            };
+            return exact_result_point(
+                after,
+                Point::Children {
+                    parent_path: NodePath::root(),
+                    child_index: mapped_index,
+                    affinity: *affinity,
+                },
+            );
+        }
+
+        let point_index = point_root_child_index(point)?;
+        if point_index < paragraph_index {
+            return exact_result_point(after, point.clone());
+        }
+        if point_index > paragraph_index {
+            return exact_result_point(after, shift_point_root_index(point, IndexShift::Next)?);
+        }
+
+        ensure_point_in_container(point, &self.paragraph_path)?;
+        let offset = point_offset_in_container(before, &self.paragraph_path, point)?;
+        let affinity = point.affinity();
+        let (result_path, result_offset) = match offset.cmp(&self.split_offset) {
+            Ordering::Less => (self.paragraph_path.clone(), offset),
+            Ordering::Greater => (
+                shift_root_child_path(&self.paragraph_path, IndexShift::Next)?,
+                TextOffset::try_new(offset.get() - self.split_offset.get())?,
+            ),
+            Ordering::Equal => match affinity {
+                Affinity::Before => (self.paragraph_path.clone(), self.split_offset),
+                Affinity::After => (
+                    shift_root_child_path(&self.paragraph_path, IndexShift::Next)?,
+                    TextOffset::ZERO,
+                ),
+            },
+        };
+        point_at_offset(after, &result_path, result_offset, affinity).map(PointRelocation::Exact)
+    }
+}
+
+/// Relocation data for replacing two adjacent paragraphs with their joined text.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct ParagraphJoinMap {
+    left_path: NodePath,
+    left_length: TextOffset,
+}
+
+impl ParagraphJoinMap {
+    pub(crate) const fn new(left_path: NodePath, left_length: TextOffset) -> Self {
+        Self { left_path, left_length }
+    }
+
+    fn relocate(
+        &self,
+        before: &Document,
+        after: &Document,
+        point: &Point,
+    ) -> Result<PointRelocation, RelocationError> {
+        point.resolve(before).map_err(RelocationError::InvalidSourcePoint)?;
+        let left_index = direct_root_child_index(&self.left_path)?;
+        let right_index = left_index.checked_add(1).ok_or(RelocationError::CoordinateOverflow)?;
+
+        if let Point::Children { parent_path, child_index, affinity } = point
+            && parent_path.is_root()
+        {
+            if *child_index == right_index {
+                return point_at_offset(after, &self.left_path, self.left_length, *affinity)
+                    .map(PointRelocation::Exact);
+            }
+            let mapped_index = if *child_index < right_index {
+                *child_index
+            } else {
+                child_index.checked_sub(1).ok_or(RelocationError::CoordinateOverflow)?
+            };
+            return exact_result_point(
+                after,
+                Point::Children {
+                    parent_path: NodePath::root(),
+                    child_index: mapped_index,
+                    affinity: *affinity,
+                },
+            );
+        }
+
+        let point_index = point_root_child_index(point)?;
+        if point_index < left_index {
+            return exact_result_point(after, point.clone());
+        }
+        if point_index > right_index {
+            return exact_result_point(after, shift_point_root_index(point, IndexShift::Previous)?);
+        }
+
+        let source_path = if point_index == left_index {
+            self.left_path.clone()
+        } else {
+            shift_root_child_path(&self.left_path, IndexShift::Next)?
+        };
+        ensure_point_in_container(point, &source_path)?;
+        let source_offset = point_offset_in_container(before, &source_path, point)?;
+        let result_offset = if point_index == left_index {
+            source_offset
+        } else {
+            self.left_length.checked_add(source_offset.get())?
+        };
+        point_at_offset(after, &self.left_path, result_offset, point.affinity())
+            .map(PointRelocation::Exact)
+    }
+}
+
+fn exact_result_point(after: &Document, point: Point) -> Result<PointRelocation, RelocationError> {
+    point.resolve(after).map_err(RelocationError::InvalidResultPoint)?;
+    Ok(PointRelocation::Exact(point))
+}
+
+fn direct_root_child_index(path: &NodePath) -> Result<u32, RelocationError> {
+    if path.len() != 1 {
+        return Err(RelocationError::CoordinateOverflow);
+    }
+    path.last_index().ok_or(RelocationError::CoordinateOverflow)
+}
+
+fn point_root_child_index(point: &Point) -> Result<u32, RelocationError> {
+    point.target_path().iter().next().ok_or(RelocationError::CoordinateOverflow)
+}
+
+fn ensure_point_in_container(
+    point: &Point,
+    container_path: &NodePath,
+) -> Result<(), RelocationError> {
+    if point_container(point).as_ref() == Some(container_path) {
+        Ok(())
+    } else {
+        Err(RelocationError::PointOutsideContainer { path: point.target_path().clone() })
+    }
+}
+
+#[derive(Clone, Copy)]
+enum IndexShift {
+    Next,
+    Previous,
+}
+
+fn shift_point_root_index(point: &Point, shift: IndexShift) -> Result<Point, RelocationError> {
+    Ok(match point {
+        Point::Text { text_path, utf16_offset, affinity } => Point::Text {
+            text_path: shift_root_child_path(text_path, shift)?,
+            utf16_offset: *utf16_offset,
+            affinity: *affinity,
+        },
+        Point::Children { parent_path, child_index, affinity } => Point::Children {
+            parent_path: shift_root_child_path(parent_path, shift)?,
+            child_index: *child_index,
+            affinity: *affinity,
+        },
+    })
+}
+
+fn shift_root_child_path(path: &NodePath, shift: IndexShift) -> Result<NodePath, RelocationError> {
+    let mut indices = path.to_vec();
+    let first = indices.first_mut().ok_or(RelocationError::CoordinateOverflow)?;
+    *first = match shift {
+        IndexShift::Next => first.checked_add(1).ok_or(RelocationError::CoordinateOverflow)?,
+        IndexShift::Previous => first.checked_sub(1).ok_or(RelocationError::CoordinateOverflow)?,
+    };
+    NodePath::try_from_indices(indices).map_err(|_| RelocationError::CoordinateOverflow)
+}
+
 fn point_container(point: &Point) -> Option<NodePath> {
     match point {
         Point::Text { text_path, .. } => text_path.parent(),
@@ -360,6 +606,7 @@ fn point_offset_in_container(
     container_path: &NodePath,
     point: &Point,
 ) -> Result<TextOffset, RelocationError> {
+    ensure_point_in_container(point, container_path)?;
     let container = document.node_at(container_path)?;
     let element = container
         .as_element()
