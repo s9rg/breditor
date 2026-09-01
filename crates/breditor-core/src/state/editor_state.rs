@@ -90,6 +90,17 @@ impl EditorState {
         selection: Option<Selection>,
         pending_formats: Option<FormatSet>,
     ) -> Result<Self, EditorStateError> {
+        if document.schema() != context.schema().id() {
+            return Err(EditorStateError::SchemaMismatch {
+                document_schema: document.schema().clone(),
+                context_schema: context.schema().id().clone(),
+            });
+        }
+        let document = if document.is_proven_for(context.schema(), context.limits()) {
+            document
+        } else {
+            document.try_revalidate(context.schema(), context.limits())?
+        };
         validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref())?;
         Ok(Self { context: context.clone(), snapshot, document, selection, pending_formats })
     }

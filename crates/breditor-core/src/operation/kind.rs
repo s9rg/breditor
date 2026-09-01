@@ -24,6 +24,9 @@ impl From<TextSplice> for Operation {
 }
 
 impl Operation {
+    // Transaction execution supplies a document proved by this exact context.
+    // Individual operations still guard schema identity; document publication
+    // additionally checks the private runtime validation-profile stamp.
     pub(crate) fn apply(
         &self,
         context: &EditorContext,

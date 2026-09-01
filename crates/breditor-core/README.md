@@ -7,6 +7,7 @@ Wasm binding dependencies.
 The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, a strict JSON
 codec, UTF-16-safe points and selections, paragraph-local text splices, atomic
-transactions, relocation, and exact in-memory undo/redo requests. It is
+transactions, proof-backed local validation for fixed-base text edits,
+relocation, and exact in-memory undo/redo requests. It is
 intentionally smaller than the eventual editor runtime and has no browser or
 Wasm adapter yet.

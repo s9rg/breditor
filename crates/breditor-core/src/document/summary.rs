@@ -1,8 +1,9 @@
 /// Exact cached measurements of one validated document.
 ///
-/// The authoritative schema validator creates this value while proving the
-/// document. Callers cannot construct or mutate it. It is derived runtime
-/// metadata: document codecs do not persist it and decoding recomputes it.
+/// Complete schema validation or a crate-private operation proof creates this
+/// value while proving the document. Callers cannot construct or mutate it. It
+/// is derived runtime metadata: document codecs do not persist it and decoding
+/// recomputes it through complete validation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DocumentSummary {
     node_count: u64,

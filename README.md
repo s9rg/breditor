@@ -17,7 +17,8 @@ This repository currently contains the first end-to-end Rust-core slice:
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
   lineage identity and monotonic revisions;
 - paragraph-local `TextSplice` operations over canonical formatted fragments,
-  including source guards and exact inverse operations;
+  including source guards, exact inverse operations, and proof-backed local
+  result validation with authoritative fallback;
 - atomic transactions, explicit state updates, relocation maps,
   operation-relative change sets, and typed failures;
 - `Commit` helpers that construct undo and redo transactions; and
@@ -26,7 +27,8 @@ This repository currently contains the first end-to-end Rust-core slice:
 This is still a proof slice, not a complete editor. Structural operations, an
 action/plugin registry, an actual history stack and coalescer, persistent
 operation/state codecs and reload replay, Wasm bindings, a DOM bridge,
-collaboration, and incremental validation are not implemented. See
+collaboration, and generic incremental validation for structural or custom-schema
+edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations.
 

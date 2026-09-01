@@ -2,8 +2,8 @@ use thiserror::Error;
 
 use crate::{
     document::{
-        Document, ElementNode, LocalInvariantError, NodeLookupError, NodeRef, TextFragment,
-        TextFragmentError, TextRun, Utf16BoundaryError,
+        Document, ElementNode, LocalInvariantError, LocalTextPublicationError, NodeLookupError,
+        NodeRef, TextFragment, TextFragmentError, TextRun, Utf16BoundaryError,
     },
     identity::QualifiedName,
     operation::{
@@ -115,6 +115,15 @@ impl TextSplice {
             return Ok(AppliedOperation::Unchanged);
         }
 
+        let retained_length = length
+            .get()
+            .checked_sub(self.range.len())
+            .ok_or(TextSpliceApplyError::CoordinateOverflow)?;
+        let result_length = retained_length
+            .checked_add(self.replacement.utf16_len().get())
+            .ok_or(TextSpliceApplyError::CoordinateOverflow)?;
+        TextOffset::try_new(result_length)?;
+
         let result_children = build_result_children(
             element,
             self.range.start(),
@@ -127,13 +136,15 @@ impl TextSplice {
         let new_child_count = u32::try_from(result_children.len())
             .map_err(|_| TextSpliceApplyError::CoordinateOverflow)?;
 
-        let root = replace_element_children(
-            document.root(),
-            self.range.container_path().as_slice(),
-            0,
-            result_children,
-        )?;
-        let result = Document::try_new(context.schema(), root, context.limits())?;
+        let result = document
+            .try_replace_base_paragraph_children(
+                context.schema(),
+                context.limits(),
+                self.range.container_path(),
+                result_children,
+            )
+            .map_err(map_local_text_publication)?
+            .into_document();
 
         let inverse_end = self.range.start().checked_add(self.replacement.utf16_len().get())?;
         let inverse_range = TextRange::try_new(
@@ -428,42 +439,6 @@ struct TextPiece {
     original: Option<NodeRef>,
 }
 
-fn replace_element_children(
-    node: &NodeRef,
-    path: &[u32],
-    depth: usize,
-    replacement: Vec<NodeRef>,
-) -> Result<NodeRef, TextSpliceApplyError> {
-    let element = node.as_element().ok_or(TextSpliceApplyError::TreeInvariant {
-        rule: TreeInvariantRule::ExpectedElementOnPath,
-    })?;
-    if depth == path.len() {
-        return element
-            .try_with_children(replacement)
-            .map(NodeRef::element)
-            .map_err(|error| map_local_invariant(&error));
-    }
-
-    let index =
-        usize::try_from(path[depth]).map_err(|_| TextSpliceApplyError::CoordinateOverflow)?;
-    let child = element
-        .children()
-        .get(index)
-        .ok_or(TextSpliceApplyError::TreeInvariant { rule: TreeInvariantRule::MissingPathChild })?;
-    let replaced = replace_element_children(child, path, depth + 1, replacement)?;
-    let mut children = element.children().to_vec();
-    let Some(slot) = children.get_mut(index) else {
-        return Err(TextSpliceApplyError::TreeInvariant {
-            rule: TreeInvariantRule::MissingPathChild,
-        });
-    };
-    *slot = replaced;
-    element
-        .try_with_children(children)
-        .map(NodeRef::element)
-        .map_err(|error| map_local_invariant(&error))
-}
-
 fn map_local_invariant(error: &LocalInvariantError) -> TextSpliceApplyError {
     let rule = match error {
         LocalInvariantError::EmptyText => TreeInvariantRule::EmptyText,
@@ -478,6 +453,24 @@ fn map_local_invariant(error: &LocalInvariantError) -> TextSpliceApplyError {
         }
     };
     TextSpliceApplyError::TreeInvariant { rule }
+}
+
+fn map_local_text_publication(error: LocalTextPublicationError) -> TextSpliceApplyError {
+    match error {
+        LocalTextPublicationError::SchemaMismatch { document_schema, active_schema } => {
+            TextSpliceApplyError::SchemaMismatch { document_schema, context_schema: active_schema }
+        }
+        LocalTextPublicationError::ExpectedElementOnPath => {
+            TextSpliceApplyError::TreeInvariant { rule: TreeInvariantRule::ExpectedElementOnPath }
+        }
+        LocalTextPublicationError::MissingPathChild => {
+            TextSpliceApplyError::TreeInvariant { rule: TreeInvariantRule::MissingPathChild }
+        }
+        LocalTextPublicationError::LocalInvariant(error) => map_local_invariant(&error),
+        LocalTextPublicationError::InvalidResult(report) => {
+            TextSpliceApplyError::InvalidResult(report)
+        }
+    }
 }
 
 /// Identifies an operation fragment in a typed error.

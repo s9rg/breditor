@@ -3,8 +3,12 @@ use thiserror::Error;
 use crate::{
     document::{DocumentSummary, NodeRef},
     position::NodePath,
-    schema::{CompiledSchema, DocumentLimits, SchemaId, ValidationReport},
+    schema::{
+        CompiledSchema, DocumentLimits, RuntimeValidationProfile, SchemaId, ValidationReport,
+    },
 };
+
+use super::local_text_splice::LocalTextSpliceProof;
 
 /// A complete, immutable, schema-valid editor document.
 #[derive(Clone, Debug)]
@@ -12,6 +16,7 @@ pub struct Document {
     schema: SchemaId,
     root: NodeRef,
     summary: DocumentSummary,
+    validation_profile: RuntimeValidationProfile,
 }
 
 impl Document {
@@ -72,7 +77,12 @@ impl Document {
         limits: &DocumentLimits,
     ) -> Result<Self, ValidationReport> {
         let summary = schema.validate_root(&root, limits)?;
-        Ok(Self { schema: schema.id().clone(), root, summary })
+        Ok(Self {
+            schema: schema.id().clone(),
+            root,
+            summary,
+            validation_profile: limits.runtime_validation_profile(),
+        })
     }
 
     pub(crate) fn try_revalidate(
@@ -81,6 +91,16 @@ impl Document {
         limits: &DocumentLimits,
     ) -> Result<Self, ValidationReport> {
         Self::try_new(schema, self.root, limits)
+    }
+
+    pub(crate) fn is_proven_for(&self, schema: &CompiledSchema, limits: &DocumentLimits) -> bool {
+        &self.schema == schema.id()
+            && self.validation_profile == limits.runtime_validation_profile()
+    }
+
+    pub(super) fn from_local_text_splice_proof(proof: LocalTextSpliceProof) -> Self {
+        let (schema, root, summary, validation_profile) = proof.into_parts();
+        Self { schema, root, summary, validation_profile }
     }
 }
 

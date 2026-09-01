@@ -17,6 +17,38 @@ pub struct DocumentLimits {
     pub(crate) max_property_values: usize,
 }
 
+/// Runtime validity settings recorded on a completely proved document.
+///
+/// The JSON byte budget is intentionally absent because it constrains only the
+/// encoded input envelope, not the published runtime tree.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct RuntimeValidationProfile {
+    tree: TreeValidationProfile,
+    text: TextValidationProfile,
+    properties: PropertyValidationProfile,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TreeValidationProfile {
+    depth: usize,
+    nodes: usize,
+    children_per_element: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TextValidationProfile {
+    leaf_bytes: usize,
+    total_bytes: usize,
+    formats_per_leaf: usize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct PropertyValidationProfile {
+    entries_per_owner: usize,
+    depth: usize,
+    total_values: usize,
+}
+
 impl DocumentLimits {
     /// Returns the maximum accepted UTF-8 JSON input size.
     #[must_use]
@@ -146,6 +178,26 @@ impl DocumentLimits {
     pub const fn with_max_property_values(mut self, value: usize) -> Self {
         self.max_property_values = value;
         self
+    }
+
+    pub(crate) const fn runtime_validation_profile(&self) -> RuntimeValidationProfile {
+        RuntimeValidationProfile {
+            tree: TreeValidationProfile {
+                depth: self.max_node_depth,
+                nodes: self.max_nodes,
+                children_per_element: self.max_children_per_element,
+            },
+            text: TextValidationProfile {
+                leaf_bytes: self.max_text_bytes,
+                total_bytes: self.max_total_text_bytes,
+                formats_per_leaf: self.max_formats_per_text,
+            },
+            properties: PropertyValidationProfile {
+                entries_per_owner: self.max_properties_per_owner,
+                depth: self.max_property_depth,
+                total_values: self.max_property_values,
+            },
+        }
     }
 }
 

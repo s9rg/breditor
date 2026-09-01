@@ -29,7 +29,8 @@ The following remain deliberately unimplemented:
 - persistent operation and editor-state codecs, durable logs, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - collaboration, rebasing, CRDT/OT behavior, and remote presence; and
-- crate-private subtree summaries and incremental result validation.
+- generic subtree summaries and incremental validation for structural or
+  custom-schema edits.
 
 ProseMirror, Lexical, Tiptap, and CKEditor are design references only. This is
 an original contract and does not adopt their node, transaction, plugin, or
@@ -81,11 +82,22 @@ Every successfully validated `Document` also caches one exact `DocumentSummary`:
 
 Counts and bytes use checked `u64` arithmetic and depth uses `u32`, so the Rust
 contract does not change width between native and Wasm targets. The summary has
-no public constructor or mutation path. It is recomputed by complete validation,
-is not serialized, does not affect content equality, and does not change document
-format version `1`. It is derived metadata, not a substitute for schema proof or
-evidence that the document satisfies a different limit profile. Version `0.0.2`
-still performs complete result validation after every changed splice.
+no public constructor or mutation path. It is produced by complete validation or
+the private fixed-base local proof, is not serialized, does not affect content
+equality, and does not change document format version `1`. Decoding always
+recomputes it through complete validation. It is derived metadata, not a
+substitute for schema proof or evidence that the document satisfies a different
+limit profile.
+
+Each document privately records the exact runtime limit profile that proved it;
+the JSON input-byte budget is excluded because it does not constrain a runtime
+tree. In version `0.0.3`, a fixed-base `TextSplice` with a matching profile can
+publish through one crate-private proof. That proof owns the path copy, validates
+the actual post-seam paragraph, and updates root measurements with checked
+arithmetic. A profile mismatch, unsupported schema/path, failed proof consistency
+check, overflow, or possible limit violation sends the same candidate root to
+complete validation. The fallback constructs no synthetic report, so existing
+issue paths, ordering, and messages remain authoritative.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -261,10 +273,12 @@ future history owner.
 
 The correctness-first implementation deliberately accepts costs that must be
 removed before large-document production use. Root-level node, depth, text-byte,
-and property-value measurements are now cached for constant-time access, but:
+and property-value measurements are cached for constant-time access. A
+fixed-base paragraph splice now validates the generated paragraph and applies
+checked global deltas instead of rescanning a matching-profile document, but:
 
-- every changed splice rebuilds its ancestor spine and performs full-tree schema
-  and resource validation of the resulting document;
+- any profile/schema/path the local proof cannot establish falls back to
+  full-tree schema and resource validation;
 - a multi-operation transaction retains structurally shared intermediate
   documents in its composed relocation map; and
 - path copying clones the complete child vector of every ancestor on the edited
@@ -321,10 +335,9 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add a crate-private edited-spine proof that updates the cached root measurements
-with checked arithmetic and allows successful `TextSplice` results to skip the
-full-tree pass. Differential tests must compare every fast-path result and
-inverse with a fresh complete validation, and proof failure must retain the
-authoritative validator's typed diagnostics. Only after that gate should the
-core grow structural operations and the action/plugin layer that maps keyboard
-input, paste, and expandable toolbar commands into transactions.
+Add the first structural operation pair for splitting and joining base
+paragraphs. It must define exact inverse and relocation laws, reuse immutable
+off-spine nodes, enforce the same runtime profile boundary, and fall back to the
+authoritative validator whenever a local structural proof is incomplete. Only
+after those primitive laws should the action/plugin layer map Enter, Backspace,
+paste, and expandable toolbar commands into transactions.

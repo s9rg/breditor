@@ -65,6 +65,10 @@ impl CompiledSchema {
     pub(crate) fn knows_element(&self, kind: &QualifiedName) -> bool {
         kind == &self.document_kind || kind == &self.paragraph_kind
     }
+
+    pub(crate) fn is_exact_breditor_base(&self) -> bool {
+        self == &Self::breditor_base()
+    }
 }
 
 impl Default for CompiledSchema {
