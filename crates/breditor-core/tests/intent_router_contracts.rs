@@ -939,7 +939,9 @@ fn fallthrough_reaches_first_enabled_candidate_and_preserves_the_trace() -> Test
     assert_eq!(selected.indicator(), &ActionStateIndicator::stateless());
     assert_eq!(
         selected.actual_writes(),
-        ActionStateDomains::DOCUMENT.union(ActionStateDomains::HISTORY)
+        ActionStateDomains::DOCUMENT
+            .union(ActionStateDomains::HISTORY)
+            .union(ActionStateDomains::SNAPSHOT)
     );
     assert_eq!(selected.fallthroughs().len(), 1);
     assert_eq!(selected.fallthroughs()[0].binding_id(), &disabled_binding);

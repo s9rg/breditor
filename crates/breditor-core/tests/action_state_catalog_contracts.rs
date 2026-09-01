@@ -501,7 +501,9 @@ fn direct_batches_preserve_authoritative_availability_activation_and_typed_value
     assert_eq!(enabled.indicator(), &indicator);
     let writes =
         enabled.actual_writes().ok_or_else(|| test_error("enabled state omitted proven writes"))?;
-    assert!(writes.contains(ActionStateDomains::DOCUMENT | ActionStateDomains::HISTORY));
+    assert!(writes.contains(
+        ActionStateDomains::DOCUMENT | ActionStateDomains::HISTORY | ActionStateDomains::SNAPSHOT
+    ));
     assert_eq!(
         enabled.indicator().value().uniform_value().and_then(ActionValue::as_string),
         Some(indicator_secret)
@@ -824,7 +826,9 @@ fn history_availability_is_authoritative_and_prior_batches_stay_immutable() -> T
     let undo_writes = resolved(&committed, &undo_id)?
         .actual_writes()
         .ok_or_else(|| test_error("enabled undo omitted proven writes"))?;
-    assert!(undo_writes.contains(ActionStateDomains::DOCUMENT | ActionStateDomains::HISTORY));
+    assert!(undo_writes.contains(
+        ActionStateDomains::DOCUMENT | ActionStateDomains::HISTORY | ActionStateDomains::SNAPSHOT
+    ));
 
     if session.undo()?.is_none() {
         return Err(test_error("undo unexpectedly unavailable").into());

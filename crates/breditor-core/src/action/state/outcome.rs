@@ -153,8 +153,8 @@ impl ResolvedActionState {
     /// Returns proven write domains for an enabled transition.
     ///
     /// Disabled and blocked outcomes return `None`. Enabled publication always
-    /// includes the history domain, even when only selection or pending formats
-    /// change, because the session's history boundary can also change.
+    /// includes snapshot identity and history: every changed state advances its
+    /// revision, and the session's history boundary can also change.
     #[must_use]
     pub const fn actual_writes(&self) -> Option<ActionStateDomains> {
         self.actual_writes

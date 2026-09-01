@@ -1,15 +1,19 @@
 //! Frozen action observation shapes and conservative state-effect declarations.
 //!
 //! Action state is evaluated atomically with capability and planning. This
-//! layer defines no labels, icons, toolbar ordering, subscriptions, cache,
-//! replay protocol, or host presentation policy. Ordinary actions and intents
-//! cannot read session history; only synthesized session-backed history
-//! observations may declare that dependency.
+//! layer defines no labels, icons, toolbar ordering, subscriptions, replay
+//! protocol, or host presentation policy. Its optional synchronous cache owns
+//! one immutable observation and bounded local deltas, never delivery logic.
+//! Ordinary actions and intents cannot read session history; only synthesized
+//! session-backed history observations may declare that dependency.
 
 mod activation;
 mod batch;
+mod cache;
+mod cache_update;
 mod catalog;
 mod contract;
+mod delta;
 mod descriptor;
 mod domains;
 mod effects;
@@ -19,6 +23,8 @@ mod fault;
 mod id;
 mod indicator;
 mod limits;
+mod observation;
+mod observation_id;
 mod outcome;
 mod registration;
 mod source;
@@ -30,8 +36,11 @@ mod value_version;
 
 pub use activation::ActionActivation;
 pub use batch::{ActionStateBatch, ActionStateBatchSummary};
+pub use cache::ActionStateCache;
+pub use cache_update::ActionStateCacheUpdate;
 pub use catalog::ActionStateCatalog;
 pub use contract::{ActionActivationContract, ActionStateContract};
+pub use delta::ActionStateDelta;
 pub use descriptor::ActionStateDescriptor;
 pub use domains::ActionStateDomains;
 pub use effects::ActionEffects;
@@ -51,6 +60,8 @@ pub use limits::{
     MAX_ACTION_STATE_ENTRY_TEXT_BYTES, MAX_ACTION_STATE_ENTRY_VALUE_COUNT,
     MAX_ACTION_STATE_INPUT_TEXT_BYTES, MAX_ACTION_STATE_INPUT_VALUE_COUNT,
 };
+pub use observation::ActionStateObservation;
+pub use observation_id::ActionStateObservationId;
 pub use outcome::{
     ActionStateEntry, ActionStateOutcome, ActionStateProvenance, ObservedAvailability,
     ResolvedActionState, UnhandledActionState,

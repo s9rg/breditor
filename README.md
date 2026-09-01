@@ -33,7 +33,9 @@ This repository currently contains the first end-to-end Rust-core slice:
 - one-call action observations that keep availability, active/inactive/mixed
   state, independently versioned values, and conservative effects coherent;
 - a frozen observable action-state catalog with presentation-independent
-  identities and immutable exact-base direct, routed, undo, and redo batches;
+  identities, immutable exact-base direct/routed/history batches, and a
+  synchronous single-observation cache with domain invalidation, exact-source
+  coalescing, and bounded local deltas;
 - semantic `insert-paragraph-break` and `delete-backward` actions exposed for
   future keyboard, toolbar, palette, and API adapters;
 - a synchronous `EditorSession` publication boundary with exact-base commit
@@ -44,11 +46,11 @@ This repository currently contains the first end-to-end Rust-core slice:
 
 This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root paragraph split/join, cross-paragraph range replacement,
-action-state caching/deltas/subscriptions, presentation metadata and plugin
-lifecycle management, persistent operation/state/history codecs and reload
-replay, Wasm bindings, a DOM bridge, collaboration-aware or selective undo,
-and generic incremental validation for structural or custom-schema edits are
-not implemented. See
+action-state subscriptions and asynchronous delivery, presentation metadata
+and plugin lifecycle management, persistent operation/state/history codecs and
+reload replay, Wasm bindings, a DOM bridge, collaboration-aware or selective
+undo, and generic incremental validation for structural or custom-schema edits
+are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations.
 

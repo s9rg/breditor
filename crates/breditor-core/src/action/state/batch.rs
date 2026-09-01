@@ -77,8 +77,10 @@ impl ActionStateBatchSummary {
 /// The batch owns the complete exact [`EditorState`], not only a snapshot ID,
 /// because IDs are not proof against caller-created unequal state reuse. It is
 /// a read model only: cached preparations are deliberately dropped, and a later
-/// click must prepare again against the then-current session. This version has
-/// no cache, delta stream, subscription lifecycle, labels, icons, or layout.
+/// click must prepare again against the then-current session. The batch itself
+/// owns no mutable cache, delta stream, subscription lifecycle, labels, icons,
+/// or layout; [`super::ActionStateCache`] may share a complete batch as one
+/// immutable local observation.
 #[derive(Clone, Eq, PartialEq)]
 pub struct ActionStateBatch {
     base: Box<EditorState>,
@@ -147,21 +149,8 @@ impl ActionStateBatchBuilder {
         }
     }
 
-    pub(crate) fn push(
-        &mut self,
-        mut entry: ActionStateEntry,
-    ) -> Result<(), ActionStateDeriveError> {
-        let dynamic = measure_entry(&entry);
-        if dynamic.value_count > MAX_ACTION_STATE_ENTRY_VALUE_COUNT {
-            entry.replace_with_fault(ActionStateFault::Resource(
-                ActionStateResourceError::value_count(dynamic.value_count),
-            ));
-        } else if dynamic.text_bytes > MAX_ACTION_STATE_ENTRY_TEXT_BYTES {
-            entry.replace_with_fault(ActionStateFault::Resource(
-                ActionStateResourceError::text_bytes(dynamic.text_bytes),
-            ));
-        }
-
+    pub(crate) fn push(&mut self, entry: ActionStateEntry) -> Result<(), ActionStateDeriveError> {
+        let entry = normalize_entry(entry);
         let dynamic = measure_entry(&entry);
         let retained = self.retained.saturating_add(dynamic);
         if retained.value_count > MAX_ACTION_STATE_BATCH_VALUE_COUNT {
@@ -202,6 +191,22 @@ impl ActionStateBatchBuilder {
             summary: self.summary,
         }
     }
+}
+
+/// Applies the entry-local resource contract before an outcome can be retained
+/// for duplicate-source reuse or complete-batch accounting.
+pub(crate) fn normalize_entry(mut entry: ActionStateEntry) -> ActionStateEntry {
+    let dynamic = measure_entry(&entry);
+    if dynamic.value_count > MAX_ACTION_STATE_ENTRY_VALUE_COUNT {
+        entry.replace_with_fault(ActionStateFault::Resource(
+            ActionStateResourceError::value_count(dynamic.value_count),
+        ));
+    } else if dynamic.text_bytes > MAX_ACTION_STATE_ENTRY_TEXT_BYTES {
+        entry.replace_with_fault(ActionStateFault::Resource(ActionStateResourceError::text_bytes(
+            dynamic.text_bytes,
+        )));
+    }
+    entry
 }
 
 impl fmt::Debug for ActionStateBatch {

@@ -185,7 +185,7 @@ impl ActionRegistry {
 }
 
 fn actual_writes(commit: &crate::transaction::Commit) -> ActionStateDomains {
-    let mut domains = ActionStateDomains::HISTORY;
+    let mut domains = ActionStateDomains::HISTORY | ActionStateDomains::SNAPSHOT;
     if !commit.forward_operations().is_empty() {
         domains |= ActionStateDomains::DOCUMENT;
     }

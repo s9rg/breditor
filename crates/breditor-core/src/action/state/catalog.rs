@@ -251,7 +251,7 @@ impl ActionStateCatalog {
         Ok(batch.finish())
     }
 
-    fn derive_entry(
+    pub(super) fn derive_entry(
         &self,
         session: &EditorSession,
         descriptor: &ActionStateDescriptor,
@@ -371,7 +371,7 @@ fn history_unavailable_reason(direction: ReplayDirection) -> DisabledReason {
 }
 
 fn history_actual_writes(commit: &Commit) -> ActionStateDomains {
-    let mut domains = ActionStateDomains::HISTORY;
+    let mut domains = ActionStateDomains::HISTORY | ActionStateDomains::SNAPSHOT;
     if !commit.forward_operations().is_empty() {
         domains |= ActionStateDomains::DOCUMENT;
     }

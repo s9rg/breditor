@@ -18,7 +18,45 @@ pub struct EditorState {
     pending_formats: Option<FormatSet>,
 }
 
+/// One exhaustively classified field of [`EditorState`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum EditorStateField {
+    Context,
+    Snapshot,
+    Document,
+    Selection,
+    PendingFormats,
+}
+
 impl EditorState {
+    /// Classifies every field that differs from `previous`.
+    pub(crate) fn changed_fields_from(
+        &self,
+        previous: &Self,
+    ) -> impl Iterator<Item = EditorStateField> {
+        // Exhaustive destructuring is intentional. Adding state must make this
+        // classifier fail to compile until the new field is represented.
+        let Self { context, snapshot, document, selection, pending_formats } = self;
+        let Self {
+            context: previous_context,
+            snapshot: previous_snapshot,
+            document: previous_document,
+            selection: previous_selection,
+            pending_formats: previous_pending_formats,
+        } = previous;
+
+        [
+            (context != previous_context).then_some(EditorStateField::Context),
+            (snapshot != previous_snapshot).then_some(EditorStateField::Snapshot),
+            (document != previous_document).then_some(EditorStateField::Document),
+            (selection != previous_selection).then_some(EditorStateField::Selection),
+            (pending_formats != previous_pending_formats)
+                .then_some(EditorStateField::PendingFormats),
+        ]
+        .into_iter()
+        .flatten()
+    }
+
     /// Validates and publishes a complete editor snapshot.
     ///
     /// `pending_formats` is an explicit typing override: `None` derives formats

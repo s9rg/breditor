@@ -25,7 +25,8 @@ The implemented Rust slice owns:
 - a frozen semantic intent router with canonical priority/fallback behavior and
   exact-state-bound outcomes;
 - one-call action observation contracts plus a frozen, bounded direct/routed/
-  history action-state catalog and immutable exact-base batches;
+  history action-state catalog, immutable exact-base batches, and a
+  synchronous single-observation cache with bounded local deltas;
 - semantic base actions for paragraph breaks and backward deletion; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
   linear undo/redo history and opaque history-observation identity.
@@ -35,8 +36,8 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph split/join, including
   arbitrary block insertion, list changes, metadata conflict rules, and node
   movement;
-- action-state caching, deltas, subscriptions, presentation metadata, keymaps,
-  plugin dependencies/lifecycle, and durable registry manifests;
+- action-state subscriptions and delivery queues, presentation metadata,
+  keymaps, plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
   reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
@@ -75,6 +76,11 @@ IntentInvocation + immutable IntentRouter + exact EditorState
     -> evaluate named bindings in canonical priority order
     -> explicit disabled fallthrough or terminal block
     -> IntentRouteOutcome::Unhandled, Blocked, Prepared(cached action), or typed fault
+
+ActionStateCache + exact EditorSession instant
+    -> exact complete state/history hit: Unchanged with no evaluation
+    -> changed basis: reuse disjoint readers and evaluate intersecting source groups
+    -> Full baseline or complete new observation plus bounded local Delta
 
 current IntentRouteOutcome + EditorSession
     -> reject stale/reused exact base
@@ -152,6 +158,11 @@ entries, group boundaries, and replay commands remain in-memory runtime values.
 Version `0.0.7` adds an in-memory semantic intent router. It does not define a
 keyboard, DOM-event, toolbar, plugin, or durable replay protocol, and it does
 not change document format version `1`.
+
+Version `0.0.8` adds immutable, bounded action-state batches. Version `0.0.9`
+adds a process-local synchronous cache and local deltas over those batches.
+Neither checkpoint changes document format version `1`, introduces an
+executable capability cache, or defines a durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -573,7 +584,8 @@ independent from action-input, document-format, and schema versions even when
 their names or numeric versions happen to match.
 
 The same spec declares conservative read and possible-write domains for
-document, selection, pending formats, editor context, and linear history.
+document, selection, pending formats, editor context, exact snapshot identity,
+and linear history.
 Ordinary `Action::evaluate` calls receive only `EditorState`, not
 `SessionHistoryStatus`; action-registry construction therefore rejects
 `HISTORY` reads and reports the lexical first invalid action after duplicate-ID
@@ -584,11 +596,12 @@ invalidation contract from claiming an input its evaluator cannot observe.
 Synthesized catalog undo/redo descriptors are session-backed and may read
 `HISTORY`. Other native read claims remain trusted invalidation hints because
 handlers receive the complete immutable editor state. Enabled transaction
-preflight mechanically derives actual writes: non-empty forward operations
-write `DOCUMENT`, changed selection or pending formats write their respective
-domains, and session publication may write `HISTORY`. An actual write outside
-the declaration invalidates the plan. Domains describe effects and
-invalidation; neither the registry nor router is a permission sandbox.
+preflight mechanically derives actual writes: every changed commit writes
+`SNAPSHOT`, non-empty forward operations write `DOCUMENT`, changed selection or
+pending formats write their respective domains, and session publication writes
+`HISTORY`. An actual write outside the declaration invalidates the plan.
+Domains describe effects and invalidation; neither the registry nor router is a
+permission sandbox.
 
 Intent declarations carry the same state contract and a conservative effects
 envelope. Every bound action must have the exact activation/value contract, and
@@ -648,15 +661,48 @@ outside those budgets. Action-state, invocation, preparation, and routing Debug
 output redacts documents, payloads, uniform values, reason details, and cached
 commits.
 
-Version `0.0.8` deliberately performs eager planning and transaction preflight
-for every derived executable source. Duplicate sources evaluate independently,
-and an ordinary routed query can temporarily construct its individually bounded
-trace before batch accounting rejects or replaces it. There are no retained
-prepared tokens, duplicate-query coalescing, memoization, dependency-based
-invalidation, deltas, subscriptions, composite projectors, plugin revocation,
-panic/trap isolation, durable action-state codec, or Wasm ABI yet. Native
-activation, mixed, and editor-state read-domain claims remain trusted handler
-semantics; mechanically unobservable `HISTORY` reads are rejected.
+`ActionStateCatalog::derive` remains the eager reference path introduced in
+version `0.0.8`: every descriptor evaluates independently, including duplicate
+sources. An ordinary routed query can temporarily construct its individually
+bounded trace before batch accounting rejects or replaces it.
+
+Version `0.0.9` adds `ActionStateCache` as an explicitly mutable owner of one
+frozen catalog and at most one internally retained observation. An exact hit
+requires equality of the complete `EditorState` and complete
+`SessionHistoryStatus`, including its opaque stamp; a matching `SnapshotId` or
+matching history depths alone is insufficient. Exact hits return `Unchanged`
+with the same opaque observation identity and shared batch and evaluate no
+source. `clear` drops only the cache's retained observation, so caller-held
+clones remain valid and the next successful refresh publishes a fresh `Full`
+baseline.
+
+A changed refresh classifies document, selection, pending-format, context,
+snapshot-identity, and history inputs independently. It reevaluates only exact
+source groups whose trusted read declaration intersects that changed basis and
+reuses prior immutable outcomes for disjoint readers. Exact duplicate direct,
+routed, or history sources coalesce within a cache refresh; different inputs
+and direct-versus-routed sources remain separate. Coalescing does not change
+logical retention limits: every catalog entry still retains and accounts for
+its own outcome. The eager catalog path remains independent and uncached.
+
+After a changed successful refresh, `Delta` carries the prior and new opaque
+process-local observation identities, the exact changed basis domains, changed
+state IDs in unique lexical order, and the complete new observation. Changed
+IDs compare normalized public outcomes, so the list can be empty even when the
+basis and observation identity changed. A delta is a local rerender hint, not a
+wire patch, replay record, or executable command. Batch-wide resource failure
+installs neither a partial batch nor a new identity and leaves the prior
+observation current; deterministic entry-local faults are ordinary cacheable
+outcomes.
+
+No action-state value retains a prepared token, callback, subscriber, delivery
+queue, or plugin revocation handle. Native activation, mixed, and read-domain
+claims remain trusted handler semantics because native handlers receive the
+complete state; a narrow declaration that omits a dependency can make reuse
+stale. Untrusted native or Wasm extensions therefore need a restricted state
+view, disabled cross-refresh reuse, or a separate isolation boundary. There is
+still no subscription/backpressure protocol, composite projector, durable
+action-state codec, panic/trap isolation, or Wasm ABI.
 
 ## Session publication and bounded linear history
 
@@ -743,10 +789,17 @@ checked global deltas instead of rescanning a matching-profile document, but:
   paragraph guards until structural subtree proofs and durable operation records
   are specified;
 - every enabled action capability query eagerly applies its generated
-  transaction once to prove and cache the result; repeated toolbar queries for
-  one unchanged state therefore repeat planning and validation. Observable
-  batch derivation deliberately discards each temporary preparation and repeats
-  it on activation until a later exact cache contract exists;
+  transaction once to prove and cache the result. The eager catalog path still
+  repeats planning for every descriptor; the synchronous action-state cache
+  avoids exact-hit work, coalesces exact duplicate sources, and reuses disjoint
+  declared readers, but every invalidated source still replans and discards its
+  temporary executable preparation;
+- cache refresh compares complete immutable state and history values before an
+  exact hit. Source-group discovery is quadratic in catalog entry count during
+  cache construction, bounded by 512 entries; refresh retains normalized clones
+  only for duplicate leaders with followers. The cache owns one current
+  observation, while caller-held shared observations may legitimately extend
+  prior batch lifetimes;
 - intent fallback attempts each visited action in descending priority. Disabled
   candidates run input decoding and the planner but no transaction reducer; the
   first enabled candidate is preflighted once. Each fallthrough retains IDs,
@@ -818,11 +871,12 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add exact action-state reuse without weakening the one-evaluation contract. A
-cache must key complete editor state plus exact history identity, invalidate
-from conservative read domains, coalesce duplicate immutable sources, and keep
-display snapshots separate from one-shot executable preparations. Define
-deterministic full-snapshot versus delta delivery, subscriber lifecycle,
-backpressure/coalescing, and catalog-generation rules before exposing an
-observer API. No optimization may turn a stale capability or routed winner into
-an executable result.
+Add the first formatting mutation and use it to exercise the observable-state
+contract end to end: a guarded same-paragraph strong-format action should report
+inactive, active, or mixed state, update pending formats for a collapsed range,
+and replace exact selected fragments for an extended range with closed undo/redo
+behavior. Cross-paragraph formatting remains fail-closed until a native guarded
+block-range operation exists. Keep presentation metadata and delivery outside
+the deterministic core; subscriber lifecycle, catalog replacement,
+backpressure, and coalescing still require a separate contract before exposing
+an observer API.

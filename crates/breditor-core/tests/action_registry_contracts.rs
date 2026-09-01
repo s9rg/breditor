@@ -570,7 +570,9 @@ fn successful_preflight_rejects_writes_outside_declared_effects() -> TestResult 
             id,
             source: InvalidActionPlan::UndeclaredWrites {
                 declared: ActionStateDomains::HISTORY,
-                actual: ActionStateDomains::DOCUMENT.union(ActionStateDomains::HISTORY),
+                actual: ActionStateDomains::DOCUMENT
+                    .union(ActionStateDomains::HISTORY)
+                    .union(ActionStateDomains::SNAPSHOT),
             },
         })
     );
@@ -593,7 +595,9 @@ fn one_evaluation_stamps_metadata_and_execution_returns_the_cached_commit() -> T
     assert_eq!(prepared.indicator(), &ActionStateIndicator::stateless());
     assert_eq!(
         prepared.actual_writes(),
-        ActionStateDomains::DOCUMENT.union(ActionStateDomains::HISTORY)
+        ActionStateDomains::DOCUMENT
+            .union(ActionStateDomains::HISTORY)
+            .union(ActionStateDomains::SNAPSHOT)
     );
     assert!(!format!("{prepared:?}").contains(secret));
     assert_eq!(prepared.transaction().metadata().action(), Some(id.qualified_name()));

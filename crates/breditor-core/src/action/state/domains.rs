@@ -6,7 +6,9 @@ use std::{
 /// Fixed observable editor-state domains read or written by an action.
 ///
 /// Domains are conservative invalidation and effect declarations, not a
-/// permission boundary. Native action handlers remain trusted code.
+/// permission boundary. Native action handlers remain trusted code. Snapshot
+/// identity is modeled independently from the content domains so a cache can
+/// choose whether lineage or revision changes invalidate an observation.
 #[derive(Clone, Copy, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ActionStateDomains(u8);
 
@@ -27,13 +29,22 @@ impl ActionStateDomains {
     /// Ordinary actions and routed intents cannot observe history and their
     /// registries reject specs that claim otherwise.
     pub const HISTORY: Self = Self(1 << 4);
+    /// Exact editor snapshot identity: lineage plus lineage-local revision.
+    ///
+    /// Reading this domain means an observation depends on snapshot identity
+    /// even when all content-bearing domains compare equal. Ordinary actions
+    /// can observe it through [`crate::state::EditorState::snapshot`]. Every
+    /// changed action or history-replay commit writes this domain because its
+    /// resulting state advances the lineage-local revision.
+    pub const SNAPSHOT: Self = Self(1 << 5);
     /// Every currently defined observable domain.
     pub const ALL: Self = Self(
         Self::DOCUMENT.0
             | Self::SELECTION.0
             | Self::PENDING_FORMATS.0
             | Self::CONTEXT.0
-            | Self::HISTORY.0,
+            | Self::HISTORY.0
+            | Self::SNAPSHOT.0,
     );
 
     /// Returns the union of two domain sets.
@@ -46,6 +57,12 @@ impl ActionStateDomains {
     #[must_use]
     pub const fn contains(self, other: Self) -> bool {
         self.0 & other.0 == other.0
+    }
+
+    /// Returns whether these sets share at least one domain.
+    #[must_use]
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
     }
 
     /// Returns whether this set contains no domains.
@@ -86,6 +103,9 @@ impl fmt::Debug for ActionStateDomains {
         }
         if self.contains(Self::HISTORY) {
             set.entry(&"HISTORY");
+        }
+        if self.contains(Self::SNAPSHOT) {
+            set.entry(&"SNAPSHOT");
         }
         set.finish()
     }
