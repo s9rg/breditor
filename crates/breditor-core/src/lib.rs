@@ -4,7 +4,7 @@
 //! proof schema, strict versioned document, singular-operation, exact-base
 //! transaction-request, contextual complete editor-state, replay-proved
 //! durable commit, bounded session-checkpoint, and replay-identified local-log
-//! entry JSON decoding plus atomic genesis-prefix recovery,
+//! entry JSON decoding plus atomic genesis-prefix and one-successor recovery,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -54,8 +54,11 @@
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and
-//! publish no session on error. It is not framing, storage, checkpoint linkage,
-//! cross-generation compaction, authenticity, or crash-tail recovery.
+//! publish no session on error. A recovered owner can be compacted into a
+//! runtime [`local_log::LocalLogCheckpointAnchor`] that retains exact replay-ID
+//! tombstones and atomically recovers one bound successor generation without
+//! resetting sequence or history. Neither boundary is framing, durable
+//! checkpoint encoding, storage, authenticity, or crash-tail recovery.
 
 pub mod action;
 pub mod codec;

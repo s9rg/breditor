@@ -2,7 +2,10 @@ use std::{collections::BTreeMap, fmt};
 
 use crate::session::EditorSession;
 
-use super::{LocalLogEntry, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
+use super::{
+    LocalLogCheckpointAnchor, LocalLogEntry, LocalLogId, LocalLogRecoveryError, LocalLogSequence,
+    LocalSessionId, ReplayId,
+};
 
 /// Fully applied, genesis-anchored prefix of one uncompacted local-log generation.
 ///
@@ -86,6 +89,72 @@ impl RecoveredLocalLog {
     #[must_use]
     pub fn into_session(self) -> EditorSession {
         self.session
+    }
+
+    /// Compacts this caller-sealed recovered prefix into a runtime checkpoint
+    /// anchor.
+    ///
+    /// The successor generation must have a distinct caller-supplied identity.
+    /// The caller's transition declares the old prefix sealed; this value does
+    /// not prove that storage has no later old-generation entries or fence a
+    /// concurrent writer.
+    /// On success, every retained full event proof is dropped and replaced by
+    /// an exact replay-ID-to-sequence tombstone. The session, history, sequence
+    /// frontier, and generation boundary remain owned together. Reuse of a
+    /// compacted replay ID can therefore be rejected, but an old payload can no
+    /// longer be classified as an exact retry versus a conflicting reuse.
+    ///
+    /// This is an in-memory ownership transition. It does not encode, persist,
+    /// authenticate, flush, or atomically replace a checkpoint and log.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LocalLogRecoveryError::GenerationNotAdvanced`] when
+    /// `successor_log_id` equals the recovered active generation. Because this
+    /// method consumes `self`, either failure drops the recovered owner or
+    /// success publishes the complete anchor; callers should compare the IDs
+    /// before calling when they need to retain this value after bad input.
+    pub fn try_into_checkpoint_anchor(
+        self,
+        successor_log_id: LocalLogId,
+    ) -> Result<LocalLogCheckpointAnchor, LocalLogRecoveryError> {
+        let Self {
+            session_id,
+            active_log_id,
+            session,
+            entries,
+            replay_index,
+            observation_count: _,
+            unique_event_count: _,
+            exact_duplicate_count: _,
+            applied_operation_count: _,
+            covered_through,
+            next_sequence,
+        } = self;
+        if active_log_id == successor_log_id {
+            return Err(LocalLogRecoveryError::GenerationNotAdvanced {
+                checkpoint_log_id: active_log_id,
+                successor_log_id,
+            });
+        }
+
+        let retained_index_count = replay_index.len();
+        let compacted_replays = entries
+            .into_vec()
+            .into_iter()
+            .map(|entry| (entry.replay_id().clone(), entry.sequence()))
+            .collect::<BTreeMap<_, _>>();
+        debug_assert_eq!(compacted_replays.len(), retained_index_count);
+
+        Ok(LocalLogCheckpointAnchor::new(
+            session_id,
+            active_log_id,
+            successor_log_id,
+            session,
+            compacted_replays,
+            covered_through,
+            next_sequence,
+        ))
     }
 
     /// Returns first-seen logical entries in contiguous sequence order.

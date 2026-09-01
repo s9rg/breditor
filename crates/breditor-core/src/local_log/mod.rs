@@ -1,13 +1,17 @@
 //! Runtime values for one durable, ordered, single-writer local editor log.
 //!
 //! This module defines identities, sequence numbers, event values, and an
-//! atomic genesis recovery boundary. It does not append, persist, frame,
-//! compact, or authenticate a stream. The codec module can serialize one
-//! independently valid entry; storage must preserve the scopes and ordering
-//! documented by these values.
+//! atomic genesis recovery boundary, and one compact in-memory checkpoint-linked
+//! successor recovery. Runtime compaction retains exact replay-ID tombstones
+//! while dropping old event proofs. It does not append, persist, frame, encode
+//! the combined checkpoint, authenticate, or crash-recover a stream. The codec
+//! module can serialize one independently valid entry; storage must preserve
+//! the scopes and ordering documented by these values.
 
 mod application;
 mod application_error;
+mod checkpoint_anchor;
+mod continued;
 mod entry;
 mod event;
 mod identity;
@@ -19,11 +23,14 @@ mod recovery_error;
 mod recovery_limits;
 mod replay_id;
 mod sequence;
+mod successor_recovery;
 
 pub use application_error::{
     LocalLogEventApplicationError, LocalLogEventApplicationErrorCode,
     LocalLogReplayTransactionErrorCode,
 };
+pub use checkpoint_anchor::LocalLogCheckpointAnchor;
+pub use continued::ContinuedLocalLog;
 pub use entry::LocalLogEntry;
 pub use event::{LocalLogEvent, LocalLogEventError, LocalLogEventErrorCode, LocalLogEventKind};
 pub use identity::{

@@ -4,7 +4,7 @@ use super::{
     LocalLogEventApplicationError, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId,
 };
 
-/// Stable category for one failed genesis local-log recovery.
+/// Stable category for one failed genesis or checkpoint-linked local-log recovery.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LocalLogRecoveryErrorCode {
@@ -18,6 +18,10 @@ pub enum LocalLogRecoveryErrorCode {
     SessionMismatch,
     /// One entry names another append generation.
     ActiveLogMismatch,
+    /// A checkpoint transition reused its sealed generation identity.
+    GenerationNotAdvanced,
+    /// A successor entry reused an identity whose full proof was compacted.
+    CompactedReplayId,
     /// First-seen logical events exceed the host admission limit.
     UniqueEventLimit,
     /// Aggregate applied operations exceed the host admission limit.
@@ -25,9 +29,6 @@ pub enum LocalLogRecoveryErrorCode {
     /// A first-seen event is not at the exact next sequence.
     UnexpectedSequence,
     /// A new event follows sequence `u64::MAX`.
-    ///
-    /// Reserved for checkpoint-seeded continuation; admitted genesis vectors
-    /// cannot contain the required `u64::MAX + 1` observations.
     SequenceExhausted,
     /// One replay ID is bound to two different logical entries.
     ReplayConflict,
@@ -45,6 +46,8 @@ impl LocalLogRecoveryErrorCode {
             Self::CounterOverflow => "local_log_recovery.counter_overflow",
             Self::SessionMismatch => "local_log_recovery.session_mismatch",
             Self::ActiveLogMismatch => "local_log_recovery.active_log_mismatch",
+            Self::GenerationNotAdvanced => "local_log_recovery.generation_not_advanced",
+            Self::CompactedReplayId => "local_log_recovery.compacted_replay_id",
             Self::UniqueEventLimit => "local_log_recovery.unique_event_limit",
             Self::AppliedOperationLimit => "local_log_recovery.applied_operation_limit",
             Self::UnexpectedSequence => "local_log_recovery.unexpected_sequence",
@@ -82,7 +85,7 @@ impl LocalLogRecoveryCounter {
     }
 }
 
-/// Why one owned genesis local-log recovery could not publish a session.
+/// Why one owned local-log recovery could not publish a session.
 ///
 /// The error never returns the consumed session and never retains an entry,
 /// event, commit, editor state, operation guard, or document-bearing session
@@ -141,6 +144,28 @@ pub enum LocalLogRecoveryError {
         /// Rejected append generation.
         actual: LocalLogId,
     },
+    /// A checkpoint tried to continue in the generation it had just sealed.
+    #[error(
+        "local-log checkpoint generation {checkpoint_log_id} must advance to a distinct successor; received {successor_log_id}"
+    )]
+    GenerationNotAdvanced {
+        /// Sealed checkpoint generation.
+        checkpoint_log_id: LocalLogId,
+        /// Rejected equal successor generation.
+        successor_log_id: LocalLogId,
+    },
+    /// A successor entry reused a replay ID whose full event proof was compacted.
+    #[error(
+        "local-log observation {delivery_index} reuses compacted replay ID {replay_id} from sequence {original_sequence}"
+    )]
+    CompactedReplayId {
+        /// Physical zero-based successor input index.
+        delivery_index: u64,
+        /// Reused session-scoped replay identity.
+        replay_id: ReplayId,
+        /// Original sequence retained by the checkpoint tombstone.
+        original_sequence: LocalLogSequence,
+    },
     /// First-seen events exceed the host-selected ceiling.
     #[error(
         "local-log observation {delivery_index} would raise unique events to {attempted}; the maximum is {maximum}"
@@ -177,9 +202,9 @@ pub enum LocalLogRecoveryError {
     },
     /// An unseen event follows the final representable logical sequence.
     ///
-    /// This defensive variant is reserved for checkpoint-seeded continuation.
-    /// It is unreachable from the current genesis-only batch boundary because
-    /// the complete physical observation count must first fit `u64`.
+    /// Successor recovery uses this when a checkpoint has no next sequence. It
+    /// is unreachable from genesis recovery because the complete physical
+    /// observation count must first fit `u64`.
     #[error(
         "local-log observation {delivery_index} cannot follow exhausted sequence {covered_through}"
     )]
@@ -224,6 +249,8 @@ impl LocalLogRecoveryError {
             Self::CounterOverflow { .. } => LocalLogRecoveryErrorCode::CounterOverflow,
             Self::SessionMismatch { .. } => LocalLogRecoveryErrorCode::SessionMismatch,
             Self::ActiveLogMismatch { .. } => LocalLogRecoveryErrorCode::ActiveLogMismatch,
+            Self::GenerationNotAdvanced { .. } => LocalLogRecoveryErrorCode::GenerationNotAdvanced,
+            Self::CompactedReplayId { .. } => LocalLogRecoveryErrorCode::CompactedReplayId,
             Self::UniqueEventLimit { .. } => LocalLogRecoveryErrorCode::UniqueEventLimit,
             Self::AppliedOperationLimit { .. } => LocalLogRecoveryErrorCode::AppliedOperationLimit,
             Self::UnexpectedSequence { .. } => LocalLogRecoveryErrorCode::UnexpectedSequence,
@@ -237,10 +264,13 @@ impl LocalLogRecoveryError {
     #[must_use]
     pub const fn delivery_index(&self) -> Option<u64> {
         match self {
-            Self::ObservationLimit { .. } | Self::NonEmptyInitialHistory { .. } => None,
+            Self::ObservationLimit { .. }
+            | Self::NonEmptyInitialHistory { .. }
+            | Self::GenerationNotAdvanced { .. } => None,
             Self::CounterOverflow { delivery_index, .. } => *delivery_index,
             Self::SessionMismatch { delivery_index, .. }
             | Self::ActiveLogMismatch { delivery_index, .. }
+            | Self::CompactedReplayId { delivery_index, .. }
             | Self::UniqueEventLimit { delivery_index, .. }
             | Self::AppliedOperationLimit { delivery_index, .. }
             | Self::UnexpectedSequence { delivery_index, .. }
@@ -268,6 +298,14 @@ mod tests {
             (
                 LocalLogRecoveryErrorCode::ActiveLogMismatch,
                 "local_log_recovery.active_log_mismatch",
+            ),
+            (
+                LocalLogRecoveryErrorCode::GenerationNotAdvanced,
+                "local_log_recovery.generation_not_advanced",
+            ),
+            (
+                LocalLogRecoveryErrorCode::CompactedReplayId,
+                "local_log_recovery.compacted_replay_id",
             ),
             (LocalLogRecoveryErrorCode::UniqueEventLimit, "local_log_recovery.unique_event_limit"),
             (

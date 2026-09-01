@@ -6,8 +6,8 @@ use thiserror::Error;
 ///
 /// A sequence belongs to a [`super::LocalSessionId`] and never resets when
 /// compaction creates a new [`super::LocalLogId`] append generation. Numeric
-/// zero is reserved for a future empty-prefix anchor and cannot identify an
-/// entry.
+/// zero represents no entry and remains represented as `None` at an empty-prefix
+/// anchor; it cannot identify a log entry.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct LocalLogSequence(NonZeroU64);
 
@@ -22,8 +22,8 @@ impl LocalLogSequence {
     ///
     /// # Errors
     ///
-    /// Returns [`LocalLogSequenceError::Zero`] because zero is reserved for a
-    /// future empty-prefix anchor.
+    /// Returns [`LocalLogSequenceError::Zero`] because zero represents an empty
+    /// prefix rather than an entry.
     pub const fn try_new(value: u64) -> Result<Self, LocalLogSequenceError> {
         match NonZeroU64::new(value) {
             Some(value) => Ok(Self(value)),
@@ -60,7 +60,7 @@ impl fmt::Display for LocalLogSequence {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum LocalLogSequenceError {
-    /// Zero is reserved for a future empty-prefix anchor.
+    /// Zero represents an empty prefix and cannot identify an entry.
     #[error("local-log sequence zero is reserved")]
     Zero,
     /// The session-global sequence reached `u64::MAX`.

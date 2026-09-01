@@ -16,6 +16,7 @@ This repository currently contains the first end-to-end Rust-core slice:
   editor-state checkpoints, self-contained replay-proved commit records, and
   compact replay-proved bounded session/history checkpoints plus strict
   replay-identified local-log event envelopes and atomic genesis-prefix
+  recovery, compact runtime prefix anchors, and one checked successor-generation
   recovery;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
@@ -64,8 +65,8 @@ direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log framing and storage,
-checkpoint-seeded or cross-generation recovery, incremental continuation,
-integrity/authenticity, and crash-tail recovery,
+a durable combined log checkpoint, repeated generation transitions,
+incremental continuation, integrity/authenticity, and crash-tail recovery,
 Wasm bindings,
 a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for

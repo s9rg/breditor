@@ -7,7 +7,7 @@ pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_UNIQUE_EVENTS: u64 = 10_000;
 /// Default maximum operations applied across all first-seen events.
 pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_APPLIED_OPERATIONS: u64 = 16_384;
 
-/// Host-authoritative resource policy for one genesis local-log recovery.
+/// Host-authoritative resource policy for one local-log recovery batch.
 ///
 /// Observations count every physical input, including exact retries. Unique
 /// events count only the first occurrence of each replay ID. Applied operations
@@ -15,6 +15,8 @@ pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_APPLIED_OPERATIONS: u64 = 16_384;
 /// authoritative retained local recipe. Recovery charges history recipe size
 /// before cloning or deriving it and separately requires the logged proof to
 /// match. Control events contribute no operations. All limits may be zero.
+/// Genesis and checkpoint-linked successor recovery apply independent policies;
+/// the latter does not recharge the already admitted compacted prefix.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LocalLogRecoveryLimits {
     observations: u64,
