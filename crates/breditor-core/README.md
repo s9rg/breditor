@@ -12,6 +12,8 @@ validation for fixed-base text edits, structural relocation, heterogeneous
 change notifications, exact in-memory undo/redo requests, an immutable typed
 action registry, and base paragraph-break/backward-delete actions. Action
 preparation is the single capability and execution path: it preflights and
-caches an exact transaction result against one immutable state. The crate is
-intentionally smaller than the eventual editor runtime and has no browser,
-history owner, or Wasm adapter yet.
+caches an exact transaction result against one immutable state. A synchronous
+`EditorSession` owns exact commit publication plus bounded deterministic linear
+undo/redo history. The crate is intentionally smaller than the eventual editor
+runtime and has no browser queue, durable replay log, collaboration transform,
+or Wasm adapter yet.

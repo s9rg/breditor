@@ -1,17 +1,26 @@
 use crate::identity::QualifiedName;
 
-/// How a successful commit participates in a future undo history.
+/// How a successful commit participates in a history owner.
+///
+/// [`crate::session::EditorSession`] applies these intents only to commits with
+/// non-empty applied forward operations. A selection/pending-format-only commit
+/// adds no entry under any intent, preserves redo, updates adjacent cursor
+/// boundaries, and closes merging. A net-zero operation batch still has applied
+/// forward operations and therefore remains a content event.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub enum HistoryIntent {
-    /// Record one independent undo entry.
+    /// Record one independent entry for a content commit.
     #[default]
     Record,
-    /// Offer the commit for coalescing with an adjacent entry of the same group.
+    /// Offer a content commit for coalescing with an open adjacent entry of the same group.
     Merge {
         /// Stable action-defined group, such as `breditor/typing`.
         group: QualifiedName,
     },
-    /// Do not add the commit to user-visible undo history.
+    /// Exclude a commit from user-visible undo history.
+    ///
+    /// The linear session clears both branches for a content commit because it
+    /// cannot yet map retained inverses through unrecorded content.
     Ignore,
 }
 

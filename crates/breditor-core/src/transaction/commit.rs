@@ -102,6 +102,10 @@ impl Commit {
     /// Unlike replaying [`Self::inverse_operations`] alone, this also restores
     /// the prior selection and pending typing formats. The new request uses the
     /// current revision and therefore preserves monotonic snapshot numbering.
+    /// [`crate::session::EditorSession`] users should call
+    /// [`crate::session::EditorSession::undo`] instead. Publishing this
+    /// low-level `HistoryIntent::Ignore` replay through the session's ordinary
+    /// transaction/commit path conservatively clears its linear history.
     ///
     /// # Errors
     ///
@@ -121,6 +125,11 @@ impl Commit {
     }
 
     /// Builds a forward request that restores this commit's exact result state.
+    ///
+    /// [`crate::session::EditorSession`] users should call
+    /// [`crate::session::EditorSession::redo`] instead. Publishing this
+    /// low-level `HistoryIntent::Ignore` replay through the session's ordinary
+    /// transaction/commit path conservatively clears its linear history.
     ///
     /// # Errors
     ///

@@ -29,15 +29,18 @@ This repository currently contains the first end-to-end Rust-core slice:
   extension conflicts;
 - semantic `insert-paragraph-break` and `delete-backward` actions shared by
   keyboard, toolbar, palette, and API adapters;
-- `Commit` helpers that construct undo and redo transactions; and
+- a synchronous `EditorSession` publication boundary with exact-base commit
+  acceptance, bounded linear history, deterministic merge groups, and atomic
+  undo/redo replay;
+- `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, and per-transaction operation limits.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root paragraph split/join, cross-paragraph range replacement, action
-presentation state and plugin lifecycle management, an actual history stack and
-coalescer, persistent operation/state codecs and reload replay, Wasm bindings,
-a DOM bridge, collaboration, and generic incremental validation for structural
-or custom-schema edits are not implemented. See
+presentation state and plugin lifecycle management, persistent
+operation/state/history codecs and reload replay, Wasm bindings, a DOM bridge,
+collaboration-aware or selective undo, and generic incremental validation for
+structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations.
 

@@ -18,23 +18,27 @@ The implemented Rust slice owns:
 - paragraph-local `TextSplice` and direct-root `ParagraphSplit`/`ParagraphJoin`
   operations with closed exact content inverses;
 - atomic transactions, explicit selection/pending-format updates, typed
-  metadata, relocation, and operation-relative change sets; and
+  metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
 - an immutable typed action registry with fail-closed identity conflicts,
   snapshot-bound capability preparation, and bounded cross-language inputs; and
-- semantic base actions for paragraph breaks and backward deletion.
+- semantic base actions for paragraph breaks and backward deletion; and
+- a synchronous exact-publication `EditorSession` with bounded deterministic
+  linear undo/redo history.
 
 The following remain deliberately unimplemented:
 
 - structural operations beyond direct-root base-paragraph split/join, including
   arbitrary block insertion, list changes, metadata conflict rules, and node
   movement;
-- action active/mixed/value state, presentation metadata, keymap routing,
-  plugin dependencies/lifecycle, and a durable registry manifest;
-- an actual undo/redo stack, grouping, coalescing, and history retention policy;
-- persistent operation and editor-state codecs, durable logs, and reload replay;
+- action active/mixed/value state, intent-binding fallback/priority routing,
+  presentation metadata, keymaps, plugin dependencies/lifecycle, and a durable
+  registry manifest;
+- persistent operation, editor-state, and history codecs, durable logs, and
+  reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
-- collaboration, rebasing, CRDT/OT behavior, and remote presence; and
+- branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
+  and remote presence; and
 - generic subtree summaries and incremental validation for structural or
   custom-schema edits.
 
@@ -62,6 +66,12 @@ ActionInvocation + immutable ActionRegistry + exact EditorState
     -> Disabled(stable reason) or build one explicit ActionPlan
     -> preflight one exact-base Transaction
     -> PreparedAction(transaction + cached Commit) or typed fault
+
+EditorSession + exact-base Commit or Transaction
+    -> reject stale/reused state before mutation
+    -> publish one authoritative current EditorState
+    -> update bounded linear history under explicit intent
+    -> undo/redo as one newly proven transaction and monotonic revision
 ```
 
 Deserializing JSON can never construct a runtime `Document` directly. Records
@@ -118,8 +128,12 @@ incremental proof. Untouched root siblings remain allocation-shared.
 
 Version `0.0.5` adds the deterministic action catalog and the first semantic
 paragraph-break/backward-delete planners. Action preparation remains an
-in-memory runtime contract: action inputs, plans, and prepared commits do not
-yet have a durable codec, and publication still requires a future session owner.
+in-memory runtime contract: action inputs, plans, and prepared commits have no
+durable codec. Publication was still a host responsibility at that checkpoint.
+
+Version `0.0.6` adds exact synchronous session publication and bounded linear
+history. It does not change document format version `1`: session state, history
+entries, group boundaries, and replay commands remain in-memory runtime values.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -334,9 +348,10 @@ A successful `Commit` retains exact before/after states, forward operations,
 inverse operations already in undo order, composed relocation, changes, and
 typed action/history intent. `undo_transaction` and `redo_transaction` build new
 atomic requests and restore the corresponding exact selection and pending
-formats while revisions continue monotonically. They are transaction helpers,
-not an implemented history stack; grouping metadata is only a contract for the
-future history owner.
+formats while revisions continue monotonically. They remain useful lower-level
+single-commit helpers. Merged history and updated cursor boundaries are owned by
+`EditorSession`, which synthesizes aggregate replay transactions rather than
+rerunning these helpers.
 
 ## Actions, capabilities, and extension boundary
 
@@ -388,12 +403,13 @@ calling either handler or reducer again. A toolbar, keymap, command palette, or
 API adapter therefore invokes the same ID and must not maintain a second
 enablement implementation.
 
-This check is not shared-state publication. Two preparations made from the same
-base can each produce a valid branch with the same successor revision if a host
-passes that old state to both. A future editor-session owner or host queue must
-serialize publication against its actual current state and discard/reprepare a
-stale queued action. `Send` and `Sync` make values thread-safe; they do not make
-parallel editor histories linear.
+Preparation alone is not shared-state publication. Two preparations made from
+the same base can each produce a valid branch with the same successor revision.
+`EditorSession::execute_prepared_action` consumes one preparation against its
+authoritative current state and rejects the other as stale. A host queue must
+still serialize calls to the session and discard/reprepare stale queued intent.
+`Send` and `Sync` make values thread-safe; they do not make parallel editor
+histories linear.
 
 The two base actions take no input:
 
@@ -422,6 +438,73 @@ future-runtime concerns. Action callbacks, IDs, and post-hooks are not replayed;
 only their proven transaction operations and state outcomes cross the reducer
 boundary.
 
+## Session publication and bounded linear history
+
+`EditorSession` exclusively owns one current `EditorState`, retained undo/redo
+entries, and the open merge group. Its mutable methods are the synchronous Rust
+publication boundary; there is no mutable-state escape. `accept_commit` first
+requires both the exact current `SnapshotId` and complete `Commit::before`
+state. Reusing a snapshot identity for different document, selection, pending
+formats, context, or limits fails without changing state or history.
+`apply_transaction` applies against that same current state, and
+`execute_prepared_action` joins cached action execution to exact publication.
+An unchanged transaction publishes nothing, consumes no revision, and does not
+implicitly close a merge group.
+
+History classifies content by non-empty applied `Commit::forward_operations`,
+not by before/after document inequality. A multi-operation transaction that
+changes content and returns to an equal final document is still content history.
+Selection/pending-format-only commits add no entry under any history intent and
+do not clear redo. They close merging and replace both cursor boundaries
+adjacent to the current content: the nearest undo entry's after side and the
+nearest redo entry's before side. They are therefore not independently
+undoable, but later content undo/redo restores the latest exact anchor/focus,
+affinities, selection option, and pending-format option at that boundary.
+
+Content commits use these deterministic rules:
+
+- `Record` clears redo, appends one independent entry, and closes merging.
+- `Merge { group }` clears redo and merges only with the immediately adjacent
+  open entry carrying the same explicit group. Forward operations append;
+  inverses prepend in newest-first undo order; the first before cursor and last
+  after cursor survive. No action ID, wall clock, or hidden heuristic participates.
+- `Ignore` clears both undo and redo. Keeping prior inverses across unrecorded
+  content would be unsound until operations and selections can be mapped or
+  rebased through it.
+
+The host may call `close_history_group` at a recorded timer, IME, paste, focus,
+or semantic boundary. If merging would make either the aggregate forward or
+inverse list exceed `EditorContext::max_operations_per_transaction`, the next
+commit starts a new entry with the same group; one atomic commit is never split.
+New content after undo always discards redo and cannot merge backward across the
+traversal boundary.
+
+Undo and redo peek the nearest entry, build one complete transaction against
+the current state, explicitly restore its stored selection and pending formats,
+and publish a fresh successor revision with `breditor/undo` or `breditor/redo`
+metadata. State and both stacks move only after the reducer succeeds. Boundary,
+operation, validation, or revision-overflow failure changes nothing. Successful
+replay returns its `Commit`, including relocation and change data, for renderer
+invalidation; unavailable replay is `Ok(None)`. Replay never invokes an action
+handler or restores an old snapshot number. A low-level content commit marked
+`Ignore` and accepted through the ordinary path clears history; only
+`EditorSession::undo` and `redo` move the history cursor.
+
+`HistoryCapacity` is a fixed-width `u32` entry count: default `100`, valid range
+`0..=10_000`, with zero disabling retention but not publication. Capacity counts
+merged entries in the complete linear history and immediately evicts the oldest
+entry. It is not a memory-byte limit: guarded operations and structurally shared
+documents may retain substantial payloads. The session exposes synchronous
+`can_undo`, `can_redo`, and fixed-width depths; an adapter is responsible for
+notifying observable toolbar state after returned commits or explicit history
+changes.
+
+This checkpoint is local, linear, and in-memory. It has no branching UI,
+selective undo, durable reload replay, foreign-operation mapping, collaboration
+undo manager, browser FIFO, or clock/IME policy. Collaboration must eventually
+map inverse operations and cursor boundaries through remote changes or use a
+collaboration-aware history protocol; it cannot silently reuse this stack.
+
 ## Current performance limitations
 
 The correctness-first implementation deliberately accepts costs that must be
@@ -439,6 +522,9 @@ checked global deltas instead of rescanning a matching-profile document, but:
   transaction once to prove and cache the result; repeated toolbar queries for
   one unchanged state therefore repeat planning and validation unless the host
   retains the `PreparedAction`;
+- history is bounded by logical entry count rather than retained bytes, and a
+  merged entry copies bounded operation recipes while immutable document
+  payloads remain structurally shared;
 - split/join scans the complete guarded paragraphs and currently reboxes text
   `NodeRef`s inside affected paragraphs, although their immutable string/format
   payloads remain shared;
@@ -498,12 +584,12 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add a synchronous Rust editor-session owner that integrates the current
-`EditorState` and an actual bounded linear history. It must atomically accept
-exact-base commits, implement deterministic `Record`/`Merge`/`Ignore` rules
-without a clock, preserve selection and pending-format cursor boundaries, clear
-redo after new content, split merge groups before the transaction operation cap,
-and leave current state plus both stacks unchanged on replay failure. A
-content-changing ignored commit must conservatively clear history until mapped
-non-history changes exist. DOM dispatch queues, timer/IME group boundaries, and
-toolbar-facing undo/redo actions remain later adapter/runtime work.
+Add a deterministic intent-binding router and observable action-state contract.
+The router must name bindings independently from actions, define explicit
+priority plus `Unhandled`/`Blocked`/`Prepared` fallback outcomes, and never use
+registration or load order as hidden policy. Action state must cover enabled,
+active/inactive/mixed, typed value, and read/write effect so expandable toolbar
+controls consume one derivation path. Labels, icons, localization, DOM events,
+IME, and platform shortcut syntax remain adapter/presentation data; undo/redo
+availability should project the session's synchronous state through the same
+observable boundary.
