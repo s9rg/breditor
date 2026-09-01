@@ -5,17 +5,19 @@ use std::{
 
 use crate::session::EditorSession;
 
-use super::{LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
+use super::{LocalLogCompactionLimits, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
 
 /// Compact in-memory owner of one checked local-log checkpoint and successor scope.
 ///
 /// The anchor binds one exact owned session and history to a declared sealed
-/// generation, sequence frontier, and replay-tombstone set. Runtime compaction
-/// creates it from a proved recovered prefix. Codec restoration proves strict
-/// structure and equality with a trusted host binding, but cannot prove that
-/// the session, frontier, and tombstones share causal history. Old full event
-/// proofs are absent in either representation. The only checked transition
-/// exposed by this checkpoint is recovery of its bound successor generation.
+/// generation, sequence frontier, replay-tombstone set, and runtime lifetime
+/// policy. Initial runtime compaction creates it from a proved recovered
+/// prefix. Repeated compaction preserves the provenance level it inherited: an
+/// ancestor restored from the codec remains structurally checked rather than
+/// causally proved. Codec restoration proves strict structure and equality with
+/// a trusted host binding, but cannot prove that the session, frontier, and
+/// tombstones share causal history. Compaction neither authenticates nor
+/// repairs that missing proof. Old full event proofs are absent in every anchor.
 ///
 /// This value has no public constructor. Runtime recovery can compact into it,
 /// and the strict, expected-binding
@@ -26,6 +28,7 @@ pub struct LocalLogCheckpointAnchor {
     session_id: LocalSessionId,
     checkpoint_log_id: LocalLogId,
     successor_log_id: LocalLogId,
+    compaction_limits: LocalLogCompactionLimits,
     session: EditorSession,
     compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
     checkpoint_covered_through: Option<LocalLogSequence>,
@@ -35,6 +38,7 @@ pub(super) struct LocalLogCheckpointAnchorParts {
     pub(super) session_id: LocalSessionId,
     pub(super) checkpoint_log_id: LocalLogId,
     pub(super) successor_log_id: LocalLogId,
+    pub(super) compaction_limits: LocalLogCompactionLimits,
     pub(super) session: EditorSession,
     pub(super) compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
     pub(super) checkpoint_covered_through: Option<LocalLogSequence>,
@@ -54,6 +58,7 @@ pub(crate) struct LocalLogCheckpointAnchorCheckpointParts<'a> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum LocalLogCheckpointAnchorInvariantError {
     GenerationNotAdvanced,
+    ReplayTombstoneLimit,
     TombstoneCountMismatch,
     DuplicateSequence,
     SequenceOutOfRange,
@@ -65,6 +70,7 @@ impl LocalLogCheckpointAnchor {
         session_id: LocalSessionId,
         checkpoint_log_id: LocalLogId,
         successor_log_id: LocalLogId,
+        compaction_limits: LocalLogCompactionLimits,
         session: EditorSession,
         compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
         checkpoint_covered_through: Option<LocalLogSequence>,
@@ -73,6 +79,7 @@ impl LocalLogCheckpointAnchor {
             session_id,
             checkpoint_log_id,
             successor_log_id,
+            compaction_limits,
             session,
             compacted_replays,
             checkpoint_covered_through,
@@ -84,6 +91,7 @@ impl LocalLogCheckpointAnchor {
         session_id: LocalSessionId,
         checkpoint_log_id: LocalLogId,
         successor_log_id: LocalLogId,
+        compaction_limits: LocalLogCompactionLimits,
         session: EditorSession,
         compacted_replays: BTreeMap<ReplayId, LocalLogSequence>,
         checkpoint_covered_through: Option<LocalLogSequence>,
@@ -94,6 +102,9 @@ impl LocalLogCheckpointAnchor {
         let expected_count = checkpoint_covered_through.map_or(0, LocalLogSequence::get);
         let actual_count = u64::try_from(compacted_replays.len())
             .map_err(|_| LocalLogCheckpointAnchorInvariantError::TombstoneCountMismatch)?;
+        if actual_count > compaction_limits.max_replay_tombstones() {
+            return Err(LocalLogCheckpointAnchorInvariantError::ReplayTombstoneLimit);
+        }
         if actual_count != expected_count {
             return Err(LocalLogCheckpointAnchorInvariantError::TombstoneCountMismatch);
         }
@@ -113,6 +124,7 @@ impl LocalLogCheckpointAnchor {
             session_id,
             checkpoint_log_id,
             successor_log_id,
+            compaction_limits,
             session,
             compacted_replays,
             checkpoint_covered_through,
@@ -135,6 +147,16 @@ impl LocalLogCheckpointAnchor {
     #[must_use]
     pub const fn successor_log_id(&self) -> &LocalLogId {
         &self.successor_log_id
+    }
+
+    /// Returns the host-authoritative lifetime replay-retention policy.
+    ///
+    /// This runtime policy is carried into successor recovery and repeated
+    /// compaction. Local Log Checkpoint V1 does not serialize it; strict decode
+    /// installs the codec host's current tombstone limit instead.
+    #[must_use]
+    pub const fn compaction_limits(&self) -> LocalLogCompactionLimits {
+        self.compaction_limits
     }
 
     /// Returns the exact owned checkpoint session and retained history.
@@ -190,6 +212,7 @@ impl LocalLogCheckpointAnchor {
             session_id,
             checkpoint_log_id,
             successor_log_id,
+            compaction_limits: _,
             session,
             compacted_replays,
             checkpoint_covered_through,
@@ -209,6 +232,7 @@ impl LocalLogCheckpointAnchor {
             session_id,
             checkpoint_log_id,
             successor_log_id,
+            compaction_limits,
             session,
             compacted_replays,
             checkpoint_covered_through,
@@ -217,6 +241,7 @@ impl LocalLogCheckpointAnchor {
             session_id,
             checkpoint_log_id,
             successor_log_id,
+            compaction_limits,
             session,
             compacted_replays,
             checkpoint_covered_through,
@@ -231,6 +256,7 @@ impl fmt::Debug for LocalLogCheckpointAnchor {
             .field("session_id", &self.session_id)
             .field("checkpoint_log_id", &self.checkpoint_log_id)
             .field("successor_log_id", &self.successor_log_id)
+            .field("compaction_limits", &self.compaction_limits)
             .field("checkpoint_covered_through", &self.checkpoint_covered_through)
             .field("next_sequence", &self.next_sequence())
             .field("compacted_replay_count", &self.compacted_replay_count())

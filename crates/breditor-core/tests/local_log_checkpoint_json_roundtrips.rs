@@ -14,9 +14,9 @@ use breditor_core::{
     document::{FormatSet, TextFragment, TextRun},
     identity::QualifiedName,
     local_log::{
-        LocalLogCheckpointBinding, LocalLogEntry, LocalLogEvent, LocalLogId, LocalLogRecovery,
-        LocalLogRecoveryError, LocalLogRecoveryErrorCode, LocalLogRecoveryLimits, LocalLogSequence,
-        LocalSessionId, ReplayId,
+        LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent,
+        LocalLogId, LocalLogRecovery, LocalLogRecoveryError, LocalLogRecoveryErrorCode,
+        LocalLogRecoveryLimits, LocalLogSequence, LocalSessionId, ReplayId,
     },
     operation::{TextRange, TextSplice},
     position::TextOffset,
@@ -109,7 +109,10 @@ fn recover_anchor(
         LocalLogId::try_new(CHECKPOINT_LOG_ID)?,
     )
     .recover(EditorSession::new(initial), prefix)?
-    .try_into_checkpoint_anchor(LocalLogId::try_new(SUCCESSOR_LOG_ID)?)?)
+    .try_into_checkpoint_anchor(
+        LocalLogId::try_new(SUCCESSOR_LOG_ID)?,
+        LocalLogCompactionLimits::default(),
+    )?)
 }
 
 fn assert_sessions_equal(left: &EditorSession, right: &EditorSession) {

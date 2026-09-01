@@ -15,8 +15,9 @@ use breditor_core::{
     },
     document::{FormatSet, TextFragment, TextRun},
     local_log::{
-        LocalLogCheckpointAnchor, LocalLogCheckpointBinding, LocalLogEntry, LocalLogEvent,
-        LocalLogId, LocalLogRecovery, LocalLogSequence, LocalSessionId, ReplayId,
+        LocalLogCheckpointAnchor, LocalLogCheckpointBinding, LocalLogCompactionLimits,
+        LocalLogEntry, LocalLogEvent, LocalLogId, LocalLogRecovery, LocalLogRecoveryError,
+        LocalLogRecoveryLimits, LocalLogSequence, LocalSessionId, ReplayId,
     },
     operation::{TextRange, TextSplice},
     position::TextOffset,
@@ -30,7 +31,7 @@ use proptest::{
     test_runner::{Config, FileFailurePersistence, TestCaseError},
 };
 use serde_json::Value;
-use support::{document_json, paragraph, path, text_node};
+use support::{document_json, paragraph, path, test_error, text_node};
 
 fn property_config() -> Config {
     let mut config = Config::with_failure_persistence(FileFailurePersistence::Direct(
@@ -138,7 +139,9 @@ fn checkpoint_fixture(
     let recovered = LocalLogRecovery::new(session_id, checkpoint_log_id)
         .recover(EditorSession::new(initial), entries)
         .map_err(test_failure)?;
-    let anchor = recovered.try_into_checkpoint_anchor(successor_log_id).map_err(test_failure)?;
+    let anchor = recovered
+        .try_into_checkpoint_anchor(successor_log_id, LocalLogCompactionLimits::default())
+        .map_err(test_failure)?;
     Ok((LocalLogCheckpointJsonCodec::new(context, binding), anchor))
 }
 
@@ -346,5 +349,85 @@ fn same_binding_session_splice_is_structurally_valid_but_not_a_causal_proof()
     );
     assert_eq!(spliced.session().state(), second_anchor.session().state());
     assert_ne!(spliced.session().state(), first_anchor.session().state());
+
+    // Extending and compacting a structurally decoded anchor must preserve,
+    // not silently upgrade, the provenance level inherited from that decode.
+    let mut spliced_producer = EditorSession::new(spliced.session().state().clone());
+    let successor_transaction =
+        insertion(spliced_producer.state(), "after-splice").map_err(|error| error.to_string())?;
+    let successor_commit = spliced_producer
+        .apply_transaction(&successor_transaction)?
+        .into_commit()
+        .ok_or_else(|| test_error("successor insertion was unexpectedly unchanged"))?;
+
+    let mut causal_first_producer = EditorSession::new(first_anchor.session().state().clone());
+    let causal_first_transaction = insertion(causal_first_producer.state(), "after-splice")
+        .map_err(|error| error.to_string())?;
+    causal_first_producer
+        .apply_transaction(&causal_first_transaction)?
+        .into_commit()
+        .ok_or_else(|| test_error("causal comparison insertion was unexpectedly unchanged"))?;
+
+    let session_id = LocalSessionId::try_new("session:checkpoint-json-property")?;
+    let first_log = LocalLogId::try_new("log:checkpoint-json-property:successor")?;
+    let second_log = LocalLogId::try_new("log:checkpoint-json-property:after-splice")?;
+    let new_replay = ReplayId::try_new("request:after-splice")?;
+    let continued = spliced.recover_successor(
+        vec![LocalLogEntry::new(
+            session_id.clone(),
+            first_log.clone(),
+            LocalLogSequence::try_new(2)?,
+            new_replay.clone(),
+            LocalLogEvent::commit(successor_commit),
+        )],
+        LocalLogRecoveryLimits::default(),
+    )?;
+    let rotated = continued.try_into_checkpoint_anchor(second_log.clone())?;
+    let rotated_codec = LocalLogCheckpointJsonCodec::new(
+        EditorContext::default(),
+        LocalLogCheckpointBinding::try_new(session_id.clone(), first_log, second_log.clone())?,
+    );
+    let rotated_json = rotated_codec.encode(&rotated)?;
+    let restored = rotated_codec.decode(&rotated_json)?;
+
+    let inherited_replay = ReplayId::try_new(&first_ids[0])?;
+    assert_eq!(
+        restored.compacted_sequence_for_replay_id(&inherited_replay),
+        Some(LocalLogSequence::FIRST)
+    );
+    assert_eq!(
+        restored.compacted_sequence_for_replay_id(&new_replay),
+        Some(LocalLogSequence::try_new(2)?)
+    );
+    assert_eq!(restored.session().state(), spliced_producer.state());
+    assert_ne!(restored.session().state(), causal_first_producer.state());
+
+    // Both the inherited structural tombstone and the newly proved tombstone
+    // retain exact fail-closed replay membership after another durable round.
+    for (replay_id, expected_sequence) in
+        [(inherited_replay, LocalLogSequence::FIRST), (new_replay, LocalLogSequence::try_new(2)?)]
+    {
+        let owner = rotated_codec.decode(&rotated_json)?;
+        let error = owner
+            .recover_successor(
+                vec![LocalLogEntry::new(
+                    session_id.clone(),
+                    second_log.clone(),
+                    LocalLogSequence::try_new(3)?,
+                    replay_id,
+                    LocalLogEvent::close_history_group(),
+                )],
+                LocalLogRecoveryLimits::new(1, 0, 0),
+            )
+            .err()
+            .ok_or_else(|| test_error("a compacted replay ID was unexpectedly accepted"))?;
+        assert!(matches!(
+            error,
+            LocalLogRecoveryError::CompactedReplayId {
+                checkpoint_sequence,
+                ..
+            } if checkpoint_sequence == expected_sequence
+        ));
+    }
     Ok(())
 }

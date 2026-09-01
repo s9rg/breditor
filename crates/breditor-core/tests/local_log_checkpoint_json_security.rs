@@ -15,8 +15,8 @@ use breditor_core::{
         SessionCheckpointLimits, SessionCheckpointResourceLimit,
     },
     local_log::{
-        LocalLogCheckpointAnchor, LocalLogCheckpointBinding, LocalLogId, LocalLogRecovery,
-        LocalSessionId, MAX_LOCAL_LOG_IDENTITY_BYTES,
+        LocalLogCheckpointAnchor, LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogId,
+        LocalLogRecovery, LocalSessionId, MAX_LOCAL_LOG_IDENTITY_BYTES,
     },
     schema::{CompiledSchema, DocumentLimits},
     session::{EditorSession, HistoryCapacity},
@@ -112,7 +112,12 @@ fn empty_anchor(context: &EditorContext) -> Result<LocalLogCheckpointAnchor, Box
         LocalLogId::try_new(CHECKPOINT_LOG_ID)?,
     )
     .recover(EditorSession::new(state(context, "checkpoint-json-output-cap")?), Vec::new())?;
-    recovered.try_into_checkpoint_anchor(LocalLogId::try_new(SUCCESSOR_LOG_ID)?).map_err(Into::into)
+    recovered
+        .try_into_checkpoint_anchor(
+            LocalLogId::try_new(SUCCESSOR_LOG_ID)?,
+            LocalLogCompactionLimits::default(),
+        )
+        .map_err(Into::into)
 }
 
 #[test]

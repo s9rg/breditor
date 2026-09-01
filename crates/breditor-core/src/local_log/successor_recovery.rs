@@ -29,11 +29,16 @@ impl LocalLogCheckpointAnchor {
     /// First-seen successor events continue at the session-global checkpoint
     /// frontier and preserve the exact checkpointed history behavior.
     ///
-    /// `limits` apply only to this successor batch. The checkpoint prefix and
-    /// tombstones are already owned; their admission policy depends on whether
-    /// the anchor came from runtime compaction or durable decode. On any error,
-    /// the consumed anchor and privately applied successor prefix are dropped;
-    /// no partial session is returned.
+    /// `limits` apply only to this successor batch. Recovery neither reserves
+    /// nor charges the inherited cumulative compaction ceiling, so successful
+    /// recovery may produce a log whose represented replay count exceeds that
+    /// ceiling. Ordinary compaction then returns the unchanged log owner; the
+    /// host must explicitly authorize a sufficient replacement ceiling before
+    /// dropping those active proofs. The checkpoint prefix and tombstones are
+    /// already owned; their admission policy depends on whether the anchor came
+    /// from runtime compaction or durable decode. On any error, the consumed
+    /// anchor and privately applied successor prefix are dropped; no partial
+    /// session is returned.
     ///
     /// # Errors
     ///
@@ -269,6 +274,7 @@ impl SuccessorRecoveryProgress {
             self.parts.session_id,
             self.parts.checkpoint_log_id,
             self.parts.successor_log_id,
+            self.parts.compaction_limits,
             self.parts.session,
             self.parts.compacted_replays,
             self.active_entries.into_boxed_slice(),
@@ -279,7 +285,6 @@ impl SuccessorRecoveryProgress {
             self.applied_operation_count,
             self.parts.checkpoint_covered_through,
             self.covered_through,
-            self.next_sequence,
         )
     }
 }

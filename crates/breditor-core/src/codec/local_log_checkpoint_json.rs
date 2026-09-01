@@ -6,8 +6,9 @@ use serde_json::value::RawValue;
 use crate::{
     local_log::{
         LocalLogCheckpointAnchor, LocalLogCheckpointAnchorCheckpointParts,
-        LocalLogCheckpointAnchorInvariantError, LocalLogCheckpointBinding, LocalLogId,
-        LocalLogSequence, LocalSessionId, MAX_LOCAL_LOG_IDENTITY_BYTES,
+        LocalLogCheckpointAnchorInvariantError, LocalLogCheckpointBinding,
+        LocalLogCompactionLimits, LocalLogId, LocalLogSequence, LocalSessionId,
+        MAX_LOCAL_LOG_IDENTITY_BYTES,
     },
     record::{
         DecimalU64Record, DecimalU64RecordError, LOCAL_LOG_CHECKPOINT_FORMAT as RECORD_FORMAT,
@@ -72,6 +73,10 @@ impl LocalLogCheckpointJsonCodec {
     }
 
     /// Replaces the host-authoritative outer and nested checkpoint policy.
+    ///
+    /// Successful decode installs `limits.max_replay_tombstones()` as the
+    /// returned anchor's runtime compaction policy. V1 does not persist that
+    /// value, so selecting different decode limits is explicit reauthorization.
     #[must_use]
     pub fn with_limits(mut self, limits: LocalLogCheckpointLimits) -> Self {
         self.session_codec = self.session_codec.with_limits(limits.session_checkpoint());
@@ -102,6 +107,8 @@ impl LocalLogCheckpointJsonCodec {
     /// The expected binding must originate outside `json`. Equality with it is
     /// not authenticity: callers still need integrity-protected storage,
     /// rollback policy, and single-owner writer fencing for exactly-once use.
+    /// The configured replay-tombstone maximum also becomes the returned
+    /// anchor's runtime lifetime policy for later compaction.
     ///
     /// # Errors
     ///
@@ -180,6 +187,7 @@ impl LocalLogCheckpointJsonCodec {
             session_id,
             checkpoint_log_id,
             successor_log_id,
+            LocalLogCompactionLimits::new(tombstone_maximum),
             session,
             compacted_replays,
             covered_through,
@@ -533,6 +541,9 @@ fn anchor_invariant_error(
     let diagnostic = match error {
         LocalLogCheckpointAnchorInvariantError::GenerationNotAdvanced => {
             "checked anchor factory rejected equal generations"
+        }
+        LocalLogCheckpointAnchorInvariantError::ReplayTombstoneLimit => {
+            "checked anchor factory rejected its runtime tombstone policy"
         }
         LocalLogCheckpointAnchorInvariantError::TombstoneCountMismatch => {
             "checked anchor factory rejected tombstone cardinality"

@@ -10,8 +10,8 @@ document, singular guarded-operation, exact-base transaction-request,
 contextual complete editor-state, replay-proved commit, and bounded durable
 session-checkpoint plus replay-identified local-log-entry JSON codecs and
 bounded atomic recovery of one supplied genesis-anchored log prefix plus a
-compact runtime anchor, one checked successor generation, and a strict
-trusted-scope local-log-checkpoint JSON codec,
+compact runtime anchor, checked successor generations, repeated cumulative
+compaction, and a strict trusted-scope local-log-checkpoint JSON codec,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -53,5 +53,22 @@ selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log framing/storage,
-checkpoint/log atomic replacement, repeated generation recovery,
+checkpoint/log atomic replacement, incremental live append,
 collaboration transform, or Wasm adapter yet.
+
+Proof-dropping compaction has its own host-selected cumulative replay policy.
+The first transition selects it; ordinary rotations inherit it, so a new batch
+cannot reset the allowance. An explicitly named transition can reauthorize a
+different ceiling only after checking the complete prior-plus-active replay
+set. Typed failure returns the complete unchanged owner, while its `Debug` and
+`Display` omit the session, history, entries, and document. Local Log
+Checkpoint V1 does not serialize this runtime policy; strict decode installs
+the codec host's current tombstone ceiling.
+
+Repeated rotation preserves global sequence, complete session history, and all
+exact replay tombstones. It rejects reuse of the active or immediately
+preceding generation ID. Older generation IDs are not retained by V1, so
+lifetime generation freshness, storage sealing, and writer fencing remain host
+obligations. If an ancestor came from durable decode, later runtime compaction
+preserves that merely structural provenance; it does not authenticate or
+causally prove the inherited session/tombstone relationship.

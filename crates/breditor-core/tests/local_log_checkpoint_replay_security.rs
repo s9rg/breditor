@@ -9,9 +9,9 @@ use breditor_core::{
     document::{FormatSet, TextFragment, TextRun},
     identity::QualifiedName,
     local_log::{
-        LocalLogCheckpointAnchor, LocalLogEntry, LocalLogEvent, LocalLogId, LocalLogRecovery,
-        LocalLogRecoveryError, LocalLogRecoveryErrorCode, LocalLogRecoveryLimits, LocalLogSequence,
-        LocalSessionId, ReplayId,
+        LocalLogCheckpointAnchor, LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent,
+        LocalLogId, LocalLogRecovery, LocalLogRecoveryError, LocalLogRecoveryErrorCode,
+        LocalLogRecoveryLimits, LocalLogSequence, LocalSessionId, ReplayId,
     },
     operation::{TextRange, TextSplice},
     position::TextOffset,
@@ -93,9 +93,10 @@ fn anchor(
     initial: EditorState,
     prefix: Vec<LocalLogEntry>,
 ) -> Result<LocalLogCheckpointAnchor, Box<dyn StdError>> {
-    Ok(recovery()?
-        .recover(EditorSession::new(initial), prefix)?
-        .try_into_checkpoint_anchor(LocalLogId::try_new(SUCCESSOR_LOG_ID)?)?)
+    Ok(recovery()?.recover(EditorSession::new(initial), prefix)?.try_into_checkpoint_anchor(
+        LocalLogId::try_new(SUCCESSOR_LOG_ID)?,
+        LocalLogCompactionLimits::default(),
+    )?)
 }
 
 fn merged_history_anchor(

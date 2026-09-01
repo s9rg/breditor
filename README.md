@@ -16,8 +16,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   editor-state checkpoints, self-contained replay-proved commit records, and
   compact replay-proved bounded session/history checkpoints plus strict
   replay-identified local-log event envelopes and atomic genesis-prefix
-  recovery, compact runtime prefix anchors, one checked successor-generation
-  recovery, and a strict expected-binding durable local-log-checkpoint codec;
+  recovery, compact runtime prefix anchors, checked successor-generation
+  recovery, repeated consuming generation compaction with cumulative replay
+  retention, and a strict expected-binding durable local-log-checkpoint codec;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -58,15 +59,17 @@ This repository currently contains the first end-to-end Rust-core slice:
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
-  admission budgets and a separate complete replay-tombstone checkpoint limit.
+  admission budgets, a separate complete replay-tombstone checkpoint limit,
+  and an inherited proof-dropping compaction lifetime ceiling whose typed
+  failures return the unchanged log owner.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log framing and storage,
-checkpoint/log atomic replacement, repeated generation transitions,
-incremental continuation, integrity/authenticity, rollback protection, and
+checkpoint/log atomic replacement, incremental live append,
+integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
 a DOM bridge,

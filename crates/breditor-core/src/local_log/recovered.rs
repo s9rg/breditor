@@ -2,10 +2,7 @@ use std::{collections::BTreeMap, fmt};
 
 use crate::session::EditorSession;
 
-use super::{
-    LocalLogCheckpointAnchor, LocalLogEntry, LocalLogId, LocalLogRecoveryError, LocalLogSequence,
-    LocalSessionId, ReplayId,
-};
+use super::{LocalLogEntry, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
 
 /// Fully applied, genesis-anchored prefix of one uncompacted local-log generation.
 ///
@@ -25,6 +22,14 @@ pub struct RecoveredLocalLog {
     applied_operation_count: u64,
     covered_through: Option<LocalLogSequence>,
     next_sequence: Option<LocalLogSequence>,
+}
+
+pub(super) struct RecoveredLocalLogCompactionParts {
+    pub(super) session_id: LocalSessionId,
+    pub(super) active_log_id: LocalLogId,
+    pub(super) session: EditorSession,
+    pub(super) entries: Box<[LocalLogEntry]>,
+    pub(super) covered_through: Option<LocalLogSequence>,
 }
 
 impl RecoveredLocalLog {
@@ -91,71 +96,6 @@ impl RecoveredLocalLog {
         self.session
     }
 
-    /// Compacts this caller-sealed recovered prefix into a runtime checkpoint
-    /// anchor.
-    ///
-    /// The successor generation must have a distinct caller-supplied identity.
-    /// The caller's transition declares the old prefix sealed; this value does
-    /// not prove that storage has no later old-generation entries or fence a
-    /// concurrent writer.
-    /// On success, every retained full event proof is dropped and replaced by
-    /// an exact replay-ID-to-sequence tombstone. The session, history, sequence
-    /// frontier, and generation boundary remain owned together. Reuse of a
-    /// compacted replay ID can therefore be rejected, but an old payload can no
-    /// longer be classified as an exact retry versus a conflicting reuse.
-    ///
-    /// This is an in-memory ownership transition. It does not encode, persist,
-    /// authenticate, flush, or atomically replace a checkpoint and log.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LocalLogRecoveryError::GenerationNotAdvanced`] when
-    /// `successor_log_id` equals the recovered active generation. Because this
-    /// method consumes `self`, either failure drops the recovered owner or
-    /// success publishes the complete anchor; callers should compare the IDs
-    /// before calling when they need to retain this value after bad input.
-    pub fn try_into_checkpoint_anchor(
-        self,
-        successor_log_id: LocalLogId,
-    ) -> Result<LocalLogCheckpointAnchor, LocalLogRecoveryError> {
-        let Self {
-            session_id,
-            active_log_id,
-            session,
-            entries,
-            replay_index,
-            observation_count: _,
-            unique_event_count: _,
-            exact_duplicate_count: _,
-            applied_operation_count: _,
-            covered_through,
-            next_sequence: _,
-        } = self;
-        if active_log_id == successor_log_id {
-            return Err(LocalLogRecoveryError::GenerationNotAdvanced {
-                checkpoint_log_id: active_log_id,
-                successor_log_id,
-            });
-        }
-
-        let retained_index_count = replay_index.len();
-        let compacted_replays = entries
-            .into_vec()
-            .into_iter()
-            .map(|entry| (entry.replay_id().clone(), entry.sequence()))
-            .collect::<BTreeMap<_, _>>();
-        debug_assert_eq!(compacted_replays.len(), retained_index_count);
-
-        Ok(LocalLogCheckpointAnchor::new(
-            session_id,
-            active_log_id,
-            successor_log_id,
-            session,
-            compacted_replays,
-            covered_through,
-        ))
-    }
-
     /// Returns first-seen logical entries in contiguous sequence order.
     #[must_use]
     pub const fn entries(&self) -> &[LocalLogEntry] {
@@ -178,6 +118,17 @@ impl RecoveredLocalLog {
     #[must_use]
     pub const fn next_sequence(&self) -> Option<LocalLogSequence> {
         self.next_sequence
+    }
+
+    /// Returns the replay count that checkpoint compaction would retain.
+    ///
+    /// Exact physical duplicates do not add another represented replay.
+    #[must_use]
+    pub const fn represented_replay_count(&self) -> u64 {
+        match self.covered_through {
+            Some(sequence) => sequence.get(),
+            None => 0,
+        }
     }
 
     /// Returns the number of physical inputs, including exact duplicates.
@@ -203,6 +154,72 @@ impl RecoveredLocalLog {
     pub const fn applied_operation_count(&self) -> u64 {
         self.applied_operation_count
     }
+
+    pub(super) fn into_compaction_parts(self) -> RecoveredLocalLogCompactionParts {
+        let Self {
+            session_id,
+            active_log_id,
+            session,
+            entries,
+            replay_index: _,
+            observation_count: _,
+            unique_event_count: _,
+            exact_duplicate_count: _,
+            applied_operation_count: _,
+            covered_through,
+            next_sequence: _,
+        } = self;
+        RecoveredLocalLogCompactionParts {
+            session_id,
+            active_log_id,
+            session,
+            entries,
+            covered_through,
+        }
+    }
+
+    pub(super) fn compaction_topology_is_valid(&self) -> bool {
+        let represented = self.represented_replay_count();
+        let Ok(entry_count) = u64::try_from(self.entries.len()) else {
+            return false;
+        };
+        if represented != entry_count
+            || self.replay_index.len() != self.entries.len()
+            || self.unique_event_count != entry_count
+            || self.unique_event_count.checked_add(self.exact_duplicate_count)
+                != Some(self.observation_count)
+            || self.next_sequence != next_after(self.covered_through)
+            || (represented == 0 && !self.session.has_genesis_empty_history())
+        {
+            return false;
+        }
+        for (index, entry) in self.entries.iter().enumerate() {
+            let Ok(offset) = u64::try_from(index) else {
+                return false;
+            };
+            let Some(expected) = offset.checked_add(1) else {
+                return false;
+            };
+            if entry.session_id() != &self.session_id
+                || entry.log_id() != &self.active_log_id
+                || entry.sequence().get() != expected
+                || self.replay_index.get(entry.replay_id()) != Some(&index)
+            {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+const fn next_after(sequence: Option<LocalLogSequence>) -> Option<LocalLogSequence> {
+    match sequence {
+        None => Some(LocalLogSequence::FIRST),
+        Some(sequence) => match sequence.successor() {
+            Ok(successor) => Some(successor),
+            Err(_) => None,
+        },
+    }
 }
 
 impl fmt::Debug for RecoveredLocalLog {
@@ -221,5 +238,58 @@ impl fmt::Debug for RecoveredLocalLog {
             .field("undo_depth", &self.session.undo_depth())
             .field("redo_depth", &self.session.redo_depth())
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::BTreeMap, error::Error};
+
+    use super::RecoveredLocalLog;
+    use crate::local_log::{
+        LocalLogCompactionErrorCode, LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent,
+        LocalLogId, LocalLogSequence, LocalSessionId, ReplayId, test_support::empty_session,
+    };
+
+    #[test]
+    fn compaction_rejects_a_private_replay_index_mismatch_and_returns_the_owner()
+    -> Result<(), Box<dyn Error>> {
+        let session_id = LocalSessionId::try_new("session:invalid-recovered-index")?;
+        let active_log_id = LocalLogId::try_new("log:invalid-recovered-index:g0")?;
+        let successor_log_id = LocalLogId::try_new("log:invalid-recovered-index:g1")?;
+        let replay_id = ReplayId::try_new("request:invalid-recovered-index")?;
+        let entry = LocalLogEntry::new(
+            session_id.clone(),
+            active_log_id.clone(),
+            LocalLogSequence::FIRST,
+            replay_id.clone(),
+            LocalLogEvent::close_history_group(),
+        );
+        let mut recovered = RecoveredLocalLog::new(
+            session_id,
+            active_log_id,
+            empty_session("invalid-recovered-index")?,
+            vec![entry].into_boxed_slice(),
+            BTreeMap::from([(replay_id.clone(), 0)]),
+            1,
+            1,
+            0,
+            0,
+            Some(LocalLogSequence::FIRST),
+            Some(LocalLogSequence::try_new(2)?),
+        );
+
+        recovered.replay_index.clear();
+        let failure = recovered
+            .try_into_checkpoint_anchor(successor_log_id, LocalLogCompactionLimits::new(1))
+            .err()
+            .ok_or("malformed recovered topology unexpectedly compacted")?;
+        assert_eq!(failure.code(), LocalLogCompactionErrorCode::InvalidReplayTopology);
+
+        let recovered = failure.into_owner();
+        assert_eq!(recovered.entries.len(), 1);
+        assert!(recovered.replay_index.is_empty());
+        assert_eq!(recovered.entries[0].replay_id(), &replay_id);
+        Ok(())
     }
 }

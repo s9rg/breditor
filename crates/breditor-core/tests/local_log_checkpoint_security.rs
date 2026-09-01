@@ -8,7 +8,8 @@ use breditor_core::{
     codec::DocumentJsonCodec,
     document::{FormatSet, TextFragment, TextRun},
     local_log::{
-        LocalLogCheckpointAnchor, LocalLogEntry, LocalLogEvent, LocalLogEventApplicationErrorCode,
+        LocalLogCheckpointAnchor, LocalLogCompactionError, LocalLogCompactionErrorCode,
+        LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent, LocalLogEventApplicationErrorCode,
         LocalLogEventKind, LocalLogId, LocalLogRecovery, LocalLogRecoveryError,
         LocalLogRecoveryErrorCode, LocalLogRecoveryLimits, LocalLogSequence, LocalSessionId,
         RecoveredLocalLog, ReplayId,
@@ -111,7 +112,10 @@ fn anchor_fixture(
     tail_insertions: &[&str],
 ) -> Result<(LocalLogCheckpointAnchor, Vec<Commit>), Box<dyn StdError>> {
     let (recovered, tail_commits) = recovered_fixture(context, lineage, tail_insertions)?;
-    let anchor = recovered.try_into_checkpoint_anchor(LocalLogId::try_new(SUCCESSOR_LOG_ID)?)?;
+    let anchor = recovered.try_into_checkpoint_anchor(
+        LocalLogId::try_new(SUCCESSOR_LOG_ID)?,
+        LocalLogCompactionLimits::default(),
+    )?;
     Ok((anchor, tail_commits))
 }
 
@@ -132,12 +136,16 @@ fn checkpoint_generation_must_advance_before_an_anchor_is_published() -> TestRes
     assert!(tail.is_empty());
 
     let error = recovered
-        .try_into_checkpoint_anchor(LocalLogId::try_new(CHECKPOINT_LOG_ID)?)
+        .try_into_checkpoint_anchor(
+            LocalLogId::try_new(CHECKPOINT_LOG_ID)?,
+            LocalLogCompactionLimits::default(),
+        )
         .err()
         .ok_or_else(|| test_error("checkpoint accepted its sealed generation as successor"))?;
-    assert_eq!(error.code(), LocalLogRecoveryErrorCode::GenerationNotAdvanced);
-    assert_eq!(error.delivery_index(), None);
-    let LocalLogRecoveryError::GenerationNotAdvanced { checkpoint_log_id, successor_log_id } =
+    assert_eq!(error.code(), LocalLogCompactionErrorCode::GenerationNotAdvanced);
+    let (recovered, error) = error.into_parts();
+    assert_eq!(recovered.active_log_id().as_str(), CHECKPOINT_LOG_ID);
+    let LocalLogCompactionError::GenerationNotAdvanced { checkpoint_log_id, successor_log_id } =
         error
     else {
         return Err(test_error("same-generation failure used the wrong variant").into());

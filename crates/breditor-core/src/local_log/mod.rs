@@ -1,9 +1,10 @@
 //! Runtime values for one durable, ordered, single-writer local editor log.
 //!
 //! This module defines identities, sequence numbers, event values, and an
-//! atomic genesis recovery boundary, and one compact in-memory checkpoint-linked
-//! successor recovery. Runtime compaction retains exact replay-ID tombstones
-//! while dropping old event proofs. The codec module can serialize one
+//! atomic genesis recovery boundary, checkpoint-linked successor recovery, and
+//! repeated consuming compaction. Runtime compaction retains exact replay-ID
+//! tombstones under a cumulative lifetime policy while dropping old event
+//! proofs. The codec module can serialize one
 //! independently valid entry and one complete expected-binding checkpoint. It
 //! does not append, persist, frame, authenticate, fence, or crash-recover a
 //! stream; storage must preserve the scopes and ordering documented here.
@@ -12,6 +13,10 @@ mod application;
 mod application_error;
 mod checkpoint_anchor;
 mod checkpoint_binding;
+mod checkpoint_compaction;
+mod compaction_error;
+mod compaction_failure;
+mod compaction_limits;
 mod continued;
 mod entry;
 mod event;
@@ -25,6 +30,8 @@ mod recovery_limits;
 mod replay_id;
 mod sequence;
 mod successor_recovery;
+#[cfg(test)]
+mod test_support;
 
 pub use application_error::{
     LocalLogEventApplicationError, LocalLogEventApplicationErrorCode,
@@ -35,6 +42,11 @@ pub(crate) use checkpoint_anchor::{
     LocalLogCheckpointAnchorCheckpointParts, LocalLogCheckpointAnchorInvariantError,
 };
 pub use checkpoint_binding::{LocalLogCheckpointBinding, LocalLogCheckpointBindingError};
+pub use compaction_error::{LocalLogCompactionError, LocalLogCompactionErrorCode};
+pub use compaction_failure::LocalLogCompactionFailure;
+pub use compaction_limits::{
+    DEFAULT_LOCAL_LOG_COMPACTION_MAX_REPLAY_TOMBSTONES, LocalLogCompactionLimits,
+};
 pub use continued::ContinuedLocalLog;
 pub use entry::LocalLogEntry;
 pub use event::{LocalLogEvent, LocalLogEventError, LocalLogEventErrorCode, LocalLogEventKind};

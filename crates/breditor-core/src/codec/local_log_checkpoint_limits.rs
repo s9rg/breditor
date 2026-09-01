@@ -1,13 +1,17 @@
 use super::SessionCheckpointLimits;
+use crate::local_log::DEFAULT_LOCAL_LOG_COMPACTION_MAX_REPLAY_TOMBSTONES;
 
 /// Default maximum complete replay tombstones retained by one checkpoint.
-pub const DEFAULT_LOCAL_LOG_CHECKPOINT_MAX_REPLAY_TOMBSTONES: u64 = 10_000;
+pub const DEFAULT_LOCAL_LOG_CHECKPOINT_MAX_REPLAY_TOMBSTONES: u64 =
+    DEFAULT_LOCAL_LOG_COMPACTION_MAX_REPLAY_TOMBSTONES;
 
 /// Host-authoritative resource limits for complete local-log checkpoints.
 ///
 /// Tombstone retention is independent from session-history retention: control
 /// events and history clearing can make those counts differ arbitrarily. The
-/// wire record selects none of these ceilings.
+/// wire record selects none of these ceilings. Decode also installs
+/// `max_replay_tombstones` as the returned anchor's future runtime compaction
+/// policy; it is host reauthorization, not a persisted ninth field.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LocalLogCheckpointLimits {
     max_replay_tombstones: u64,
@@ -24,7 +28,8 @@ impl LocalLogCheckpointLimits {
         Self { max_replay_tombstones, session_checkpoint }
     }
 
-    /// Returns the greatest complete compacted replay set accepted.
+    /// Returns the greatest complete compacted replay set accepted and the
+    /// runtime compaction ceiling installed by successful decode.
     #[must_use]
     pub const fn max_replay_tombstones(&self) -> u64 {
         self.max_replay_tombstones

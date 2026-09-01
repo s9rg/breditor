@@ -5,7 +5,7 @@
 //! transaction-request, contextual complete editor-state, replay-proved
 //! durable commit, bounded session-checkpoint, replay-identified local-log
 //! entry, and complete local-log-checkpoint JSON decoding plus atomic
-//! genesis-prefix and one-successor recovery,
+//! genesis-prefix, successor recovery, and repeated compaction,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -58,8 +58,9 @@
 //! genesis-anchored generation, apply all five event kinds exactly once, and
 //! publish no session on error. A recovered owner can be compacted into a
 //! runtime [`local_log::LocalLogCheckpointAnchor`] that retains exact replay-ID
-//! tombstones and atomically recovers one bound successor generation without
-//! resetting sequence or history. Its strict durable codec requires an
+//! tombstones and atomically recovers bound successor generations without
+//! resetting sequence or history. A cumulative host policy bounds proof-dropping
+//! compaction, and a failed transition returns its unchanged owner. Its strict durable codec requires an
 //! independently trusted [`local_log::LocalLogCheckpointBinding`] and embeds
 //! Session Checkpoint V1 plus complete chronological tombstones. It proves no
 //! causal relationship between those values. None of these boundaries provides

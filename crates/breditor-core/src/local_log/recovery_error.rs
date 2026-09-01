@@ -18,8 +18,6 @@ pub enum LocalLogRecoveryErrorCode {
     SessionMismatch,
     /// One entry names another append generation.
     ActiveLogMismatch,
-    /// A checkpoint transition reused its sealed generation identity.
-    GenerationNotAdvanced,
     /// A successor entry reused an identity whose full proof was compacted.
     CompactedReplayId,
     /// First-seen logical events exceed the host admission limit.
@@ -46,7 +44,6 @@ impl LocalLogRecoveryErrorCode {
             Self::CounterOverflow => "local_log_recovery.counter_overflow",
             Self::SessionMismatch => "local_log_recovery.session_mismatch",
             Self::ActiveLogMismatch => "local_log_recovery.active_log_mismatch",
-            Self::GenerationNotAdvanced => "local_log_recovery.generation_not_advanced",
             Self::CompactedReplayId => "local_log_recovery.compacted_replay_id",
             Self::UniqueEventLimit => "local_log_recovery.unique_event_limit",
             Self::AppliedOperationLimit => "local_log_recovery.applied_operation_limit",
@@ -144,16 +141,6 @@ pub enum LocalLogRecoveryError {
         /// Rejected append generation.
         actual: LocalLogId,
     },
-    /// A checkpoint tried to continue in the generation it had just sealed.
-    #[error(
-        "local-log checkpoint generation {checkpoint_log_id} must advance to a distinct successor; received {successor_log_id}"
-    )]
-    GenerationNotAdvanced {
-        /// Sealed checkpoint generation.
-        checkpoint_log_id: LocalLogId,
-        /// Rejected equal successor generation.
-        successor_log_id: LocalLogId,
-    },
     /// A successor entry reused a replay ID represented by a compact checkpoint.
     #[error(
         "local-log observation {delivery_index} reuses compacted replay ID {replay_id} represented at sequence {checkpoint_sequence}"
@@ -249,7 +236,6 @@ impl LocalLogRecoveryError {
             Self::CounterOverflow { .. } => LocalLogRecoveryErrorCode::CounterOverflow,
             Self::SessionMismatch { .. } => LocalLogRecoveryErrorCode::SessionMismatch,
             Self::ActiveLogMismatch { .. } => LocalLogRecoveryErrorCode::ActiveLogMismatch,
-            Self::GenerationNotAdvanced { .. } => LocalLogRecoveryErrorCode::GenerationNotAdvanced,
             Self::CompactedReplayId { .. } => LocalLogRecoveryErrorCode::CompactedReplayId,
             Self::UniqueEventLimit { .. } => LocalLogRecoveryErrorCode::UniqueEventLimit,
             Self::AppliedOperationLimit { .. } => LocalLogRecoveryErrorCode::AppliedOperationLimit,
@@ -264,9 +250,7 @@ impl LocalLogRecoveryError {
     #[must_use]
     pub const fn delivery_index(&self) -> Option<u64> {
         match self {
-            Self::ObservationLimit { .. }
-            | Self::NonEmptyInitialHistory { .. }
-            | Self::GenerationNotAdvanced { .. } => None,
+            Self::ObservationLimit { .. } | Self::NonEmptyInitialHistory { .. } => None,
             Self::CounterOverflow { delivery_index, .. } => *delivery_index,
             Self::SessionMismatch { delivery_index, .. }
             | Self::ActiveLogMismatch { delivery_index, .. }
@@ -298,10 +282,6 @@ mod tests {
             (
                 LocalLogRecoveryErrorCode::ActiveLogMismatch,
                 "local_log_recovery.active_log_mismatch",
-            ),
-            (
-                LocalLogRecoveryErrorCode::GenerationNotAdvanced,
-                "local_log_recovery.generation_not_advanced",
             ),
             (
                 LocalLogRecoveryErrorCode::CompactedReplayId,

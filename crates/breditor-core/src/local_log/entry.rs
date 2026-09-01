@@ -82,6 +82,12 @@ impl LocalLogEntry {
             && replay_id == &other.replay_id
             && event.same_durable_value(&other.event)
     }
+
+    /// Drops the full event proof and moves out its compact replay binding.
+    pub(super) fn into_replay_tombstone(self) -> (ReplayId, LocalLogSequence) {
+        let Self { session_id: _, log_id: _, sequence, replay_id, event: _ } = self;
+        (replay_id, sequence)
+    }
 }
 
 impl fmt::Debug for LocalLogEntry {

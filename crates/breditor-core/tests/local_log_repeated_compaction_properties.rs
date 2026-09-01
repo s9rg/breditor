@@ -1,15 +1,19 @@
-//! Generated split-point laws for compact checkpoint-linked local-log recovery.
+//! Generated multi-generation laws for repeated local-log compaction.
 
 mod support;
 
 use std::fmt::Display;
 
 use breditor_core::{
-    codec::{DocumentJsonCodec, SessionCheckpointJsonCodec},
+    codec::{
+        DocumentJsonCodec, LocalLogCheckpointJsonCodec, LocalLogCheckpointLimits,
+        SessionCheckpointJsonCodec,
+    },
     document::{FormatSet, TextFragment, TextRun},
     local_log::{
-        LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent, LocalLogId, LocalLogRecovery,
-        LocalLogRecoveryLimits, LocalLogSequence, LocalSessionId, ReplayId,
+        LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogEntry, LocalLogEvent,
+        LocalLogId, LocalLogRecovery, LocalLogRecoveryError, LocalLogRecoveryLimits,
+        LocalLogSequence, LocalSessionId, ReplayId,
     },
     operation::{TextRange, TextSplice},
     position::TextOffset,
@@ -63,7 +67,7 @@ fn initial_state(context: &EditorContext, suffix: u16) -> Result<EditorState, Te
         .map_err(test_failure)?;
     EditorState::try_new(
         context,
-        LineageId::try_new(format!("checkpoint-property-{suffix}")).map_err(test_failure)?,
+        LineageId::try_new(format!("repeated-property-{suffix}")).map_err(test_failure)?,
         document,
         None,
         None,
@@ -119,7 +123,7 @@ fn sequence(index: usize) -> Result<LocalLogSequence, TestCaseError> {
 }
 
 fn replay_id(index: usize) -> Result<ReplayId, TestCaseError> {
-    ReplayId::try_new(format!("request:{index}")).map_err(test_failure)
+    ReplayId::try_new(format!("request:repeated:{index}")).map_err(test_failure)
 }
 
 fn entries(
@@ -144,60 +148,96 @@ fn entries(
         .collect()
 }
 
-fn assert_split_law(
+fn assert_repeated_split_law(
     inserted: &[String],
-    split_seed: u8,
+    first_seed: u8,
+    second_seed: u8,
+    replay_seed: u8,
     lineage_suffix: u16,
 ) -> Result<(), TestCaseError> {
     let context = EditorContext::default();
     let initial = initial_state(&context, lineage_suffix)?;
     let (producer, recipes) = author_trace(&initial, inserted)?;
-    let split = usize::from(split_seed) % (recipes.len() + 1);
-    let session_id =
-        LocalSessionId::try_new("session:checkpoint-property").map_err(test_failure)?;
-    let checkpoint_log_id =
-        LocalLogId::try_new("log:checkpoint-property-prefix").map_err(test_failure)?;
-    let successor_log_id =
-        LocalLogId::try_new("log:checkpoint-property-tail").map_err(test_failure)?;
+    let first = usize::from(first_seed) % (recipes.len() + 1);
+    let second = first + (usize::from(second_seed) % (recipes.len() - first + 1));
+    let total = u64::try_from(recipes.len()).map_err(test_failure)?;
+    let session_id = LocalSessionId::try_new("session:repeated-property").map_err(test_failure)?;
+    let g0 = LocalLogId::try_new("log:repeated-property-g0").map_err(test_failure)?;
+    let g1 = LocalLogId::try_new("log:repeated-property-g1").map_err(test_failure)?;
+    let g2 = LocalLogId::try_new("log:repeated-property-g2").map_err(test_failure)?;
+    let g3 = LocalLogId::try_new("log:repeated-property-g3").map_err(test_failure)?;
 
-    let prefix = LocalLogRecovery::new(session_id.clone(), checkpoint_log_id.clone())
-        .recover(
-            EditorSession::new(initial),
-            entries(&recipes, 0..split, &session_id, &checkpoint_log_id)?,
-        )
+    let recovered = LocalLogRecovery::new(session_id.clone(), g0.clone())
+        .recover(EditorSession::new(initial), entries(&recipes, 0..first, &session_id, &g0)?)
         .map_err(test_failure)?;
-    let anchor = prefix
-        .try_into_checkpoint_anchor(successor_log_id.clone(), LocalLogCompactionLimits::default())
+    let anchor = recovered
+        .try_into_checkpoint_anchor(g1.clone(), LocalLogCompactionLimits::new(total))
         .map_err(test_failure)?;
     let continued = anchor
         .recover_successor(
-            entries(&recipes, split..recipes.len(), &session_id, &successor_log_id)?,
+            entries(&recipes, first..second, &session_id, &g1)?,
             LocalLogRecoveryLimits::default(),
         )
         .map_err(test_failure)?;
+    let anchor = continued.try_into_checkpoint_anchor(g2.clone()).map_err(test_failure)?;
 
-    if continued.compacted_replay_count() != u64::try_from(split).map_err(test_failure)?
-        || continued.active_entries().len() != recipes.len() - split
-    {
-        return Err(fail("split recovery retained the wrong prefix or tail cardinality"));
-    }
-    for index in 0..split {
-        if continued.compacted_sequence_for_replay_id(&replay_id(index)?) != Some(sequence(index)?)
-        {
-            return Err(fail("split recovery lost a compacted replay tombstone"));
-        }
-    }
-    for index in split..recipes.len() {
-        if continued.active_entry_for_replay_id(&replay_id(index)?).is_none() {
-            return Err(fail("split recovery lost an active replay proof"));
-        }
+    // A durable round trip must preserve the cumulative runtime contract. The
+    // host-selected codec limit explicitly reauthorizes the in-memory policy.
+    let binding = LocalLogCheckpointBinding::try_new(session_id.clone(), g1.clone(), g2.clone())
+        .map_err(test_failure)?;
+    let codec = LocalLogCheckpointJsonCodec::new(context.clone(), binding)
+        .with_limits(LocalLogCheckpointLimits::default().with_max_replay_tombstones(total));
+    let anchor =
+        codec.decode(&codec.encode(&anchor).map_err(test_failure)?).map_err(test_failure)?;
+    if anchor.compaction_limits().max_replay_tombstones() != total {
+        return Err(fail("durable decode installed the wrong runtime lifetime policy"));
     }
 
-    let checkpoint_codec = SessionCheckpointJsonCodec::new(context);
-    if checkpoint_codec.encode(continued.session()).map_err(test_failure)?
-        != checkpoint_codec.encode(&producer).map_err(test_failure)?
+    let continued = anchor
+        .recover_successor(
+            entries(&recipes, second..recipes.len(), &session_id, &g2)?,
+            LocalLogRecoveryLimits::default(),
+        )
+        .map_err(test_failure)?;
+    let anchor = continued.try_into_checkpoint_anchor(g3.clone()).map_err(test_failure)?;
+
+    if anchor.compacted_replay_count() != total
+        || anchor.checkpoint_covered_through().map(LocalLogSequence::get)
+            != (total != 0).then_some(total)
     {
-        return Err(fail("split recovery changed final session or history semantics"));
+        return Err(fail("repeated compaction produced the wrong complete frontier"));
+    }
+    for index in 0..recipes.len() {
+        if anchor.compacted_sequence_for_replay_id(&replay_id(index)?) != Some(sequence(index)?) {
+            return Err(fail("repeated compaction lost a replay-to-sequence binding"));
+        }
+    }
+    let session_codec = SessionCheckpointJsonCodec::new(context);
+    if session_codec.encode(anchor.session()).map_err(test_failure)?
+        != session_codec.encode(&producer).map_err(test_failure)?
+    {
+        return Err(fail("repeated compaction changed final session/history semantics"));
+    }
+
+    if !recipes.is_empty() {
+        let selected = usize::from(replay_seed) % recipes.len();
+        let retry = LocalLogEntry::new(
+            session_id,
+            g3,
+            LocalLogSequence::FIRST,
+            replay_id(selected)?,
+            LocalLogEvent::close_history_group(),
+        );
+        let error = anchor
+            .recover_successor(vec![retry], LocalLogRecoveryLimits::new(1, 0, 0))
+            .err()
+            .ok_or_else(|| fail("generated compacted retry was unexpectedly accepted"))?;
+        let LocalLogRecoveryError::CompactedReplayId { checkpoint_sequence, .. } = error else {
+            return Err(fail("generated compacted retry used the wrong error variant"));
+        };
+        if checkpoint_sequence != sequence(selected)? {
+            return Err(fail("generated compacted retry reported the wrong sequence"));
+        }
     }
     Ok(())
 }
@@ -206,11 +246,19 @@ proptest::proptest! {
     #![proptest_config(property_config())]
 
     #[test]
-    fn every_generated_generation_split_preserves_session_and_replay_scopes(
+    fn every_generated_two_split_trace_preserves_session_sequence_and_replay_scope(
         inserted in trace_strategy(),
-        split_seed in any::<u8>(),
+        first_seed in any::<u8>(),
+        second_seed in any::<u8>(),
+        replay_seed in any::<u8>(),
         lineage_suffix in any::<u16>(),
     ) {
-        assert_split_law(&inserted, split_seed, lineage_suffix)?;
+        assert_repeated_split_law(
+            &inserted,
+            first_seed,
+            second_seed,
+            replay_seed,
+            lineage_suffix,
+        )?;
     }
 }

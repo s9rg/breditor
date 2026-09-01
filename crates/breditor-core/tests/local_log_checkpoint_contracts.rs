@@ -7,9 +7,9 @@ use breditor_core::{
     document::{FormatSet, TextFragment, TextRun},
     identity::QualifiedName,
     local_log::{
-        ContinuedLocalLog, LocalLogCheckpointAnchor, LocalLogEntry, LocalLogEvent,
-        LocalLogEventKind, LocalLogId, LocalLogRecovery, LocalLogRecoveryLimits, LocalLogSequence,
-        LocalSessionId, ReplayId,
+        ContinuedLocalLog, LocalLogCheckpointAnchor, LocalLogCompactionLimits, LocalLogEntry,
+        LocalLogEvent, LocalLogEventKind, LocalLogId, LocalLogRecovery, LocalLogRecoveryLimits,
+        LocalLogSequence, LocalSessionId, ReplayId,
     },
     operation::{TextRange, TextSplice},
     position::TextOffset,
@@ -304,7 +304,10 @@ fn checkpoint_boundary_preserves_open_merge_history_and_all_event_kinds() -> Tes
                 LocalLogEvent::commit(commit),
             )?],
         )?;
-    let anchor = recovered.try_into_checkpoint_anchor(identity.successor_log.clone())?;
+    let anchor = recovered.try_into_checkpoint_anchor(
+        identity.successor_log.clone(),
+        LocalLogCompactionLimits::default(),
+    )?;
     let codec = SessionCheckpointJsonCodec::new(context);
     assert_anchor_contract(&anchor, &identity, &producer, &codec)?;
 
@@ -327,7 +330,10 @@ fn empty_prefix_and_empty_successor_preserve_the_first_frontier() -> TestResult 
 
     let recovered = LocalLogRecovery::new(session_id.clone(), checkpoint_log_id.clone())
         .recover(EditorSession::new(initial.clone()), Vec::new())?;
-    let anchor = recovered.try_into_checkpoint_anchor(successor_log_id.clone())?;
+    let anchor = recovered.try_into_checkpoint_anchor(
+        successor_log_id.clone(),
+        LocalLogCompactionLimits::default(),
+    )?;
 
     assert_eq!(anchor.session_id(), &session_id);
     assert_eq!(anchor.checkpoint_log_id(), &checkpoint_log_id);
