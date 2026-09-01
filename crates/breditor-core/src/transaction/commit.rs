@@ -27,7 +27,35 @@ pub struct Commit {
     metadata: TransactionMetadata,
 }
 
+/// Borrowed proof inputs used by the durable commit boundary.
+pub(crate) struct CommitCheckpointParts<'a> {
+    pub(crate) before: &'a EditorState,
+    pub(crate) after: &'a EditorState,
+    pub(crate) forward_operations: &'a [Operation],
+    pub(crate) metadata: &'a TransactionMetadata,
+}
+
 impl Commit {
+    /// Returns persisted proof inputs while exhaustively accounting for every field.
+    ///
+    /// The destructuring below intentionally names derived fields without
+    /// returning them. Adding a new commit field therefore fails compilation
+    /// until the durable boundary explicitly classifies it as persisted or
+    /// derived.
+    pub(crate) fn checkpoint_parts(&self) -> CommitCheckpointParts<'_> {
+        let Self {
+            before,
+            after,
+            forward_operations,
+            // Commit V1 derives these from `before` plus the forward recipe.
+            inverse_operations: _,
+            relocation: _,
+            changes: _,
+            metadata,
+        } = self;
+        CommitCheckpointParts { before, after, forward_operations, metadata }
+    }
+
     /// Returns the exact source snapshot.
     #[must_use]
     pub const fn base_snapshot(&self) -> &SnapshotId {

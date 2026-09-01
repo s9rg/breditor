@@ -6,6 +6,7 @@ Document format: `breditor/document`, version `1`
 Operation format: `breditor/operation`, version `1`
 Transaction-request format: `breditor/transaction-request`, version `1`
 Editor-state format: `breditor/editor-state`, version `1`
+Commit format: `breditor/commit`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -28,6 +29,9 @@ The implemented Rust slice owns:
 - a strict contextual editor-state checkpoint codec that restores the complete
   snapshot, existing Document V1 value, selection, and pending-format option
   under one caller-supplied context;
+- a strict self-contained commit codec that restores one before checkpoint,
+  replays canonical forward operations, applies explicit result editor values,
+  and publishes only the fully derived transition;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -51,7 +55,7 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- persistent commit and history codecs, durable ordered logs, deduplicated
+- persistent history/session codecs, durable ordered logs, deduplicated
   delivery, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
@@ -94,6 +98,15 @@ untrusted editor-state JSON + caller-supplied EditorContext
     -> allocation preflight and authoritative decode of the embedded Document V1 value
     -> checked selection and pending-format reconstruction against that document
     -> complete immutable EditorState at the exact restored snapshot
+
+untrusted commit JSON + caller-supplied EditorContext
+    -> byte, format/version, exact-shape, and allocation-preflight checks
+    -> authoritative decode of one embedded before-state checkpoint
+    -> checked streaming decode of already-filtered forward operation payloads
+    -> explicit result selection, pending formats, and metadata reconstruction
+    -> atomic replay from the exact before state
+    -> reject unchanged or filtered operation recipes
+    -> publish one derived Commit or publish nothing
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -235,6 +248,16 @@ owned record tree, and adds a typed streaming document preflight before the
 owned document record is allocated. A checkpoint is still not a commit,
 session, history stack, log entry, delivery identity, content hash, or
 integrity/authenticity proof.
+Version `0.0.20` adds the distinct `breditor/commit@1` contextual record. It
+embeds one exact before-state checkpoint, the canonical already-filtered
+forward recipe, exact result selection and pending formats, and transaction
+metadata. Decode replays the recipe and derives the result document, successor
+snapshot, inverse operations, relocation, and changes instead of accepting
+redundant wire claims. Unchanged records and recipes containing an operation
+filtered as unchanged are rejected. Replay failures are projected into bounded
+typed diagnostics so codec errors retain no guarded document fragments. A
+commit record is still not a history stack, ordered log, delivery identity,
+authorization decision, hash, signature, or exactly-once protocol.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -1002,6 +1025,14 @@ checked global deltas instead of rescanning a matching-profile document, but:
   into the returned string. A complete document or editor-state wrapper plus
   JSON escaping can make a valid in-memory value exceed `max_json_bytes`, so
   both encoders can return a typed output-too-large failure;
+- commit JSON decoding additionally retains the reconstructed before state and
+  checked forward operation vector while replay constructs persistent
+  intermediate documents, inverse operations, relocation steps, and changes.
+  The outer record shares the same `max_json_bytes` budget as its embedded
+  checkpoint; therefore some valid in-memory commits cannot be encoded even
+  when the before state alone fits. Encoding walks the borrowed before state
+  and operation recipe twice, once for exact byte counting and once for output.
+  These bounds limit admission but do not promise a fixed peak-memory multiple;
 - operation JSON decoding performs one lightweight format/version header pass,
   parses a strict outer envelope with a borrowed raw payload, checks schema,
   streams through that payload once for allocation admission, then parses one
@@ -1196,7 +1227,11 @@ Public codec errors contain Breditor-owned JSON failure details rather than
 exposing `serde_json::Error`, and every codec exposes the shared stable
 `CodecErrorCode`. Failed operation reconstruction additionally exposes an
 `OperationRecordErrorCode` plus a typed record location; context-static
-operation rejection uses `OperationValidationError`. Complete document
+operation rejection uses `OperationValidationError`. Commit result-field
+reconstruction exposes `CommitRecordErrorCode` and `CommitRecordLocation`;
+replay failure exposes `CommitApplicationErrorCode`, an optional operation
+index, and a bounded diagnostic projection that retains no document-bearing
+transaction source. Complete document
 validation issues separately expose a stable code, node path, typed subject
 (child, format, property/value path, entity identity, or limit), and structured
 detail such as the exceeded size or duplicate-ID origin. Human messages are
@@ -1216,8 +1251,9 @@ must additionally pin compiled definitions before user-defined schema identity
 can be treated as a compatibility proof. Canonical document/operation hashing
 is deliberately deferred until its cross-language byte specification is written
 and tested. Documents, singular operations, contextually decoded transaction
-requests, and contextually decoded complete editor-state checkpoints have
-persistent formats today; commits and history do not.
+requests, contextually decoded complete editor-state checkpoints, and
+replay-proved commits have persistent formats today; history and sessions do
+not.
 
 ### Transaction request V1
 
@@ -1381,6 +1417,11 @@ publishing one immutable state. Encode rejects even a schema-equal state when
 the rest of its context differs. Its honest law is
 `decode(encode(state)) == state` for one exact context.
 
+Editor State V1 compositionally pins its embedded document to Document V1.
+Supporting a future document version in the standalone document codec cannot
+silently widen this checkpoint; the editor-state format must choose an explicit
+versioned document entrypoint or advance its own version.
+
 After outer routing, deterministic failure precedence is snapshot
 reconstruction, selection preflight, pending-format preflight, embedded
 document decode, typed selection reconstruction, typed pending-format
@@ -1407,17 +1448,142 @@ checkpoint or promise a fixed peak-memory multiple of its input size. Property
 string values have no narrower semantic byte ceiling and rely on the complete
 checkpoint/document `max_json_bytes` envelope.
 
+### Commit V1
+
+A durable commit is a self-contained replay proof with exactly seven required
+fields. `before` is the complete Editor State V1 value described above;
+`forwardOperations` contains bare Operation V1 payloads in application order,
+not nested operation envelopes:
+
+```json
+{
+  "format": "breditor/commit",
+  "formatVersion": 1,
+  "before": {
+    "format": "breditor/editor-state",
+    "formatVersion": 1,
+    "snapshot": { "lineage": "editor-123", "revision": "42" },
+    "document": {
+      "format": "breditor/document",
+      "formatVersion": 1,
+      "schema": { "name": "breditor/base", "version": 1 },
+      "root": {
+        "kind": "element",
+        "type": "breditor/document",
+        "entityId": null,
+        "properties": {},
+        "children": [
+          {
+            "kind": "element",
+            "type": "breditor/paragraph",
+            "entityId": null,
+            "properties": {},
+            "children": []
+          }
+        ]
+      }
+    },
+    "selection": null,
+    "pendingFormats": null
+  },
+  "forwardOperations": [],
+  "resultSelection": {
+    "kind": "range",
+    "anchor": {
+      "kind": "children",
+      "parentPath": [0],
+      "childIndex": 0,
+      "affinity": "before"
+    },
+    "focus": {
+      "kind": "children",
+      "parentPath": [0],
+      "childIndex": 0,
+      "affinity": "before"
+    }
+  },
+  "resultPendingFormats": null,
+  "metadata": {
+    "action": null,
+    "history": { "kind": "record" }
+  }
+}
+```
+
+This example is a valid state-only commit: the explicit result selection differs
+from the before state even though the forward sequence is empty. Both result
+fields are required-nullable. `resultPendingFormats: null` remains distinct from
+an empty array, and all selection direction, point kind, offset, and affinity
+values are preserved exactly. Metadata has the same action and history shapes
+as Transaction Request V1.
+
+`CommitJsonCodec` is bound to one complete `EditorContext`. Decode enforces the
+outer byte cap, routes format and version, parses the exact borrowed envelope,
+and allocation-preflights the forward sequence, result selection, result
+pending formats, and metadata before owning those values. It then delegates the
+embedded checkpoint to `EditorStateJsonCodec`, streams checked operations,
+reconstructs the result values and metadata, and applies one transaction against
+the exact embedded before state. The transaction always uses explicit `Set`
+policies for both result values; selection relocation policy is consequently
+not a persisted claim.
+
+Commit V1 independently pins `before` to Editor State V1, which in turn pins
+Document V1. Adding a newer standalone state or document codec must not widen
+the accepted or emitted nested versions while the outer commit version remains
+`1`.
+
+Outer-envelope JSON failures report locations in the complete commit input.
+Failures produced while parsing the borrowed before state, forward sequence,
+result values, metadata, or deeper nested document are relative to that
+subvalue. Stable codes, operation indexes, and typed locations—not parser
+line/column—are the cross-language control-flow contract.
+
+The result document and snapshot are derived. A successful content or
+state-value transition consumes exactly the before snapshot's successor
+revision. A before revision of `u64::MAX` therefore fails replay rather than
+wrapping. The derived forward list must equal the wire list exactly: if
+application filters any encoded no-op, decode rejects the first differing
+fixed-width index. An empty recipe whose explicit values do not change is also
+rejected. A non-empty recipe that changes content and later returns to the
+original document remains a real commit event.
+
+The honest law for one exact context is
+`decode(encode(commit)) == commit`. Equality includes exact before/after states,
+filtered forward operations, derived inverse order, relocation, change set, and
+metadata. Encode rejects a commit proved under a different context and may
+return output-too-large when the complete self-contained record does not fit
+the same byte budget used by decode.
+
+Commit V1 deliberately omits the after checkpoint, result revision, inverse
+operations, relocation map, and change set. Those values would be redundant
+claims, not authentication; replay derives and proves them from the before
+state and forward recipe. Replay errors retain a stable typed category, an
+operation index where applicable, and only a bounded diagnostic. They do not
+retain the original document-bearing transaction error.
+
+The record has no session ID, history cursor or capacity, undo/redo stack,
+merge-boundary state, sequence number, log position, request/delivery ID,
+deduplication key, author, timestamp, checksum, hash, signature, authorization,
+or crash-tail policy. Decoding one commit proves only internal deterministic
+consistency under the supplied context. It does not prove provenance, ordering,
+freshness, permission, exactly-once application, or membership in a particular
+session. Hosts must authorize metadata before publication: `ignore` and
+`merge` can alter local history behavior. Compact Rust output is deterministic
+but is not yet an RFC 8785 or cryptographic cross-language canonicalization
+contract.
+
 ## Next gate
 
-Freeze a durable commit record that links one exact before checkpoint to one
-exact after checkpoint and preserves the already-filtered forward and inverse
-operation recipes plus commit metadata. The design must decide whether the
-record embeds complete states or references separately verified checkpoints,
-and it must not imply ordered, exactly-once replay merely by persisting one
-commit. A later log layer still needs sequence/replay identity,
-snapshot/checkpoint policy, integrity/authenticity, migration, deduplication,
-and crash-tail rules before reload replay is shippable. Browser `beforeinput`,
-composition ownership, IME buffering, and paste chunking remain adapter
-concerns. Keep presentation metadata and delivery outside the deterministic
-core; subscriber lifecycle, catalog replacement, backpressure, and coalescing
-still require a separate contract before exposing an observer API.
+Freeze a durable bounded linear-history/session checkpoint without confusing a
+checkpoint with an append-only log. It must preserve the current state, undo
+and redo boundaries, history capacity, merge-group continuity, and exact replay
+semantics while deriving redundant commit internals. The design must specify
+chain continuity, entry and aggregate operation ceilings, failure precedence,
+state-only boundary behavior, and whether a checkpoint stores complete commits
+or compact history entries. Ordered external delivery remains a later layer
+requiring sequence/replay identity, integrity/authenticity, migration,
+deduplication, and crash-tail rules. Browser `beforeinput`, composition
+ownership, IME buffering, and paste chunking remain adapter concerns. Keep
+presentation metadata and delivery outside the deterministic core; subscriber
+lifecycle, catalog replacement, backpressure, and coalescing still require a
+separate contract before exposing an observer API.

@@ -2,7 +2,8 @@
 //!
 //! The crate currently owns immutable document values, the minimal compiled
 //! proof schema, strict versioned document, singular-operation, exact-base
-//! transaction-request, and contextual complete editor-state JSON decoding,
+//! transaction-request, contextual complete editor-state, and replay-proved
+//! durable commit JSON decoding,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -22,7 +23,8 @@
 //! [`operation::Operation`] values cannot be deserialized directly. Untrusted
 //! data must pass through [`codec::DocumentJsonCodec`],
 //! [`codec::OperationJsonCodec`], [`codec::TransactionJsonCodec`], or
-//! [`codec::EditorStateJsonCodec`]. The
+//! [`codec::EditorStateJsonCodec`]. Durable transitions pass through
+//! [`codec::CommitJsonCodec`]. The
 //! document codec checks its versioned record, schema identity, canonicality,
 //! limits, and complete tree before publishing a runtime document. That same
 //! successful validation derives the document's exact cached [`document::DocumentSummary`];
@@ -35,6 +37,10 @@
 //! an atomic transaction concern. The editor-state codec instead restores one
 //! complete state, including its exact snapshot identity, against a
 //! caller-supplied authoritative context; it contains no history or commit.
+//! The commit codec embeds that exact before checkpoint, replays a canonical
+//! forward recipe, explicitly restores result editor values, and publishes
+//! only the newly derived [`transaction::Commit`]. It does not trust redundant
+//! after-state, inverse, relocation, or change-set claims.
 
 pub mod action;
 pub mod codec;

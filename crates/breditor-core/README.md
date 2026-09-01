@@ -7,7 +7,8 @@ Wasm binding dependencies.
 The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, strict versioned
 document, singular guarded-operation, exact-base transaction-request, and
-contextual complete editor-state JSON codecs, UTF-16-safe points and
+contextual complete editor-state plus replay-proved commit JSON codecs,
+UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
 validation for fixed-base text edits, structural relocation, heterogeneous
@@ -47,6 +48,6 @@ plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-generic formatting-kind or attribute actions, commit/history codecs, durable
+generic formatting-kind or attribute actions, history/session codecs, durable
 replay log,
 collaboration transform, or Wasm adapter yet.

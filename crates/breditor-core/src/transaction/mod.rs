@@ -6,6 +6,7 @@ mod outcome;
 mod request;
 mod state_update;
 
+pub(crate) use commit::CommitCheckpointParts;
 pub use commit::{Commit, CommitReplayError, ReplayDirection};
 pub use metadata::{HistoryIntent, TransactionMetadata};
 pub use outcome::TransactionOutcome;

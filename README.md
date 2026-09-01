@@ -13,7 +13,7 @@ This repository currently contains the first end-to-end Rust-core slice:
 - a minimal compiled schema for document, paragraph, text, and strong formatting;
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
-  editor-state checkpoints;
+  editor-state checkpoints plus self-contained replay-proved commit records;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -59,7 +59,7 @@ This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, persistent commit/history codecs, ordered
+and plugin lifecycle management, persistent history/session codecs, ordered
 durable logs, deduplicated delivery and reload replay, Wasm bindings,
 a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for

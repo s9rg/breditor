@@ -125,6 +125,8 @@ pub enum CodecErrorCode {
     InvalidOperation,
     /// A transaction field could not be reconstructed through checked contracts.
     InvalidTransaction,
+    /// A durable commit could not be reconstructed through checked contracts.
+    InvalidCommit,
     /// An editor-state field could not be reconstructed through checked contracts.
     InvalidEditorState,
     /// A validated runtime value could not be serialized.
@@ -150,6 +152,7 @@ impl CodecErrorCode {
             Self::ValidationFailed => "codec.validation_failed",
             Self::InvalidOperation => "codec.invalid_operation",
             Self::InvalidTransaction => "codec.invalid_transaction",
+            Self::InvalidCommit => "codec.invalid_commit",
             Self::InvalidEditorState => "codec.invalid_editor_state",
             Self::EncodingFailed => "codec.encoding_failed",
         }
@@ -280,6 +283,7 @@ mod tests {
             (CodecErrorCode::ValidationFailed, "codec.validation_failed"),
             (CodecErrorCode::InvalidOperation, "codec.invalid_operation"),
             (CodecErrorCode::InvalidTransaction, "codec.invalid_transaction"),
+            (CodecErrorCode::InvalidCommit, "codec.invalid_commit"),
             (CodecErrorCode::InvalidEditorState, "codec.invalid_editor_state"),
             (CodecErrorCode::EncodingFailed, "codec.encoding_failed"),
         ];

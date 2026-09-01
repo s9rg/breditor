@@ -1,27 +1,17 @@
-use std::{
-    borrow::Cow,
-    cell::{Cell, RefCell},
-    fmt,
-};
+use std::borrow::Cow;
 
-use serde::{
-    Deserialize, Serialize,
-    de::{DeserializeSeed, Error as _, IgnoredAny, SeqAccess, Visitor},
-    ser::SerializeSeq,
-};
+use serde::{Deserialize, de::IgnoredAny};
 use serde_json::value::RawValue;
 
 use crate::{
     codec::{
-        BoundedDiagnostic, JsonFailure, OperationRecordError, TransactionCodecError,
-        TransactionRecordError, TransactionRecordErrorCode, TransactionRecordLocation,
+        BoundedDiagnostic, JsonFailure, TransactionCodecError, TransactionRecordError,
+        TransactionRecordErrorCode, TransactionRecordLocation,
     },
     identity::QualifiedName,
-    operation::{Operation, OperationValidationError},
     record::{
-        OperationRecordV1, PendingFormatsUpdateRecordV1, SchemaIdRecord,
-        SelectionRelocationRecordV1, SelectionUpdateRecordV1,
-        TRANSACTION_REQUEST_FORMAT as RECORD_FORMAT,
+        PendingFormatsUpdateRecordV1, SchemaIdRecord, SelectionRelocationRecordV1,
+        SelectionUpdateRecordV1, TRANSACTION_REQUEST_FORMAT as RECORD_FORMAT,
         TRANSACTION_REQUEST_FORMAT_VERSION as RECORD_FORMAT_VERSION, TransactionMetadataRecordV1,
         TransactionRequestRecordV1,
     },
@@ -35,8 +25,12 @@ use super::{
         SnapshotValueRecordError, decode_snapshot_id_v1, encode_snapshot_id_v1,
     },
     json_size::JsonByteCounter,
-    operation_payload_v1::{decode_operation_payload_v1, encode_operation_payload_v1},
-    operation_preflight::{preflight_operation_payload, preflight_operation_payloads},
+    operation_preflight::preflight_operation_payload,
+    operation_sequence_v1::{
+        IndexedOperationValidationError, OperationSequenceDecodeError, OperationSequenceEncoding,
+        OperationSequenceLimitError, decode_operation_sequence, preflight_operation_sequence,
+        validate_operation_sequence_count,
+    },
     transaction_payload_v1::{
         decode_pending_formats_update_v1, decode_selection_relocation_v1,
         decode_selection_update_v1, decode_transaction_metadata_v1,
@@ -44,8 +38,6 @@ use super::{
         encode_selection_update_v1, encode_transaction_metadata_v1,
     },
 };
-
-const MAX_INITIAL_OPERATION_CAPACITY: u64 = 256;
 
 /// Stable identifier for Breditor's exact-base atomic request envelope.
 pub const TRANSACTION_REQUEST_FORMAT: &str = RECORD_FORMAT;
@@ -141,19 +133,15 @@ impl TransactionJsonCodec {
             });
         }
 
-        let operation_count =
-            preflight_operation_payloads(envelope.operations.get(), &self.context)
-                .map_err(|error| JsonFailure::from_serde(&error))
-                .map_err(TransactionCodecError::InvalidJson)?;
-        let operation_maximum = self.context.max_operations_per_transaction();
-        if operation_count > u64::from(operation_maximum) {
-            return Err(TransactionCodecError::OperationLimit {
-                actual: operation_count,
-                maximum: operation_maximum,
-            });
-        }
-        let operations =
-            decode_operation_sequence(envelope.operations.get(), &self.context, operation_count)?;
+        let operation_preflight =
+            preflight_operation_sequence(envelope.operations.get(), &self.context)
+                .map_err(transaction_operation_sequence_error)?;
+        let operations = decode_operation_sequence(
+            envelope.operations.get(),
+            &self.context,
+            operation_preflight,
+        )
+        .map_err(transaction_operation_sequence_error)?;
 
         for payload in [
             envelope.selection_relocation,
@@ -199,14 +187,8 @@ impl TransactionJsonCodec {
         if transaction.base_state().context() != &self.context {
             return Err(TransactionCodecError::ContextConfigurationMismatch);
         }
-        let operation_count = usize_to_u64(transaction.operations().len());
-        let operation_maximum = self.context.max_operations_per_transaction();
-        if operation_count > u64::from(operation_maximum) {
-            return Err(TransactionCodecError::OperationLimit {
-                actual: operation_count,
-                maximum: operation_maximum,
-            });
-        }
+        validate_operation_sequence_count(transaction.operations(), &self.context)
+            .map_err(transaction_operation_limit_error)?;
 
         let schema = self.context.schema().id();
         let snapshot = transaction.base_snapshot();
@@ -238,8 +220,8 @@ impl TransactionJsonCodec {
                 maximum,
             });
         }
-        if let Some((operation_index, source)) = record.operations.take_validation_error() {
-            return Err(TransactionCodecError::OperationValidation { operation_index, source });
+        if let Some(error) = record.operations.take_validation_error() {
+            return Err(transaction_operation_validation_error(error));
         }
         count_result
             .map_err(|error| JsonFailure::from_serde(&error))
@@ -247,52 +229,6 @@ impl TransactionJsonCodec {
         serde_json::to_string(&record)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(TransactionCodecError::Encoding)
-    }
-}
-
-struct OperationSequenceEncoding<'a> {
-    operations: &'a [Operation],
-    context: &'a EditorContext,
-    validation_complete: Cell<bool>,
-    validation_error: RefCell<Option<(u64, OperationValidationError)>>,
-}
-
-impl<'a> OperationSequenceEncoding<'a> {
-    fn new(operations: &'a [Operation], context: &'a EditorContext) -> Self {
-        Self {
-            operations,
-            context,
-            validation_complete: Cell::new(false),
-            validation_error: RefCell::new(None),
-        }
-    }
-
-    fn take_validation_error(&self) -> Option<(u64, OperationValidationError)> {
-        self.validation_error.borrow_mut().take()
-    }
-}
-
-impl Serialize for OperationSequenceEncoding<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let validate = !self.validation_complete.get();
-        let mut sequence = serializer.serialize_seq(Some(self.operations.len()))?;
-        for (operation_index, operation) in self.operations.iter().enumerate() {
-            if validate && let Err(source) = operation.validate(self.context) {
-                *self.validation_error.borrow_mut() = Some((usize_to_u64(operation_index), source));
-                return Err(<S::Error as serde::ser::Error>::custom(
-                    "transaction operation validation failed",
-                ));
-            }
-            sequence.serialize_element(&encode_operation_payload_v1(operation))?;
-        }
-        let result = sequence.end()?;
-        if validate {
-            self.validation_complete.set(true);
-        }
-        Ok(result)
     }
 }
 
@@ -384,176 +320,35 @@ where
         .map_err(TransactionCodecError::InvalidJson)
 }
 
-fn decode_operation_sequence(
-    json: &str,
-    context: &EditorContext,
-    expected_count: u64,
-) -> Result<Vec<Operation>, TransactionCodecError> {
-    let mut deferred_error = None;
-    let mut deserializer = serde_json::Deserializer::from_str(json);
-    let decoded =
-        OperationSequenceSeed { context, expected_count, deferred_error: &mut deferred_error }
-            .deserialize(&mut deserializer);
-    if let Some(error) = deferred_error {
-        return Err(error.into_public());
-    }
-    let operations = decoded
-        .map_err(|error| JsonFailure::from_serde(&error))
-        .map_err(TransactionCodecError::InvalidJson)?;
-    deserializer
-        .end()
-        .map_err(|error| JsonFailure::from_serde(&error))
-        .map_err(TransactionCodecError::InvalidJson)?;
-    Ok(operations)
-}
-
-struct OperationSequenceSeed<'a> {
-    context: &'a EditorContext,
-    expected_count: u64,
-    deferred_error: &'a mut Option<DeferredOperationError>,
-}
-
-impl<'de> DeserializeSeed<'de> for OperationSequenceSeed<'_> {
-    type Value = Vec<Operation>;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(OperationSequenceVisitor {
-            context: self.context,
-            expected_count: self.expected_count,
-            deferred_error: self.deferred_error,
-        })
-    }
-}
-
-struct OperationSequenceVisitor<'a> {
-    context: &'a EditorContext,
-    expected_count: u64,
-    deferred_error: &'a mut Option<DeferredOperationError>,
-}
-
-impl<'de> Visitor<'de> for OperationSequenceVisitor<'_> {
-    type Value = Vec<Operation>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("a preflighted JSON array of operation payloads")
-    }
-
-    fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let capacity = initial_operation_capacity(self.expected_count);
-        let mut operations = Vec::with_capacity(capacity);
-        let mut operation_index = 0_u64;
-        while let Some(raw) = sequence.next_element::<&'de RawValue>()? {
-            let record: OperationRecordV1 = match serde_json::from_str(raw.get()) {
-                Ok(record) => record,
-                Err(error) => {
-                    *self.deferred_error = Some(DeferredOperationError::Json {
-                        operation_index,
-                        source: JsonFailure::from_serde(&error),
-                    });
-                    return Err(A::Error::custom("transaction operation record is invalid"));
-                }
-            };
-            let operation = match decode_operation_payload_v1(record) {
-                Ok(operation) => operation,
-                Err(source) => {
-                    *self.deferred_error =
-                        Some(DeferredOperationError::Record { operation_index, source });
-                    return Err(A::Error::custom("transaction operation record is invalid"));
-                }
-            };
-            if let Err(source) = operation.validate(self.context) {
-                *self.deferred_error =
-                    Some(DeferredOperationError::Validation { operation_index, source });
-                return Err(A::Error::custom("transaction operation validation failed"));
-            }
-            operations.push(operation);
-            operation_index = operation_index.saturating_add(1);
+fn transaction_operation_sequence_error(
+    error: OperationSequenceDecodeError,
+) -> TransactionCodecError {
+    match error {
+        OperationSequenceDecodeError::Json(source) => TransactionCodecError::InvalidJson(source),
+        OperationSequenceDecodeError::Limit(error) => transaction_operation_limit_error(error),
+        OperationSequenceDecodeError::OperationJson { operation_index, source } => {
+            TransactionCodecError::InvalidOperationJson { operation_index, source }
         }
-        if operation_index != self.expected_count {
-            return Err(A::Error::custom("transaction operation count changed after preflight"));
+        OperationSequenceDecodeError::OperationRecord { operation_index, source } => {
+            TransactionCodecError::InvalidOperation { operation_index, source }
         }
-        Ok(operations)
-    }
-}
-
-enum DeferredOperationError {
-    Json { operation_index: u64, source: JsonFailure },
-    Record { operation_index: u64, source: OperationRecordError },
-    Validation { operation_index: u64, source: OperationValidationError },
-}
-
-impl DeferredOperationError {
-    fn into_public(self) -> TransactionCodecError {
-        match self {
-            Self::Json { operation_index, source } => {
-                TransactionCodecError::InvalidOperationJson { operation_index, source }
-            }
-            Self::Record { operation_index, source } => {
-                TransactionCodecError::InvalidOperation { operation_index, source }
-            }
-            Self::Validation { operation_index, source } => {
-                TransactionCodecError::OperationValidation { operation_index, source }
-            }
+        OperationSequenceDecodeError::OperationValidation(error) => {
+            transaction_operation_validation_error(error)
         }
     }
 }
 
-fn usize_to_u64(value: usize) -> u64 {
-    u64::try_from(value).unwrap_or(u64::MAX)
+const fn transaction_operation_limit_error(
+    error: OperationSequenceLimitError,
+) -> TransactionCodecError {
+    TransactionCodecError::OperationLimit { actual: error.actual, maximum: error.maximum }
 }
 
-fn initial_operation_capacity(expected_count: u64) -> usize {
-    usize::try_from(expected_count.min(MAX_INITIAL_OPERATION_CAPACITY)).unwrap_or(0)
-}
-
-#[cfg(test)]
-mod tests {
-    use std::cell::Cell;
-
-    use serde::{Serialize, ser::SerializeSeq};
-
-    use super::{MAX_INITIAL_OPERATION_CAPACITY, initial_operation_capacity};
-    use crate::codec::json_size::JsonByteCounter;
-
-    #[test]
-    fn untrusted_operation_count_cannot_drive_an_unbounded_initial_reservation() {
-        assert_eq!(initial_operation_capacity(0), 0);
-        assert_eq!(initial_operation_capacity(7), 7);
-        assert_eq!(
-            initial_operation_capacity(u64::MAX),
-            usize::try_from(MAX_INITIAL_OPERATION_CAPACITY).unwrap_or(0)
-        );
-    }
-
-    #[test]
-    fn over_budget_serialization_never_visits_later_sequence_items() {
-        let visits = Cell::new(0_u32);
-        let mut counter = JsonByteCounter::new(2);
-        assert!(serde_json::to_writer(&mut counter, &VisitSequence(&visits)).is_err());
-
-        assert!(counter.exceeded());
-        assert_eq!(visits.get(), 1);
-    }
-
-    struct VisitSequence<'a>(&'a Cell<u32>);
-
-    impl Serialize for VisitSequence<'_> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            let mut sequence = serializer.serialize_seq(Some(10))?;
-            for _ in 0..10 {
-                self.0.set(self.0.get() + 1);
-                sequence.serialize_element("payload")?;
-            }
-            sequence.end()
-        }
+fn transaction_operation_validation_error(
+    error: IndexedOperationValidationError,
+) -> TransactionCodecError {
+    TransactionCodecError::OperationValidation {
+        operation_index: error.operation_index,
+        source: error.source,
     }
 }

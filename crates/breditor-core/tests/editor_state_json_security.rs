@@ -332,11 +332,11 @@ fn nested_document_keeps_its_own_strict_routing_schema_and_validation_boundary()
     }
 
     let mut wrong_version = baseline.clone();
-    wrong_version["document"]["formatVersion"] = json!(99);
+    wrong_version["document"]["formatVersion"] = json!(2);
     wrong_version["document"]["root"] = Value::Null;
     match rejected(&codec, &serde_json::to_string(&wrong_version)?)? {
         EditorStateCodecError::InvalidDocument(DocumentCodecError::UnsupportedFormatVersion {
-            found: 99,
+            found: 2,
             supported: 1,
         }) => {}
         other => {

@@ -1,5 +1,6 @@
 //! Owned, version-specific serialization records.
 
+mod commit_record;
 mod document_record;
 mod editor_state_record;
 mod editor_value_record;
@@ -7,12 +8,11 @@ mod operation_record;
 mod strict_json;
 mod transaction_record;
 
+pub(crate) use commit_record::{COMMIT_FORMAT, COMMIT_FORMAT_VERSION, CommitRecordV1};
 pub(crate) use document_record::{
     DocumentEnvelopeHeader, DocumentRecordV1, FormatRecordV1, NodeRecordV1, SchemaIdRecord,
 };
-pub(crate) use editor_state_record::{
-    EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION, EditorStateRecordV1,
-};
+pub(crate) use editor_state_record::{EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION};
 pub(crate) use editor_value_record::{
     AffinityRecordV1, DecimalU64Record, DecimalU64RecordError, PendingFormatRecordV1,
     PointRecordV1, SelectionRecordV1, SnapshotIdRecordV1,

@@ -5,23 +5,22 @@ use serde_json::value::RawValue;
 
 use crate::{
     codec::{
-        BoundedDiagnostic, EditorStateCodecError, EditorStateRecordError,
+        BoundedDiagnostic, DocumentCodecError, EditorStateCodecError, EditorStateRecordError,
         EditorStateRecordErrorCode, EditorStateRecordLocation, JsonFailure,
     },
     record::{
         EDITOR_STATE_FORMAT as RECORD_FORMAT, EDITOR_STATE_FORMAT_VERSION as RECORD_FORMAT_VERSION,
-        EditorStateRecordV1, PendingFormatRecordV1, SelectionRecordV1,
+        PendingFormatRecordV1, SelectionRecordV1,
     },
     state::{EditorContext, EditorState},
 };
 
 use super::{
-    document_encoding::DocumentEncoding,
-    document_json::DocumentJsonCodec,
+    document_json::{DOCUMENT_FORMAT_VERSION, DocumentJsonCodec},
+    editor_state_encoding::EditorStateEncoding,
     editor_value_payload_v1::{
         EditorValueRecordError, SelectionEndpoint, SnapshotValueRecordError,
         decode_pending_format_records_v1, decode_selection_record_v1, decode_snapshot_id_v1,
-        encode_pending_format_records_v1, encode_selection_record_v1, encode_snapshot_id_v1,
     },
     json_size::JsonByteCounter,
     operation_preflight::{preflight_operation_payload, preflight_pending_formats_payload},
@@ -32,6 +31,13 @@ pub const EDITOR_STATE_FORMAT: &str = RECORD_FORMAT;
 
 /// Editor-state checkpoint wire version implemented by this codec.
 pub const EDITOR_STATE_FORMAT_VERSION: u32 = RECORD_FORMAT_VERSION;
+
+const EDITOR_STATE_DOCUMENT_FORMAT: &str = "breditor/document";
+const EDITOR_STATE_DOCUMENT_FORMAT_VERSION: u32 = 1;
+
+// Editor State V1 embeds Document V1 by value. A future default document
+// encoder must not change this composition without an explicit state version.
+const _: () = assert!(DOCUMENT_FORMAT_VERSION == EDITOR_STATE_DOCUMENT_FORMAT_VERSION);
 
 /// Strict JSON codec for complete immutable editor-state checkpoints.
 ///
@@ -107,6 +113,7 @@ impl EditorStateJsonCodec {
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(EditorStateCodecError::InvalidJson)?;
 
+        validate_editor_state_document_header(envelope.document)?;
         let document = self
             .document_codec
             .decode(envelope.document.get())
@@ -146,26 +153,15 @@ impl EditorStateJsonCodec {
     /// differs, a state value cannot be represented by V1, serialization fails,
     /// or the result exceeds the same byte budget enforced by decode.
     pub fn encode(&self, state: &EditorState) -> Result<String, EditorStateCodecError> {
-        let parts: crate::state::EditorStateCheckpointParts<'_> = state.checkpoint_parts();
-        if parts.context != &self.context {
+        if state.context() != &self.context {
             return Err(EditorStateCodecError::ContextConfigurationMismatch);
         }
-        let record = EditorStateRecordV1 {
-            format: EDITOR_STATE_FORMAT.to_owned(),
-            format_version: EDITOR_STATE_FORMAT_VERSION,
-            snapshot: encode_snapshot_id_v1(parts.snapshot),
-            document: DocumentEncoding::new(parts.document),
-            selection: parts.selection.map(encode_selection_record_v1),
-            pending_formats: parts
-                .pending_formats
-                .map(|formats| encode_pending_format_records_v1(formats, &self.context))
-                .transpose()
-                .map_err(|error| editor_state_record_error_from_editor_value(&error))?,
-        };
+        let encoding = EditorStateEncoding::try_new(state)
+            .map_err(|error| editor_state_record_error_from_editor_value(&error))?;
 
         let maximum = self.context.limits().max_json_bytes();
         let mut byte_counter = JsonByteCounter::new(maximum);
-        let count_result = serde_json::to_writer(&mut byte_counter, &record);
+        let count_result = serde_json::to_writer(&mut byte_counter, &encoding);
         if byte_counter.exceeded() {
             return Err(EditorStateCodecError::OutputTooLarge {
                 minimum: byte_counter.bytes(),
@@ -175,7 +171,7 @@ impl EditorStateJsonCodec {
         count_result
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(EditorStateCodecError::Encoding)?;
-        serde_json::to_string(&record)
+        serde_json::to_string(&encoding)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(EditorStateCodecError::Encoding)
     }
@@ -184,6 +180,14 @@ impl EditorStateJsonCodec {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BorrowedEditorStateHeader<'a> {
+    #[serde(borrow)]
+    format: Cow<'a, str>,
+    format_version: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BorrowedEditorStateDocumentHeader<'a> {
     #[serde(borrow)]
     format: Cow<'a, str>,
     format_version: u32,
@@ -231,6 +235,30 @@ where
     decode_json(raw.get())
 }
 
+fn validate_editor_state_document_header(raw: &RawValue) -> Result<(), EditorStateCodecError> {
+    let header: BorrowedEditorStateDocumentHeader<'_> = serde_json::from_str(raw.get())
+        .map_err(|error| JsonFailure::from_serde(&error))
+        .map_err(DocumentCodecError::InvalidJson)
+        .map_err(EditorStateCodecError::InvalidDocument)?;
+    if header.format != EDITOR_STATE_DOCUMENT_FORMAT {
+        return Err(EditorStateCodecError::InvalidDocument(
+            DocumentCodecError::UnsupportedFormat {
+                found: BoundedDiagnostic::from(header.format.as_ref()),
+                expected: EDITOR_STATE_DOCUMENT_FORMAT,
+            },
+        ));
+    }
+    if header.format_version != EDITOR_STATE_DOCUMENT_FORMAT_VERSION {
+        return Err(EditorStateCodecError::InvalidDocument(
+            DocumentCodecError::UnsupportedFormatVersion {
+                found: header.format_version,
+                supported: EDITOR_STATE_DOCUMENT_FORMAT_VERSION,
+            },
+        ));
+    }
+    Ok(())
+}
+
 fn editor_state_record_error_from_snapshot(
     error: &SnapshotValueRecordError,
 ) -> EditorStateCodecError {
@@ -247,7 +275,7 @@ fn editor_state_record_error_from_snapshot(
     EditorStateRecordError::new(code, location, error.to_string()).into()
 }
 
-fn editor_state_record_error_from_editor_value(
+pub(crate) fn editor_state_record_error_from_editor_value(
     error: &EditorValueRecordError,
 ) -> EditorStateCodecError {
     let (code, location) = match error {
