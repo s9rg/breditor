@@ -4,6 +4,9 @@
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or
 Wasm binding dependencies.
 
-The current crate exposes immutable validated document readers, the fixed base
-schema used by the first proof, a strict JSON codec, and structural points. It is
-intentionally smaller than the eventual editor runtime.
+The current crate exposes immutable validated documents with cached exact
+measurements, the fixed base schema used by the first proof, a strict JSON
+codec, UTF-16-safe points and selections, paragraph-local text splices, atomic
+transactions, relocation, and exact in-memory undo/redo requests. It is
+intentionally smaller than the eventual editor runtime and has no browser or
+Wasm adapter yet.

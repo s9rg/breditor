@@ -165,3 +165,25 @@ impl Default for DocumentLimits {
         }
     }
 }
+
+pub(crate) fn child_count_fits_point_protocol(child_count: usize) -> bool {
+    u32::try_from(child_count).is_ok()
+}
+
+pub(crate) fn point_protocol_child_count_maximum() -> usize {
+    usize::try_from(u32::MAX).unwrap_or(usize::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{child_count_fits_point_protocol, point_protocol_child_count_maximum};
+
+    #[test]
+    fn child_count_reserves_a_representable_end_boundary() {
+        let maximum = point_protocol_child_count_maximum();
+        assert!(child_count_fits_point_protocol(maximum));
+        if let Some(too_many) = maximum.checked_add(1) {
+            assert!(!child_count_fits_point_protocol(too_many));
+        }
+    }
+}

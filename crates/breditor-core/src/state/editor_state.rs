@@ -42,7 +42,14 @@ impl EditorState {
         pending_formats: Option<FormatSet>,
     ) -> Result<Self, EditorStateError> {
         let snapshot = SnapshotId::new(lineage, crate::state::Revision::ZERO);
-        validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref(), true)?;
+        if document.schema() != context.schema().id() {
+            return Err(EditorStateError::SchemaMismatch {
+                document_schema: document.schema().clone(),
+                context_schema: context.schema().id().clone(),
+            });
+        }
+        let document = document.try_revalidate(context.schema(), context.limits())?;
+        validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref())?;
         Ok(Self { context: context.clone(), snapshot, document, selection, pending_formats })
     }
 
@@ -83,7 +90,7 @@ impl EditorState {
         selection: Option<Selection>,
         pending_formats: Option<FormatSet>,
     ) -> Result<Self, EditorStateError> {
-        validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref(), false)?;
+        validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref())?;
         Ok(Self { context: context.clone(), snapshot, document, selection, pending_formats })
     }
 }
@@ -93,7 +100,6 @@ fn validate_parts(
     document: &Document,
     selection: Option<&Selection>,
     pending_formats: Option<&FormatSet>,
-    validate_document: bool,
 ) -> Result<(), EditorStateError> {
     if document.schema() != context.schema().id() {
         return Err(EditorStateError::SchemaMismatch {
@@ -101,10 +107,6 @@ fn validate_parts(
             context_schema: context.schema().id().clone(),
         });
     }
-    if validate_document {
-        context.schema().validate_root(document.root(), context.limits())?;
-    }
-
     let resolved =
         selection.map(|selection| selection.resolve(context.schema(), document)).transpose()?;
     if let Some(formats) = pending_formats {

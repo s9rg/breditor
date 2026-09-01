@@ -15,6 +15,7 @@ use crate::{
     schema::{
         CompiledSchema, DocumentLimits, LimitKind, PropertyPathSegment, SchemaId, SchemaVersion,
         ValidationCode, ValidationDetail, ValidationIssue, ValidationReport, ValidationSubject,
+        child_count_fits_point_protocol, point_protocol_child_count_maximum,
     },
 };
 
@@ -281,6 +282,45 @@ impl RecordBuilder {
             }
         });
         let properties = self.build_properties(property_record, path, PropertyOwner::Element);
+        let children = self.build_children(child_records, path);
+
+        match (kind, properties, children) {
+            (Some(kind), Some(properties), Some(children)) => {
+                match ElementNode::try_new(kind, entity_id, properties, children) {
+                    Ok(element) => Some(NodeRef::element(element)),
+                    Err(error) => {
+                        self.local_invariant_issue(&error, path, None);
+                        None
+                    }
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn build_children(
+        &mut self,
+        child_records: &[NodeRecordV1],
+        path: &NodePath,
+    ) -> Option<Vec<NodeRef>> {
+        if !child_count_fits_point_protocol(child_records.len()) {
+            let maximum = point_protocol_child_count_maximum();
+            self.issue(
+                ValidationCode::LimitExceeded,
+                path,
+                ValidationSubject::Limit { kind: LimitKind::ChildIndex },
+                ValidationDetail::Limit {
+                    kind: LimitKind::ChildIndex,
+                    actual: child_records.len(),
+                    maximum,
+                },
+                format!(
+                    "child_count is {}; the point-protocol maximum is {maximum}",
+                    child_records.len()
+                ),
+            );
+            return None;
+        }
 
         let mut children = Vec::with_capacity(child_records.len());
         let mut children_valid = true;
@@ -321,19 +361,7 @@ impl RecordBuilder {
                 children_valid = false;
             }
         }
-
-        match (kind, properties, children_valid) {
-            (Some(kind), Some(properties), true) => {
-                match ElementNode::try_new(kind, entity_id, properties, children) {
-                    Ok(element) => Some(NodeRef::element(element)),
-                    Err(error) => {
-                        self.local_invariant_issue(&error, path, None);
-                        None
-                    }
-                }
-            }
-            _ => None,
-        }
+        children_valid.then_some(children)
     }
 
     fn build_text(

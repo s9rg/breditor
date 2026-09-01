@@ -1,16 +1,17 @@
 use thiserror::Error;
 
 use crate::{
-    document::NodeRef,
+    document::{DocumentSummary, NodeRef},
     position::NodePath,
     schema::{CompiledSchema, DocumentLimits, SchemaId, ValidationReport},
 };
 
 /// A complete, immutable, schema-valid editor document.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Document {
     schema: SchemaId,
     root: NodeRef,
+    summary: DocumentSummary,
 }
 
 impl Document {
@@ -24,6 +25,12 @@ impl Document {
     #[must_use]
     pub fn root(&self) -> &NodeRef {
         &self.root
+    }
+
+    /// Returns exact measurements cached by the successful schema validation.
+    #[must_use]
+    pub const fn summary(&self) -> &DocumentSummary {
+        &self.summary
     }
 
     /// Resolves a snapshot-local structural path.
@@ -64,10 +71,26 @@ impl Document {
         root: NodeRef,
         limits: &DocumentLimits,
     ) -> Result<Self, ValidationReport> {
-        schema.validate_root(&root, limits)?;
-        Ok(Self { schema: schema.id().clone(), root })
+        let summary = schema.validate_root(&root, limits)?;
+        Ok(Self { schema: schema.id().clone(), root, summary })
+    }
+
+    pub(crate) fn try_revalidate(
+        self,
+        schema: &CompiledSchema,
+        limits: &DocumentLimits,
+    ) -> Result<Self, ValidationReport> {
+        Self::try_new(schema, self.root, limits)
     }
 }
+
+impl PartialEq for Document {
+    fn eq(&self, other: &Self) -> bool {
+        self.schema == other.schema && self.root == other.root
+    }
+}
+
+impl Eq for Document {}
 
 /// Why a [`NodePath`] could not resolve within a [`Document`].
 #[derive(Clone, Debug, Eq, Error, PartialEq)]

@@ -8,6 +8,8 @@ protocol.
 This repository currently contains the first end-to-end Rust-core slice:
 
 - immutable, structurally shared document values;
+- validator-derived cached document measurements for node count, maximum depth,
+  total UTF-8 text bytes, and recursive property-value count;
 - a minimal compiled schema for document, paragraph, text, and strong formatting;
 - strict versioned JSON records;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and

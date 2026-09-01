@@ -10,6 +10,7 @@ Base schema: `breditor/base`, version `1`
 The implemented Rust slice owns:
 
 - the canonical immutable AST and validated `Document`;
+- exact validator-derived document measurements cached on each `Document`;
 - snapshot-local points, document-aware point ordering, and directional range
   selections;
 - `EditorContext`, `EditorState`, lineage-local snapshots, and pending typing
@@ -28,7 +29,7 @@ The following remain deliberately unimplemented:
 - persistent operation and editor-state codecs, durable logs, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - collaboration, rebasing, CRDT/OT behavior, and remote presence; and
-- cached subtree summaries and incremental result validation.
+- crate-private subtree summaries and incremental result validation.
 
 ProseMirror, Lexical, Tiptap, and CKEditor are design references only. This is
 an original contract and does not adopt their node, transaction, plugin, or
@@ -68,6 +69,23 @@ no value.
 - Formats contain a qualified kind and deterministic properties.
 - Runtime fields remain private. Pointer identity is an implementation detail;
   equality is content equality.
+
+Every successfully validated `Document` also caches one exact `DocumentSummary`:
+
+- `node_count` counts every reachable element and text node, including the root;
+- `max_node_depth` is the greatest root-relative edge depth, where the root is
+  zero;
+- `total_text_bytes` is the combined UTF-8 byte length of all text leaves; and
+- `property_value_count` counts every top-level and recursively nested property
+  value, including array and object containers.
+
+Counts and bytes use checked `u64` arithmetic and depth uses `u32`, so the Rust
+contract does not change width between native and Wasm targets. The summary has
+no public constructor or mutation path. It is recomputed by complete validation,
+is not serialized, does not affect content equality, and does not change document
+format version `1`. It is derived metadata, not a substitute for schema proof or
+evidence that the document satisfies a different limit profile. Version `0.0.2`
+still performs complete result validation after every changed splice.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -242,7 +260,8 @@ future history owner.
 ## Current performance limitations
 
 The correctness-first implementation deliberately accepts costs that must be
-removed before large-document production use:
+removed before large-document production use. Root-level node, depth, text-byte,
+and property-value measurements are now cached for constant-time access, but:
 
 - every changed splice rebuilds its ancestor spine and performs full-tree schema
   and resource validation of the resulting document;
@@ -254,7 +273,7 @@ removed before large-document production use:
 
 Off-spine nodes remain `Arc`-shared, so these costs do not imply cloning every
 node's payload. The next optimization must preserve observable operation,
-inverse, relocation, and validation laws; cached summaries cannot become a
+inverse, relocation, and validation laws; cached measurements cannot become a
 second, weaker validity contract.
 
 ## JSON shape
@@ -302,13 +321,10 @@ have no persistent wire format yet.
 
 ## Next gate
 
-First, finish the relocation and property-law matrix: Unicode boundaries,
-canonical seam merging, forward/inverse restoration, mixed point encodings,
-deleted endpoint policies, multi-operation composition, stale guards, limits,
-and atomic failure. The slice must continue to pass formatting, Clippy, native
-tests, rustdoc warnings-as-errors, and a `wasm32-unknown-unknown` build.
-
-Then add cached subtree summaries and incremental validation/proof for the edited
-spine. Only after that gate should the core grow structural operations and the
-action/plugin layer that maps keyboard input, paste, and expandable toolbar
-commands into transactions.
+Add a crate-private edited-spine proof that updates the cached root measurements
+with checked arithmetic and allows successful `TextSplice` results to skip the
+full-tree pass. Differential tests must compare every fast-path result and
+inverse with a fresh complete validation, and proof failure must retain the
+authoritative validator's typed diagnostics. Only after that gate should the
+core grow structural operations and the action/plugin layer that maps keyboard
+input, paste, and expandable toolbar commands into transactions.

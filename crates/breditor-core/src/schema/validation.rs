@@ -6,10 +6,13 @@ use std::{
 };
 
 use crate::{
-    document::{NodeRef, PropertyMap, PropertyValue, PropertyValueInner},
+    document::{DocumentSummary, NodeRef, PropertyMap, PropertyValue, PropertyValueInner},
     identity::{EntityId, QualifiedName},
     position::{MAX_PATH_DEPTH, NodePath},
-    schema::{CompiledSchema, DocumentLimits},
+    schema::{
+        CompiledSchema, DocumentLimits, child_count_fits_point_protocol,
+        point_protocol_child_count_maximum,
+    },
 };
 
 /// Stable machine-readable reason for document rejection.
@@ -194,6 +197,11 @@ pub enum ValidationDetail {
         /// Configured maximum.
         maximum: usize,
     },
+    /// An aggregate resource measurement exceeded its fixed-width counter.
+    CounterOverflow {
+        /// The measurement that could not be represented.
+        kind: LimitKind,
+    },
     /// The first occurrence of a duplicated semantic entity identity.
     DuplicateEntityId {
         /// Path of the earlier element.
@@ -313,16 +321,12 @@ impl CompiledSchema {
         &self,
         root: &NodeRef,
         limits: &DocumentLimits,
-    ) -> Result<(), ValidationReport> {
+    ) -> Result<DocumentSummary, ValidationReport> {
         let mut state = ValidationState::new(self, limits);
         let root_path = NodePath::root();
         state.visit_node(root, &root_path);
         state.validate_root_kind(root, &root_path);
-        if state.issues.is_empty() {
-            Ok(())
-        } else {
-            Err(ValidationReport::from_issues(state.issues))
-        }
+        state.finish()
     }
 }
 
@@ -330,9 +334,10 @@ struct ValidationState<'a> {
     schema: &'a CompiledSchema,
     limits: &'a DocumentLimits,
     issues: Vec<ValidationIssue>,
-    node_count: usize,
-    total_text_bytes: usize,
-    property_value_count: usize,
+    node_count: u64,
+    max_node_depth: u32,
+    total_text_bytes: u64,
+    property_value_count: u64,
     entity_ids: BTreeMap<EntityId, NodePath>,
 }
 
@@ -343,9 +348,23 @@ impl<'a> ValidationState<'a> {
             limits,
             issues: Vec::new(),
             node_count: 0,
+            max_node_depth: 0,
             total_text_bytes: 0,
             property_value_count: 0,
             entity_ids: BTreeMap::new(),
+        }
+    }
+
+    fn finish(self) -> Result<DocumentSummary, ValidationReport> {
+        if self.issues.is_empty() {
+            Ok(DocumentSummary::from_validation(
+                self.node_count,
+                self.max_node_depth,
+                self.total_text_bytes,
+                self.property_value_count,
+            ))
+        } else {
+            Err(ValidationReport::from_issues(self.issues))
         }
     }
 
@@ -367,6 +386,16 @@ impl<'a> ValidationState<'a> {
             ValidationSubject::Limit { kind },
             ValidationDetail::Limit { kind, actual, maximum },
             format!("{} is {actual}; the configured maximum is {maximum}", kind.as_str()),
+        );
+    }
+
+    fn counter_overflow_issue(&mut self, path: &NodePath, kind: LimitKind) {
+        self.issue(
+            ValidationCode::LimitExceeded,
+            path,
+            ValidationSubject::Limit { kind },
+            ValidationDetail::CounterOverflow { kind },
+            format!("{} exceeds the core's fixed-width counter", kind.as_str()),
         );
     }
 
@@ -401,11 +430,25 @@ impl<'a> ValidationState<'a> {
             self.limit_issue(path, LimitKind::NodeDepth, path.len(), self.limits.max_node_depth);
             return;
         }
-        self.node_count = self.node_count.saturating_add(1);
-        if self.node_count > self.limits.max_nodes {
-            self.limit_issue(path, LimitKind::NodeCount, self.node_count, self.limits.max_nodes);
+        let Some(node_count) = self.node_count.checked_add(1) else {
+            self.counter_overflow_issue(path, LimitKind::NodeCount);
+            return;
+        };
+        self.node_count = node_count;
+        if self.node_count > usize_as_u64(self.limits.max_nodes) {
+            self.limit_issue(
+                path,
+                LimitKind::NodeCount,
+                u64_as_usize(self.node_count),
+                self.limits.max_nodes,
+            );
             return;
         }
+        let Ok(node_depth) = u32::try_from(path.len()) else {
+            self.counter_overflow_issue(path, LimitKind::NodeDepth);
+            return;
+        };
+        self.max_node_depth = self.max_node_depth.max(node_depth);
 
         if let Some(element) = node.as_element() {
             self.visit_element(element, path);
@@ -447,6 +490,14 @@ impl<'a> ValidationState<'a> {
                 LimitKind::ChildCount,
                 children.len(),
                 self.limits.max_children_per_element,
+            );
+        }
+        if !child_count_fits_point_protocol(children.len()) {
+            self.limit_issue(
+                path,
+                LimitKind::ChildIndex,
+                children.len(),
+                point_protocol_child_count_maximum(),
             );
         }
         self.validate_child_shape(element, path);
@@ -577,12 +628,18 @@ impl<'a> ValidationState<'a> {
                 self.limits.max_text_bytes,
             );
         }
-        self.total_text_bytes = self.total_text_bytes.saturating_add(text.text().len());
-        if self.total_text_bytes > self.limits.max_total_text_bytes {
+        let Some(total_text_bytes) =
+            self.total_text_bytes.checked_add(usize_as_u64(text.text().len()))
+        else {
+            self.counter_overflow_issue(path, LimitKind::TotalTextBytes);
+            return;
+        };
+        self.total_text_bytes = total_text_bytes;
+        if self.total_text_bytes > usize_as_u64(self.limits.max_total_text_bytes) {
             self.limit_issue(
                 path,
                 LimitKind::TotalTextBytes,
-                self.total_text_bytes,
+                u64_as_usize(self.total_text_bytes),
                 self.limits.max_total_text_bytes,
             );
         }
@@ -671,15 +728,19 @@ impl<'a> ValidationState<'a> {
         name: &QualifiedName,
         value_path: &mut Vec<PropertyPathSegment>,
     ) {
-        self.property_value_count = self.property_value_count.saturating_add(1);
-        if self.property_value_count > self.limits.max_property_values {
+        let Some(property_value_count) = self.property_value_count.checked_add(1) else {
+            self.counter_overflow_issue(node_path, LimitKind::PropertyValueCount);
+            return;
+        };
+        self.property_value_count = property_value_count;
+        if self.property_value_count > usize_as_u64(self.limits.max_property_values) {
             self.property_limit_issue(
                 node_path,
                 format_index,
                 name,
                 value_path,
                 LimitKind::PropertyValueCount,
-                self.property_value_count,
+                u64_as_usize(self.property_value_count),
                 self.limits.max_property_values,
             );
             return;
@@ -745,4 +806,12 @@ impl<'a> ValidationState<'a> {
             format!("{} is {actual}; the configured maximum is {maximum}", kind.as_str()),
         );
     }
+}
+
+fn usize_as_u64(value: usize) -> u64 {
+    u64::try_from(value).unwrap_or(u64::MAX)
+}
+
+fn u64_as_usize(value: u64) -> usize {
+    usize::try_from(value).unwrap_or(usize::MAX)
 }

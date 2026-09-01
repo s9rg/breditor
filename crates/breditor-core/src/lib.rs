@@ -12,7 +12,9 @@
 //! Runtime [`document::Document`] and [`document::NodeRef`] values cannot be
 //! deserialized directly. Untrusted data must pass through [`codec::DocumentJsonCodec`],
 //! which checks the versioned record, schema identity, canonicality, limits, and
-//! complete tree before publishing a runtime document.
+//! complete tree before publishing a runtime document. That same successful
+//! validation derives the document's exact cached [`document::DocumentSummary`];
+//! the summary is runtime metadata and never enters the document wire record.
 
 pub mod codec;
 pub mod document;

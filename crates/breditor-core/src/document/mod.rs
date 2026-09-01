@@ -6,6 +6,7 @@ mod format;
 mod local_invariant;
 mod node_ref;
 mod property;
+mod summary;
 mod text;
 mod text_fragment;
 mod text_run;
@@ -21,6 +22,7 @@ pub use property::{
     MAX_SAFE_INTEGER, MIN_SAFE_INTEGER, PropertyInteger, PropertyIntegerError, PropertyMap,
     PropertyMapIter, PropertyObject, PropertyObjectIter, PropertyValue, PropertyValueKind,
 };
+pub use summary::DocumentSummary;
 pub use text::TextNode;
 pub(crate) use text::Utf16BoundaryError;
 pub use text_fragment::{TextFragment, TextFragmentError, TextFragmentIter};
