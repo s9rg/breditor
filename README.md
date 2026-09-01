@@ -15,7 +15,8 @@ This repository currently contains the first end-to-end Rust-core slice:
   exact-base atomic transaction-request records, and contextual complete
   editor-state checkpoints, self-contained replay-proved commit records, and
   compact replay-proved bounded session/history checkpoints plus strict
-  replay-identified local-log event envelopes;
+  replay-identified local-log event envelopes and atomic genesis-prefix
+  recovery;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -62,8 +63,9 @@ This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, ordered log-stream verification and storage,
-deduplicated incremental recovery, checkpoint linkage, and crash-tail recovery,
+and plugin lifecycle management, ordered log framing and storage,
+checkpoint-seeded or cross-generation recovery, incremental continuation,
+integrity/authenticity, and crash-tail recovery,
 Wasm bindings,
 a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for

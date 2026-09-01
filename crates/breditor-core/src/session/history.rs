@@ -6,7 +6,7 @@ use std::{
 use crate::{
     identity::QualifiedName,
     state::EditorState,
-    transaction::{Commit, HistoryIntent},
+    transaction::{Commit, HistoryIntent, ReplayDirection},
 };
 
 use super::{
@@ -174,12 +174,30 @@ impl LinearHistory {
         u32::try_from(self.redo.len()).unwrap_or(MAX_DEPTH_FALLBACK)
     }
 
+    /// Returns whether no retained or behavioral history state exists.
+    ///
+    /// Exhaustive destructuring makes any future history field update this
+    /// genesis-boundary decision before the crate can compile.
+    pub(crate) fn is_genesis_empty(&self) -> bool {
+        let Self { capacity: _, undo, redo, open_merge_group } = self;
+        undo.is_empty() && redo.is_empty() && open_merge_group.is_none()
+    }
+
     pub(crate) fn undo_entry(&self) -> Option<&HistoryEntry> {
         self.undo.back()
     }
 
     pub(crate) fn redo_entry(&self) -> Option<&HistoryEntry> {
         self.redo.back()
+    }
+
+    /// Returns the nearest replay recipe's operation count without cloning it.
+    pub(crate) fn replay_operation_count(&self, direction: ReplayDirection) -> Option<usize> {
+        match direction {
+            ReplayDirection::Undo => self.undo_entry(),
+            ReplayDirection::Redo => self.redo_entry(),
+        }
+        .map(|entry| entry.replay_operation_count(direction))
     }
 
     pub(crate) fn observe_commit(&mut self, commit: &Commit, maximum_operations: u32) {

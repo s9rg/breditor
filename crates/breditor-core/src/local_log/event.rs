@@ -142,6 +142,27 @@ impl LocalLogEvent {
             | LocalLogEventValue::ClearHistory => Ok(()),
         }
     }
+
+    /// Compares the exact durable V1 value used by one replay binding.
+    pub(crate) fn same_durable_value(&self, other: &Self) -> bool {
+        match (&self.0, &other.0) {
+            (LocalLogEventValue::Commit(commit), LocalLogEventValue::Commit(other))
+            | (LocalLogEventValue::Undo(commit), LocalLogEventValue::Undo(other))
+            | (LocalLogEventValue::Redo(commit), LocalLogEventValue::Redo(other)) => {
+                commit.same_checkpoint_proof(other)
+            }
+            (LocalLogEventValue::CloseHistoryGroup, LocalLogEventValue::CloseHistoryGroup)
+            | (LocalLogEventValue::ClearHistory, LocalLogEventValue::ClearHistory) => true,
+            (
+                LocalLogEventValue::Commit(_)
+                | LocalLogEventValue::Undo(_)
+                | LocalLogEventValue::Redo(_)
+                | LocalLogEventValue::CloseHistoryGroup
+                | LocalLogEventValue::ClearHistory,
+                _,
+            ) => false,
+        }
+    }
 }
 
 impl fmt::Debug for LocalLogEvent {

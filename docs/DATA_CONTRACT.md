@@ -40,6 +40,10 @@ The implemented Rust slice owns:
 - a strict single-entry local-log envelope that assigns independent durable
   session, append-generation, sequence, and retry identities to ordinary
   commits, undo/redo replays, and explicit history-boundary commands;
+- a bounded atomic local-log recovery boundary that proves one supplied
+  genesis-anchored, uncompacted generation prefix, skips exact semantic
+  retries, applies all five event kinds, and retains every accepted replay
+  binding;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -63,7 +67,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered stream validation, deduplicated incremental recovery, checkpoint/log
+- ordered log framing and storage, checkpoint-seeded or cross-generation
+  recovery, continuation over an already recovered prefix, checkpoint/log
   linkage, integrity/authenticity, migration, and crash-tail recovery;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
@@ -131,6 +136,14 @@ untrusted local-log-entry JSON + caller-supplied EditorContext
     -> exact event-shape routing and authoritative Commit V1 replay proof
     -> exact undo/redo metadata classification
     -> publish one independently valid LocalLogEntry or publish nothing
+
+caller-authoritative empty-history EditorSession + expected session/log IDs
++ complete in-memory vector of independently decoded LocalLogEntry values
+    -> admit the whole physical batch under host aggregate limits
+    -> require exact session and active-generation membership
+    -> classify retained exact replay bindings before sequence checks
+    -> apply every first-seen event at the exact next sequence from one
+    -> publish one RecoveredLocalLog with the session and replay index, or no session
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -302,6 +315,15 @@ history clearing. Commit-bearing events embed and prove Commit V1; undo and
 redo additionally require their exact action metadata and ignored-history
 intent. This checkpoint is one entry boundary, not yet a stream, store,
 deduplication index, recovery engine, or durability claim.
+Version `0.0.23` adds an in-memory, genesis-only recovery boundary over those
+entries. It consumes an empty-history `EditorSession` and a complete vector,
+checks one expected session and log generation, requires first-seen events to
+occupy every sequence from one, skips only exact semantic retry bindings,
+applies every event to private session state, and returns the session only with
+the complete retained replay index. Host-selected aggregate limits bound
+physical observations, unique events, and successfully applicable commit
+operations. This checkpoint is not a framed log store, checkpoint seed,
+cross-generation compaction protocol, integrity proof, or crash-tail policy.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -1821,15 +1843,19 @@ The session ID names one durable editor-session lineage. A log ID names one
 append generation and changes when a future compaction protocol creates a new
 generation. A replay ID is the idempotency identity of one logical event: the
 host must keep it stable across an uncertain retry and unique within the
-session, including across generations. V1 validates only syntax; uniqueness,
-membership, and retry equivalence require the future ordered-stream boundary.
+session, including across generations. V1 validates only syntax. The genesis
+recovery boundary below proves uniqueness, membership, and retry equivalence
+within its one retained generation prefix; later checkpoint and compaction
+protocols must carry that proof across invocations and generations.
 
 `LocalLogSequence` is a distinct one-based `u64`. It is session-global and must
 continue across log generations. JSON uses the same canonical decimal-string
 grammar as snapshot revisions, but the values are unrelated. Every event,
 including a history-boundary command that changes no editor-state revision,
-consumes one sequence. Zero is reserved for the future empty-prefix checkpoint
-anchor. `u64::MAX` is a valid final value and has no successor.
+consumes one sequence when first accepted. An exact physical retry reuses its
+logical event's sequence and replay ID. Zero represents no entry and is not a
+valid `LocalLogSequence`; `u64::MAX` is a valid final value and has no
+successor.
 
 The exact event union is:
 
@@ -1850,22 +1876,22 @@ at both outer and event shapes.
 An ordinary `commit` event accepts any replay-proved Commit V1, including a
 state-only commit or a content commit with `Record`, `Merge`, or `Ignore`
 history intent. The intent remains behaviorally active and must be authorized
-by the eventual log owner. An `undo` or `redo` event requires a non-empty
+by the log owner before recovery. An `undo` or `redo` event requires a non-empty
 applied operation recipe, exact action `breditor/undo` or `breditor/redo`, and
 `HistoryIntent::Ignore`. This classification rejects accidental or mislabeled
 ordinary commits; attacker-authored metadata can still imitate it. It does not
-prove that the commit came from the named session: future recovery must call
-the corresponding `EditorSession::undo` or `redo` method and require the
-locally derived commit to equal the embedded proof. Accepting that replay
-commit through the ordinary commit path would clear history instead of moving
-the cursor.
+prove that the commit came from the named session. Recovery derives the
+authoritative replay from its private `EditorSession`, requires the complete
+derived durable proof to equal the embedded proof, and only then moves the history
+cursor. Accepting that replay commit through the ordinary commit path would
+clear history instead of moving the cursor.
 
 `closeHistoryGroup` and `clearHistory` deliberately have no commit payload.
 They exist because both commands can change future session behavior without
 changing the document or consuming an editor-state revision. Honest producers
 emit them only when the command is effective. V1 cannot establish effectiveness
-from an isolated entry; the future recovery verifier must reject or explicitly
-classify a redundant command against the recovered session.
+from an isolated entry. Recovery rejects a first-seen redundant command against
+its private session; an exact retry is skipped before that effectiveness check.
 
 `LocalLogEntryJsonCodec` is bound to one caller-supplied `EditorContext`. Decode
 enforces the whole-entry byte cap, routes outer format and version, parses the
@@ -1880,6 +1906,93 @@ emits deterministic compact Rust JSON. A commit that fits its standalone cap
 can still be rejected when the wrapper pushes the complete entry over that same
 context limit.
 
+### Genesis local-log recovery
+
+`LocalLogRecovery` is an all-or-nothing verifier and application boundary for
+one supplied, uncompacted generation prefix beginning at session-global
+sequence one. The caller supplies the expected `LocalSessionId`, active
+`LocalLogId`, a host-selected `LocalLogRecoveryLimits`, an owned
+`EditorSession`, and an owned vector of already decoded `LocalLogEntry` values.
+The initial session must have zero undo and redo depth. Its exact state,
+`EditorContext`, history capacity, and durable relationship to the named
+session are caller-authoritative; recovery neither serializes nor authenticates
+that genesis boundary. “Genesis” refers only to sequence one of this local log:
+the initial editor state may contain imported content and any valid revision,
+and the log does not prove how that state was created.
+
+The batch state machine is fixed:
+
+1. Convert and admit the complete physical observation count before applying
+   anything. Exact retries count as observations.
+2. Reject an initial session with retained undo or redo history.
+3. For each physical observation, require the expected session ID and active
+   log ID before consulting replay state.
+4. Consult the deterministic retained `ReplayId` index before sequence checks.
+   The same replay ID, sequence, event discriminator, and complete durable
+   Commit V1 proof is an exact semantic retry: count and skip it without
+   applying it or advancing order. Replay-derived commit caches do not enter
+   retry identity. Any changed sequence or durable event is a fatal conflict.
+5. Require each first-seen event at the exact next sequence, beginning at one.
+   Gaps, backwards positions, and a new replay ID reusing an old position fail.
+6. Charge the unique-event and aggregate forward-operation budgets before
+   application. Ordinary commits charge their durable forward recipe; undo and
+   redo consult the authoritative retained local recipe before cloning or
+   deriving it. Controls charge zero operations. A logged replay with another
+   operation count cannot undercharge derivation: the authoritative budget or
+   proof-count check rejects it before the recipe is derived.
+7. Apply the first-seen event to the privately owned session, then retain its
+   complete entry and replay-index position. Ordinary commits use exact-base
+   session acceptance. Undo and redo use an opaque one-shot prepared replay so
+   comparison happens before history mutation. Control commands must be
+   effective.
+
+Success returns `RecoveredLocalLog`, which owns the recovered session, every
+first-seen entry, and the complete deterministic replay index for the accepted
+prefix. It exposes physical, unique, duplicate, and applied-operation counts;
+the covered and next sequence; ordered unique entries; and lookup by replay ID.
+Its debug representation is redacted. `into_session` deliberately discards the
+retained proof bindings, so that bare session must not be used to claim safe
+continuation. There is no continuation API in this checkpoint.
+
+Every typed failure owns only bounded identities, fixed-width counts and
+indices, stable categories, and payload-free application subcodes. It retains
+no rejected entry, commit, editor state, transaction guard, or document-bearing
+history error. Because recovery consumes the session and publishes only on
+complete success, an ordinary returned error cannot expose the privately
+applied prefix. This atomicity contract does not cover allocation failure,
+panic, abort, or process crash.
+
+Default aggregate ceilings are 10,000 physical observations, 10,000 unique
+events, and 16,384 applied forward operations. Hosts can lower any limit to
+zero. These limits bound retained entry/index cardinality and aggregate
+successful application work; the active `EditorContext` still bounds each
+entry's document and transaction resources. They do not bound memory already
+owned by the caller's vector, promise a fixed peak-memory multiple, or replace
+the local-log-entry decoder's byte and structural limits.
+
+The operation budget charges forward-operation cardinality from an ordinary
+event proof or the authoritative retained undo/redo recipe before application.
+A same-size forged replay proof can cause one already-budgeted local derivation
+before complete proof mismatch, but a smaller logged recipe cannot undercharge
+a larger retained history unit. Checkpoint-seeded recovery must preserve this
+preflight seam and include seeded history operations in its aggregate policy.
+
+Exact retry equality compares the durable runtime proof after decoding, not raw
+JSON bytes or replay-derived commit caches: whitespace and object-member order
+are irrelevant. All accepted first-seen entries are retained, which closes
+replay-ID uniqueness only for this one genesis recovery result and costs memory
+proportional to the unique prefix.
+The API accepts exactly one log ID and sequence from one, so it cannot recover
+an arbitrary checkpoint tail or a later append generation. Changing a log ID
+must never reset sequence or replay scope; a later checked checkpoint must bind
+the covered sequence and retained replay policy before cross-generation
+compaction is safe.
+
+`LocalLogRecoveryError::SequenceExhausted` is reserved for that future
+checkpoint-seeded continuation. A v0.0.23 genesis vector must fit a `u64`
+physical count and begin at one, so it cannot contain the additional
+observation needed after accepting sequence `u64::MAX`.
+
 The format separates four concepts that other editors often keep in different
 runtime layers: log order, retry identity, undo grouping, and serialization
 version. CKEditor operations and batches are a useful example of separating
@@ -1890,13 +2003,14 @@ protocols are not adopted here. In particular, ProseMirror client IDs are not
 durable idempotency keys, Lexical history stacks are not an append log, and
 Tiptap/Yjs collaboration updates solve a different multi-writer problem.
 
-This format is only one event envelope. It does not enforce contiguous or
-monotonic sequences, session/log membership, replay-ID uniqueness, duplicate
-payload equivalence, idempotent append, event applicability, checkpoint-prefix
-linkage, framing, complete-frame versus torn-tail classification, append/flush/
-fsync/ack order, compaction, migration, checksums, hashes, signatures,
-authorization, writer fencing, or cross-generation deduplication. IDs and
-sequence are unauthenticated assertions, not revisions or content hashes.
+The entry format by itself is only one event envelope and enforces none of the
+batch laws above. Genesis recovery establishes contiguous order, membership,
+replay uniqueness/equivalence, and applicability only for the supplied decoded
+vector. Neither layer establishes idempotent append, checkpoint-prefix linkage,
+framing, complete-frame versus torn-tail classification, append/flush/fsync/ack
+order, compaction, migration, checksums, hashes, signatures, authorization,
+writer fencing, or cross-generation deduplication. IDs and sequence remain
+unauthenticated assertions, not revisions or content hashes.
 Commit-bearing entries also repeat Commit V1's complete before state, so a
 naive tail costs roughly entry count times document size. Filesystem durability
 belongs to a platform adapter; a browser/Wasm host cannot inherit native
@@ -1904,15 +2018,18 @@ belongs to a platform adapter; a browser/Wasm host cannot inherit native
 
 ## Next gate
 
-Build the ordered recovery verifier over Local Log Entry V1. It must establish
-session/log membership, contiguous sequence, replay-ID uniqueness, exact
-duplicate equivalence, and deterministic application of all five event kinds
-without publishing a partial recovered session. The following checkpoint must
-bind Session Checkpoint V1 to a covered log prefix and define cross-generation
-compaction and retained deduplication state. Framing, migration, integrity and
-optional authenticity, authorization ownership, atomic append/fsync behavior,
-crash-tail detection/truncation, and multi-writer fencing remain separate
-storage-layer gates.
+Bind Session Checkpoint V1 to a proved local-log prefix. The checkpoint must
+name the durable session, covered-through sequence, active or successor log
+generation, and an exact retained replay-ID policy sufficient to reject reuse
+from the compacted prefix. Restore plus tail recovery must preserve session-wide
+sequence and retry scope across invocations and generations without retaining
+an unbounded duplicate copy of every full Commit V1 envelope. The contract must
+define empty and `u64::MAX` behavior, generation transitions, atomic
+checkpoint/log replacement, and failure publication before exposing incremental
+continuation. Framing, migration, integrity and optional authenticity,
+authorization ownership, atomic append/fsync behavior, crash-tail
+detection/truncation, and multi-writer fencing remain separate storage-layer
+gates.
 The log must not silently treat optimistic operation guards or caller-owned
 lineage/revision values as exactly-once delivery. Browser `beforeinput`,
 composition ownership, IME buffering, and paste chunking remain adapter

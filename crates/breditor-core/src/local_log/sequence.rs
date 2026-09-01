@@ -15,6 +15,9 @@ impl LocalLogSequence {
     /// The first valid local-log entry position.
     pub const FIRST: Self = Self(NonZeroU64::MIN);
 
+    /// The final representable local-log entry position.
+    pub const MAX: Self = Self(NonZeroU64::MAX);
+
     /// Creates a nonzero session-global sequence.
     ///
     /// # Errors
@@ -84,11 +87,9 @@ mod tests {
     fn sequences_are_one_based_and_checked() -> Result<(), LocalLogSequenceError> {
         assert_eq!(LocalLogSequence::try_new(0), Err(LocalLogSequenceError::Zero));
         assert_eq!(LocalLogSequence::FIRST.get(), 1);
+        assert_eq!(LocalLogSequence::MAX.get(), u64::MAX);
         assert_eq!(LocalLogSequence::FIRST.successor()?.get(), 2);
-        assert_eq!(
-            LocalLogSequence::try_new(u64::MAX)?.successor(),
-            Err(LocalLogSequenceError::Overflow)
-        );
+        assert_eq!(LocalLogSequence::MAX.successor(), Err(LocalLogSequenceError::Overflow));
         assert_eq!(LocalLogSequenceError::Zero.as_str(), "local_log_sequence.zero");
         assert_eq!(LocalLogSequenceError::Overflow.as_str(), "local_log_sequence.overflow");
         Ok(())

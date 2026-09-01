@@ -4,7 +4,7 @@
 //! proof schema, strict versioned document, singular-operation, exact-base
 //! transaction-request, contextual complete editor-state, replay-proved
 //! durable commit, bounded session-checkpoint, and replay-identified local-log
-//! entry JSON decoding,
+//! entry JSON decoding plus atomic genesis-prefix recovery,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -51,6 +51,11 @@
 //! session-global sequence, and retry identities around ordinary commit,
 //! undo/redo, and history-boundary events. One entry does not prove stream
 //! membership, ordering, deduplication, durability, or authorization.
+//! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
+//! empty-history session and a complete in-memory batch, prove one contiguous
+//! genesis-anchored generation, apply all five event kinds exactly once, and
+//! publish no session on error. It is not framing, storage, checkpoint linkage,
+//! cross-generation compaction, authenticity, or crash-tail recovery.
 
 pub mod action;
 pub mod codec;

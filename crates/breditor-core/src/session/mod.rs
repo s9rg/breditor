@@ -12,6 +12,7 @@ mod history;
 mod history_entry;
 mod history_stamp;
 mod history_status;
+mod prepared_history_replay;
 
 pub use capacity::{
     DEFAULT_HISTORY_CAPACITY, HistoryCapacity, HistoryCapacityError, MAX_HISTORY_CAPACITY,
@@ -24,3 +25,4 @@ pub use history_status::SessionHistoryStatus;
 pub(crate) use editor_session::EditorSessionCheckpointParts;
 pub(crate) use history::HistoryCheckpointInvariantError;
 pub(crate) use history_entry::HistoryEntry;
+pub(crate) use prepared_history_replay::{PreparedHistoryReplay, PreparedHistoryReplayError};

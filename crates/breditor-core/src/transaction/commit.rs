@@ -56,6 +56,38 @@ impl Commit {
         CommitCheckpointParts { before, after, forward_operations, metadata }
     }
 
+    /// Compares exactly the fields represented by the durable Commit V1 proof.
+    ///
+    /// Inverse operations, relocation, changes, the result document, and the
+    /// successor snapshot are replay-derived values. Excluding those caches
+    /// keeps local-log retry identity tied to the durable proof even if a
+    /// future implementation changes an internal derived representation.
+    pub(crate) fn same_checkpoint_proof(&self, other: &Self) -> bool {
+        let Self {
+            before,
+            after,
+            forward_operations,
+            inverse_operations: _,
+            relocation: _,
+            changes: _,
+            metadata,
+        } = self;
+        let Self {
+            before: other_before,
+            after: other_after,
+            forward_operations: other_forward_operations,
+            inverse_operations: _,
+            relocation: _,
+            changes: _,
+            metadata: other_metadata,
+        } = other;
+        before == other_before
+            && forward_operations == other_forward_operations
+            && after.selection() == other_after.selection()
+            && after.pending_formats() == other_after.pending_formats()
+            && metadata == other_metadata
+    }
+
     /// Returns the exact source snapshot.
     #[must_use]
     pub const fn base_snapshot(&self) -> &SnapshotId {

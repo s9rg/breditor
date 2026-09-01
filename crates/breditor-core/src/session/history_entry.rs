@@ -106,6 +106,14 @@ impl HistoryEntry {
         same_replay_result(state, &self.after)
     }
 
+    /// Returns the authoritative retained recipe cardinality for one replay.
+    pub(crate) fn replay_operation_count(&self, direction: ReplayDirection) -> usize {
+        match direction {
+            ReplayDirection::Undo => self.inverse_operations.len(),
+            ReplayDirection::Redo => self.forward_operations.len(),
+        }
+    }
+
     pub(crate) fn undo_transaction(
         &self,
         current: &EditorState,

@@ -13,6 +13,7 @@ use crate::{
 };
 
 use super::{
+    PreparedHistoryReplay, PreparedHistoryReplayError,
     capacity::HistoryCapacity,
     error::{HistoryReplayError, SessionCommitError},
     history::{HistoryCheckpointInvariantError, LinearHistory, LinearHistoryCheckpointParts},
@@ -129,6 +130,16 @@ impl EditorSession {
     #[must_use]
     pub fn redo_depth(&self) -> u32 {
         self.history.redo_depth()
+    }
+
+    /// Returns whether recovery can treat this session as a history-free log genesis.
+    pub(crate) fn has_genesis_empty_history(&self) -> bool {
+        self.history.is_genesis_empty()
+    }
+
+    /// Returns the authoritative nearest replay recipe size without deriving it.
+    pub(crate) fn replay_operation_count(&self, direction: ReplayDirection) -> Option<usize> {
+        self.history.replay_operation_count(direction)
     }
 
     /// Returns whether one undo entry is available now.
@@ -273,16 +284,30 @@ impl EditorSession {
     /// A host can call this at a recorded IME, paste, focus, or timer boundary;
     /// the Rust core never reads a wall clock itself.
     pub fn close_history_group(&mut self) {
-        if self.history.close_merge_group() {
-            self.rotate_history_stamp();
-        }
+        let _ = self.close_history_group_if_effective();
     }
 
     /// Drops all retained undo and redo entries without changing editor state.
     pub fn clear_history(&mut self) {
-        if self.history.clear() {
+        let _ = self.clear_history_if_effective();
+    }
+
+    /// Closes the current merge group and reports whether the boundary was effective.
+    pub(crate) fn close_history_group_if_effective(&mut self) -> bool {
+        let changed = self.history.close_merge_group();
+        if changed {
             self.rotate_history_stamp();
         }
+        changed
+    }
+
+    /// Clears retained history and reports whether any history state changed.
+    pub(crate) fn clear_history_if_effective(&mut self) -> bool {
+        let changed = self.history.clear();
+        if changed {
+            self.rotate_history_stamp();
+        }
+        changed
     }
 
     fn publish(&mut self, commit: &Commit) {
@@ -292,17 +317,12 @@ impl EditorSession {
     }
 
     fn replay(&mut self, direction: ReplayDirection) -> Result<Option<Commit>, HistoryReplayError> {
-        let Some(commit) = self.preflight_replay(direction)? else {
+        let Some(prepared) = self.preflight_replay(direction)? else {
             return Ok(None);
         };
-        let state = commit.after().clone();
-        match direction {
-            ReplayDirection::Undo => self.history.finish_undo(&state),
-            ReplayDirection::Redo => self.history.finish_redo(&state),
-        }
-        self.state = state;
-        self.rotate_history_stamp();
-        Ok(Some(*commit))
+        self.publish_prepared_replay(prepared)
+            .map(Some)
+            .map_err(|source| HistoryReplayError::ResultMismatch { direction: source.direction() })
     }
 
     /// Prepares and proves the currently authoritative replay without changing
@@ -310,7 +330,7 @@ impl EditorSession {
     pub(crate) fn preflight_replay(
         &self,
         direction: ReplayDirection,
-    ) -> Result<Option<Box<Commit>>, HistoryReplayError> {
+    ) -> Result<Option<PreparedHistoryReplay>, HistoryReplayError> {
         let transaction = match direction {
             ReplayDirection::Undo => self
                 .history
@@ -344,7 +364,42 @@ impl EditorSession {
         if !result_matches {
             return Err(HistoryReplayError::ResultMismatch { direction });
         }
-        Ok(Some(Box::new(commit)))
+        Ok(Some(PreparedHistoryReplay::new(
+            direction,
+            Box::new(commit),
+            self.history_stamp.clone(),
+        )))
+    }
+
+    /// Publishes one replay prepared from this exact unchanged session observation.
+    ///
+    /// Both the opaque history stamp and the complete commit base state are
+    /// rechecked before either history stack, current state, or history stamp
+    /// changes. The token owns its direction so callers cannot finish it on the
+    /// opposite branch.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PreparedHistoryReplayError`] without mutation if the session's
+    /// history observation or complete current state changed after preparation.
+    pub(crate) fn publish_prepared_replay(
+        &mut self,
+        prepared: PreparedHistoryReplay,
+    ) -> Result<Commit, PreparedHistoryReplayError> {
+        let (direction, commit, origin_stamp) = prepared.into_parts();
+        if origin_stamp != self.history_stamp || commit.before() != &self.state {
+            return Err(PreparedHistoryReplayError::new(direction));
+        }
+
+        let commit = *commit;
+        let state = commit.after().clone();
+        match direction {
+            ReplayDirection::Undo => self.history.finish_undo(&state),
+            ReplayDirection::Redo => self.history.finish_redo(&state),
+        }
+        self.state = state;
+        self.rotate_history_stamp();
+        Ok(commit)
     }
 
     fn rotate_history_stamp(&mut self) {
@@ -368,6 +423,179 @@ mod tests {
             HistoryIntent, ReplayDirection, Transaction, TransactionApplyError, TransactionMetadata,
         },
     };
+
+    fn state_with_text(
+        context: &EditorContext,
+        lineage: &str,
+        text: &str,
+    ) -> Result<EditorState, Box<dyn Error>> {
+        let encoded = serde_json::json!({
+            "format": "breditor/document",
+            "formatVersion": 1,
+            "schema": { "name": "breditor/base", "version": 1 },
+            "root": {
+                "kind": "element",
+                "type": "breditor/document",
+                "entityId": null,
+                "properties": {},
+                "children": [{
+                    "kind": "element",
+                    "type": "breditor/paragraph",
+                    "entityId": null,
+                    "properties": {},
+                    "children": [{ "kind": "text", "text": text, "formats": [] }],
+                }],
+            },
+        })
+        .to_string();
+        let document = DocumentJsonCodec::new(context.schema().clone())
+            .with_limits(context.limits().clone())
+            .decode(&encoded)?;
+        EditorState::try_new(context, LineageId::try_new(lineage)?, document, None, None)
+            .map_err(Into::into)
+    }
+
+    fn insert_at_start(
+        state: &EditorState,
+        text: &str,
+        history: HistoryIntent,
+    ) -> Result<Transaction, Box<dyn Error>> {
+        let start = TextOffset::try_new(0)?;
+        let range = TextRange::try_new(NodePath::try_from_indices(vec![0])?, start, start)?;
+        let replacement: TextFragment = TextRun::try_new(text, FormatSet::default())?.into();
+        let splice = TextSplice::capture(state.context(), state.document(), range, replacement)?;
+        Ok(Transaction::new(state, vec![splice.into()])
+            .with_metadata(TransactionMetadata::new(None, history)))
+    }
+
+    fn session_with_insert(
+        lineage: &str,
+        history: HistoryIntent,
+    ) -> Result<EditorSession, Box<dyn Error>> {
+        let context = EditorContext::default();
+        let state = state_with_text(&context, lineage, "private-prepared-history")?;
+        let transaction = insert_at_start(&state, "x", history)?;
+        let mut session = EditorSession::new(state);
+        if session.apply_transaction(&transaction)?.into_commit().is_none() {
+            return Err(io::Error::other("setup transaction was unexpectedly unchanged").into());
+        }
+        Ok(session)
+    }
+
+    #[test]
+    fn prepared_replay_is_redacted_and_publishes_its_proved_direction() -> Result<(), Box<dyn Error>>
+    {
+        let mut session = session_with_insert("prepared-replay-success", HistoryIntent::Record)?;
+        let status_before = session.history_status();
+        let Some(prepared) = session.preflight_replay(ReplayDirection::Undo)? else {
+            return Err(io::Error::other("undo preparation was unexpectedly unavailable").into());
+        };
+
+        assert_eq!(prepared.direction(), ReplayDirection::Undo);
+        assert_eq!(prepared.commit().before(), session.state());
+        let debug = format!("{prepared:?}");
+        assert!(debug.contains("direction: Undo"));
+        assert!(!debug.contains("private-prepared-history"));
+
+        let commit = session.publish_prepared_replay(prepared)?;
+        assert_eq!(session.state(), commit.after());
+        assert_eq!(session.undo_depth(), 0);
+        assert_eq!(session.redo_depth(), 1);
+        assert_ne!(session.history_status().stamp(), status_before.stamp());
+        Ok(())
+    }
+
+    #[test]
+    fn effective_boundary_makes_prepared_replay_stale_without_partial_publication()
+    -> Result<(), Box<dyn Error>> {
+        let group = QualifiedName::try_new("test/prepared-stale-group")?;
+        let mut session =
+            session_with_insert("prepared-replay-stale-stamp", HistoryIntent::Merge { group })?;
+        let Some(prepared) = session.preflight_replay(ReplayDirection::Undo)? else {
+            return Err(io::Error::other("undo preparation was unexpectedly unavailable").into());
+        };
+        assert!(session.close_history_group_if_effective());
+        let state_before = session.state.clone();
+        let history_before = session.history.clone();
+        let stamp_before = session.history_stamp.clone();
+
+        let Err(error) = session.publish_prepared_replay(prepared) else {
+            return Err(io::Error::other("stale preparation unexpectedly published").into());
+        };
+        assert_eq!(error.direction(), ReplayDirection::Undo);
+        assert!(!error.to_string().contains("private-prepared-history"));
+        assert_eq!(session.state, state_before);
+        assert_eq!(session.history, history_before);
+        assert_eq!(session.history_stamp, stamp_before);
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_replay_checks_complete_before_state_even_with_matching_stamp()
+    -> Result<(), Box<dyn Error>> {
+        let mut session =
+            session_with_insert("prepared-replay-state-check", HistoryIntent::Record)?;
+        let Some(prepared) = session.preflight_replay(ReplayDirection::Undo)? else {
+            return Err(io::Error::other("undo preparation was unexpectedly unavailable").into());
+        };
+        let context = session.state.context().clone();
+        let different_document = DocumentJsonCodec::new(context.schema().clone())
+            .with_limits(context.limits().clone())
+            .decode(
+                r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[{"kind":"text","text":"different-private-state","formats":[]}] }]}}"#,
+            )?;
+        session.state = EditorState::try_from_validated_parts(
+            &context,
+            session.state.snapshot().clone(),
+            different_document,
+            None,
+            None,
+        )?;
+        let state_before = session.state.clone();
+        let history_before = session.history.clone();
+        let stamp_before = session.history_stamp.clone();
+
+        let Err(error) = session.publish_prepared_replay(prepared) else {
+            return Err(io::Error::other("mismatched base state unexpectedly published").into());
+        };
+        assert_eq!(error.direction(), ReplayDirection::Undo);
+        assert_eq!(session.state, state_before);
+        assert_eq!(session.history, history_before);
+        assert_eq!(session.history_stamp, stamp_before);
+        Ok(())
+    }
+
+    #[test]
+    fn effective_history_wrappers_rotate_identity_only_when_they_change_history()
+    -> Result<(), Box<dyn Error>> {
+        let context = EditorContext::default();
+        let mut empty = EditorSession::new(state_with_text(
+            &context,
+            "effective-history-empty",
+            "private-empty-history",
+        )?);
+        let empty_stamp = empty.history_stamp.clone();
+        assert!(!empty.close_history_group_if_effective());
+        assert!(!empty.clear_history_if_effective());
+        assert_eq!(empty.history_stamp, empty_stamp);
+
+        let group = QualifiedName::try_new("test/effective-history-group")?;
+        let mut session =
+            session_with_insert("effective-history-nonempty", HistoryIntent::Merge { group })?;
+        let published_stamp = session.history_stamp.clone();
+        assert!(session.close_history_group_if_effective());
+        assert_ne!(session.history_stamp, published_stamp);
+        let closed_stamp = session.history_stamp.clone();
+        assert!(!session.close_history_group_if_effective());
+        assert_eq!(session.history_stamp, closed_stamp);
+
+        assert!(session.clear_history_if_effective());
+        assert_ne!(session.history_stamp, closed_stamp);
+        let cleared_stamp = session.history_stamp.clone();
+        assert!(!session.clear_history_if_effective());
+        assert_eq!(session.history_stamp, cleared_stamp);
+        Ok(())
+    }
 
     #[test]
     fn revision_overflow_leaves_state_history_and_merge_group_unchanged()

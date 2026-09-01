@@ -326,11 +326,11 @@ impl ActionStateCatalog {
 
     fn derive_history(session: &EditorSession, direction: ReplayDirection) -> ActionStateOutcome {
         match session.preflight_replay(direction) {
-            Ok(Some(commit)) => ActionStateOutcome::Resolved(ResolvedActionState::new(
+            Ok(Some(prepared)) => ActionStateOutcome::Resolved(ResolvedActionState::new(
                 ObservedAvailability::Enabled,
                 ActionStateIndicator::stateless(),
-                Some(history_actual_writes(&commit)),
-                ActionStateProvenance::History { direction },
+                Some(history_actual_writes(prepared.commit())),
+                ActionStateProvenance::History { direction: prepared.direction() },
             )),
             Ok(None) => ActionStateOutcome::Resolved(ResolvedActionState::new(
                 ObservedAvailability::Disabled(history_unavailable_reason(direction)),

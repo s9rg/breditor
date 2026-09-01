@@ -68,6 +68,20 @@ impl LocalLogEntry {
     pub const fn event_kind(&self) -> LocalLogEventKind {
         self.event.kind()
     }
+
+    /// Compares the exact logical binding of one replay ID within a session.
+    ///
+    /// Session and active-log membership are verified separately by recovery.
+    /// Log placement is deliberately excluded so a future checked compaction
+    /// protocol can carry the same logical replay binding into a new generation.
+    /// Commit-bearing events compare their complete durable Commit V1 proof,
+    /// excluding replay-derived runtime caches.
+    pub(crate) fn same_replay_binding(&self, other: &Self) -> bool {
+        let Self { log_id: _, session_id: _, sequence, replay_id, event } = self;
+        sequence == &other.sequence
+            && replay_id == &other.replay_id
+            && event.same_durable_value(&other.event)
+    }
 }
 
 impl fmt::Debug for LocalLogEntry {
