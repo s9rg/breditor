@@ -24,14 +24,20 @@ This repository currently contains the first end-to-end Rust-core slice:
   relocation laws;
 - atomic transactions, explicit state updates, relocation maps,
   heterogeneous operation-relative change sets, and typed failures;
+- an immutable, deterministic action registry with namespaced identities,
+  bounded versioned inputs, exact prepared capabilities, and fail-closed
+  extension conflicts;
+- semantic `insert-paragraph-break` and `delete-backward` actions shared by
+  keyboard, toolbar, palette, and API adapters;
 - `Commit` helpers that construct undo and redo transactions; and
 - document, fragment, and per-transaction operation limits.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
-direct-root paragraph split/join, an action/plugin registry, an actual history
-stack and coalescer, persistent operation/state codecs and reload replay, Wasm
-bindings, a DOM bridge, collaboration, and generic incremental validation for
-structural or custom-schema edits are not implemented. See
+direct-root paragraph split/join, cross-paragraph range replacement, action
+presentation state and plugin lifecycle management, an actual history stack and
+coalescer, persistent operation/state codecs and reload replay, Wasm bindings,
+a DOM bridge, collaboration, and generic incremental validation for structural
+or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations.
 

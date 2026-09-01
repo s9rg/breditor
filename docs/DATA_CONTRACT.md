@@ -19,14 +19,18 @@ The implemented Rust slice owns:
   operations with closed exact content inverses;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets; and
-- immutable commits with helpers that construct undo and redo transactions.
+- immutable commits with helpers that construct undo and redo transactions;
+- an immutable typed action registry with fail-closed identity conflicts,
+  snapshot-bound capability preparation, and bounded cross-language inputs; and
+- semantic base actions for paragraph breaks and backward deletion.
 
 The following remain deliberately unimplemented:
 
 - structural operations beyond direct-root base-paragraph split/join, including
   arbitrary block insertion, list changes, metadata conflict rules, and node
   movement;
-- an action/command/plugin registry and toolbar-facing capability queries;
+- action active/mixed/value state, presentation metadata, keymap routing,
+  plugin dependencies/lifecycle, and a durable registry manifest;
 - an actual undo/redo stack, grouping, coalescing, and history retention policy;
 - persistent operation and editor-state codecs, durable logs, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
@@ -52,6 +56,12 @@ EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
     -> relocate or explicitly set editor state
     -> publish one Commit or publish nothing
+
+ActionInvocation + immutable ActionRegistry + exact EditorState
+    -> decode one versioned bounded input
+    -> Disabled(stable reason) or build one explicit ActionPlan
+    -> preflight one exact-base Transaction
+    -> PreparedAction(transaction + cached Commit) or typed fault
 ```
 
 Deserializing JSON can never construct a runtime `Document` directly. Records
@@ -105,6 +115,11 @@ Version `0.0.4` deliberately publishes paragraph split/join candidates only
 through complete validation. This establishes the structural operation,
 inverse, relocation, summary, and diagnostic laws before introducing a second
 incremental proof. Untouched root siblings remain allocation-shared.
+
+Version `0.0.5` adds the deterministic action catalog and the first semantic
+paragraph-break/backward-delete planners. Action preparation remains an
+in-memory runtime contract: action inputs, plans, and prepared commits do not
+yet have a durable codec, and publication still requires a future session owner.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -323,6 +338,90 @@ formats while revisions continue monotonically. They are transaction helpers,
 not an implemented history stack; grouping metadata is only a contract for the
 future history owner.
 
+## Actions, capabilities, and extension boundary
+
+An action is a pure planner over one immutable `EditorState`; it is not a DOM
+event callback and cannot publish state directly. `ActionId` wraps a validated
+qualified name. `ActionRegistry` is constructed once from typed registrations,
+stores entries in lexical ID order, and rejects the complete build when two
+registrations claim the same ID. Registration order, load timing, and a hidden
+priority do not select a winner. A host that wants fallback behavior must name
+and implement that routing explicitly outside the registry.
+
+The registry remains outside `EditorContext` and `EditorState`. Rust trait
+objects are runtime extension policy and are neither content equality nor replay
+data. An action compiled into Rust or Wasm declares a concrete decoded input
+type and returns either a stable `DisabledReason` or a complete `ActionPlan`.
+The plan explicitly carries operations, endpoint-deletion policy, result
+selection policy, pending-format policy, and history intent. Handlers are
+contractually deterministic, synchronous, side-effect free, `Send`, and `Sync`;
+the type system cannot prove purity, so untrusted native plugins require a
+separate isolation boundary.
+
+Typed action inputs carry a namespaced contract plus a nonzero independent
+version. Their `ActionValue` payload is a canonical immutable JSON-shaped tree:
+null, Boolean, JavaScript-safe integer, string, array, or lexically ordered
+object. Construction rejects duplicate/invalid object keys and fixes these
+budgets before a future Wasm codec exists:
+
+- maximum container depth: 16;
+- maximum values in the complete tree: 1,024;
+- maximum direct array/object entries: 256;
+- maximum aggregate UTF-8 string and object-key bytes: 65,536; and
+- maximum object-key bytes: 128.
+
+Object keys use the same explicit ASCII grammar on every target: the first byte
+is a letter or `_`, and later bytes are ASCII alphanumeric, `.`, `_`, or `-`.
+They are ordered by those bytes. Integer-like and non-ASCII keys are therefore
+not accepted, and a TypeScript adapter must preserve ordered entries rather
+than substituting JavaScript object-enumeration semantics.
+
+`ActionRegistry::prepare` is the only capability path. It decodes the input and
+evaluates the handler exactly once. A disabled result preserves its stable code
+and optional bounded detail. An enabled plan is stamped with the invoked action
+ID, bound to the complete base state, and passed through the authoritative
+transaction reducer immediately. A failed transaction or enabled no-op is an
+invalid-plan error, never an enabled capability. A successful preparation owns
+the exact transaction and its cached `Commit`; consuming it verifies both the
+snapshot and complete state equality, then returns that cached commit without
+calling either handler or reducer again. A toolbar, keymap, command palette, or
+API adapter therefore invokes the same ID and must not maintain a second
+enablement implementation.
+
+This check is not shared-state publication. Two preparations made from the same
+base can each produce a valid branch with the same successor revision if a host
+passes that old state to both. A future editor-session owner or host queue must
+serialize publication against its actual current state and discard/reprepare a
+stale queued action. `Send` and `Sync` make values thread-safe; they do not make
+parallel editor histories linear.
+
+The two base actions take no input:
+
+- `breditor/insert-paragraph-break` replaces an extended same-paragraph range
+  with nothing and splits at its spatial start, or performs one split for a
+  collapsed range. The planner chooses split/delete or delete/split order so
+  each validated intermediate fits the active limits; if neither route can
+  represent an otherwise valid final tree it returns a stable intermediate-limit
+  disabled reason. It explicitly places a collapsed caret at the new right
+  paragraph start, preserves the exact pending-format option, and records one
+  independent history event.
+- `breditor/delete-backward` deletes an extended same-paragraph range, deletes
+  the immediately preceding Unicode scalar for an interior collapsed caret, or
+  joins the previous paragraph at paragraph start. It explicitly places the
+  result caret, preserves pending formats, and requests merge group
+  `breditor/delete-backward`.
+
+Both actions support forward/backward range direction, point aliases, empty
+paragraphs, formatted seams, and non-BMP scalar boundaries. Cross-paragraph
+extended ranges are disabled until a native guarded block-range replacement
+operation exists. Backward deletion is scalar-based, not grapheme-based:
+combining marks and components of a zero-width-joiner emoji can be deleted
+separately. DOM `beforeinput`, `preventDefault`, IME ownership, shortcut
+precedence, labels, icons, and active/mixed/value toolbar state remain host or
+future-runtime concerns. Action callbacks, IDs, and post-hooks are not replayed;
+only their proven transaction operations and state outcomes cross the reducer
+boundary.
+
 ## Current performance limitations
 
 The correctness-first implementation deliberately accepts costs that must be
@@ -336,6 +435,10 @@ checked global deltas instead of rescanning a matching-profile document, but:
 - every paragraph split/join performs full-tree validation and carries complete
   paragraph guards until structural subtree proofs and durable operation records
   are specified;
+- every enabled action capability query eagerly applies its generated
+  transaction once to prove and cache the result; repeated toolbar queries for
+  one unchanged state therefore repeat planning and validation unless the host
+  retains the `PreparedAction`;
 - split/join scans the complete guarded paragraphs and currently reboxes text
   `NodeRef`s inside affected paragraphs, although their immutable string/format
   payloads remain shared;
@@ -395,11 +498,12 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Add the deterministic action/command boundary that maps editor intent onto
-transactions without putting DOM or toolbar policy in the reducer. It must
-define namespaced action identities, typed inputs, enabled/disabled capability
-results, deterministic registry ordering/conflict rules, explicit selection and
-pending-format outcomes, and history intent. Built-in Enter and boundary
-Backspace actions should compose the proven split/join primitives; an expandable
-toolbar must query the same action capabilities rather than owning a second
-command path.
+Add a synchronous Rust editor-session owner that integrates the current
+`EditorState` and an actual bounded linear history. It must atomically accept
+exact-base commits, implement deterministic `Record`/`Merge`/`Ignore` rules
+without a clock, preserve selection and pending-format cursor boundaries, clear
+redo after new content, split merge groups before the transaction operation cap,
+and leave current state plus both stacks unchanged on replay failure. A
+content-changing ignored commit must conservatively clear history until mapped
+non-history changes exist. DOM dispatch queues, timer/IME group boundaries, and
+toolbar-facing undo/redo actions remain later adapter/runtime work.

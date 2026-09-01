@@ -5,9 +5,10 @@
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join operations, atomic transactions,
 //! proof-backed local text validation, structural relocation, and exact
-//! in-memory undo/redo requests. It deliberately contains no browser, framework,
-//! asynchronous queue, clock, random-number, collaboration, or Wasm binding
-//! code.
+//! in-memory undo/redo requests. It also owns a deterministic typed action
+//! registry and the first semantic paragraph-break/backward-delete actions. It
+//! deliberately contains no browser, framework, asynchronous queue, clock,
+//! random-number, collaboration, or Wasm binding code.
 //!
 //! # Construction boundary
 //!
@@ -18,6 +19,7 @@
 //! validation derives the document's exact cached [`document::DocumentSummary`];
 //! the summary is runtime metadata and never enters the document wire record.
 
+pub mod action;
 pub mod codec;
 pub mod document;
 pub mod identity;
