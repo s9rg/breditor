@@ -38,8 +38,8 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- semantic cross-paragraph insertion, deletion, and formatting actions, and
-  generic mark attributes;
+- semantic cross-paragraph deletion, paragraph-break, and formatting actions,
+  and generic mark attributes;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
@@ -169,9 +169,10 @@ Version `0.0.10` adds the first tracked formatting control and guarded
 same-paragraph strong-format mutation. Version `0.0.11` adds bounded semantic
 text insertion, including pending-format consumption and deterministic typing
 history grouping. Version `0.0.12` adds one guarded root-text range replacement
-operation with a closed same-type inverse. None of these checkpoints changes
-document format version `1`, introduces an executable capability cache, or
-defines a durable action-state wire format.
+operation with a closed same-type inverse. Version `0.0.13` lifts semantic text
+insertion over direct-root cross-paragraph selections through that operation.
+None of these checkpoints changes document format version `1`, introduces an
+executable capability cache, or defines a durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -516,11 +517,18 @@ Three base actions take no input, while text insertion accepts one typed input:
   format set wins; otherwise the focus affinity selects the adjacent source
   run, with the other side as an edge fallback. An extended replacement uses
   the first spatially selected run, independent of selection direction and
-  endpoint affinities. The action emits one exact guarded `TextSplice`, places
-  a collapsed `Affinity::Before` caret at the inserted text's end, consumes the
-  pending override with `Set(None)`, and requests merge group
-  `breditor/typing`. Empty input is invalid input, never deletion, a no-op, or
-  a disabled capability.
+  endpoint affinities. A structural-only cross-paragraph selection with no
+  selected text inherits the last run of the retained start-paragraph prefix,
+  then the first run of the retained end-paragraph suffix, then plain text. It
+  never searches untouched neighboring paragraphs. This fallback is also
+  independent of direction and endpoint aliases. Same-paragraph insertion
+  emits one exact guarded `TextSplice`; a genuinely cross-paragraph replacement
+  emits one guarded `RootTextReplace` with one replacement fragment and
+  collapses the selected paragraphs into the surviving start paragraph. Both
+  paths place a collapsed `Affinity::Before` caret at the inserted text's end,
+  consume the pending override with `Set(None)`, and request merge group
+  `breditor/typing`. Empty input is invalid input, never deletion, a no-op, or a
+  disabled capability.
 
 - `breditor/insert-paragraph-break` replaces an extended same-paragraph range
   with nothing and splits at its spatial start, or performs one split for a
@@ -927,7 +935,9 @@ checked global deltas instead of rescanning a matching-profile document, but:
   direct-root paragraphs until it proves mixed state or reaches the range end,
   even though mutation is disabled;
 - insertion plans and applies in time proportional to the affected paragraph's
-  runs plus copied seam text. Because text leaves are immutable strings,
+  runs plus copied seam text for a local splice. Cross-paragraph type-over also
+  scans and guards every selected paragraph, and retained history keeps those
+  immutable guarded fragments. Because text leaves are immutable strings,
   repeated one-scalar typing into one growing same-format leaf copies that
   leaf on every action and can be quadratic over a long typing sequence. Rust
   or Wasm does not remove this representation cost; a piece table, rope, or
@@ -990,14 +1000,14 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Lift `breditor/insert-text` over cross-paragraph range selections through one
-guarded `RootTextReplace`. Preserve the action's bounded input, spatial-first
-format inheritance, pending-format consumption, deterministic result caret,
-and typing-history laws while replacing the selected structural span with one
-inline paragraph fragment. Backward deletion and paragraph break can follow in
-separate checkpoints; formatting needs an explicit decision about preserving
-or distributing block boundaries. Browser `beforeinput`, composition ownership,
-IME buffering, and paste chunking remain adapter concerns. Keep presentation
-metadata and delivery outside the deterministic core; subscriber lifecycle,
-catalog replacement, backpressure, and coalescing still require a separate
-contract before exposing an observer API.
+Lift extended `breditor/delete-backward` over direct-root cross-paragraph range
+selections through one empty-fragment `RootTextReplace`. Preserve spatial
+direction normalization, explicit result caret, pending formats, stable disabled
+reasons, exact undo/redo restoration, and the existing delete history group.
+Paragraph break can follow in its own checkpoint; formatting needs an explicit
+decision about preserving or distributing block boundaries. Browser
+`beforeinput`, composition ownership, IME buffering, and paste chunking remain
+adapter concerns. Keep presentation metadata and delivery outside the
+deterministic core; subscriber lifecycle, catalog replacement, backpressure,
+and coalescing still require a separate contract before exposing an observer
+API.

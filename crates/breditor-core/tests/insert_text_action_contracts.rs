@@ -833,24 +833,12 @@ fn insertion_reports_every_active_result_limit_as_disabled() -> TestResult {
 }
 
 #[test]
-fn insertion_requires_one_same_paragraph_range_selection() -> TestResult {
+fn insertion_requires_a_range_selection() -> TestResult {
     let registry = base_action_registry()?;
     let context = EditorContext::default();
     let no_selection =
         state(&context, &[paragraph_value(&[("a", false)])], None, None, "insert-no-selection")?;
     assert_disabled(&registry, &no_selection, "x", "breditor/no-selection")?;
-
-    let cross = state(
-        &context,
-        &[paragraph_value(&[("a", false)]), paragraph_value(&[("b", false)])],
-        Some(selected(
-            text_point(0, 0, 0, Affinity::Before)?,
-            text_point(1, 0, 1, Affinity::After)?,
-        )),
-        None,
-        "insert-cross-paragraph",
-    )?;
-    assert_disabled(&registry, &cross, "x", "breditor/cross-paragraph-selection")?;
     Ok(())
 }
 

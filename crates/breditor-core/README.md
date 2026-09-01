@@ -30,9 +30,10 @@ control: it reports inactive, active, or mixed state, toggles explicit pending
 formats at a caret, and performs one guarded same-paragraph splice for an
 extended selection. The typed text-insertion action consumes that pending
 override, inherits deterministic context otherwise, replaces one exact
-same-paragraph range, and offers adjacent edits to the `breditor/typing` history
-group.
+direct-root text range, and offers adjacent edits to the `breditor/typing`
+history group. Same-paragraph insertion stays on the local splice path, while
+cross-paragraph type-over uses one guarded root-text replacement.
 The crate is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-semantic cross-paragraph action planners, durable replay log, collaboration
-transform, or Wasm adapter yet.
+semantic cross-paragraph deletion/break/formatting planners, durable replay log,
+collaboration transform, or Wasm adapter yet.
