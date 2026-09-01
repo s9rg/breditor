@@ -107,6 +107,11 @@ impl RootTextReplace {
         &self.replacement_paragraphs
     }
 
+    pub(crate) fn derived_result(&self) -> Result<Vec<TextFragment>, RootTextReplaceError> {
+        derive_replacement(&self.range, &self.expected_paragraphs, &self.replacement_paragraphs)
+            .map(|derived| derived.result)
+    }
+
     pub(crate) fn apply(
         &self,
         context: &EditorContext,

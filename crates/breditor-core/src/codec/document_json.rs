@@ -81,7 +81,7 @@ impl DocumentJsonCodec {
             .map_err(DocumentCodecError::InvalidJson)?;
         if header.format != DOCUMENT_FORMAT {
             return Err(DocumentCodecError::UnsupportedFormat {
-                found: header.format,
+                found: header.format.into(),
                 expected: DOCUMENT_FORMAT,
             });
         }

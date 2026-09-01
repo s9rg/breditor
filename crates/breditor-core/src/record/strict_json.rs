@@ -166,7 +166,10 @@ impl<'de> Visitor<'de> for PropertyValueVisitor {
     where
         A: SeqAccess<'de>,
     {
-        let mut values = Vec::with_capacity(sequence.size_hint().unwrap_or(0));
+        // Never trust a deserializer-provided size hint for untrusted input.
+        // The outer raw-byte budget caps input size; semantic property limits
+        // are enforced before publication.
+        let mut values = Vec::new();
         while let Some(value) = sequence.next_element()? {
             values.push(value);
         }

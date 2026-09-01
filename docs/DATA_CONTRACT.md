@@ -3,6 +3,7 @@
 Status: implemented vertical proof; not yet a permanent public wire
 compatibility promise
 Document format: `breditor/document`, version `1`
+Operation format: `breditor/operation`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -18,6 +19,8 @@ The implemented Rust slice owns:
 - paragraph-local `TextSplice`, direct-root `ParagraphSplit`/`ParagraphJoin`,
   and guarded root-text range replacement operations with closed exact content
   inverses;
+- a singular, strict, versioned operation JSON codec that preserves every
+  optimistic guard and validates statically knowable schema and resource laws;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -41,8 +44,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- persistent operation, editor-state, and history codecs, durable logs, and
-  reload replay;
+- persistent editor-state, transaction, commit, and history codecs, durable
+  ordered logs, and reload replay;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -62,6 +65,14 @@ untrusted JSON
     -> complete limit, canonicality, and schema validation
     -> immutable runtime Document
     -> validated EditorState at (LineageId, Revision)
+
+untrusted operation JSON
+    -> format/version routing and a strict borrowed envelope
+    -> schema identity check and allocation preflight over the raw payload
+    -> bounded owned singular V1 payload
+    -> checked coordinates, canonical fragments, and active static limits
+    -> one guarded runtime Operation
+    -> ordinary atomic Transaction application against an exact EditorState
 
 EditorState + exact-base Transaction
     -> apply operations in order to private immutable intermediates
@@ -97,12 +108,14 @@ EditorSession + exact-base Commit or Transaction
     -> undo/redo as one newly proven transaction and monotonic revision
 ```
 
-Deserializing JSON can never construct a runtime `Document` directly. Records
+Deserializing JSON can never construct a runtime `Document` or `Operation`
+directly. Document records
 are converted through checked, record-independent local node constructors, then
-the compiled schema validates the complete root. Operations use checked local
-constructors and the same compiled-schema gate; they never serialize through a
-JSON record to prove validity. Validation either produces one complete value or
-no value.
+the compiled schema validates the complete root. Operation records are converted
+through the same checked operation and fragment constructors used by runtime
+authors, followed by context-static schema and limit validation. Neither codec
+is used internally as a substitute for runtime validity. Validation either
+produces one complete value or no value.
 
 ## Runtime representation
 
@@ -174,7 +187,17 @@ Version `0.0.14` lifts extended backward deletion over the same range shape.
 Version `0.0.15` lifts semantic paragraph breaks over that range with a
 two-fragment atomic replacement. Version `0.0.16` preserves every selected
 paragraph boundary while lifting strong formatting over cross-paragraph text.
-None of these checkpoints changes document format version `1`, introduces an
+Version `0.0.17` adds the distinct singular operation format
+`breditor/operation@1` for all four native guarded operation kinds. It does not
+make transactions, commits, selection, or history durable. The same checkpoint
+also bounds JSON-parser, envelope, schema-name, and operation-record diagnostic
+text, uses fixed-width public operation validation/location counters, rejects
+operation payload allocation growth in a streaming preflight before it owns
+record vectors, and stops recursive
+strict-property parsing from reserving a deserializer's untrusted sequence-size
+hint. The raw JSON byte cap remains the absolute input boundary, not a claim
+that peak decoder memory equals the input size. None of these
+checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
@@ -921,12 +944,27 @@ checked global deltas instead of rescanning a matching-profile document, but:
   full-tree schema and resource validation;
 - every paragraph split/join and root-text replacement performs full-tree
   validation and carries complete paragraph guards until structural subtree
-  proofs and durable operation records are specified. A wide cross-paragraph
+  proofs are specified. A wide cross-paragraph
   replacement therefore scans and retains the complete affected paragraph
   slice in both the forward operation and its inverse. Construction and
   application also derive and canonicalize those slices repeatedly to prove
   same-type inverse closure; a private proof-carrying/cached derivation can
   remove that repeated allocation without changing the public contract;
+- operation JSON decoding performs one lightweight format/version header pass,
+  parses a strict outer envelope with a borrowed raw payload, checks schema,
+  streams through that payload once for allocation admission, then parses one
+  context-bounded owned V1 envelope and payload, rebuilds canonical immutable
+  fragments, and validates statically knowable context limits in linear time. Escaped JSON
+  strings can still require a transient decoder allocation during preflight,
+  and the later runtime fragments coexist briefly with their record strings.
+  Encoding walks and copies every guard and replacement,
+  then allocates the complete compact JSON before checking its output byte
+  budget. Guarded replacements can legitimately retain source and replacement
+  slices near the document text budget independently, and JSON escaping adds
+  overhead; callers must handle a typed output-too-large failure. The raw input
+  byte cap and allocation preflight bound admission but do not promise a
+  one-times-input peak-memory ratio; this V1 codec is not a zero-copy replay
+  reader;
 - every enabled action capability query eagerly applies its generated
   transaction once to prove and cache the result. The eager catalog path still
   repeats planning for every descriptor; the synchronous action-state cache
@@ -1020,32 +1058,132 @@ second, weaker validity contract.
 }
 ```
 
+A singular guarded operation uses a separate envelope and closed tagged union:
+
+```json
+{
+  "format": "breditor/operation",
+  "formatVersion": 1,
+  "schema": { "name": "breditor/base", "version": 1 },
+  "operation": {
+    "kind": "textSplice",
+    "range": { "containerPath": [0], "start": 1, "end": 3 },
+    "expectedRemoved": {
+      "runs": [{ "text": "😀", "formats": [] }]
+    },
+    "replacement": {
+      "runs": [
+        {
+          "text": "x",
+          "formats": [{ "type": "breditor/strong", "properties": {} }]
+        }
+      ]
+    }
+  }
+}
+```
+
+Version `1` closes over exactly `textSplice`, `paragraphSplit`,
+`paragraphJoin`, and `rootTextReplace`. Paths are arrays of `u32` child indexes;
+offsets are JSON integers in the inclusive JavaScript-safe range. Fragments
+store non-empty runs in semantic order and formats in ascending unique kind
+order. Every V1 operation format explicitly carries `"properties": {}` and any
+non-empty map fails during strict record parsing; format attributes do not yet
+have operation semantics. Empty fragments use an empty `runs` array. The record never stores
+derived paragraph indexes/counts, lengths, inverse operations, relocation,
+changes, affinity, selection, state identity, or metadata.
+
+The exact V1 tagged payloads are:
+
+- `textSplice`: `range: {containerPath, start, end}`, `expectedRemoved`, and
+  `replacement`;
+- `paragraphSplit`: `paragraphPath`, `offset`, and `expected`;
+- `paragraphJoin`: `leftPath`, `expectedLeft`, and `expectedRight`; and
+- `rootTextReplace`: `range: {start: {paragraphPath, offset}, end:
+  {paragraphPath, offset}}`, `expectedParagraphs`, and
+  `replacementParagraphs`.
+
+Every fixed object rejects unknown, missing, duplicate, null-in-place-of-value,
+and wrong-type fields. Object-member order and insignificant whitespace are
+accepted; semantic array order is preserved. The encoder emits one compact
+declaration order. Unknown kind tags fail closed under V1 rather than being
+skipped or treated as extension data.
+
+`OperationJsonCodec` is bound to an `EditorContext`. Decode preserves encoded
+guards exactly and calls checked constructors; it never recaptures against live
+content. Encode validates the supplied runtime operation under that same
+context and succeeds only when the result fits the codec's decode byte budget.
+Document lookup, target kind, source-guard equality, final candidate validation,
+and transaction operation count remain application-time laws. Consequently an
+operation record is a deterministic guarded recipe, not proof that it applies
+to a particular snapshot.
+
+Decode first routes format/version, parses the exact outer envelope while
+borrowing the raw operation payload, and rejects a schema mismatch before
+materializing payload vectors. A streaming allocation preflight then caps paths,
+paragraph slices, run lists, format lists, and text against conservative
+context-derived ceilings. Each individual semantic ceiling admits its first
+excess item or byte so the ordinary checked decoder can return the more precise
+typed validation error; larger hostile inputs fail as invalid JSON before the
+owned payload parse. Preflight is an allocation-admission guard, not another
+validity contract: every admitted record still passes the exact constructors
+and `OperationValidationError` checks.
+
+Envelope and owned-record JSON failures report line/column coordinates in the
+complete caller input. Allocation-preflight failures are produced by a parser
+over the borrowed `operation` value and therefore report coordinates relative
+to that payload. This distinction is diagnostic only; stable error codes and
+typed locations remain the control-flow contract.
+
 All fields are explicit, including nullable `entityId`. Unknown fields, unknown
 record versions, duplicate JSON keys, unsorted properties, unsupported schema
 names or versions, unknown node or format kinds, and every canonicality
 violation fail closed with typed errors.
 
 Public codec errors contain Breditor-owned JSON failure details rather than
-exposing `serde_json::Error`. Validation issues expose a stable code, node path,
-typed subject (child, format, property/value path, entity identity, or limit),
-and structured detail such as the exceeded size or duplicate-ID origin. Human
-messages are never a control-flow contract.
+exposing `serde_json::Error`, and every codec exposes the shared stable
+`CodecErrorCode`. Failed operation reconstruction additionally exposes an
+`OperationRecordErrorCode` plus a typed record location; context-static
+operation rejection uses `OperationValidationError`. Complete document
+validation issues separately expose a stable code, node path, typed subject
+(child, format, property/value path, entity identity, or limit), and structured
+detail such as the exceeded size or duplicate-ID origin. Human messages are
+never a control-flow contract. JSON parser, unsupported format, invalid schema
+name, and operation-record diagnostic display escapes controls in a valid-UTF-8
+preview of at most 256 bytes and records the original byte length separately.
+Legacy complete-document `ValidationIssue` messages and invalid encoded property
+subjects are not yet universally preview-bounded; their strict input remains
+under the document JSON byte budget. Public operation validation and
+nested record-location counts use `u64`, while child indexes and their protocol
+ceilings use `u32`, so native and Wasm diagnostics do not depend on pointer
+width.
 
-Wire-shape changes increment `formatVersion`. Schema-semantic changes increment
-`schema.version`. A future schema fingerprint will additionally pin compiled
-definitions for replay. Canonical document hashing is deliberately deferred
-until its cross-language byte specification is written and tested. Only the
-document codec exists today; operations, snapshots, transactions, and commits
-have no persistent wire format yet.
+Wire-shape changes increment the relevant envelope's `formatVersion`.
+Schema-semantic changes increment `schema.version`. A future schema fingerprint
+must additionally pin compiled definitions before user-defined schema identity
+can be treated as a compatibility proof. Canonical document/operation hashing
+is deliberately deferred until its cross-language byte specification is written
+and tested. Documents and singular operations have persistent formats today;
+snapshots, transactions, commits, selections, and history do not.
+
+The operation envelope has no base snapshot/hash, lineage/revision, sequence,
+replay identity, checksum, signature, author, transaction boundary, or
+deduplication key. In particular, an insertion splice has an empty source guard
+and can apply more than once; optimistic guards detect stale content but do not
+provide exactly-once delivery or prevent ABA matches. Stable compact Rust V1
+encoding is deterministic, but it is not yet an RFC 8785 or cryptographic
+cross-language canonicalization promise.
 
 ## Next gate
 
-Freeze a durable operation-record contract for the four native operation kinds
-as the first replay-log layer. Records must remain distinct from runtime
-operations, reject unknown versions and noncanonical fragments, preserve exact
-guards and fixed-width coordinates, and decode only through the active schema
-and limits before replay. Browser `beforeinput`, composition ownership, IME
-buffering, and paste chunking remain adapter concerns. Keep presentation
-metadata and delivery outside the deterministic core; subscriber lifecycle,
-catalog replacement, backpressure, and coalescing still require a separate
-contract before exposing an observer API.
+Freeze an atomic transaction record around ordered operation V1 payloads. It
+must bind one explicit base-state identity, bounded operation count, state
+update, metadata, and all-or-nothing replay semantics without confusing a
+runtime `Commit` or mutable history entry with a wire record. A later ordered
+log still needs sequence/replay identity, snapshot/checkpoint policy,
+integrity/authenticity, migration, and crash-tail rules before reload replay is
+shippable. Browser `beforeinput`, composition ownership, IME buffering, and
+paste chunking remain adapter concerns. Keep presentation metadata and delivery
+outside the deterministic core; subscriber lifecycle, catalog replacement,
+backpressure, and coalescing still require a separate contract before exposing
+an observer API.

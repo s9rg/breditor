@@ -11,7 +11,7 @@ This repository currently contains the first end-to-end Rust-core slice:
 - proof-derived cached document measurements for node count, maximum depth,
   total UTF-8 text bytes, and recursive property-value count;
 - a minimal compiled schema for document, paragraph, text, and strong formatting;
-- strict versioned JSON records;
+- strict versioned document JSON and singular guarded-operation records;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -50,16 +50,16 @@ This repository currently contains the first end-to-end Rust-core slice:
   acceptance, intent/action execution, bounded linear history, deterministic
   merge groups, and atomic undo/redo replay;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
-- document, fragment, and per-transaction operation limits.
+- document, fragment, operation-record, and per-transaction operation limits.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, persistent operation/state/history codecs and
-reload replay, Wasm bindings, a DOM bridge, collaboration-aware or selective
-undo, and generic incremental validation for structural or custom-schema edits
-are not implemented. See
+and plugin lifecycle management, persistent state/transaction/history codecs,
+ordered durable logs and reload replay, Wasm bindings, a DOM bridge,
+collaboration-aware or selective undo, and generic incremental validation for
+structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations.
 

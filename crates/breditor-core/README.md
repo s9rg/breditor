@@ -5,9 +5,10 @@ Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or
 Wasm binding dependencies.
 
 The current crate exposes immutable validated documents with cached exact
-measurements, the fixed base schema used by the first proof, a strict JSON
-codec, UTF-16-safe points and selections, paragraph-local text splices, atomic
-transactions, direct-root paragraph split/join operations, proof-backed local
+measurements, the fixed base schema used by the first proof, strict versioned
+document and singular guarded-operation JSON codecs, UTF-16-safe points and
+selections, paragraph-local text splices, atomic transactions, direct-root
+paragraph split/join operations, proof-backed local
 validation for fixed-base text edits, structural relocation, heterogeneous
 change notifications, guarded root-text range replacement with a closed
 same-type inverse, exact in-memory undo/redo requests, an immutable typed
@@ -40,7 +41,11 @@ cross-paragraph selections while preserving its local splice/join paths.
 Cross-paragraph paragraph breaks use the same atomic primitive with two empty
 replacement fragments, preserving the retained boundary text as two distinct
 paragraphs without a delete/split intermediate.
-The crate is intentionally smaller than the eventual editor runtime and has no
+Operation records retain exact optimistic guards and pass checked constructors
+plus active-context limits, but deliberately carry no snapshot, ordering,
+selection, metadata, deduplication identity, or transaction boundary. The crate
+is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-generic formatting-kind or attribute actions, durable replay log,
+generic formatting-kind or attribute actions, state/transaction/history codec,
+durable replay log,
 collaboration transform, or Wasm adapter yet.

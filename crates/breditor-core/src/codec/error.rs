@@ -1,4 +1,4 @@
-use std::{error::Error, fmt, sync::Arc};
+use std::{error::Error, fmt};
 
 use thiserror::Error;
 
@@ -6,6 +6,8 @@ use crate::{
     identity::{QualifiedName, QualifiedNameError},
     schema::{SchemaId, SchemaVersionError, ValidationReport},
 };
+
+use super::BoundedDiagnostic;
 
 /// Broad category of a JSON parser or serializer failure.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -29,7 +31,7 @@ pub struct JsonFailure {
     kind: JsonFailureKind,
     line: usize,
     column: usize,
-    message: Arc<str>,
+    message: BoundedDiagnostic,
 }
 
 impl JsonFailure {
@@ -51,9 +53,18 @@ impl JsonFailure {
         self.column
     }
 
-    /// Returns the implementation-specific human diagnostic.
+    /// Returns the bounded implementation-specific human diagnostic preview.
+    ///
+    /// Use [`Self::diagnostic`] when the original byte length or truncation
+    /// state matters.
     #[must_use]
     pub fn message(&self) -> &str {
+        self.message.preview()
+    }
+
+    /// Returns the bounded diagnostic value and its truncation metadata.
+    #[must_use]
+    pub const fn diagnostic(&self) -> &BoundedDiagnostic {
         &self.message
     }
 
@@ -68,29 +79,32 @@ impl JsonFailure {
             kind,
             line: error.line(),
             column: error.column(),
-            message: Arc::from(error.to_string()),
+            message: BoundedDiagnostic::from(error.to_string()),
         }
     }
 }
 
 impl fmt::Display for JsonFailure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(&self.message)
+        fmt::Display::fmt(&self.message, formatter)
     }
 }
 
 impl Error for JsonFailure {}
 
-/// Stable category for a [`DocumentCodecError`].
+/// Stable category for a versioned codec failure.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[non_exhaustive]
 pub enum CodecErrorCode {
     /// The input exceeds the configured byte limit.
     InputTooLarge,
+    /// A deterministic encoding exceeds the configured byte limit.
+    OutputTooLarge,
     /// The input is not strict JSON for the selected record version.
     InvalidJson,
-    /// The document format identifier is unsupported.
+    /// The envelope format identifier is unsupported.
     UnsupportedFormat,
-    /// The document wire version is unsupported.
+    /// The envelope wire version is unsupported.
     UnsupportedFormatVersion,
     /// The schema name does not satisfy the qualified-name grammar.
     InvalidSchemaName,
@@ -98,9 +112,12 @@ pub enum CodecErrorCode {
     InvalidSchemaVersion,
     /// The record targets a different compiled schema.
     SchemaMismatch,
-    /// The record violates schema, canonicality, or resource limits.
+    /// The decoded or supplied runtime value violates complete document
+    /// validation or context-static operation limits.
     ValidationFailed,
-    /// A validated runtime document could not be serialized.
+    /// A wire operation could not be reconstructed through checked contracts.
+    InvalidOperation,
+    /// A validated runtime value could not be serialized.
     EncodingFailed,
 }
 
@@ -110,6 +127,7 @@ impl CodecErrorCode {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::InputTooLarge => "codec.input_too_large",
+            Self::OutputTooLarge => "codec.output_too_large",
             Self::InvalidJson => "codec.invalid_json",
             Self::UnsupportedFormat => "codec.unsupported_format",
             Self::UnsupportedFormatVersion => "codec.unsupported_format_version",
@@ -117,6 +135,7 @@ impl CodecErrorCode {
             Self::InvalidSchemaVersion => "codec.invalid_schema_version",
             Self::SchemaMismatch => "codec.schema_mismatch",
             Self::ValidationFailed => "codec.validation_failed",
+            Self::InvalidOperation => "codec.invalid_operation",
             Self::EncodingFailed => "codec.encoding_failed",
         }
     }
@@ -140,7 +159,7 @@ pub enum DocumentCodecError {
     #[error("unsupported document format `{found}`; expected `{expected}`")]
     UnsupportedFormat {
         /// Format found in the input.
-        found: String,
+        found: BoundedDiagnostic,
         /// Format accepted by this codec.
         expected: &'static str,
     },
@@ -156,7 +175,7 @@ pub enum DocumentCodecError {
     #[error("invalid encoded schema name `{value}`: {source}")]
     InvalidSchemaName {
         /// Encoded schema name.
-        value: String,
+        value: BoundedDiagnostic,
         /// Qualified-name validation failure.
         #[source]
         source: QualifiedNameError,
@@ -205,6 +224,38 @@ impl DocumentCodecError {
 }
 
 pub(crate) fn schema_name_from_record(value: String) -> Result<QualifiedName, DocumentCodecError> {
-    QualifiedName::try_from(value.clone())
-        .map_err(|source| DocumentCodecError::InvalidSchemaName { value, source })
+    QualifiedName::try_new(&value).map_err(|source| DocumentCodecError::InvalidSchemaName {
+        value: BoundedDiagnostic::from(value),
+        source,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, io};
+
+    use serde::Deserialize;
+
+    use crate::codec::MAX_DIAGNOSTIC_PREVIEW_BYTES;
+
+    use super::JsonFailure;
+
+    #[derive(Debug, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct EmptyRecord {}
+
+    #[test]
+    fn serde_failure_retains_only_a_bounded_message_preview() -> Result<(), Box<dyn Error>> {
+        let hostile_key = "x".repeat(MAX_DIAGNOSTIC_PREVIEW_BYTES * 4);
+        let json = format!(r#"{{"{hostile_key}":true}}"#);
+        let Err(error) = serde_json::from_str::<EmptyRecord>(&json) else {
+            return Err(io::Error::other("unknown key unexpectedly decoded").into());
+        };
+        let failure = JsonFailure::from_serde(&error);
+
+        assert!(failure.diagnostic().is_truncated());
+        assert!(failure.message().len() <= MAX_DIAGNOSTIC_PREVIEW_BYTES);
+        assert_eq!(failure.diagnostic().original_byte_len(), error.to_string().len());
+        Ok(())
+    }
 }

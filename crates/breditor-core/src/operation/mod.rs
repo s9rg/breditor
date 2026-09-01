@@ -10,9 +10,10 @@ mod root_text_range;
 mod root_text_replace;
 mod text_range;
 mod text_splice;
+mod validation;
 
 pub use change_set::{Change, ChangeSet, ChildRange, ChildrenChange, TextChange};
-pub use kind::{Operation, OperationApplyError};
+pub use kind::{Operation, OperationApplyError, OperationKind};
 pub use paragraph_join::{
     ParagraphJoin, ParagraphJoinApplyError, ParagraphJoinError, ParagraphJoinSide,
 };
@@ -33,6 +34,10 @@ pub use text_range::{TextRange, TextRangeError};
 pub use text_splice::{
     FragmentRole, TextSplice, TextSpliceApplyError, TextSpliceError, TextSpliceTargetRule,
     TreeInvariantRule,
+};
+pub use validation::{
+    OperationFragmentRole, OperationFragmentSliceRole, OperationOffsetRole, OperationPathRole,
+    OperationRootChildSpanRole, OperationValidationError,
 };
 
 pub(crate) use kind::{AppliedChange, AppliedOperation};

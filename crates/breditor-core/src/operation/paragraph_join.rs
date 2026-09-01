@@ -94,6 +94,10 @@ impl ParagraphJoin {
         &self.expected_right
     }
 
+    pub(crate) fn derived_result(&self) -> Result<TextFragment, ParagraphJoinError> {
+        self.expected_left.try_concat(&self.expected_right).map_err(Into::into)
+    }
+
     pub(crate) fn apply(
         &self,
         context: &EditorContext,
@@ -124,7 +128,7 @@ impl ParagraphJoin {
             });
         }
 
-        let joined = self.expected_left.try_concat(&self.expected_right)?;
+        let joined = self.derived_result()?;
         let joined_node = paragraph_from_fragment(left, &joined).map_err(|_| {
             ParagraphJoinApplyError::TreeInvariant {
                 rule: ParagraphStructureInvariantRule::ParagraphRebuild,
