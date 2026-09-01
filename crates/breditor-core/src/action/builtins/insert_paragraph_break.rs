@@ -2,7 +2,7 @@ use crate::{
     action::{Action, ActionDecision, ActionEvaluation, ActionFault, ActionId, ActionPlan},
     document::TextFragment,
     identity::QualifiedName,
-    operation::{Operation, ParagraphSplit, TextRange, TextSplice},
+    operation::{Operation, ParagraphSplit, RootTextReplace, TextRange, TextSplice},
     position::{Affinity, Point},
     selection::Selection,
     state::EditorState,
@@ -10,20 +10,23 @@ use crate::{
 };
 
 use super::{
-    super::text_position::right_paragraph_path,
+    super::text_position::{TextRangeSelection, right_paragraph_path},
     support::{
-        base_shape_fits, collapsed_selection, disabled, fault, fragment_range_parts,
-        paragraph_fragment, require_base_range, require_operation_budget, strict_relocation,
+        CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
+        capture_cross_paragraph_text_source, collapsed_selection, disabled, fault,
+        fragment_range_parts, paragraph_fragment, require_base_text_range,
+        require_operation_budget, strict_relocation,
     },
 };
 
-/// Semantic action that replaces a same-paragraph selection with a paragraph break.
+/// Semantic action that replaces selected content with a paragraph break.
 ///
-/// A collapsed range becomes one [`ParagraphSplit`]. An extended range chooses
-/// a deterministic split/delete ordering whose intermediate state satisfies the
-/// active limits, and publishes both operations in one atomic transaction.
-/// Cross-paragraph ranges remain deliberately disabled until a native
-/// block-range replacement operation exists.
+/// A collapsed range becomes one [`ParagraphSplit`]. A same-paragraph extended
+/// range chooses a deterministic split/delete ordering whose intermediate state
+/// satisfies the active limits, and publishes both operations atomically.
+/// A cross-paragraph range becomes one [`RootTextReplace`] whose two empty
+/// replacement fragments retain the spatial start prefix and end suffix as
+/// separate result paragraphs, without exposing delete/split intermediates.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertParagraphBreakAction;
 
@@ -48,10 +51,16 @@ impl Action for InsertParagraphBreakAction {
 }
 
 fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_range(state)? {
+    let range = match require_base_text_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
+    if !range.is_same_paragraph() {
+        if let Some(decision) = require_operation_budget(state, 1) {
+            return Ok(decision);
+        }
+        return insert_cross_paragraph_break(state, &range);
+    }
     let operation_count = if range.is_collapsed() { 1 } else { 2 };
     if let Some(decision) = require_operation_budget(state, operation_count) {
         return Ok(decision);
@@ -112,6 +121,68 @@ fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision
         PendingFormatsUpdate::Set(state.pending_formats().cloned()),
         HistoryIntent::Record,
     )))
+}
+
+fn insert_cross_paragraph_break(
+    state: &EditorState,
+    range: &TextRangeSelection,
+) -> Result<ActionDecision, ActionFault> {
+    let source = capture_cross_paragraph_text_source(state, range)
+        .map_err(map_insert_paragraph_break_cross_source_error)?;
+    let Some(retained_text_bytes) =
+        source.prefix().text_bytes().checked_add(source.suffix().text_bytes())
+    else {
+        return Ok(disabled("breditor/result-limit-exceeded"));
+    };
+    if !base_shape_fits(
+        state,
+        source.guards().len(),
+        source.guard_run_count(),
+        &[source.prefix(), source.suffix()],
+    ) || !base_total_text_fits(state, source.guard_text_bytes(), retained_text_bytes)
+    {
+        return Ok(disabled("breditor/result-limit-exceeded"));
+    }
+
+    let result_paragraph = right_paragraph_path(source.range().start().paragraph_path())
+        .map_err(|_| fault("breditor/result-paragraph-path-fault"))?;
+    let selection: Selection = collapsed_selection(Point::Children {
+        parent_path: result_paragraph,
+        child_index: 0,
+        affinity: Affinity::After,
+    });
+    let (operation_range, guards) = source.into_range_and_guards();
+    let operation = RootTextReplace::try_new(
+        operation_range,
+        guards,
+        vec![TextFragment::empty(), TextFragment::empty()],
+    )
+    .map_err(|_| fault("breditor/insert-paragraph-break-root-replace-fault"))?;
+
+    Ok(ActionDecision::Enabled(ActionPlan::new(
+        vec![Operation::from(operation)],
+        strict_relocation(),
+        SelectionUpdate::Set(Some(selection)),
+        PendingFormatsUpdate::Set(state.pending_formats().cloned()),
+        HistoryIntent::Record,
+    )))
+}
+
+fn map_insert_paragraph_break_cross_source_error(
+    error: CrossParagraphTextSourceError,
+) -> ActionFault {
+    match error {
+        CrossParagraphTextSourceError::Span => {
+            fault("breditor/insert-paragraph-break-cross-span-fault")
+        }
+        CrossParagraphTextSourceError::Range => {
+            fault("breditor/insert-paragraph-break-root-range-fault")
+        }
+        CrossParagraphTextSourceError::Source => {
+            fault("breditor/insert-paragraph-break-cross-source-fault")
+        }
+        CrossParagraphTextSourceError::Paragraph(fault) => fault,
+    }
 }
 
 fn split_then_delete(

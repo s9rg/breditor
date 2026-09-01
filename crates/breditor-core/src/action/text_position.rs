@@ -95,20 +95,6 @@ pub(crate) fn normalize_range_selection(
     })
 }
 
-/// Normalizes a range and rejects one spanning multiple paragraphs.
-pub(crate) fn normalize_same_paragraph_selection(
-    state: &EditorState,
-) -> Result<TextRangeSelection, TextPositionError> {
-    let normalized = normalize_range_selection(state)?;
-    if !normalized.is_same_paragraph() {
-        return Err(TextPositionError::CrossParagraph {
-            start: normalized.start.paragraph_path.clone(),
-            end: normalized.end.paragraph_path.clone(),
-        });
-    }
-    Ok(normalized)
-}
-
 /// Builds the canonical point encoding for an aggregate offset in a predicted fragment.
 ///
 /// Empty fragments use child boundary zero. Non-empty fragments use the first
@@ -367,9 +353,6 @@ pub(crate) enum TextPositionError {
     /// One endpoint is outside the first direct-root paragraph action contract.
     #[error("{endpoint:?} position at {path:?} violates text-position rule {rule:?}")]
     UnsupportedPosition { endpoint: RangeEndpoint, path: NodePath, rule: UnsupportedPositionRule },
-    /// The action range crosses paragraph containers.
-    #[error("text action range crosses paragraphs {start:?} and {end:?}")]
-    CrossParagraph { start: NodePath, end: NodePath },
     /// A helper received a path outside the direct-root paragraph contract.
     #[error("path {path:?} is not a direct-root paragraph path")]
     NotDirectRootParagraph { path: NodePath },
@@ -398,8 +381,7 @@ mod tests {
 
     use super::{
         TextPositionError, direct_paragraph_index, normalize_range_selection,
-        normalize_same_paragraph_selection, point_at_fragment_offset, previous_paragraph_path,
-        right_paragraph_path,
+        point_at_fragment_offset, previous_paragraph_path, right_paragraph_path,
     };
     use crate::{
         codec::DocumentJsonCodec,
@@ -516,7 +498,7 @@ mod tests {
             ),
         ] {
             let state = state(Some(selection), "normalization-direction")?;
-            let normalized = normalize_same_paragraph_selection(&state)?;
+            let normalized = normalize_range_selection(&state)?;
             assert_eq!(normalized.order(), expected_order);
             assert_eq!(normalized.start().paragraph_path(), &path(&[0])?);
             assert_eq!(normalized.start().offset(), TextOffset::try_new(1)?);
@@ -532,7 +514,7 @@ mod tests {
             child_point(&[0], 1, Affinity::After)?,
         );
         let state = state(Some(selection), "normalization-collapsed")?;
-        let normalized = normalize_same_paragraph_selection(&state)?;
+        let normalized = normalize_range_selection(&state)?;
         assert!(normalized.is_collapsed());
         assert_eq!(normalized.start().offset(), TextOffset::try_new(3)?);
         assert_eq!(normalized.end().offset(), TextOffset::try_new(3)?);
@@ -552,10 +534,6 @@ mod tests {
         let normalized = normalize_range_selection(&cross)?;
         assert_eq!(normalized.start().paragraph_path(), &path(&[0])?);
         assert_eq!(normalized.end().paragraph_path(), &path(&[1])?);
-        assert_eq!(
-            normalize_same_paragraph_selection(&cross),
-            Err(TextPositionError::CrossParagraph { start: path(&[0])?, end: path(&[1])? })
-        );
         Ok(())
     }
 

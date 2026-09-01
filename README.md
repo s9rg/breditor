@@ -42,9 +42,9 @@ This repository currently contains the first end-to-end Rust-core slice:
 - semantic `insert-text`, `insert-paragraph-break`, `delete-backward`, and
   `toggle-strong` actions exposed through the same registry for future
   keyboard, toolbar, palette, and API adapters; typed insertion consumes
-  pending formats, insertion and extended deletion atomically replace
-  cross-paragraph selections, while `toggle-strong` publishes tracked
-  inactive/active/mixed state;
+  pending formats, insertion, paragraph breaks, and extended deletion
+  atomically replace cross-paragraph selections, while `toggle-strong`
+  publishes tracked inactive/active/mixed state;
 - a synchronous `EditorSession` publication boundary with exact-base commit
   acceptance, intent/action execution, bounded linear history, deterministic
   merge groups, and atomic undo/redo replay;
@@ -52,8 +52,7 @@ This repository currently contains the first end-to-end Rust-core slice:
 - document, fragment, and per-transaction operation limits.
 
 This is still a proof slice, not a complete editor. Structural edits beyond
-direct-root base-paragraph text structure, semantic cross-paragraph
-paragraph-break and formatting actions,
+direct-root base-paragraph text structure, semantic cross-paragraph formatting,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, persistent operation/state/history codecs and
 reload replay, Wasm bindings, a DOM bridge, collaboration-aware or selective

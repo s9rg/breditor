@@ -35,7 +35,10 @@ history group. Same-paragraph insertion stays on the local splice path, while
 cross-paragraph type-over uses one guarded root-text replacement.
 Extended backward deletion likewise uses one guarded root-text replacement for
 cross-paragraph selections while preserving its local splice/join paths.
+Cross-paragraph paragraph breaks use the same atomic primitive with two empty
+replacement fragments, preserving the retained boundary text as two distinct
+paragraphs without a delete/split intermediate.
 The crate is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
-semantic cross-paragraph break/formatting planners, durable replay log,
+semantic cross-paragraph formatting planner, durable replay log,
 collaboration transform, or Wasm adapter yet.

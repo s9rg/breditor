@@ -38,8 +38,8 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- semantic paragraph-break and formatting actions over cross-paragraph ranges,
-  and generic mark attributes;
+- semantic formatting actions over cross-paragraph ranges, and generic mark
+  attributes;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
 - persistent operation, editor-state, and history codecs, durable logs, and
@@ -172,8 +172,10 @@ history grouping. Version `0.0.12` adds one guarded root-text range replacement
 operation with a closed same-type inverse. Version `0.0.13` lifts semantic text
 insertion over direct-root cross-paragraph selections through that operation.
 Version `0.0.14` lifts extended backward deletion over the same range shape.
-None of these checkpoints changes document format version `1`, introduces an
-executable capability cache, or defines a durable action-state wire format.
+Version `0.0.15` lifts semantic paragraph breaks over that range with a
+two-fragment atomic replacement. None of these checkpoints changes document
+format version `1`, introduces an executable capability cache, or defines a
+durable action-state wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -531,13 +533,21 @@ Three base actions take no input, while text insertion accepts one typed input:
   `breditor/typing`. Empty input is invalid input, never deletion, a no-op, or a
   disabled capability.
 
-- `breditor/insert-paragraph-break` replaces an extended same-paragraph range
-  with nothing and splits at its spatial start, or performs one split for a
-  collapsed range. The planner chooses split/delete or delete/split order so
-  each validated intermediate fits the active limits; if neither route can
-  represent an otherwise valid final tree it returns a stable intermediate-limit
-  disabled reason. It explicitly places a collapsed caret at the new right
-  paragraph start, preserves the exact pending-format option, and records one
+- `breditor/insert-paragraph-break` replaces an extended range with one block
+  boundary, or performs one split for a collapsed range. A genuinely
+  cross-paragraph range emits one `RootTextReplace` with exactly two empty
+  replacement fragments: the retained start prefix and end suffix become
+  distinct result paragraphs without a delete/split intermediate. This result
+  is monotone in paragraph, node, run, leaf, and text-byte limits for every
+  valid source document. A selection containing only the boundary between two
+  adjacent paragraphs therefore leaves document content unchanged and becomes
+  a selection-only commit; under the current document-operation history law it
+  creates no standalone undo entry. Same-paragraph extended ranges retain the
+  split/delete or delete/split planner so each validated intermediate fits the
+  active limits; if neither route can represent an otherwise valid final tree,
+  it returns the stable intermediate-limit disabled reason. Every path
+  explicitly places an `Affinity::After` child-boundary caret at the new right
+  paragraph start, preserves the exact pending-format option, and requests one
   independent history event.
 - `breditor/delete-backward` deletes an extended direct-root text range, deletes
   the immediately preceding Unicode scalar for an interior collapsed caret, or
@@ -569,8 +579,8 @@ Three base actions take no input, while text insertion accepts one typed input:
 All four actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
 survives. Empty paragraphs and formatted seams have explicit behavior.
-Cross-paragraph extended mutations are disabled until a native guarded
-block-range replacement operation exists. Backward deletion is scalar-based,
+Cross-paragraph strong-format mutation remains disabled until its block-boundary
+distribution contract is frozen. Backward deletion is scalar-based,
 not grapheme-based: combining marks and components of a zero-width-joiner emoji
 can be deleted separately. Text insertion, paragraph break, and backward delete
 advertise stateless observations; strong formatting uses the same evaluation
@@ -960,6 +970,10 @@ checked global deltas instead of rescanning a matching-profile document, but:
   result cannot increase total text, root children, or global node count, but a
   canonical retained-prefix/suffix seam can still exceed one leaf or paragraph
   child limit;
+- cross-paragraph paragraph breaks pay the same complete-guard, repeated
+  derivation, full-validation, and retained-history costs. Unlike deletion,
+  their two retained boundary fragments are never joined, so the result is
+  monotone under every active document limit;
 - a multi-operation transaction retains structurally shared intermediate
   documents in its composed relocation map; and
 - path copying clones the complete child vector of every ancestor on the edited
@@ -1016,14 +1030,12 @@ have no persistent wire format yet.
 
 ## Next gate
 
-Lift `breditor/insert-paragraph-break` over direct-root cross-paragraph range
-selections through one two-fragment `RootTextReplace`: the retained start prefix
-and end suffix must become separate result paragraphs without delete/split
-intermediates. Preserve spatial normalization, the explicit right-paragraph
-caret, pending formats, stable disabled reasons, and exact undo/redo restoration.
-Formatting then needs an explicit decision about preserving or distributing
-block boundaries. Browser `beforeinput`, composition ownership, IME buffering,
-and paste chunking remain adapter concerns. Keep presentation metadata and
-delivery outside the deterministic core; subscriber lifecycle, catalog
-replacement, backpressure, and coalescing still require a separate contract
-before exposing an observer API.
+Freeze cross-paragraph strong-format semantics, then lift
+`breditor/toggle-strong` through one guarded `RootTextReplace` while preserving
+every selected paragraph boundary. Activation, direction, endpoint aliases,
+affinities, non-selected boundary text, other formats, and exact undo/redo state
+must remain coherent. Browser `beforeinput`, composition ownership, IME
+buffering, and paste chunking remain adapter concerns. Keep presentation
+metadata and delivery outside the deterministic core; subscriber lifecycle,
+catalog replacement, backpressure, and coalescing still require a separate
+contract before exposing an observer API.

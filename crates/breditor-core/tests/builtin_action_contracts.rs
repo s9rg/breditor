@@ -668,9 +668,7 @@ fn builtins_report_stable_disabled_reasons_without_changing_state_or_revision() 
         None,
         "disabled-cross-paragraph",
     )?;
-    for id in [enter_id.clone(), strong_id] {
-        assert_disabled(&registry, &cross_paragraph, id, "breditor/cross-paragraph-selection")?;
-    }
+    assert_disabled(&registry, &cross_paragraph, strong_id, "breditor/cross-paragraph-selection")?;
 
     let no_operations = EditorContext::default().with_max_operations_per_transaction(0);
     let no_budget = state(

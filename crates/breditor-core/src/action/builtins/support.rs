@@ -9,21 +9,8 @@ use crate::{
 };
 
 use super::super::text_position::{
-    TextPositionError, TextRangeSelection, normalize_range_selection,
-    normalize_same_paragraph_selection, point_at_fragment_offset,
+    TextPositionError, TextRangeSelection, normalize_range_selection, point_at_fragment_offset,
 };
-
-pub(super) fn require_base_range(
-    state: &EditorState,
-) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
-    if !state.context().schema().is_exact_breditor_base() {
-        return Ok(Err(disabled_reason("breditor/unsupported-schema")));
-    }
-    match normalize_same_paragraph_selection(state) {
-        Ok(range) => Ok(Ok(range)),
-        Err(error) => map_text_position_error(error),
-    }
-}
 
 pub(super) fn require_base_text_range(
     state: &EditorState,
@@ -44,9 +31,6 @@ fn map_text_position_error(
         TextPositionError::NoSelection => Ok(Err(disabled_reason("breditor/no-selection"))),
         TextPositionError::UnsupportedSelection => {
             Ok(Err(disabled_reason("breditor/unsupported-selection")))
-        }
-        TextPositionError::CrossParagraph { .. } => {
-            Ok(Err(disabled_reason("breditor/cross-paragraph-selection")))
         }
         TextPositionError::UnsupportedPosition { .. }
         | TextPositionError::NotDirectRootParagraph { .. } => {
