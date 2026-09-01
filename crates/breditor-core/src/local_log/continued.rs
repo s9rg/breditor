@@ -4,7 +4,7 @@ use crate::session::EditorSession;
 
 use super::{LocalLogEntry, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
 
-/// Atomically recovered successor generation linked to one compact checkpoint prefix.
+/// Atomically recovered successor generation linked to one checked checkpoint prefix.
 ///
 /// The value owns the exact final session, every compacted replay tombstone,
 /// and every first-seen full entry from the successor batch. Exact duplicates
@@ -64,13 +64,13 @@ impl ContinuedLocalLog {
         }
     }
 
-    /// Returns the durable session identity checked across both generations.
+    /// Returns the durable session identity bound across checkpoint and successor.
     #[must_use]
     pub const fn session_id(&self) -> &LocalSessionId {
         &self.session_id
     }
 
-    /// Returns the caller-declared sealed generation represented by the prefix.
+    /// Returns the sealed generation represented by the checkpoint prefix.
     #[must_use]
     pub const fn checkpoint_log_id(&self) -> &LocalLogId {
         &self.checkpoint_log_id
@@ -97,13 +97,13 @@ impl ContinuedLocalLog {
         self.session
     }
 
-    /// Returns the caller-sealed prefix's last covered sequence.
+    /// Returns the checkpoint prefix's represented last covered sequence.
     #[must_use]
     pub const fn checkpoint_covered_through(&self) -> Option<LocalLogSequence> {
         self.checkpoint_covered_through
     }
 
-    /// Returns the last sequence covered across the checkpoint and successor.
+    /// Returns the last sequence represented across checkpoint and successor.
     #[must_use]
     pub const fn covered_through(&self) -> Option<LocalLogSequence> {
         self.covered_through
@@ -115,13 +115,13 @@ impl ContinuedLocalLog {
         self.next_sequence
     }
 
-    /// Returns the number of exact replay-ID tombstones from the checkpoint prefix.
+    /// Returns the number of replay-ID tombstones from the checkpoint prefix.
     #[must_use]
     pub fn compacted_replay_count(&self) -> u64 {
         u64::try_from(self.compacted_replays.len()).unwrap_or(u64::MAX)
     }
 
-    /// Returns the original sequence for one compacted replay identity.
+    /// Returns the sequence represented for one compacted replay identity.
     #[must_use]
     pub fn compacted_sequence_for_replay_id(
         &self,

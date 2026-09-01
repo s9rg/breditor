@@ -12,6 +12,10 @@ mod editor_state_json;
 mod editor_value_payload_v1;
 mod error;
 mod json_size;
+mod local_log_checkpoint_error;
+mod local_log_checkpoint_json;
+mod local_log_checkpoint_limits;
+mod local_log_checkpoint_tombstones_v1;
 mod local_log_entry_error;
 mod local_log_entry_json;
 mod operation_error;
@@ -42,6 +46,18 @@ pub use editor_state_json::{
     EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION, EditorStateJsonCodec,
 };
 pub use error::{CodecErrorCode, DocumentCodecError, JsonFailure, JsonFailureKind};
+pub use local_log_checkpoint_error::{
+    LocalLogCheckpointBindingField, LocalLogCheckpointCodecError, LocalLogCheckpointRecordError,
+    LocalLogCheckpointRecordErrorCode, LocalLogCheckpointRecordLocation,
+    LocalLogCheckpointResourceLimit, LocalLogCheckpointResourceLimitCode,
+    LocalLogCheckpointTopologyError, LocalLogCheckpointTopologyErrorCode,
+};
+pub use local_log_checkpoint_json::{
+    LOCAL_LOG_CHECKPOINT_FORMAT, LOCAL_LOG_CHECKPOINT_FORMAT_VERSION, LocalLogCheckpointJsonCodec,
+};
+pub use local_log_checkpoint_limits::{
+    DEFAULT_LOCAL_LOG_CHECKPOINT_MAX_REPLAY_TOMBSTONES, LocalLogCheckpointLimits,
+};
 pub use local_log_entry_error::{
     LocalLogCommitEventKind, LocalLogEntryCodecError, LocalLogEntryRecordError,
     LocalLogEntryRecordErrorCode, LocalLogEntryRecordLocation,

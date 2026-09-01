@@ -129,6 +129,8 @@ pub enum CodecErrorCode {
     InvalidCommit,
     /// A durable local-log entry failed identity or event reconstruction.
     InvalidLocalLogEntry,
+    /// A complete local-log checkpoint failed binding, record, or topology reconstruction.
+    InvalidLocalLogCheckpoint,
     /// A durable session checkpoint failed topology or replay proof.
     InvalidSessionCheckpoint,
     /// An editor-state field could not be reconstructed through checked contracts.
@@ -158,6 +160,7 @@ impl CodecErrorCode {
             Self::InvalidTransaction => "codec.invalid_transaction",
             Self::InvalidCommit => "codec.invalid_commit",
             Self::InvalidLocalLogEntry => "codec.invalid_local_log_entry",
+            Self::InvalidLocalLogCheckpoint => "codec.invalid_local_log_checkpoint",
             Self::InvalidSessionCheckpoint => "codec.invalid_session_checkpoint",
             Self::InvalidEditorState => "codec.invalid_editor_state",
             Self::EncodingFailed => "codec.encoding_failed",
@@ -291,6 +294,7 @@ mod tests {
             (CodecErrorCode::InvalidTransaction, "codec.invalid_transaction"),
             (CodecErrorCode::InvalidCommit, "codec.invalid_commit"),
             (CodecErrorCode::InvalidLocalLogEntry, "codec.invalid_local_log_entry"),
+            (CodecErrorCode::InvalidLocalLogCheckpoint, "codec.invalid_local_log_checkpoint"),
             (CodecErrorCode::InvalidSessionCheckpoint, "codec.invalid_session_checkpoint"),
             (CodecErrorCode::InvalidEditorState, "codec.invalid_editor_state"),
             (CodecErrorCode::EncodingFailed, "codec.encoding_failed"),

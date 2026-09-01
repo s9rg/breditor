@@ -162,14 +162,14 @@ fn semantically_exact_compacted_retry_is_still_rejected_fail_closed() -> TestRes
 
     assert_eq!(error.code(), LocalLogRecoveryErrorCode::CompactedReplayId);
     assert_eq!(error.delivery_index(), Some(0));
-    let LocalLogRecoveryError::CompactedReplayId { delivery_index, replay_id, original_sequence } =
+    let LocalLogRecoveryError::CompactedReplayId { delivery_index, replay_id, checkpoint_sequence } =
         error
     else {
         return Err(test_error("exact compacted retry used the wrong error variant").into());
     };
     assert_eq!(delivery_index, 0);
     assert_eq!(replay_id.as_str(), "replay:exact-compacted");
-    assert_eq!(original_sequence, LocalLogSequence::FIRST);
+    assert_eq!(checkpoint_sequence, LocalLogSequence::FIRST);
     Ok(())
 }
 

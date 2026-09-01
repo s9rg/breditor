@@ -10,7 +10,8 @@ document, singular guarded-operation, exact-base transaction-request,
 contextual complete editor-state, replay-proved commit, and bounded durable
 session-checkpoint plus replay-identified local-log-entry JSON codecs and
 bounded atomic recovery of one supplied genesis-anchored log prefix plus a
-compact runtime anchor and one checked successor generation,
+compact runtime anchor, one checked successor generation, and a strict
+trusted-scope local-log-checkpoint JSON codec,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -52,5 +53,5 @@ selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log framing/storage,
-a durable combined log checkpoint, repeated generation recovery,
+checkpoint/log atomic replacement, repeated generation recovery,
 collaboration transform, or Wasm adapter yet.

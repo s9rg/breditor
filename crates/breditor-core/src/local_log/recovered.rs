@@ -129,7 +129,7 @@ impl RecoveredLocalLog {
             exact_duplicate_count: _,
             applied_operation_count: _,
             covered_through,
-            next_sequence,
+            next_sequence: _,
         } = self;
         if active_log_id == successor_log_id {
             return Err(LocalLogRecoveryError::GenerationNotAdvanced {
@@ -153,7 +153,6 @@ impl RecoveredLocalLog {
             session,
             compacted_replays,
             covered_through,
-            next_sequence,
         ))
     }
 

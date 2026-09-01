@@ -9,6 +9,7 @@ Editor-state format: `breditor/editor-state`, version `1`
 Commit format: `breditor/commit`, version `1`
 Session-checkpoint format: `breditor/session-checkpoint`, version `1`
 Local-log-entry format: `breditor/local-log-entry`, version `1`
+Local-log-checkpoint format: `breditor/local-log-checkpoint`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -45,10 +46,13 @@ The implemented Rust slice owns:
   retries, applies all five event kinds, and retains every accepted replay
   binding;
 - a compact in-memory local-log checkpoint anchor that binds that recovered
-  session to its caller-declared sealed generation and sequence frontier,
-  retains every old replay identity as an exact tombstone, and atomically
-  recovers one distinct successor generation without resetting history,
-  sequence, or retry scope;
+  or codec-restored session to its declared sealed generation and sequence
+  frontier, represents every claimed old replay identity as a tombstone, and
+  atomically recovers one distinct successor generation without resetting
+  history, sequence, or retry scope;
+- a strict, expected-binding local-log-checkpoint codec that atomically restores
+  the anchor from one complete Session Checkpoint V1, generation boundary,
+  sequence frontier, and record-declared chronological replay-tombstone vector;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -72,10 +76,9 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered log framing and storage, a durable composite checkpoint/log format,
-  restore of checkpoint-linked recovery across process invocations, repeated
+- ordered log framing and storage, atomic checkpoint/log replacement, repeated
   generation transitions, incremental continuation, integrity/authenticity,
-  migration, and crash-tail recovery;
+  rollback protection, migration, and crash-tail recovery;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -154,7 +157,17 @@ caller-authoritative empty-history EditorSession + expected session/log IDs
 RecoveredLocalLog + one distinct caller-supplied successor generation
     -> consume the complete owner and bind its exact session/history to the prefix edge
     -> replace every full prefix entry with ReplayId -> original sequence tombstones
-    -> publish one runtime-only LocalLogCheckpointAnchor
+    -> publish one LocalLogCheckpointAnchor
+
+untrusted local-log-checkpoint JSON + trusted LocalLogCheckpointBinding
++ caller-supplied EditorContext and aggregate checkpoint policy
+    -> whole-envelope byte cap, outer format/version routing, and exact shape
+    -> checked identities, distinct generations, and trusted-binding equality
+    -> allocation-free tombstone count and exact frontier/cardinality proof
+    -> bounded chronological replay-ID validation and uniqueness proof
+    -> pinned Session Checkpoint V1 replay proof
+    -> empty-frontier genesis-history proof
+    -> publish one complete LocalLogCheckpointAnchor or publish nothing
 
 LocalLogCheckpointAnchor + complete successor vector + per-batch limits
     -> admit the complete physical batch before application
@@ -353,6 +366,17 @@ fail closed, retains exact duplicate/conflict semantics within the new batch,
 and publishes only after the complete batch applies. The result is terminal:
 this checkpoint deliberately does not define repeated compaction, a durable
 combined checkpoint format, file replacement, framing, or crash recovery.
+Version `0.0.25` adds `breditor/local-log-checkpoint@1`, a strict durable codec
+for that anchor. Its mandatory `LocalLogCheckpointBinding` comes from trusted
+host configuration or storage metadata and is checked against all three wire
+identities before publication. The record embeds Session Checkpoint V1 and a
+complete record-declared chronological replay-tombstone vector whose positions
+derive the represented sequences. It derives the count and next sequence
+instead of encoding them redundantly, enforces a separate host tombstone limit,
+and requires an empty frontier to restore genesis-empty session history. This
+structural proof does not establish causal history, integrity, authenticity,
+freshness, authorization, rollback protection, storage durability, or writer
+fencing.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2031,8 +2055,10 @@ it still cannot restore an arbitrary externally supplied checkpoint tail.
 `LocalLogRecoveryError::SequenceExhausted` is implemented by successor
 recovery when an anchor has no next sequence. A v0.0.23 genesis vector must fit
 a `u64` physical count and begin at one, so the current public in-memory
-conversion path cannot itself construct the required `u64::MAX` anchor; the
-state becomes externally reachable only after a future strict anchor codec.
+conversion path cannot construct the required `u64::MAX` anchor. Local Log
+Checkpoint V1 also cannot materialize it without `u64::MAX` exact tombstones,
+so this error remains a defensive terminal-state contract rather than a
+practically reachable public state under finite limits.
 
 ### Compact checkpoint-linked successor recovery
 
@@ -2065,9 +2091,10 @@ complete vector of independently decoded entries. Its deterministic order is:
 2. Require the checkpoint session ID and bound successor log ID. A raw entry
    from the sealed generation fails membership before replay lookup.
 3. Reject a replay ID present in the compacted map with
-   `CompactedReplayId`, including its original sequence. This happens before
-   sequence, budget, or application checks. It is never reported as an exact
-   retry: the old proof needed to establish equality was deliberately dropped.
+   `CompactedReplayId`, including its checkpoint-represented sequence. This
+   happens before sequence, budget, or application checks. It is never reported
+   as an exact retry: the old proof needed to establish equality was
+   deliberately dropped or was never supplied by durable restoration.
 4. Consult the active-batch replay index. Exact same-sequence, same-kind,
    same-durable-proof retries skip; changed reuse fails with `ReplayConflict`.
 5. Require every unseen entry at the exact session-global next sequence carried
@@ -2086,9 +2113,9 @@ both kinds of replay protection.
 Any successor error drops the consumed anchor and privately applied prefix and
 returns no session. The operation is atomic at this Rust publication boundary,
 not against allocation failure, panic, abort, or process crash. The API does
-not provide incremental append or retry after a failed batch; the future
-durable checkpoint boundary must allow the host to reconstruct the anchor
-before retrying recovery.
+not provide incremental append or retry after a failed batch. Local Log
+Checkpoint V1 allows a host to reconstruct the consumed anchor from trusted
+bytes before retrying, but does not make that storage durable or single-owner.
 
 The tombstone policy preserves exact at-most-once application but changes old
 retry handling deliberately. A compacted ID is always rejected because the
@@ -2098,6 +2125,118 @@ not preserve exactness. Indefinite exact replay membership for opaque IDs also
 cannot use constant space: repeated compaction needs a hard lifetime event cap,
 an externally authoritative exact replay store, or a proved retry-expiration
 fence. None is selected yet.
+
+### Local log checkpoint V1
+
+Local Log Checkpoint V1 is the complete durable representation of one
+`LocalLogCheckpointAnchor`. It requires exactly eight fields regardless of
+input member order. The deterministic encoder emits this order:
+
+```json
+{
+  "format": "breditor/local-log-checkpoint",
+  "formatVersion": 1,
+  "sessionId": "session-01",
+  "checkpointLogId": "generation-01",
+  "successorLogId": "generation-02",
+  "coveredThrough": "2",
+  "replayTombstones": ["request-01", "request-02"],
+  "sessionCheckpoint": {
+    "format": "breditor/session-checkpoint",
+    "formatVersion": 1
+  }
+}
+```
+
+The abbreviated nested object above denotes one complete Session Checkpoint V1,
+not a literal two-field value. The outer format explicitly pins that nested
+version at compile time and checks its header at runtime. A future active
+session-checkpoint codec cannot silently change this composition; the outer
+format must retain a V1 implementation or increment its own version.
+
+`replayTombstones` is the complete record-declared chronological replay-ID
+vector for the compacted prefix. Position is authoritative within the record:
+`replayTombstones[0]` maps to sequence one, and element `n - 1` maps to
+sequence `n`. IDs are not sorted lexicographically. Encoding a separate
+sequence on every element would repeat information and create additional
+malformed permutations without adding integrity, so V1 omits it. V1 also omits
+a tombstone count and `nextSequence`; the vector length and checked successor
+of `coveredThrough` derive them.
+
+The topology laws are exact:
+
+- `checkpointLogId` and `successorLogId` are distinct;
+- `coveredThrough: null` requires an empty tombstone vector, and an empty
+  vector requires `null`;
+- a non-null frontier uses the canonical nonzero decimal-string `u64` grammar
+  and equals the vector length;
+- every tombstone is a valid `ReplayId` and all tombstones are unique; and
+- an empty frontier requires the decoded session to have no retained undo,
+  redo, or open merge-group behavior. A nonempty prefix may legitimately have
+  empty history after ignored-history commits or explicit history clearing.
+
+`LocalLogCheckpointJsonCodec` cannot be created from context alone. It also
+requires a `LocalLogCheckpointBinding` containing the expected session, sealed
+generation, and successor generation. That binding must come from trusted host
+configuration, an authorized manifest, or an already selected storage slot;
+constructing it from the same untrusted JSON defeats the boundary. Decode
+checks all three encoded identities against it before allocating or replaying
+the nested session. Hosts must never use an unchecked wire `sessionId` or
+`successorLogId` to choose tenant authority, permissions, a storage root, or a
+filesystem path. The binding proves equality with caller authority, not the
+authenticity of either value.
+
+Decode order is fixed:
+
+1. Enforce the complete input byte cap from `EditorContext`.
+2. Route the outer format and version, then require the complete strict shape.
+3. Reconstruct bounded identities and the canonical nullable frontier.
+4. Require distinct generations and equality with the trusted binding.
+5. Reject a claimed frontier above the host tombstone limit before scanning
+   individual elements.
+6. Stream-count the tombstone array without allocating it, enforce the same
+   limit, and require exact agreement with the frontier.
+7. Decode identities directly into the final ordered lookup without reserving
+   from an untrusted count, preflight escaped string size before allocation,
+   and reject duplicates.
+8. Require the explicit nested Session Checkpoint V1 header and replay-prove
+   the complete bounded session under its separate host policy.
+9. Enforce the empty-frontier history law and publish through a private checked
+   anchor factory only after every field is owned together.
+
+The default outer policy accepts at most 10,000 replay tombstones. Its nested
+`SessionCheckpointLimits` independently controls capacity, aggregate history
+operations, and retained state summaries. Both encode and decode apply these
+policies. The whole outer value must fit the context JSON cap even when its
+nested session is separately encodable under that same cap. A two-pass
+tombstone scan and directly built lookup avoid reserving from an untrusted
+frontier or array hint; this is an admission safeguard, not a fixed peak-memory
+guarantee.
+
+A complete frontier of `u64::MAX` would require `u64::MAX` arbitrary replay IDs.
+No finite bounded implementation can materialize that exact set. Under ordinary
+finite policies, V1 therefore rejects the claimed frontier as a resource excess
+before allocation. It never accepts a sparse terminal shortcut. If terminal
+restoration becomes a real product requirement, the replay-retention contract
+must change explicitly rather than weakening this format's exact membership
+claim.
+
+Most importantly, strict decoding proves internal shape, not historical truth.
+An attacker who can alter bytes can replace a real tombstone with a fake ID
+while preserving cardinality, which can allow the omitted old ID to apply
+again. The attacker can also splice any independently valid Session Checkpoint
+V1 onto any same-shape tombstone prefix. The record carries no event kinds or
+payload proofs after compaction, so the core cannot establish that the session
+was causally produced by those replay IDs. Decoding the same valid record twice
+also creates two independent in-memory owners.
+
+Consequently, exact at-most-once behavior after reload is conditional on
+integrity-protected trusted checkpoint bytes, rollback/freshness policy, and
+single-owner writer fencing. V1 supplies no checksum, MAC, signature,
+authentication, authorization, provenance, causal event proof, retry-expiry
+proof, storage durability, atomic replacement, or crash recovery. It also
+cannot prove that the sealed generation has no later entries or that the bound
+successor is unused. Those are later storage and lifecycle gates.
 
 The format separates four concepts that other editors often keep in different
 runtime layers: log order, retry identity, undo grouping, and serialization
@@ -2113,11 +2252,12 @@ The entry format by itself is only one event envelope and enforces none of the
 batch laws above. Genesis and one-successor recovery establish contiguous
 order, membership, replay protection, and applicability only for their supplied
 decoded vectors. The runtime anchor establishes in-process prefix linkage and
-fail-closed cross-generation reuse rejection. These layers do not establish
-idempotent append, a durable checkpoint-prefix record, framing, complete-frame
-versus torn-tail classification, append/flush/fsync/ack order, atomic file
-compaction, repeated generations, migration, checksums, hashes, signatures,
-authorization, or writer fencing. IDs and sequence remain unauthenticated
+fail-closed cross-generation reuse rejection, and Local Log Checkpoint V1 gives
+that anchor a strict durable value representation. These layers do not
+establish idempotent append, framing, complete-frame versus torn-tail
+classification, append/flush/fsync/ack order, atomic file compaction, repeated
+generations, migration, checksums, hashes, signatures, authorization, rollback
+protection, or writer fencing. IDs and sequence remain unauthenticated
 assertions, not revisions or content hashes.
 Commit-bearing entries also repeat Commit V1's complete before state, so a
 naive tail costs roughly entry count times document size. Filesystem durability
@@ -2126,19 +2266,20 @@ belongs to a platform adapter; a browser/Wasm host cannot inherit native
 
 ## Next gate
 
-Define strict `breditor/local-log-checkpoint@1` JSON that atomically composes
-Session Checkpoint V1 with the runtime anchor's durable session ID, sealed and
-bound successor generations, covered-through sequence, and complete ordered
-replay tombstones under explicit aggregate limits. Decode must prove that the
-session checkpoint, frontier, and tombstone cardinality form one complete
-anchor before publishing any field, including empty and terminal `u64::MAX`
-states. It must not silently widen the nested Session Checkpoint V1 version.
+Define one consuming repeated-compaction transition from `ContinuedLocalLog`
+to a new `LocalLogCheckpointAnchor`. It must merge the previous compacted
+tombstones with every active-generation replay ID, bind a new distinct
+successor generation, preserve the session-global sequence and complete
+history, and publish nothing on failure. A host-authoritative lifetime limit
+must bound the cumulative exact tombstone set before any full active proof is
+dropped; per-batch limits must not accidentally reset at each rotation. The
+result must remain encodable by unchanged Local Log Checkpoint V1.
 
-That wire boundary still does not make file replacement durable. Framing,
-migration, integrity and optional authenticity, authorization ownership,
-atomic checkpoint/log replace and append/flush/fsync/ack behavior, crash-tail
-detection/truncation, incremental continuation, repeated generation policy,
-retry reconstruction after failure, and multi-writer fencing remain separate
+That repeated in-memory transition still does not make file replacement
+durable. Framing, migration, integrity and optional authenticity, authorization
+ownership, atomic checkpoint/log replace and append/flush/fsync/ack behavior,
+crash-tail detection/truncation, incremental continuation, retry reconstruction
+after failure, rollback protection, and multi-writer fencing remain separate
 storage-layer gates.
 The log must not silently treat optimistic operation guards or caller-owned
 lineage/revision values as exactly-once delivery. Browser `beforeinput`,

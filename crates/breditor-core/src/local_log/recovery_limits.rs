@@ -16,7 +16,7 @@ pub const DEFAULT_LOCAL_LOG_RECOVERY_MAX_APPLIED_OPERATIONS: u64 = 16_384;
 /// before cloning or deriving it and separately requires the logged proof to
 /// match. Control events contribute no operations. All limits may be zero.
 /// Genesis and checkpoint-linked successor recovery apply independent policies;
-/// the latter does not recharge the already admitted compacted prefix.
+/// the latter does not recharge the already owned compacted prefix.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct LocalLogRecoveryLimits {
     observations: u64,

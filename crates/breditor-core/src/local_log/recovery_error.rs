@@ -154,17 +154,17 @@ pub enum LocalLogRecoveryError {
         /// Rejected equal successor generation.
         successor_log_id: LocalLogId,
     },
-    /// A successor entry reused a replay ID whose full event proof was compacted.
+    /// A successor entry reused a replay ID represented by a compact checkpoint.
     #[error(
-        "local-log observation {delivery_index} reuses compacted replay ID {replay_id} from sequence {original_sequence}"
+        "local-log observation {delivery_index} reuses compacted replay ID {replay_id} represented at sequence {checkpoint_sequence}"
     )]
     CompactedReplayId {
         /// Physical zero-based successor input index.
         delivery_index: u64,
         /// Reused session-scoped replay identity.
         replay_id: ReplayId,
-        /// Original sequence retained by the checkpoint tombstone.
-        original_sequence: LocalLogSequence,
+        /// Sequence represented by the checkpoint tombstone.
+        checkpoint_sequence: LocalLogSequence,
     },
     /// First-seen events exceed the host-selected ceiling.
     #[error(

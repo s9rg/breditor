@@ -3,14 +3,15 @@
 //! This module defines identities, sequence numbers, event values, and an
 //! atomic genesis recovery boundary, and one compact in-memory checkpoint-linked
 //! successor recovery. Runtime compaction retains exact replay-ID tombstones
-//! while dropping old event proofs. It does not append, persist, frame, encode
-//! the combined checkpoint, authenticate, or crash-recover a stream. The codec
-//! module can serialize one independently valid entry; storage must preserve
-//! the scopes and ordering documented by these values.
+//! while dropping old event proofs. The codec module can serialize one
+//! independently valid entry and one complete expected-binding checkpoint. It
+//! does not append, persist, frame, authenticate, fence, or crash-recover a
+//! stream; storage must preserve the scopes and ordering documented here.
 
 mod application;
 mod application_error;
 mod checkpoint_anchor;
+mod checkpoint_binding;
 mod continued;
 mod entry;
 mod event;
@@ -30,6 +31,10 @@ pub use application_error::{
     LocalLogReplayTransactionErrorCode,
 };
 pub use checkpoint_anchor::LocalLogCheckpointAnchor;
+pub(crate) use checkpoint_anchor::{
+    LocalLogCheckpointAnchorCheckpointParts, LocalLogCheckpointAnchorInvariantError,
+};
+pub use checkpoint_binding::{LocalLogCheckpointBinding, LocalLogCheckpointBindingError};
 pub use continued::ContinuedLocalLog;
 pub use entry::LocalLogEntry;
 pub use event::{LocalLogEvent, LocalLogEventError, LocalLogEventErrorCode, LocalLogEventKind};

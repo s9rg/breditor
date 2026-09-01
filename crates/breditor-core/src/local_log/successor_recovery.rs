@@ -21,17 +21,19 @@ impl LocalLogCheckpointAnchor {
     /// Atomically verifies and applies the complete bound-successor batch.
     ///
     /// Every entry must name this anchor's session and successor generation.
-    /// Reuse of a compacted replay ID fails closed: the anchor retains enough
-    /// information to prevent a second application, but not the old full event
-    /// proof needed to distinguish an exact retry from conflicting reuse.
+    /// Reuse of a checkpoint-represented replay ID fails closed. For a trusted
+    /// complete checkpoint this prevents a second application, but the anchor
+    /// has no old full event proof with which to establish provenance or
+    /// distinguish an exact retry from conflicting reuse.
     /// Exact duplicates first seen within `observations` are still skipped.
     /// First-seen successor events continue at the session-global checkpoint
     /// frontier and preserve the exact checkpointed history behavior.
     ///
-    /// `limits` apply only to this successor batch. The compacted prefix was
-    /// admitted by its genesis recovery and its tombstones are already owned.
-    /// On any error, the consumed anchor and privately applied successor prefix
-    /// are dropped; no partial session is returned.
+    /// `limits` apply only to this successor batch. The checkpoint prefix and
+    /// tombstones are already owned; their admission policy depends on whether
+    /// the anchor came from runtime compaction or durable decode. On any error,
+    /// the consumed anchor and privately applied successor prefix are dropped;
+    /// no partial session is returned.
     ///
     /// # Errors
     ///
@@ -65,7 +67,10 @@ impl SuccessorRecoveryProgress {
     fn new(anchor: LocalLogCheckpointAnchor, retained_capacity: usize) -> Self {
         let parts = anchor.into_parts();
         let covered_through = parts.checkpoint_covered_through;
-        let next_sequence = parts.next_sequence;
+        let next_sequence = match covered_through {
+            None => Some(LocalLogSequence::FIRST),
+            Some(sequence) => sequence.successor().ok(),
+        };
         Self {
             parts,
             active_replay_index: BTreeMap::new(),
@@ -127,13 +132,13 @@ impl SuccessorRecoveryProgress {
         delivery_index: u64,
         entry: &LocalLogEntry,
     ) -> Result<(), LocalLogRecoveryError> {
-        let Some(original_sequence) = self.parts.compacted_replays.get(entry.replay_id()) else {
+        let Some(checkpoint_sequence) = self.parts.compacted_replays.get(entry.replay_id()) else {
             return Ok(());
         };
         Err(LocalLogRecoveryError::CompactedReplayId {
             delivery_index,
             replay_id: entry.replay_id().clone(),
-            original_sequence: *original_sequence,
+            checkpoint_sequence: *checkpoint_sequence,
         })
     }
 

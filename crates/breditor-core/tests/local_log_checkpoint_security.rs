@@ -216,14 +216,14 @@ fn compacted_replay_is_rejected_before_sequence_or_event_application() -> TestRe
         .ok_or_else(|| test_error("compacted replay identity was accepted"))?;
     assert_eq!(error.code(), LocalLogRecoveryErrorCode::CompactedReplayId);
     assert_eq!(error.delivery_index(), Some(0));
-    let LocalLogRecoveryError::CompactedReplayId { delivery_index, replay_id, original_sequence } =
+    let LocalLogRecoveryError::CompactedReplayId { delivery_index, replay_id, checkpoint_sequence } =
         error
     else {
         return Err(test_error("compacted replay failure used the wrong variant").into());
     };
     assert_eq!(delivery_index, 0);
     assert_eq!(replay_id.as_str(), PREFIX_REPLAY_ID);
-    assert_eq!(original_sequence, LocalLogSequence::FIRST);
+    assert_eq!(checkpoint_sequence, LocalLogSequence::FIRST);
     Ok(())
 }
 

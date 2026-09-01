@@ -3,8 +3,9 @@
 //! The crate currently owns immutable document values, the minimal compiled
 //! proof schema, strict versioned document, singular-operation, exact-base
 //! transaction-request, contextual complete editor-state, replay-proved
-//! durable commit, bounded session-checkpoint, and replay-identified local-log
-//! entry JSON decoding plus atomic genesis-prefix and one-successor recovery,
+//! durable commit, bounded session-checkpoint, replay-identified local-log
+//! entry, and complete local-log-checkpoint JSON decoding plus atomic
+//! genesis-prefix and one-successor recovery,
 //! snapshot-local points and
 //! selections, immutable editor states, paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -26,7 +27,8 @@
 //! [`codec::OperationJsonCodec`], [`codec::TransactionJsonCodec`],
 //! [`codec::EditorStateJsonCodec`], or
 //! [`codec::SessionCheckpointJsonCodec`]. Durable transitions pass through
-//! [`codec::CommitJsonCodec`]. The
+//! [`codec::CommitJsonCodec`], while complete compacted log state passes through
+//! [`codec::LocalLogCheckpointJsonCodec`]. The
 //! document codec checks its versioned record, schema identity, canonicality,
 //! limits, and complete tree before publishing a runtime document. That same
 //! successful validation derives the document's exact cached [`document::DocumentSummary`];
@@ -57,8 +59,12 @@
 //! publish no session on error. A recovered owner can be compacted into a
 //! runtime [`local_log::LocalLogCheckpointAnchor`] that retains exact replay-ID
 //! tombstones and atomically recovers one bound successor generation without
-//! resetting sequence or history. Neither boundary is framing, durable
-//! checkpoint encoding, storage, authenticity, or crash-tail recovery.
+//! resetting sequence or history. Its strict durable codec requires an
+//! independently trusted [`local_log::LocalLogCheckpointBinding`] and embeds
+//! Session Checkpoint V1 plus complete chronological tombstones. It proves no
+//! causal relationship between those values. None of these boundaries provides
+//! framing, storage, integrity, rollback protection, writer fencing, or
+//! crash-tail recovery.
 
 pub mod action;
 pub mod codec;
