@@ -150,12 +150,51 @@ selection bytes and strictly decodes both nested checkpoints; the current
 checkpoint is decoded again to retain its anchor. The selected root additionally
 keeps up to two complete canonical selection envelopes, each of which may embed
 a full checkpoint. Work and retained memory may therefore scale with those byte
-limits and with both checkpoints' document/session sizes. This release performs
-no IndexedDB, JavaScript, Wasm, or other storage I/O; proves no compare-and-swap,
-head currentness, global ID/fence freshness, generation emptiness, writer
-authority/epoch, durability, commit evidence, or ownership release; and does
-not provision a database, scope, head, or generation. Exact byte equality is
-not storage currentness or authority. The profile's per-mutation epoch remains
+limits and with both checkpoints' document/session sizes. Version `0.0.35`
+performs no storage I/O and adds no storage-attempt state or evidence.
+
+Version `0.0.36` adds the first non-owning exact-attempt boundary. Root attempt
+preparation takes the database and planned scope incarnations in addition to a
+checked root selection. Rotation attempt preparation takes a normalized
+selected root and checked candidate manifest. Both strict-encode the candidate,
+construct its complete prospective `LocalLogStorageSelectedBinding`, run final
+strict selected normalization, and then drop that temporary candidate selected
+root and its checkpoint anchor. A root plan retains its full candidate binding
+and exact canonical candidate JSON. A rotation plan additionally snapshots the
+complete prior selected binding and `Arc`-shares its exact current and optional
+predecessor JSON; it retains neither the input selected root nor either anchor.
+
+The resulting private-constructor, non-`Clone`
+`LocalLogStoragePreparedAttempt` exposes candidate facts and payload byte
+lengths, not raw JSON. Consuming `begin_attempt` creates a fresh core-issued,
+opaque, ABA-safe, process-local `LocalLogStorageAttemptId` and moves the same
+plan to non-`Clone` `LocalLogStorageUncertainAttempt` before request egress.
+Only that uncertain state can yield one borrowed
+`LocalLogStorageAttemptRequest` for the current physical attempt. The request
+intentionally exposes exact candidate JSON and, for rotation, the exact selected
+binding/current/optional-predecessor JSON needed by an adapter; its `Debug`, the
+state `Debug`, IDs, and typed errors remain payload-redacted. Direct raw-JSON
+getters on `LocalLogStorageSelectedRoot` remain core-private.
+
+`begin_exact_resubmission` preserves the same plan allocations and every exact
+byte while issuing a fresh attempt identity and restoring one-request
+eligibility. `require_current_attempt_id` rejects an ID from another plan or an
+earlier retry, but a match or mismatch classifies no storage outcome. IDs and
+attempt state are volatile and have no serialized or restart representation.
+The one-shot borrowed request prevents a second request view from the same
+attempt object; it cannot prevent a host from copying bytes or dispatching them
+more than once.
+
+Attempt-plan history remains O(1) in rotation count, not in bytes. A rotation
+plan can retain three complete payload envelopes: its candidate, the selected
+current value, and the selected predecessor when present. This release still
+performs no IndexedDB, JavaScript, Wasm, filesystem, or other storage I/O;
+provides no adapter or publication authority; proves no compare-and-swap, head
+currentness, global ID/fence freshness, generation emptiness, terminal commit
+or noncommit, durability, or ownership release; and does not provision a
+database, scope, head, or generation. Exact bytes, selected bindings, and an
+attempt-ID match are not storage authority or evidence. Terminal and serialized
+resolver evidence is the `0.0.37` gate. The profile's per-mutation epoch remains
 revocable and therefore cannot itself release a long-lived exclusive Rust
 writer. All storage V1 shapes remain unstable pre-`0.1` contracts rather than
 permanent compatibility promises.

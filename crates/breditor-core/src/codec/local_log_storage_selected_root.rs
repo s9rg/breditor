@@ -205,6 +205,31 @@ impl LocalLogStorageSelectedRoot {
     pub(super) fn predecessor_selection_json(&self) -> Option<&str> {
         self.predecessor_selection_json.as_deref()
     }
+
+    /// Atomically snapshots the non-authority facts required by an attempt plan.
+    pub(super) fn snapshot_attempt_envelope(
+        &self,
+    ) -> (LocalLogStorageSelectedBinding, Arc<str>, Option<Arc<str>>) {
+        (
+            self.binding.clone(),
+            Arc::clone(&self.current_selection_json),
+            self.predecessor_selection_json.as_ref().map(Arc::clone),
+        )
+    }
+
+    /// Consumes a normalized value into its non-authority attempt facts.
+    pub(super) fn into_attempt_envelope(
+        self,
+    ) -> (LocalLogStorageSelectedBinding, Arc<str>, Option<Arc<str>>) {
+        let Self {
+            binding,
+            checkpoint_json: _,
+            current_selection_json,
+            predecessor_selection_json,
+            _checkpoint_anchor: _,
+        } = self;
+        (binding, current_selection_json, predecessor_selection_json)
+    }
 }
 
 impl fmt::Debug for LocalLogStorageSelectedRoot {

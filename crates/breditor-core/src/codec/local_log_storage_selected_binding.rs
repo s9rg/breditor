@@ -229,13 +229,20 @@ impl LocalLogStorageSelectedBindingError {
     }
 }
 
-/// Complete trusted scalar binding for one current selected storage value.
+/// Complete scalar binding for one exact root-or-rotation selection envelope.
 ///
 /// This value combines the current exact transaction receipt, its exact
 /// immediate predecessor when required, and both named generation records.
 /// It deliberately contains neither selection JSON nor mutable writer
 /// epoch/fence facts. Constructing it validates the O(1) cross-links that do
 /// not depend on strictly decoding the current and predecessor JSON values.
+/// "Current" identifies the tip value inside the represented envelope; it is
+/// not an attestation that storage currently selects that value. Selection
+/// normalization supplies observed trusted record facts, while attempt
+/// preparation may build a prospective candidate binding and strictly
+/// normalize exact canonical bytes against it. In either role, this type is
+/// inspection/plan data and proves no receipt existence, commit, currentness,
+/// durability, or writer authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalLogStorageSelectedBinding {
     current_receipt: LocalLogStorageSelectionReceiptBinding,
@@ -245,7 +252,7 @@ pub struct LocalLogStorageSelectedBinding {
 }
 
 impl LocalLogStorageSelectedBinding {
-    /// Validates and creates one complete trusted selected binding.
+    /// Validates and creates one complete selection-envelope binding.
     ///
     /// # Errors
     ///
@@ -354,7 +361,11 @@ impl LocalLogStorageSelectedBinding {
         Ok(Self { current_receipt, predecessor_receipt, checkpoint_generation, active_generation })
     }
 
-    /// Returns the exact independently trusted current receipt binding.
+    /// Returns the envelope tip's exact transaction-record binding.
+    ///
+    /// The value is observed receipt input only when the enclosing binding was
+    /// constructed from storage selection; a prospective attempt candidate is
+    /// not receipt evidence.
     #[must_use]
     pub const fn current_receipt(&self) -> &LocalLogStorageSelectionReceiptBinding {
         &self.current_receipt
@@ -366,7 +377,7 @@ impl LocalLogStorageSelectedBinding {
         self.predecessor_receipt.as_ref()
     }
 
-    /// Returns the trusted checkpoint generation-record facts.
+    /// Returns the complete checkpoint generation-record facts.
     #[must_use]
     pub const fn checkpoint_generation(
         &self,
@@ -374,7 +385,7 @@ impl LocalLogStorageSelectedBinding {
         &self.checkpoint_generation
     }
 
-    /// Returns the trusted active generation-record facts.
+    /// Returns the complete active generation-record facts.
     #[must_use]
     pub const fn active_generation(&self) -> &LocalLogStorageSelectedActiveGenerationBinding {
         &self.active_generation

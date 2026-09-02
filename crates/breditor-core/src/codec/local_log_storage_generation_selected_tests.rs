@@ -14,17 +14,20 @@ use crate::{
 
 use super::{
     DocumentJsonCodec, LocalLogCheckpointJsonCodec, LocalLogFrameLimits,
-    LocalLogStorageGenerationBinding, LocalLogStorageGenerationBindingField,
-    LocalLogStorageGenerationCodecError, LocalLogStorageGenerationContinuityError,
-    LocalLogStorageGenerationContinuityErrorCode, LocalLogStorageGenerationFrameV1,
-    LocalLogStorageGenerationJsonCodec, LocalLogStorageGenerationManifest,
+    LocalLogStorageAttemptPreparationErrorCode, LocalLogStorageAttemptRequest,
+    LocalLogStorageAttemptTransitionError, LocalLogStorageGenerationBinding,
+    LocalLogStorageGenerationBindingField, LocalLogStorageGenerationCodecError,
+    LocalLogStorageGenerationContinuityError, LocalLogStorageGenerationContinuityErrorCode,
+    LocalLogStorageGenerationFrameV1, LocalLogStorageGenerationJsonCodec,
+    LocalLogStorageGenerationLimits, LocalLogStorageGenerationManifest,
     LocalLogStorageGenerationManifestParts, LocalLogStorageGenerationPreparationInputs,
     LocalLogStorageRootBinding, LocalLogStorageRootJsonCodec, LocalLogStorageRootSelection,
     LocalLogStorageRootSelectionParts, LocalLogStorageSelectedActiveGenerationBinding,
     LocalLogStorageSelectedBinding, LocalLogStorageSelectedCheckpointGenerationBinding,
-    LocalLogStorageSelectedJsonCodec, LocalLogStorageSelectedRoot, LocalLogStorageSelectionKind,
-    LocalLogStorageSelectionReceiptBinding, LocalLogTailCompactionOutcome,
-    local_log_storage_generation_json::manifest_record,
+    LocalLogStorageSelectedCheckpointGenerationState, LocalLogStorageSelectedJsonCodec,
+    LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootErrorCode,
+    LocalLogStorageSelectionKind, LocalLogStorageSelectionReceiptBinding,
+    LocalLogTailCompactionOutcome, local_log_storage_generation_json::manifest_record,
 };
 
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -42,13 +45,27 @@ struct SelectedRotationFixture {
 }
 
 impl SelectedRotationFixture {
-    #[allow(clippy::too_many_lines)]
     fn new(kind: LocalLogStorageSelectionKind) -> TestResult<Self> {
+        Self::new_with_reclaimed_checkpoint(kind, false)
+    }
+
+    fn reclaimed_rotation() -> TestResult<Self> {
+        Self::new_with_reclaimed_checkpoint(LocalLogStorageSelectionKind::Rotation, true)
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn new_with_reclaimed_checkpoint(
+        kind: LocalLogStorageSelectionKind,
+        reclaimed_checkpoint: bool,
+    ) -> TestResult<Self> {
+        if kind == LocalLogStorageSelectionKind::Root && reclaimed_checkpoint {
+            return Err("a root fixture cannot have a reclaimed checkpoint".into());
+        }
         let context = EditorContext::default();
         let document = DocumentJsonCodec::new(context.schema().clone())
             .with_limits(context.limits().clone())
             .decode(
-                r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}]}}"#,
+                r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[{"kind":"text","text":"ROTATIONATTEMPTPAYLOADSENTINEL","formats":[]}]}]}}"#,
             )?;
         let state = EditorState::try_new(
             &context,
@@ -184,9 +201,16 @@ impl SelectedRotationFixture {
                 )?;
                 let predecessor_receipt =
                     receipt(LocalLogStorageSelectionKind::Root, "transaction:t0", None, "head:h0")?;
-                let selected_binding = LocalLogStorageSelectedBinding::try_new(
-                    current_receipt,
-                    Some(predecessor_receipt),
+                let checkpoint_generation = if reclaimed_checkpoint {
+                    LocalLogStorageSelectedCheckpointGenerationBinding::reclaimed(
+                        checkpoint_log_id.clone(),
+                        session_id.clone(),
+                        predecessor_frame,
+                        LocalLogStorageFenceId::try_new("fence:f0")?,
+                        LocalLogStorageHeadId::try_new("head:h0")?,
+                        selected_head_id.clone(),
+                    )
+                } else {
                     LocalLogStorageSelectedCheckpointGenerationBinding::retired(
                         checkpoint_log_id.clone(),
                         session_id.clone(),
@@ -194,7 +218,12 @@ impl SelectedRotationFixture {
                         LocalLogStorageFenceId::try_new("fence:f0")?,
                         LocalLogStorageHeadId::try_new("head:h0")?,
                         selected_head_id.clone(),
-                    ),
+                    )
+                };
+                let selected_binding = LocalLogStorageSelectedBinding::try_new(
+                    current_receipt,
+                    Some(predecessor_receipt),
+                    checkpoint_generation,
                     LocalLogStorageSelectedActiveGenerationBinding::new(
                         active_log_id.clone(),
                         session_id.clone(),
@@ -579,5 +608,298 @@ fn selected_binding_precedes_identity_and_outcome_validation() -> TestResult {
         "local_log_storage_generation_continuity.known_fence_id_reused"
     );
     assert_eq!(LocalLogStorageGenerationBindingField::SealedFrame.as_str(), "sealedFrame");
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn exact_rotation_attempt_snapshots_selected_envelope_and_candidate_binding() -> TestResult {
+    for selected_kind in
+        [LocalLogStorageSelectionKind::Root, LocalLogStorageSelectionKind::Rotation]
+    {
+        let fixture = SelectedRotationFixture::new(selected_kind)?;
+        let codec = fixture.codec();
+        let manifest = fixture.prepared()?;
+        let expected_candidate_json =
+            codec.encode_rotation_from_selected(&manifest, &fixture.selected)?;
+        let (expected_selected_binding, _, _) = fixture.selected.snapshot_attempt_envelope();
+        let expected_current = fixture.selected.current_selection_json().to_owned();
+        let expected_predecessor = fixture.selected.predecessor_selection_json().map(str::to_owned);
+        let current_pointer = fixture.selected.current_selection_json().as_ptr();
+        let predecessor_pointer = fixture.selected.predecessor_selection_json().map(str::as_ptr);
+        let expected_candidate_binding = LocalLogStorageSelectedBinding::try_new(
+            LocalLogStorageSelectionReceiptBinding::try_new(
+                manifest.profile_id().clone(),
+                manifest.profile_version(),
+                fixture.selected.database_incarnation_id().clone(),
+                manifest.scope_id().clone(),
+                fixture.selected.scope_incarnation_id().clone(),
+                manifest.transaction_id().clone(),
+                Some(manifest.expected_head_id().clone()),
+                manifest.committed_head_id().clone(),
+                LocalLogStorageSelectionKind::Rotation,
+                manifest.session_id().clone(),
+            )?,
+            Some(expected_selected_binding.current_receipt().clone()),
+            LocalLogStorageSelectedCheckpointGenerationBinding::retired(
+                fixture.selected.active_log_id().clone(),
+                manifest.session_id().clone(),
+                fixture.selected.active_frame(),
+                fixture.selected.activation_fence_id().clone(),
+                fixture.selected.selected_head_id().clone(),
+                manifest.committed_head_id().clone(),
+            ),
+            LocalLogStorageSelectedActiveGenerationBinding::new(
+                manifest.successor_log_id().clone(),
+                manifest.session_id().clone(),
+                manifest.successor_frame(),
+                manifest.fence_id().clone(),
+                manifest.committed_head_id().clone(),
+            ),
+        )?;
+
+        let prepared = codec.prepare_rotation_attempt(&fixture.selected, &manifest)?;
+        assert_eq!(prepared.selection_kind(), LocalLogStorageSelectionKind::Rotation);
+        assert_eq!(prepared.selected_binding(), Some(&expected_selected_binding));
+        assert_eq!(prepared.candidate_binding(), &expected_candidate_binding);
+        assert_eq!(prepared.candidate_json_bytes(), expected_candidate_json.len());
+        assert_eq!(prepared.selected_current_json_bytes(), Some(expected_current.len()));
+        assert_eq!(
+            prepared.selected_predecessor_json_bytes(),
+            expected_predecessor.as_ref().map(String::len)
+        );
+        assert_eq!(
+            prepared.retained_json_bytes(),
+            Some(
+                expected_candidate_json.len()
+                    + expected_current.len()
+                    + expected_predecessor.as_ref().map_or(0, String::len)
+            )
+        );
+        assert_eq!(
+            prepared.candidate_receipt().expected_head_id(),
+            Some(fixture.selected.selected_head_id())
+        );
+        assert_eq!(
+            prepared.candidate_binding().predecessor_receipt(),
+            Some(fixture.selected.current_receipt())
+        );
+        assert_eq!(
+            prepared.candidate_binding().checkpoint_generation().state(),
+            LocalLogStorageSelectedCheckpointGenerationState::Retired
+        );
+        assert_eq!(
+            prepared.candidate_binding().checkpoint_generation().log_id(),
+            fixture.selected.active_log_id()
+        );
+        assert_eq!(
+            prepared.candidate_binding().active_generation().log_id(),
+            manifest.successor_log_id()
+        );
+        let prepared_debug = format!("{prepared:?}");
+        assert!(expected_candidate_json.contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+        assert!(expected_current.contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+        if let Some(predecessor) = &expected_predecessor {
+            assert!(predecessor.contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+        }
+        assert!(!prepared_debug.contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+        assert!(!prepared_debug.contains(&expected_candidate_json));
+        assert!(!prepared_debug.contains(&expected_current));
+        if let Some(predecessor) = &expected_predecessor {
+            assert!(!prepared_debug.contains(predecessor));
+        }
+
+        let mut uncertain = prepared.begin_attempt();
+        assert!(!format!("{uncertain:?}").contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+        let attempt_id = uncertain.attempt_id().clone();
+        {
+            let request = uncertain.adapter_request()?;
+            assert!(!format!("{request:?}").contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+            assert_eq!(request.attempt_id(), &attempt_id);
+            assert_eq!(request.candidate_json(), expected_candidate_json);
+            let LocalLogStorageAttemptRequest::Rotation(rotation) = request else {
+                return Err("rotation plan yielded a root request".into());
+            };
+            assert_eq!(rotation.candidate_binding(), &expected_candidate_binding);
+            assert_eq!(rotation.selected_binding(), &expected_selected_binding);
+            assert_eq!(rotation.selected_current_json(), expected_current);
+            assert_eq!(rotation.selected_predecessor_json(), expected_predecessor.as_deref());
+            assert_eq!(rotation.selected_current_json().as_ptr(), current_pointer);
+            assert_eq!(rotation.selected_predecessor_json().map(str::as_ptr), predecessor_pointer);
+            let request_debug = format!("{rotation:?}");
+            assert!(!request_debug.contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+            assert!(!request_debug.contains(&expected_candidate_json));
+            assert!(!request_debug.contains(&expected_current));
+            if let Some(predecessor) = &expected_predecessor {
+                assert!(!request_debug.contains(predecessor));
+            }
+        }
+        assert!(matches!(
+            uncertain.adapter_request(),
+            Err(LocalLogStorageAttemptTransitionError::RequestAlreadyBorrowed)
+        ));
+    }
+    Ok(())
+}
+
+#[test]
+fn exact_rotation_resubmission_preserves_every_byte_and_rejects_prior_identity() -> TestResult {
+    let fixture = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+    let codec = fixture.codec();
+    let manifest = fixture.prepared()?;
+    let expected_candidate = codec.encode_rotation_from_selected(&manifest, &fixture.selected)?;
+    let expected_current = fixture.selected.current_selection_json().to_owned();
+    let expected_predecessor = fixture
+        .selected
+        .predecessor_selection_json()
+        .ok_or("selected rotation omitted predecessor")?
+        .to_owned();
+    let prepared = codec.prepare_rotation_attempt(&fixture.selected, &manifest)?;
+    let expected_candidate_binding = prepared.candidate_binding().clone();
+    let mut uncertain = prepared.begin_attempt();
+    let prior_id = uncertain.attempt_id().clone();
+    let mut seen_attempt_ids = vec![prior_id.clone()];
+    let (candidate_pointer, current_pointer, predecessor_pointer) = {
+        let request = uncertain.adapter_request()?;
+        assert_eq!(request.candidate_json(), expected_candidate);
+        let LocalLogStorageAttemptRequest::Rotation(rotation) = request else {
+            return Err("rotation attempt yielded a root request".into());
+        };
+        (
+            rotation.candidate_json().as_ptr(),
+            rotation.selected_current_json().as_ptr(),
+            rotation
+                .selected_predecessor_json()
+                .ok_or("selected rotation omitted predecessor")?
+                .as_ptr(),
+        )
+    };
+
+    for _ in 0..3 {
+        uncertain = uncertain.begin_exact_resubmission();
+        let current_id = uncertain.attempt_id().clone();
+        assert!(seen_attempt_ids.iter().all(|seen| seen != &current_id));
+        assert_eq!(uncertain.require_current_attempt_id(&current_id), Ok(()));
+        for seen in &seen_attempt_ids {
+            assert_eq!(
+                uncertain.require_current_attempt_id(seen),
+                Err(LocalLogStorageAttemptTransitionError::AttemptIdMismatch)
+            );
+        }
+        assert_eq!(uncertain.candidate_binding(), &expected_candidate_binding);
+        let request = uncertain.adapter_request()?;
+        let LocalLogStorageAttemptRequest::Rotation(rotation) = request else {
+            return Err("rotation retry yielded a root request".into());
+        };
+        assert_eq!(rotation.candidate_json(), expected_candidate);
+        assert_eq!(rotation.selected_current_json(), expected_current);
+        assert_eq!(rotation.selected_predecessor_json(), Some(expected_predecessor.as_str()));
+        assert_eq!(rotation.candidate_json().as_ptr(), candidate_pointer);
+        assert_eq!(rotation.selected_current_json().as_ptr(), current_pointer);
+        assert_eq!(
+            rotation
+                .selected_predecessor_json()
+                .ok_or("rotation retry omitted predecessor")?
+                .as_ptr(),
+            predecessor_pointer
+        );
+        seen_attempt_ids.push(current_id);
+    }
+    Ok(())
+}
+
+#[test]
+fn reclaimed_selected_checkpoint_state_is_preserved_in_attempt_snapshot() -> TestResult {
+    let fixture = SelectedRotationFixture::reclaimed_rotation()?;
+    let manifest = fixture.prepared()?;
+    let (selected_binding, _, _) = fixture.selected.snapshot_attempt_envelope();
+    let prepared = fixture.codec().prepare_rotation_attempt(&fixture.selected, &manifest)?;
+
+    assert_eq!(
+        selected_binding.checkpoint_generation().state(),
+        LocalLogStorageSelectedCheckpointGenerationState::Reclaimed
+    );
+    assert_eq!(
+        prepared
+            .selected_binding()
+            .ok_or("rotation plan omitted selected binding")?
+            .checkpoint_generation()
+            .state(),
+        LocalLogStorageSelectedCheckpointGenerationState::Reclaimed
+    );
+    assert_eq!(
+        prepared.candidate_binding().checkpoint_generation().state(),
+        LocalLogStorageSelectedCheckpointGenerationState::Retired
+    );
+
+    let mut uncertain = prepared.begin_attempt();
+    let request = uncertain.adapter_request()?;
+    let LocalLogStorageAttemptRequest::Rotation(rotation) = request else {
+        return Err("rotation plan yielded a root request".into());
+    };
+    assert_eq!(
+        rotation.selected_binding().checkpoint_generation().state(),
+        LocalLogStorageSelectedCheckpointGenerationState::Reclaimed
+    );
+    Ok(())
+}
+
+#[test]
+fn rotation_attempt_outlives_borrowed_selected_root_and_outcome() -> TestResult {
+    let (prepared, expected_candidate, expected_current, expected_predecessor) = {
+        let fixture = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+        let codec = fixture.codec();
+        let manifest = fixture.prepared()?;
+        let candidate = codec.encode_rotation_from_selected(&manifest, &fixture.selected)?;
+        let current = fixture.selected.current_selection_json().to_owned();
+        let predecessor = fixture
+            .selected
+            .predecessor_selection_json()
+            .ok_or("selected rotation omitted predecessor")?
+            .to_owned();
+        let prepared = codec.prepare_rotation_attempt(&fixture.selected, &manifest)?;
+        (prepared, candidate, current, predecessor)
+    };
+
+    let mut uncertain = prepared.begin_attempt();
+    let request = uncertain.adapter_request()?;
+    let LocalLogStorageAttemptRequest::Rotation(rotation) = request else {
+        return Err("rotation plan yielded a root request".into());
+    };
+    assert_eq!(rotation.candidate_json(), expected_candidate);
+    assert_eq!(rotation.selected_current_json(), expected_current);
+    assert_eq!(rotation.selected_predecessor_json(), Some(expected_predecessor.as_str()));
+    Ok(())
+}
+
+#[test]
+fn rotation_attempt_final_normalization_enforces_input_limit_without_consuming_inputs() -> TestResult
+{
+    let fixture = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+    let codec = fixture.codec();
+    let manifest = fixture.prepared()?;
+    let expected_candidate = codec.encode_rotation_from_selected(&manifest, &fixture.selected)?;
+    let limited = fixture.codec().with_limits(
+        LocalLogStorageGenerationLimits::default()
+            .with_max_input_bytes(expected_candidate.len() - 1)
+            .with_max_output_bytes(expected_candidate.len()),
+    );
+    let error = limited
+        .prepare_rotation_attempt(&fixture.selected, &manifest)
+        .err()
+        .ok_or("input-limited final rotation normalization unexpectedly succeeded")?;
+
+    assert_eq!(error.code(), LocalLogStorageAttemptPreparationErrorCode::InvalidCandidateEnvelope);
+    assert_eq!(error.selection_kind(), LocalLogStorageSelectionKind::Rotation);
+    assert_eq!(error.envelope_code(), Some(LocalLogStorageSelectedRootErrorCode::InvalidSelection));
+    assert_eq!(error.codec_code(), None);
+    assert!(expected_candidate.contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+    assert!(!format!("{error:?}").contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+    assert!(!error.to_string().contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+    assert_eq!(
+        codec.encode_rotation_from_selected(&manifest, &fixture.selected)?,
+        expected_candidate
+    );
+    assert_eq!(fixture.selected.transaction_id().as_str(), "transaction:t1");
     Ok(())
 }

@@ -5,18 +5,24 @@ use serde_json::Value;
 use crate::{
     codec::{
         CodecErrorCode, DocumentJsonCodec, LocalLogCheckpointJsonCodec, LocalLogFrameLimits,
-        LocalLogStorageGenerationLimits, LocalLogStorageRootBinding,
-        LocalLogStorageRootBindingField, LocalLogStorageRootCodecError,
+        LocalLogStorageAttemptPreparationErrorCode, LocalLogStorageAttemptRequest,
+        LocalLogStorageAttemptTransitionError, LocalLogStorageGenerationLimits,
+        LocalLogStorageRootBinding, LocalLogStorageRootBindingField, LocalLogStorageRootCodecError,
         LocalLogStorageRootJsonCodec, LocalLogStorageRootPreparationInputs,
         LocalLogStorageRootRecordErrorCode, LocalLogStorageRootRecordLocation,
         LocalLogStorageRootResourceLimit, LocalLogStorageRootSelection,
         LocalLogStorageRootSelectionParts, LocalLogStorageRootTopologyError,
+        LocalLogStorageSelectedActiveGenerationBinding, LocalLogStorageSelectedBinding,
+        LocalLogStorageSelectedCheckpointGenerationBinding,
+        LocalLogStorageSelectedCheckpointGenerationState, LocalLogStorageSelectedRootErrorCode,
+        LocalLogStorageSelectionKind, LocalLogStorageSelectionReceiptBinding,
     },
     local_log::{
         LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogId, LocalLogRecovery,
-        LocalLogRecoveryLimits, LocalLogStorageFenceId, LocalLogStorageHeadId,
-        LocalLogStorageProfileId, LocalLogStorageProfileVersion, LocalLogStorageScopeId,
-        LocalLogStorageTransactionId, LocalSessionId,
+        LocalLogRecoveryLimits, LocalLogStorageDatabaseIncarnationId, LocalLogStorageFenceId,
+        LocalLogStorageHeadId, LocalLogStorageProfileId, LocalLogStorageProfileVersion,
+        LocalLogStorageScopeId, LocalLogStorageScopeIncarnationId, LocalLogStorageTransactionId,
+        LocalSessionId,
     },
     session::EditorSession,
     state::{EditorContext, EditorState, LineageId},
@@ -37,7 +43,7 @@ impl RootFixture {
         let document = DocumentJsonCodec::new(context.schema().clone())
             .with_limits(context.limits().clone())
             .decode(
-                r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}]}}"#,
+                r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[{"kind":"text","text":"ROOTATTEMPTPAYLOADSENTINEL","formats":[]}]}]}}"#,
             )?;
         let state = EditorState::try_new(
             &context,
@@ -619,5 +625,282 @@ fn nested_checkpoint_binding_matches_all_three_derived_identities() -> TestResul
     assert_eq!(anchor.session_id(), selection.session_id());
     assert_eq!(anchor.checkpoint_log_id(), selection.checkpoint_log_id());
     assert_eq!(anchor.successor_log_id(), selection.active_log_id());
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn exact_root_attempt_is_closed_before_one_shot_request_egress() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let database_incarnation_id =
+        LocalLogStorageDatabaseIncarnationId::try_new("database:root-attempt")?;
+    let scope_incarnation_id =
+        LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-attempt")?;
+    let expected_candidate_binding = LocalLogStorageSelectedBinding::try_new(
+        LocalLogStorageSelectionReceiptBinding::try_new(
+            selection.profile_id().clone(),
+            selection.profile_version(),
+            database_incarnation_id.clone(),
+            selection.scope_id().clone(),
+            scope_incarnation_id.clone(),
+            selection.transaction_id().clone(),
+            None,
+            selection.committed_head_id().clone(),
+            LocalLogStorageSelectionKind::Root,
+            selection.session_id().clone(),
+        )?,
+        None,
+        LocalLogStorageSelectedCheckpointGenerationBinding::checkpoint_only(
+            selection.checkpoint_log_id().clone(),
+            selection.session_id().clone(),
+            selection.committed_head_id().clone(),
+        ),
+        LocalLogStorageSelectedActiveGenerationBinding::new(
+            selection.active_log_id().clone(),
+            selection.session_id().clone(),
+            selection.active_frame(),
+            selection.fence_id().clone(),
+            selection.committed_head_id().clone(),
+        ),
+    )?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &database_incarnation_id,
+        &scope_incarnation_id,
+        &selection,
+    )?;
+
+    assert_eq!(prepared.selection_kind(), LocalLogStorageSelectionKind::Root);
+    assert_eq!(prepared.candidate_binding(), &expected_candidate_binding);
+    assert_eq!(prepared.candidate_json_bytes(), expected_json.len());
+    assert_eq!(prepared.retained_json_bytes(), Some(expected_json.len()));
+    assert_eq!(prepared.selected_current_json_bytes(), None);
+    assert_eq!(prepared.selected_predecessor_json_bytes(), None);
+    assert_eq!(prepared.selected_binding(), None);
+    assert_eq!(prepared.candidate_receipt().database_incarnation_id(), &database_incarnation_id);
+    assert_eq!(prepared.candidate_receipt().scope_incarnation_id(), &scope_incarnation_id);
+    assert_eq!(prepared.candidate_receipt().transaction_id(), selection.transaction_id());
+    assert_eq!(
+        prepared.candidate_binding().checkpoint_generation().state(),
+        LocalLogStorageSelectedCheckpointGenerationState::CheckpointOnly
+    );
+    assert_eq!(
+        prepared.candidate_binding().active_generation().log_id(),
+        selection.active_log_id()
+    );
+    let prepared_debug = format!("{prepared:?}");
+    assert!(expected_json.contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!prepared_debug.contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!prepared_debug.contains(&expected_json));
+    assert!(!prepared_debug.contains(selection.checkpoint_json()));
+
+    let other_prepared = fixture.codec().prepare_root_attempt(
+        &database_incarnation_id,
+        &scope_incarnation_id,
+        &selection,
+    )?;
+    let other_uncertain = other_prepared.begin_attempt();
+    let other_attempt_id = other_uncertain.attempt_id().clone();
+
+    let mut uncertain = prepared.begin_attempt();
+    let first_attempt_id = uncertain.attempt_id().clone();
+    assert_ne!(first_attempt_id, other_attempt_id);
+    assert_eq!(uncertain.require_current_attempt_id(&first_attempt_id), Ok(()));
+    assert_eq!(
+        uncertain.require_current_attempt_id(&other_attempt_id),
+        Err(LocalLogStorageAttemptTransitionError::AttemptIdMismatch)
+    );
+    assert!(!uncertain.request_issued());
+    assert!(!format!("{uncertain:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    let expected_candidate_binding = uncertain.candidate_binding().clone();
+    {
+        let request = uncertain.adapter_request()?;
+        assert_eq!(request.attempt_id(), &first_attempt_id);
+        assert_eq!(request.selection_kind(), LocalLogStorageSelectionKind::Root);
+        assert_eq!(request.candidate_json(), expected_json);
+        assert_eq!(request.candidate_binding(), &expected_candidate_binding);
+        assert!(!format!("{request:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+        let LocalLogStorageAttemptRequest::Root(root) = request else {
+            return Err("root plan yielded a rotation request".into());
+        };
+        assert_eq!(root.candidate_json(), expected_json);
+        assert_eq!(root.candidate_binding(), &expected_candidate_binding);
+        let request_debug = format!("{root:?}");
+        assert!(!request_debug.contains("ROOTATTEMPTPAYLOADSENTINEL"));
+        assert!(!request_debug.contains(&expected_json));
+        assert!(!request_debug.contains(selection.checkpoint_json()));
+    }
+    assert!(uncertain.request_issued());
+    assert!(matches!(
+        uncertain.adapter_request(),
+        Err(LocalLogStorageAttemptTransitionError::RequestAlreadyBorrowed)
+    ));
+    Ok(())
+}
+
+#[test]
+fn exact_root_resubmission_preserves_plan_and_refreshes_attempt_identity() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-retry")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-retry")?,
+        &selection,
+    )?;
+    let expected_binding = prepared.candidate_binding().clone();
+    let mut uncertain = prepared.begin_attempt();
+    let prior_id = uncertain.attempt_id().clone();
+    let candidate_pointer = {
+        let first = uncertain.adapter_request()?;
+        assert_eq!(first.candidate_json(), expected_json);
+        first.candidate_json().as_ptr()
+    };
+
+    let mut retried = uncertain.begin_exact_resubmission();
+    assert_ne!(retried.attempt_id(), &prior_id);
+    assert_eq!(
+        retried.require_current_attempt_id(&prior_id),
+        Err(LocalLogStorageAttemptTransitionError::AttemptIdMismatch)
+    );
+    assert_eq!(retried.candidate_binding(), &expected_binding);
+    assert!(!retried.request_issued());
+    let retried_id = retried.attempt_id().clone();
+    let retry = retried.adapter_request()?;
+    assert_eq!(retry.attempt_id(), &retried_id);
+    assert_eq!(retry.candidate_json(), expected_json);
+    assert_eq!(retry.candidate_binding(), &expected_binding);
+    assert_eq!(retry.candidate_json().as_ptr(), candidate_pointer);
+    Ok(())
+}
+
+#[test]
+fn root_attempt_outlives_borrowed_selection_and_compaction_outcome() -> TestResult {
+    let (prepared, expected_json) = {
+        let fixture = RootFixture::new()?;
+        let (selection, expected_json) = fixture.encoded()?;
+        let prepared = fixture.codec().prepare_root_attempt(
+            &LocalLogStorageDatabaseIncarnationId::try_new("database:root-owned-plan")?,
+            &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-owned-plan")?,
+            &selection,
+        )?;
+        (prepared, expected_json)
+    };
+
+    let mut uncertain = prepared.begin_attempt();
+    assert_eq!(uncertain.adapter_request()?.candidate_json(), expected_json);
+    Ok(())
+}
+
+#[test]
+fn exact_resubmission_before_request_egress_refreshes_id_and_remains_one_shot() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-retry-before-egress")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-retry-before-egress")?,
+        &selection,
+    )?;
+    let uncertain = prepared.begin_attempt();
+    let prior_id = uncertain.attempt_id().clone();
+    assert!(!uncertain.request_issued());
+
+    let mut retried = uncertain.begin_exact_resubmission();
+    let retried_id = retried.attempt_id().clone();
+    assert_ne!(retried_id, prior_id);
+    assert_eq!(
+        retried.require_current_attempt_id(&prior_id),
+        Err(LocalLogStorageAttemptTransitionError::AttemptIdMismatch)
+    );
+    assert!(!retried.request_issued());
+    assert_eq!(retried.adapter_request()?.candidate_json(), expected_json);
+    assert!(retried.request_issued());
+    assert!(matches!(
+        retried.adapter_request(),
+        Err(LocalLogStorageAttemptTransitionError::RequestAlreadyBorrowed)
+    ));
+    Ok(())
+}
+
+#[test]
+fn root_attempt_incarnations_are_plan_identity_outside_candidate_json() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let first = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:first")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:first")?,
+        &selection,
+    )?;
+    let second = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:second")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:second")?,
+        &selection,
+    )?;
+
+    assert_ne!(first.candidate_binding(), second.candidate_binding());
+    let mut first = first.begin_attempt();
+    let mut second = second.begin_attempt();
+    assert_eq!(first.adapter_request()?.candidate_json(), expected_json);
+    assert_eq!(second.adapter_request()?.candidate_json(), expected_json);
+    assert_eq!(selection.transaction_id(), fixture.inputs.transaction_id());
+    Ok(())
+}
+
+#[test]
+fn root_attempt_preparation_failure_is_payload_free_and_keeps_borrowed_inputs_usable() -> TestResult
+{
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let database_incarnation_id =
+        LocalLogStorageDatabaseIncarnationId::try_new("database:root-failure")?;
+    let scope_incarnation_id =
+        LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-failure")?;
+    let limited = fixture
+        .codec()
+        .with_limits(LocalLogStorageGenerationLimits::default().with_max_output_bytes(0));
+    let error = limited
+        .prepare_root_attempt(&database_incarnation_id, &scope_incarnation_id, &selection)
+        .err()
+        .ok_or("zero-output attempt preparation unexpectedly succeeded")?;
+
+    assert_eq!(error.code(), LocalLogStorageAttemptPreparationErrorCode::InvalidCandidate);
+    assert_eq!(error.codec_code(), Some(CodecErrorCode::OutputTooLarge));
+    assert!(!format!("{error:?}").contains(&expected_json));
+    assert!(expected_json.contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!format!("{error:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!error.to_string().contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!error.to_string().contains(selection.checkpoint_json()));
+    assert_eq!(database_incarnation_id.as_str(), "database:root-failure");
+    assert_eq!(scope_incarnation_id.as_str(), "scope-incarnation:root-failure");
+    assert_eq!(fixture.codec().encode_root(&selection)?, expected_json);
+    Ok(())
+}
+
+#[test]
+fn root_attempt_final_normalization_enforces_input_limit_without_consuming_inputs() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let database_incarnation_id =
+        LocalLogStorageDatabaseIncarnationId::try_new("database:root-normalization-limit")?;
+    let scope_incarnation_id =
+        LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-normalization-limit")?;
+    let limited = fixture.codec().with_limits(
+        LocalLogStorageGenerationLimits::default()
+            .with_max_input_bytes(expected_json.len() - 1)
+            .with_max_output_bytes(expected_json.len()),
+    );
+    let error = limited
+        .prepare_root_attempt(&database_incarnation_id, &scope_incarnation_id, &selection)
+        .err()
+        .ok_or("input-limited final root normalization unexpectedly succeeded")?;
+
+    assert_eq!(error.code(), LocalLogStorageAttemptPreparationErrorCode::InvalidCandidateEnvelope);
+    assert_eq!(error.selection_kind(), LocalLogStorageSelectionKind::Root);
+    assert_eq!(error.envelope_code(), Some(LocalLogStorageSelectedRootErrorCode::InvalidSelection));
+    assert_eq!(error.codec_code(), None);
+    assert!(!format!("{error:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!error.to_string().contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert_eq!(database_incarnation_id.as_str(), "database:root-normalization-limit");
+    assert_eq!(scope_incarnation_id.as_str(), "scope-incarnation:root-normalization-limit");
+    assert_eq!(fixture.codec().encode_root(&selection)?, expected_json);
     Ok(())
 }

@@ -2,8 +2,10 @@
 
 Status: profile contract frozen in Breditor `0.0.33`; pure-Rust root/selection
 values implemented in `0.0.34`; exact selected identity-envelope retention and
-comparison implemented in `0.0.35`; no IndexedDB/JavaScript/Wasm adapter,
-storage-attempt evidence, ownership typestate, or executable provisioning exists
+comparison implemented in `0.0.35`; exact non-owning attempt plans and
+`Prepared`/`Uncertain` mechanics implemented in `0.0.36`; no
+IndexedDB/JavaScript/Wasm adapter, terminal/resolver evidence, ownership
+typestate, or executable provisioning exists
 
 Profile identifier: `breditor/indexeddb-local-log`
 
@@ -31,8 +33,8 @@ every browser implementation is bug-free.
 
 ## Decisions
 
-Version `0.0.33` freezes these decisions; versions `0.0.34` and `0.0.35`
-implement only their profile-independent Rust value-validation subset:
+Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.36`
+implement only their profile-independent Rust value/attempt subset:
 
 1. Initial provisioning uses a distinct canonical root-selection value. It
    does not invent a magic expected head or pass an unchecked ordinary
@@ -75,7 +77,7 @@ implement only their profile-independent Rust value-validation subset:
 ## Authority split
 
 `breditor-core` remains synchronous, deterministic, and free of browser
-handles. Versions `0.0.34` and `0.0.35` can:
+handles. Versions `0.0.34` through `0.0.36` can:
 
 - prepare and strictly encode the root-selection value from one borrowed local
   log compaction outcome;
@@ -88,11 +90,21 @@ handles. Versions `0.0.34` and `0.0.35` can:
   caller-supplied exact envelope bytes;
 - validate a proposed ordinary rotation against that summary through distinct
   `prepare_rotation_from_selected`, `encode_rotation_from_selected`, and
-  `decode_rotation_from_selected` actions.
+  `decode_rotation_from_selected` actions;
+- close one checked root plus explicit database/planned-scope incarnations, or
+  one checked rotation plus its normalized selected root, into a non-`Clone`
+  exact `Prepared` plan with a full prospective candidate binding and exact
+  candidate JSON; a rotation snapshots the complete prior selected binding and
+  `Arc`-shares exact selected current/optional-predecessor JSON without
+  retaining the selected root or anchor; and
+- conservatively begin `Uncertain` under a fresh core-issued ABA-safe process-
+  local attempt ID, expose one borrowed exact request, reject cross-plan/stale
+  IDs without classification, and exactly resubmit the same retained plan and
+  bytes under a fresh ID.
 
-A later pure-Rust boundary must check typed host evidence against one exact
-prepared plan without treating per-transaction IndexedDB fencing as release of
-an exclusive semantic owner.
+The v0.0.37 boundary must check typed host terminal/resolver evidence against
+one exact prepared plan without treating per-transaction IndexedDB fencing as
+release of an exclusive semantic owner.
 
 The JavaScript adapter owns `IDBDatabase`, `IDBTransaction`, requests, events,
 connection reopening, exact key construction, structured-clone values, and the
@@ -269,8 +281,7 @@ the next plan against that summary. Anchor quarantine is ownership/API hygiene,
 not secrecy or exclusive authority: public checkpoint bytes and binding
 identities can reconstruct a separate structurally checked anchor. Database
 and scope incarnations remain selected-root carrier facts rather than
-generation-wire fields, so a future evidence/adapter boundary must retain the
-selected root with the candidate manifest.
+generation-wire fields.
 
 Version `0.0.35` closes the byte-identity gap left by scalar normalization. The
 selected root retains the complete checked selected binding and byte-exact
@@ -286,6 +297,47 @@ preview. `Debug` may still show bounded identity values such as the session ID.
 The retained selection receipt bindings are caller-supplied validation facts,
 not commit evidence.
 
+Version `0.0.36` closes these values into two exact plan shapes.
+`LocalLogStorageRootJsonCodec::prepare_root_attempt` takes the planned database
+and scope incarnations plus a checked root selection. Its full prospective
+candidate selected binding therefore distinguishes equal root JSON planned for
+different incarnations. `LocalLogStorageGenerationJsonCodec::prepare_rotation_attempt`
+takes a checked candidate manifest and normalized selected root, deriving both
+incarnations only from the latter. Both actions strict-encode the exact
+candidate, construct its full prospective selected binding, and run final
+strict selected normalization. That final proof reconstructs and then drops the
+temporary candidate selected root and checkpoint anchor.
+
+The private root plan retains its candidate binding and exact JSON. The
+rotation plan additionally copies the complete selected binding and `Arc`-
+shares the exact selected current/optional-predecessor JSON. It deliberately
+does not retain the input `LocalLogStorageSelectedRoot`, its current anchor,
+the temporary candidate anchor, a browser handle, or a revocable writer token.
+The selected root's direct raw-JSON access remains core-private; the narrow
+public payload-bearing surface is a borrowed request after the state is already
+uncertain.
+
+Successful preparation returns private-constructor non-`Clone`
+`LocalLogStoragePreparedAttempt`, whose inspection surface provides candidate
+receipt/binding facts and exact payload lengths rather than raw JSON. Consuming
+`begin_attempt` core-issues a fresh opaque ABA-safe process-local
+`LocalLogStorageAttemptId` and moves the exact plan to non-`Clone`
+`LocalLogStorageUncertainAttempt` before request egress. That uncertain value
+can yield one borrowed request for the physical attempt. A root request exposes
+the candidate binding and exact candidate JSON; a rotation request also exposes
+the selected binding and exact selected current/optional-predecessor JSON that
+the future adapter must compare. All request/state/error diagnostics redact
+payload bytes.
+
+Consuming `begin_exact_resubmission` preserves the same retained plan
+allocations and every byte, issues a fresh attempt ID, restores one-request
+eligibility, and remains uncertain because the prior physical attempt can still
+commit. `require_current_attempt_id` rejects a cross-plan or earlier-retry ID,
+but matching and mismatch are correlation only, never terminal evidence.
+Attempt IDs/state are volatile, nonserializable, and unrecoverable after process
+restart. The one-shot borrowed request cannot prevent the host from copying its
+strings or dispatching duplicate external operations.
+
 Here O(1) means constant in the number of older rotations, not constant bytes.
 Root normalization reads and retains bounded root/checkpoint bytes. Rotation
 normalization reads and retains bounded current and immediate-predecessor
@@ -296,6 +348,11 @@ checkpoint, in addition to the current checkpoint text and decoded anchor. CPU
 and retained memory may scale with those byte limits and with both checkpoints'
 documents, session histories, and replay tombstones. No complete manifest-chain
 walk is required, but the operation is not constant in document or input size.
+The v0.0.36 attempt plan is also O(1) only in history count: a root retains one
+complete candidate envelope, while a rotation can retain three complete outer
+payload envelopes (candidate, selected current, and optional selected
+predecessor). Final candidate normalization also temporarily decodes and
+reconstructs the candidate anchor before dropping it.
 
 ## Database schema
 
@@ -354,7 +411,7 @@ non-secret and never interchangeable at a Rust or Wasm boundary.
 
 `chunkOrdinal` is exactly twenty ASCII decimal digits, zero padded on the left.
 This avoids JavaScript integer precision and gives deterministic key ordering
-through `18446744073709551615`. Through version `0.0.35`, no append or
+through `18446744073709551615`. Through version `0.0.36`, no append or
 chunk-size protocol is defined; therefore the only valid newly reserved
 generation has no chunk records. A future append checkpoint must freeze chunk
 boundaries before writing nonempty values.
@@ -634,7 +691,10 @@ replacement record and then classify the older plan against it.
 ## Initial scope provisioning
 
 All root bytes and scalar inputs are prepared and validated before the
-transaction opens. Provisioning then:
+transaction opens. The v0.0.36 borrowed root request supplies the complete
+candidate binding and exact candidate JSON, but performs no provisioning and
+contains no database handle or authority. A future adapter must combine that
+request with separately acquired profile authority. Provisioning then:
 
 1. Reads and validates the exact meta record and database incarnation.
 2. Reads `scopes/scopeId`, the planned transaction key, and the planned
@@ -681,9 +741,12 @@ matching exact or retired root transaction identity exists.
 ## Ordinary rotation publication
 
 All candidate bytes, the exact prior selected bytes, and comparisons are
-prepared before opening the transaction. The attempt also carries the exact
-revocable writer token that authorized compaction and one fresh candidate
-activation fence. Within the active transaction the adapter:
+prepared before opening the transaction. The v0.0.36 borrowed rotation request
+carries the full candidate and selected bindings plus their exact retained JSON,
+including the candidate's fresh activation fence. The immutable Rust
+plan/request deliberately carries no revocable writer token; a future adapter
+invocation must supply that profile authority separately. Within the active
+transaction the adapter:
 
 1. validates schema, meta, and the exact database/scope incarnations;
 2. pumps reads for the scope control, selected exact transaction, named
@@ -691,9 +754,9 @@ activation fence. Within the active transaction the adapter:
    generations, candidate transaction key, candidate committed-head index key,
    candidate generation key, and successor chunk prefix;
 3. requires the current control, selected transaction bytes, checkpoint
-   generation, and active generation to equal the immutable facts in the
-   trusted selected root and requires the candidate expected head to be
-   selected;
+   generation, and active generation to equal the immutable selected-binding
+   and exact-selection facts snapshotted in the rotation request and requires
+   the candidate expected head to be selected;
 4. requires the token's selected head, active log, writer epoch, and current
    writer fence to match exactly;
 5. when `previousTransactionId` is non-null, requires that record to be
@@ -742,8 +805,11 @@ Pre-attempt/retry classifications inside this transaction are:
 
 IndexedDB atomically commits all transaction changes or aborts and rolls them
 back. Its `complete` event is fired only after successful commit; a particular
-request can report success and the transaction can still fail later. The
-adapter maps observations as follows:
+request can report success and the transaction can still fail later. These
+mappings describe the v0.0.37 terminal/resolver gate. Version `0.0.36` has no
+event-ingestion or evidence type and remains `Uncertain` regardless of a host's
+request success, `commit()` return, abort callback, or claimed completion. A
+future adapter maps observations as follows:
 
 - transaction `complete`: `HostAttestedCommitted` for the exact plan;
 - transaction `abort`: `AttemptAborted`; that exact IndexedDB transaction
@@ -813,10 +879,12 @@ above. It retains the complete checked selected binding and exact current plus
 optional immediate-predecessor canonical JSON, but not a longer predecessor
 chain. The adapter validates the mutable writer envelope but does not retain it
 inside that result. Public inspection exposes borrowed current/predecessor
-receipt bindings and byte lengths; raw retained JSON remains core-private and
-is available only through exact comparison. The result privately owns the
-checkpoint anchor, returns no public anchor, and constructs no writable tail
-owner.
+receipt bindings and byte lengths. Direct raw-JSON getters remain core-private;
+v0.0.35 exposes exact caller-supplied comparison, and a v0.0.36 rotation attempt
+snapshots the binding and `Arc`-shared strings for its later borrowed adapter
+request without retaining this selected root or anchor. The selected result
+privately owns the checkpoint anchor, returns no public anchor, and constructs
+no writable tail owner.
 
 To acquire a revocable storage-mutation token, the host opens the fixed
 transaction, rechecks the exact selected head/transaction/active generation,
@@ -846,7 +914,7 @@ entire owner lifetime, couple every semantic admission to one successful
 storage mutation, or expose an explicitly revocable/speculative branch that is
 quarantined on conflict. Profile V1 chooses none of those policies.
 
-Profile `0.0.33` freezes these obligations. Through version `0.0.35`, none of
+Profile `0.0.33` freezes these obligations. Through version `0.0.36`, none of
 the revocable-token allocator, fence-acquisition transaction, append operation,
 exclusive lock, speculative branch, or consuming Rust typestate is implemented.
 Those remain later design gates.
@@ -904,19 +972,29 @@ capabilities.
 ## Explicit V1 limitations
 
 - No IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter exists
-  in `0.0.35`; the implemented Rust values perform no I/O.
+  in `0.0.36`; the implemented Rust values and attempt states perform no I/O.
 - Root preparation/encoding/decoding, selected receipt/generation bindings,
   root/rotation normalization, and selected-root-aware next-rotation validation
   prove only bounded value and cross-link consistency. They do not provision a
   database, scope, head, checkpoint generation, or empty active generation.
 - No pure-Rust value proves CAS or current-head status, global ID/fence
   freshness, physical generation emptiness, mutable writer authority/epoch,
-  transaction completion, durability, commit evidence, or ownership release.
+  transaction completion, terminal commit/noncommit, durability, or ownership
+  release. The attempt plan/request contains no adapter or authority.
 - O(1) selected normalization and retention are constant only in rotation-
   history length. The selected root retains up to two complete canonical outer
   selections plus current checkpoint text and a decoded anchor, so memory can
   scale with bounded current/immediate-predecessor checkpoint, document,
-  session, history, and tombstone payloads.
+  session, history, and tombstone payloads. A rotation attempt plan retains up
+  to three complete outer payload envelopes: candidate, selected current, and
+  optional selected predecessor. Final plan preparation also temporarily
+  reconstructs and then drops the candidate anchor.
+- `LocalLogStorageAttemptId` and `Prepared`/`Uncertain` state are process-local
+  and have no wire, persistence, cross-process, or restart representation. ID
+  matching or mismatch is correlation only and classifies no outcome.
+- One physical attempt yields at most one borrowed request view, but public
+  request strings can be copied and the external operation can be dispatched
+  more than once. This API guard is not single-dispatch evidence.
 - All writes serialize across all scopes because IndexedDB scheduling is
   object-store-granular and the profile deliberately fixes one common scope.
 - Transaction and generation identity tombstones grow without bound.
@@ -956,12 +1034,22 @@ current/optional-predecessor selections, exposes borrowed receipts and lengths,
 keeps direct raw-selection access core-private, and keeps `Debug`/errors payload-
 redacted. It adds no host attestation, currentness, or commit evidence.
 
-Version `0.0.36` should implement only non-`Clone` exact root/rotation attempt
-plans, a non-owning `Prepared` state, fresh attempt identities with stale-
-terminal rejection, and `Uncertain` mechanics. Request success, `commit()`
-return, and an abort callback must not become plan-level finality.
+Version `0.0.36` implements private non-`Clone` exact root/rotation plans and
+private-constructor, anchor-free, non-authority `Prepared`/`Uncertain` states.
+Plans retain a full prospective candidate binding and exact candidate JSON;
+rotation also snapshots the full prior selected binding and shares exact selected current/
+optional-predecessor JSON without retaining a selected root or anchor. Final
+strict normalization reconstructs and drops the candidate anchor. The core
+issues one fresh ABA-safe process-local ID before one borrowed request can be
+exposed; exact resubmission preserves the plan allocations/bytes under a fresh
+ID. Cross-plan/stale-ID rejection classifies nothing, and the one-shot request
+cannot prevent copied bytes or duplicate external dispatch. This boundary has
+no browser I/O, adapter, authority, terminal evidence, durability, or owner
+release. Request success, `commit()` return, and an abort callback do not become
+plan-level finality.
 
-Version `0.0.37` should then implement terminal and serialized-resolver evidence:
+Version `0.0.37` is the next gate and should implement terminal and serialized-
+resolver evidence:
 matching transaction completion as host-attested historical commit, exact
 selected/superseded resolution, same-incarnation absence as definite noncommit,
 and fail-closed retired/reset/corrupt classifications. Only after those

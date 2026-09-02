@@ -24,6 +24,10 @@ mod local_log_frame_codec;
 mod local_log_frame_error;
 mod local_log_frame_limits;
 mod local_log_frame_scan;
+mod local_log_storage_attempt_plan;
+mod local_log_storage_attempt_preparation_error;
+mod local_log_storage_attempt_request;
+mod local_log_storage_attempt_transition_error;
 mod local_log_storage_generation_binding;
 mod local_log_storage_generation_checkpoint_preflight;
 mod local_log_storage_generation_decode;
@@ -42,6 +46,9 @@ mod local_log_storage_generation_prepare_from_selected;
 mod local_log_storage_generation_selected_tests;
 #[cfg(test)]
 mod local_log_storage_generation_tests;
+mod local_log_storage_prepared_attempt;
+mod local_log_storage_prepared_begin_attempt;
+mod local_log_storage_root_attempt_prepare;
 mod local_log_storage_root_binding;
 mod local_log_storage_root_decode;
 mod local_log_storage_root_encode;
@@ -52,6 +59,7 @@ mod local_log_storage_root_prepare;
 mod local_log_storage_root_selection;
 #[cfg(test)]
 mod local_log_storage_root_tests;
+mod local_log_storage_rotation_attempt_prepare;
 mod local_log_storage_selected_binding;
 mod local_log_storage_selected_envelope_error;
 mod local_log_storage_selected_envelope_validate;
@@ -65,6 +73,10 @@ mod local_log_storage_selected_rotation_normalize;
 mod local_log_storage_selected_tests;
 mod local_log_storage_selection_kind;
 mod local_log_storage_selection_receipt_binding;
+mod local_log_storage_uncertain_adapter_request;
+mod local_log_storage_uncertain_attempt;
+mod local_log_storage_uncertain_attempt_match;
+mod local_log_storage_uncertain_resubmit;
 mod local_log_tail_begin;
 mod local_log_tail_compaction;
 mod local_log_tail_compaction_outcome;
@@ -131,6 +143,16 @@ pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, Loca
 pub use local_log_frame_scan::{
     BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
+pub use local_log_storage_attempt_preparation_error::{
+    LocalLogStorageAttemptPreparationError, LocalLogStorageAttemptPreparationErrorCode,
+};
+pub use local_log_storage_attempt_request::{
+    LocalLogStorageAttemptRequest, LocalLogStorageRootAttemptRequest,
+    LocalLogStorageRotationAttemptRequest,
+};
+pub use local_log_storage_attempt_transition_error::{
+    LocalLogStorageAttemptTransitionError, LocalLogStorageAttemptTransitionErrorCode,
+};
 pub use local_log_storage_generation_binding::{
     LocalLogStorageGenerationBinding, LocalLogStorageGenerationBindingError,
 };
@@ -155,6 +177,7 @@ pub use local_log_storage_generation_limits::{
 pub use local_log_storage_generation_manifest::LocalLogStorageGenerationManifest;
 pub(crate) use local_log_storage_generation_manifest::LocalLogStorageGenerationManifestParts;
 pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerationPreparationInputs;
+pub use local_log_storage_prepared_attempt::LocalLogStoragePreparedAttempt;
 pub use local_log_storage_root_binding::LocalLogStorageRootBinding;
 pub use local_log_storage_root_error::{
     LocalLogStorageRootBindingField, LocalLogStorageRootCodecError, LocalLogStorageRootJsonFailure,
@@ -195,6 +218,7 @@ pub use local_log_storage_selection_receipt_binding::{
     LocalLogStorageSelectionReceiptBinding, LocalLogStorageSelectionReceiptBindingError,
     LocalLogStorageSelectionReceiptBindingErrorCode,
 };
+pub use local_log_storage_uncertain_attempt::LocalLogStorageUncertainAttempt;
 pub use local_log_tail_compaction_outcome::LocalLogTailCompactionOutcome;
 pub use local_log_tail_cursor::LocalLogTailCursor;
 pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};

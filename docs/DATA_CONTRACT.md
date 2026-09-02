@@ -89,6 +89,17 @@ The implemented Rust slice owns:
   core-private;
 - next-rotation preparation, encoding, and decoding validated against that
   selected root without retaining a complete predecessor-manifest chain;
+- strict root/rotation attempt preparation that closes a complete prospective
+  selected binding and exact canonical candidate JSON into private-constructor
+  non-`Clone` `Prepared` state; root plans also bind explicit database and
+  planned scope incarnations, while rotation plans snapshot the complete prior
+  selected binding and `Arc`-share its exact current/optional-predecessor JSON
+  without retaining the selected root or either checkpoint anchor;
+- a process-local `Prepared -> Uncertain` attempt transition with a fresh
+  core-issued opaque ABA-safe identity, one borrowed exact adapter-request view
+  per physical attempt, cross-plan/stale-ID rejection, and consuming exact
+  resubmission that preserves the retained plan allocations and bytes while
+  issuing a fresh identity;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -115,10 +126,11 @@ The following remain deliberately unimplemented:
 - ordered tail storage and recovery orchestration, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
-- storage-generation initial provisioning, non-owning storage-attempt evidence,
+- storage-generation initial provisioning, terminal or resolver evidence,
   transaction ownership typestate, adapter capabilities or commit receipts,
   authoritative-head integration, and an executable filesystem or IndexedDB
-  adapter (only the profile contract and pure-Rust value validation exist);
+  adapter (only the profile contract and pure-Rust values/attempt mechanics
+  exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -169,6 +181,16 @@ retained selection JSON remains core-private. The selected root's `Debug` and
 all exact-envelope errors remain payload-redacted. This closes a byte-identity
 gap without adding storage authority, currentness, I/O, or commit evidence. Its
 selection receipt bindings are caller-supplied validation facts.
+
+Version `0.0.36` adds private-constructor non-`Clone` exact root/rotation
+attempt plans and `Prepared`/`Uncertain` state. Plans retain a complete
+prospective candidate binding and exact canonical candidate JSON; rotations
+also retain the full prior selected binding and `Arc`-shared exact selected
+current/optional-predecessor JSON without retaining a selected root or anchor.
+`begin_attempt` issues a fresh core-owned, ABA-safe process-local identity
+before one borrowed payload request can cross the boundary. Exact resubmission
+preserves the plan allocations/bytes and issues a fresh identity. ID matching
+is correlation only, and no transition classifies commit or noncommit.
 
 Runtime values and serialization records are deliberately different types:
 
@@ -618,6 +640,16 @@ retains the complete selected binding and exact current/optional-predecessor
 canonical selection strings, exposes borrowed receipts and byte lengths, and
 adds payload-redacted exact-envelope validation without exposing the retained
 raw strings or adding storage authority.
+
+Version `0.0.36` implements non-`Clone` exact root/rotation attempt plans and
+private-constructor `Prepared`/`Uncertain` state. Preparation fixes the complete
+candidate binding and exact candidate JSON; a rotation also snapshots the
+complete prior selected binding and shares its exact selected JSON without
+retaining the selected root or checkpoint anchor. The core creates one opaque
+process-local attempt identity before one borrowed request view can be emitted.
+Exact resubmission preserves the plan and bytes under a fresh identity. This is
+correlation and conservative uncertainty only, not I/O, authority, currentness,
+terminal evidence, durability, or ownership release.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -2614,9 +2646,59 @@ checkpoint/active/successor generations, and activation fences visible in the
 bounded selected state. It cannot prove freshness against discarded older
 history; the profile's permanent tombstones remain authoritative for lifetime
 freshness. Database and scope incarnation IDs remain carrier facts on the
-selected root rather than storage-generation wire fields; a future evidence or
-adapter boundary must retain the selected root alongside the candidate
-manifest.
+selected root rather than storage-generation wire fields.
+
+Version `0.0.36` closes those values into exact attempt plans through two
+separate actions. `LocalLogStorageRootJsonCodec::prepare_root_attempt` takes an
+explicit database incarnation, planned scope incarnation, and checked root
+selection. `LocalLogStorageGenerationJsonCodec::prepare_rotation_attempt` takes
+one normalized selected root and one checked candidate manifest; its candidate
+database/scope incarnations come only from that selected value. Each action
+strictly canonical-encodes the candidate, constructs its complete prospective
+`LocalLogStorageSelectedBinding`, and performs final strict selected
+normalization. That last normalization reconstructs a candidate checkpoint
+anchor as a validation proof and immediately drops the temporary candidate
+selected root and anchor.
+
+The private attempt plan retains the complete candidate binding and exact
+canonical candidate JSON. A root binding therefore carries the database and
+planned scope incarnations even though they are absent from Storage Root V1
+JSON. A rotation plan additionally copies the complete prior selected binding
+and `Arc`-shares the selected root's exact current and optional predecessor
+strings. It retains neither the borrowed `LocalLogStorageSelectedRoot` nor its
+anchor. Equal candidate JSON with different root incarnation facts is not the
+same complete plan; candidate JSON alone is only the persisted-record byte
+identity.
+
+Successful preparation returns private-constructor, non-`Clone`
+`LocalLogStoragePreparedAttempt`. It publicly exposes the candidate receipt and
+binding plus individual and checked-total retained JSON byte lengths, but no
+raw JSON. Consuming `begin_attempt` creates a fresh core-issued
+`LocalLogStorageAttemptId`, whose `Arc` allocation identity provides ABA-safe
+process-local equality while any old clone remains observable, and moves the
+same plan to non-`Clone` `LocalLogStorageUncertainAttempt` before request
+egress. Neither callers nor adapters choose the attempt ID.
+
+Only `Uncertain::adapter_request(&mut self)` exposes payload bytes. It yields at
+most one borrowed `LocalLogStorageAttemptRequest` for that physical attempt. A
+root request carries the current attempt ID, complete candidate binding, and
+exact canonical candidate JSON. A rotation request additionally carries the
+complete prior selected binding and exact selected current/optional-predecessor
+JSON. This is the narrow public payload-bearing adapter boundary; direct raw-
+JSON access on `LocalLogStorageSelectedRoot` remains core-private. Request,
+state, ID, preparation-error, and transition-error diagnostics are payload-
+redacted, although bounded identity facts and payload lengths may appear.
+
+Consuming `begin_exact_resubmission` keeps the same retained plan allocations
+and every byte, installs a fresh attempt ID, clears the one-request guard, and
+remains `Uncertain`. It accepts no replacement input. The old physical attempt
+may still commit. `require_current_attempt_id` accepts the current opaque ID and
+rejects an ID from another plan or earlier resubmission, but either result is
+correlation only and classifies no storage outcome. IDs and attempt states have
+no wire format, persistence, cross-process meaning, or restart reconstruction.
+The one-shot borrow reduces accidental duplicate request construction but
+cannot stop a caller from copying the exposed bytes or dispatching the same
+external operation more than once.
 
 The O(1) claim is only in rotation-history length: root normalization reads and
 retains one selection, while rotation normalization reads and retains one
@@ -2627,20 +2709,27 @@ therefore owns up to two complete outer canonical selection strings, each of
 which may embed a full checkpoint, in addition to its retained current
 checkpoint text and decoded anchor. Their byte/content/history/document costs
 are not constant. No manifest-chain walk is required, but this is not O(1) in
-bytes, document size, session history, or replay-tombstone count.
+bytes, document size, session history, or replay-tombstone count. The v0.0.36
+plan likewise retains a constant number, not a constant number of bytes: one
+candidate envelope for a root, and up to three complete outer payload envelopes
+for a rotation (candidate, selected current, and optional selected predecessor).
+Candidate preparation also temporarily decodes and reconstructs the candidate
+anchor for final strict normalization before dropping it.
 
 This complete pure-Rust boundary performs no filesystem, IndexedDB, JavaScript,
-Wasm, or other I/O; creates no adapter capability, storage-attempt evidence, or
-commit receipt; makes no head compare-and-swap, stable-currentness, finality,
+Wasm, or other I/O; creates no adapter capability, terminal/resolver evidence,
+or commit receipt; makes no head compare-and-swap, stable-currentness, finality,
 writer-fencing, durability, or
 crash-recovery claim; cannot prove global ID/fence freshness or that a physical
 successor is fresh and empty; and releases no writable successor owner. The
 retained selection receipt bindings are caller-supplied validation facts, not
-commit receipts or authority. The non-owning attempt evidence states remain `Prepared`,
-`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain`. They are
-specification names, not `0.0.35` Rust types. Consuming ownership release still
-requires a separately frozen held-lock, transaction-coupled admission, or
-revocable/speculative-branch contract.
+commit receipts or authority. Version `0.0.36` implements only `Prepared` and
+`Uncertain`; `DefinitelyNotCommitted`, `HostAttestedCommitted`, `NotAttempted`,
+`AttemptAborted`, and serialized resolver outcomes remain specification names,
+not Rust evidence types. An attempt-ID match/mismatch is not one of those
+classifications. Consuming ownership release still requires a separately
+frozen held-lock, transaction-coupled admission, or revocable/speculative-
+branch contract.
 
 ### Genesis local-log recovery
 
@@ -3099,13 +3188,21 @@ byte-comparison action while keeping direct raw-selection access core-private
 and all `Debug`/error output payload-redacted. This is exact plan input, not
 storage currentness, attempt evidence, or authority.
 
-Version `0.0.36` should add only non-`Clone` exact root/rotation attempt plans,
-the non-owning `Prepared` state, a plan-bound attempt identity that rejects
-stale terminal observations, and `Uncertain` mechanics. It must not classify
+Version `0.0.36` implements private-constructor non-`Clone` exact root/rotation
+plans and anchor-free, non-authority `Prepared`/`Uncertain` mechanics. A complete
+candidate binding and exact candidate JSON are retained; rotation additionally
+snapshots the complete prior selected binding and shares its exact current/optional-
+predecessor JSON without retaining the selected root or anchor. `begin_attempt`
+core-issues a fresh ABA-safe process-local identity before one borrowed request
+can be exposed. Exact resubmission preserves the plan allocations/bytes under a
+fresh identity. Cross-plan/stale-ID mismatch is a payload-free correlation
+error, not terminal evidence. The API performs no I/O and cannot classify
 commit/noncommit, release an owner, or treat request success, `commit()` return,
-or an abort callback as plan-level finality.
+or an abort callback as plan-level finality. The one-shot request view cannot
+prevent copied bytes or duplicate external dispatch.
 
-Version `0.0.37` should then add terminal and serialized-resolver evidence:
+Version `0.0.37` is the next gate and should add terminal and serialized-
+resolver evidence:
 matching transaction `complete` as host-attested historical commit, exact
 selected/superseded resolution, same-incarnation absence as definite
 noncommit, and fail-closed retired/reset/corrupt classifications. Only after

@@ -90,8 +90,8 @@
 //! checkpoint anchor or writer capability and proves no reservation, current
 //! head, publication, durability, restart selection, or recovery of log bytes.
 //! The separate root codec below validates a first storage-selection proposal,
-//! but neither codec provisions storage. This crate still exports no
-//! prepared/committed/uncertain evidence state, adapter, or storage I/O API.
+//! but neither codec provisions storage. At `0.0.32` the crate exported no
+//! prepared/committed/uncertain attempt state, adapter, or storage I/O API.
 //! Checkpoint V1 and Frame V1 are unchanged.
 //! Breditor `0.0.33` separately freezes a concrete `IndexedDB` profile and a
 //! distinct initial-root/current-selection contract in the repository design
@@ -128,12 +128,48 @@
 //! to two complete canonical selection envelopes, each of which may embed a
 //! full checkpoint. Work and retained memory can therefore scale with those
 //! byte limits and both checkpoints' document/session sizes. Exact equality is
-//! not storage authority or currentness. These values perform no I/O, provision
-//! no database/scope/head/generation, and prove no compare-and-swap, head
-//! currentness, lifetime ID/fence freshness, empty generation, writer
-//! authority/epoch, durability, commit evidence, or ownership release. No
-//! `IndexedDB`, JavaScript, Wasm, or filesystem adapter is implemented, and all
-//! storage V1 shapes remain unstable pre-`0.1` contracts.
+//! not storage authority or currentness. Version `0.0.35` performs no I/O and
+//! adds no storage-attempt state or evidence.
+//!
+//! Breditor `0.0.36` adds the first non-owning exact-attempt boundary. Root
+//! attempt preparation takes explicit database and planned scope incarnations;
+//! rotation attempt preparation takes a normalized selected root. Both retain
+//! a complete prospective [`codec::LocalLogStorageSelectedBinding`] and exact
+//! canonical candidate JSON only after final strict selected normalization,
+//! then drop the temporary candidate selected root and its checkpoint anchor.
+//! A rotation plan also snapshots the complete prior selected binding and
+//! `Arc`-shares its exact current and optional predecessor JSON without
+//! retaining the input selected root or anchor.
+//!
+//! The resulting private-constructor, non-`Clone`
+//! [`codec::LocalLogStoragePreparedAttempt`] exposes candidate facts and JSON
+//! byte lengths, not payload bytes. Consuming `begin_attempt` creates a fresh
+//! core-issued, opaque, ABA-safe process-local
+//! [`local_log::LocalLogStorageAttemptId`] and moves the exact plan to
+//! non-`Clone` [`codec::LocalLogStorageUncertainAttempt`] before egress. Only
+//! that state can yield one borrowed [`codec::LocalLogStorageAttemptRequest`].
+//! The request intentionally exposes exact candidate JSON and, for rotation,
+//! the selected binding/current/optional-predecessor JSON required by an
+//! adapter. Direct raw selected-root getters remain core-private, and request,
+//! state, ID, and error `Debug` output remains payload-redacted.
+//!
+//! Consuming `begin_exact_resubmission` preserves the same plan allocations and
+//! bytes, issues a fresh attempt ID, and restores one-request eligibility.
+//! `require_current_attempt_id` rejects cross-plan or earlier-retry IDs but
+//! classifies no outcome. IDs and state are process-local and have no durable
+//! or restart representation. A borrowed one-shot request cannot prevent the
+//! caller from copying bytes or dispatching duplicate external operations.
+//! Attempt retention remains O(1) only in rotation-history count: a rotation
+//! can retain three complete payload envelopes—candidate, selected current,
+//! and optional selected predecessor.
+//!
+//! These values perform no I/O, provision no database/scope/head/generation,
+//! and prove no compare-and-swap, head currentness, lifetime ID/fence freshness,
+//! empty generation, writer authority/epoch, terminal commit/noncommit,
+//! durability, or ownership release. No `IndexedDB`, JavaScript, Wasm,
+//! filesystem, or other adapter is implemented. Terminal and serialized
+//! resolver evidence is the `0.0.37` gate, and all storage V1 shapes remain
+//! unstable pre-`0.1` contracts.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

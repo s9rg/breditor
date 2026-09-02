@@ -19,7 +19,9 @@ progress and recoverable cursor compaction, plus six bounded storage
 identity/version values, distinct database/scope incarnation IDs, strict root
 and storage-generation codecs, trusted root/rotation selection normalization,
 byte-exact selected-envelope retention/comparison, and selected-root-aware
-next-rotation preparation/encoding/decoding,
+next-rotation preparation/encoding/decoding, plus exact root/rotation attempt
+preparation, non-`Clone` `Prepared`/`Uncertain` state, core-issued process-local
+attempt identities, one-shot borrowed request views, and exact resubmission,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -114,9 +116,9 @@ manifest, enforces locally provable continuity, and accepts only exact canonical
 nested Checkpoint V1 and outer manifest bytes.
 
 This remains rotation-only: there is no public seed/bootstrap constructor. The
-crate performs no storage I/O and exports no writer capability, adapter
-commit receipt, prepared/committed/uncertain ownership typestate, head
-compare-and-swap, durability assertion, or writable successor owner. Validation
+crate performs no storage I/O and exports no writer capability, adapter,
+terminal commit/noncommit receipt, head compare-and-swap, durability assertion,
+or writable successor owner. Validation
 cannot prove that the prior was authoritative, that an ID or fence is fresh,
 or that the physical successor is empty. The implemented validation-only
 `breditor/local-log-storage-generation@1` shape remains pre-`0.1`, not a
@@ -164,12 +166,51 @@ strictly decodes both nested checkpoints; the current checkpoint is decoded
 again to retain its anchor. The selected root also retains up to two complete
 canonical selection envelopes, each of which may embed a full checkpoint. CPU
 and retained memory can therefore scale with those byte ceilings and the
-document/session content represented by both checkpoints. The crate still has
-no IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter; performs
-no I/O; provisions no database/scope/head/generation; and proves no CAS, head
-currentness, lifetime ID or fence freshness, empty generation, writer authority
-or epoch, durability, commit evidence, or ownership release. Exact envelope
-equality is not storage authority or currentness. The profile cannot release a
+document/session content represented by both checkpoints. Version `0.0.35`
+adds no storage-attempt state or evidence.
+
+Version `0.0.36` adds private-constructor, non-`Clone` exact-attempt state.
+`LocalLogStorageRootJsonCodec::prepare_root_attempt` closes a checked root
+selection together with explicit database and planned scope incarnations.
+`LocalLogStorageGenerationJsonCodec::prepare_rotation_attempt` closes a checked
+candidate manifest against a normalized selected root. Each action retains a
+complete prospective candidate `LocalLogStorageSelectedBinding` and exact
+canonical candidate JSON only after a final strict selected normalization;
+the temporary candidate selected root and checkpoint anchor are then dropped.
+The rotation plan also snapshots the complete prior selected binding and
+`Arc`-shares its exact current/optional-predecessor JSON. It does not retain the
+input selected root or its anchor.
+
+`LocalLogStoragePreparedAttempt` exposes candidate facts and exact payload byte
+lengths while keeping payload bytes behind the attempt boundary. Its consuming
+`begin_attempt` issues a fresh core-created, opaque, ABA-safe process-local
+`LocalLogStorageAttemptId` and enters `LocalLogStorageUncertainAttempt` before
+payload egress. The uncertain value yields one borrowed
+`LocalLogStorageAttemptRequest`; root requests expose the candidate binding and
+JSON, while rotation requests also expose the snapshotted selected binding and
+exact selected current/optional-predecessor JSON. Request/state/error `Debug`
+is payload-redacted. This request surface is the narrow public raw-byte
+exception; direct retained-JSON getters on `LocalLogStorageSelectedRoot` remain
+core-private.
+
+Consuming `begin_exact_resubmission` preserves the plan allocations and exact
+bytes, installs a fresh attempt ID, and restores one-request eligibility.
+`require_current_attempt_id` rejects cross-plan and stale retry IDs but produces
+no commit/noncommit classification. Attempt IDs and states are process-local
+and not serializable or restart-recoverable. The one-shot borrowed request does
+not stop callers from copying its bytes or dispatching duplicate external
+operations.
+
+Attempt-plan retention is O(1) only in history count. A root retains one
+payload envelope; a rotation can retain the candidate, selected current, and
+optional selected predecessor—up to three complete envelopes containing
+checkpoints. The crate still has no IndexedDB, JavaScript, Wasm, filesystem, or
+other storage adapter; performs no I/O; provisions no
+database/scope/head/generation; and proves no CAS, head currentness, lifetime ID
+or fence freshness, empty generation, writer authority or epoch, terminal
+commit/noncommit, durability, or ownership release. Exact bytes, selected
+bindings, and attempt-ID matches are not storage authority or evidence.
+Terminal/resolver evidence is the `0.0.37` gate. The profile cannot release a
 long-lived exclusive Rust writer; that still needs a separately held lock,
 transaction-coupled admission, or explicit revocable/speculative branch
 semantics. These storage formats remain unstable pre-`0.1` contracts.

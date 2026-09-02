@@ -54,12 +54,14 @@ enum LocalLogStorageSelectedCheckpointGenerationFacts {
     },
 }
 
-/// Trusted storage-record facts for the generation selected as checkpoint.
+/// Complete record-shaped facts for a selection envelope's checkpoint generation.
 ///
 /// The constructors are shape-safe: checkpoint-only records cannot carry
 /// frame, activation, or retirement fields, while retired and reclaimed
-/// records must carry all of them. The facts are immutable inspection input;
-/// they do not prove that chunks are absent and carry no cleanup authority.
+/// records must carry all of them. Facts may be independently observed for a
+/// selected value or prospectively derived for a strictly normalized attempt
+/// candidate. The value alone proves no record existence, selection,
+/// currentness, chunk absence, commit, or cleanup authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalLogStorageSelectedCheckpointGenerationBinding {
     facts: LocalLogStorageSelectedCheckpointGenerationFacts,
@@ -250,11 +252,13 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
     }
 }
 
-/// Trusted storage-record facts for the currently active generation.
+/// Complete record-shaped facts for a selection envelope's active generation.
 ///
 /// These immutable facts describe activation history only. They deliberately
 /// exclude the mutable writer epoch and current writer fence and therefore do
-/// not authorize appends, rotation, or any other mutation.
+/// not authorize appends, rotation, or any other mutation. They may describe
+/// either an independently observed selected record or a prospective strictly
+/// normalized attempt candidate; the type itself is not existence evidence.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalLogStorageSelectedActiveGenerationBinding {
     log_id: LocalLogId,

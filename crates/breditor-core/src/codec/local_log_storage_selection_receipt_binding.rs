@@ -71,12 +71,15 @@ impl LocalLogStorageSelectionReceiptBindingError {
     }
 }
 
-/// Independently trusted binding for one exact selected transaction receipt.
+/// Independently supplied binding for one root-or-rotation transaction record.
 ///
-/// Every field must come from trusted profile-envelope and storage-record
-/// facts, independently of the candidate selection JSON that will be decoded.
-/// The binding contains no candidate bytes, mutable writer epoch, current
-/// writer fence, browser handle, or authorization capability.
+/// For storage selection, every field comes from trusted profile-envelope and
+/// observed receipt facts independently of decoded JSON. Exact attempt
+/// preparation may instead derive the same closed shape from a prospective
+/// candidate and then strictly normalize its canonical JSON against it. The
+/// type alone does not attest that a receipt exists, that storage selected the
+/// transaction, or that any write committed. It contains no candidate bytes,
+/// mutable writer epoch, current writer fence, browser handle, or authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalLogStorageSelectionReceiptBinding {
     profile_id: LocalLogStorageProfileId,
@@ -92,7 +95,7 @@ pub struct LocalLogStorageSelectionReceiptBinding {
 }
 
 impl LocalLogStorageSelectionReceiptBinding {
-    /// Creates one complete trusted receipt association.
+    /// Creates one complete root-or-rotation transaction association.
     ///
     /// # Errors
     ///
