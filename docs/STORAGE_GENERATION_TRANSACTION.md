@@ -6,9 +6,10 @@ Status: value and strict ordinary-rotation validation implemented in Breditor
 next-rotation validation implemented in `0.0.34`; exact selected-envelope
 retention/comparison implemented in `0.0.35`; exact non-owning attempt plans and
 `Prepared`/`Uncertain` mechanics implemented in `0.0.36`; process-local exact
-physical-attempt terminal attestations implemented in `0.0.37`; storage I/O,
-serialized resolver evidence, restart reconstruction, and ownership release
-remain unimplemented
+physical-attempt terminal attestations implemented in `0.0.37`; directional
+resolution-value comparisons and the closed retired-transaction binding
+implemented in `0.0.38`; storage I/O, serialized resolver evidence, restart
+reconstruction, and ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -153,8 +154,10 @@ Version `0.0.36` builds the complete exact attempt plan before egress, enters
 `Uncertain` under a fresh core-issued physical-attempt identity, and can expose
 one borrowed payload request. Version `0.0.37` can consume one matching typed
 host attestation and retain the plan in a positive or negative physical-attempt
-state. Identity matching and event classification remain process-local;
-serialized storage resolution is the v0.0.38 boundary.
+state. Identity matching and event classification remain process-local. Version
+`0.0.38` freezes directional resolution-value comparisons; serialized root
+resolution is the `0.0.39` boundary and rotation resolution the `0.0.40`
+boundary.
 
 ## Authoritative manifest and head
 
@@ -418,7 +421,7 @@ public private-constructor attempt/evidence states are non-`Clone`; they carry
 immutable plan data, volatile correlation, and typed host assertions only and
 can never release a writable owner. `HostAttestedCommitted`, `NotAttempted`,
 and `AttemptAborted` are Rust types. Plan-level `DefinitelyNotCommitted` and
-serialized resolver outcomes remain prospective v0.0.38 states. The older
+serialized resolver outcomes remain prospective v0.0.39/v0.0.40 states. The older
 borrowed `prepare_rotation` and `prepare_rotation_from_selected` value-
 validation actions are not `Prepared`.
 
@@ -582,43 +585,101 @@ become `DefinitelyNotCommitted`. For IndexedDB V1, an `abort` event proves only
 that one database transaction rolled back; another context may already have
 retried the same plan, so the fixed overlapping resolver is still required.
 
-### Prospective serialized resolver (v0.0.38)
+### Resolution comparison prerequisites (v0.0.38)
 
-The resolver remains unimplemented in v0.0.37. It must consume a surviving
-process-local exact plan and classify typed evidence gathered in one later
-profile-serialized transaction. Root and rotation evidence must remain separate
-because their prepublication authority shapes differ:
+Version `0.0.38` deliberately implements value-comparison prerequisites, not a
+resolver. A later observation of the same selected binding must use the
+directional `compare_later_observation` relation rather than `Eq`. The current
+and predecessor receipts, active generation, and every immutable checkpoint
+generation fact remain exact. Checkpoint state may only follow:
+
+- `CheckpointOnly -> CheckpointOnly`;
+- `Retired -> Retired | Reclaimed`; or
+- `Reclaimed -> Reclaimed`.
+
+The reverse `Reclaimed -> Retired` is a typed regression. This relation still
+does not compare the exact current/predecessor JSON and does not attest that the
+later binding came from storage. Mutable `writerEpoch` and
+`currentWriterFenceId` are intentionally outside the binding and may change
+while the same head remains selected. A selected active tail may also grow;
+tail bytes are not immutable selection-envelope facts.
+
+For a candidate-selected or superseded comparison, a formerly active
+generation can be validated separately as the exact `retired` or `reclaimed`
+checkpoint of one supplied superseding head. Log/session/frame, immutable
+activation fence, activating head, and retiring head must all match. A rotation
+with a plan-known older exact predecessor must additionally observe that record
+as the matching retired tombstone; publication was required to retire it in the
+same transaction, so missing, still-exact, or mismatched state makes a positive
+commit classification unsound.
+
+`LocalLogStorageRetiredTransactionBinding` models only facts present in the
+Profile V1 tombstone: database/scope incarnations and scope ID, transaction ID,
+expected/committed heads, selection kind, and `selectionByteLength`. It cannot
+synthesize profile ID/version, session ID, or selection bytes that the record
+does not retain. Matching length screens a collision but is never evidence that
+caller-supplied bytes committed. A future resolver must separately validate the
+transaction key and exact `byCommittedHead` index mapping.
+
+### Prospective serialized resolvers (v0.0.39 and v0.0.40)
+
+The root resolver remains the `0.0.39` gate and rotation resolution follows at
+`0.0.40`. Each must consume a surviving process-local exact plan and classify
+typed evidence gathered in one later profile-serialized transaction. Evidence
+becomes applicable only after that exact fixed-scope resolver transaction emits
+terminal `complete`; individual request success, `commit()` return, resolver
+abort, callback loss, or unrelated completion classifies nothing and must leave
+the owner available for a fresh resolver invocation. Root and rotation request
+tokens and observation shapes must remain nominally separate because their
+prepublication authority shapes differ:
 
 - A root resolver must validate the expected database incarnation, distinguish
   an entirely absent planned scope plus absent candidate transaction/head and
-  generation artifacts from an already provisioned scope, and validate the
+  generation/chunk artifacts from an already provisioned scope, and validate the
   complete exact root selection/checkpoint/active-generation association when
   selected, its exact immediate-predecessor relationship when superseded, or
-  its immutable identity when retired.
+  its immutable identity and stored byte length when retired. Selected,
+  superseded, and retired cases also require the exact candidate committed-head
+  index mapping.
 - A rotation resolver must validate both expected incarnations and classify
   case-specific exact evidence. Absence/retry eligibility requires the observed
   current selection to equal the complete snapshotted prior selected envelope
-  (binding plus exact current and optional predecessor bytes). Selected commit
-  instead requires the candidate binding/JSON as current and the plan's prior
-  selected-current JSON as its immediate predecessor. Superseded commit requires
-  a valid later current with the exact candidate as its immediate predecessor.
-  Retired evidence can validate immutable identity only. Every branch also
-  validates the associated current checkpoint/active-generation records.
+  under the directional cleanup relation plus exact current and optional
+  predecessor bytes. It also requires the candidate transaction/head index,
+  candidate successor-generation key, and complete successor chunk prefix to be
+  absent. Selected commit instead requires the candidate binding/JSON as current
+  and the plan's prior selected-current JSON as its immediate predecessor.
+  Superseded commit requires a valid later current with the exact candidate as
+  its immediate predecessor and validates the candidate's former active
+  generation as the exact retired/reclaimed checkpoint under the later head.
+  Retired evidence can validate immutable identity and byte length only. Every
+  branch validates the associated current generations and all plan-known older
+  tombstones required by publication.
 
 For either shape, an exact selected candidate may classify historical commit;
 an exact candidate that is the valid immediate predecessor may classify
 superseded commit; a matching retired identity cannot attest the old supplied
 bytes; identity/byte collisions, broken associations, and resets fail closed.
-Candidate/head absence observed after serialization is only
-`RetryEligibleAtResolution`: it is advisory after that resolver transaction
+Absence is shape-specific. A root with an absent planned scope and every
+planned/artifact range empty, or a rotation whose exact prior selected envelope
+remains current and whose complete candidate namespace is absent, may produce
+`RetryEligibleAtResolution`. It is advisory after that resolver transaction
 finishes, never definite plan-level noncommit, because copied request bytes can
-still be dispatched in another later transaction. A retry performed in a
-separate transaction must repeat every comparison and authority check; an
-atomic compare-and-retry must keep the reads and writes in the same transaction.
-If the surviving source state is `HostAttestedCommitted`, same-incarnation
-candidate absence instead contradicts the profile's append-only transaction
-record and must classify as corruption; a missing/different incarnation remains
-reset/indeterminate rather than proving either outcome.
+still be dispatched in another later transaction. Another completely valid
+root scope is `ScopeAlreadyProvisioned`; a rotation with a fully valid different
+current head in the same scope incarnation is
+`DefinitelyNotCommittedConflict` and cannot exact-resubmit the immutable old
+plan. An exact candidate record that is neither selected nor the immediate
+predecessor is corruption, not retry or conflict.
+
+A retry performed in a separate transaction must repeat every comparison and
+authority check; an atomic compare-and-retry must keep the reads and writes in
+the same transaction. If the surviving source state is
+`HostAttestedCommitted`, same-incarnation candidate absence contradicts the
+profile's append-only transaction record and must classify as corruption rather
+than retry, conflict, or already-provisioned. A missing/different expected
+database or scope incarnation remains `StorageResetOrIndeterminate` rather than
+proving either historical outcome.
 
 ## Retry and idempotency rules
 
@@ -730,10 +791,10 @@ This specification and the implemented values do not provide:
 
 - actual storage bootstrap/provisioning, serialized resolver evidence,
   plan-level definite-noncommit proof, ownership typestate, adapter, async API,
-  writer capability, or I/O implementation in `0.0.37`; the implemented
+  writer capability, or I/O implementation through `0.0.38`; the implemented
   terminal states are process-local host attestations about one physical
-  invocation, selected receipt bindings are caller-supplied validation inputs,
-  and the checked root value is only a proposal;
+  invocation, selected receipt/comparison bindings are caller-supplied typed
+  inputs, and the checked root value is only a proposal;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -825,14 +886,21 @@ resubmission under a fresh attempt ID after consuming the prior invocation's one
 terminal observation. None of these states provides storage currentness,
 adapter authority, durability, owner release, or restart reconstruction.
 
-Version `0.0.38` is the next gate and should add typed serialized-resolver
-evidence, with distinct root and rotation observation shapes. It should classify
-exact selected/superseded commit and fail-closed retired/reset/corrupt cases.
-Serialized absence may be `RetryEligibleAtResolution`, but that result is only
-advisory outside the resolving transaction and is not definite plan-level
-noncommit. IndexedDB profile V1 still cannot release a long-lived exclusive
-Rust owner: every mutation fence is revocable between transactions. Consuming
-ownership requires a separately held lock, transaction-coupled semantic
-admission, or an explicitly revocable/speculative branch. The provisioning
-contract must not treat a checked root, exact envelope match, host attestation,
-or in-memory compaction as storage authority.
+Version `0.0.38` adds the directional same-selection comparison, exact
+active-to-retired/reclaimed validation under a superseding head, closed
+retired-transaction facts, stable change/error categories, and adversarial
+transition tests. These are inspection-value checks only and create no resolver
+evidence.
+
+Version `0.0.39` is the root-resolver gate. Version `0.0.40` should then add the
+separate rotation resolver after the root token/terminal/failure mechanics are
+proven. Both require request-correlated completion of the exact serialized
+resolver transaction and ownership-preserving rejection. Shape-valid absence
+may be advisory `RetryEligibleAtResolution` only when the exact prepublication
+state still holds; it is not the blanket result for another valid scope or
+conflicting rotation head. IndexedDB Profile V1 still cannot release a
+long-lived exclusive Rust owner: every mutation fence is revocable between
+transactions. Consuming ownership requires a separately held lock,
+transaction-coupled semantic admission, or an explicitly revocable/speculative
+branch. The provisioning contract must not treat a checked root, exact envelope
+match, host attestation, or in-memory compaction as storage authority.

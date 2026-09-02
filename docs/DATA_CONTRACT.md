@@ -106,6 +106,11 @@ The implemented Rust slice owns:
   recoverable rejection that retains both owner and attestation, positive
   historical host evidence, and exact-plan-retaining negative physical states
   that can resubmit under a fresh identity;
+- directional later-selected-binding comparison with only profile-valid
+  `Retired -> Reclaimed` cleanup, exact formerly-active-to-retired/reclaimed
+  validation under a distinct superseding head, and a closed
+  `LocalLogStorageRetiredTransactionBinding` limited to tombstone-retained
+  identity and byte-length facts;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -681,6 +686,16 @@ resubmit it under a fresh ID. Rejected observations recover both the unchanged
 owner and unapplied attestation. The core does not verify browser-event
 provenance, associate duplicate dispatches with the same ID, resolve storage,
 survive process loss, or release authority or ownership.
+
+Version `0.0.38` adds directional same-selection and formerly-active retirement
+comparisons plus the record-shaped retired-transaction binding. These values
+allow only `Retired -> Reclaimed` cleanup, require a distinct superseding head
+for active retirement, and retain only tombstone facts including stored byte
+length. They compare caller-supplied typed values only: they do not compare
+selection JSON, observe storage, validate keys, indexes, or complete range
+scans, authenticate resolver transaction completion, classify commit, or
+release authority. Root and rotation resolvers remain the separate `0.0.39`
+and `0.0.40` gates.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -2806,13 +2821,15 @@ releases no writable successor owner. The retained selection receipt bindings
 are caller-supplied validation facts, not commit receipts or authority.
 `HostAttestedCommitted`, `NotAttempted`, and `AttemptAborted` are v0.0.37 Rust
 evidence types, but only as trusted process-local physical-attempt
-attestations. `DefinitelyNotCommitted` and serialized resolver outcomes remain
-prospective v0.0.38 names. Attempt IDs, request IDs, attestations, plans, and
-states have no wire or restart representation; resolution requires the exact
-plan to survive in memory, and crash-time plan reconstruction is not
-implemented. Consuming ownership release still requires a separately frozen
-held-lock, transaction-coupled admission, or revocable/speculative-branch
-contract.
+attestations. Version `0.0.38` adds directional same-selection and
+active-to-retired/reclaimed value comparison plus a record-shaped retired
+transaction binding. None is serialized resolver evidence.
+`DefinitelyNotCommitted` and resolver outcomes remain prospective
+v0.0.39/v0.0.40 names. Attempt IDs, request IDs, attestations, plans, and states
+have no wire or restart representation; resolution requires the exact plan to
+survive in memory, and crash-time plan reconstruction is not implemented.
+Consuming ownership release still requires a separately frozen held-lock,
+transaction-coupled admission, or revocable/speculative-branch contract.
 
 ### Genesis local-log recovery
 
@@ -3295,38 +3312,60 @@ owner and unapplied attestation. No evidence state authenticates browser events,
 survives process loss, releases authority/ownership, or correlates copied
 dispatches to the same attempt ID.
 
-Version `0.0.38` is the next gate and should add typed serialized-resolver
-evidence with separate contracts:
+Version `0.0.38` freezes three prerequisites without claiming resolver
+evidence:
 
-- Root resolution must validate the expected database incarnation, either the
-  complete exact root/scope/generation association or complete absence of the
-  planned scope and every planned artifact, and distinguish exact selected,
-  superseded, retired, and another-valid-scope cases.
-- Rotation resolution must validate both expected incarnations and use
-  case-specific exact envelopes: full prior selected binding/current/optional-
-  predecessor bytes for candidate absence; candidate current plus the plan's
-  prior selected-current bytes for selected commit; or a valid later current
-  plus the exact candidate predecessor for superseded commit. Retired identity
-  does not attest candidate bytes, and every branch validates the relevant
-  selected generation records.
+- `LocalLogStorageSelectedBinding::compare_later_observation` is directional.
+  It requires exact current/predecessor receipts, active-generation facts, and
+  immutable checkpoint-generation facts. Only `Retired -> Reclaimed` cleanup
+  may advance; `Reclaimed -> Retired` is a typed regression.
+- A prior selected active generation can validate an observed retired or
+  reclaimed checkpoint with the same log/session/frame/activation facts and one
+  exact supplied retiring head.
+- `LocalLogStorageRetiredTransactionBinding` contains only database/scope,
+  transaction/head, selection-kind, and `selectionByteLength` facts actually
+  retained by the tombstone. Equal length screens collisions but never attests
+  candidate bytes. It does not fabricate profile/session/JSON fields.
 
-Exact selected/superseded evidence can establish historical commit; retired,
-reset, collision, and corrupt cases fail closed. Shape-correct candidate/head
-absence is only advisory `RetryEligibleAtResolution`, never definite plan-level
-noncommit, because a copied dispatch can create a later transaction. A later
-retry must repeat every check and authority test or combine comparison and
-writes atomically in the resolving transaction. A surviving
-`HostAttestedCommitted` source changes the absence check: same-incarnation
-candidate absence contradicts the append-only record and is corruption, while
-a missing/different incarnation remains reset/indeterminate. Only after that
-contract is adversarially tested should a JavaScript adapter be
-implemented and the profile validated in real browsers before being called
-executable. Historical commit does not grant stable currentness: every
-IndexedDB mutation must recheck the exact head, active generation, writer
-epoch, and current writer fence inside its own serialized transaction.
-Consuming exclusive-owner typestate requires a separately specified held lock,
+Mutable writer epoch/current-fence facts stay outside the selected binding, and
+an active tail may grow without changing immutable selection metadata. These
+value helpers do not compare selection JSON, read storage, validate keys/indexes
+or complete range scans, authenticate browser events, classify commit, or
+release authority.
+
+Version `0.0.39` is the separate root-resolver gate. It must validate the
+expected database incarnation, complete exact root/scope/generation/index
+association or complete absence of the planned scope and every full artifact
+range, and distinguish selected, superseded, retired, another-valid-scope,
+reset, collision, and corrupt cases. Version `0.0.40` then adds rotation
+resolution with its nominally separate token/evidence shape. Rotation absence
+requires the prior selected envelope under the directional cleanup relation,
+exact current/optional-predecessor bytes, and absence of candidate transaction,
+head index, successor generation, and complete successor prefix. Positive
+selected/superseded cases also validate plan-known older tombstones.
+
+Evidence for either resolver becomes applicable only after its exact fixed-
+scope serialized transaction emits terminal `complete`; request success,
+`commit()` return, abort, callback loss, or unrelated completion classifies
+nothing. Exact selected/superseded evidence can establish historical commit;
+retired, reset, collision, and corrupt cases fail closed. Absence is
+shape-specific: clean absent root scope or exact prior rotation selection is
+advisory `RetryEligibleAtResolution`, another valid root scope is
+`ScopeAlreadyProvisioned`, and another valid rotation head in the same
+incarnation is `DefinitelyNotCommittedConflict`. A later retry must repeat every
+check and authority test or combine comparison and writes atomically. A
+surviving `HostAttestedCommitted` source changes same-incarnation absence to
+corruption rather than retry/conflict/provisioned; a missing/different expected
+incarnation remains reset/indeterminate.
+
+Only after both resolver contracts are adversarially tested should a JavaScript
+adapter be implemented and the profile validated in real browsers before being
+called executable. Historical commit does not grant stable currentness: every
+IndexedDB mutation must recheck the exact head, active generation, writer epoch,
+and current writer fence inside its own serialized transaction. Consuming
+exclusive-owner typestate requires a separately specified held lock,
 transaction-coupled semantic admission, or revocable/speculative branch and is
-not part of profile V1.
+not part of Profile V1.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and

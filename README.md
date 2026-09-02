@@ -217,14 +217,34 @@ currentness, global ID/fence freshness, generation emptiness, terminal commit
 or noncommit independently of trusted host attestation, durability, or
 ownership release; and does not provision a database, scope, head, or
 generation. Exact bytes, selected bindings, and an attempt-ID match are not
-storage authority. Typed serialized resolver evidence, including distinct root
-and rotation observations and advisory `RetryEligibleAtResolution`, is the
-`0.0.38` gate. Attempt plans and evidence are process-local; crash-time plan
-reconstruction is not implemented, and neither attempt nor request IDs have a
-wire representation. The profile's per-mutation epoch remains revocable and
-therefore cannot itself release a long-lived exclusive Rust writer. All storage
-V1 shapes remain unstable pre-`0.1` contracts rather than permanent
-compatibility promises.
+storage authority.
+
+Version `0.0.38` freezes the value-comparison prerequisites that serialized
+resolution needs. `LocalLogStorageSelectedBinding::compare_later_observation`
+requires exact current/predecessor receipts and immutable generation facts,
+while accepting only the profile-valid checkpoint cleanup advance
+`Retired -> Reclaimed`; the reverse is an explicit regression. A formerly
+active generation can be checked independently as the exact retired or
+reclaimed checkpoint of one superseding head. The closed
+`LocalLogStorageRetiredTransactionBinding` contains only fields actually
+retained by the IndexedDB tombstone. Its `selectionByteLength` is collision
+screening and never evidence that caller-supplied bytes committed.
+
+These are directional value checks, not storage evidence. They do not compare
+selection JSON, authenticate reads or cursor exhaustion, observe a resolver
+transaction's terminal `complete`, prove a current head, or confer writer
+authority. Root and rotation resolution remain intentionally separate: the
+root resolver is the `0.0.39` gate and rotation resolution follows at `0.0.40`.
+Resolver absence must remain shape-specific—a clean absent root scope, or an
+exact prior rotation selection together with an absent candidate transaction,
+committed-head index, successor generation, and complete successor chunk
+prefix, can be advisory retry eligibility, while another valid root scope or
+conflicting rotation head is not. Attempt plans and evidence are process-local;
+crash-time plan reconstruction is not implemented, and neither attempt nor
+request IDs have a wire representation. The profile's per-mutation epoch
+remains revocable and therefore cannot itself release a long-lived exclusive
+Rust writer. All storage V1 shapes remain unstable
+pre-`0.1` contracts rather than permanent compatibility promises.
 
 ## Development
 

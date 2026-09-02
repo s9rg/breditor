@@ -58,6 +58,9 @@ mod local_log_storage_not_attempted_resubmit;
 mod local_log_storage_prepared_attempt;
 mod local_log_storage_prepared_begin_attempt;
 mod local_log_storage_retained_attempt;
+mod local_log_storage_retired_generation_observation;
+mod local_log_storage_retired_generation_observation_error;
+mod local_log_storage_retired_transaction_binding;
 mod local_log_storage_root_attempt_prepare;
 mod local_log_storage_root_binding;
 mod local_log_storage_root_decode;
@@ -70,7 +73,11 @@ mod local_log_storage_root_selection;
 #[cfg(test)]
 mod local_log_storage_root_tests;
 mod local_log_storage_rotation_attempt_prepare;
+mod local_log_storage_selected_active_generation_validate_retired;
 mod local_log_storage_selected_binding;
+mod local_log_storage_selected_binding_change;
+mod local_log_storage_selected_binding_compare_later;
+mod local_log_storage_selected_binding_observation_error;
 mod local_log_storage_selected_envelope_error;
 mod local_log_storage_selected_envelope_validate;
 mod local_log_storage_selected_generation_binding;
@@ -197,6 +204,16 @@ pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerati
 pub use local_log_storage_host_attested_committed::LocalLogStorageHostAttestedCommitted;
 pub use local_log_storage_not_attempted::LocalLogStorageNotAttempted;
 pub use local_log_storage_prepared_attempt::LocalLogStoragePreparedAttempt;
+pub use local_log_storage_retired_generation_observation::LocalLogStorageRetiredGenerationObservation;
+pub use local_log_storage_retired_generation_observation_error::{
+    LocalLogStorageRetiredGenerationMismatchField,
+    LocalLogStorageRetiredGenerationObservationError,
+    LocalLogStorageRetiredGenerationObservationErrorCode,
+};
+pub use local_log_storage_retired_transaction_binding::{
+    LocalLogStorageRetiredTransactionBinding, LocalLogStorageRetiredTransactionBindingError,
+    LocalLogStorageRetiredTransactionBindingErrorCode,
+};
 pub use local_log_storage_root_binding::LocalLogStorageRootBinding;
 pub use local_log_storage_root_error::{
     LocalLogStorageRootBindingField, LocalLogStorageRootCodecError, LocalLogStorageRootJsonFailure,
@@ -216,6 +233,11 @@ pub use local_log_storage_selected_binding::{
     LocalLogStorageSelectedBinding, LocalLogStorageSelectedBindingError,
     LocalLogStorageSelectedBindingErrorCode, LocalLogStorageSelectedGenerationMismatchField,
     LocalLogStorageSelectedReceiptMismatchField,
+};
+pub use local_log_storage_selected_binding_change::LocalLogStorageSelectedBindingChange;
+pub use local_log_storage_selected_binding_observation_error::{
+    LocalLogStorageSelectedBindingObservationError,
+    LocalLogStorageSelectedBindingObservationErrorCode,
 };
 pub use local_log_storage_selected_envelope_error::{
     LocalLogStorageSelectedEnvelopeError, LocalLogStorageSelectedEnvelopeErrorCode,

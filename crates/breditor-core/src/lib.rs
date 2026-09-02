@@ -207,9 +207,23 @@
 //! and prove no compare-and-swap, current head, lifetime ID/fence freshness,
 //! empty generation, writer authority/epoch, browser-event provenance,
 //! durability, or ownership release. No `IndexedDB`, JavaScript, Wasm,
-//! filesystem, or other adapter is implemented. Typed serialized resolver
-//! evidence is deferred to `0.0.38`, and all storage V1 shapes remain unstable
-//! pre-`0.1` contracts.
+//! filesystem, or other adapter is implemented.
+//!
+//! Version `0.0.38` adds directional value checks required by later resolvers.
+//! [`codec::LocalLogStorageSelectedBinding::compare_later_observation`] keeps
+//! all receipts and immutable generation facts exact while allowing only
+//! checkpoint cleanup from `Retired` to `Reclaimed`. A selected active
+//! generation can separately validate its exact retired/reclaimed checkpoint
+//! under a supplied superseding head. The closed
+//! [`codec::LocalLogStorageRetiredTransactionBinding`] exposes only facts
+//! retained by the tombstone; its byte length does not attest byte equality.
+//! These comparisons perform no storage observation, exact-JSON comparison,
+//! range/index validation, or resolver-terminal attestation. Future resolver
+//! evidence becomes applicable only after its exact fixed-scope serialized
+//! transaction emits terminal `complete`; request success, `commit()` return,
+//! abort, callback loss, or unrelated completion classifies nothing. Root
+//! resolution is deferred to `0.0.39` and rotation resolution to `0.0.40`. All
+//! storage V1 shapes remain unstable pre-`0.1` contracts.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

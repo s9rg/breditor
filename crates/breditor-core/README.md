@@ -231,11 +231,28 @@ database/scope/head/generation; and proves no CAS, head currentness, lifetime ID
 or fence freshness, empty generation, writer authority or epoch, host-event
 provenance, plan-level noncommit, durability, or ownership release. Historical
 commit exists only as a trusted host attestation. Exact bytes, selected
-bindings, and ID matches are not storage authority. Separate root/rotation
-resolver evidence and advisory `RetryEligibleAtResolution` are the `0.0.38`
-gate; crash-time attempt-plan reconstruction is not implemented. The profile
-cannot release a long-lived exclusive Rust writer; that still needs a
-separately held lock, transaction-coupled admission, or explicit
+bindings, and ID matches are not storage authority.
+
+Version `0.0.38` adds two directional resolver-comparison primitives and the
+closed retired-transaction shape. A later observation of the same selected
+binding must keep every receipt and immutable generation fact exact; the only
+accepted change is checkpoint cleanup from `Retired` to `Reclaimed`. A prior
+active generation can separately validate an exact retired/reclaimed successor
+under one supplied retiring head. `LocalLogStorageRetiredTransactionBinding`
+contains database/scope identity, transaction/head identity, selection kind,
+and stored byte length—never profile/session facts or bytes absent from the
+tombstone. Matching length screens collisions but cannot attest byte equality.
+
+These APIs compare caller-supplied typed values only. They do not observe
+IndexedDB, compare exact current/predecessor JSON, validate index/range
+completeness, or authenticate a resolver transaction's terminal event. Future
+resolver evidence becomes applicable only after its exact fixed-scope
+serialized transaction emits terminal `complete`; request success, `commit()`
+return, abort, callback loss, or unrelated completion classifies nothing. The
+shape-specific root resolver is the `0.0.39` gate and rotation resolution
+follows at `0.0.40`; crash-time attempt-plan reconstruction is not implemented.
+The profile cannot release a long-lived exclusive Rust writer; that still needs
+a separately held lock, transaction-coupled admission, or explicit
 revocable/speculative branch semantics. These storage formats remain unstable
 pre-`0.1` contracts.
 
