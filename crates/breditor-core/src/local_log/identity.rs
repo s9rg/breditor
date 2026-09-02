@@ -75,7 +75,7 @@ impl LocalLogIdentityError {
     }
 }
 
-pub(super) fn validate_local_log_identity(value: &str) -> Result<(), LocalLogIdentityError> {
+pub(crate) fn validate_local_log_identity(value: &str) -> Result<(), LocalLogIdentityError> {
     if value.is_empty() {
         return Err(LocalLogIdentityError::Empty);
     }

@@ -1,17 +1,23 @@
 # Local-log storage-generation transaction
 
-Status: specification only in Breditor `0.0.31`
+Status: value and strict ordinary-rotation validation implemented in Breditor
+`0.0.32`; storage transaction and ownership release remain specification only
 
-Reserved format name: `breditor/local-log-storage-generation`
+Validation format name: `breditor/local-log-storage-generation`
 
-Proposed format version: `1`
+Implemented validation format version: `1`
 
-This document freezes the next storage boundary before Breditor implements it.
-Version `0.0.31` exports no storage-generation value, codec, prepared state,
-receipt, adapter, or I/O API. The reserved name and proposed V1 shape are not a
-permanent compatibility promise. Implementations must not treat this document
-as evidence that current `breditor-core` can write, commit, or recover the
-record.
+Compatibility status: unstable pre-`0.1` validation shape; no permanent promise
+
+Version `0.0.32` implements the six bounded identity/version values, trusted
+ordinary-rotation binding, private-constructor non-`Clone` manifest, strict
+encode/decode codec, independent limits, and borrowed preparation validation
+for this shape. It does not implement a prepared state, capability, receipt,
+adapter, compare-and-swap, I/O, durability, restart selection, or ownership
+release. The implemented V1 validation shape remains a pre-`0.1` contract,
+not a permanent compatibility promise. Implementations must not treat
+successful validation as evidence that `breditor-core` can publish or commit
+the record, select storage during restart, or recover and activate log bytes.
 
 The contract is deliberately platform-neutral. It defines the facts that a
 native-filesystem or IndexedDB profile must associate and the ownership states
@@ -37,8 +43,8 @@ The actors have separate authority even when one host component implements
 several roles:
 
 1. `breditor-core` owns semantic proof, cursor compaction, deterministic Local
-   Log Checkpoint V1 encoding, and exact in-memory ownership. It performs no
-   storage I/O.
+   Log Checkpoint V1 encoding, exact in-memory ownership, and the strict
+   storage-generation value/validation boundary. It performs no storage I/O.
 2. The host coordinator chooses the storage scope, lifetime-unique transaction
    and head identifiers, storage profile, successor Frame V1 policy, and the
    point at which an unobserved old-generation suffix is abandoned.
@@ -55,10 +61,11 @@ several roles:
    under the profile. Volatile Rust typestate, old capabilities, receipts, and
    the persisted `fenceId` are not restart authority.
 
-The core can later validate exact values and preserve ownership, but it cannot
-prove that a host-issued capability is current, that a writer was fenced, or
-that a platform operation became durable. A host-attested receipt remains a
-trusted external assertion.
+The `0.0.32` core validates exact values and ordinary-rotation associations but
+does not yet preserve transaction ownership. It cannot prove that a supplied
+binding or prior manifest is authoritative, that a host-issued capability is
+current, that a writer was fenced, or that a platform operation became durable.
+A future host-attested receipt remains a trusted external assertion.
 
 ## Authoritative manifest and head
 
@@ -88,8 +95,10 @@ a postcommit current-fence holder can create lazily. No nonempty successor tail
 may become selected by this publication.
 
 This contract is rotation-only. Before an ordinary transaction, the scope has
-one already validated prior manifest selected by `expectedHeadId`. Initial
-scope/head provisioning and profile migration require separate future
+one already validated prior manifest selected by `expectedHeadId`. Every public
+`0.0.32` validation action requires that prior manifest, and the manifest has no
+public seed constructor; the API cannot initiate a chain or provision its first
+scope/head. Initial provisioning and profile migration require separate future
 contracts and cannot be smuggled through this V1 rotation.
 
 An ordinary rotation must preserve `profileId`, `profileVersion`, `scopeId`,
@@ -97,8 +106,10 @@ and `sessionId`; require the new `sealedLogId` to equal the prior manifest's
 `successorLogId`; require the new `sealedFrame` to equal the prior manifest's
 `successorFrame`; and require `expectedHeadId` to equal the prior manifest's
 `committedHeadId`. The new `successorLogId` must be lifetime-fresh within the
-scope and distinct from every earlier generation ID. The adapter compares
-these facts with the selected prior manifest as part of the head operation.
+scope and distinct from every earlier generation ID. The codec checks the
+ordinary continuity visible in the supplied prior edge. A future adapter must
+still prove authoritative selection and lifetime freshness beyond the IDs one
+manifest can remember.
 
 The identifiers are opaque. Head IDs have no numeric, lexical, timestamp, or
 generation ordering. `expectedHeadId` names the exact prior authoritative head;
@@ -124,11 +135,19 @@ bytes as a string or blob or add integrity/authentication in an envelope, but
 it must recover the exact canonical byte sequence. Structured-object equality
 cannot replace it.
 
-## Proposed storage-generation V1 value
+Version `0.0.32` deliberately pins `serde_json` `1.0.151` and carries a complete
+golden V1 vector covering field order, integer spellings, quotes, slash,
+backslash, control escapes, raw Unicode, and non-BMP Unicode. This prevents a
+dependency update from silently changing plan identity. The pin is an explicit
+pre-`0.1` implementation choice, not a claim that serde's escaping behavior is
+the permanent protocol; a future dependency change must either preserve the
+golden bytes or introduce a separately reviewed canonical writer/version.
 
-The reserved V1 value is a strict JSON object. Its compact canonical UTF-8
-encoding has no insignificant whitespace or trailing bytes and emits fields in
-the exact order shown below. The example values and abbreviated
+## Storage-generation V1 validation value (pre-0.1)
+
+The validation-only V1 value is a strict JSON object. Its compact canonical
+UTF-8 encoding has no insignificant whitespace or trailing bytes and emits
+fields in the exact order shown below. The example values and abbreviated
 `checkpointJson` content are illustrative; the field order is not.
 
 ```json
@@ -158,12 +177,13 @@ the exact order shown below. The example values and abbreviated
 }
 ```
 
-The example profile is illustrative and is not reserved. No encoder or decoder
-for this shape exists in `0.0.31`.
+The example profile is illustrative and is not reserved. Version `0.0.32`
+strictly encodes and decodes this ordinary-rotation shape, but the format still
+has no post-`0.1` compatibility promise.
 
 ### Field contracts
 
-`format` and `formatVersion` route only this proposed record. They do not alter
+`format` and `formatVersion` route only this validation record. They do not alter
 Local Log Checkpoint V1 or Local Log Frame V1.
 
 `profileId` is a qualified name using Breditor's lowercase
@@ -211,9 +231,9 @@ explicitly versioned manifest contract and cannot reinterpret these V1 fields.
 canonical output of `LocalLogCheckpointJsonCodec` for the compacted anchor and
 the derived session/sealed/successor binding. It embeds Checkpoint V1 as text,
 not as a nested outer JSON object. Whitespace, member-order, or escape variants
-that decode to a semantically equivalent checkpoint are not the same plan: a
-future strict storage-generation decoder must replay the nested checkpoint and
-require its canonical re-encoding to equal the decoded string byte for byte.
+that decode to a semantically equivalent checkpoint are not the same plan: the
+strict storage-generation decoder replays the nested checkpoint and requires
+its canonical re-encoding to equal the decoded string byte for byte.
 
 The storage record does not persist `LocalLogRecoveryLimits`,
 `LocalLogCompactionLimits`, or `LocalLogCheckpointLimits`. Those remain explicit
@@ -223,48 +243,78 @@ from this manifest.
 
 ### Resource and shape requirements
 
-A future codec must have independent finite limits for the complete manifest
-input and output and for decoded `checkpointJson`. The checkpoint string must
-also fit the active checkpoint codec and `EditorContext` limits. Escaping the
-nested JSON can make the outer record larger, so a checkpoint limit cannot
-stand in for a whole-manifest limit.
+`LocalLogStorageGenerationLimits` has independent finite limits for the
+complete manifest input, canonical output, and decoded `checkpointJson`, plus
+the nested `LocalLogCheckpointLimits`. The checkpoint string must also fit the
+active checkpoint codec and `EditorContext` limits. Escaping the nested JSON
+can make the outer record larger, so a checkpoint limit cannot stand in for a
+whole-manifest limit.
+
+The `0.0.32` defaults are exactly 33,558,528 complete input bytes,
+33,558,528 canonical output bytes, and 16,777,216 decoded checkpoint bytes.
+Hosts may replace each independently. These byte ceilings do not replace the
+nested semantic checkpoint limits or prove that allocation will succeed.
+During `prepare_rotation`, the nested checkpoint encoder must first produce its
+bounded Checkpoint V1 string under `EditorContext` policy; the separate
+storage-generation checkpoint ceiling is then an admission check, not a tighter
+peak-allocation guarantee. Decode preflights the decoded checkpoint length
+before owning that string. Serde may also allocate a bounded parser diagnostic
+internally before this boundary projects it to payload-free public metadata;
+the complete-input ceiling remains the outer bound on that work.
 
 The V1 object and both frame-policy objects are exact: missing, unknown, or
 duplicate fields fail closed. Fixed-width numbers reject negative, fractional,
 floating-point, overflowing, or noncanonical representations. String limits
-are checked before unbounded ownership or nested semantic work. A future codec
-must route the bounded outer format/version before nested Checkpoint V1 decode,
-then cross-check identities, canonical checkpoint bytes, accepted-prefix
-metadata, both explicit frame policies, prior-manifest continuity, and the
-canonical outer bytes before publication.
+are checked before unbounded ownership or nested semantic work. The codec
+routes the bounded outer format/version before nested Checkpoint V1 decode,
+then reconstructs every bounded field, checks intrinsic topology, trusted
+binding, prior-manifest continuity (including the sealed Frame V1 policy),
+canonical checkpoint bytes, and canonical outer bytes before publishing an
+inspection value. Decode validates the syntax and range of
+`acceptedPrefixBytes` and `successorFrame`; it cannot prove their causal
+provenance from storage. Preparation instead derives the accepted prefix and
+sealed frame from the borrowed compaction outcome and takes the successor frame
+from explicit caller input.
 
-Preparation obtains the nested checkpoint binding and `EditorContext` from the
-compaction outcome's anchor rather than from duplicated host strings. Restart
-first validates the canonical outer record against the trusted profile, scope,
-selected head, and prior-manifest chain; it then constructs the Checkpoint V1
-binding from that validated outer record and uses a separately trusted host
-`EditorContext` and resource policy. Equality between outer and nested fields
-does not authenticate either value or prove causal provenance.
+`LocalLogStorageGenerationJsonCodec` owns the separately trusted context,
+binding, and limits. Its public `prepare_rotation` action borrows the compaction
+outcome and caller inputs. It derives the nested checkpoint binding from the
+outcome's anchor, requires the anchor context to equal the codec's separately
+trusted `EditorContext`, and uses the codec's context and policy rather than
+duplicated host strings. It returns a checked manifest without consuming,
+quarantining, or releasing the anchor.
+
+`decode_rotation` requires an independently trusted
+`LocalLogStorageGenerationBinding` and an already validated prior manifest; it
+then constructs the Checkpoint V1 binding from validated outer fields and uses
+a separately trusted host `EditorContext` and resource policy. Equality between
+outer and nested fields does not authenticate either value or prove causal
+provenance.
 
 No public diagnostic, `Debug`, or `Display` output may contain
 `checkpointJson`, manifest bytes, editor/session/history payloads, an adapter
 capability, or opaque adapter evidence. Bounded profile, scope, transaction,
 head, fence, session, and log identifiers may appear where needed for typed
 diagnosis; therefore diagnostics are not a general secret-redaction boundary.
-Prepared and uncertain owners must not implement payload-revealing debug or
+The `0.0.32` manifest has no public constructor, deliberately does not
+implement `Clone`, and omits checkpoint content from `Debug`. Future prepared
+and uncertain owners must likewise avoid payload-revealing debug or
 unrestricted cloning.
 
 ## Ownership state machine
 
 The future Rust boundary must be consuming and single-owner. The names below
-specify states, not public `0.0.31` types.
+specify states, not public `0.0.32` types. The current borrowed
+`prepare_rotation` validation action is not the future `Prepared` state.
 
 ### Prepared
 
-Preparation consumes one `LocalLogTailCompactionOutcome`, validates every
-runtime/host association, canonically encodes Checkpoint V1, and fixes the
-complete immutable transaction plan. Failure before publication of `Prepared`
-returns the unchanged outcome and all caller-owned authority inputs.
+A future consuming preparation would take one
+`LocalLogTailCompactionOutcome`, validate every runtime/host association,
+canonically encode Checkpoint V1, and fix the complete immutable transaction
+plan. Failure before publication of `Prepared` would return the unchanged
+outcome and all caller-owned authority inputs. This is not the borrowed
+`0.0.32` validation method.
 
 Successful preparation quarantines the checkpoint anchor. `Prepared` cannot
 start the successor cursor or expose a bare anchor. Only its attempt transition
@@ -425,10 +475,10 @@ metadata, and the head as independently drifting updates.
 
 ## Non-goals and forbidden inferences
 
-This specification and the proposed manifest do not provide:
+This specification and the implemented validation manifest do not provide:
 
-- a public Rust storage value, codec, typestate, receipt, adapter, async API, or
-  I/O implementation in `0.0.31`;
+- a public seed/bootstrap manifest, storage-attempt typestate, receipt, adapter,
+  async API, writer capability, or I/O implementation in `0.0.32`;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -436,11 +486,14 @@ This specification and the proposed manifest do not provide:
   rollback protection, causal provenance, or multi-writer consensus;
 - proof that a transaction, head, fence, session, or generation identity is
   honest, globally unique, fresh, or secret;
+- proof that the supplied binding or prior manifest is authoritative, that the
+  physical successor is fresh and empty, or permission to release a writable
+  successor owner;
 - a change to Local Log Checkpoint V1 or Local Log Frame V1;
 - durable encoding of recovery, compaction, or checkpoint resource policies;
 - generation garbage collection, tail-wide replay, migration, retry scheduling,
   backpressure, cancellation APIs, or queue ordering; or
-- a permanent compatibility promise for the reserved V1 name and shape.
+- a permanent compatibility promise for the implemented pre-`0.1` V1 shape.
 
 `EndOfInput`, a valid CRC, successful JSON decode, object existence, file
 length, modification time, lexical ID order, the longest tail, and the newest
@@ -448,13 +501,28 @@ timestamp are never commit or recovery authority. Only the named profile's
 authoritative per-scope head and exact manifest record can select the new
 generation.
 
-## Implementation gate
+## Implemented validation boundary and next gate
 
-The next checkpoint may implement only bounded identity values, the strict
-proposed manifest value/codec, and preparation-time validation/encoding. It
-must still perform no storage I/O and expose no prepared/committed/uncertain
-commit typestate. Until that consuming typestate exists, preparation validation
-borrows the compaction outcome and cannot quarantine or release its anchor; its
-manifest result is inspection data, not permission to activate the successor.
-Adapter receipts and ownership release wait until at least one platform profile
-has an executable, red-teamed finality contract.
+Version `0.0.32` implements only the bounded identities, trusted binding,
+private-constructor non-`Clone` manifest, independent limits, strict codec, and
+borrowed preparation validation. The implementation separates
+`prepare_rotation`, `encode_rotation`, and `decode_rotation` into distinct
+action modules. Preparation cannot quarantine or release its borrowed outcome,
+and a successful manifest remains inspection data rather than permission to
+activate the successor. All public rotation actions require an already
+validated prior manifest; there is deliberately no public initial seed.
+
+For `0.0.33`, freeze initial scope/head provisioning and one concrete platform
+profile before adding any ownership-release typestate. The recommended first
+profile is a narrowly scoped IndexedDB profile whose document names the exact
+object stores/keys, comparison and publication transaction, terminal commit
+and definite-noncommit evidence, lost-response/connection recovery,
+successor-empty reservation, restart resolution, and cleanup barrier. This is
+a sequencing recommendation, not a claim that an IndexedDB adapter, Wasm
+binding, writer fence, atomic publication, or durability guarantee exists.
+
+Only an executable, red-teamed profile can justify later `Prepared`,
+`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` ownership
+states. The provisioning contract must not manufacture its first manifest
+through an unchecked public constructor or infer authority from in-memory
+genesis compaction.

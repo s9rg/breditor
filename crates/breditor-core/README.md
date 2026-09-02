@@ -15,7 +15,9 @@ admission with fixed cumulative budgets, repeated cumulative compaction, and a
 strict trusted-scope local-log-checkpoint JSON codec plus a checksummed,
 platform-neutral one-entry binary frame encoder and allocation-free borrowed
 scanner plus an owner-derived active-tail cursor with atomic semantic/physical
-progress and recoverable cursor compaction,
+progress and recoverable cursor compaction, plus six bounded storage
+identity/version values and strict prior-linked storage-generation rotation
+preparation/encoding/decoding,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -58,7 +60,8 @@ is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
-checkpoint/log atomic replacement, durable append/acknowledgement,
+checkpoint/log atomic replacement, storage-generation publication or initial
+scope provisioning, durable append/acknowledgement,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -66,8 +69,10 @@ typed rejection returns the unchanged active owner and exact rejected entry, so
 the caller can retain and retry it after relevant prerequisites change, or
 construct another entry without reconstructing the checkpoint. Fresh genesis
 is still a complete-vector boundary; an empty genesis generation can be
-compacted to bootstrap this successor path. The core does not queue, schedule,
-persist, flush, acknowledge, or rate-limit attempts.
+compacted to bootstrap only this in-memory successor-admission path, not a
+storage scope, authoritative head, or first storage-generation manifest. The
+core does not queue, schedule, persist, flush, acknowledge, or rate-limit
+attempts.
 
 Framed successor observation can instead begin from a checkpoint anchor at
 generation-relative byte offset zero. The cursor fixes one frame policy and
@@ -93,14 +98,28 @@ prefix. Starting the returned anchor's successor selects new recovery and frame
 limits explicitly, derives a new generation binding, and resets its relative
 offset to zero.
 
-Version `0.0.31` adds only the
+Version `0.0.32` implements the value and codec-validation subset of the
 [storage-generation transaction specification](../../docs/STORAGE_GENERATION_TRANSACTION.md).
-It reserves the proposed `breditor/local-log-storage-generation@1` manifest and
-freezes authoritative-head, fencing, ownership, crash, and identical-retry
-rules without implementing them. The crate exports no storage-generation
-value, codec, prepared/committed/uncertain state, receipt, adapter, or I/O API,
-and the reserved shape is not yet a permanent compatibility promise. Local Log
-Checkpoint V1 and Frame V1 remain unchanged.
+The crate exports six bounded storage identity/version values, a trusted
+ordinary-rotation binding, a private-constructor non-`Clone` manifest,
+independent complete-input, canonical-output, and decoded-`checkpointJson`
+limits, and `LocalLogStorageGenerationJsonCodec` with separate strict
+`prepare_rotation`, `encode_rotation`, and `decode_rotation` operations.
+Preparation borrows both the compaction outcome and caller inputs, so its result
+is inspection data and does not quarantine or release the anchor. Rotation
+decode requires a separately trusted binding and an already validated prior
+manifest, enforces locally provable continuity, and accepts only exact canonical
+nested Checkpoint V1 and outer manifest bytes.
+
+This remains rotation-only: there is no public seed/bootstrap constructor. The
+crate performs no storage I/O and exports no writer capability, adapter
+receipt, prepared/committed/uncertain ownership typestate, head
+compare-and-swap, durability assertion, or writable successor owner. Validation
+cannot prove that the prior was authoritative, that an ID or fence is fresh,
+or that the physical successor is empty. The implemented validation-only
+`breditor/local-log-storage-generation@1` shape remains pre-`0.1`, not a
+permanent compatibility promise. Local Log Checkpoint V1 and Frame V1 remain
+unchanged.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

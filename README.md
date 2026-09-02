@@ -24,7 +24,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   one-frame scanner with separate header and payload CRC-32C checks, and an
   owning active-tail cursor that advances semantic admission and a checked
   generation-relative byte offset atomically and compacts without losing its
-  accepted-prefix length or retained Frame V1 policy;
+  accepted-prefix length or retained Frame V1 policy, plus six bounded
+  storage-generation identity/version types and strict, prior-linked rotation
+  manifest validation with exact nested-checkpoint and outer canonical bytes;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -74,7 +76,8 @@ direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
-checkpoint/log atomic replacement, durable append and acknowledgement,
+checkpoint/log atomic replacement, storage-generation publication and initial
+scope provisioning, durable append and acknowledgement,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -84,16 +87,24 @@ structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations. Fresh-genesis admission remains batch-only;
 hosts that need one-entry admission can compact an empty genesis generation
-into its first successor.
+into its first in-memory successor. That does not provision a storage scope,
+authoritative head, or first storage-generation manifest.
 
-Version `0.0.31` is a specification-only checkpoint. It freezes the proposed
-platform-neutral [storage-generation transaction](docs/STORAGE_GENERATION_TRANSACTION.md),
-including authoritative per-scope head selection, crash and uncertain-retry
-rules, and separate native-filesystem and IndexedDB profile obligations. The
-reserved `breditor/local-log-storage-generation@1` manifest is not implemented
-and is not yet a permanent compatibility promise. No storage value, codec,
-receipt, transaction typestate, adapter, or durability API was added to the
-Rust crate.
+Version `0.0.32` implements only the pure validation layer of the proposed
+platform-neutral [storage-generation transaction](docs/STORAGE_GENERATION_TRANSACTION.md).
+It adds six bounded storage identity/version values, a trusted
+ordinary-rotation binding, a private-constructor non-`Clone` manifest,
+independent input/output/checkpoint limits, and separate strict
+`prepare_rotation`, `encode_rotation`, and
+`decode_rotation` operations. Preparation borrows the compaction outcome;
+decoding requires an already validated prior manifest; nested Checkpoint V1 and
+complete outer bytes must each be their exact canonical encoding. There is no
+public seed/bootstrap manifest, storage I/O, capability, receipt, ownership
+typestate, compare-and-swap, durability claim, or writable-owner release. The
+caller-supplied binding and prior manifest are not authority, and successful
+validation cannot prove ID/fence freshness or an empty successor. The
+implemented validation-only `breditor/local-log-storage-generation@1` shape
+remains a pre-`0.1` contract rather than a permanent compatibility promise.
 
 ## Development
 

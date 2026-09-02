@@ -3,13 +3,13 @@ members = ["crates/breditor-core"]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.31"
+version = "0.0.32"
 edition = "2024"
 rust-version = "1.98"
 
 [workspace.dependencies]
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = { version = "1.0.151", features = ["raw_value"] }
+serde_json = { version = "=1.0.151", features = ["raw_value"] }
 thiserror = "2.0.20"
 
 [workspace.lints.rust]

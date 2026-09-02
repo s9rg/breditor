@@ -38,6 +38,12 @@ mod recovery_error;
 mod recovery_limits;
 mod replay_id;
 mod sequence;
+mod storage_fence_id;
+mod storage_head_id;
+mod storage_profile_id;
+mod storage_profile_version;
+mod storage_scope_id;
+mod storage_transaction_id;
 mod successor_recovery;
 #[cfg(test)]
 mod test_support;
@@ -77,3 +83,12 @@ pub use recovery_limits::{
 };
 pub use replay_id::ReplayId;
 pub use sequence::{LocalLogSequence, LocalLogSequenceError};
+pub use storage_fence_id::LocalLogStorageFenceId;
+pub use storage_head_id::LocalLogStorageHeadId;
+pub use storage_profile_id::LocalLogStorageProfileId;
+pub use storage_profile_version::{
+    LocalLogStorageProfileVersion, LocalLogStorageProfileVersionError,
+    LocalLogStorageProfileVersionErrorCode,
+};
+pub use storage_scope_id::LocalLogStorageScopeId;
+pub use storage_transaction_id::LocalLogStorageTransactionId;

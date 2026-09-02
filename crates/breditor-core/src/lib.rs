@@ -77,14 +77,21 @@
 //! byte provenance, durable sealing, or a future frame-version choice. A
 //! successor begins separately with explicit recovery/frame policies and
 //! generation-relative offset zero.
-//! Version `0.0.31` specifies, but does not implement, a future platform-neutral
-//! storage-generation transaction. The reserved
-//! `breditor/local-log-storage-generation@1` shape would associate exact
-//! Checkpoint V1 JSON, accepted-prefix and old/new Frame V1 policies, generation
-//! identities, and adapter-owned head/fence decisions. This crate exports no
-//! value, codec, prepared/committed/uncertain typestate, receipt, adapter, or I/O
-//! API for that draft, and the reserved shape is not a permanent compatibility
-//! promise. Checkpoint V1 and Frame V1 are unchanged.
+//! [`codec::LocalLogStorageGenerationJsonCodec`] now provides strict,
+//! rotation-only validation for the unstable pre-`0.1`
+//! `breditor/local-log-storage-generation@1` shape. A separately trusted
+//! [`codec::LocalLogStorageGenerationBinding`] fixes the profile, scope, and
+//! old/new heads; borrowed preparation couples one compaction outcome to exact
+//! canonical Checkpoint V1 JSON, accepted-prefix metadata, and old/new Frame V1
+//! policies. Decode requires both that binding and an already validated prior
+//! manifest, reconstructs bounded fields before the nested checkpoint string is
+//! allocated, and rejects any noncanonical nested or outer byte representation.
+//! The resulting non-`Clone` manifest is inspection data only: it owns no
+//! checkpoint anchor or writer capability and proves no reservation, current
+//! head, publication, durability, restart selection, or recovery of log bytes.
+//! There is deliberately no public seed/provisioning path yet, and this crate
+//! still exports no prepared/committed/uncertain typestate, receipt, adapter, or
+//! storage I/O API. Checkpoint V1 and Frame V1 are unchanged.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

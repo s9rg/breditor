@@ -131,6 +131,8 @@ pub enum CodecErrorCode {
     InvalidLocalLogEntry,
     /// A complete local-log checkpoint failed binding, record, or topology reconstruction.
     InvalidLocalLogCheckpoint,
+    /// A storage-generation rotation failed binding, continuity, or canonical reconstruction.
+    InvalidLocalLogStorageGeneration,
     /// A durable session checkpoint failed topology or replay proof.
     InvalidSessionCheckpoint,
     /// An editor-state field could not be reconstructed through checked contracts.
@@ -161,6 +163,7 @@ impl CodecErrorCode {
             Self::InvalidCommit => "codec.invalid_commit",
             Self::InvalidLocalLogEntry => "codec.invalid_local_log_entry",
             Self::InvalidLocalLogCheckpoint => "codec.invalid_local_log_checkpoint",
+            Self::InvalidLocalLogStorageGeneration => "codec.invalid_local_log_storage_generation",
             Self::InvalidSessionCheckpoint => "codec.invalid_session_checkpoint",
             Self::InvalidEditorState => "codec.invalid_editor_state",
             Self::EncodingFailed => "codec.encoding_failed",
@@ -295,6 +298,10 @@ mod tests {
             (CodecErrorCode::InvalidCommit, "codec.invalid_commit"),
             (CodecErrorCode::InvalidLocalLogEntry, "codec.invalid_local_log_entry"),
             (CodecErrorCode::InvalidLocalLogCheckpoint, "codec.invalid_local_log_checkpoint"),
+            (
+                CodecErrorCode::InvalidLocalLogStorageGeneration,
+                "codec.invalid_local_log_storage_generation",
+            ),
             (CodecErrorCode::InvalidSessionCheckpoint, "codec.invalid_session_checkpoint"),
             (CodecErrorCode::InvalidEditorState, "codec.invalid_editor_state"),
             (CodecErrorCode::EncodingFailed, "codec.encoding_failed"),

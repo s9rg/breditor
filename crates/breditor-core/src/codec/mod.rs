@@ -24,6 +24,19 @@ mod local_log_frame_codec;
 mod local_log_frame_error;
 mod local_log_frame_limits;
 mod local_log_frame_scan;
+mod local_log_storage_generation_binding;
+mod local_log_storage_generation_checkpoint_preflight;
+mod local_log_storage_generation_decode;
+mod local_log_storage_generation_encode;
+mod local_log_storage_generation_error;
+mod local_log_storage_generation_frame_v1;
+mod local_log_storage_generation_json;
+mod local_log_storage_generation_limits;
+mod local_log_storage_generation_manifest;
+mod local_log_storage_generation_preparation_inputs;
+mod local_log_storage_generation_prepare;
+#[cfg(test)]
+mod local_log_storage_generation_tests;
 mod local_log_tail_begin;
 mod local_log_tail_compaction;
 mod local_log_tail_compaction_outcome;
@@ -90,6 +103,30 @@ pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, Loca
 pub use local_log_frame_scan::{
     BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
+pub use local_log_storage_generation_binding::{
+    LocalLogStorageGenerationBinding, LocalLogStorageGenerationBindingError,
+};
+pub use local_log_storage_generation_error::{
+    LocalLogStorageGenerationBindingField, LocalLogStorageGenerationCodecError,
+    LocalLogStorageGenerationContinuityError, LocalLogStorageGenerationContinuityErrorCode,
+    LocalLogStorageGenerationJsonFailure, LocalLogStorageGenerationRecordError,
+    LocalLogStorageGenerationRecordErrorCode, LocalLogStorageGenerationRecordLocation,
+    LocalLogStorageGenerationResourceLimit, LocalLogStorageGenerationResourceLimitCode,
+    LocalLogStorageGenerationTopologyError, LocalLogStorageGenerationTopologyErrorCode,
+};
+pub use local_log_storage_generation_frame_v1::LocalLogStorageGenerationFrameV1;
+pub use local_log_storage_generation_json::{
+    LOCAL_LOG_STORAGE_GENERATION_FORMAT, LOCAL_LOG_STORAGE_GENERATION_FORMAT_VERSION,
+    LocalLogStorageGenerationJsonCodec,
+};
+pub use local_log_storage_generation_limits::{
+    DEFAULT_LOCAL_LOG_STORAGE_GENERATION_MAX_CHECKPOINT_JSON_BYTES,
+    DEFAULT_LOCAL_LOG_STORAGE_GENERATION_MAX_INPUT_BYTES,
+    DEFAULT_LOCAL_LOG_STORAGE_GENERATION_MAX_OUTPUT_BYTES, LocalLogStorageGenerationLimits,
+};
+pub use local_log_storage_generation_manifest::LocalLogStorageGenerationManifest;
+pub(crate) use local_log_storage_generation_manifest::LocalLogStorageGenerationManifestParts;
+pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerationPreparationInputs;
 pub use local_log_tail_compaction_outcome::LocalLogTailCompactionOutcome;
 pub use local_log_tail_cursor::LocalLogTailCursor;
 pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};
