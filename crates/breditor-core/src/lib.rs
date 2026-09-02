@@ -5,8 +5,9 @@
 //! transaction-request, contextual complete editor-state, replay-proved
 //! durable commit, bounded session-checkpoint, replay-identified local-log
 //! entry, complete local-log-checkpoint JSON decoding, checksummed binary
-//! local-log frame scanning, atomic genesis-prefix recovery, checkpoint-linked
-//! batch and incremental successor admission, repeated compaction,
+//! local-log frame scanning, atomic framed-tail observation, genesis-prefix
+//! recovery, checkpoint-linked batch and incremental successor admission,
+//! repeated compaction,
 //! snapshot-local points and selections, immutable editor states,
 //! paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
@@ -61,6 +62,12 @@
 //! borrowed frame; semantic decoding then checks an independent trusted session
 //! and generation binding. CRC is not authentication, and scanning does not
 //! accept, append, acknowledge, or persist an event.
+//! [`codec::LocalLogTailCursor`] composes that scanner with one owned
+//! [`local_log::ContinuedLocalLog`] and a checked generation-relative `u64`
+//! byte offset. It derives codec context and binding from the owner, and only a
+//! successfully admitted complete frame—including an exact semantic
+//! duplicate—advances both owner and offset. It performs no I/O and cannot
+//! prove caller byte provenance or durability.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

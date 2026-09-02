@@ -8,8 +8,10 @@
 //! lifetime policy while dropping old event proofs. The codec module can
 //! serialize one independently valid entry and one complete expected-binding
 //! checkpoint, and can encode or scan checksummed binary frames around entry
-//! bytes. It does not append, persist, authenticate, fence, or crash-recover a
-//! stream; storage must preserve the scopes and ordering documented here.
+//! bytes. Its active-tail cursor composes one frame with one semantic
+//! observation while retaining atomic ownership and byte progress. It does not
+//! append, persist, authenticate, fence, or crash-recover a stream; storage
+//! must preserve the scopes and ordering documented here.
 
 mod application;
 mod application_error;

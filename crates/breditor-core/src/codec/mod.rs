@@ -24,6 +24,12 @@ mod local_log_frame_codec;
 mod local_log_frame_error;
 mod local_log_frame_limits;
 mod local_log_frame_scan;
+mod local_log_tail_begin;
+mod local_log_tail_cursor;
+mod local_log_tail_error;
+mod local_log_tail_failure;
+mod local_log_tail_observation;
+mod local_log_tail_step;
 mod operation_error;
 mod operation_json;
 mod operation_payload_v1;
@@ -81,6 +87,10 @@ pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, Loca
 pub use local_log_frame_scan::{
     BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
+pub use local_log_tail_cursor::LocalLogTailCursor;
+pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};
+pub use local_log_tail_failure::LocalLogTailFailure;
+pub use local_log_tail_step::{LocalLogTailStatus, LocalLogTailStep};
 pub use operation_error::{
     OperationCodecError, OperationFragmentField, OperationOffsetField, OperationPathField,
     OperationRecordError, OperationRecordErrorCode, OperationRecordLocation,

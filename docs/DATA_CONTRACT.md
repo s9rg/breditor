@@ -45,6 +45,9 @@ The implemented Rust slice owns:
 - a platform-neutral binary frame around exact Local Log Entry V1 bytes, with
   independent header and payload CRC-32C checks, a trusted active-tail binding,
   and allocation-free one-frame borrowed scanning;
+- an owning active-tail cursor that derives framing context and binding from one
+  `ContinuedLocalLog` and advances its generation-relative `u64` byte offset
+  only with successful semantic admission;
 - a bounded atomic local-log recovery boundary that proves one supplied
   genesis-anchored, uncompacted generation prefix, skips exact semantic
   retries, applies all five event kinds, and retains every accepted replay
@@ -210,6 +213,21 @@ ContinuedLocalLog + one independently decoded LocalLogEntry
        sequence, unique-event budget, operation budget, then application
     -> publish Applied or ExactDuplicate with the next owner
     -> on typed rejection return the unchanged owner and exact rejected entry
+
+LocalLogCheckpointAnchor + fixed recovery/frame limits
+    -> begin one fresh successor owner and generation-relative byte offset zero
+    -> derive and retain frame context, session, and active-log binding from the owner
+    -> publish one LocalLogTailCursor without reading storage
+
+LocalLogTailCursor + caller-asserted input origin + borrowed tail bytes
+    -> require origin equality before inspecting bytes
+    -> scan at most one frame under the cursor's fixed frame policy
+    -> return unchanged clean-end or truncation status without admission
+    -> checked-convert frame bytes and preflight the next u64 offset
+    -> semantically decode under owner-derived context and binding
+    -> consume ContinuedLocalLog::try_observe
+    -> publish owner and offset together for Applied or ExactDuplicate
+    -> on typed failure return the unchanged cursor and, after admission, the entry
 
 ContinuedLocalLog + one new successor generation
 + inherited policy or explicitly reauthorized LocalLogCompactionLimits
@@ -449,6 +467,19 @@ in the existing entry codec and then checks a separately trusted session and
 active-generation binding. This is accidental-corruption framing, not
 authentication, append durability, truncation authority, storage recovery, or
 event acceptance.
+Version `0.0.29` adds a consuming active-tail cursor that couples one
+`ContinuedLocalLog`, an internally owner-derived frame codec, and a checked
+generation-relative `u64` accepted byte offset. Its primary anchor transition
+starts a fresh successor at offset zero. Each step verifies the caller-asserted
+input origin, scans at most one frame, preflights offset arithmetic, decodes,
+and attempts semantic admission; only joint success publishes the next owner
+and offset. Applied events and exact semantic duplicates both advance by their
+actual frame length. Clean end, truncation, and every typed failure preserve
+the cursor; admission failure also retains the decoded entry. This remains
+synchronous in-memory orchestration, not byte provenance, storage, durability,
+acknowledgement, or tail-wide recovery.
+The cursor, accepted offset, recovery limits, and frame limits have no durable
+encoding and do not change Local Log Entry V1, Frame V1, or Checkpoint V1.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2158,6 +2189,85 @@ hosts share the wire bytes and algorithm for inputs within their configured and
 representable limits, but policy and address-space failures can differ by
 platform. They also necessarily implement different durability mechanisms.
 
+### Active-tail cursor
+
+`LocalLogTailCursor` is the first atomic composition of physical frame progress
+and semantic successor admission. It owns exactly one `ContinuedLocalLog`, one
+`LocalLogFrameCodec`, and an exclusive generation-relative accepted byte offset
+stored as `u64`. The codec is constructed from the owner's exact
+`EditorContext`, durable session ID, and active generation ID plus one explicit
+fixed `LocalLogFrameLimits`. A caller cannot inject an independently drifting
+codec or binding, and those cloned bounded identities and context are retained
+across every cursor step.
+
+The primary construction path is
+`LocalLogCheckpointAnchor::begin_successor_tail`. It consumes the anchor,
+begins a fresh successor under fixed `LocalLogRecoveryLimits`, derives its
+codec, and starts that new generation's physical tail at offset zero.
+`LocalLogTailCursor::from_trusted_parts` exists for host restoration and
+advanced integration, but its name is a contract: the core cannot prove that
+an arbitrary `ContinuedLocalLog` was caused by exactly the supplied byte
+offset. The host must restore that relationship atomically or establish it by
+another trusted mechanism. `into_parts` deliberately dissolves the same
+coupling and returns all three values; observation count must never be used to
+reconstruct byte position because frame sizes vary.
+
+`try_observe_frame(input_origin, input)` consumes the cursor and handles at most
+one frame. Its exact precedence is:
+
+1. Require the caller-asserted generation-relative `input_origin` to equal the
+   cursor's accepted offset, even for empty input. Numeric equality prevents an
+   accidental seek mismatch but is not proof that the bytes came from that
+   location, file, generation, or writer.
+2. Run the complete Local Log Frame V1 scanner precedence, including the
+   effective minimum of the frame and context JSON-byte ceilings. Scan failure
+   returns `FrameScan`; clean empty input returns `EndOfInput`; a valid
+   incomplete prefix returns `Truncated`. End and truncation preserve the
+   complete cursor.
+3. For a complete frame, convert its `usize` length to the durable `u64` offset
+   domain and checked-add it to the current accepted offset. Either overflow
+   fails before UTF-8, JSON reconstruction, or semantic admission.
+4. Decode through the retained owner-derived codec. UTF-8, entry semantics,
+   remaining context semantic limits, and owner-derived session/log binding
+   failures are `FrameDecode` and preserve the cursor.
+5. Consume `ContinuedLocalLog::try_observe`. Rejection restores the unchanged
+   semantic owner and exact rejected entry, rebuilds the cursor at its old
+   offset, and reports `Admission` with the nested typed recovery reason.
+6. Only successful `Applied` or `ExactDuplicate` admission publishes the
+   returned semantic owner and the precomputed next byte offset together.
+
+`LocalLogTailStep` is fully owned and therefore does not retain the input
+buffer. Its status is `EndOfInput`, `Truncated(details)`, or `Accepted` with the
+exact platform-sized frame length, half-open generation-relative byte range,
+and `LocalLogObservationOutcome`. The caller still owns `input` and uses that
+accepted frame length to form the next suffix. Bytes after the first frame were
+not inspected; a valid first frame followed by corruption accepts only the
+first, and the next cursor step reports the suffix error without rolling back
+the accepted event.
+
+`Truncated` retains neither borrowed bytes nor incremental scanner state, and
+the cursor origin remains unchanged. After more bytes arrive, the caller must
+resupply the entire accumulated frame prefix from that same origin; passing
+only the newly arrived suffix is not a continuation protocol.
+
+Exact duplicate is a semantic replay classification, not byte equality. Two
+frames with different valid JSON whitespace or member order can decode to the
+same replay binding. Both are physical observations, so each consumes the
+observation budget and advances by its own frame length; only the first applies
+the event or advances logical sequence. Conversely, refeeding a previously
+accepted frame at the cursor's current origin is indistinguishable from a real
+stored duplicate and is treated as another physical observation.
+
+All typed failure diagnostics omit the retained cursor and rejected entry.
+Nested errors can still contain bounded identifiers or rejected field values,
+so cursor diagnostics are not a general secret-redaction boundary. Failure-path
+boxing and semantic decode may allocate; only the underlying frame scanner has
+the allocation-free claim. The cursor performs no loop, read, seek, append,
+flush, fsync, acknowledgement, truncation, compaction, or generation rotation.
+It establishes no EOF, byte provenance, authenticity, writer fence, rollback
+freshness, aggregate tail-size policy, or durable causal relationship between
+externally restored semantic and physical state.
+
 ### Genesis local-log recovery
 
 `LocalLogRecovery` is an all-or-nothing verifier and application boundary for
@@ -2590,14 +2700,25 @@ owner budget, so the core alone does not bound repeated hostile validation CPU.
 
 ## Next gate
 
-Define a consuming active-tail replay cursor that couples one
-`ContinuedLocalLog` owner with its exact accepted byte offset. One transition
-should scan a complete borrowed frame, semantically decode it, and attempt
-`try_observe`; only joint success may publish both the next owner and advanced
-offset. Truncation must return the unchanged owner/offset plus classification,
-and frame, semantic, or admission failure must retain enough owned state for a
-host to inspect or retry without claiming those bytes accepted. This remains a
-synchronous in-memory recovery contract, not a reader, queue, or storage API.
+Define a consuming cursor-compaction edge that cannot silently discard physical
+progress. It should mirror both existing `ContinuedLocalLog` compaction
+transitions, return the complete unchanged `LocalLogTailCursor` on typed
+failure, and on success publish the next `LocalLogCheckpointAnchor` together
+with the compacted generation's accepted-prefix length at invocation and
+retained `LocalLogFrameLimits`. That policy is only the Frame V1 payload
+ceiling, not a wire-version or codec selector; a future frame version requires
+an explicit versioned API rather than reinterpretation of this cursor. The
+length and limits are runtime/host metadata, not Local Log Checkpoint V1
+fields. Starting the new successor cursor must select its recovery/frame limits
+explicitly and reset its generation-relative offset to zero; the old offset
+must never carry into the new generation.
+
+Cursor compaction remains an in-memory proof conversion. Calling it must not
+claim clean EOF, writer fencing, physical tail length, physical truncation,
+append completion, persistence, checkpoint replacement, or durable sealing.
+It is host authorization to stop semantic admission for that generation and
+can abandon any suffix the cursor has not observed. Durable decisions require
+a later storage transaction contract.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and

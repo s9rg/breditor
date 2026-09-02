@@ -14,7 +14,8 @@ compact runtime anchor, checked batch or recoverable one-observation successor
 admission with fixed cumulative budgets, repeated cumulative compaction, and a
 strict trusted-scope local-log-checkpoint JSON codec plus a checksummed,
 platform-neutral one-entry binary frame encoder and allocation-free borrowed
-scanner,
+scanner plus an owner-derived active-tail cursor with atomic semantic/physical
+progress,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -67,6 +68,15 @@ construct another entry without reconstructing the checkpoint. Fresh genesis
 is still a complete-vector boundary; an empty genesis generation can be
 compacted to bootstrap this successor path. The core does not queue, schedule,
 persist, flush, acknowledge, or rate-limit attempts.
+
+Framed successor observation can instead begin from a checkpoint anchor at
+generation-relative byte offset zero. The cursor fixes one frame policy and
+derives its context, session, and generation binding from the owned semantic
+log. Each consuming call scans and admits at most one frame; applied events and
+exact semantic duplicates both advance the byte offset, while clean end,
+truncation, corruption, decode failure, and admission rejection do not. The
+caller still owns storage and asserts that the supplied slice begins at the
+reported offset.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

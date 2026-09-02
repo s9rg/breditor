@@ -12,6 +12,7 @@ use breditor_core::{
 use serde_json::{Value, json};
 
 pub(crate) mod local_log;
+pub(crate) mod local_log_tail;
 
 pub(crate) type TestResult = Result<(), Box<dyn Error>>;
 
