@@ -18,6 +18,12 @@ mod local_log_checkpoint_limits;
 mod local_log_checkpoint_tombstones_v1;
 mod local_log_entry_error;
 mod local_log_entry_json;
+mod local_log_frame_binding;
+mod local_log_frame_checksum;
+mod local_log_frame_codec;
+mod local_log_frame_error;
+mod local_log_frame_limits;
+mod local_log_frame_scan;
 mod operation_error;
 mod operation_json;
 mod operation_payload_v1;
@@ -64,6 +70,16 @@ pub use local_log_entry_error::{
 };
 pub use local_log_entry_json::{
     LOCAL_LOG_ENTRY_FORMAT, LOCAL_LOG_ENTRY_FORMAT_VERSION, LocalLogEntryJsonCodec,
+};
+pub use local_log_frame_binding::LocalLogFrameBinding;
+pub use local_log_frame_codec::{
+    LOCAL_LOG_FRAME_FORMAT_VERSION, LOCAL_LOG_FRAME_HEADER_BYTES, LOCAL_LOG_FRAME_MAGIC,
+    LocalLogFrameCodec,
+};
+pub use local_log_frame_error::{LocalLogFrameCodecError, LocalLogFrameErrorCode};
+pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, LocalLogFrameLimits};
+pub use local_log_frame_scan::{
+    BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
 pub use operation_error::{
     OperationCodecError, OperationFragmentField, OperationOffsetField, OperationPathField,

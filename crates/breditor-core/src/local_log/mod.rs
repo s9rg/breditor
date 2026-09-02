@@ -7,9 +7,9 @@
 //! Runtime compaction retains exact replay-ID tombstones under a cumulative
 //! lifetime policy while dropping old event proofs. The codec module can
 //! serialize one independently valid entry and one complete expected-binding
-//! checkpoint. It does not append, persist, frame, authenticate, fence, or
-//! crash-recover a stream; storage must preserve the scopes and ordering
-//! documented here.
+//! checkpoint, and can encode or scan checksummed binary frames around entry
+//! bytes. It does not append, persist, authenticate, fence, or crash-recover a
+//! stream; storage must preserve the scopes and ordering documented here.
 
 mod application;
 mod application_error;

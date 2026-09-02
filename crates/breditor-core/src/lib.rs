@@ -4,11 +4,11 @@
 //! proof schema, strict versioned document, singular-operation, exact-base
 //! transaction-request, contextual complete editor-state, replay-proved
 //! durable commit, bounded session-checkpoint, replay-identified local-log
-//! entry, and complete local-log-checkpoint JSON decoding plus atomic
-//! genesis-prefix recovery, checkpoint-linked batch and incremental successor
-//! admission, and repeated compaction,
-//! snapshot-local points and
-//! selections, immutable editor states, paragraph-local text splices,
+//! entry, complete local-log-checkpoint JSON decoding, checksummed binary
+//! local-log frame scanning, atomic genesis-prefix recovery, checkpoint-linked
+//! batch and incremental successor admission, repeated compaction,
+//! snapshot-local points and selections, immutable editor states,
+//! paragraph-local text splices,
 //! direct-root paragraph split/join and guarded root-text range-replacement
 //! operations, atomic transactions, proof-backed local text validation,
 //! structural relocation, and exact in-memory undo/redo requests. It also owns
@@ -54,6 +54,13 @@
 //! session-global sequence, and retry identities around ordinary commit,
 //! undo/redo, and history-boundary events. One entry does not prove stream
 //! membership, ordering, deduplication, durability, or authorization.
+//! [`codec::LocalLogFrameCodec`] wraps exact Local Log Entry V1 bytes in a
+//! fixed-width, big-endian frame with independent header and payload CRC-32C
+//! checks. Its scanner is allocation-free and distinguishes clean end,
+//! recoverable truncation, malformed/corrupt structure, and one complete
+//! borrowed frame; semantic decoding then checks an independent trusted session
+//! and generation binding. CRC is not authentication, and scanning does not
+//! accept, append, acknowledge, or persist an event.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and
@@ -68,8 +75,8 @@
 //! independently trusted [`local_log::LocalLogCheckpointBinding`] and embeds
 //! Session Checkpoint V1 plus complete chronological tombstones. It proves no
 //! causal relationship between those values. None of these boundaries provides
-//! framing, storage, integrity, rollback protection, writer fencing, or
-//! crash-tail recovery.
+//! durable storage, cryptographic integrity, rollback protection, writer
+//! fencing, aggregate tail recovery, or crash-tail truncation.
 
 pub mod action;
 pub mod codec;

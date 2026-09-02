@@ -10,6 +10,7 @@ Commit format: `breditor/commit`, version `1`
 Session-checkpoint format: `breditor/session-checkpoint`, version `1`
 Local-log-entry format: `breditor/local-log-entry`, version `1`
 Local-log-checkpoint format: `breditor/local-log-checkpoint`, version `1`
+Local-log-frame format: binary `Local Log Frame`, version `1`
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -41,6 +42,9 @@ The implemented Rust slice owns:
 - a strict single-entry local-log envelope that assigns independent durable
   session, append-generation, sequence, and retry identities to ordinary
   commits, undo/redo replays, and explicit history-boundary commands;
+- a platform-neutral binary frame around exact Local Log Entry V1 bytes, with
+  independent header and payload CRC-32C checks, a trusted active-tail binding,
+  and allocation-free one-frame borrowed scanning;
 - a bounded atomic local-log recovery boundary that proves one supplied
   genesis-anchored, uncompacted generation prefix, skips exact semantic
   retries, applies all five event kinds, and retains every accepted replay
@@ -79,9 +83,9 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered log framing and storage, atomic checkpoint/log replacement, durable
-  restart continuation, integrity/authenticity, rollback protection, migration,
-  and crash-tail recovery;
+- ordered tail storage and recovery orchestration, atomic checkpoint/log
+  replacement, durable restart continuation, cryptographic integrity or
+  authenticity, rollback protection, migration, and crash-tail truncation;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -147,6 +151,19 @@ untrusted local-log-entry JSON + caller-supplied EditorContext
     -> checked durable session/log/replay identities and one-based sequence
     -> exact event-shape routing and authoritative Commit V1 replay proof
     -> exact undo/redo metadata classification
+    -> publish one independently valid LocalLogEntry or publish nothing
+
+borrowed active-tail bytes + LocalLogFrameLimits + EditorContext
+    -> clean end, valid partial-magic/header/payload truncation, or full header
+    -> header CRC-32C before trusting version, flags, or payload length
+    -> effective payload cap and checked valid-slice conversion
+    -> exact payload CRC-32C without copying or semantic allocation
+    -> publish one BorrowedLocalLogFrame and exact consumed/remaining slices
+
+BorrowedLocalLogFrame + trusted LocalLogFrameBinding
+    -> recheck the receiving codec's effective payload ceiling
+    -> UTF-8 validation and the unchanged Local Log Entry V1 semantic decoder
+    -> trusted session comparison before trusted active-generation comparison
     -> publish one independently valid LocalLogEntry or publish nothing
 
 caller-authoritative empty-history EditorSession + expected session/log IDs
@@ -421,6 +438,17 @@ same observation engine after retaining its historical whole-vector admission
 check and all-or-nothing failure contract. This checkpoint adds no wire-format
 change, durable append, queue, acknowledgement, or fresh-genesis incremental
 API.
+Version `0.0.28` adds Local Log Frame V1, an original fixed-header binary frame
+around exact Local Log Entry V1 UTF-8 bytes. A dependency-free CRC-32C over the
+header catches accidental length-field corruption before it can be classified
+as a torn payload; a second CRC-32C covers the exact payload. The scanner is
+allocation-free, reads at most the first frame, distinguishes clean end,
+matching truncation, malformed/corrupt structure, and a complete borrowed
+frame, and returns exact consumed and remaining slices. Semantic decoding stays
+in the existing entry codec and then checks a separately trusted session and
+active-generation binding. This is accidental-corruption framing, not
+authentication, append durability, truncation authority, storage recovery, or
+event acceptance.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2015,6 +2043,121 @@ emits deterministic compact Rust JSON. A commit that fits its standalone cap
 can still be rejected when the wrapper pushes the complete entry over that same
 context limit.
 
+### Local Log Frame V1
+
+Local Log Frame V1 supplies deterministic binary boundaries around exact Local
+Log Entry V1 UTF-8 bytes. It is Breditor's own framing protocol; it does not
+adopt ProseMirror, Lexical, Tiptap/Yjs, or CKEditor wire values. Frame version
+`1` pins entry version `1` at compile time so changing the active entry codec
+cannot silently drift existing frame bytes.
+
+The header is exactly 28 bytes. All integer fields are unsigned big-endian and
+there is no padding or native-width value:
+
+```text
+offset  bytes  field
+0       8      magic = 89 42 52 44 54 4c 0d 0a ("\x89BRDTL\r\n")
+8       2      frame version = 1
+10      2      reserved flags = 0
+12      8      Local Log Entry V1 payload byte length P
+20      4      CRC-32C of the exact P payload bytes
+24      4      CRC-32C of header bytes [0, 24)
+28      P      exact Local Log Entry V1 UTF-8 JSON bytes
+```
+
+Any later frame version that reuses this magic must preserve the same 28-byte
+routing prefix and the header-CRC location and coverage. A version that changes
+those rules must use a new magic; otherwise a V1 scanner could correctly reject
+it as a corrupt header before reaching the version field.
+
+CRC-32C uses the Castagnoli polynomial in reflected form
+`0x82f63b78`, initial and final XOR `0xffffffff`, and the standard check value
+`crc32c("123456789") = 0xe3069283`. The implementation uses a const-generated
+256-entry table, no dependency, unsafe code, platform intrinsic, filesystem,
+or clock. Header CRC includes the stored payload CRC and declared length. A
+random length-bit change therefore fails as corrupt header before the scanner
+waits for a false payload boundary. Both CRCs are public, unkeyed, 32-bit
+accidental-corruption diagnostics. An attacker can recompute them, and
+collisions exist. Two CRC fields do not provide a 64-bit payload integrity
+value: payload-only detection remains one 32-bit CRC-32C. Neither field is a
+MAC, signature, content identity, authorization proof, or cryptographic
+integrity promise.
+
+`LocalLogFrameCodec::scan` inspects at most the first frame from a borrowed byte
+slice and allocates nothing. Its exact precedence is:
+
+1. Empty input is `EndOfInput` at a clean candidate boundary.
+2. A nonempty prefix shorter than eight bytes is `Truncated(Magic)` only when it
+   exactly matches the corresponding magic prefix; a mismatch is invalid magic.
+3. Exact complete magic followed by fewer than 28 bytes is
+   `Truncated(Header)`.
+4. A complete header must match its stored header CRC before routing any field.
+5. Require version `1`, then flags `0`.
+6. Compare the declared `u64` payload length with the smaller of
+   `LocalLogFrameLimits::max_payload_bytes` and the active
+   `EditorContext` JSON byte ceiling.
+7. Convert the admitted length to `usize`, checked-add the fixed header, and
+   require the total to fit Rust's `isize::MAX` valid-slice ceiling.
+8. Fewer than the exact declared total bytes is `Truncated(Payload)`.
+9. Check CRC-32C over the exact declared payload slice.
+10. Return `Complete(BorrowedLocalLogFrame)` with that payload, exact consumed
+    prefix, and uninspected remaining slice.
+
+The default independent frame payload limit is 16 MiB. Zero is valid policy but
+cannot contain a valid entry. The length ceiling is enforced before conversion,
+payload slicing, or payload checksumming. The scanner does not allocate from a
+declared length and does not bound the already caller-owned input slice or any
+bytes after its first complete frame. It never searches forward for another
+magic value after an error: resynchronization could silently skip a logical
+event.
+
+Binary completeness and semantic validity are separate on purpose.
+`BorrowedLocalLogFrame` has no public constructor and proves only the framing
+and CRC checks above. Because it can be passed between codec instances,
+`decode_frame` first rechecks the receiving codec's effective payload ceiling.
+It then validates UTF-8, calls the unchanged `LocalLogEntryJsonCodec` as the
+sole JSON and entry-semantic decoder, compares the decoded session ID with
+`LocalLogFrameBinding`, then compares the decoded active log ID. The binding
+comes from trusted storage scope, checkpoint state, or host configuration,
+never from the same payload. Identities are not repeated in the binary header,
+avoiding disagreement states and a second identity parser. The borrowed frame
+can be decoded more than once; decoding alone does not admit an event.
+
+Encoding applies the cheap trusted session and active-log comparisons first,
+uses the existing deterministic entry encoder, applies the effective payload
+ceiling and checked frame length, then writes payload CRC and header CRC. The
+encoder allocates its returned JSON and frame vector; allocation failure, panic,
+abort, and process failure remain outside typed guarantees. The checksum pass
+is linear in payload bytes. Scanning is `O(P)` time, `O(1)` additional memory,
+and leaves the payload in its caller-owned buffer; semantic decoding retains
+the existing entry codec's bounded allocations.
+
+A complete frame is not an accepted or acknowledged frame. Correct host
+integration is:
+
+```text
+scan one complete borrowed frame
+    -> semantically decode and verify trusted tail binding
+    -> ContinuedLocalLog::try_observe(decoded entry)
+    -> advance active owner and accepted byte offset together
+```
+
+If semantic decoding or event admission fails, the accepted offset must not
+advance. `Truncated` means only that the currently supplied slice ends at a
+valid prefix or before a checksum-validated header's declared payload boundary.
+A streaming host can request more bytes. Treating it as a storage tail eligible
+for truncation requires separately confirmed EOF and writer fencing.
+
+Frame V1 does not detect deliberate CRC recomputation, deletion of an entire
+valid frame, duplication, reordering, rollback, valid-tail splicing, or an
+omitted final frame at clean EOF. It provides no storage I/O, aggregate tail
+limit, append atomicity, flush/fsync/ack order, checkpoint replacement,
+truncation command, migration, confidentiality, queue, backpressure,
+cancellation, rate limiting, or multi-writer fence. Native and browser/Wasm
+hosts share the wire bytes and algorithm for inputs within their configured and
+representable limits, but policy and address-space failures can differ by
+platform. They also necessarily implement different durability mechanisms.
+
 ### Genesis local-log recovery
 
 `LocalLogRecovery` is an all-or-nothing verifier and application boundary for
@@ -2394,11 +2537,11 @@ those structural assertions into causal proof.
 
 Consequently, exact at-most-once behavior after reload is conditional on
 integrity-protected trusted checkpoint bytes, rollback/freshness policy, and
-single-owner writer fencing. V1 supplies no checksum, MAC, signature,
-authentication, authorization, provenance, causal event proof, retry-expiry
-proof, storage durability, atomic replacement, or crash recovery. It also
-cannot prove that the sealed generation has no later entries or that the bound
-successor is unused. Those are later storage and lifecycle gates.
+single-owner writer fencing. Local Log Checkpoint V1 supplies no checksum, MAC,
+signature, authentication, authorization, provenance, causal event proof,
+retry-expiry proof, storage durability, atomic replacement, or crash recovery.
+It also cannot prove that the sealed generation has no later entries or that
+the bound successor is unused. Those are later storage and lifecycle gates.
 
 The format separates four concepts that other editors often keep in different
 runtime layers: log order, retry identity, undo grouping, and serialization
@@ -2420,13 +2563,15 @@ in-process prefix linkage and fail-closed cross-generation `ReplayId` reuse
 rejection. It remembers only the current and immediate predecessor
 `LocalLogId`; freshness of older generation IDs remains a host responsibility.
 Local Log Checkpoint V1 gives the session, log, and replay portion of that
-anchor a strict durable value representation. These layers do not
-establish idempotent append, framing, complete-frame versus torn-tail
-classification, append/flush/fsync/ack order, atomic file compaction,
-durable incremental append, migration, checksums, hashes, signatures,
-authorization, rollback
+anchor a strict durable value representation. Local Log Frame V1 adds
+single-entry binary boundaries, allocation-free one-frame scanning, exact
+complete-versus-valid-prefix classification, and accidental-corruption CRCs.
+Together these layers still do not establish idempotent or durable append,
+aggregate tail recovery, append/flush/fsync/ack order, atomic file compaction,
+migration, cryptographic hashes, signatures, authorization, rollback
 protection, or writer fencing. IDs and sequence remain unauthenticated
-assertions, not revisions or content hashes.
+assertions, not revisions or content hashes, and a CRC-valid frame is not an
+accepted event.
 Commit-bearing entries also repeat Commit V1's complete before state, so a
 naive tail costs roughly entry count times document size. Filesystem durability
 belongs to a platform adapter; a browser/Wasm host cannot inherit native
@@ -2445,20 +2590,21 @@ owner budget, so the core alone does not bound repeated hostile validation CPU.
 
 ## Next gate
 
-Define a small, platform-neutral active-tail framing contract around Local Log
-Entry V1. It must bind a frame to one session and generation, cap payload bytes
-before allocation, distinguish complete frame, clean end-of-input, truncated
-tail, and malformed/corrupt frame, and preserve the existing entry codec as the
-only semantic decoder. A frame checksum may diagnose accidental corruption but
-must not be described as authenticity. The deterministic core should scan
-borrowed bytes and return an exact consumed offset so a native file adapter or
-browser/Wasm store can make its own truncation and durability decision.
+Define a consuming active-tail replay cursor that couples one
+`ContinuedLocalLog` owner with its exact accepted byte offset. One transition
+should scan a complete borrowed frame, semantically decode it, and attempt
+`try_observe`; only joint success may publish both the next owner and advanced
+offset. Truncation must return the unchanged owner/offset plus classification,
+and frame, semantic, or admission failure must retain enough owned state for a
+host to inspect or retry without claiming those bytes accepted. This remains a
+synchronous in-memory recovery contract, not a reader, queue, or storage API.
 
 Repeated in-memory compaction still does not make file replacement
-durable. Framing, migration, integrity and optional authenticity, authorization
-ownership, atomic checkpoint/log replace and append/flush/fsync/ack behavior,
-crash-tail truncation, retry reconstruction after process failure, rollback
-protection, and multi-writer fencing remain separate storage-layer gates.
+durable. Aggregate tail-size policy, migration, cryptographic integrity and
+optional authenticity, authorization ownership, atomic checkpoint/log replace
+and append/flush/fsync/ack behavior, actual crash-tail truncation, retry
+reconstruction after process failure, rollback protection, and multi-writer
+fencing remain separate storage-layer gates.
 Queue order, backpressure, cancellation, asynchronous scheduling, and admission
 rate limiting remain host concerns, not hidden inside the deterministic Rust
 state machine.

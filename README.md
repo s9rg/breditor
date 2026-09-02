@@ -20,7 +20,8 @@ This repository currently contains the first end-to-end Rust-core slice:
   batch recovery, recoverable one-observation successor admission with fixed
   cumulative budgets, repeated consuming generation compaction with cumulative
   replay retention, and a strict expected-binding durable local-log-checkpoint
-  codec;
+  codec plus a platform-neutral Local Log Frame V1 encoder and allocation-free
+  one-frame scanner with separate header and payload CRC-32C checks;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -69,9 +70,9 @@ This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, ordered log framing and storage,
+and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, durable append and acknowledgement,
-integrity/authenticity, rollback protection, and
+cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
 a DOM bridge,
