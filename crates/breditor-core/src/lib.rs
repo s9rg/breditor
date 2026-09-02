@@ -77,6 +77,14 @@
 //! byte provenance, durable sealing, or a future frame-version choice. A
 //! successor begins separately with explicit recovery/frame policies and
 //! generation-relative offset zero.
+//! Version `0.0.31` specifies, but does not implement, a future platform-neutral
+//! storage-generation transaction. The reserved
+//! `breditor/local-log-storage-generation@1` shape would associate exact
+//! Checkpoint V1 JSON, accepted-prefix and old/new Frame V1 policies, generation
+//! identities, and adapter-owned head/fence decisions. This crate exports no
+//! value, codec, prepared/committed/uncertain typestate, receipt, adapter, or I/O
+//! API for that draft, and the reserved shape is not a permanent compatibility
+//! promise. Checkpoint V1 and Frame V1 are unchanged.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

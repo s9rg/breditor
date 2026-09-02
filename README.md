@@ -86,6 +86,15 @@ current performance limitations. Fresh-genesis admission remains batch-only;
 hosts that need one-entry admission can compact an empty genesis generation
 into its first successor.
 
+Version `0.0.31` is a specification-only checkpoint. It freezes the proposed
+platform-neutral [storage-generation transaction](docs/STORAGE_GENERATION_TRANSACTION.md),
+including authoritative per-scope head selection, crash and uncertain-retry
+rules, and separate native-filesystem and IndexedDB profile obligations. The
+reserved `breditor/local-log-storage-generation@1` manifest is not implemented
+and is not yet a permanent compatibility promise. No storage value, codec,
+receipt, transaction typestate, adapter, or durability API was added to the
+Rust crate.
+
 ## Development
 
 ```sh

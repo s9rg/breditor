@@ -93,6 +93,15 @@ prefix. Starting the returned anchor's successor selects new recovery and frame
 limits explicitly, derives a new generation binding, and resets its relative
 offset to zero.
 
+Version `0.0.31` adds only the
+[storage-generation transaction specification](../../docs/STORAGE_GENERATION_TRANSACTION.md).
+It reserves the proposed `breditor/local-log-storage-generation@1` manifest and
+freezes authoritative-head, fencing, ownership, crash, and identical-retry
+rules without implementing them. The crate exports no storage-generation
+value, codec, prepared/committed/uncertain state, receipt, adapter, or I/O API,
+and the reserved shape is not yet a permanent compatibility promise. Local Log
+Checkpoint V1 and Frame V1 remain unchanged.
+
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch
 cannot reset the allowance. An explicitly named transition can reauthorize a

@@ -11,6 +11,9 @@ Session-checkpoint format: `breditor/session-checkpoint`, version `1`
 Local-log-entry format: `breditor/local-log-entry`, version `1`
 Local-log-checkpoint format: `breditor/local-log-checkpoint`, version `1`
 Local-log-frame format: binary `Local Log Frame`, version `1`
+Reserved storage-generation format: `breditor/local-log-storage-generation`,
+proposed version `1` (specification only; not implemented or a permanent
+compatibility promise)
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -92,6 +95,9 @@ The following remain deliberately unimplemented:
 - ordered tail storage and recovery orchestration, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
+- the specified storage-generation manifest value/codec, transaction typestate,
+  adapter receipts, authoritative-head integration, and filesystem or IndexedDB
+  profiles;
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -101,6 +107,11 @@ The following remain deliberately unimplemented:
 ProseMirror, Lexical, Tiptap, and CKEditor are design references only. This is
 an original contract and does not adopt their node, transaction, plugin, or
 collaboration protocols.
+
+Version `0.0.31` separately freezes the future storage-generation transaction
+and crash matrix in
+[`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). This
+is a specification boundary, not part of the implemented Rust slice.
 
 Runtime values and serialization records are deliberately different types:
 
@@ -506,6 +517,19 @@ transition authorizes abandonment of any unobserved suffix but establishes no
 EOF or storage fact. Beginning the next cursor remains a separate transition
 with explicit recovery/frame limits and offset zero. This adds no wire version
 and does not serialize cursor-compaction metadata in Local Log Checkpoint V1.
+Version `0.0.31` is specification-only. It reserves the unimplemented name
+`breditor/local-log-storage-generation` and a proposed V1 manifest shape without
+making a permanent wire-compatibility promise. The specification requires one
+authoritative manifest/head compare-and-swap per storage scope and associates
+exact canonical Checkpoint V1 JSON with the old accepted prefix, explicit old
+and successor Frame V1 limits, derived session/sealed/successor IDs, bounded
+profile/scope/transaction/head/fence identities, and an unpersisted adapter
+capability. It freezes `Prepared`, `DefinitelyNotCommitted`,
+`HostAttestedCommitted`, and `Uncertain` ownership, byte-identical retry, and
+separate native-versus-IndexedDB profile obligations. No Rust storage value,
+codec, typestate, receipt, adapter, or I/O API is added. Recovery, compaction,
+and checkpoint limits remain runtime policy; Checkpoint V1 and Frame V1 are
+unchanged.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2369,6 +2393,49 @@ new active-generation codec binding and starts at generation-relative offset
 zero. The old offset and old recovery/frame policy are never carried forward
 implicitly.
 
+### Specified storage-generation transaction (not implemented)
+
+Version `0.0.31` freezes a platform-neutral storage transaction contract in
+[`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). There
+is deliberately no public Rust value, codec, prepared state, receipt, adapter,
+or I/O implementation yet. The name
+`breditor/local-log-storage-generation` and its proposed version `1` are
+reserved for the next implementation checkpoint, not promised as permanent
+wire compatibility.
+
+The proposed strict manifest embeds exact canonical Local Log Checkpoint V1
+JSON as one bounded `checkpointJson` string. It adds storage association around
+that unchanged checkpoint: bounded profile and scope, lifetime-unique
+transaction and opaque head IDs, a non-secret fence ID, identities derived from
+the anchor, the old `acceptedPrefixBytes`, explicit sealed Frame V1 limits, and
+explicit successor Frame V1 limits selected before the first new append. The
+adapter's actual fence capability is never persisted. No checksum or digest
+stands in for exact manifest and checkpoint-byte equality. Recovery,
+compaction, and checkpoint limits remain separately selected runtime policies.
+
+One named adapter profile owns one authoritative manifest/head per scope. Its
+logical commit is an exact compare-and-swap from a distinct expected head ID to
+a new committed head ID. IDs are opaque and have no numeric, lexical, or time
+ordering. A same-transaction retry is valid only when every field and byte is
+identical. The exact committed head plus exact manifest selects the new
+generation; the expected head plus profile-defined positive proof that the
+transaction cannot later publish selects the old one. After an uncertain
+attempt, merely observing the expected head is insufficient because an earlier
+operation may still complete. Missing, partial, corrupt, or conflicting state
+remains uncertain rather than falling back to a plausible-looking tail.
+
+The future consuming ownership states are `Prepared`,
+`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain`. Prepared and
+uncertain states quarantine the anchor. Only the host-attested exact committed
+record may release it once into the explicitly configured successor at offset
+zero; duplicate receipts or exact retries cannot create a second semantic
+owner. An uncertain state may retry only the identical plan and forbids
+generation cleanup, plan changes, or another transaction until terminal
+resolution. Native filesystem and IndexedDB finality/fencing rules remain
+separate profiles, and neither receipt nor this specification lets the core
+claim durability, authority, byte provenance, EOF, physical length, truncation,
+rollback protection, or crash recovery.
+
 ### Genesis local-log recovery
 
 `LocalLogRecovery` is an all-or-nothing verifier and application boundary for
@@ -2801,31 +2868,34 @@ owner budget, so the core alone does not bound repeated hostile validation CPU.
 
 ## Next gate
 
-For `0.0.31`, specify the storage-generation transaction before implementing a
-filesystem, IndexedDB, or other persistence adapter. The contract must define a
-crash-state matrix and keep four independently scoped facts associated: the
-encoded Local Log Checkpoint V1 value, the cursor compaction outcome's accepted
-prefix and Frame V1 policy, the new successor generation, and an adapter-owned
-writer-fencing/freshness decision. It must decide explicitly whether the
-runtime prefix metadata remains trusted sidecar state or enters a new versioned
-storage manifest; it must not silently add fields to Local Log Checkpoint V1.
+For `0.0.32`, implement only the bounded identities and strict value/codec plus
+preparation validation for the proposed
+`breditor/local-log-storage-generation@1` record specified in
+[`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). The
+implementation should own exact manifest values, deterministic canonical JSON,
+independent whole-record and `checkpointJson` limits, strict header/shape and
+numeric validation, exact nested Checkpoint V1 replay/canonical-byte equality,
+and cross-checking against one `LocalLogTailCompactionOutcome`, one already
+validated prior manifest, and explicit successor Frame V1 limits. It must also
+enforce locally provable ordinary-rotation continuity and canonical outer-byte
+equality. Lifetime uniqueness and freshness remain adapter-profile
+obligations. Initial scope provisioning and profile migration remain outside
+this gate.
 
-The adapter contract must supply its own evidence that the old generation is
-closed for the intended operation. Neither `EndOfInput` nor cursor compaction is
-that evidence. It should define append atomicity, flush/commit order,
-checkpoint/log replacement, uncertain-result retry, and restart selection
-between the old and new generations. Native rename and directory-sync behavior
-and browser transaction semantics must remain separate profiles rather than a
-fictional universal `fsync` guarantee. Outcomes should distinguish prepared,
-durably committed, and uncertain states without making an uncertain retry
-advance semantic ownership twice.
+This remains a pure validation checkpoint. It must perform no filesystem,
+IndexedDB, or other storage I/O; mint no adapter capability or receipt; make no
+head compare-and-swap or durability claim; and expose no
+`Prepared`/`DefinitelyNotCommitted`/`HostAttestedCommitted`/`Uncertain`
+ownership typestate. Preparation validation should borrow the compaction
+outcome and caller-owned inputs rather than consume or quarantine them.
+Successful validation may publish the immutable proposed manifest and exact
+checkpoint bytes for inspection, but that value is not a storage attempt,
+receipt, authority, or permission to activate a successor cursor.
 
-This is deliberately a specification gate first. Writing bytes before choosing
-the failure model would turn an in-memory proof conversion into an accidental
-durability protocol and could strand the only full old-generation proofs after
-a crash. The deterministic core should accept only the smallest platform-owned
-capability or receipt required by the eventual contract; it should not absorb
-filesystem APIs, asynchronous scheduling, or browser storage policy.
+Keeping manifest validation separate from commit typestate lets red-team tests
+freeze routing, resource, canonicality, association, and diagnostic behavior
+before any platform finality assertion can release semantic ownership. Native
+filesystem and IndexedDB profile contracts remain later gates.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and

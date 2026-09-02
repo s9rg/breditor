@@ -1,0 +1,460 @@
+# Local-log storage-generation transaction
+
+Status: specification only in Breditor `0.0.31`
+
+Reserved format name: `breditor/local-log-storage-generation`
+
+Proposed format version: `1`
+
+This document freezes the next storage boundary before Breditor implements it.
+Version `0.0.31` exports no storage-generation value, codec, prepared state,
+receipt, adapter, or I/O API. The reserved name and proposed V1 shape are not a
+permanent compatibility promise. Implementations must not treat this document
+as evidence that current `breditor-core` can write, commit, or recover the
+record.
+
+The contract is deliberately platform-neutral. It defines the facts that a
+native-filesystem or IndexedDB profile must associate and the ownership states
+that a later pure-Rust API must enforce. It does not pretend that those two
+profiles have the same durability primitive.
+
+## Purpose and authority
+
+One storage-generation transaction moves one local-log storage scope from an
+old authoritative manifest to one new authoritative manifest. The new manifest
+keeps these facts together:
+
+- exact canonical Local Log Checkpoint V1 JSON;
+- the old generation's accepted-prefix byte count and Frame V1 policy;
+- the distinct successor generation and its Frame V1 policy, selected before
+  the first successor append;
+- the transaction, old-head, new-head, storage-profile, scope, and non-secret
+  fence identifiers used by the adapter; and
+- the session, sealed-generation, and successor-generation identities derived
+  from the compacted runtime proof and cross-checked against the checkpoint.
+
+The actors have separate authority even when one host component implements
+several roles:
+
+1. `breditor-core` owns semantic proof, cursor compaction, deterministic Local
+   Log Checkpoint V1 encoding, and exact in-memory ownership. It performs no
+   storage I/O.
+2. The host coordinator chooses the storage scope, lifetime-unique transaction
+   and head identifiers, storage profile, successor Frame V1 policy, and the
+   point at which an unobserved old-generation suffix is abandoned.
+3. A writer-fence authority supplies a non-secret fence identifier plus an
+   adapter capability. The capability, not the identifier, authorizes and
+   fences physical writes. It is never persisted in this manifest.
+4. A platform adapter implements one named profile's compare-and-swap,
+   atomicity, visibility, and durability rules and produces host-attested
+   attempt classifications.
+5. Restart recovery reads the profile's authoritative per-scope manifest/head.
+   That record selects recoverable bytes, not a writable owner. Before one
+   restarter can construct a writable successor, it must acquire a fresh
+   exclusive writer capability and recheck the same exact head and manifest
+   under the profile. Volatile Rust typestate, old capabilities, receipts, and
+   the persisted `fenceId` are not restart authority.
+
+The core can later validate exact values and preserve ownership, but it cannot
+prove that a host-issued capability is current, that a writer was fenced, or
+that a platform operation became durable. A host-attested receipt remains a
+trusted external assertion.
+
+## Authoritative manifest and head
+
+Each `scopeId` has exactly one profile-defined authoritative head. Log files,
+object-store entries, temporary records, or IndexedDB objects are not
+authoritative merely because they exist or decode successfully.
+
+The logical publication operation is:
+
+```text
+CAS(
+  profileId/profileVersion,
+  scopeId,
+  expectedHeadId,
+  committedHeadId,
+  exact storage-generation manifest
+)
+```
+
+The adapter may attempt publication only while holding the unpersisted
+capability associated with `fenceId`. A successful operation atomically changes
+the scope's authoritative head from `expectedHeadId` to `committedHeadId` and
+makes the exact new manifest the record selected by that head. The same
+profile operation must also establish the successor as a lifetime-fresh empty
+generation reservation, or select a lifetime-fresh absent generation that only
+a postcommit current-fence holder can create lazily. No nonempty successor tail
+may become selected by this publication.
+
+This contract is rotation-only. Before an ordinary transaction, the scope has
+one already validated prior manifest selected by `expectedHeadId`. Initial
+scope/head provisioning and profile migration require separate future
+contracts and cannot be smuggled through this V1 rotation.
+
+An ordinary rotation must preserve `profileId`, `profileVersion`, `scopeId`,
+and `sessionId`; require the new `sealedLogId` to equal the prior manifest's
+`successorLogId`; require the new `sealedFrame` to equal the prior manifest's
+`successorFrame`; and require `expectedHeadId` to equal the prior manifest's
+`committedHeadId`. The new `successorLogId` must be lifetime-fresh within the
+scope and distinct from every earlier generation ID. The adapter compares
+these facts with the selected prior manifest as part of the head operation.
+
+The identifiers are opaque. Head IDs have no numeric, lexical, timestamp, or
+generation ordering. `expectedHeadId` names the exact prior authoritative head;
+`committedHeadId` is a new lifetime-unique head ID and must differ from it. A
+head ID must never be recycled within the lifetime of one scope. A transaction
+ID is likewise lifetime-unique within one scope: retries reuse it only for the
+same byte-exact plan, and it is never assigned to another plan.
+
+If the current head already equals `committedHeadId` and the authoritative
+record is exactly the planned record, an identical retry is already committed.
+If the head ID matches but any record fact or byte differs, the result is a
+collision, corruption, or host-contract violation. It is never an idempotent
+success. If the current head is neither the expected nor committed head, the
+plan is stale or conflicts with another publication.
+
+No CRC or digest identifies the plan. The plan identity is the canonical outer
+UTF-8 JSON byte sequence, including the exact decoded `checkpointJson` bytes.
+Only output from the canonical encoder may be attempted or stored. Strict
+decode must re-encode the complete outer value and require byte-for-byte
+equality with its input; whitespace, member-order, numeric, or escaping
+variants are not alternate encodings of one plan. A profile may store those
+bytes as a string or blob or add integrity/authentication in an envelope, but
+it must recover the exact canonical byte sequence. Structured-object equality
+cannot replace it.
+
+## Proposed storage-generation V1 value
+
+The reserved V1 value is a strict JSON object. Its compact canonical UTF-8
+encoding has no insignificant whitespace or trailing bytes and emits fields in
+the exact order shown below. The example values and abbreviated
+`checkpointJson` content are illustrative; the field order is not.
+
+```json
+{
+  "format": "breditor/local-log-storage-generation",
+  "formatVersion": 1,
+  "profileId": "breditor/example-storage-profile",
+  "profileVersion": 1,
+  "scopeId": "scope:example",
+  "transactionId": "transaction:example",
+  "expectedHeadId": "head:old",
+  "committedHeadId": "head:new",
+  "fenceId": "fence:writer-epoch",
+  "sessionId": "session:example",
+  "sealedLogId": "log:generation-1",
+  "successorLogId": "log:generation-2",
+  "acceptedPrefixBytes": "1234",
+  "sealedFrame": {
+    "formatVersion": 1,
+    "maxPayloadBytes": "16777216"
+  },
+  "successorFrame": {
+    "formatVersion": 1,
+    "maxPayloadBytes": "16777216"
+  },
+  "checkpointJson": "{\"format\":\"breditor/local-log-checkpoint\",...}"
+}
+```
+
+The example profile is illustrative and is not reserved. No encoder or decoder
+for this shape exists in `0.0.31`.
+
+### Field contracts
+
+`format` and `formatVersion` route only this proposed record. They do not alter
+Local Log Checkpoint V1 or Local Log Frame V1.
+
+`profileId` is a qualified name using Breditor's lowercase
+`namespace/local-name` grammar and a maximum encoded length of 128 bytes.
+`profileVersion` is a nonzero unsigned 32-bit integer. Together they identify
+the adapter contract that owns head publication, finality, and recovery rules;
+they are not the manifest's format version.
+
+`scopeId`, `transactionId`, `expectedHeadId`, `committedHeadId`, and `fenceId`
+use the portable local-log identity grammar
+`[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`. The 128-byte maximum is measured after JSON
+string decoding. Scope and transaction identities are different semantic
+types even when their text happens to match. Lifetime uniqueness and fence
+freshness cannot be proved from one record and remain profile obligations.
+
+`fenceId` is a bounded, non-secret correlation identity. It must not contain a
+lease secret, file descriptor, browser transaction handle, authentication
+token, or other authority. The adapter's actual capability stays outside the
+record and outside debug output. Reconstructing or copying `fenceId` never
+reconstructs authority. A profile must prevent fence-ID reuse from creating an
+ABA window while an older attempt can still complete.
+
+`sessionId`, `sealedLogId`, and `successorLogId` use their existing local-log
+identity types. Preparation derives them from the
+`LocalLogTailCompactionOutcome` anchor, requires the sealed and successor IDs
+to differ, and cross-checks all three against the exact nested Checkpoint V1
+value. They are not accepted as independently drifting host configuration.
+
+`acceptedPrefixBytes` is a canonical decimal-string `u64` copied exactly from
+the compaction outcome. It is the exclusive generation-relative prefix already
+admitted by the old cursor. It is not physical file length, proof of EOF,
+proof that bytes came from a named store, or proof that later bytes do not
+exist. Committing the manifest makes bytes at or after this boundary
+semantically outside the sealed generation; physical ignore, quarantine, or
+later truncation is profile policy.
+
+`sealedFrame` records the old outcome's exact `LocalLogFrameLimits` together
+with an explicit Local Log Frame version of `1`. `successorFrame` records a
+host-selected Frame V1 policy for the new generation before any successor frame
+is appended. Each `maxPayloadBytes` is a canonical decimal-string `u64`.
+Neither value is a physical-size claim. A future frame format must receive an
+explicitly versioned manifest contract and cannot reinterpret these V1 fields.
+
+`checkpointJson` is one bounded JSON string whose decoded content is the exact
+canonical output of `LocalLogCheckpointJsonCodec` for the compacted anchor and
+the derived session/sealed/successor binding. It embeds Checkpoint V1 as text,
+not as a nested outer JSON object. Whitespace, member-order, or escape variants
+that decode to a semantically equivalent checkpoint are not the same plan: a
+future strict storage-generation decoder must replay the nested checkpoint and
+require its canonical re-encoding to equal the decoded string byte for byte.
+
+The storage record does not persist `LocalLogRecoveryLimits`,
+`LocalLogCompactionLimits`, or `LocalLogCheckpointLimits`. Those remain explicit
+runtime resource policies. In particular, strict Checkpoint V1 decode continues
+to install its host-selected tombstone ceiling rather than trusting a value
+from this manifest.
+
+### Resource and shape requirements
+
+A future codec must have independent finite limits for the complete manifest
+input and output and for decoded `checkpointJson`. The checkpoint string must
+also fit the active checkpoint codec and `EditorContext` limits. Escaping the
+nested JSON can make the outer record larger, so a checkpoint limit cannot
+stand in for a whole-manifest limit.
+
+The V1 object and both frame-policy objects are exact: missing, unknown, or
+duplicate fields fail closed. Fixed-width numbers reject negative, fractional,
+floating-point, overflowing, or noncanonical representations. String limits
+are checked before unbounded ownership or nested semantic work. A future codec
+must route the bounded outer format/version before nested Checkpoint V1 decode,
+then cross-check identities, canonical checkpoint bytes, accepted-prefix
+metadata, both explicit frame policies, prior-manifest continuity, and the
+canonical outer bytes before publication.
+
+Preparation obtains the nested checkpoint binding and `EditorContext` from the
+compaction outcome's anchor rather than from duplicated host strings. Restart
+first validates the canonical outer record against the trusted profile, scope,
+selected head, and prior-manifest chain; it then constructs the Checkpoint V1
+binding from that validated outer record and uses a separately trusted host
+`EditorContext` and resource policy. Equality between outer and nested fields
+does not authenticate either value or prove causal provenance.
+
+No public diagnostic, `Debug`, or `Display` output may contain
+`checkpointJson`, manifest bytes, editor/session/history payloads, an adapter
+capability, or opaque adapter evidence. Bounded profile, scope, transaction,
+head, fence, session, and log identifiers may appear where needed for typed
+diagnosis; therefore diagnostics are not a general secret-redaction boundary.
+Prepared and uncertain owners must not implement payload-revealing debug or
+unrestricted cloning.
+
+## Ownership state machine
+
+The future Rust boundary must be consuming and single-owner. The names below
+specify states, not public `0.0.31` types.
+
+### Prepared
+
+Preparation consumes one `LocalLogTailCompactionOutcome`, validates every
+runtime/host association, canonically encodes Checkpoint V1, and fixes the
+complete immutable transaction plan. Failure before publication of `Prepared`
+returns the unchanged outcome and all caller-owned authority inputs.
+
+Successful preparation quarantines the checkpoint anchor. `Prepared` cannot
+start the successor cursor or expose a bare anchor. Only its attempt transition
+may expose the exact immutable adapter request. This prevents storage work from
+silently racing a separately activated successor.
+
+### DefinitelyNotCommitted
+
+`DefinitelyNotCommitted` means the profile has positively established that the
+exact in-flight attempt did not become authoritative and cannot publish later
+without a new explicit retry. It owns the same plan, anchor,
+capability/evidence relationship, and metadata. It may retry the byte-identical
+transaction if its authority remains valid, or a later API may reprepare after
+reauthorization. Repreparation preserves the outcome-derived session, sealed
+and successor generation IDs, checkpoint bytes, accepted prefix, and sealed
+frame policy. It uses fresh transaction and committed-head IDs, refreshes the
+fence capability/ID when required, and may explicitly reselect only the
+pre-append successor frame policy. Changing generation or checkpoint facts
+requires a newly derived compaction outcome. This state does not release the
+anchor.
+
+A synchronous error, timeout, closed handle, visible old head, or absence of a
+new record is not automatically this state. The named profile must define the
+final abort, cancellation barrier, failed compare-and-swap, or other positive
+evidence that makes later publication impossible.
+
+### HostAttestedCommitted
+
+`HostAttestedCommitted` means the adapter attests that the authoritative head
+equals `committedHeadId`, that the selected record is the exact planned record,
+and that the profile's commit/fence conditions completed. This state is a host
+assertion, not an independent proof by `breditor-core`.
+
+It is the only state allowed to release the owned anchor, exactly once. The
+successor cursor is then derived from that anchor with the already selected
+successor Frame V1 policy, an explicit runtime `LocalLogRecoveryLimits`, the new
+generation binding, and generation-relative offset zero. Consuming ownership
+must prevent a duplicate receipt or identical retry from releasing a second
+semantic owner.
+
+### Uncertain
+
+`Uncertain` owns and quarantines the complete exact plan and anchor when the
+adapter cannot prove either terminal state. It cannot start a successor,
+return a bare anchor, change a transaction fact, create another transaction,
+or authorize old-generation cleanup.
+
+It may resubmit only the byte-identical plan under the same transaction ID,
+scope, expected/committed heads, fence identity/capability, checkpoint bytes,
+accepted prefix, frame policies, and generation identities. It may resolve to
+`HostAttestedCommitted` only after an exact authoritative match plus the
+profile's finality and fence attestation, or to
+`DefinitelyNotCommitted` only after profile-defined positive noncommit proof.
+Otherwise it remains uncertain.
+
+After an uncertain attempt, observing that the authoritative head still equals
+`expectedHeadId` is insufficient by itself. An earlier asynchronous, queued, or
+partially completed operation might still publish later. The profile must first
+prove that the transaction cannot subsequently commit—for example through its
+own terminal abort/cancellation rule—before the state can become
+`DefinitelyNotCommitted`.
+
+## Retry and idempotency rules
+
+- One transaction ID names exactly one immutable plan for the lifetime of its
+  scope. Changing even one byte or field requires a new transaction ID after
+  the old attempt is terminally resolved.
+- An uncertain attempt never retries under a new transaction ID, successor log
+  ID, head ID, fence, checkpoint string, prefix, or frame policy.
+- Exact reapplication that finds `committedHeadId` plus the exact manifest is
+  one idempotent success. It does not rerun semantic compaction or advance
+  ownership twice.
+- `committedHeadId` with a different record is a collision or corruption.
+  `transactionId` with a different plan is likewise fatal; neither may be
+  overwritten as a retry.
+- A current head other than the expected or exact committed head is a stale or
+  conflicting plan. Lexical or apparent temporal ordering cannot resolve it.
+- Replacing an expired/lost fence or changing the plan requires positive proof
+  that the old attempt cannot later publish, followed by fresh transaction and
+  committed-head IDs. Copying `fenceId` is never renewal.
+- A volatile receipt lost at process failure is not reconstructed from memory.
+  Restart resolution uses the authoritative manifest/head and the profile's
+  exact rules.
+
+## Crash-state matrix
+
+The recovery selector follows these cases; it never guesses from the longest
+or newest-looking tail.
+
+1. Before preparation, or after in-memory compaction/preparation but before any
+   storage publication, the old authoritative head remains selected. Restart
+   recovers the old generation through the prior durable state. The volatile
+   compacted proof may be lost without changing storage.
+2. Checkpoint, manifest, or an empty successor reservation staged before any
+   publication attempt are unreachable artifacts only after a profile-defined
+   terminal abort or cancellation barrier proves that no operation can later
+   switch the head. Restart then selects the old head, and cleanup may remove
+   those artifacts under the profile's rules. No successor Frame V1 append or
+   semantic admission may occur before committed ownership release. If an
+   operation may still publish, case 5 applies instead.
+3. A profile-defined final compare-and-swap failure or terminal abort yields
+   `DefinitelyNotCommitted`; the old head remains authoritative.
+4. Once the atomic head switch selects `committedHeadId`, the exact manifest,
+   and the profile-established empty/absent successor reservation, restart
+   selects those recoverable bytes after profile finality validation. This
+   remains true if the response was lost before the runtime observed it. The
+   record alone does not release a writable cursor: a restarter first acquires
+   a fresh exclusive fence and rechecks the exact selection under that fence.
+5. A crash or lost response spanning the possible commit point is `Uncertain`.
+   Exact committed head plus exact record resolves new only with the profile's
+   finality/fence attestation. Positive proof that the in-flight attempt is
+   terminal and cannot later publish resolves old. Merely seeing the expected
+   head does not.
+6. When selected by the authoritative head, a missing, malformed, partially
+   visible, mismatched, or same-head/different-record manifest does not
+   authorize fallback to either generation. The scope remains uncertain or
+   corrupt under the profile's recovery policy. Unselected partial staging is
+   instead governed by cases 2 and 5.
+7. A crash after commit but before the first successor append recovers a valid
+   empty or profile-guaranteed absent successor at offset zero after the fresh
+   fence/recheck step. Later complete successor frames are handled by the
+   existing Frame V1 and tail-cursor contracts.
+8. Old-generation truncation, deletion, or garbage collection begins only after
+   exact commit resolution and any profile retention barrier. It is forbidden
+   while prepared, in flight, definitely-not-committed but retryable, or
+   uncertain.
+
+An old writer that appends after the claimed fence is a storage-profile
+violation. The manifest's accepted prefix prevents those bytes from silently
+entering the sealed semantic generation, but the core cannot detect or repair
+the broken physical authority.
+
+## Required adapter profiles
+
+The eventual native-filesystem and IndexedDB adapters must publish separate
+profile documents and identifiers. Both implement the logical state machine,
+but neither inherits guarantees from the other.
+
+A native profile must state its lock or lease authority, compare-and-swap/head
+mechanism, staging location, file and directory synchronization order, rename
+and replacement assumptions, error-to-outcome classification, uncertain retry
+behavior, and postcommit cleanup barrier. Rename alone is neither writer
+fencing nor a universal durability proof. Platform and filesystem differences
+must remain explicit.
+
+An IndexedDB profile must state the object stores and keys participating in one
+authoritative transaction, when comparison and publication occur, which
+terminal transaction events prove committed or definitely not committed, how
+connection/page/process loss becomes uncertain, and how a later transaction
+resolves the exact head and record. It must not claim native `fsync`, rename, or
+directory semantics. Reading the expected head while an earlier transaction
+can still complete is not positive noncommit proof.
+
+Both profiles must keep the old authoritative generation recoverable until the
+new exact record is committed, bound to the same plan and fence decision, and
+safe from an older writer. Neither may publish `checkpointJson`, prefix/frame
+metadata, and the head as independently drifting updates.
+
+## Non-goals and forbidden inferences
+
+This specification and the proposed manifest do not provide:
+
+- a public Rust storage value, codec, typestate, receipt, adapter, async API, or
+  I/O implementation in `0.0.31`;
+- filesystem, object-store, or IndexedDB durability by themselves;
+- proof of EOF, physical old-tail length, truncation, append completion, flush,
+  `fsync`, acknowledgement, atomic replacement, or crash recovery;
+- authentication, authorization, cryptographic integrity, content addressing,
+  rollback protection, causal provenance, or multi-writer consensus;
+- proof that a transaction, head, fence, session, or generation identity is
+  honest, globally unique, fresh, or secret;
+- a change to Local Log Checkpoint V1 or Local Log Frame V1;
+- durable encoding of recovery, compaction, or checkpoint resource policies;
+- generation garbage collection, tail-wide replay, migration, retry scheduling,
+  backpressure, cancellation APIs, or queue ordering; or
+- a permanent compatibility promise for the reserved V1 name and shape.
+
+`EndOfInput`, a valid CRC, successful JSON decode, object existence, file
+length, modification time, lexical ID order, the longest tail, and the newest
+timestamp are never commit or recovery authority. Only the named profile's
+authoritative per-scope head and exact manifest record can select the new
+generation.
+
+## Implementation gate
+
+The next checkpoint may implement only bounded identity values, the strict
+proposed manifest value/codec, and preparation-time validation/encoding. It
+must still perform no storage I/O and expose no prepared/committed/uncertain
+commit typestate. Until that consuming typestate exists, preparation validation
+borrows the compaction outcome and cannot quarantine or release its anchor; its
+manifest result is inspection data, not permission to activate the successor.
+Adapter receipts and ownership release wait until at least one platform profile
+has an executable, red-teamed finality contract.
