@@ -47,6 +47,13 @@ impl<T> LocalLogCompactionFailure<T> {
     pub fn into_parts(self) -> (T, LocalLogCompactionError) {
         (*self.owner, self.error)
     }
+
+    /// Rewraps the same compaction error around a crate-internal owner composition.
+    #[must_use]
+    pub(crate) fn map_owner<U>(self, map: impl FnOnce(T) -> U) -> LocalLogCompactionFailure<U> {
+        let (owner, error) = self.into_parts();
+        LocalLogCompactionFailure::new(map(owner), error)
+    }
 }
 
 impl<T> fmt::Debug for LocalLogCompactionFailure<T> {

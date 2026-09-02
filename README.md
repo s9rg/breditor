@@ -23,7 +23,8 @@ This repository currently contains the first end-to-end Rust-core slice:
   codec plus a platform-neutral Local Log Frame V1 encoder and allocation-free
   one-frame scanner with separate header and payload CRC-32C checks, and an
   owning active-tail cursor that advances semantic admission and a checked
-  generation-relative byte offset atomically;
+  generation-relative byte offset atomically and compacts without losing its
+  accepted-prefix length or retained Frame V1 policy;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned

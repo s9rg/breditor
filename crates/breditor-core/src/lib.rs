@@ -68,6 +68,15 @@
 //! successfully admitted complete frame—including an exact semantic
 //! duplicate—advances both owner and offset. It performs no I/O and cannot
 //! prove caller byte provenance or durability.
+//! Consuming cursor compaction delegates to the active owner's inherited or
+//! explicitly reauthorized replay-tombstone policy. Typed failure returns the
+//! complete unchanged cursor; success publishes a
+//! `codec::LocalLogTailCompactionOutcome` containing the next checkpoint anchor,
+//! the old accepted-prefix length, and the old Frame V1 limits. Invocation is
+//! host authorization to abandon any unobserved suffix, not evidence of EOF or
+//! byte provenance, durable sealing, or a future frame-version choice. A
+//! successor begins separately with explicit recovery/frame policies and
+//! generation-relative offset zero.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

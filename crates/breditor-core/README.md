@@ -15,7 +15,7 @@ admission with fixed cumulative budgets, repeated cumulative compaction, and a
 strict trusted-scope local-log-checkpoint JSON codec plus a checksummed,
 platform-neutral one-entry binary frame encoder and allocation-free borrowed
 scanner plus an owner-derived active-tail cursor with atomic semantic/physical
-progress,
+progress and recoverable cursor compaction,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -77,6 +77,21 @@ exact semantic duplicates both advance the byte offset, while clean end,
 truncation, corruption, decode failure, and admission rejection do not. The
 caller still owns storage and asserts that the supplied slice begins at the
 reported offset.
+
+The same cursor can compact through the inherited replay-tombstone policy or
+through the explicitly named
+`try_into_checkpoint_anchor_with_compaction_limits` reauthorization edge. A
+typed failure returns the complete unchanged cursor. Success returns one
+`LocalLogTailCompactionOutcome` that keeps the next checkpoint anchor together
+with the old generation's accepted-prefix length and retained
+`LocalLogFrameLimits`. Those values are runtime metadata, not Local Log
+Checkpoint V1 fields, physical tail length, byte provenance, durability, or
+proof of EOF; the Frame V1 policy is not a selector for future frame versions.
+Successful compaction is explicit host authorization to stop admitting that
+generation and may abandon an unobserved suffix, including an incomplete frame
+prefix. Starting the returned anchor's successor selects new recovery and frame
+limits explicitly, derives a new generation binding, and resets its relative
+offset to zero.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

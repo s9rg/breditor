@@ -9,9 +9,11 @@
 //! serialize one independently valid entry and one complete expected-binding
 //! checkpoint, and can encode or scan checksummed binary frames around entry
 //! bytes. Its active-tail cursor composes one frame with one semantic
-//! observation while retaining atomic ownership and byte progress. It does not
-//! append, persist, authenticate, fence, or crash-recover a stream; storage
-//! must preserve the scopes and ordering documented here.
+//! observation while retaining atomic ownership and byte progress. Cursor
+//! compaction returns the checkpoint anchor together with runtime accepted-
+//! prefix metadata, while typed failure returns the complete unchanged cursor.
+//! It does not append, persist, authenticate, fence, prove EOF, or crash-recover
+//! a stream; storage must preserve the scopes and ordering documented here.
 
 mod application;
 mod application_error;

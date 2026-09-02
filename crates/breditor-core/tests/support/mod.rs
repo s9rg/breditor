@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 
 pub(crate) mod local_log;
 pub(crate) mod local_log_tail;
+pub(crate) mod local_log_tail_compaction;
 
 pub(crate) type TestResult = Result<(), Box<dyn Error>>;
 

@@ -48,6 +48,9 @@ The implemented Rust slice owns:
 - an owning active-tail cursor that derives framing context and binding from one
   `ContinuedLocalLog` and advances its generation-relative `u64` byte offset
   only with successful semantic admission;
+- a consuming cursor-compaction boundary that returns the complete unchanged
+  cursor on typed failure or keeps the next checkpoint anchor together with the
+  accepted-prefix length and old Frame V1 limits on success;
 - a bounded atomic local-log recovery boundary that proves one supplied
   genesis-anchored, uncompacted generation prefix, skips exact semantic
   retries, applies all five event kinds, and retains every accepted replay
@@ -228,6 +231,18 @@ LocalLogTailCursor + caller-asserted input origin + borrowed tail bytes
     -> consume ContinuedLocalLog::try_observe
     -> publish owner and offset together for Applied or ExactDuplicate
     -> on typed failure return the unchanged cursor and, after admission, the entry
+
+LocalLogTailCursor + one new successor generation
++ inherited policy or explicitly reauthorized LocalLogCompactionLimits
+    -> treat invocation as host authorization to stop admitting the old generation
+    -> run the existing ContinuedLocalLog compaction precedence unchanged
+    -> on typed failure return the complete unchanged cursor
+    -> on success publish one LocalLogTailCompactionOutcome containing the next
+       LocalLogCheckpointAnchor, old accepted-prefix length, and old LocalLogFrameLimits
+
+LocalLogTailCompactionOutcome + explicit new recovery/frame limits
+    -> separate runtime metadata from the next LocalLogCheckpointAnchor
+    -> begin a freshly bound successor cursor at generation-relative offset zero
 
 ContinuedLocalLog + one new successor generation
 + inherited policy or explicitly reauthorized LocalLogCompactionLimits
@@ -480,6 +495,17 @@ synchronous in-memory orchestration, not byte provenance, storage, durability,
 acknowledgement, or tail-wide recovery.
 The cursor, accepted offset, recovery limits, and frame limits have no durable
 encoding and do not change Local Log Entry V1, Frame V1, or Checkpoint V1.
+Version `0.0.30` adds consuming compaction directly to that cursor. Ordinary
+`try_into_checkpoint_anchor` inherits the owner's cumulative replay-tombstone
+policy; `try_into_checkpoint_anchor_with_compaction_limits` is the explicit
+reauthorization edge. Typed failure returns the complete unchanged cursor under
+the existing compaction error and precedence. Success returns one
+`LocalLogTailCompactionOutcome` that keeps the next anchor, old generation's
+accepted-prefix length, and old `LocalLogFrameLimits` together. Calling the
+transition authorizes abandonment of any unobserved suffix but establishes no
+EOF or storage fact. Beginning the next cursor remains a separate transition
+with explicit recovery/frame limits and offset zero. This adds no wire version
+and does not serialize cursor-compaction metadata in Local Log Checkpoint V1.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2262,11 +2288,86 @@ All typed failure diagnostics omit the retained cursor and rejected entry.
 Nested errors can still contain bounded identifiers or rejected field values,
 so cursor diagnostics are not a general secret-redaction boundary. Failure-path
 boxing and semantic decode may allocate; only the underlying frame scanner has
-the allocation-free claim. The cursor performs no loop, read, seek, append,
-flush, fsync, acknowledgement, truncation, compaction, or generation rotation.
-It establishes no EOF, byte provenance, authenticity, writer fence, rollback
-freshness, aggregate tail-size policy, or durable causal relationship between
-externally restored semantic and physical state.
+the allocation-free claim. The one-frame observation transition performs no
+loop, read, seek, append, flush, fsync, acknowledgement, truncation, compaction,
+or generation rotation. It establishes no EOF, byte provenance, authenticity,
+writer fence, rollback freshness, aggregate tail-size policy, or durable causal
+relationship between externally restored semantic and physical state.
+
+### Active-tail cursor compaction
+
+`LocalLogTailCursor` exposes two consuming proof-conversion edges. Ordinary
+`try_into_checkpoint_anchor(successor_log_id)` uses the
+`ContinuedLocalLog` owner's inherited `LocalLogCompactionLimits`.
+`try_into_checkpoint_anchor_with_compaction_limits(successor_log_id, limits)`
+is the explicitly named reauthorization path: the proposed replacement ceiling
+is checked against the complete prior-plus-active replay set and is installed
+only on success. It changes replay-tombstone policy, not frame limits. Both
+methods require the new generation to differ from the active and immediately
+preceding IDs. Older generation identities are not retained, so lifetime
+freshness remains a host and writer-fencing obligation.
+
+Both methods delegate without adding offset or frame-policy validation. Their
+exact failure precedence remains the underlying compaction precedence:
+
+1. Reject equality with the active generation.
+2. Reject reuse of the immediately preceding generation.
+3. Convert the prior and active replay cardinalities to `u64` and checked-add
+   them, reporting representability or cumulative overflow before policy.
+4. Compare the complete attempted tombstone count with the inherited or
+   explicitly proposed ceiling.
+5. Recheck the private replay/sequence topology before dropping a full entry
+   proof.
+
+A typed failure is
+`LocalLogCompactionFailure<LocalLogTailCursor>`. It owns the complete unchanged
+cursor: semantic owner and session, entries, counters, recovery policy,
+inherited compaction policy, owner-derived frame codec and binding,
+`LocalLogFrameLimits`, and accepted byte offset. A failed reauthorization does
+not change that inherited compaction policy. Failure diagnostics retain the
+existing document-payload-free compaction error and omit the cursor, but can
+contain bounded generation identifiers and are not a secret-redaction boundary.
+Allocation failure, panic, abort, and process failure remain outside typed
+atomicity.
+
+Success returns `LocalLogTailCompactionOutcome`, not a bare anchor. The outcome
+keeps three values together until its explicit `into_parts` boundary:
+
+- the next `LocalLogCheckpointAnchor`, with the inherited or successfully
+  reauthorized cumulative replay policy;
+- `accepted_prefix_bytes`, exactly the old cursor's generation-relative
+  accepted byte offset at invocation; and
+- the old cursor's configured `LocalLogFrameLimits` for Frame V1.
+
+The byte count is an accepted-prefix claim, not physical file or tail length.
+If the cursor came from `from_trusted_parts`, it remains only as trustworthy as
+the host-restored semantic/physical relationship. The frame value is the old
+configured V1 payload ceiling, not the effective context JSON ceiling, a codec,
+or a wire-version selector. It cannot describe or select a future frame format;
+that requires an explicitly versioned extension. Neither value is encoded by
+Local Log Checkpoint V1. A storage host that needs them after restart must
+preserve their association with the checkpoint through a separately defined
+trusted mechanism.
+
+Successful invocation is explicit host authorization to stop semantic
+admission for the old generation at that accepted prefix. The transition reads
+no bytes and does not require a preceding `EndOfInput`; that status means only
+that one supplied slice was empty. Compaction may therefore abandon an
+unobserved suffix or a caller-retained incomplete frame after `Truncated`.
+Success proves no clean EOF, absence of later bytes, append completion, writer
+fence, byte provenance, physical truncation, flush, fsync, persistence, atomic
+checkpoint/log replacement, or durable sealing. It also proof-drops active full
+entries into tombstones, so recovering the old cursor after a later storage
+failure requires separately retained trusted data; no rollback handle is hidden
+in the outcome.
+
+Starting the next active tail stays deliberately separate. The host takes the
+anchor from `LocalLogTailCompactionOutcome::into_parts` and calls
+`LocalLogCheckpointAnchor::begin_successor_tail` with explicit new
+`LocalLogRecoveryLimits` and `LocalLogFrameLimits`. That transition derives the
+new active-generation codec binding and starts at generation-relative offset
+zero. The old offset and old recovery/frame policy are never carried forward
+implicitly.
 
 ### Genesis local-log recovery
 
@@ -2700,25 +2801,31 @@ owner budget, so the core alone does not bound repeated hostile validation CPU.
 
 ## Next gate
 
-Define a consuming cursor-compaction edge that cannot silently discard physical
-progress. It should mirror both existing `ContinuedLocalLog` compaction
-transitions, return the complete unchanged `LocalLogTailCursor` on typed
-failure, and on success publish the next `LocalLogCheckpointAnchor` together
-with the compacted generation's accepted-prefix length at invocation and
-retained `LocalLogFrameLimits`. That policy is only the Frame V1 payload
-ceiling, not a wire-version or codec selector; a future frame version requires
-an explicit versioned API rather than reinterpretation of this cursor. The
-length and limits are runtime/host metadata, not Local Log Checkpoint V1
-fields. Starting the new successor cursor must select its recovery/frame limits
-explicitly and reset its generation-relative offset to zero; the old offset
-must never carry into the new generation.
+For `0.0.31`, specify the storage-generation transaction before implementing a
+filesystem, IndexedDB, or other persistence adapter. The contract must define a
+crash-state matrix and keep four independently scoped facts associated: the
+encoded Local Log Checkpoint V1 value, the cursor compaction outcome's accepted
+prefix and Frame V1 policy, the new successor generation, and an adapter-owned
+writer-fencing/freshness decision. It must decide explicitly whether the
+runtime prefix metadata remains trusted sidecar state or enters a new versioned
+storage manifest; it must not silently add fields to Local Log Checkpoint V1.
 
-Cursor compaction remains an in-memory proof conversion. Calling it must not
-claim clean EOF, writer fencing, physical tail length, physical truncation,
-append completion, persistence, checkpoint replacement, or durable sealing.
-It is host authorization to stop semantic admission for that generation and
-can abandon any suffix the cursor has not observed. Durable decisions require
-a later storage transaction contract.
+The adapter contract must supply its own evidence that the old generation is
+closed for the intended operation. Neither `EndOfInput` nor cursor compaction is
+that evidence. It should define append atomicity, flush/commit order,
+checkpoint/log replacement, uncertain-result retry, and restart selection
+between the old and new generations. Native rename and directory-sync behavior
+and browser transaction semantics must remain separate profiles rather than a
+fictional universal `fsync` guarantee. Outcomes should distinguish prepared,
+durably committed, and uncertain states without making an uncertain retry
+advance semantic ownership twice.
+
+This is deliberately a specification gate first. Writing bytes before choosing
+the failure model would turn an in-memory proof conversion into an accidental
+durability protocol and could strand the only full old-generation proofs after
+a crash. The deterministic core should accept only the smallest platform-owned
+capability or receipt required by the eventual contract; it should not absorb
+filesystem APIs, asynchronous scheduling, or browser storage policy.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and
