@@ -333,6 +333,8 @@ pub enum LocalLogStorageGenerationContinuityErrorCode {
     KnownHeadIdReused,
     /// The new successor reuses the prior sealed generation.
     KnownGenerationIdReused,
+    /// The new activation fence reuses the selected value's fence identity.
+    KnownFenceIdReused,
 }
 
 impl LocalLogStorageGenerationContinuityErrorCode {
@@ -363,6 +365,9 @@ impl LocalLogStorageGenerationContinuityErrorCode {
             }
             Self::KnownGenerationIdReused => {
                 "local_log_storage_generation_continuity.known_generation_id_reused"
+            }
+            Self::KnownFenceIdReused => {
+                "local_log_storage_generation_continuity.known_fence_id_reused"
             }
         }
     }
@@ -402,6 +407,9 @@ pub enum LocalLogStorageGenerationContinuityError {
     /// The new successor reuses the prior sealed generation identity.
     #[error("storage-generation successor reuses a known prior generation identity")]
     KnownGenerationIdReused,
+    /// The proposed activation fence reuses the selected value's fence identity.
+    #[error("storage-generation rotation reuses a known activation fence identity")]
+    KnownFenceIdReused,
 }
 
 impl LocalLogStorageGenerationContinuityError {
@@ -436,6 +444,9 @@ impl LocalLogStorageGenerationContinuityError {
             }
             Self::KnownGenerationIdReused => {
                 LocalLogStorageGenerationContinuityErrorCode::KnownGenerationIdReused
+            }
+            Self::KnownFenceIdReused => {
+                LocalLogStorageGenerationContinuityErrorCode::KnownFenceIdReused
             }
         }
     }

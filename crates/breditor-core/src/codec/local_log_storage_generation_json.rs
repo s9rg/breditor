@@ -16,7 +16,8 @@ use super::{
     LocalLogStorageGenerationCodecError, LocalLogStorageGenerationContinuityError,
     LocalLogStorageGenerationJsonFailure, LocalLogStorageGenerationLimits,
     LocalLogStorageGenerationManifest, LocalLogStorageGenerationResourceLimit,
-    LocalLogStorageGenerationTopologyError, json_size::JsonByteCounter,
+    LocalLogStorageGenerationTopologyError, LocalLogStorageSelectedRoot,
+    json_size::JsonByteCounter,
 };
 
 /// Stable identifier for Breditor's storage-generation rotation manifest.
@@ -81,6 +82,39 @@ impl LocalLogStorageGenerationJsonCodec {
         self.validate_binding(value)?;
         validate_continuity(value, prior)?;
         validate_prior_topology(value, prior)
+    }
+
+    /// Validates the trusted codec association against one normalized current
+    /// selection before an action inspects caller-owned rotation material.
+    pub(super) fn validate_selected_binding(
+        &self,
+        selected: &LocalLogStorageSelectedRoot,
+    ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        if self.binding.profile_id() != selected.profile_id() {
+            return Err(LocalLogStorageGenerationContinuityError::ProfileIdChanged.into());
+        }
+        if self.binding.profile_version() != selected.profile_version() {
+            return Err(LocalLogStorageGenerationContinuityError::ProfileVersionChanged.into());
+        }
+        if self.binding.scope_id() != selected.scope_id() {
+            return Err(LocalLogStorageGenerationContinuityError::ScopeIdChanged.into());
+        }
+        if self.binding.expected_head_id() != selected.selected_head_id() {
+            return Err(LocalLogStorageGenerationContinuityError::ExpectedHeadMismatch.into());
+        }
+        Ok(())
+    }
+
+    /// Rechecks one candidate rotation against a normalized current selection.
+    pub(super) fn validate_rotation_from_selected_root(
+        &self,
+        value: &LocalLogStorageGenerationManifest,
+        selected: &LocalLogStorageSelectedRoot,
+    ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        validate_intrinsic_topology(value)?;
+        self.validate_binding(value)?;
+        self.validate_selected_binding(selected)?;
+        validate_selected_continuity(value, selected)
     }
 
     pub(super) fn validate_prior_binding(
@@ -239,6 +273,34 @@ fn validate_intrinsic_topology(
     }
     if value.sealed_log_id() == value.successor_log_id() {
         return Err(LocalLogStorageGenerationTopologyError::GenerationNotAdvanced.into());
+    }
+    Ok(())
+}
+
+fn validate_selected_continuity(
+    value: &LocalLogStorageGenerationManifest,
+    selected: &LocalLogStorageSelectedRoot,
+) -> Result<(), LocalLogStorageGenerationCodecError> {
+    if value.session_id() != selected.session_id() {
+        return Err(LocalLogStorageGenerationContinuityError::SessionIdChanged.into());
+    }
+    if value.sealed_log_id() != selected.active_log_id() {
+        return Err(LocalLogStorageGenerationContinuityError::SealedLogMismatch.into());
+    }
+    if value.sealed_frame() != selected.active_frame() {
+        return Err(LocalLogStorageGenerationContinuityError::SealedFrameMismatch.into());
+    }
+    if value.transaction_id() == selected.transaction_id() {
+        return Err(LocalLogStorageGenerationContinuityError::TransactionIdReused.into());
+    }
+    if selected.previous_head_id().is_some_and(|head_id| value.committed_head_id() == head_id) {
+        return Err(LocalLogStorageGenerationContinuityError::KnownHeadIdReused.into());
+    }
+    if value.successor_log_id() == selected.checkpoint_log_id() {
+        return Err(LocalLogStorageGenerationContinuityError::KnownGenerationIdReused.into());
+    }
+    if value.fence_id() == selected.activation_fence_id() {
+        return Err(LocalLogStorageGenerationContinuityError::KnownFenceIdReused.into());
     }
     Ok(())
 }

@@ -7,6 +7,7 @@ mod editor_value_record;
 mod local_log_checkpoint_record;
 mod local_log_entry_record;
 mod local_log_storage_generation_record;
+mod local_log_storage_root_record;
 mod operation_record;
 mod session_checkpoint_record;
 mod strict_json;
@@ -31,6 +32,10 @@ pub(crate) use local_log_entry_record::{
 pub(crate) use local_log_storage_generation_record::{
     LOCAL_LOG_STORAGE_GENERATION_FORMAT, LOCAL_LOG_STORAGE_GENERATION_FORMAT_VERSION,
     LocalLogStorageGenerationFrameRecordV1, LocalLogStorageGenerationRecordV1,
+};
+pub(crate) use local_log_storage_root_record::{
+    LOCAL_LOG_STORAGE_ROOT_FORMAT, LOCAL_LOG_STORAGE_ROOT_FORMAT_VERSION,
+    LocalLogStorageRootRecordV1,
 };
 pub(crate) use operation_record::{
     EmptyPropertyMapRecord, OperationEnvelopeHeader, OperationFormatRecordV1,

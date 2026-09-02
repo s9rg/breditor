@@ -25,8 +25,10 @@ This repository currently contains the first end-to-end Rust-core slice:
   owning active-tail cursor that advances semantic admission and a checked
   generation-relative byte offset atomically and compacts without losing its
   accepted-prefix length or retained Frame V1 policy, plus six bounded
-  storage-generation identity/version types and strict, prior-linked rotation
-  manifest validation with exact nested-checkpoint and outer canonical bytes;
+  storage-generation identity/version types, distinct database/scope
+  incarnation IDs, strict root and rotation codecs with exact nested-checkpoint
+  and outer canonical bytes, trusted root/rotation selection normalization,
+  and next-rotation validation against that normalized selected state;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -115,10 +117,32 @@ tombstones, atomic empty-successor reservation, lost-completion resolution,
 revocable per-mutation writer epochs, and independent retired-payload cleanup.
 Only IndexedDB transaction `complete` attests historical commit; missing
 terminal observation stays uncertain, and `strict` durability remains a
-browser hint. No Rust root/selected value, IndexedDB adapter, Wasm binding,
-ownership typestate, or writable owner is implemented yet.
-The profile's per-mutation epoch is revocable and therefore cannot itself
-release a long-lived exclusive Rust writer.
+browser hint.
+
+Version `0.0.34` implements the profile's pure Rust value boundary. It adds
+distinct bounded database/scope incarnation IDs, a private-constructor
+non-`Clone` root selection with separate strict preparation, encoding, and
+decoding, independently trusted receipt and generation bindings, and a
+private-constructor non-`Clone` selected root normalized from either a root or
+one current rotation plus its immediate predecessor. Next-rotation
+preparation, encoding, and decoding can validate against that selected summary
+instead of retaining a complete manifest chain. The selected value privately
+owns its decoded checkpoint anchor and exposes inspection facts only. The
+selected-aware actions are named `prepare_rotation_from_selected`,
+`encode_rotation_from_selected`, and `decode_rotation_from_selected`.
+
+Here O(1) means constant in rotation-history length. Rotation normalization
+still reads bounded current and immediate-predecessor selection bytes and
+strictly decodes both nested checkpoints; the current checkpoint is decoded
+again to retain its anchor. Work and memory may therefore scale with those byte
+limits and with both checkpoints' document/session sizes. This release performs no
+IndexedDB, JavaScript, Wasm, or other storage I/O; proves no compare-and-swap,
+head currentness, global ID/fence freshness, generation emptiness, writer
+authority/epoch, durability, commit evidence, or ownership release; and does
+not provision a database, scope, head, or generation. The profile's
+per-mutation epoch remains revocable and therefore cannot itself release a
+long-lived exclusive Rust writer. All storage V1 shapes remain unstable
+pre-`0.1` contracts rather than permanent compatibility promises.
 
 ## Development
 

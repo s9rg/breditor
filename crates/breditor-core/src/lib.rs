@@ -77,8 +77,8 @@
 //! byte provenance, durable sealing, or a future frame-version choice. A
 //! successor begins separately with explicit recovery/frame policies and
 //! generation-relative offset zero.
-//! [`codec::LocalLogStorageGenerationJsonCodec`] now provides strict,
-//! rotation-only validation for the unstable pre-`0.1`
+//! [`codec::LocalLogStorageGenerationJsonCodec`] provides strict
+//! ordinary-rotation validation for the unstable pre-`0.1`
 //! `breditor/local-log-storage-generation@1` shape. A separately trusted
 //! [`codec::LocalLogStorageGenerationBinding`] fixes the profile, scope, and
 //! old/new heads; borrowed preparation couples one compaction outcome to exact
@@ -89,14 +89,35 @@
 //! The resulting non-`Clone` manifest is inspection data only: it owns no
 //! checkpoint anchor or writer capability and proves no reservation, current
 //! head, publication, durability, restart selection, or recovery of log bytes.
-//! There is deliberately no public seed/provisioning path yet, and this crate
-//! still exports no prepared/committed/uncertain typestate, receipt, adapter, or
-//! storage I/O API. Checkpoint V1 and Frame V1 are unchanged.
+//! The separate root codec below validates a first storage-selection proposal,
+//! but neither codec provisions storage. This crate still exports no
+//! prepared/committed/uncertain evidence state, adapter, or storage I/O API.
+//! Checkpoint V1 and Frame V1 are unchanged.
 //! Breditor `0.0.33` separately freezes a concrete `IndexedDB` profile and a
 //! distinct initial-root/current-selection contract in the repository design
-//! documents. That checkpoint is specification-only: none of its root,
-//! incarnation, selected-root, transaction-receipt, writer-epoch, or browser-
-//! adapter values are exported here yet.
+//! documents. Breditor `0.0.34` implements its pure Rust value boundary:
+//! distinct [`local_log::LocalLogStorageDatabaseIncarnationId`] and
+//! [`local_log::LocalLogStorageScopeIncarnationId`] syntax types,
+//! [`codec::LocalLogStorageRootJsonCodec`] with separate strict root
+//! preparation/encoding/decoding, trusted receipt and generation bindings, and
+//! [`codec::LocalLogStorageSelectedJsonCodec`] normalization of either a root
+//! or one current rotation plus its immediate predecessor into a non-`Clone`
+//! [`codec::LocalLogStorageSelectedRoot`]. The selected value privately owns
+//! its checkpoint anchor, exposes inspection facts only, excludes the mutable
+//! writer epoch/fence, and supports validation of the next rotation without a
+//! complete predecessor chain through `prepare_rotation_from_selected`,
+//! `encode_rotation_from_selected`, and `decode_rotation_from_selected`.
+//!
+//! That normalization is O(1) only in rotation-history length. Rotation
+//! normalization still reads bounded current/immediate-predecessor JSON and
+//! strictly decodes both nested checkpoints; the current checkpoint is decoded
+//! again to retain its anchor. Work and memory can scale with those byte limits
+//! and both checkpoints' document/session sizes. These values perform no I/O, provision
+//! no database/scope/head/generation, and prove no compare-and-swap, head
+//! currentness, lifetime ID/fence freshness, empty generation, writer
+//! authority/epoch, durability, commit evidence, or ownership release. No
+//! `IndexedDB`, JavaScript, Wasm, or filesystem adapter is implemented, and all
+//! storage V1 shapes remain unstable pre-`0.1` contracts.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

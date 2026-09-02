@@ -12,10 +12,12 @@ Local-log-entry format: `breditor/local-log-entry`, version `1`
 Local-log-checkpoint format: `breditor/local-log-checkpoint`, version `1`
 Local-log-frame format: binary `Local Log Frame`, version `1`
 Storage-generation validation format: `breditor/local-log-storage-generation`,
-version `1` (implemented only for strict ordinary-rotation validation in
-`0.0.32`; still a pre-`0.1`, non-permanent compatibility contract)
-Initial storage-root format: `breditor/local-log-storage-root`, proposed version
-`1` (contract-only in `0.0.33`; not a Rust value or permanent promise)
+version `1` (strict ordinary-rotation validation implemented in `0.0.32` and
+selected-root-aware next-rotation validation in `0.0.34`; still a pre-`0.1`,
+non-permanent compatibility contract)
+Initial storage-root format: `breditor/local-log-storage-root`, version `1`
+(strict pure-Rust validation implemented in `0.0.34`; still a pre-`0.1`,
+non-permanent compatibility contract)
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -75,6 +77,15 @@ The implemented Rust slice owns:
   ordinary-rotation binding, a private-constructor non-`Clone` manifest, and a
   strict prior-linked storage-generation codec whose borrowed preparation and
   exact canonical encode/decode operations perform no storage I/O;
+- distinct bounded database- and scope-incarnation IDs, a trusted initial-root
+  binding, a private-constructor non-`Clone` root selection, and separate strict
+  root preparation, encoding, and decoding actions;
+- trusted selected receipt/checkpoint/active-generation bindings and strict
+  normalization of either one root or one current rotation plus its immediate
+  predecessor into a private-constructor non-`Clone` selected root that
+  privately retains its decoded checkpoint anchor;
+- next-rotation preparation, encoding, and decoding validated against that
+  selected root without retaining a complete predecessor-manifest chain;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -101,10 +112,10 @@ The following remain deliberately unimplemented:
 - ordered tail storage and recovery orchestration, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
-- storage-generation initial provisioning, transaction ownership typestate,
-  adapter capabilities or receipts, authoritative-head integration, and an
-  executable filesystem or IndexedDB adapter (the first IndexedDB profile is
-  frozen only as a `0.0.33` contract);
+- storage-generation initial provisioning, non-owning storage-attempt evidence,
+  transaction ownership typestate, adapter capabilities or receipts,
+  authoritative-head integration, and an executable filesystem or IndexedDB
+  adapter (only the profile contract and pure-Rust value validation exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -128,9 +139,23 @@ normalizes root and rotation selections into one O(1) trusted current summary,
 and specifies database/scope incarnations, exact current and immediate-prior
 selection bytes, transaction/head/generation tombstones, one fixed atomic
 transaction scope, revocable writer epochs, terminal-event evidence,
-uncertain-outcome recovery, and payload cleanup. This is specification only;
-it adds no root codec, selected-root value, ownership typestate,
-IndexedDB/Wasm adapter, or durability guarantee.
+uncertain-outcome recovery, and payload cleanup. This profile remains a
+specification rather than an executable adapter.
+
+Version `0.0.34` implements the profile's pure Rust value subset: two distinct
+incarnation-ID types; private root preparation/encoding/decoding; independently
+trusted receipt and generation bindings; strict root/rotation normalization;
+and next-rotation preparation/encoding/decoding against the normalized selected
+root. The normalized value privately owns its checkpoint anchor and exposes
+inspection facts only. O(1) means constant in rotation-history length, not in
+input bytes or document size: rotation normalization still processes bounded
+current and immediate-predecessor selection bytes. It strictly decodes both
+nested checkpoints; the current checkpoint is decoded again to retain its anchor. It performs no I/O
+and proves no provisioning, CAS/head currentness, lifetime
+ID/fence freshness, empty-generation reservation, writer authority/epoch,
+durability, commit evidence, or ownership release. No IndexedDB, JavaScript,
+Wasm, or filesystem adapter exists, and these storage formats remain unstable
+pre-`0.1` contracts.
 
 Runtime values and serialization records are deliberately different types:
 
@@ -565,6 +590,15 @@ writer epochs checked on every mutation, and serialized uncertain-outcome
 resolution. IndexedDB `complete` proves historical commit, not stable
 currentness or permanent durability. No new Rust type or executable browser
 adapter is added.
+Version `0.0.34` implements the profile-independent Rust values needed to
+validate that selection boundary: database/scope incarnation IDs, strict
+private root values/actions, trusted selected receipt and generation bindings,
+root/rotation normalization, and selected-root-aware validation of the next
+ordinary rotation. It still adds no platform I/O, storage attempt evidence,
+authoritative-head integration, provisioning, writer authority, or ownership
+release. Its O(1) restart claim concerns rotation-history length only; bounded
+selection/checkpoint bytes and the represented document/session are still
+decoded.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2429,7 +2463,7 @@ new active-generation codec binding and starts at generation-relative offset
 zero. The old offset and old recovery/frame policy are never carried forward
 implicitly.
 
-### Storage-generation rotation validation (no storage transaction)
+### Storage root, selection, and generation validation (no storage transaction)
 
 Version `0.0.32` implements the platform-neutral value and validation subset of
 [`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). The
@@ -2449,6 +2483,13 @@ These types prove syntax only. They do not prove that a profile exists, that a
 scope is authoritative, that a transaction/head/generation is lifetime-fresh,
 or that a fence ID names a current capability. The fence ID remains non-secret
 correlation data; no capability enters this layer.
+
+Version `0.0.34` adds two more non-interchangeable owned syntax types:
+`LocalLogStorageDatabaseIncarnationId` and
+`LocalLogStorageScopeIncarnationId`. Both use exactly
+`[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`. Construction does not generate an ID or
+prove entropy, lifetime freshness, physical database establishment, or scope
+provisioning; those remain host/profile obligations.
 
 `LocalLogStorageGenerationBinding` is a separately supplied trusted association
 of profile ID/version, scope, expected head, and distinct proposed committed
@@ -2499,20 +2540,66 @@ all older IDs, so that remains a profile obligation. The decoded
 `acceptedPrefixBytes` cannot prove byte provenance, physical length, EOF, or
 causal association with a stored tail.
 
-This boundary is intentionally rotation-only. Every public validation path
-needs an already validated prior manifest, and the manifest has no public seed
-constructor. Version `0.0.32` therefore cannot provision the first scope/head
-or bootstrap a recoverable chain through this API alone. It also performs no
-filesystem, IndexedDB, or other I/O; creates no adapter capability or receipt;
-makes no head compare-and-swap, finality, fencing, durability, or crash-recovery
-claim; cannot prove that the prior manifest was authoritative or the physical
-successor was reserved empty; and releases no writable successor owner.
+Version `0.0.34` separately implements
+`LocalLogStorageRootJsonCodec`. Its `prepare_root`, `encode_root`, and
+`decode_root` actions publish only a private-constructor non-`Clone`
+`LocalLogStorageRootSelection` for inspection. Preparation borrows one
+`LocalLogTailCompactionOutcome`, derives its checkpoint/session/log facts, and
+combines them with a separately trusted root binding and caller choices. Strict
+decode applies the whole-input and nested-checkpoint bounds, then requires exact
+canonical nested Checkpoint V1 and outer root JSON; preparation and encoding
+additionally apply the independent canonical-output ceiling. The root has no
+public unchecked constructor. None of
+these actions consumes or releases the compaction outcome or provisions the
+named database, scope, head, checkpoint generation, or empty active generation.
 
-The future consuming ownership states remain `Prepared`,
+The same release adds independently trusted selected-receipt, checkpoint-
+generation, and active-generation bindings. A
+`LocalLogStorageSelectedJsonCodec` routes solely from the trusted selection
+kind. It normalizes either exact root JSON or exact current rotation JSON plus
+its exact immediate predecessor into one private-constructor non-`Clone`
+`LocalLogStorageSelectedRoot`. Rotation normalization strict-decodes both
+retained values, verifies their receipt/head/log/frame/fence/session cross-links,
+and then discards the predecessor payload. The selected result privately owns
+the decoded checkpoint anchor and exposes no public anchor or writer-opening
+operation. Mutable writer epoch/current-writer-fence facts are intentionally
+absent. Anchor quarantine is ownership/API hygiene rather than secrecy or
+exclusive authority: public canonical checkpoint bytes and binding identities
+can reconstruct a separate structurally checked, still non-authoritative
+anchor.
+
+The next ordinary rotation can be prepared, encoded, and decoded against this
+selected summary rather than a complete historical manifest chain through
+`prepare_rotation_from_selected`, `encode_rotation_from_selected`, and
+`decode_rotation_from_selected`. Validation preserves profile/scope/session
+facts, requires the selected head and active
+generation/frame, and rejects reuse among the transaction, known heads,
+checkpoint/active/successor generations, and activation fences visible in the
+bounded selected state. It cannot prove freshness against discarded older
+history; the profile's permanent tombstones remain authoritative for lifetime
+freshness. Database and scope incarnation IDs remain carrier facts on the
+selected root rather than storage-generation wire fields; a future evidence or
+adapter boundary must retain the selected root alongside the candidate
+manifest.
+
+The O(1) claim is only in rotation-history length: root normalization reads one
+selection, while rotation normalization reads one current and one immediate-
+predecessor selection. Both still process bounded selection bytes and decode a
+complete bounded checkpoint for each selection; the current checkpoint is
+decoded again to retain its anchor. Their content/history/document costs are
+not constant. No manifest-chain walk is required, but this is not O(1) in
+bytes, document size, session history, or replay-tombstone count.
+
+This complete pure-Rust boundary performs no filesystem, IndexedDB, JavaScript,
+Wasm, or other I/O; creates no adapter capability or receipt; makes no head
+compare-and-swap, stable-currentness, finality, writer-fencing, durability, or
+crash-recovery claim; cannot prove global ID/fence freshness or that a physical
+successor is fresh and empty; and releases no writable successor owner. The
+non-owning attempt evidence states remain `Prepared`,
 `DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain`. They are
-specification names, not `0.0.32` Rust types. No ownership-release typestate
-should be added before initial provisioning and one concrete platform profile
-define executable authority, terminal outcomes, and restart resolution.
+specification names, not `0.0.34` Rust types. Consuming ownership release still
+requires a separately frozen held-lock, transaction-coupled admission, or
+revocable/speculative-branch contract.
 
 ### Genesis local-log recovery
 
@@ -2956,23 +3043,24 @@ tombstones, request-versus-transaction terminal evidence, uncertain resolution,
 revocable writer epochs, and payload cleanup. It deliberately makes no
 filesystem claim and adds no executable adapter.
 
-For `0.0.34`, implement the pure Rust storage-incarnation, private root codec,
-trusted selected binding, and O(1) selected-root normalization. Ordinary
-rotation should validate against that selected summary rather than require a
-retained predecessor chain. The root preparation action may snapshot a complete
-compaction outcome with content/history/tombstones; “root” means first storage
-authority, not an empty editor. It must atomically require a permanent
-checkpoint-generation identity and distinct empty active generation at the
-profile boundary.
+Version `0.0.34` implements the pure Rust storage-incarnation IDs, private root
+codec, trusted selected bindings, root/rotation selected-root normalization,
+and next-rotation validation against that selected summary. Root preparation
+may inspect a complete compaction outcome with content/history/tombstones;
+“root” means first proposed storage authority, not an empty editor. Validation
+does not establish that authority or atomically reserve its permanent
+checkpoint-generation identity and distinct empty active generation.
 
-After those value contracts, add only the non-owning `Prepared`,
+For the next checkpoint, add only the non-owning `Prepared`,
 `DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` evidence
-boundary; then implement the JavaScript adapter and validate the profile in
-real browsers before calling it executable. Historical commit does not grant
-stable currentness: every IndexedDB mutation must recheck the exact head,
-active generation, writer epoch, and current writer fence inside its own
-serialized transaction. Consuming exclusive-owner typestate requires a
-separately specified held lock, transaction-coupled semantic admission, or
+contract and pure values. They must bind one exact immutable plan without
+fabricating authority, finality, or owner release. Only after that contract is
+adversarially tested should a JavaScript adapter be implemented and the profile
+validated in real browsers before being called executable. Historical commit
+does not grant stable currentness: every IndexedDB mutation must recheck the
+exact head, active generation, writer epoch, and current writer fence inside
+its own serialized transaction. Consuming exclusive-owner typestate requires
+a separately specified held lock, transaction-coupled semantic admission, or
 revocable/speculative branch and is not part of profile V1.
 
 Repeated in-memory compaction still does not make file replacement

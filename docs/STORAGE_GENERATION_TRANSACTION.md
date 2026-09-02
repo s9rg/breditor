@@ -2,7 +2,9 @@
 
 Status: value and strict ordinary-rotation validation implemented in Breditor
 `0.0.32`; initial provisioning and the first IndexedDB profile frozen as a
-`0.0.33` contract; storage I/O and ownership release remain unimplemented
+`0.0.33` contract; pure-Rust root/selected normalization and selected-root-aware
+next-rotation validation implemented in `0.0.34`; storage I/O, attempt evidence,
+and ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -19,6 +21,18 @@ release. The implemented V1 validation shape remains a pre-`0.1` contract,
 not a permanent compatibility promise. Implementations must not treat
 successful validation as evidence that `breditor-core` can publish or commit
 the record, select storage during restart, or recover and activate log bytes.
+
+Version `0.0.34` adds two bounded incarnation-ID types, a strict
+private-constructor root codec, trusted selected receipt/generation bindings,
+root/rotation normalization into a private non-`Clone` selected value, and
+next-rotation `prepare_rotation_from_selected`,
+`encode_rotation_from_selected`, and `decode_rotation_from_selected` against
+that selected summary. It still adds no adapter, I/O, authoritative head,
+provisioning, attempt evidence,
+writer authority, durability, or ownership release. Its O(1) property concerns
+rotation-history length only; bounded current/predecessor/checkpoint bytes and
+both strictly decoded checkpoints' document/session content still determine
+work and memory.
 
 The contract is deliberately platform-neutral. It defines the facts that a
 native-filesystem or IndexedDB profile must associate and the ownership states
@@ -79,6 +93,14 @@ format, O(1) profile-attested current selection, database/scope incarnations,
 transaction/head/generation identity tombstones, one fixed five-store
 `readwrite` transaction, a mutable writer epoch separate from the immutable
 activation fence, uncertain-outcome resolution, and payload cleanup.
+
+Version `0.0.34` implements only the profile-independent Rust values used to
+validate those immutable associations. Database and scope incarnations remain
+caller-supplied syntax values rather than proof of establishment or freshness.
+Root and selected values remain inspection state, and selected-root-aware
+rotation validation proves only the supplied value/cross-link consistency. It
+does not read or mutate IndexedDB, establish head currentness, validate a
+mutable writer epoch, reserve an empty generation, or attest commit.
 
 ## Authoritative manifest and head
 
@@ -508,10 +530,11 @@ metadata, and the head as independently drifting updates.
 
 ## Non-goals and forbidden inferences
 
-This specification and the implemented validation manifest do not provide:
+This specification and the implemented validation values do not provide:
 
-- a public seed/bootstrap manifest, storage-attempt typestate, receipt, adapter,
-  async API, writer capability, or I/O implementation in `0.0.32`;
+- actual storage bootstrap/provisioning, storage-attempt evidence or ownership
+  typestate, receipt, adapter, async API, writer capability, or I/O
+  implementation in `0.0.34`; the checked root value is only a proposal;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -519,9 +542,9 @@ This specification and the implemented validation manifest do not provide:
   rollback protection, causal provenance, or multi-writer consensus;
 - proof that a transaction, head, fence, session, or generation identity is
   honest, globally unique, fresh, or secret;
-- proof that the supplied binding or prior manifest is authoritative, that the
-  physical successor is fresh and empty, or permission to release a writable
-  successor owner;
+- proof that a supplied binding, prior manifest, or normalized selected root is
+  currently authoritative, that the physical successor is fresh and empty, or
+  permission to release a writable successor owner;
 - a change to Local Log Checkpoint V1 or Local Log Frame V1;
 - durable encoding of recovery, compaction, or checkpoint resource policies;
 - generation garbage collection, tail-wide replay, migration, retry scheduling,
@@ -554,14 +577,23 @@ receipt-retirement window, mutable writer epoch, and cleanup barrier. This
 remains a contract, not a claim that an IndexedDB adapter, Wasm binding,
 atomic publication implementation, or durability guarantee exists.
 
-For `0.0.34`, implement the pure bounded incarnation, private root-selection
-codec, trusted selected binding, and O(1) selected-root normalization before
-adding storage-attempt evidence. An executable, red-teamed profile can justify
-later non-owning `Prepared`, `DefinitelyNotCommitted`,
-`HostAttestedCommitted`, and `Uncertain` evidence, but IndexedDB profile V1
-cannot release a long-lived exclusive Rust owner: every mutation fence is
-revocable between transactions. Consuming ownership additionally requires a
-separately held lock, transaction-coupled semantic admission, or an explicitly
-revocable/speculative branch. The provisioning contract must not manufacture
-its first manifest through an unchecked public constructor or treat in-memory
-compaction as storage authority.
+Version `0.0.34` implements the pure bounded incarnation IDs,
+private-constructor root codec, trusted selected receipt/generation bindings,
+root/rotation normalization, and selected-root-aware next-rotation validation.
+The selected root privately retains its decoded checkpoint anchor and exposes
+inspection facts only. O(1) means independent of the number of older rotations,
+not of current/predecessor/checkpoint bytes or document/session size. This is
+still value validation: no adapter operation proves provisioning, current
+head, global ID/fence freshness, empty generation, writer epoch/authority,
+commit, durability, or owner release.
+
+The next checkpoint should freeze and implement only the non-owning `Prepared`,
+`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` attempt-
+evidence contract before any browser adapter. Those values must bind one exact
+immutable plan without releasing a checkpoint anchor or claiming stable
+currentness. IndexedDB profile V1 cannot release a long-lived exclusive Rust
+owner: every mutation fence is revocable between transactions. Consuming
+ownership additionally requires a separately held lock, transaction-coupled
+semantic admission, or an explicitly revocable/speculative branch. The
+provisioning contract must not treat a checked root or in-memory compaction as
+storage authority.

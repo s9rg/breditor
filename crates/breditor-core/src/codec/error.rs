@@ -133,6 +133,8 @@ pub enum CodecErrorCode {
     InvalidLocalLogCheckpoint,
     /// A storage-generation rotation failed binding, continuity, or canonical reconstruction.
     InvalidLocalLogStorageGeneration,
+    /// An initial storage-root selection failed binding, topology, or canonical reconstruction.
+    InvalidLocalLogStorageRoot,
     /// A durable session checkpoint failed topology or replay proof.
     InvalidSessionCheckpoint,
     /// An editor-state field could not be reconstructed through checked contracts.
@@ -164,6 +166,7 @@ impl CodecErrorCode {
             Self::InvalidLocalLogEntry => "codec.invalid_local_log_entry",
             Self::InvalidLocalLogCheckpoint => "codec.invalid_local_log_checkpoint",
             Self::InvalidLocalLogStorageGeneration => "codec.invalid_local_log_storage_generation",
+            Self::InvalidLocalLogStorageRoot => "codec.invalid_local_log_storage_root",
             Self::InvalidSessionCheckpoint => "codec.invalid_session_checkpoint",
             Self::InvalidEditorState => "codec.invalid_editor_state",
             Self::EncodingFailed => "codec.encoding_failed",
@@ -302,6 +305,7 @@ mod tests {
                 CodecErrorCode::InvalidLocalLogStorageGeneration,
                 "codec.invalid_local_log_storage_generation",
             ),
+            (CodecErrorCode::InvalidLocalLogStorageRoot, "codec.invalid_local_log_storage_root"),
             (CodecErrorCode::InvalidSessionCheckpoint, "codec.invalid_session_checkpoint"),
             (CodecErrorCode::InvalidEditorState, "codec.invalid_editor_state"),
             (CodecErrorCode::EncodingFailed, "codec.encoding_failed"),

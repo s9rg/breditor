@@ -56,6 +56,28 @@ impl LocalLogStorageGenerationJsonCodec {
         json: &str,
         prior: &LocalLogStorageGenerationManifest,
     ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
+        self.decode_rotation_inner(json, Some(prior))
+    }
+
+    /// Strictly decodes one canonical rotation against only its complete
+    /// trusted binding and intrinsic topology.
+    ///
+    /// Selected-root normalization uses this path for the current value and
+    /// for a rotation predecessor whose older predecessor is intentionally no
+    /// longer retained. The public prior-aware action remains the ordinary
+    /// edge-validation boundary.
+    pub(crate) fn decode_bound_rotation(
+        &self,
+        json: &str,
+    ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
+        self.decode_rotation_inner(json, None)
+    }
+
+    fn decode_rotation_inner(
+        &self,
+        json: &str,
+        prior: Option<&LocalLogStorageGenerationManifest>,
+    ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
         let maximum = self.limits().max_input_bytes();
         if json.len() > maximum {
             return Err(LocalLogStorageGenerationCodecError::InputTooLarge {
@@ -101,7 +123,10 @@ impl LocalLogStorageGenerationJsonCodec {
             sealed_frame,
             successor_frame,
         };
-        validate_decoded_metadata(self, &metadata, prior)?;
+        match prior {
+            Some(prior) => validate_decoded_metadata(self, &metadata, prior)?,
+            None => validate_bound_decoded_metadata(self, &metadata)?,
+        }
 
         let checkpoint_json = decode_checkpoint_json(
             envelope.checkpoint_json,
@@ -208,6 +233,35 @@ fn validate_decoded_metadata(
     }
     if value.successor_log_id == *prior.sealed_log_id() {
         return Err(LocalLogStorageGenerationContinuityError::KnownGenerationIdReused.into());
+    }
+    Ok(())
+}
+
+fn validate_bound_decoded_metadata(
+    codec: &LocalLogStorageGenerationJsonCodec,
+    value: &DecodedMetadata,
+) -> Result<(), LocalLogStorageGenerationCodecError> {
+    if value.expected_head_id == value.committed_head_id {
+        return Err(LocalLogStorageGenerationTopologyError::HeadNotAdvanced.into());
+    }
+    if value.sealed_log_id == value.successor_log_id {
+        return Err(LocalLogStorageGenerationTopologyError::GenerationNotAdvanced.into());
+    }
+
+    if &value.profile_id != codec.binding().profile_id() {
+        return Err(binding_mismatch(LocalLogStorageGenerationBindingField::ProfileId));
+    }
+    if value.profile_version != codec.binding().profile_version() {
+        return Err(binding_mismatch(LocalLogStorageGenerationBindingField::ProfileVersion));
+    }
+    if &value.scope_id != codec.binding().scope_id() {
+        return Err(binding_mismatch(LocalLogStorageGenerationBindingField::ScopeId));
+    }
+    if &value.expected_head_id != codec.binding().expected_head_id() {
+        return Err(binding_mismatch(LocalLogStorageGenerationBindingField::ExpectedHeadId));
+    }
+    if &value.committed_head_id != codec.binding().committed_head_id() {
+        return Err(binding_mismatch(LocalLogStorageGenerationBindingField::CommittedHeadId));
     }
     Ok(())
 }

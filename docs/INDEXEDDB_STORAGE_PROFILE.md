@@ -1,7 +1,8 @@
 # IndexedDB local-log storage profile
 
-Status: contract frozen for Breditor `0.0.33`; no IndexedDB adapter, Wasm
-binding, storage typestate, or provisioning value is implemented yet
+Status: profile contract frozen in Breditor `0.0.33`; pure-Rust root/selection
+values implemented in `0.0.34`; no IndexedDB/JavaScript/Wasm adapter, storage
+attempt evidence, ownership typestate, or executable provisioning exists
 
 Profile identifier: `breditor/indexeddb-local-log`
 
@@ -29,7 +30,8 @@ every browser implementation is bug-free.
 
 ## Decisions
 
-Version `0.0.33` freezes these decisions:
+Version `0.0.33` freezes these decisions; version `0.0.34` implements only their
+profile-independent Rust value-validation subset:
 
 1. Initial provisioning uses a distinct canonical root-selection value. It
    does not invent a magic expected head or pass an unchecked ordinary
@@ -72,15 +74,19 @@ Version `0.0.33` freezes these decisions:
 ## Authority split
 
 `breditor-core` remains synchronous, deterministic, and free of browser
-handles. A future Rust layer will:
+handles. Version `0.0.34` can:
 
 - prepare and strictly encode the root-selection value from one borrowed local
   log compaction outcome;
 - strictly decode root and ordinary-rotation selections;
 - normalize either selection kind into one trusted selected-root summary;
-- validate a proposed ordinary rotation against that summary; and
-- check typed host evidence against one exact prepared plan without treating
-  per-transaction IndexedDB fencing as release of an exclusive semantic owner.
+- validate a proposed ordinary rotation against that summary through distinct
+  `prepare_rotation_from_selected`, `encode_rotation_from_selected`, and
+  `decode_rotation_from_selected` actions.
+
+A later pure-Rust boundary must check typed host evidence against one exact
+prepared plan without treating per-transaction IndexedDB fencing as release of
+an exclusive semantic owner.
 
 The JavaScript adapter owns `IDBDatabase`, `IDBTransaction`, requests, events,
 connection reopening, exact key construction, structured-clone values, and the
@@ -128,12 +134,14 @@ whose accepted prefix needs to be selected. Its fields mean:
   and
 - `checkpointJson` is exact canonical Local Log Checkpoint V1 JSON.
 
-A future `prepare_root` action must borrow a
-`LocalLogTailCompactionOutcome`, derive both log IDs, session ID, and exact
-checkpoint JSON from it, and take only the profile/scope, transaction/head,
-fence, and active-frame choices from separately trusted inputs. It does not
+The implemented `prepare_root` action borrows a
+`LocalLogTailCompactionOutcome`, derives both log IDs, session ID, and exact
+checkpoint JSON from it, and takes only the profile/scope, transaction/head,
+fence, and active-frame choices from a separately supplied binding and caller
+inputs. Those values are not storage authority. The action does not
 consume or release the compaction outcome and carries no abandonment authority.
-It proves and fixes candidate bytes only. A separate host decision may propose
+It proves and fixes one candidate value only; `encode_root` separately emits
+canonical bytes. A separate host decision may propose
 that the committed root supersede the pre-root tail; actually quarantining or
 abandoning the old owner remains blocked on future consuming typestate. The
 accepted-prefix length and old frame policy are intentionally not claimed as
@@ -231,6 +239,32 @@ fence. The host/profile must still prove lifetime freshness beyond these known
 O(1) identities. This closes the v0.0.32 bootstrap and garbage-collection
 deadlock without weakening its immediate known-identity reuse protections.
 
+Version `0.0.34` implements that immutable value validation. Independently
+trusted receipt, checkpoint-generation, and active-generation bindings supply
+the database/scope incarnations and record facts; candidate JSON cannot supply
+its own authority. `LocalLogStorageSelectedJsonCodec::normalize_root` accepts
+one exact root value, while `normalize_rotation` accepts one exact current
+rotation and its exact immediate predecessor. Both return a private-constructor
+non-`Clone` `LocalLogStorageSelectedRoot` that privately owns the decoded
+checkpoint anchor, exposes inspection facts only, and excludes the mutable
+writer epoch/current writer fence. `prepare_rotation_from_selected`,
+`encode_rotation_from_selected`, and `decode_rotation_from_selected` validate
+the next plan against that summary. Anchor quarantine is ownership/API hygiene,
+not secrecy or exclusive authority: public checkpoint bytes and binding
+identities can reconstruct a separate structurally checked anchor. Database
+and scope incarnations remain selected-root carrier facts rather than
+generation-wire fields, so a future evidence/adapter boundary must retain the
+selected root with the candidate manifest.
+
+Here O(1) means constant in the number of older rotations. Root normalization
+still reads bounded root/checkpoint bytes. Rotation normalization still reads
+bounded current and immediate-predecessor selection bytes and strictly decodes
+both nested checkpoints; the current checkpoint is decoded again to retain its
+anchor. CPU and memory may therefore scale with those byte limits and with both
+checkpoints' documents, session histories, and replay tombstones. No complete
+manifest-chain walk is required, but the operation is
+not constant in document or input size.
+
 ## Database schema
 
 The schema upgrade transaction creates exactly five object stores with
@@ -277,7 +311,7 @@ All keys are constructed from already validated strings:
 - `generations`: `[scopeId, scopeIncarnationId, logId]`; and
 - `chunks`: `[scopeId, scopeIncarnationId, logId, chunkOrdinal]`.
 
-Database and scope incarnations are distinct future Rust types:
+Database and scope incarnations are distinct Rust types in `0.0.34`:
 `LocalLogStorageDatabaseIncarnationId` and
 `LocalLogStorageScopeIncarnationId`. Each is owned ASCII using exactly
 `[A-Za-z0-9][A-Za-z0-9._:-]{0,127}`. Syntax proves neither freshness nor
@@ -288,10 +322,10 @@ non-secret and never interchangeable at a Rust or Wasm boundary.
 
 `chunkOrdinal` is exactly twenty ASCII decimal digits, zero padded on the left.
 This avoids JavaScript integer precision and gives deterministic key ordering
-through `18446744073709551615`. Version `0.0.33` does not define an append or
-chunk-size protocol; therefore the only valid newly reserved generation has no
-chunk records. A future append checkpoint must freeze chunk boundaries before
-writing nonempty values.
+through `18446744073709551615`. Through version `0.0.34`, no append or
+chunk-size protocol is defined; therefore the only valid newly reserved
+generation has no chunk records. A future append checkpoint must freeze chunk
+boundaries before writing nonempty values.
 
 Complete-prefix inspection uses an inclusive lower key
 `[scopeId, scopeIncarnationId, logId]` and exclusive upper key
@@ -498,8 +532,8 @@ metadata is corruption even when the nested checkpoint JSON itself decodes.
 
 ### Chunk records
 
-Chunk values are owned `ArrayBuffer` byte sequences. Version `0.0.33` reserves
-their namespace and deletion semantics but does not authorize nonempty writes.
+Chunk values are owned `ArrayBuffer` byte sequences. Profile V1 reserves their
+namespace and deletion semantics but does not authorize nonempty writes.
 The future append contract must bind every append to the exact current scope
 head, active generation, writer epoch, current writer-fence ID, and unpersisted
 revocable writer token in the same five-store transaction scope. An activation
@@ -776,9 +810,10 @@ entire owner lifetime, couple every semantic admission to one successful
 storage mutation, or expose an explicitly revocable/speculative branch that is
 quarantined on conflict. Profile V1 chooses none of those policies.
 
-Profile `0.0.33` freezes these obligations but implements no revocable-token
-allocator, fence-acquisition transaction, append operation, exclusive lock,
-speculative branch, or consuming Rust typestate. That is a later design gate.
+Profile `0.0.33` freezes these obligations. Version `0.0.34` implements none of
+the revocable-token allocator, fence-acquisition transaction, append operation,
+exclusive lock, speculative branch, or consuming Rust typestate. Those remain
+later design gates.
 
 ## Retired-generation cleanup
 
@@ -832,8 +867,18 @@ capabilities.
 
 ## Explicit V1 limitations
 
-- No IndexedDB, JavaScript, or Wasm implementation exists in `0.0.33`.
-- The root and selected-root Rust values/actions are specification-only.
+- No IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter exists
+  in `0.0.34`; the implemented Rust values perform no I/O.
+- Root preparation/encoding/decoding, selected receipt/generation bindings,
+  root/rotation normalization, and selected-root-aware next-rotation validation
+  prove only bounded value and cross-link consistency. They do not provision a
+  database, scope, head, checkpoint generation, or empty active generation.
+- No pure-Rust value proves CAS or current-head status, global ID/fence
+  freshness, physical generation emptiness, mutable writer authority/epoch,
+  transaction completion, durability, commit evidence, or ownership release.
+- O(1) selected normalization is constant only in rotation-history length. It
+  still decodes bounded current/immediate-predecessor/checkpoint bytes and can
+  scale with document/session/history/tombstone size.
 - All writes serialize across all scopes because IndexedDB scheduling is
   object-store-granular and the profile deliberately fixes one common scope.
 - Transaction and generation identity tombstones grow without bound.
@@ -855,20 +900,19 @@ capabilities.
 
 ## Next implementation gate
 
-Version `0.0.34` should implement only the pure Rust value boundary that this
-profile makes possible:
+Version `0.0.34` implements the intended pure Rust value boundary: distinct
+bounded database/scope incarnation IDs; private root prepare/encode/decode;
+trusted selected bindings; root/rotation normalization; and
+`prepare_rotation_from_selected`, `encode_rotation_from_selected`, and
+`decode_rotation_from_selected`. It deliberately exposes no `IDBDatabase`,
+promise-based I/O, commit receipt, or writable-owner release.
 
-1. distinct bounded database- and scope-incarnation identities;
-2. private-constructor root selection plus strict prepare/encode/decode actions;
-3. trusted selected binding and O(1) selected-root normalization for root and
-   ordinary rotation; and
-4. ordinary rotation validation against the selected root instead of a full
-   predecessor manifest.
-
-It should not yet expose `IDBDatabase`, promise-based I/O, a fabricated commit
-receipt, or a writable-owner release. After those values and adversarial codec
-tests are stable, a later checkpoint can add non-owning
+The next checkpoint should freeze and implement only the non-owning
 `Prepared`/`DefinitelyNotCommitted`/`HostAttestedCommitted`/`Uncertain`
-evidence and then a JavaScript adapter tested in real browsers. Consuming
-exclusive-owner typestate remains blocked on a separately frozen held-lock,
-transaction-coupled admission, or speculative-branch contract.
+attempt-evidence contract and values. Evidence must remain bound to one exact
+immutable plan, must distinguish historical commit from stable currentness,
+and must not expose or release the selected checkpoint anchor. Only after that
+boundary and its adversarial tests are stable should a JavaScript adapter be
+implemented and tested in real browsers. Consuming exclusive-owner typestate
+remains blocked on a separately frozen held-lock, transaction-coupled
+admission, or speculative-branch contract.

@@ -16,8 +16,9 @@ strict trusted-scope local-log-checkpoint JSON codec plus a checksummed,
 platform-neutral one-entry binary frame encoder and allocation-free borrowed
 scanner plus an owner-derived active-tail cursor with atomic semantic/physical
 progress and recoverable cursor compaction, plus six bounded storage
-identity/version values and strict prior-linked storage-generation rotation
-preparation/encoding/decoding,
+identity/version values, distinct database/scope incarnation IDs, strict root
+and storage-generation codecs, trusted root/rotation selection normalization,
+and selected-root-aware next-rotation preparation/encoding/decoding,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -127,11 +128,35 @@ including a distinct initial-root format, current-selection normalization,
 database/scope incarnations, exact current and immediate-prior selection
 records, identity tombstones, empty-generation reservation, uncertain-outcome
 resolution, revocable per-mutation writer epochs, and generation-payload
-reclamation. The next Rust checkpoint can implement those pure values without
-placing browser handles or asynchronous I/O inside `breditor-core`.
+reclamation.
+
+Version `0.0.34` implements only that profile's deterministic value and codec
+boundary. `LocalLogStorageDatabaseIncarnationId` and
+`LocalLogStorageScopeIncarnationId` are distinct bounded syntax types.
+`LocalLogStorageRootJsonCodec` separately prepares, encodes, and strict-decodes
+a private-constructor non-`Clone` root selection. Trusted selection-receipt and
+generation bindings feed `LocalLogStorageSelectedJsonCodec`, which normalizes
+either one root or one current rotation plus its exact immediate predecessor
+into a private-constructor non-`Clone` `LocalLogStorageSelectedRoot`. That
+selected value privately owns the decoded checkpoint anchor, exposes only
+inspection facts, excludes mutable writer epoch/fence state, and supports
+strict next-rotation `prepare_rotation_from_selected`,
+`encode_rotation_from_selected`, and `decode_rotation_from_selected` without a
+retained manifest chain.
+
+The O(1) claim is only with respect to rotation-history length. Rotation
+normalization still processes bounded current/immediate-predecessor JSON and
+strictly decodes both nested checkpoints; the current checkpoint is decoded
+again to retain its anchor. CPU and memory can therefore scale with those byte
+ceilings and the document/session content represented by both checkpoints. The crate
+still has no IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter;
+performs no I/O; provisions no database/scope/head/generation; and proves no
+CAS, head currentness, lifetime ID or fence freshness, empty generation,
+writer authority or epoch, durability, commit evidence, or ownership release.
 The profile cannot release a long-lived exclusive Rust writer; that still
 needs a separately held lock, transaction-coupled admission, or explicit
-revocable/speculative branch semantics.
+revocable/speculative branch semantics. These storage formats remain unstable
+pre-`0.1` contracts.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

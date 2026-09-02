@@ -27,7 +27,9 @@ mod local_log_frame_scan;
 mod local_log_storage_generation_binding;
 mod local_log_storage_generation_checkpoint_preflight;
 mod local_log_storage_generation_decode;
+mod local_log_storage_generation_decode_from_selected;
 mod local_log_storage_generation_encode;
+mod local_log_storage_generation_encode_from_selected;
 mod local_log_storage_generation_error;
 mod local_log_storage_generation_frame_v1;
 mod local_log_storage_generation_json;
@@ -35,8 +37,32 @@ mod local_log_storage_generation_limits;
 mod local_log_storage_generation_manifest;
 mod local_log_storage_generation_preparation_inputs;
 mod local_log_storage_generation_prepare;
+mod local_log_storage_generation_prepare_from_selected;
+#[cfg(test)]
+mod local_log_storage_generation_selected_tests;
 #[cfg(test)]
 mod local_log_storage_generation_tests;
+mod local_log_storage_root_binding;
+mod local_log_storage_root_decode;
+mod local_log_storage_root_encode;
+mod local_log_storage_root_error;
+mod local_log_storage_root_json;
+mod local_log_storage_root_preparation_inputs;
+mod local_log_storage_root_prepare;
+mod local_log_storage_root_selection;
+#[cfg(test)]
+mod local_log_storage_root_tests;
+mod local_log_storage_selected_binding;
+mod local_log_storage_selected_generation_binding;
+mod local_log_storage_selected_json;
+mod local_log_storage_selected_root;
+mod local_log_storage_selected_root_error;
+mod local_log_storage_selected_root_normalize;
+mod local_log_storage_selected_rotation_normalize;
+#[cfg(test)]
+mod local_log_storage_selected_tests;
+mod local_log_storage_selection_kind;
+mod local_log_storage_selection_receipt_binding;
 mod local_log_tail_begin;
 mod local_log_tail_compaction;
 mod local_log_tail_compaction_outcome;
@@ -127,6 +153,44 @@ pub use local_log_storage_generation_limits::{
 pub use local_log_storage_generation_manifest::LocalLogStorageGenerationManifest;
 pub(crate) use local_log_storage_generation_manifest::LocalLogStorageGenerationManifestParts;
 pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerationPreparationInputs;
+pub use local_log_storage_root_binding::LocalLogStorageRootBinding;
+pub use local_log_storage_root_error::{
+    LocalLogStorageRootBindingField, LocalLogStorageRootCodecError, LocalLogStorageRootJsonFailure,
+    LocalLogStorageRootRecordError, LocalLogStorageRootRecordErrorCode,
+    LocalLogStorageRootRecordLocation, LocalLogStorageRootResourceLimit,
+    LocalLogStorageRootResourceLimitCode, LocalLogStorageRootTopologyError,
+    LocalLogStorageRootTopologyErrorCode,
+};
+pub use local_log_storage_root_json::{
+    LOCAL_LOG_STORAGE_ROOT_FORMAT, LOCAL_LOG_STORAGE_ROOT_FORMAT_VERSION,
+    LocalLogStorageRootJsonCodec,
+};
+pub use local_log_storage_root_preparation_inputs::LocalLogStorageRootPreparationInputs;
+pub use local_log_storage_root_selection::LocalLogStorageRootSelection;
+pub(crate) use local_log_storage_root_selection::LocalLogStorageRootSelectionParts;
+pub use local_log_storage_selected_binding::{
+    LocalLogStorageSelectedBinding, LocalLogStorageSelectedBindingError,
+    LocalLogStorageSelectedBindingErrorCode, LocalLogStorageSelectedGenerationMismatchField,
+    LocalLogStorageSelectedReceiptMismatchField,
+};
+pub use local_log_storage_selected_generation_binding::{
+    LocalLogStorageSelectedActiveGenerationBinding,
+    LocalLogStorageSelectedCheckpointGenerationBinding,
+    LocalLogStorageSelectedCheckpointGenerationState,
+};
+pub use local_log_storage_selected_json::LocalLogStorageSelectedJsonCodec;
+pub use local_log_storage_selected_root::LocalLogStorageSelectedRoot;
+pub(crate) use local_log_storage_selected_root::LocalLogStorageSelectedRootParts;
+pub use local_log_storage_selected_root_error::{
+    LocalLogStorageSelectedRootError, LocalLogStorageSelectedRootErrorCode,
+    LocalLogStorageSelectedRootGenerationField, LocalLogStorageSelectedRootReceiptField,
+    LocalLogStorageSelectedRootValueRole,
+};
+pub use local_log_storage_selection_kind::LocalLogStorageSelectionKind;
+pub use local_log_storage_selection_receipt_binding::{
+    LocalLogStorageSelectionReceiptBinding, LocalLogStorageSelectionReceiptBindingError,
+    LocalLogStorageSelectionReceiptBindingErrorCode,
+};
 pub use local_log_tail_compaction_outcome::LocalLogTailCompactionOutcome;
 pub use local_log_tail_cursor::LocalLogTailCursor;
 pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};
