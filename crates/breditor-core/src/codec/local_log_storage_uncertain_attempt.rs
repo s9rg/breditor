@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::local_log::LocalLogStorageAttemptId;
+use crate::local_log::{LocalLogStorageAttemptId, LocalLogStorageAttemptRequestId};
 
 use super::{
     LocalLogStorageSelectedBinding, LocalLogStorageSelectionKind,
@@ -12,13 +12,16 @@ use super::{
 ///
 /// The transition into this state occurs before request egress, so this type
 /// deliberately cannot distinguish "never dispatched" from "possibly
-/// committed". It remains `Uncertain` across request success, `commit()`
-/// return, abort, cancellation, timeout, connection loss, or missing terminal
-/// evidence. Exact resubmission preserves the closed plan, refreshes the
-/// volatile attempt ID, and restores one-shot request eligibility.
+/// committed". Request success, `commit()` return, a raw error event,
+/// cancellation, timeout, connection loss, or missing terminal attestation
+/// leaves it `Uncertain`. Applying a matching request-issued complete/abort
+/// attestation or attempt-correlated not-attempted attestation consumes it.
+/// Exact resubmission preserves the closed plan, refreshes the volatile attempt
+/// ID, and restores one-shot request eligibility.
 ///
 /// This process-local, non-`Clone` value is neither terminal evidence nor
-/// storage authority. v0.0.36 provides no transition out of uncertainty.
+/// storage authority. Version 0.0.37 can consume one matching terminal host
+/// attestation for this singular adapter invocation.
 ///
 /// ```compile_fail
 /// fn require_clone<T: Clone>() {}
@@ -47,11 +50,24 @@ use super::{
 ///     drop(request);
 /// }
 /// ```
-#[must_use = "an uncertain storage attempt must be retained or exactly resubmitted"]
+///
+/// A live request borrow likewise prevents consuming terminal observation:
+///
+/// ```compile_fail
+/// fn terminal(mut owner: breditor_core::codec::LocalLogStorageUncertainAttempt) {
+///     let Ok(request) = owner.adapter_request() else { return };
+///     let attestation =
+///         breditor_core::codec::LocalLogStorageAttemptTerminalAttestation::
+///             publication_completed(request.request_id());
+///     let _outcome = owner.observe_terminal_attestation(attestation);
+///     drop(request);
+/// }
+/// ```
+#[must_use = "an uncertain storage attempt must be retained, attested, or exactly resubmitted"]
 pub struct LocalLogStorageUncertainAttempt {
     pub(super) plan: LocalLogStorageAttemptPlan,
     pub(super) attempt_id: LocalLogStorageAttemptId,
-    pub(super) request_issued: bool,
+    pub(super) request_id: Option<LocalLogStorageAttemptRequestId>,
 }
 
 impl LocalLogStorageUncertainAttempt {
@@ -59,7 +75,7 @@ impl LocalLogStorageUncertainAttempt {
         plan: LocalLogStorageAttemptPlan,
         attempt_id: LocalLogStorageAttemptId,
     ) -> Self {
-        Self { plan, attempt_id, request_issued: false }
+        Self { plan, attempt_id, request_id: None }
     }
 
     /// Returns the current physical-attempt correlation identity.
@@ -97,7 +113,7 @@ impl LocalLogStorageUncertainAttempt {
     /// Returns whether this attempt has already yielded its one request view.
     #[must_use]
     pub const fn request_issued(&self) -> bool {
-        self.request_issued
+        self.request_id.is_some()
     }
 
     /// Returns the byte length of the exact canonical candidate JSON.
@@ -131,7 +147,7 @@ impl fmt::Debug for LocalLogStorageUncertainAttempt {
         formatter
             .debug_struct("LocalLogStorageUncertainAttempt")
             .field("attempt_id", &self.attempt_id)
-            .field("request_issued", &self.request_issued)
+            .field("request_issued", &self.request_issued())
             .field("plan", &self.plan)
             .finish_non_exhaustive()
     }

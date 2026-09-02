@@ -29,7 +29,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   incarnation IDs, strict root and rotation codecs with exact nested-checkpoint
   and outer canonical bytes, trusted root/rotation selection normalization,
   byte-exact selected-envelope retention and comparison, and next-rotation
-  validation against that normalized selected state;
+  validation against that normalized selected state, plus exact non-owning
+  publication plans, process-local physical attempt IDs, and typed host
+  terminal attestations;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -116,9 +118,10 @@ manifest-chain walk, database and scope incarnations, one authoritative head,
 exact-then-retired transaction identity records, permanent generation
 tombstones, atomic empty-successor reservation, lost-completion resolution,
 revocable per-mutation writer epochs, and independent retired-payload cleanup.
-Only IndexedDB transaction `complete` attests historical commit; missing
-terminal observation stays uncertain, and `strict` durability remains a
-browser hint.
+Only the exact publication transaction's `complete` event can underpin a host
+attestation of historical commit; a bare or unrelated `complete` is
+insufficient. Missing terminal observation stays uncertain, and `strict`
+durability remains a browser hint.
 
 Version `0.0.34` implements the profile's pure Rust value boundary. It adds
 distinct bounded database/scope incarnation IDs, a private-constructor
@@ -185,19 +188,43 @@ The one-shot borrowed request prevents a second request view from the same
 attempt object; it cannot prevent a host from copying bytes or dispatching them
 more than once.
 
+Version `0.0.37` adds the process-local terminal boundary for one physical
+attempt. A non-`Clone` `LocalLogStorageAttemptTerminalAttestation` binds the
+exact current attempt ID to `PublicationCompleted`, `TransactionAborted`, or
+`NotAttempted`. Positive completion is a trusted host assertion that the exact
+associated publication transaction passed every check, enqueued the complete
+mutation set, and emitted `complete`; Rust cannot inspect or authenticate that
+browser event. The one request exposes a clonable opaque
+`LocalLogStorageAttemptRequestId`; publication-completed and transaction-
+aborted attestations require that exact token, making both unconstructible
+before egress through the safe API. Not-attempted instead names the attempt ID.
+Consuming `observe_terminal_attestation` checks the retained request/attempt
+correlation, and a recoverable failure returns both the unchanged owner and
+unapplied attestation.
+
+`HostAttestedCommitted` is historical only and cannot exact-resubmit.
+`AttemptAborted` and `NotAttempted` close one invocation only, retain the exact
+plan, and can resubmit it under a fresh ID. One ID names one invocation and at
+most one associated publication transaction. Copied or duplicate dispatches
+are outside that correlation and require future serialized storage resolution.
+
 Attempt-plan history remains O(1) in rotation count, not in bytes. A rotation
 plan can retain three complete payload envelopes: its candidate, the selected
 current value, and the selected predecessor when present. This release still
 performs no IndexedDB, JavaScript, Wasm, filesystem, or other storage I/O;
 provides no adapter or publication authority; proves no compare-and-swap, head
 currentness, global ID/fence freshness, generation emptiness, terminal commit
-or noncommit, durability, or ownership release; and does not provision a
-database, scope, head, or generation. Exact bytes, selected bindings, and an
-attempt-ID match are not storage authority or evidence. Terminal and serialized
-resolver evidence is the `0.0.37` gate. The profile's per-mutation epoch remains
-revocable and therefore cannot itself release a long-lived exclusive Rust
-writer. All storage V1 shapes remain unstable pre-`0.1` contracts rather than
-permanent compatibility promises.
+or noncommit independently of trusted host attestation, durability, or
+ownership release; and does not provision a database, scope, head, or
+generation. Exact bytes, selected bindings, and an attempt-ID match are not
+storage authority. Typed serialized resolver evidence, including distinct root
+and rotation observations and advisory `RetryEligibleAtResolution`, is the
+`0.0.38` gate. Attempt plans and evidence are process-local; crash-time plan
+reconstruction is not implemented, and neither attempt nor request IDs have a
+wire representation. The profile's per-mutation epoch remains revocable and
+therefore cannot itself release a long-lived exclusive Rust writer. All storage
+V1 shapes remain unstable pre-`0.1` contracts rather than permanent
+compatibility promises.
 
 ## Development
 

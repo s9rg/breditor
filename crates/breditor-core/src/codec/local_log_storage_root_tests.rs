@@ -6,8 +6,10 @@ use crate::{
     codec::{
         CodecErrorCode, DocumentJsonCodec, LocalLogCheckpointJsonCodec, LocalLogFrameLimits,
         LocalLogStorageAttemptPreparationErrorCode, LocalLogStorageAttemptRequest,
-        LocalLogStorageAttemptTransitionError, LocalLogStorageGenerationLimits,
-        LocalLogStorageRootBinding, LocalLogStorageRootBindingField, LocalLogStorageRootCodecError,
+        LocalLogStorageAttemptTerminalAttestation, LocalLogStorageAttemptTerminalAttestationKind,
+        LocalLogStorageAttemptTerminalOutcome, LocalLogStorageAttemptTransitionError,
+        LocalLogStorageGenerationLimits, LocalLogStorageRootBinding,
+        LocalLogStorageRootBindingField, LocalLogStorageRootCodecError,
         LocalLogStorageRootJsonCodec, LocalLogStorageRootPreparationInputs,
         LocalLogStorageRootRecordErrorCode, LocalLogStorageRootRecordLocation,
         LocalLogStorageRootResourceLimit, LocalLogStorageRootSelection,
@@ -19,10 +21,10 @@ use crate::{
     },
     local_log::{
         LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogId, LocalLogRecovery,
-        LocalLogRecoveryLimits, LocalLogStorageDatabaseIncarnationId, LocalLogStorageFenceId,
-        LocalLogStorageHeadId, LocalLogStorageProfileId, LocalLogStorageProfileVersion,
-        LocalLogStorageScopeId, LocalLogStorageScopeIncarnationId, LocalLogStorageTransactionId,
-        LocalSessionId,
+        LocalLogRecoveryLimits, LocalLogStorageAttemptRequestId,
+        LocalLogStorageDatabaseIncarnationId, LocalLogStorageFenceId, LocalLogStorageHeadId,
+        LocalLogStorageProfileId, LocalLogStorageProfileVersion, LocalLogStorageScopeId,
+        LocalLogStorageScopeIncarnationId, LocalLogStorageTransactionId, LocalSessionId,
     },
     session::EditorSession,
     state::{EditorContext, EditorState, LineageId},
@@ -770,6 +772,262 @@ fn exact_root_resubmission_preserves_plan_and_refreshes_attempt_identity() -> Te
     assert_eq!(retry.candidate_json(), expected_json);
     assert_eq!(retry.candidate_binding(), &expected_binding);
     assert_eq!(retry.candidate_json().as_ptr(), candidate_pointer);
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn root_terminal_attestations_require_the_exact_emitted_request() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let database_incarnation_id =
+        LocalLogStorageDatabaseIncarnationId::try_new("database:root-terminal")?;
+    let scope_incarnation_id =
+        LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-terminal")?;
+
+    let prepared = fixture.codec().prepare_root_attempt(
+        &database_incarnation_id,
+        &scope_incarnation_id,
+        &selection,
+    )?;
+    let expected_binding = prepared.candidate_binding().clone();
+    let uncertain = prepared.begin_attempt();
+    let attempt_id = uncertain.attempt_id().clone();
+    let other_prepared = fixture.codec().prepare_root_attempt(
+        &database_incarnation_id,
+        &scope_incarnation_id,
+        &selection,
+    )?;
+    let mut other_uncertain = other_prepared.begin_attempt();
+    let other_request_id = other_uncertain.adapter_request()?.request_id().clone();
+    let cross_plan =
+        LocalLogStorageAttemptTerminalAttestation::publication_completed(&other_request_id);
+    let Err(failure) = uncertain.observe_terminal_attestation(cross_plan) else {
+        return Err("cross-plan request correlation was accepted".into());
+    };
+    assert_eq!(failure.code(), super::LocalLogStorageAttemptTransitionErrorCode::AttemptIdMismatch);
+    assert_eq!(failure.owner().attempt_id(), &attempt_id);
+    assert!(!failure.owner().request_issued());
+    assert_eq!(
+        failure.attestation().kind(),
+        LocalLogStorageAttemptTerminalAttestationKind::PublicationCompleted
+    );
+    assert!(!format!("{failure:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!failure.to_string().contains("ROOTATTEMPTPAYLOADSENTINEL"));
+
+    let (mut uncertain, rejected, error) = failure.into_parts();
+    assert_eq!(error, LocalLogStorageAttemptTransitionError::AttemptIdMismatch);
+    assert_eq!(rejected.attempt_id(), other_request_id.attempt_id());
+    let request_id = {
+        let request = uncertain.adapter_request()?;
+        assert_eq!(request.candidate_json(), expected_json);
+        request.request_id().clone()
+    };
+    let complete = LocalLogStorageAttemptTerminalAttestation::publication_completed(&request_id);
+    let outcome = uncertain.observe_terminal_attestation(complete)?;
+    assert!(!format!("{outcome:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    let LocalLogStorageAttemptTerminalOutcome::HostAttestedCommitted(committed) = outcome else {
+        return Err("publication complete did not produce committed evidence".into());
+    };
+    assert_eq!(committed.attempt_id(), &attempt_id);
+    assert_eq!(committed.candidate_binding(), &expected_binding);
+    assert_eq!(committed.candidate_json_bytes(), expected_json.len());
+    assert_eq!(committed.selected_binding(), None);
+    assert!(!format!("{committed:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    assert!(!format!("{committed:?}").contains(&expected_json));
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn root_pre_egress_terminal_attestation_cannot_be_laundered_after_egress() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-egress-token")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-egress-token")?,
+        &selection,
+    )?;
+    let uncertain = prepared.begin_attempt();
+    let attempt_id = uncertain.attempt_id().clone();
+
+    // Crate-internal adversarial construction: public callers cannot create a
+    // request token before `adapter_request` exposes the core-issued token.
+    let synthetic_request_id = LocalLogStorageAttemptRequestId::new(&attempt_id);
+    let premature =
+        LocalLogStorageAttemptTerminalAttestation::publication_completed(&synthetic_request_id);
+    let Err(failure) = uncertain.observe_terminal_attestation(premature) else {
+        return Err("synthetic pre-egress request token was accepted".into());
+    };
+    assert_eq!(failure.code(), super::LocalLogStorageAttemptTransitionErrorCode::RequestNotIssued);
+    assert_eq!(failure.owner().attempt_id(), &attempt_id);
+    assert_eq!(failure.attestation().request_id(), Some(&synthetic_request_id));
+    assert!(!format!("{failure:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+
+    let (mut uncertain, premature, error) = failure.into_parts();
+    assert_eq!(error, LocalLogStorageAttemptTransitionError::RequestNotIssued);
+    let actual_request_id = {
+        let request = uncertain.adapter_request()?;
+        assert_eq!(request.candidate_json(), expected_json);
+        request.request_id().clone()
+    };
+    assert_ne!(actual_request_id, synthetic_request_id);
+
+    let Err(failure) = uncertain.observe_terminal_attestation(premature) else {
+        return Err("replayed pre-egress attestation was laundered after egress".into());
+    };
+    assert_eq!(failure.code(), super::LocalLogStorageAttemptTransitionErrorCode::RequestIdMismatch);
+    assert_eq!(failure.owner().attempt_id(), &attempt_id);
+    assert_eq!(failure.attestation().request_id(), Some(&synthetic_request_id));
+
+    let uncertain = failure.into_owner();
+    let complete =
+        LocalLogStorageAttemptTerminalAttestation::publication_completed(&actual_request_id);
+    let LocalLogStorageAttemptTerminalOutcome::HostAttestedCommitted(committed) =
+        uncertain.observe_terminal_attestation(complete)?
+    else {
+        return Err("exact emitted request token did not commit".into());
+    };
+    assert_eq!(committed.attempt_id(), &attempt_id);
+    assert_eq!(committed.candidate_json_bytes(), expected_json.len());
+    Ok(())
+}
+
+#[test]
+#[allow(clippy::too_many_lines)]
+fn root_abort_is_physical_only_and_retains_the_exact_plan() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-abort")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-abort")?,
+        &selection,
+    )?;
+    let expected_binding = prepared.candidate_binding().clone();
+    let mut uncertain = prepared.begin_attempt();
+    let attempt_id = uncertain.attempt_id().clone();
+    let request_id = {
+        let request = uncertain.adapter_request()?;
+        assert_eq!(request.candidate_json(), expected_json);
+        request.request_id().clone()
+    };
+
+    let aborted = LocalLogStorageAttemptTerminalAttestation::transaction_aborted(&request_id);
+    let outcome = uncertain.observe_terminal_attestation(aborted)?;
+    assert!(!format!("{outcome:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    let LocalLogStorageAttemptTerminalOutcome::AttemptAborted(aborted) = outcome else {
+        return Err("transaction abort did not produce aborted observation".into());
+    };
+    assert_eq!(aborted.attempt_id(), &attempt_id);
+    assert_eq!(aborted.candidate_binding(), &expected_binding);
+    assert!(!format!("{aborted:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+
+    assert_eq!(aborted.candidate_json_bytes(), expected_json.len());
+    Ok(())
+}
+
+#[test]
+fn root_not_attempted_before_egress_remains_noncommit_and_can_exact_resubmit() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-not-attempted")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-not-attempted")?,
+        &selection,
+    )?;
+    let expected_binding = prepared.candidate_binding().clone();
+    let uncertain = prepared.begin_attempt();
+    let attempt_id = uncertain.attempt_id().clone();
+    let not_attempted = LocalLogStorageAttemptTerminalAttestation::not_attempted(&attempt_id);
+    let outcome = uncertain.observe_terminal_attestation(not_attempted)?;
+    assert!(!format!("{outcome:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+    let LocalLogStorageAttemptTerminalOutcome::NotAttempted(not_attempted) = outcome else {
+        return Err("not-attempted attestation produced the wrong state".into());
+    };
+    assert!(!not_attempted.request_issued());
+    assert_eq!(not_attempted.candidate_binding(), &expected_binding);
+    assert!(!format!("{not_attempted:?}").contains("ROOTATTEMPTPAYLOADSENTINEL"));
+
+    let mut retried = not_attempted.begin_exact_resubmission();
+    assert_ne!(retried.attempt_id(), &attempt_id);
+    assert_eq!(retried.candidate_binding(), &expected_binding);
+    assert_eq!(retried.adapter_request()?.candidate_json(), expected_json);
+    Ok(())
+}
+
+#[test]
+fn root_abort_resubmission_refreshes_id_and_rejects_stale_completion() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-abort-retry")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-abort-retry")?,
+        &selection,
+    )?;
+    let mut uncertain = prepared.begin_attempt();
+    let prior_id = uncertain.attempt_id().clone();
+    let (candidate_pointer, prior_request_id) = {
+        let request = uncertain.adapter_request()?;
+        (request.candidate_json().as_ptr(), request.request_id().clone())
+    };
+    let abort = LocalLogStorageAttemptTerminalAttestation::transaction_aborted(&prior_request_id);
+    let LocalLogStorageAttemptTerminalOutcome::AttemptAborted(aborted) =
+        uncertain.observe_terminal_attestation(abort)?
+    else {
+        return Err("abort produced the wrong terminal observation".into());
+    };
+
+    let retried = aborted.begin_exact_resubmission();
+    let retried_id = retried.attempt_id().clone();
+    assert_ne!(retried_id, prior_id);
+    let stale = LocalLogStorageAttemptTerminalAttestation::publication_completed(&prior_request_id);
+    let Err(failure) = retried.observe_terminal_attestation(stale) else {
+        return Err("completion from the old physical attempt was accepted".into());
+    };
+    assert_eq!(failure.code(), super::LocalLogStorageAttemptTransitionErrorCode::AttemptIdMismatch);
+    assert_eq!(failure.owner().attempt_id(), &retried_id);
+    let mut retried = failure.into_owner();
+    let request = retried.adapter_request()?;
+    assert_eq!(request.candidate_json(), expected_json);
+    assert_eq!(request.candidate_json().as_ptr(), candidate_pointer);
+    Ok(())
+}
+
+#[test]
+fn root_copied_dispatch_is_outside_not_attempted_id_correlation() -> TestResult {
+    let fixture = RootFixture::new()?;
+    let (selection, expected_json) = fixture.encoded()?;
+    let prepared = fixture.codec().prepare_root_attempt(
+        &LocalLogStorageDatabaseIncarnationId::try_new("database:root-copy")?,
+        &LocalLogStorageScopeIncarnationId::try_new("scope-incarnation:root-copy")?,
+        &selection,
+    )?;
+    let mut uncertain = prepared.begin_attempt();
+    let attempt_id = uncertain.attempt_id().clone();
+    let (prior_request_id, candidate_pointer) = {
+        let request = uncertain.adapter_request()?;
+        (request.request_id().clone(), request.candidate_json().as_ptr())
+    };
+    let not_attempted = LocalLogStorageAttemptTerminalAttestation::not_attempted(&attempt_id);
+    let LocalLogStorageAttemptTerminalOutcome::NotAttempted(not_attempted) =
+        uncertain.observe_terminal_attestation(not_attempted)?
+    else {
+        return Err("not-attempted attestation produced the wrong state".into());
+    };
+    assert!(not_attempted.request_issued());
+    let retried = not_attempted.begin_exact_resubmission();
+    let retried_id = retried.attempt_id().clone();
+    let copied_dispatch_complete =
+        LocalLogStorageAttemptTerminalAttestation::publication_completed(&prior_request_id);
+    let Err(failure) = retried.observe_terminal_attestation(copied_dispatch_complete) else {
+        return Err("old attempt ID incorrectly correlated a copied dispatch".into());
+    };
+    assert_eq!(failure.code(), super::LocalLogStorageAttemptTransitionErrorCode::AttemptIdMismatch);
+    assert_eq!(failure.owner().attempt_id(), &retried_id);
+    let mut retried = failure.into_owner();
+    let request = retried.adapter_request()?;
+    assert_eq!(request.candidate_json(), expected_json);
+    assert_eq!(request.candidate_json().as_ptr(), candidate_pointer);
     Ok(())
 }
 

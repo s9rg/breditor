@@ -3,9 +3,10 @@
 Status: profile contract frozen in Breditor `0.0.33`; pure-Rust root/selection
 values implemented in `0.0.34`; exact selected identity-envelope retention and
 comparison implemented in `0.0.35`; exact non-owning attempt plans and
-`Prepared`/`Uncertain` mechanics implemented in `0.0.36`; no
-IndexedDB/JavaScript/Wasm adapter, terminal/resolver evidence, ownership
-typestate, or executable provisioning exists
+`Prepared`/`Uncertain` mechanics implemented in `0.0.36`; process-local exact
+physical-attempt terminal attestations implemented in `0.0.37`; no
+IndexedDB/JavaScript/Wasm adapter, serialized resolver evidence, restart plan
+reconstruction, ownership typestate, or executable provisioning exists
 
 Profile identifier: `breditor/indexeddb-local-log`
 
@@ -33,7 +34,7 @@ every browser implementation is bug-free.
 
 ## Decisions
 
-Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.36`
+Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.37`
 implement only their profile-independent Rust value/attempt subset:
 
 1. Initial provisioning uses a distinct canonical root-selection value. It
@@ -48,10 +49,12 @@ implement only their profile-independent Rust value/attempt subset:
    the profile check executable rather than aspirational.
 4. Provisioning, rotation publication, active-generation retirement, and the
    new empty-generation reservation are one IndexedDB `readwrite` transaction.
-5. Request success is not commit evidence. Only the transaction `complete`
-   event attests commit to the observing adapter run. `abort` attests rollback
-   of that attempt only; another serialized retry may already be committing the
-   same plan when its event handler runs.
+5. Request success is not commit evidence. Only an exact publication-armed
+   transaction's `complete` event can be host-attested as historical commit for
+   its associated attempt ID. A bare `complete` event from another branch or
+   transaction is insufficient. `abort` attests rollback of that physical
+   transaction only; another copied or serialized dispatch may already be
+   committing the same plan when its event handler runs.
 6. A missing terminal event is `Uncertain`. A later overlapping `readwrite`
    transaction resolves it from the database and scope incarnations, immutable
    transaction identity record, current head, and current exact selection.
@@ -77,7 +80,7 @@ implement only their profile-independent Rust value/attempt subset:
 ## Authority split
 
 `breditor-core` remains synchronous, deterministic, and free of browser
-handles. Versions `0.0.34` through `0.0.36` can:
+handles. Versions `0.0.34` through `0.0.37` can:
 
 - prepare and strictly encode the root-selection value from one borrowed local
   log compaction outcome;
@@ -100,11 +103,17 @@ handles. Versions `0.0.34` through `0.0.36` can:
 - conservatively begin `Uncertain` under a fresh core-issued ABA-safe process-
   local attempt ID, expose one borrowed exact request, reject cross-plan/stale
   IDs without classification, and exactly resubmit the same retained plan and
-  bytes under a fresh ID.
+  bytes under a fresh ID; and
+- consume one matching `LocalLogStorageAttemptTerminalAttestation`, yielding
+  host-attested historical commit or a retained physical `AttemptAborted`/
+  `NotAttempted` state, with recoverable rejection and exact resubmission from
+  either negative state; publication-completed and transaction-aborted
+  attestations require the exact opaque request ID emitted by the request.
 
-The v0.0.37 boundary must check typed host terminal/resolver evidence against
-one exact prepared plan without treating per-transaction IndexedDB fencing as
-release of an exclusive semantic owner.
+The v0.0.37 boundary checks typed host terminal evidence against one exact
+prepared plan without treating per-transaction IndexedDB fencing as release of
+an exclusive semantic owner. Typed serialized resolver evidence is deferred to
+v0.0.38.
 
 The JavaScript adapter owns `IDBDatabase`, `IDBTransaction`, requests, events,
 connection reopening, exact key construction, structured-clone values, and the
@@ -337,6 +346,39 @@ but matching and mismatch are correlation only, never terminal evidence.
 Attempt IDs/state are volatile, nonserializable, and unrecoverable after process
 restart. The one-shot borrowed request cannot prevent the host from copying its
 strings or dispatching duplicate external operations.
+
+Version `0.0.37` adds a non-`Clone`
+`LocalLogStorageAttemptTerminalAttestation` with stable
+`PublicationCompleted`, `TransactionAborted`, and `NotAttempted` kinds. The
+host may construct `PublicationCompleted` only for the exact transaction object
+associated with the emitted request ID, after it took the publication branch,
+passed all independent checks, enqueued the complete exact mutation set, and
+emitted `complete`. Completion of a resolver, cleanup, validation-only,
+idempotent no-write, or differently correlated transaction is not this
+attestation.
+
+The one borrowed adapter request exposes a clonable opaque
+`LocalLogStorageAttemptRequestId` created at egress. The
+publication-completed and transaction-aborted constructors require that exact
+request ID, so the safe API cannot manufacture either attestation before
+egress. The token binds one emitted request and at most one associated
+transaction to its attempt; it is not a capability, transaction handle,
+receipt, or durable identifier. `NotAttempted` instead names the attempt ID and
+is legal with or without prior request egress when the named invocation created
+no publication-capable transaction. Consuming `observe_terminal_attestation`
+checks the exact retained request/attempt correlation. Success yields
+`LocalLogStorageHostAttestedCommitted`, `LocalLogStorageAttemptAborted`, or
+`LocalLogStorageNotAttempted`. Rejection is recoverable: the typed failure owns
+the unchanged state, unapplied attestation, and payload-free transition error.
+
+Abort and not-attempted close only one physical invocation. Both retain the
+exact plan and may exactly resubmit it under a fresh ID. One attempt ID names
+one adapter invocation and at most one associated publication transaction.
+Copied request bytes may produce another transaction, but that dispatch is
+outside the original ID correlation and requires future storage resolution;
+each negative state has consumed the invocation's one terminal observation.
+`HostAttestedCommitted` cannot resubmit and is historical only: it does not
+prove current selection, durable flush, writer authority, or owner release.
 
 Here O(1) means constant in the number of older rotations, not constant bytes.
 Root normalization reads and retains bounded root/checkpoint bytes. Rotation
@@ -728,7 +770,7 @@ Provisioning outcomes are:
 - retired root transaction identity: `ResolutionRetired`; its supplied bytes
   are no longer profile-attested;
 - absent scope and absent planned artifacts in the same known database
-  incarnation: eligible to attempt;
+  incarnation: `RetryEligibleAtResolution` (advisory after the transaction);
 - same ID with any different fact/byte: `CollisionOrCorruption`;
 - another valid scope incarnation/head: `ScopeAlreadyProvisioned`; and
 - missing or changed database incarnation: `StorageResetOrIndeterminate`.
@@ -795,7 +837,7 @@ Pre-attempt/retry classifications inside this transaction are:
 - candidate record under the same key with different identities:
   `CollisionOrCorruption`;
 - candidate absent and exact expected current selection:
-  eligible to attempt;
+  `RetryEligibleAtResolution` (advisory after the transaction);
 - candidate absent and another valid current head:
   `DefinitelyNotCommittedConflict`; and
 - any broken selected-record/generation association:
@@ -805,64 +847,86 @@ Pre-attempt/retry classifications inside this transaction are:
 
 IndexedDB atomically commits all transaction changes or aborts and rolls them
 back. Its `complete` event is fired only after successful commit; a particular
-request can report success and the transaction can still fail later. These
-mappings describe the v0.0.37 terminal/resolver gate. Version `0.0.36` has no
-event-ingestion or evidence type and remains `Uncertain` regardless of a host's
-request success, `commit()` return, abort callback, or claimed completion. A
-future adapter maps observations as follows:
+request can report success and the transaction can still fail later. Version
+`0.0.37` implements only typed process-local host attestation, not an IndexedDB
+adapter or serialized resolver. A future adapter maps observations as follows:
 
-- transaction `complete`: `HostAttestedCommitted` for the exact plan;
-- transaction `abort`: `AttemptAborted`; that exact IndexedDB transaction
-  rolled back, but plan-level status still requires the resolver;
-- synchronous failure before a transaction or mutation request exists:
-  `NotAttempted`;
-- request success, `commit()` return, connection close, page navigation,
-  worker/process loss, callback loss, timeout, or cancellation without a
-  terminal event: `Uncertain`.
+- the exact publication-armed transaction associated with the emitted request
+  ID passes every check, enqueues the complete exact mutation set, and emits
+  `complete`: construct `PublicationCompleted` from that request ID, which
+  becomes `HostAttestedCommitted`;
+- that associated physical transaction emits `abort`: construct
+  `TransactionAborted` from that request ID, which becomes `AttemptAborted`;
+  this transaction rolled back, but plan-level status remains unresolved;
+- the named adapter invocation closes before creating a publication-capable
+  transaction: construct `NotAttempted`; and
+- request success, `commit()` return, an unrelated or nonpublication
+  transaction's `complete`, connection close, page navigation, worker/process
+  loss, callback loss, timeout, or cancellation without matching terminal
+  evidence: retain `Uncertain`.
 
-`complete` proves that the head selected this plan at the commit point. It does
-not prove that a later serialized transaction has not already superseded it by
-the time the event handler runs. The core must not reconstruct or release a
-writable successor from either `Uncertain` or commit evidence alone.
-Likewise `AttemptAborted` cannot become plan-level
-`DefinitelyNotCommitted`: another context may retry after the transaction
-finishes but before the queued abort handler runs.
-The adapter reopens as needed and creates a new fixed-scope `readwrite`
-transaction. Because it was created later with overlapping object stores, it
-cannot start until the earlier write transaction finishes and then observes
-that transaction's committed result or rollback.
+The attestation constructors are trusted host assertions. Rust checks the exact
+process-local attempt/request correlation but cannot inspect the
+`IDBTransaction` or authenticate event provenance. The safe API exposes the
+request ID only at egress, so publication-complete and abort cannot be attested
+before then; not-attempted is also legal before request egress. A rejected
+attestation returns the complete unchanged owner and unapplied observation.
 
-The resolver reads meta, scope, planned transaction key, planned committed-head
-unique-index key, selected exact transaction, previous exact transaction when
-named, and both selected checkpoint/active generation records in that one
-transaction. It validates the complete current-selection association described
-above before classifying the candidate:
+`HostAttestedCommitted` is historical: the transaction selected the plan at its
+commit point, but a later serialized transaction may have superseded it before
+the callback runs. It proves neither durable flush nor current writer authority
+and releases no writable owner. `AttemptAborted` and `NotAttempted` are even
+narrower physical-invocation observations. They retain the exact plan for
+allocation-preserving exact resubmission under a fresh ID. The core cannot
+prevent callers from copying those bytes or dispatching duplicates, but such a
+dispatch is outside the original attempt correlation and must be classified by
+storage resolution rather than another terminal attestation.
 
-- exact planned transaction plus exact selected head/selection/generation:
-  `CommittedSelectedAtResolution`;
-- exact planned transaction named as the immediate predecessor of a valid
-  later selection: `CommittedSuperseded`;
-- matching retired transaction identity: `ResolutionRetired`; historical use
-  of the identities is known, but the supplied bytes are not profile-attested
-  and no writer can be released;
-- planned transaction absent but the planned committed head is indexed to any
-  transaction: `CollisionOrCorruption`;
-- both planned transaction and committed head absent, same database/scope
-  incarnation, exact expected
-  head still selected: `DefinitelyNotCommittedRetryable` inside that resolving
-  transaction;
-- both planned identities absent, same incarnations, another valid head current:
-  `DefinitelyNotCommittedConflict`;
-- same transaction/head identity with different facts or bytes: `Corrupt`;
-- missing/different database or scope incarnation: `StorageResetOrIndeterminate`;
-  and
-- any missing or mismatched current selected record/generation: `Corrupt`.
+The serialized resolver is deferred to v0.0.38. It must reopen as needed and
+create one later fixed-scope `readwrite` transaction. Overlapping store scope
+orders it after transactions created earlier, but it cannot rule out a copied
+publication transaction created after the resolver. The typed resolver request
+and evidence therefore need separate root and rotation shapes:
 
-If resolution and retry are combined, comparison and all retry writes remain in
-that same transaction. A separate readonly inspection followed by a write is
-not a compare-and-swap. A `Retryable` result returned after the resolver
-finishes is only advisory; a later attempt must re-read all authority and may
-lose to another serialized operation.
+- A root resolver reads/validates meta, the planned scope, planned transaction
+  key, planned committed-head index key, both planned generation keys and scope
+  artifact ranges. When the candidate exists, it additionally validates the
+  exact root selection, checkpoint-only generation, active generation, and
+  scope-control association when selected; a later valid current plus exact
+  root immediate predecessor when superseded; or immutable identity only when
+  retired. An absent scope is eligible only when every planned artifact is
+  absent in the expected database incarnation; a different valid scope is
+  `ScopeAlreadyProvisioned`.
+- A rotation resolver reads/validates meta, scope control, the planned
+  transaction and committed-head index keys, and the selected generation
+  records. Its exact envelope comparison is case-specific: candidate absence
+  requires current storage to equal the full snapshotted prior selected binding,
+  current JSON, and optional predecessor JSON; candidate selected requires the
+  candidate binding/JSON as current and the plan's prior selected-current JSON
+  as immediate predecessor; candidate superseded requires a valid later current
+  with the exact candidate as immediate predecessor. A retired candidate proves
+  only immutable identity. Every branch preserves the expected database/scope
+  incarnations and fails closed on conflicting relationships.
+
+For either shape, exact selected evidence is
+`CommittedSelectedAtResolution`; an exact immediate predecessor is
+`CommittedSuperseded`; a matching retired identity is `ResolutionRetired` and
+does not attest the old supplied bytes; reused identities or broken
+associations fail closed as collision/corruption; and a missing/different
+incarnation is `StorageResetOrIndeterminate`. A valid different current head in
+the same rotation scope is `DefinitelyNotCommittedConflict` because the
+immutable expected head cannot become selected again.
+
+Candidate and committed-head absence after the complete shape-specific checks
+is only `RetryEligibleAtResolution`, never definite plan-level noncommit. It is
+advisory once the resolver transaction finishes because another copied dispatch
+may publish later. If resolution and retry are combined, comparison and all
+retry writes remain in that same transaction. Otherwise the later publication
+attempt must repeat every comparison and authority check; a prior inspection is
+not a compare-and-swap. When the resolver starts from
+`HostAttestedCommitted`, same-incarnation candidate absence instead contradicts
+the append-only transaction record and is corruption; a missing/different
+incarnation remains reset/indeterminate.
 
 ## Restart and revocable mutation authority
 
@@ -972,15 +1036,17 @@ capabilities.
 ## Explicit V1 limitations
 
 - No IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter exists
-  in `0.0.36`; the implemented Rust values and attempt states perform no I/O.
+  in `0.0.37`; the implemented Rust values and attempt states perform no I/O.
 - Root preparation/encoding/decoding, selected receipt/generation bindings,
   root/rotation normalization, and selected-root-aware next-rotation validation
   prove only bounded value and cross-link consistency. They do not provision a
   database, scope, head, checkpoint generation, or empty active generation.
 - No pure-Rust value proves CAS or current-head status, global ID/fence
   freshness, physical generation emptiness, mutable writer authority/epoch,
-  transaction completion, terminal commit/noncommit, durability, or ownership
-  release. The attempt plan/request contains no adapter or authority.
+  authenticated browser-event provenance, durability, or ownership release.
+  The v0.0.37 terminal states validate process-local correlation around trusted
+  host assertions only; the attempt plan/request contains no adapter or
+  authority.
 - O(1) selected normalization and retention are constant only in rotation-
   history length. The selected root retains up to two complete canonical outer
   selections plus current checkpoint text and a decoded anchor, so memory can
@@ -989,12 +1055,16 @@ capabilities.
   to three complete outer payload envelopes: candidate, selected current, and
   optional selected predecessor. Final plan preparation also temporarily
   reconstructs and then drops the candidate anchor.
-- `LocalLogStorageAttemptId` and `Prepared`/`Uncertain` state are process-local
-  and have no wire, persistence, cross-process, or restart representation. ID
-  matching or mismatch is correlation only and classifies no outcome.
+- `LocalLogStorageAttemptId`, `LocalLogStorageAttemptRequestId`, attestations,
+  and all attempt/evidence states are process-local and have no wire,
+  persistence, cross-process, or restart representation. They support only a
+  surviving exact in-memory plan; crash-time plan reconstruction and resolver
+  correlation are not implemented.
 - One physical attempt yields at most one borrowed request view, but public
   request strings can be copied and the external operation can be dispatched
-  more than once. This API guard is not single-dispatch evidence.
+  more than once. One attempt ID nevertheless names one adapter invocation and
+  at most one associated publication transaction; duplicate dispatches are
+  outside that correlation. This API guard is not single-dispatch evidence.
 - All writes serialize across all scopes because IndexedDB scheduling is
   object-store-granular and the profile deliberately fixes one common scope.
 - Transaction and generation identity tombstones grow without bound.
@@ -1044,16 +1114,25 @@ issues one fresh ABA-safe process-local ID before one borrowed request can be
 exposed; exact resubmission preserves the plan allocations/bytes under a fresh
 ID. Cross-plan/stale-ID rejection classifies nothing, and the one-shot request
 cannot prevent copied bytes or duplicate external dispatch. This boundary has
-no browser I/O, adapter, authority, terminal evidence, durability, or owner
-release. Request success, `commit()` return, and an abort callback do not become
-plan-level finality.
+no browser I/O, adapter, authority, durability, or owner release. Request
+success, `commit()` return, and an abort callback do not become plan-level
+finality.
 
-Version `0.0.37` is the next gate and should implement terminal and serialized-
-resolver evidence:
-matching transaction completion as host-attested historical commit, exact
-selected/superseded resolution, same-incarnation absence as definite noncommit,
-and fail-closed retired/reset/corrupt classifications. Only after those
-boundaries and their adversarial tests are stable should a JavaScript adapter be
-implemented and tested in real browsers. Consuming exclusive-owner typestate
-remains blocked on a separately frozen held-lock, transaction-coupled
-admission, or speculative-branch contract.
+Version `0.0.37` adds exact-ID `LocalLogStorageAttemptTerminalAttestation`,
+stable physical terminal kinds, consuming `observe_terminal_attestation`, and
+recoverable transition failure. An exact publication-armed completion becomes
+host-attested historical commit. Publication-completed and transaction-aborted
+require the exact opaque request ID emitted at egress; not-attempted instead
+names the attempt ID. Abort and not-attempted remain physical-only states with
+exact resubmission under a fresh ID. The boundary verifies neither IndexedDB
+event provenance nor current storage and has no crash reconstruction.
+
+Version `0.0.38` is the next gate and should implement distinct root and
+rotation serialized-resolver evidence: exact selected/superseded resolution,
+advisory `RetryEligibleAtResolution` for shape-correct serialized absence, and
+fail-closed retired/reset/corrupt classifications. It must not call absence
+definite noncommit because a copied dispatch can create a later transaction.
+Only after those boundaries and their adversarial tests are stable should a
+JavaScript adapter be implemented and tested in real browsers. Consuming
+exclusive-owner typestate remains blocked on a separately frozen held-lock,
+transaction-coupled admission, or speculative-branch contract.

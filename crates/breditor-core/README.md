@@ -201,19 +201,43 @@ and not serializable or restart-recoverable. The one-shot borrowed request does
 not stop callers from copying its bytes or dispatching duplicate external
 operations.
 
+Version `0.0.37` adds a process-local terminal host-attestation boundary. Each
+emitted request exposes a clonable opaque
+`LocalLogStorageAttemptRequestId`; only that request-issued token can construct
+`PublicationCompleted` or `TransactionAborted`, so the safe API cannot create
+those attestations before request egress. `PublicationCompleted` is a trusted
+host assertion that the exact request-correlated publication transaction
+passed every independent check, enqueued the complete exact mutation set, and
+emitted its terminal `complete` event. A bare resolver, cleanup, validation-
+only, or idempotent no-write transaction completion does not qualify.
+
+Consuming `observe_terminal_attestation` validates the exact request/attempt
+correlation. It produces historical `LocalLogStorageHostAttestedCommitted`,
+physical-only `LocalLogStorageAttemptAborted`, or physical-only
+`LocalLogStorageNotAttempted`. Rejection returns the complete unchanged state
+and unapplied attestation. Commit evidence cannot resubmit; abort and not-
+attempted retain the exact plan and can resubmit under a fresh attempt ID.
+One attempt ID names one adapter invocation and at most one associated
+publication transaction. A copied dispatch is outside that correlation and
+must be classified by future serialized storage resolution, not a second
+terminal callback.
+
 Attempt-plan retention is O(1) only in history count. A root retains one
 payload envelope; a rotation can retain the candidate, selected current, and
 optional selected predecessor—up to three complete envelopes containing
 checkpoints. The crate still has no IndexedDB, JavaScript, Wasm, filesystem, or
 other storage adapter; performs no I/O; provisions no
 database/scope/head/generation; and proves no CAS, head currentness, lifetime ID
-or fence freshness, empty generation, writer authority or epoch, terminal
-commit/noncommit, durability, or ownership release. Exact bytes, selected
-bindings, and attempt-ID matches are not storage authority or evidence.
-Terminal/resolver evidence is the `0.0.37` gate. The profile cannot release a
-long-lived exclusive Rust writer; that still needs a separately held lock,
-transaction-coupled admission, or explicit revocable/speculative branch
-semantics. These storage formats remain unstable pre-`0.1` contracts.
+or fence freshness, empty generation, writer authority or epoch, host-event
+provenance, plan-level noncommit, durability, or ownership release. Historical
+commit exists only as a trusted host attestation. Exact bytes, selected
+bindings, and ID matches are not storage authority. Separate root/rotation
+resolver evidence and advisory `RetryEligibleAtResolution` are the `0.0.38`
+gate; crash-time attempt-plan reconstruction is not implemented. The profile
+cannot release a long-lived exclusive Rust writer; that still needs a
+separately held lock, transaction-coupled admission, or explicit
+revocable/speculative branch semantics. These storage formats remain unstable
+pre-`0.1` contracts.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

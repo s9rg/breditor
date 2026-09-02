@@ -8,6 +8,10 @@ pub enum LocalLogStorageAttemptTransitionErrorCode {
     AttemptIdMismatch,
     /// One physical attempt already yielded its request view.
     RequestAlreadyBorrowed,
+    /// Transaction terminal evidence was supplied before request egress.
+    RequestNotIssued,
+    /// Terminal evidence names a different emitted request.
+    RequestIdMismatch,
 }
 
 impl LocalLogStorageAttemptTransitionErrorCode {
@@ -19,6 +23,8 @@ impl LocalLogStorageAttemptTransitionErrorCode {
             Self::RequestAlreadyBorrowed => {
                 "local_log_storage_attempt_transition.request_already_borrowed"
             }
+            Self::RequestNotIssued => "local_log_storage_attempt_transition.request_not_issued",
+            Self::RequestIdMismatch => "local_log_storage_attempt_transition.request_id_mismatch",
         }
     }
 }
@@ -33,6 +39,12 @@ pub enum LocalLogStorageAttemptTransitionError {
     /// A physical attempt yields at most one borrowed adapter request view.
     #[error("storage attempt already yielded its adapter request")]
     RequestAlreadyBorrowed,
+    /// A transaction cannot terminate for an attempt whose request never left.
+    #[error("storage attempt has not yielded its adapter request")]
+    RequestNotIssued,
+    /// The supplied request-issued token does not name the retained request.
+    #[error("storage-attempt request correlation does not match the emitted request")]
+    RequestIdMismatch,
 }
 
 impl LocalLogStorageAttemptTransitionError {
@@ -44,6 +56,8 @@ impl LocalLogStorageAttemptTransitionError {
             Self::RequestAlreadyBorrowed => {
                 LocalLogStorageAttemptTransitionErrorCode::RequestAlreadyBorrowed
             }
+            Self::RequestNotIssued => LocalLogStorageAttemptTransitionErrorCode::RequestNotIssued,
+            Self::RequestIdMismatch => LocalLogStorageAttemptTransitionErrorCode::RequestIdMismatch,
         }
     }
 }
@@ -72,9 +86,27 @@ mod tests {
             LocalLogStorageAttemptTransitionErrorCode::RequestAlreadyBorrowed.as_str(),
             "local_log_storage_attempt_transition.request_already_borrowed"
         );
+        assert_eq!(
+            LocalLogStorageAttemptTransitionError::RequestNotIssued.code(),
+            LocalLogStorageAttemptTransitionErrorCode::RequestNotIssued
+        );
+        assert_eq!(
+            LocalLogStorageAttemptTransitionErrorCode::RequestNotIssued.as_str(),
+            "local_log_storage_attempt_transition.request_not_issued"
+        );
+        assert_eq!(
+            LocalLogStorageAttemptTransitionError::RequestIdMismatch.code(),
+            LocalLogStorageAttemptTransitionErrorCode::RequestIdMismatch
+        );
+        assert_eq!(
+            LocalLogStorageAttemptTransitionErrorCode::RequestIdMismatch.as_str(),
+            "local_log_storage_attempt_transition.request_id_mismatch"
+        );
         for error in [
             LocalLogStorageAttemptTransitionError::AttemptIdMismatch,
             LocalLogStorageAttemptTransitionError::RequestAlreadyBorrowed,
+            LocalLogStorageAttemptTransitionError::RequestNotIssued,
+            LocalLogStorageAttemptTransitionError::RequestIdMismatch,
         ] {
             assert!(error.source().is_none());
             assert!(!format!("{error:?}").contains("PAYLOADSENTINEL"));

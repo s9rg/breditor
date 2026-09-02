@@ -5,8 +5,10 @@ Status: value and strict ordinary-rotation validation implemented in Breditor
 `0.0.33` contract; pure-Rust root/selected normalization and selected-root-aware
 next-rotation validation implemented in `0.0.34`; exact selected-envelope
 retention/comparison implemented in `0.0.35`; exact non-owning attempt plans and
-`Prepared`/`Uncertain` mechanics implemented in `0.0.36`; storage I/O,
-terminal/resolver evidence, and ownership release remain unimplemented
+`Prepared`/`Uncertain` mechanics implemented in `0.0.36`; process-local exact
+physical-attempt terminal attestations implemented in `0.0.37`; storage I/O,
+serialized resolver evidence, restart reconstruction, and ownership release
+remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -57,11 +59,25 @@ cross-plan/stale-ID rejection, and allocation-preserving exact resubmission.
 They add no I/O, authority, currentness, terminal evidence, durability, or
 owner release.
 
+Version `0.0.37` consumes one exact-ID host terminal attestation through
+`observe_terminal_attestation`. `PublicationCompleted` means the host attests
+that the exact publication-armed transaction passed all checks, enqueued the
+complete exact mutation set, and emitted `complete`; a bare `complete` event or
+completion of a validation, cleanup, resolver, or no-write transaction is
+insufficient. Publication-completed and transaction-aborted attestations require
+the exact opaque request ID cloned from the one emitted request; not-attempted
+instead names the attempt ID. The negative branches close one physical
+invocation only and retain the exact plan for exact resubmission. Rejected
+attestations return the unchanged owner and unapplied attestation. This is still
+process-local host evidence, not browser-event verification, serialized storage
+resolution, authority, durability, or owner release.
+
 The contract is deliberately platform-neutral. It defines the facts that a
 native-filesystem or IndexedDB profile must associate and the evidence states
-that later gates must enforce; v0.0.36 implements only exact plan preparation
-and conservative uncertainty. It does not pretend that those two profiles have
-the same durability primitive.
+that later gates must enforce; v0.0.37 implements exact plan preparation,
+conservative uncertainty, and host-attested terminal classification for one
+physical invocation. It does not pretend that those two profiles have the same
+durability primitive.
 
 ## Purpose and authority
 
@@ -133,11 +149,12 @@ reject byte-different records that share the same normalized scalar summary.
 The raw retained selections remain core-private; public code can borrow the
 receipt bindings, inspect byte lengths, and request exact comparison.
 
-Version `0.0.36` adds no host attestation. It builds the complete exact attempt
-plan before egress, enters `Uncertain` under a fresh core-issued physical-
-attempt identity, and can expose one borrowed payload request. Identity
-matching is process-local correlation only. Terminal events and serialized
-resolution remain the v0.0.37 boundary.
+Version `0.0.36` builds the complete exact attempt plan before egress, enters
+`Uncertain` under a fresh core-issued physical-attempt identity, and can expose
+one borrowed payload request. Version `0.0.37` can consume one matching typed
+host attestation and retain the plan in a positive or negative physical-attempt
+state. Identity matching and event classification remain process-local;
+serialized storage resolution is the v0.0.38 boundary.
 
 ## Authoritative manifest and head
 
@@ -388,21 +405,22 @@ selection byte lengths in `Debug`, and keeps raw retained selection access
 core-private. Its public byte-validation errors identify only shape or
 current/predecessor role. The v0.0.36 prepared/uncertain states, borrowed
 request variants, opaque attempt ID, and preparation/transition errors likewise
-have payload-redacted diagnostics. Request `Debug` reports bindings and byte
-lengths rather than candidate or selected JSON; bounded identifiers may still
-appear and are not treated as secrets.
+have payload-redacted diagnostics. The v0.0.37 terminal attestation, terminal
+outcome states, and recoverable terminal failure follow the same rule. Request
+`Debug` reports bindings and byte lengths rather than candidate or selected
+JSON; bounded identifiers may still appear and are not treated as secrets.
 
-## Attempt mechanics and future evidence states
+## Attempt mechanics and terminal evidence states
 
-The v0.0.36 Rust boundary is non-owning with respect to checkpoint anchors,
+The v0.0.37 Rust boundary is non-owning with respect to checkpoint anchors,
 semantic sessions, adapters, and writer authority. Its private exact plan and
-public private-constructor `Prepared`/`Uncertain` states are non-`Clone`; they
-carry immutable plan data and volatile correlation only and can never release a
-writable owner. `DefinitelyNotCommitted`, `HostAttestedCommitted`,
-`NotAttempted`, `AttemptAborted`, and resolver outcomes remain specification
-states for v0.0.37, not v0.0.36 Rust types. The older borrowed
-`prepare_rotation` and `prepare_rotation_from_selected` value-validation
-actions are not `Prepared`.
+public private-constructor attempt/evidence states are non-`Clone`; they carry
+immutable plan data, volatile correlation, and typed host assertions only and
+can never release a writable owner. `HostAttestedCommitted`, `NotAttempted`,
+and `AttemptAborted` are Rust types. Plan-level `DefinitelyNotCommitted` and
+serialized resolver outcomes remain prospective v0.0.38 states. The older
+borrowed `prepare_rotation` and `prepare_rotation_from_selected` value-
+validation actions are not `Prepared`.
 
 ### Prepared
 
@@ -436,7 +454,7 @@ distinct while any old clone is observable, avoiding a process-local ABA
 collision. It is not caller-chosen, serializable, ordered, hashed, durable,
 authority-bearing, or terminal evidence.
 
-### DefinitelyNotCommitted
+### Prospective DefinitelyNotCommitted
 
 `DefinitelyNotCommitted` means the profile has positively established that the
 exact in-flight attempt did not become authoritative and cannot publish later
@@ -459,10 +477,19 @@ evidence that makes later publication impossible.
 
 ### HostAttestedCommitted
 
-`HostAttestedCommitted` means the adapter attests that the authoritative head
-equals `committedHeadId`, that the selected record is the exact planned record,
-and that the profile's commit/fence conditions completed. This state is a host
-assertion, not an independent proof by `breditor-core`.
+In v0.0.37, `LocalLogStorageHostAttestedCommitted` means the host attests that
+the exact transaction object associated with the retained emitted request ID was armed
+on the publication branch with the complete exact plan and emitted its terminal
+`complete` event after all checks and mutation requests were enqueued. A bare
+`complete` callback is insufficient: a validation-only, cleanup, resolver,
+idempotent no-write, or differently correlated transaction must not construct
+`PublicationCompleted`. Rust verifies only process-local ID correlation and
+legal typestate ordering; it cannot inspect or authenticate the host event.
+
+The state is positive historical plan-commit evidence. It does not prove that
+`committedHeadId` is still selected when the callback is handled, that storage
+survived later reset or eviction, or that strict durability caused an
+`fsync`-equivalent flush. It deliberately has no exact-resubmission transition.
 
 Version `0.0.33` corrects an earlier overclaim: historical commit evidence alone
 cannot release a long-lived exclusive semantic owner. A profile-specific
@@ -474,14 +501,14 @@ release boundary must prevent a duplicate receipt or identical retry from
 releasing a second exclusive owner. The IndexedDB V1 profile has no such
 transition; its per-mutation epoch can be revoked before an event callback.
 
-### Uncertain
+### Uncertain and physical terminal observations
 
-Version `0.0.36` enters `LocalLogStorageUncertainAttempt` before request egress,
-so it conservatively cannot distinguish never dispatched from possibly
-committed. The value retains the complete exact plan, one current physical-
-attempt ID, and whether that attempt already yielded its request. It owns no
-anchor, adapter, writer capability, or terminal evidence and cannot start a
-successor, classify commit/noncommit, or authorize cleanup.
+Version `0.0.37` still enters `LocalLogStorageUncertainAttempt` before request
+egress, so it conservatively cannot distinguish never dispatched from possibly
+committed until a typed host attestation is consumed. The value retains the
+complete exact plan, one current physical-attempt ID, and whether that attempt
+already yielded its request. It owns no anchor, adapter, or writer capability
+and cannot start a successor, establish currentness, or authorize cleanup.
 
 `adapter_request(&mut self)` yields at most one borrowed non-`Clone`
 `LocalLogStorageAttemptRequest` for the current physical attempt. A root request
@@ -490,7 +517,10 @@ JSON. A rotation request also exposes the snapshotted prior selected binding
 and exact selected current/optional-predecessor JSON. The borrow cannot outlive
 its uncertain owner. This API guard reduces accidental duplicate egress, but a
 host can copy the strings or dispatch them repeatedly; it is not proof of a
-single external operation.
+single external operation. The request also exposes a clonable opaque
+`LocalLogStorageAttemptRequestId` generated at egress. Its allocation identity
+binds the one emitted request to its attempt; it is volatile correlation, not a
+capability, transaction handle, receipt, or durable identifier.
 
 `require_current_attempt_id` rejects an opaque ID from another plan or an
 earlier retry with `AttemptIdMismatch`. A match or mismatch classifies nothing.
@@ -503,15 +533,45 @@ candidate binding/JSON, and selected rotation context are unchanged. An old
 physical attempt can still complete after the fresh one begins. The ID and
 state are process-local and cannot resolve a retry after restart.
 
+`LocalLogStorageAttemptTerminalAttestation` is non-`Clone` and classifies one
+current attempt as `PublicationCompleted`, `TransactionAborted`, or
+`NotAttempted`. Publication-completed and transaction-aborted constructors take
+the exact `LocalLogStorageAttemptRequestId` cloned from the emitted request;
+safe callers therefore cannot construct either before egress. Not-attempted
+takes the attempt ID and is accepted with or without prior request egress when
+the named invocation created no publication-capable transaction. Consuming
+`observe_terminal_attestation` checks the exact retained request/attempt
+correlation. Success returns a
+`LocalLogStorageAttemptTerminalOutcome` carrying
+`LocalLogStorageHostAttestedCommitted`, `LocalLogStorageAttemptAborted`, or
+`LocalLogStorageNotAttempted`.
+
+An attempt/request correlation mismatch or impossible transaction terminal
+observation returns
+`LocalLogStorageAttemptTerminalFailure<T>`. That recoverable failure owns the
+complete unchanged typestate value and unapplied attestation; callers can
+inspect the payload-free error/code and recover either the owner or all parts.
+Terminal-observation rejection uses `AttemptIdMismatch`, `RequestNotIssued`, or
+`RequestIdMismatch`; `RequestAlreadyBorrowed` remains the separate one-shot
+request-view error. No rejected observation silently consumes the exact plan.
+
+`AttemptAborted` says only that one associated physical transaction rolled back.
+`NotAttempted` says only that one named adapter invocation created no
+publication transaction. Both retain the exact plan and attempt ID, remain
+unresolved at plan level, and can consume `begin_exact_resubmission` to reuse
+the same plan allocations and bytes under a fresh ID. One attempt ID names one
+adapter invocation and at most one associated publication transaction. If
+request bytes were copied or dispatched again, that operation is outside the
+attempt correlation and may still commit. Each negative state has consumed the
+invocation's one terminal observation and accepts no further terminal
+attestation; future serialized storage resolution must classify any duplicate
+or otherwise uncorrelated dispatch.
+
 A future adapter must separately present profile-valid publication authority;
-the v0.0.36 plan/request contains none. A profile may
+the plan/request and every v0.0.37 evidence state contain none. A profile may
 replace revocable volatile authority only through its serialized
 resolution/reacquisition rules, never by treating the persisted `fenceId` as
-that authority. Version `0.0.37` may resolve to
-`HostAttestedCommitted` only after an exact authoritative match plus the
-profile's finality and fence attestation, or to
-`DefinitelyNotCommitted` only after profile-defined positive noncommit proof.
-Otherwise it remains uncertain.
+that authority.
 
 After an uncertain attempt, observing that the authoritative head still equals
 `expectedHeadId` is insufficient by itself. An earlier asynchronous, queued, or
@@ -521,6 +581,44 @@ own final plan-level cancellation/resolution barrier—before the state can
 become `DefinitelyNotCommitted`. For IndexedDB V1, an `abort` event proves only
 that one database transaction rolled back; another context may already have
 retried the same plan, so the fixed overlapping resolver is still required.
+
+### Prospective serialized resolver (v0.0.38)
+
+The resolver remains unimplemented in v0.0.37. It must consume a surviving
+process-local exact plan and classify typed evidence gathered in one later
+profile-serialized transaction. Root and rotation evidence must remain separate
+because their prepublication authority shapes differ:
+
+- A root resolver must validate the expected database incarnation, distinguish
+  an entirely absent planned scope plus absent candidate transaction/head and
+  generation artifacts from an already provisioned scope, and validate the
+  complete exact root selection/checkpoint/active-generation association when
+  selected, its exact immediate-predecessor relationship when superseded, or
+  its immutable identity when retired.
+- A rotation resolver must validate both expected incarnations and classify
+  case-specific exact evidence. Absence/retry eligibility requires the observed
+  current selection to equal the complete snapshotted prior selected envelope
+  (binding plus exact current and optional predecessor bytes). Selected commit
+  instead requires the candidate binding/JSON as current and the plan's prior
+  selected-current JSON as its immediate predecessor. Superseded commit requires
+  a valid later current with the exact candidate as its immediate predecessor.
+  Retired evidence can validate immutable identity only. Every branch also
+  validates the associated current checkpoint/active-generation records.
+
+For either shape, an exact selected candidate may classify historical commit;
+an exact candidate that is the valid immediate predecessor may classify
+superseded commit; a matching retired identity cannot attest the old supplied
+bytes; identity/byte collisions, broken associations, and resets fail closed.
+Candidate/head absence observed after serialization is only
+`RetryEligibleAtResolution`: it is advisory after that resolver transaction
+finishes, never definite plan-level noncommit, because copied request bytes can
+still be dispatched in another later transaction. A retry performed in a
+separate transaction must repeat every comparison and authority check; an
+atomic compare-and-retry must keep the reads and writes in the same transaction.
+If the surviving source state is `HostAttestedCommitted`, same-incarnation
+candidate absence instead contradicts the profile's append-only transaction
+record and must classify as corruption; a missing/different incarnation remains
+reset/indeterminate rather than proving either outcome.
 
 ## Retry and idempotency rules
 
@@ -566,7 +664,8 @@ or newest-looking tail.
    operation may still publish, case 5 applies instead.
 3. A profile-defined final compare-and-swap failure or plan-level terminal
    barrier yields `DefinitelyNotCommitted`; the old head remains authoritative.
-   A concrete IndexedDB `abort` event is only `AttemptAborted`, not that
+   A concrete IndexedDB `abort` event is only v0.0.37 `AttemptAborted`, and a
+   pre-transaction invocation failure is only `NotAttempted`; neither is that
    barrier.
 4. Once the atomic head switch selects `committedHeadId`, the exact manifest,
    and the profile-established empty/absent successor reservation, restart
@@ -590,8 +689,8 @@ or newest-looking tail.
    existing Frame V1 and tail-cursor contracts.
 8. Old-generation truncation, deletion, or garbage collection begins only after
    exact commit resolution and any profile retention barrier. It is forbidden
-   while prepared, in flight, definitely-not-committed but retryable, or
-   uncertain.
+   while prepared, in flight, physically aborted/not-attempted, retry-eligible,
+   or uncertain.
 
 An old writer that appends after the claimed fence is a storage-profile
 violation. The manifest's accepted prefix prevents those bytes from silently
@@ -627,13 +726,14 @@ metadata, and the head as independently drifting updates.
 
 ## Non-goals and forbidden inferences
 
-This specification and the implemented validation values do not provide:
+This specification and the implemented values do not provide:
 
-- actual storage bootstrap/provisioning, terminal commit/noncommit or resolver
-  evidence, ownership typestate, adapter, async API, writer capability, or I/O
-  implementation in `0.0.36`; the implemented plan and attempt ID provide only
-  exact payload/correlation mechanics, selected receipt bindings are caller-
-  supplied validation inputs, and the checked root value is only a proposal;
+- actual storage bootstrap/provisioning, serialized resolver evidence,
+  plan-level definite-noncommit proof, ownership typestate, adapter, async API,
+  writer capability, or I/O implementation in `0.0.37`; the implemented
+  terminal states are process-local host attestations about one physical
+  invocation, selected receipt bindings are caller-supplied validation inputs,
+  and the checked root value is only a proposal;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -644,8 +744,9 @@ This specification and the implemented validation values do not provide:
 - proof that a supplied binding, prior manifest, or normalized selected root is
   currently authoritative, that the physical successor is fresh and empty, or
   permission to release a writable successor owner;
-- proof that one borrowed request was dispatched only once, that an ID match is
-  a storage observation, or that process-local attempt state survives restart;
+- proof that one borrowed request was dispatched only once, that an attempt or
+  request ID match is authenticated browser-event provenance, or that process-
+  local attempt state and its exact plan survive restart;
 - a change to Local Log Checkpoint V1 or Local Log Frame V1;
 - durable encoding of recovery, compaction, or checkpoint resource policies;
 - generation garbage collection, tail-wide replay, migration, retry scheduling,
@@ -711,13 +812,27 @@ cannot prevent copied bytes or duplicate external dispatch. These values do not
 classify request success, `commit()` return, or an abort callback as plan-level
 finality, release a checkpoint anchor, or claim stable currentness.
 
-Version `0.0.37` is the next gate and should add the terminal and serialized-
-resolver evidence classifications: matching transaction completion as host-
-attested historical
-commit, exact selected/superseded resolution, same-incarnation absence as
-definite noncommit, and fail-closed retired/reset/corrupt outcomes. IndexedDB
-profile V1 still cannot release a long-lived exclusive Rust owner: every
-mutation fence is revocable between transactions. Consuming ownership requires
-a separately held lock, transaction-coupled semantic admission, or an explicitly
-revocable/speculative branch. The provisioning contract must not treat a
-checked root, exact envelope match, or in-memory compaction as storage authority.
+Version `0.0.37` adds `LocalLogStorageAttemptTerminalAttestation` and its stable
+kind, consuming `observe_terminal_attestation`, recoverable rejection that
+retains both owner and unapplied attestation, and the non-`Clone`
+`HostAttestedCommitted`, `AttemptAborted`, and `NotAttempted` states. Positive
+completion and abort require the exact opaque request ID emitted at request
+egress; the request ID makes pre-egress transaction attestations unconstructible
+through the safe API. Positive completion remains a host assertion about the
+exact publication-armed transaction; abort/not-attempted are physical-only
+observations. The two negative states preserve allocation-identical exact
+resubmission under a fresh attempt ID after consuming the prior invocation's one
+terminal observation. None of these states provides storage currentness,
+adapter authority, durability, owner release, or restart reconstruction.
+
+Version `0.0.38` is the next gate and should add typed serialized-resolver
+evidence, with distinct root and rotation observation shapes. It should classify
+exact selected/superseded commit and fail-closed retired/reset/corrupt cases.
+Serialized absence may be `RetryEligibleAtResolution`, but that result is only
+advisory outside the resolving transaction and is not definite plan-level
+noncommit. IndexedDB profile V1 still cannot release a long-lived exclusive
+Rust owner: every mutation fence is revocable between transactions. Consuming
+ownership requires a separately held lock, transaction-coupled semantic
+admission, or an explicitly revocable/speculative branch. The provisioning
+contract must not treat a checked root, exact envelope match, host attestation,
+or in-memory compaction as storage authority.

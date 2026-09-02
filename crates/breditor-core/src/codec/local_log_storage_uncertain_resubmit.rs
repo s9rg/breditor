@@ -11,12 +11,12 @@ impl LocalLogStorageUncertainAttempt {
     /// process-local correlation identity is refreshed and one-shot request
     /// eligibility is reset. No replacement input is accepted.
     ///
-    /// The earlier physical attempt may still commit. This state therefore
-    /// remains `Uncertain`; a future adapter must serialize or idempotently
-    /// handle overlapping exact attempts.
+    /// The earlier physical attempt, or an uncorrelated copied dispatch, may
+    /// still commit. This state therefore remains `Uncertain`; a future adapter
+    /// must serialize or idempotently handle overlapping exact attempts.
     pub fn begin_exact_resubmission(mut self) -> Self {
         self.attempt_id = LocalLogStorageAttemptId::new();
-        self.request_issued = false;
+        self.request_id = None;
         self
     }
 }

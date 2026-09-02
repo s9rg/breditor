@@ -15,6 +15,7 @@ use crate::{
 use super::{
     DocumentJsonCodec, LocalLogCheckpointJsonCodec, LocalLogFrameLimits,
     LocalLogStorageAttemptPreparationErrorCode, LocalLogStorageAttemptRequest,
+    LocalLogStorageAttemptTerminalAttestation, LocalLogStorageAttemptTerminalOutcome,
     LocalLogStorageAttemptTransitionError, LocalLogStorageGenerationBinding,
     LocalLogStorageGenerationBindingField, LocalLogStorageGenerationCodecError,
     LocalLogStorageGenerationContinuityError, LocalLogStorageGenerationContinuityErrorCode,
@@ -805,6 +806,101 @@ fn exact_rotation_resubmission_preserves_every_byte_and_rejects_prior_identity()
         );
         seen_attempt_ids.push(current_id);
     }
+    Ok(())
+}
+
+#[test]
+fn rotation_abort_resubmission_preserves_candidate_and_selected_envelope_allocations() -> TestResult
+{
+    let fixture = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+    let codec = fixture.codec();
+    let manifest = fixture.prepared()?;
+    let expected_candidate = codec.encode_rotation_from_selected(&manifest, &fixture.selected)?;
+    let expected_current = fixture.selected.current_selection_json().to_owned();
+    let expected_predecessor = fixture
+        .selected
+        .predecessor_selection_json()
+        .ok_or("selected rotation omitted predecessor")?
+        .to_owned();
+    let prepared = codec.prepare_rotation_attempt(&fixture.selected, &manifest)?;
+    let expected_candidate_binding = prepared.candidate_binding().clone();
+    let expected_selected_binding =
+        prepared.selected_binding().ok_or("rotation plan omitted selected binding")?.clone();
+    let mut uncertain = prepared.begin_attempt();
+    let prior_id = uncertain.attempt_id().clone();
+    let (candidate_pointer, current_pointer, predecessor_pointer, request_id) = {
+        let LocalLogStorageAttemptRequest::Rotation(request) = uncertain.adapter_request()? else {
+            return Err("rotation plan yielded a root request".into());
+        };
+        (
+            request.candidate_json().as_ptr(),
+            request.selected_current_json().as_ptr(),
+            request
+                .selected_predecessor_json()
+                .ok_or("rotation request omitted predecessor")?
+                .as_ptr(),
+            request.request_id().clone(),
+        )
+    };
+
+    let abort = LocalLogStorageAttemptTerminalAttestation::transaction_aborted(&request_id);
+    let LocalLogStorageAttemptTerminalOutcome::AttemptAborted(aborted) =
+        uncertain.observe_terminal_attestation(abort)?
+    else {
+        return Err("rotation abort produced the wrong state".into());
+    };
+    assert_eq!(aborted.selection_kind(), LocalLogStorageSelectionKind::Rotation);
+    assert_eq!(aborted.candidate_binding(), &expected_candidate_binding);
+    assert_eq!(aborted.selected_binding(), Some(&expected_selected_binding));
+    assert_eq!(aborted.selected_current_json_bytes(), Some(expected_current.len()));
+    assert_eq!(aborted.selected_predecessor_json_bytes(), Some(expected_predecessor.len()));
+    assert!(!format!("{aborted:?}").contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
+
+    let mut retried = aborted.begin_exact_resubmission();
+    assert_ne!(retried.attempt_id(), &prior_id);
+    let LocalLogStorageAttemptRequest::Rotation(request) = retried.adapter_request()? else {
+        return Err("rotation retry yielded a root request".into());
+    };
+    assert_eq!(request.candidate_json(), expected_candidate);
+    assert_eq!(request.selected_current_json(), expected_current);
+    assert_eq!(request.selected_predecessor_json(), Some(expected_predecessor.as_str()));
+    assert_eq!(request.candidate_json().as_ptr(), candidate_pointer);
+    assert_eq!(request.selected_current_json().as_ptr(), current_pointer);
+    assert_eq!(
+        request.selected_predecessor_json().ok_or("rotation retry omitted predecessor")?.as_ptr(),
+        predecessor_pointer
+    );
+    Ok(())
+}
+
+#[test]
+fn rotation_publication_complete_retains_selected_context_without_payload_diagnostics() -> TestResult
+{
+    let fixture = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+    let manifest = fixture.prepared()?;
+    let prepared = fixture.codec().prepare_rotation_attempt(&fixture.selected, &manifest)?;
+    let expected_candidate_binding = prepared.candidate_binding().clone();
+    let expected_selected_binding =
+        prepared.selected_binding().ok_or("rotation plan omitted selected binding")?.clone();
+    let expected_current_bytes = prepared.selected_current_json_bytes();
+    let expected_predecessor_bytes = prepared.selected_predecessor_json_bytes();
+    let mut uncertain = prepared.begin_attempt();
+    let attempt_id = uncertain.attempt_id().clone();
+    let request_id = uncertain.adapter_request()?.request_id().clone();
+    let complete = LocalLogStorageAttemptTerminalAttestation::publication_completed(&request_id);
+    let LocalLogStorageAttemptTerminalOutcome::HostAttestedCommitted(committed) =
+        uncertain.observe_terminal_attestation(complete)?
+    else {
+        return Err("rotation publication complete produced the wrong outcome".into());
+    };
+
+    assert_eq!(committed.attempt_id(), &attempt_id);
+    assert_eq!(committed.selection_kind(), LocalLogStorageSelectionKind::Rotation);
+    assert_eq!(committed.candidate_binding(), &expected_candidate_binding);
+    assert_eq!(committed.selected_binding(), Some(&expected_selected_binding));
+    assert_eq!(committed.selected_current_json_bytes(), expected_current_bytes);
+    assert_eq!(committed.selected_predecessor_json_bytes(), expected_predecessor_bytes);
+    assert!(!format!("{committed:?}").contains("ROTATIONATTEMPTPAYLOADSENTINEL"));
     Ok(())
 }
 

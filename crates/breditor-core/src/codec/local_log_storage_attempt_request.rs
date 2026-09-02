@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::local_log::LocalLogStorageAttemptId;
+use crate::local_log::{LocalLogStorageAttemptId, LocalLogStorageAttemptRequestId};
 
 use super::{
     LocalLogStorageSelectedBinding, LocalLogStorageSelectionKind,
@@ -15,6 +15,9 @@ use super::{
 /// Its raw JSON contains complete document-bearing checkpoint payloads. It is
 /// persistence data, not secret capability material, but callers must treat it
 /// as sensitive application content and avoid diagnostics that print it.
+/// One request view is for one adapter invocation and at most one associated
+/// publication transaction. Copying its bytes into another dispatch does not
+/// extend the attempt ID to that duplicate.
 ///
 /// The request carries no adapter, writer token, mutable epoch, promise,
 /// terminal evidence, checkpoint anchor, or writable successor owner.
@@ -35,19 +38,19 @@ pub enum LocalLogStorageAttemptRequest<'a> {
 impl<'a> LocalLogStorageAttemptRequest<'a> {
     pub(super) fn from_plan(
         plan: &'a LocalLogStorageAttemptPlan,
-        attempt_id: &'a LocalLogStorageAttemptId,
+        request_id: &'a LocalLogStorageAttemptRequestId,
     ) -> Self {
         match plan.candidate() {
             LocalLogStorageAttemptCandidate::Root => {
                 Self::Root(LocalLogStorageRootAttemptRequest {
-                    attempt_id,
+                    request_id,
                     candidate_binding: plan.candidate_binding(),
                     candidate_json: plan.candidate_json(),
                 })
             }
             LocalLogStorageAttemptCandidate::Rotation { context } => {
                 Self::Rotation(LocalLogStorageRotationAttemptRequest {
-                    attempt_id,
+                    request_id,
                     candidate_binding: plan.candidate_binding(),
                     candidate_json: plan.candidate_json(),
                     selected_binding: context.selected_binding(),
@@ -64,6 +67,15 @@ impl<'a> LocalLogStorageAttemptRequest<'a> {
         match self {
             Self::Root(request) => request.attempt_id(),
             Self::Rotation(request) => request.attempt_id(),
+        }
+    }
+
+    /// Returns the request-issued correlation required by terminal attestations.
+    #[must_use]
+    pub const fn request_id(&self) -> &LocalLogStorageAttemptRequestId {
+        match self {
+            Self::Root(request) => request.request_id(),
+            Self::Rotation(request) => request.request_id(),
         }
     }
 
@@ -129,7 +141,7 @@ impl fmt::Debug for LocalLogStorageAttemptRequest<'_> {
 /// ```
 #[must_use = "a borrowed root-attempt request is intended for one adapter invocation"]
 pub struct LocalLogStorageRootAttemptRequest<'a> {
-    attempt_id: &'a LocalLogStorageAttemptId,
+    request_id: &'a LocalLogStorageAttemptRequestId,
     candidate_binding: &'a LocalLogStorageSelectedBinding,
     candidate_json: &'a str,
 }
@@ -138,7 +150,13 @@ impl<'a> LocalLogStorageRootAttemptRequest<'a> {
     /// Returns the current opaque process-local physical-attempt identity.
     #[must_use]
     pub const fn attempt_id(&self) -> &'a LocalLogStorageAttemptId {
-        self.attempt_id
+        self.request_id.attempt_id()
+    }
+
+    /// Returns the request-issued correlation required by terminal attestations.
+    #[must_use]
+    pub const fn request_id(&self) -> &'a LocalLogStorageAttemptRequestId {
+        self.request_id
     }
 
     /// Returns the prospective candidate transaction shape and incarnations.
@@ -164,7 +182,8 @@ impl fmt::Debug for LocalLogStorageRootAttemptRequest<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("LocalLogStorageRootAttemptRequest")
-            .field("attempt_id", self.attempt_id)
+            .field("attempt_id", self.attempt_id())
+            .field("request_id", self.request_id)
             .field("candidate_binding", self.candidate_binding)
             .field("candidate_json_bytes", &self.candidate_json.len())
             .finish_non_exhaustive()
@@ -179,7 +198,7 @@ impl fmt::Debug for LocalLogStorageRootAttemptRequest<'_> {
 /// ```
 #[must_use = "a borrowed rotation-attempt request is intended for one adapter invocation"]
 pub struct LocalLogStorageRotationAttemptRequest<'a> {
-    attempt_id: &'a LocalLogStorageAttemptId,
+    request_id: &'a LocalLogStorageAttemptRequestId,
     candidate_binding: &'a LocalLogStorageSelectedBinding,
     candidate_json: &'a str,
     selected_binding: &'a LocalLogStorageSelectedBinding,
@@ -191,7 +210,13 @@ impl<'a> LocalLogStorageRotationAttemptRequest<'a> {
     /// Returns the current opaque process-local physical-attempt identity.
     #[must_use]
     pub const fn attempt_id(&self) -> &'a LocalLogStorageAttemptId {
-        self.attempt_id
+        self.request_id.attempt_id()
+    }
+
+    /// Returns the request-issued correlation required by terminal attestations.
+    #[must_use]
+    pub const fn request_id(&self) -> &'a LocalLogStorageAttemptRequestId {
+        self.request_id
     }
 
     /// Returns the prospective candidate transaction shape and incarnations.
@@ -236,7 +261,8 @@ impl fmt::Debug for LocalLogStorageRotationAttemptRequest<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("LocalLogStorageRotationAttemptRequest")
-            .field("attempt_id", self.attempt_id)
+            .field("attempt_id", self.attempt_id())
+            .field("request_id", self.request_id)
             .field("candidate_binding", self.candidate_binding)
             .field("candidate_json_bytes", &self.candidate_json.len())
             .field("selected_binding", self.selected_binding)

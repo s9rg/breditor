@@ -2,15 +2,36 @@ use std::{fmt, sync::Arc};
 
 /// Opaque, ABA-safe process-local identity of one physical storage attempt.
 ///
-/// Clones retain the same identity. Equality uses allocation identity rather
-/// than a caller value or public counter. Every core-created identity is
-/// therefore distinct while an earlier identity remains observable, including
-/// through a delayed callback that holds a clone.
+/// One attempt means one adapter invocation and at most one publication-capable
+/// transaction associated with that invocation. Clones retain the same
+/// correlation identity. Equality uses allocation identity rather than a
+/// caller value or public counter. Every core-created identity is therefore
+/// distinct while an earlier identity remains observable, including through a
+/// delayed callback that holds a clone.
+///
+/// A caller can copy exposed request bytes and start an extra transaction, but
+/// that duplicate is outside this attempt correlation and must not reuse the
+/// ID in a terminal attestation. Its possible storage effects require
+/// serialized storage resolution.
 ///
 /// An attempt ID is volatile correlation only. It has no string, ordering,
 /// hash, serialization, or wire representation and is not transaction/plan
 /// identity, publication authority, terminal evidence, or a durability
 /// receipt. Future adapters must keep it as an opaque process-local handle.
+///
+/// Callers cannot mint their own attempt identity:
+///
+/// ```compile_fail
+/// let _ = breditor_core::local_log::LocalLogStorageAttemptId::new();
+/// ```
+///
+/// The volatile identity deliberately has no serialization contract:
+///
+/// ```compile_fail
+/// fn serialize(id: &breditor_core::local_log::LocalLogStorageAttemptId) {
+///     let _ = serde_json::to_string(id);
+/// }
+/// ```
 #[derive(Clone)]
 pub struct LocalLogStorageAttemptId(Arc<LocalLogStorageAttemptIdentity>);
 

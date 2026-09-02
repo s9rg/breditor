@@ -100,6 +100,12 @@ The implemented Rust slice owns:
   per physical attempt, cross-plan/stale-ID rejection, and consuming exact
   resubmission that preserves the retained plan allocations and bytes while
   issuing a fresh identity;
+- a process-local exact physical-attempt terminal-attestation boundary with
+  stable publication-completed, transaction-aborted, and not-attempted kinds;
+  an opaque request ID emitted only with the one request; consuming observation,
+  recoverable rejection that retains both owner and attestation, positive
+  historical host evidence, and exact-plan-retaining negative physical states
+  that can resubmit under a fresh identity;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -126,11 +132,12 @@ The following remain deliberately unimplemented:
 - ordered tail storage and recovery orchestration, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
-- storage-generation initial provisioning, terminal or resolver evidence,
-  transaction ownership typestate, adapter capabilities or commit receipts,
-  authoritative-head integration, and an executable filesystem or IndexedDB
-  adapter (only the profile contract and pure-Rust values/attempt mechanics
-  exist);
+- storage-generation initial provisioning, serialized resolver evidence,
+  plan-level definite-noncommit proof, restart plan reconstruction, transaction
+  ownership typestate, adapter capabilities, authoritative-head integration,
+  and an executable filesystem or IndexedDB adapter (only the profile contract,
+  pure-Rust values/attempt mechanics, and process-local host terminal
+  attestations exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -191,6 +198,21 @@ current/optional-predecessor JSON without retaining a selected root or anchor.
 before one borrowed payload request can cross the boundary. Exact resubmission
 preserves the plan allocations/bytes and issues a fresh identity. ID matching
 is correlation only, and no transition classifies commit or noncommit.
+
+Version `0.0.37` adds non-`Clone`
+`LocalLogStorageAttemptTerminalAttestation`, whose stable kind is
+`PublicationCompleted`, `TransactionAborted`, or `NotAttempted`. Consuming
+`observe_terminal_attestation` accepts positive completion and abort only with
+the exact opaque `LocalLogStorageAttemptRequestId` emitted by the one request,
+while not-attempted instead names the attempt ID and is also legal before
+egress. Rejection
+preserves the complete unchanged owner and unapplied attestation. A publication
+completion is a trusted host assertion about the exact publication-armed
+transaction and becomes historical `HostAttestedCommitted`; abort and not-
+attempted close one physical invocation only and retain the plan for exact
+resubmission under a fresh ID. One ID names one invocation and at most one
+associated publication transaction, so copied dispatches are outside its
+correlation and require later storage resolution.
 
 Runtime values and serialization records are deliberately different types:
 
@@ -650,6 +672,15 @@ process-local attempt identity before one borrowed request view can be emitted.
 Exact resubmission preserves the plan and bytes under a fresh identity. This is
 correlation and conservative uncertainty only, not I/O, authority, currentness,
 terminal evidence, durability, or ownership release.
+
+Version `0.0.37` implements typed host terminal observation for one exact
+physical attempt. A matching, publication-armed `PublicationCompleted`
+attestation creates historical commit evidence; `TransactionAborted` and
+`NotAttempted` retain the exact plan as unresolved physical-only states and may
+resubmit it under a fresh ID. Rejected observations recover both the unchanged
+owner and unapplied attestation. The core does not verify browser-event
+provenance, associate duplicate dispatches with the same ID, resolve storage,
+survive process loss, or release authority or ownership.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -2700,6 +2731,56 @@ The one-shot borrow reduces accidental duplicate request construction but
 cannot stop a caller from copying the exposed bytes or dispatching the same
 external operation more than once.
 
+Version `0.0.37` adds
+`LocalLogStorageAttemptTerminalAttestation` and
+`LocalLogStorageAttemptTerminalAttestationKind`. One non-`Clone` attestation
+binds the exact current attempt ID to `PublicationCompleted`,
+`TransactionAborted`, or `NotAttempted`. The publication constructor is not a
+wrapper for any transaction `complete`: the host asserts that the exact
+transaction object associated with that emitted request ID was publication-armed, had
+passed all independent checks, had enqueued the complete exact mutation set,
+and then emitted its terminal `complete` event. Resolver, cleanup, validation-
+only, idempotent no-write, and differently correlated transactions do not
+qualify. Rust checks correlation and transition order but cannot verify those
+host-side facts.
+
+At request egress the core creates a clonable opaque
+`LocalLogStorageAttemptRequestId`, which the borrowed request exposes. Its
+allocation identity binds that one emitted request to its attempt and at most
+one associated publication transaction. It is volatile correlation, not a
+capability, transaction handle, receipt, or durable identity. The
+`PublicationCompleted` and `TransactionAborted` constructors require that exact
+request ID, so safe callers cannot construct either before egress.
+`NotAttempted` instead takes the attempt ID and remains legal before egress or
+after it when the named invocation created no publication-capable transaction.
+
+Consuming `LocalLogStorageUncertainAttempt::observe_terminal_attestation`
+requires the exact retained request/attempt correlation. Success returns
+`LocalLogStorageAttemptTerminalOutcome` containing
+`LocalLogStorageHostAttestedCommitted`, `LocalLogStorageAttemptAborted`, or
+`LocalLogStorageNotAttempted`.
+
+`LocalLogStorageAttemptTerminalFailure<T>` makes rejection recoverable. A
+stale/cross-attempt request or attempt correlation retains the complete
+unchanged owner, the unapplied attestation, and a payload-free
+`LocalLogStorageAttemptTransitionError`; callers can recover the owner alone or
+split all parts. The terminal-observation categories are `AttemptIdMismatch`,
+`RequestNotIssued`, and `RequestIdMismatch`; `RequestAlreadyBorrowed` belongs to
+the separate one-shot request edge. Diagnostics do not expose retained JSON.
+
+`HostAttestedCommitted` is positive historical host evidence only. It cannot
+exact-resubmit and proves neither present currentness, durable flush, survival
+after reset/eviction, writer authority, nor owner release. `AttemptAborted`
+means one associated physical transaction rolled back; `NotAttempted` means one
+adapter invocation created no publication transaction. Both remain unresolved
+at plan level, retain the exact plan, and can consume
+`begin_exact_resubmission` to preserve its allocations and bytes under a fresh
+ID. One attempt ID names exactly one adapter invocation and at most one
+associated publication transaction. A copied or duplicate dispatch is outside
+that ID's correlation. Each negative state has consumed the invocation's one
+terminal observation; future serialized storage resolution must classify any
+duplicate dispatch.
+
 The O(1) claim is only in rotation-history length: root normalization reads and
 retains one selection, while rotation normalization reads and retains one
 current and one immediate-predecessor selection. Both still process bounded
@@ -2717,19 +2798,21 @@ Candidate preparation also temporarily decodes and reconstructs the candidate
 anchor for final strict normalization before dropping it.
 
 This complete pure-Rust boundary performs no filesystem, IndexedDB, JavaScript,
-Wasm, or other I/O; creates no adapter capability, terminal/resolver evidence,
-or commit receipt; makes no head compare-and-swap, stable-currentness, finality,
-writer-fencing, durability, or
-crash-recovery claim; cannot prove global ID/fence freshness or that a physical
-successor is fresh and empty; and releases no writable successor owner. The
-retained selection receipt bindings are caller-supplied validation facts, not
-commit receipts or authority. Version `0.0.36` implements only `Prepared` and
-`Uncertain`; `DefinitelyNotCommitted`, `HostAttestedCommitted`, `NotAttempted`,
-`AttemptAborted`, and serialized resolver outcomes remain specification names,
-not Rust evidence types. An attempt-ID match/mismatch is not one of those
-classifications. Consuming ownership release still requires a separately
-frozen held-lock, transaction-coupled admission, or revocable/speculative-
-branch contract.
+Wasm, or other I/O; creates no adapter capability or serialized resolver
+evidence; makes no head compare-and-swap, stable-currentness, writer-fencing,
+durability, or crash-recovery claim; cannot prove host-event provenance, global
+ID/fence freshness, or that a physical successor is fresh and empty; and
+releases no writable successor owner. The retained selection receipt bindings
+are caller-supplied validation facts, not commit receipts or authority.
+`HostAttestedCommitted`, `NotAttempted`, and `AttemptAborted` are v0.0.37 Rust
+evidence types, but only as trusted process-local physical-attempt
+attestations. `DefinitelyNotCommitted` and serialized resolver outcomes remain
+prospective v0.0.38 names. Attempt IDs, request IDs, attestations, plans, and
+states have no wire or restart representation; resolution requires the exact
+plan to survive in memory, and crash-time plan reconstruction is not
+implemented. Consuming ownership release still requires a separately frozen
+held-lock, transaction-coupled admission, or revocable/speculative-branch
+contract.
 
 ### Genesis local-log recovery
 
@@ -3201,12 +3284,42 @@ commit/noncommit, release an owner, or treat request success, `commit()` return,
 or an abort callback as plan-level finality. The one-shot request view cannot
 prevent copied bytes or duplicate external dispatch.
 
-Version `0.0.37` is the next gate and should add terminal and serialized-
-resolver evidence:
-matching transaction `complete` as host-attested historical commit, exact
-selected/superseded resolution, same-incarnation absence as definite
-noncommit, and fail-closed retired/reset/corrupt classifications. Only after
-that contract is adversarially tested should a JavaScript adapter be
+Version `0.0.37` implements stable typed host terminal attestations and consuming
+observation for one exact physical attempt. Only an exact publication-armed
+transaction completion correlated by the opaque request ID emitted at egress
+becomes historical `HostAttestedCommitted`; transaction-aborted requires the
+same token, while not-attempted names the attempt ID. `AttemptAborted` and
+`NotAttempted` close one invocation only, retain the exact plan, and can
+resubmit under a fresh ID. Recoverable rejection retains both the unchanged
+owner and unapplied attestation. No evidence state authenticates browser events,
+survives process loss, releases authority/ownership, or correlates copied
+dispatches to the same attempt ID.
+
+Version `0.0.38` is the next gate and should add typed serialized-resolver
+evidence with separate contracts:
+
+- Root resolution must validate the expected database incarnation, either the
+  complete exact root/scope/generation association or complete absence of the
+  planned scope and every planned artifact, and distinguish exact selected,
+  superseded, retired, and another-valid-scope cases.
+- Rotation resolution must validate both expected incarnations and use
+  case-specific exact envelopes: full prior selected binding/current/optional-
+  predecessor bytes for candidate absence; candidate current plus the plan's
+  prior selected-current bytes for selected commit; or a valid later current
+  plus the exact candidate predecessor for superseded commit. Retired identity
+  does not attest candidate bytes, and every branch validates the relevant
+  selected generation records.
+
+Exact selected/superseded evidence can establish historical commit; retired,
+reset, collision, and corrupt cases fail closed. Shape-correct candidate/head
+absence is only advisory `RetryEligibleAtResolution`, never definite plan-level
+noncommit, because a copied dispatch can create a later transaction. A later
+retry must repeat every check and authority test or combine comparison and
+writes atomically in the resolving transaction. A surviving
+`HostAttestedCommitted` source changes the absence check: same-incarnation
+candidate absence contradicts the append-only record and is corruption, while
+a missing/different incarnation remains reset/indeterminate. Only after that
+contract is adversarially tested should a JavaScript adapter be
 implemented and the profile validated in real browsers before being called
 executable. Historical commit does not grant stable currentness: every
 IndexedDB mutation must recheck the exact head, active generation, writer

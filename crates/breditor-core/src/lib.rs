@@ -156,20 +156,60 @@
 //! Consuming `begin_exact_resubmission` preserves the same plan allocations and
 //! bytes, issues a fresh attempt ID, and restores one-request eligibility.
 //! `require_current_attempt_id` rejects cross-plan or earlier-retry IDs but
-//! classifies no outcome. IDs and state are process-local and have no durable
-//! or restart representation. A borrowed one-shot request cannot prevent the
-//! caller from copying bytes or dispatching duplicate external operations.
-//! Attempt retention remains O(1) only in rotation-history count: a rotation
-//! can retain three complete payload envelopes—candidate, selected current,
-//! and optional selected predecessor.
+//! classifies no outcome. A borrowed one-shot request cannot prevent the caller
+//! from copying bytes or dispatching duplicate external operations. Attempt
+//! retention remains O(1) only in rotation-history count: a rotation can retain
+//! three complete payload envelopes—candidate, selected current, and optional
+//! selected predecessor.
 //!
+//! Breditor `0.0.37` adds a typed, process-local host-attestation boundary for
+//! one physical attempt. A non-`Clone`
+//! [`codec::LocalLogStorageAttemptTerminalAttestation`] binds the exact current
+//! attempt ID to one stable
+//! [`codec::LocalLogStorageAttemptTerminalAttestationKind`]: an exact
+//! publication-armed transaction completed, that transaction aborted, or the
+//! named adapter invocation created no publication transaction. A bare
+//! transaction `complete` event is insufficient: `publication_completed` is a
+//! host assertion that the exact transaction associated with the emitted request ID was
+//! on the publication branch, had passed every independent check, had enqueued
+//! the complete exact mutation set, and then emitted `complete`.
+//!
+//! The one borrowed adapter request exposes a clonable, opaque
+//! [`local_log::LocalLogStorageAttemptRequestId`]. Only that emitted request ID
+//! can construct publication-complete or abort, mechanically preventing those
+//! attestations before request egress through the safe API; `NotAttempted`
+//! instead names the attempt ID and is legal with or without prior request
+//! egress when no publication-capable transaction was created. Consuming
+//! `observe_terminal_attestation` validates the exact retained request/attempt
+//! correlation. Success produces
+//! [`codec::LocalLogStorageAttemptTerminalOutcome`] with
+//! [`codec::LocalLogStorageHostAttestedCommitted`],
+//! [`codec::LocalLogStorageAttemptAborted`], or
+//! [`codec::LocalLogStorageNotAttempted`]. A stale/cross-attempt or request
+//! correlation, or an illegal branch, returns
+//! [`codec::LocalLogStorageAttemptTerminalFailure`] containing the complete
+//! unchanged owner and unapplied attestation.
+//!
+//! `AttemptAborted` and `NotAttempted` close only one physical invocation. They
+//! retain the exact plan and may begin allocation-preserving exact resubmission
+//! under a fresh ID. One attempt ID names only that invocation and at most one
+//! associated publication transaction: a copied or duplicate dispatch is
+//! outside its correlation and must be classified by later storage resolution,
+//! not by another terminal callback. `HostAttestedCommitted` is historical host
+//! evidence, deliberately cannot resubmit, and proves neither present selection
+//! nor durable flush, writer authority, or ownership release.
+//!
+//! All attempt IDs, request IDs, attestations, and typestates are process-local
+//! and have no durable or restart representation. Future resolution therefore
+//! requires a surviving in-memory exact plan; crash-time plan reconstruction is
+//! not implemented.
 //! These values perform no I/O, provision no database/scope/head/generation,
-//! and prove no compare-and-swap, head currentness, lifetime ID/fence freshness,
-//! empty generation, writer authority/epoch, terminal commit/noncommit,
+//! and prove no compare-and-swap, current head, lifetime ID/fence freshness,
+//! empty generation, writer authority/epoch, browser-event provenance,
 //! durability, or ownership release. No `IndexedDB`, JavaScript, Wasm,
-//! filesystem, or other adapter is implemented. Terminal and serialized
-//! resolver evidence is the `0.0.37` gate, and all storage V1 shapes remain
-//! unstable pre-`0.1` contracts.
+//! filesystem, or other adapter is implemented. Typed serialized resolver
+//! evidence is deferred to `0.0.38`, and all storage V1 shapes remain unstable
+//! pre-`0.1` contracts.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and
