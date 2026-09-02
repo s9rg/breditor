@@ -36,7 +36,35 @@ pub struct LocalLogStorageSelectedRoot {
     checkpoint_json: String,
     current_selection_json: Arc<str>,
     predecessor_selection_json: Option<Arc<str>>,
+    predecessor_rotation_sealed_generation:
+        Option<LocalLogStoragePredecessorRotationSealedGeneration>,
     _checkpoint_anchor: LocalLogCheckpointAnchor,
+}
+
+/// Byte-derived sealed-generation facts from an exact rotation predecessor.
+///
+/// This crate-private value is created only while strictly decoding the exact
+/// predecessor JSON retained by [`LocalLogStorageSelectedRoot`]. It lets later
+/// resolvers validate historical generation edges without trusting a second
+/// caller-constructed scalar description of those bytes.
+#[derive(Debug)]
+pub(super) struct LocalLogStoragePredecessorRotationSealedGeneration {
+    log_id: LocalLogId,
+    frame: LocalLogStorageGenerationFrameV1,
+}
+
+impl LocalLogStoragePredecessorRotationSealedGeneration {
+    pub(super) const fn new(log_id: LocalLogId, frame: LocalLogStorageGenerationFrameV1) -> Self {
+        Self { log_id, frame }
+    }
+
+    pub(super) const fn log_id(&self) -> &LocalLogId {
+        &self.log_id
+    }
+
+    pub(super) const fn frame(&self) -> LocalLogStorageGenerationFrameV1 {
+        self.frame
+    }
 }
 
 /// Exhaustive crate-private inputs for publishing a checked selected root.
@@ -45,6 +73,8 @@ pub(super) struct LocalLogStorageSelectedRootParts {
     pub(super) checkpoint_json: String,
     pub(super) current_selection_json: String,
     pub(super) predecessor_selection_json: Option<String>,
+    pub(super) predecessor_rotation_sealed_generation:
+        Option<LocalLogStoragePredecessorRotationSealedGeneration>,
     pub(super) checkpoint_anchor: LocalLogCheckpointAnchor,
 }
 
@@ -60,12 +90,19 @@ impl LocalLogStorageSelectedRoot {
         {
             return Err(LocalLogStorageSelectedRootError::RuntimeInvariant);
         }
+        let predecessor_is_rotation = parts.binding.predecessor_receipt().is_some_and(|receipt| {
+            receipt.selection_kind() == LocalLogStorageSelectionKind::Rotation
+        });
+        if predecessor_is_rotation != parts.predecessor_rotation_sealed_generation.is_some() {
+            return Err(LocalLogStorageSelectedRootError::RuntimeInvariant);
+        }
 
         Ok(Self {
             binding: parts.binding,
             checkpoint_json: parts.checkpoint_json,
             current_selection_json: Arc::from(parts.current_selection_json),
             predecessor_selection_json: parts.predecessor_selection_json.map(Arc::from),
+            predecessor_rotation_sealed_generation: parts.predecessor_rotation_sealed_generation,
             _checkpoint_anchor: parts.checkpoint_anchor,
         })
     }
@@ -206,6 +243,18 @@ impl LocalLogStorageSelectedRoot {
         self.predecessor_selection_json.as_deref()
     }
 
+    /// Returns sealed-generation facts decoded from an exact rotation predecessor.
+    pub(super) const fn predecessor_rotation_sealed_generation(
+        &self,
+    ) -> Option<&LocalLogStoragePredecessorRotationSealedGeneration> {
+        self.predecessor_rotation_sealed_generation.as_ref()
+    }
+
+    /// Borrows the complete normalized binding inside the core.
+    pub(super) const fn binding(&self) -> &LocalLogStorageSelectedBinding {
+        &self.binding
+    }
+
     /// Atomically snapshots the non-authority facts required by an attempt plan.
     pub(super) fn snapshot_attempt_envelope(
         &self,
@@ -226,6 +275,7 @@ impl LocalLogStorageSelectedRoot {
             checkpoint_json: _,
             current_selection_json,
             predecessor_selection_json,
+            predecessor_rotation_sealed_generation: _,
             _checkpoint_anchor: _,
         } = self;
         (binding, current_selection_json, predecessor_selection_json)
@@ -255,6 +305,10 @@ impl fmt::Debug for LocalLogStorageSelectedRoot {
             .field(
                 "predecessor_selection_json_bytes",
                 &self.predecessor_selection_json.as_ref().map(|json| json.len()),
+            )
+            .field(
+                "predecessor_rotation_sealed_generation",
+                &self.predecessor_rotation_sealed_generation,
             )
             .finish_non_exhaustive()
     }

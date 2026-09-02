@@ -6,9 +6,10 @@ comparison implemented in `0.0.35`; exact non-owning attempt plans and
 `Prepared`/`Uncertain` mechanics implemented in `0.0.36`; process-local exact
 physical-attempt terminal attestations implemented in `0.0.37`; directional
 resolution-value comparisons and the closed retired-transaction binding
-implemented in `0.0.38`; no IndexedDB/JavaScript/Wasm adapter, serialized
-resolver evidence, restart plan reconstruction, ownership typestate, or
-executable provisioning exists
+implemented in `0.0.38`; process-local root-only resolution implemented in
+`0.0.39`; no rotation resolver, IndexedDB/JavaScript/Wasm adapter, process-
+restart plan reconstruction, ownership typestate, or executable provisioning
+exists
 
 Profile identifier: `breditor/indexeddb-local-log`
 
@@ -36,8 +37,9 @@ every browser implementation is bug-free.
 
 ## Decisions
 
-Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.38`
-implement only their profile-independent Rust value/attempt subset:
+Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.39`
+implement only their profile-independent Rust value, attempt, and root-
+resolution subset:
 
 1. Initial provisioning uses a distinct canonical root-selection value. It
    does not invent a magic expected head or pass an unchecked ordinary
@@ -82,7 +84,7 @@ implement only their profile-independent Rust value/attempt subset:
 ## Authority split
 
 `breditor-core` remains synchronous, deterministic, and free of browser
-handles. Versions `0.0.34` through `0.0.38` can:
+handles. Versions `0.0.34` through `0.0.39` can:
 
 - prepare and strictly encode the root-selection value from one borrowed local
   log compaction outcome;
@@ -114,14 +116,21 @@ handles. Versions `0.0.34` through `0.0.38` can:
 - directionally compare a later same-selection binding while allowing only
   `Retired -> Reclaimed`, validate an active generation's exact
   retired/reclaimed successor under a distinct retiring head, and represent
-  only the fields physically retained by a retired transaction tombstone.
+  only the fields physically retained by a retired transaction tombstone; and
+- begin root-only resolution from surviving uncertain, aborted, unattempted, or
+  host-attested-committed state; mint one process-local request identity at
+  egress; apply either an exactly correlated ordinary-read terminal-complete
+  observation or physical-database-absence terminal-open-error evidence with
+  recoverable stale-ID rejection; restart the read under a distinct identity;
+  classify the closed root outcomes; and exact-resubmit only advisory clean-
+  absence retry eligibility from a non-host-committed source.
 
 The v0.0.37 boundary checks typed host terminal evidence against one exact
 prepared plan without treating per-transaction IndexedDB fencing as release of
 an exclusive semantic owner. Version `0.0.38` adds directional selected-binding
 and active-to-retired/reclaimed comparisons plus the closed retired-transaction
-record shape. Typed root resolution is deferred to `0.0.39` and rotation
-resolution to `0.0.40`.
+record shape. Version `0.0.39` adds the process-local root resolver state
+machine; rotation resolution remains deferred to `0.0.40`.
 
 The JavaScript adapter owns `IDBDatabase`, `IDBTransaction`, requests, events,
 connection reopening, exact key construction, structured-clone values, and the
@@ -503,9 +512,11 @@ present, it must be the only record in `meta`. If it is absent, every one of
 the five stores, including `meta`, must be empty before the adapter may add it.
 A schema-compatible but prepopulated database with no profile record is
 corrupt or foreign, not an uninitialized profile database. The incarnation is
-never changed by this profile. A missing or different incarnation while
-resolving an older plan means storage was uninitialized, cleared, recreated,
-or replaced; it never proves that the older plan did not commit historically.
+never changed by this profile. Physical absence, an all-five-stores-empty
+compatible database without the profile record, or a different valid
+incarnation while resolving an older plan means storage was uninitialized,
+cleared, recreated, or replaced; it never proves that the older plan did not
+commit historically.
 
 ### Scope head record
 
@@ -602,6 +613,11 @@ allocated within the same incarnation and prevents their reuse. It cannot
 prove byte equality for a late caller-supplied candidate. Such a query returns
 `ResolutionRetired` and releases no writable owner. The adapter must never
 report that the supplied bytes committed or call it exact idempotent success.
+When an already-retired transaction is used as a retired root candidate's
+direct successor, the tombstone likewise proves only its retained
+transaction/head identity and committed-head index. Its discarded JSON and
+sealed-generation fields cannot be reconstructed or attested; the candidate's
+planned active-generation `retiredBy` link is a separate retained relationship.
 
 Transaction tombstones are never deleted in profile V1. This is unbounded
 `O(total committed rotations)` metadata. Retaining only two exact selections
@@ -734,9 +750,11 @@ the profile unavailable. The adapter never deletes or repairs it implicitly.
 
 This establishment path is available only before an operation is bound to an
 expected database incarnation. Provisioning, rotation, restart, cleanup, or
-outcome resolution carrying an expected incarnation treats a missing or
-different meta record as `StorageResetOrIndeterminate`; it must never create a
-replacement record and then classify the older plan against it.
+outcome resolution carrying an expected incarnation treats physical database
+absence, a different valid metadata incarnation, or an absent `meta/profile`
+record with all five stores empty as `StorageResetOrIndeterminate`. Any record
+in any store without valid profile metadata is `CollisionOrCorruption`. It must
+never create a replacement record and then classify the older plan against it.
 
 ## Initial scope provisioning
 
@@ -776,13 +794,31 @@ Provisioning outcomes are:
 - exact root transaction named as the immediate predecessor of a valid later
   selection: `CommittedSuperseded`;
 - retired root transaction with matching retained identities,
-  `selectionByteLength`, and exact committed-head index mapping:
-  `ResolutionRetired`; its supplied bytes are no longer profile-attested;
+  `selectionByteLength`, exact candidate and direct-successor committed-head
+  index mappings, and a case-specific direct-successor proof whose head matches
+  the planned active-generation retirement: `ResolutionRetired`. If the
+  successor remains the exact current predecessor, strict selected
+  normalization privately retains its byte-derived sealed log ID and frame,
+  and both must equal the root's planned active generation without another
+  host-supplied scalar assertion. If the successor is already retired, its
+  tombstone has discarded those JSON/sealed fields, so only retained
+  transaction/head/index facts and the planned active generation's `retiredBy`
+  link are proved—not the discarded successor contents. The retired root's
+  supplied bytes are no longer profile-attested;
 - absent scope and absent planned artifacts in the same known database
   incarnation: `RetryEligibleAtResolution` (advisory after the transaction);
 - same ID with any different fact/byte: `CollisionOrCorruption`;
 - another valid scope incarnation/head: `ScopeAlreadyProvisioned`; and
-- missing or changed database incarnation: `StorageResetOrIndeterminate`.
+- physical database absence, a different valid metadata incarnation, or an
+  all-five-stores-empty compatible database without `meta/profile`:
+  `StorageResetOrIndeterminate`; any record without valid profile metadata is
+  `CollisionOrCorruption`.
+
+The retry-eligible and already-provisioned labels above apply to an uncertain,
+aborted, or unattempted source. For a surviving `HostAttestedCommitted` source,
+an absent or replaced planned scope lifetime is
+`StorageResetOrIndeterminate`, while a still-present expected scope missing its
+append-only candidate/index association is `CollisionOrCorruption`.
 
 Orphan artifacts with no scope head are corruption. Profile V1 never adopts or
 silently deletes them. Every provisioning retry after the first attempt routes
@@ -906,32 +942,61 @@ the tombstone, including `selectionByteLength`; it has no profile/session/JSON
 facts, and equal length is not byte evidence. These helpers authenticate no
 storage source and do not compare selection JSON.
 
-The root resolver is deferred to v0.0.39 and rotation resolution to v0.0.40.
-Each must reopen as needed and create one later fixed-scope `readwrite`
-transaction. Overlapping store scope orders it after transactions created
-earlier, but it cannot rule out a copied publication transaction created after
-the resolver. An observation becomes applicable only when that exact resolver
-transaction emits `complete` after all reads and range/prefix scans finish.
-Individual request success, `commit()` return, abort, callback loss, or an
-unrelated transaction's completion produces no classification. The typed
-resolver requests, tokens, and evidence therefore need separate root and
-rotation shapes:
+Version `0.0.39` implements the process-local root resolver; rotation resolution
+remains deferred to `0.0.40`. The root boundary consumes one surviving root
+attempt state and recoverably rejects rotations. One borrowed request mints one
+opaque resolver request identity at egress. Pre-egress or stale/cross-request
+evidence is rejected without classification and returned with the unchanged
+resolver. `restart_resolution` preserves the exact source plan and bytes while
+clearing correlation; the next request ID is distinct and old evidence is
+stale. This is a new in-process read invocation, not crash reconstruction.
+
+Each ordinary resolver read reopens as needed and creates one later fixed-scope
+`readwrite` transaction. Overlapping store scope orders it after transactions
+created earlier, but it cannot rule out a copied publication transaction
+created after the resolver. An ordinary read observation becomes applicable
+only when that exact resolver transaction emits `complete` after all reads and
+range/prefix scans finish. Individual request success, `commit()` return, abort,
+callback loss, or an unrelated transaction's completion produces no
+classification. Root and rotation requests, tokens, and evidence remain
+nominally separate:
+
+Physical database absence cannot create that five-store transaction. Its
+separate correlated `database_open_absent` assertion is valid only after a
+versionless open reports `oldVersion == 0`, the handler synchronously aborts the
+upgrade, and the open request emits terminal `error`. This is reset/
+indeterminate evidence, never permission to let creation commit. An existing
+database with a different valid meta incarnation uses the ordinary completed
+read. So does a schema-compatible database without `meta/profile`: it is reset/
+indeterminate only after all five stores are exhaustively observed empty. Any
+record in any store without valid profile metadata is instead
+`BrokenProfileAssociation::ProfileMetadata` and collision/corruption.
 
 - A root resolver reads/validates meta, the planned scope, planned transaction
   key, planned committed-head index key, both planned generation keys and scope
   artifact ranges. When the candidate exists, it additionally validates the
   exact root selection, checkpoint-only generation, active generation, and
   scope-control association when selected; a later valid current plus exact
-  root immediate predecessor when superseded; or immutable identity only when
-  retired. Selected/superseded/retired cases require the exact
-  `byCommittedHead` mapping; retired additionally requires the stored candidate
-  byte length. An absent scope is eligible only when every complete planned
-  transaction/generation/chunk artifact range is empty in the expected database
-  incarnation; a different valid scope is `ScopeAlreadyProvisioned`.
-- A rotation resolver reads/validates meta, scope control, the planned
-  transaction and committed-head index keys, candidate successor-generation
-  key and complete successor chunk prefix, selected generation records, and any
-  plan-known older transaction that publication was required to retire. Its
+  root immediate predecessor when superseded; or immutable identity plus a
+  case-specific direct-successor proof when retired. Selected/superseded/
+  retired cases require the exact candidate `byCommittedHead` mapping; retired
+  additionally requires stored candidate byte length and the successor's own
+  index mapping. An exact successor must be the normalized current predecessor,
+  whose privately retained byte-derived sealed log ID and frame must equal the
+  root plan's active generation. An already-retired successor has no remaining
+  JSON/sealed fields, so that path validates only its retained
+  transaction/head/index facts and the planned active generation's `retiredBy`
+  link. An absent
+  scope is eligible only when every complete planned transaction/generation/
+  chunk artifact range is empty in the expected database incarnation and the
+  source is uncertain, aborted, or unattempted. A different valid scope is
+  `ScopeAlreadyProvisioned` only for those three sources; a host-attested-
+  committed source instead becomes reset/indeterminate in either case.
+- The prospective `0.0.40` rotation resolver reads/validates meta, scope
+  control, the planned transaction and committed-head index keys, candidate
+  successor-generation key and complete successor chunk prefix, selected
+  generation records, and any plan-known older transaction that publication
+  was required to retire. Its
   exact envelope comparison is case-specific: candidate absence requires
   current storage to match the full snapshotted prior selection under the
   directional cleanup relation plus exact current/optional-predecessor JSON;
@@ -953,25 +1018,34 @@ the same rotation scope is `DefinitelyNotCommittedConflict` because the
 immutable expected head cannot become selected again.
 
 Absence is not one blanket outcome. A completely absent planned root scope with
-every scope artifact range empty, or a rotation whose exact prior selection
-remains current while the candidate transaction/index/successor
-generation/prefix are all absent, is `RetryEligibleAtResolution`. It is advisory
-once the resolver transaction finishes because another copied dispatch may
-publish later. Another completely valid root scope is
-`ScopeAlreadyProvisioned`; a fully valid different rotation head in the same
-scope incarnation is `DefinitelyNotCommittedConflict` and the immutable old
-plan cannot exact-resubmit. Candidate presence that is neither current,
-immediate predecessor, nor a valid retired tombstone is corruption, not retry
-or conflict.
+every scope artifact range empty is `RetryEligibleAtResolution` only for an
+uncertain, aborted, or unattempted source. Prospectively, a rotation whose exact
+prior selection remains current while the candidate transaction/index/
+successor generation/prefix are all absent has the same advisory result. It is
+advisory once the resolver transaction finishes because another copied dispatch
+may publish later. Another completely valid root scope is
+`ScopeAlreadyProvisioned` only for the three non-host-committed sources; with a
+surviving host-attested commit, absent or replaced scope lifetime is
+reset/indeterminate. A fully valid different rotation head in the same scope
+incarnation is `DefinitelyNotCommittedConflict` and the immutable old plan
+cannot exact-resubmit. Candidate presence that is neither current, immediate
+predecessor, nor a valid retired tombstone is corruption, not retry or conflict.
 
 If resolution and retry are combined, comparison and all retry writes remain in
 that same transaction. Otherwise the later publication attempt must repeat
-every comparison and authority check; a prior inspection is not a
-compare-and-swap. When the resolver starts from `HostAttestedCommitted`,
-same-incarnation candidate absence instead contradicts the append-only
-transaction record and is corruption rather than retry, conflict, or
-already-provisioned. A missing/different expected database or scope incarnation
-remains reset/indeterminate.
+every comparison and authority check; a prior inspection is not a compare-and-
+swap. Root precedence depends on the retained source. For
+`HostAttestedCommitted`, physical database absence, a different valid metadata
+incarnation, an all-five-stores-empty compatible database without
+`meta/profile`, or a missing/replaced planned scope lifetime is
+`StorageResetOrIndeterminate`, not retry or already provisioned. Any record in
+any store without valid profile metadata is `CollisionOrCorruption`. Only when
+the expected database and planned scope still exist but the append-only
+candidate transaction or committed-head association is missing does
+`BrokenProfileAssociation::ExpectedScopeCandidateMissing` become
+`CollisionOrCorruption`. An uncertain, aborted, or unattempted root source may
+receive advisory retry only after complete planned-scope/artifact absence; a
+different complete valid scope is `ScopeAlreadyProvisioned`.
 
 ## Restart and revocable mutation authority
 
@@ -1081,8 +1155,8 @@ capabilities.
 ## Explicit V1 limitations
 
 - No IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter exists
-  through `0.0.38`; the implemented Rust values and attempt states perform no
-  I/O.
+  through `0.0.39`; the implemented Rust values, attempt states, and root
+  resolver perform no I/O.
 - Root preparation/encoding/decoding, selected receipt/generation bindings,
   root/rotation normalization, and selected-root-aware next-rotation validation
   prove only bounded value and cross-link consistency. They do not provision a
@@ -1091,8 +1165,9 @@ capabilities.
   freshness, physical generation emptiness, mutable writer authority/epoch,
   authenticated browser-event provenance, durability, or ownership release.
   The v0.0.37 terminal states validate process-local correlation around trusted
-  host assertions only; the attempt plan/request contains no adapter or
-  authority.
+  host assertions only, and v0.0.39 root evidence is another trusted process-
+  local host assertion rather than authenticated IndexedDB provenance. The
+  attempt and resolver requests contain no adapter or authority.
 - O(1) selected normalization and retention are constant only in rotation-
   history length. The selected root retains up to two complete canonical outer
   selections plus current checkpoint text and a decoded anchor, so memory can
@@ -1177,9 +1252,13 @@ Version `0.0.38` adds directional same-selection comparison, exact
 active-to-retired/reclaimed validation, the record-shaped retired-transaction
 binding, and stable payload-free changes/errors. None is storage evidence.
 
-Version `0.0.39` is the request-correlated root-resolver gate. Rotation
-resolution follows at `0.0.40` after the shared resolver terminal/failure
-mechanics are proven. Only after both boundaries and their adversarial tests are
-stable should a JavaScript adapter be implemented and tested in real browsers.
+Version `0.0.39` implements the request-correlated root resolver, ordinary-read
+terminal-complete and physical-absence terminal-open-error evidence boundaries,
+source-aware classifications, ownership-preserving stale-ID failure, restart
+under a fresh resolver identity, and advisory exact retry from clean non-host-
+committed absence. Rotation resolution follows at `0.0.40` with nominally
+separate observation/outcome shapes. Only after that boundary and its
+adversarial tests are stable should a JavaScript adapter be implemented and
+tested in real browsers.
 Consuming exclusive-owner typestate remains blocked on a separately frozen
 held-lock, transaction-coupled admission, or speculative-branch contract.

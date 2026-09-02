@@ -21,7 +21,8 @@ and storage-generation codecs, trusted root/rotation selection normalization,
 byte-exact selected-envelope retention/comparison, and selected-root-aware
 next-rotation preparation/encoding/decoding, plus exact root/rotation attempt
 preparation, non-`Clone` `Prepared`/`Uncertain` state, core-issued process-local
-attempt identities, one-shot borrowed request views, and exact resubmission,
+attempt identities, one-shot borrowed request views, exact resubmission, typed
+physical terminal states, and request-correlated root-only resolution,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -65,7 +66,7 @@ action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, durable append/acknowledgement,
+scope provisioning, rotation resolution, durable append/acknowledgement,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -243,18 +244,66 @@ contains database/scope identity, transaction/head identity, selection kind,
 and stored byte length—never profile/session facts or bytes absent from the
 tombstone. Matching length screens collisions but cannot attest byte equality.
 
-These APIs compare caller-supplied typed values only. They do not observe
-IndexedDB, compare exact current/predecessor JSON, validate index/range
-completeness, or authenticate a resolver transaction's terminal event. Future
-resolver evidence becomes applicable only after its exact fixed-scope
-serialized transaction emits terminal `complete`; request success, `commit()`
-return, abort, callback loss, or unrelated completion classifies nothing. The
-shape-specific root resolver is the `0.0.39` gate and rotation resolution
-follows at `0.0.40`; crash-time attempt-plan reconstruction is not implemented.
-The profile cannot release a long-lived exclusive Rust writer; that still needs
-a separately held lock, transaction-coupled admission, or explicit
-revocable/speculative branch semantics. These storage formats remain unstable
-pre-`0.1` contracts.
+On their own these APIs compare caller-supplied typed values only. They do not
+observe IndexedDB, compare exact current/predecessor JSON, validate index/range
+completeness, or authenticate a resolver transaction's terminal event.
+
+Version `0.0.39` adds a non-`Clone`, root-only resolver over surviving
+`Uncertain`, `AttemptAborted`, `NotAttempted`, or `HostAttestedCommitted` state;
+rotations fail recoverably at the start boundary. Its one borrowed request
+mints an opaque process-local `LocalLogStorageRootResolutionRequestId` only at
+egress. `LocalLogStorageRootResolutionEvidence::transaction_completed` is a
+trusted host assertion that the exact request's fixed-scope serialized
+transaction emitted terminal `complete` after every read and cursor scan.
+Request success, `commit()` return, abort, callback loss, or unrelated
+completion classifies nothing.
+
+An actually absent database cannot create that fixed-scope read transaction.
+It therefore uses `database_open_absent`, restricted to a versionless open that
+reported `oldVersion == 0`, synchronously aborted the upgrade, and then emitted
+terminal open-request `error`. An existing database with a different meta
+incarnation still uses transaction-completed evidence when that metadata is
+otherwise valid. A schema-compatible database without `meta/profile` also uses
+that path: it is reset/indeterminate only when all five stores are empty; any
+record in any store without valid profile metadata is collision/corruption.
+
+`apply_resolution_evidence` rejects pre-egress and stale/cross-request evidence
+without classification and returns the unchanged resolver plus evidence.
+`restart_resolution` preserves the exact source state, plan allocations, and
+candidate bytes while clearing only resolver correlation; its next request ID
+is distinct and old evidence is stale. Neither mechanism survives a process
+restart or reconstructs a lost plan.
+
+The closed outcomes are exact selected commit, immediate-predecessor commit,
+retired identity, advisory clean-absence retry, another valid scope, collision
+or corruption, and storage reset or indeterminate. Clean planned-scope absence
+can become `RetryEligibleAtResolution` only for a non-host-committed source;
+with `HostAttestedCommitted`, absence or a different valid scope becomes
+`StorageResetOrIndeterminate` and never retry authority. Physical database
+absence, a different valid metadata incarnation, or an all-five-stores-empty
+compatible database without `meta/profile` is reset/indeterminate for every
+source. Any record without valid profile metadata, or an expected scope that
+still exists while its append-only candidate/index association is missing, is
+`CollisionOrCorruption`. A retired candidate also requires its direct-successor
+edge. When that successor is still the exact current predecessor, strict
+selected normalization privately retains its byte-derived sealed log ID and
+frame, which must equal the root plan's active generation; there is no extra
+host-supplied scalar assertion. When the successor is itself retired, its
+Profile V1 tombstone has no JSON or sealed-generation fields, so the resolver
+proves only retained transaction/head identity, its head-index mapping, and the
+planned active generation's matching `retiredBy` link—not the discarded
+successor contents. Equal candidate tombstone length still does not attest the
+old candidate bytes.
+
+Only retry eligibility exposes exact resubmission, preserving the plan under a
+fresh attempt ID. It is advisory once the read transaction ends: copied bytes
+can still publish later, so every attempt must repeat comparison and authority
+checks. All other outcomes are non-retry classifications and release no writer,
+checkpoint anchor, or semantic owner. The crate still performs no storage I/O
+and cannot authenticate host events, prove durable or present currentness, or
+release a long-lived exclusive Rust writer. Rotation resolution remains
+deferred to `0.0.40`, crash-time plan reconstruction remains unimplemented, and
+these storage formats remain unstable pre-`0.1` contracts.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

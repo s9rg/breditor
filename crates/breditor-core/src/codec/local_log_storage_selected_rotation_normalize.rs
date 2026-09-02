@@ -7,7 +7,8 @@ use super::{
     LocalLogStorageSelectionReceiptBinding,
     local_log_storage_selected_json::validate_receipt_assertions,
     local_log_storage_selected_root::{
-        LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootParts,
+        LocalLogStoragePredecessorRotationSealedGeneration, LocalLogStorageSelectedRoot,
+        LocalLogStorageSelectedRootParts,
     },
 };
 
@@ -16,6 +17,7 @@ struct DecodedPredecessorActive {
     log_id: LocalLogId,
     frame: LocalLogStorageGenerationFrameV1,
     activation_fence_id: LocalLogStorageFenceId,
+    rotation_sealed_generation: Option<LocalLogStoragePredecessorRotationSealedGeneration>,
 }
 
 impl LocalLogStorageSelectedJsonCodec {
@@ -128,6 +130,7 @@ impl LocalLogStorageSelectedJsonCodec {
             checkpoint_json: current.checkpoint_json().to_owned(),
             current_selection_json: current_json.to_owned(),
             predecessor_selection_json: Some(predecessor_json.to_owned()),
+            predecessor_rotation_sealed_generation: predecessor.rotation_sealed_generation,
             checkpoint_anchor,
         })
     }
@@ -158,6 +161,7 @@ impl LocalLogStorageSelectedJsonCodec {
                     log_id: value.active_log_id().clone(),
                     frame: value.active_frame(),
                     activation_fence_id: value.fence_id().clone(),
+                    rotation_sealed_generation: None,
                 })
             }
             LocalLogStorageSelectionKind::Rotation => {
@@ -180,6 +184,12 @@ impl LocalLogStorageSelectedJsonCodec {
                     log_id: value.successor_log_id().clone(),
                     frame: value.successor_frame(),
                     activation_fence_id: value.fence_id().clone(),
+                    rotation_sealed_generation: Some(
+                        LocalLogStoragePredecessorRotationSealedGeneration::new(
+                            value.sealed_log_id().clone(),
+                            value.sealed_frame(),
+                        ),
+                    ),
                 })
             }
         }

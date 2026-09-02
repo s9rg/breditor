@@ -80,6 +80,7 @@ impl LocalLogStorageSelectedJsonCodec {
             checkpoint_json: selection.checkpoint_json().to_owned(),
             current_selection_json: json.to_owned(),
             predecessor_selection_json: None,
+            predecessor_rotation_sealed_generation: None,
             checkpoint_anchor,
         })
     }

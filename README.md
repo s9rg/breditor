@@ -30,8 +30,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   and outer canonical bytes, trusted root/rotation selection normalization,
   byte-exact selected-envelope retention and comparison, and next-rotation
   validation against that normalized selected state, plus exact non-owning
-  publication plans, process-local physical attempt IDs, and typed host
-  terminal attestations;
+  publication plans, process-local physical attempt IDs, typed host terminal
+  attestations, and request-correlated root-only resolver typestates and
+  classifications;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -82,7 +83,8 @@ attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
-scope provisioning, durable append and acknowledgement,
+scope provisioning, rotation storage resolution, durable append and
+acknowledgement,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -230,21 +232,67 @@ reclaimed checkpoint of one superseding head. The closed
 retained by the IndexedDB tombstone. Its `selectionByteLength` is collision
 screening and never evidence that caller-supplied bytes committed.
 
-These are directional value checks, not storage evidence. They do not compare
-selection JSON, authenticate reads or cursor exhaustion, observe a resolver
-transaction's terminal `complete`, prove a current head, or confer writer
-authority. Root and rotation resolution remain intentionally separate: the
-root resolver is the `0.0.39` gate and rotation resolution follows at `0.0.40`.
-Resolver absence must remain shape-specific—a clean absent root scope, or an
-exact prior rotation selection together with an absent candidate transaction,
-committed-head index, successor generation, and complete successor chunk
-prefix, can be advisory retry eligibility, while another valid root scope or
-conflicting rotation head is not. Attempt plans and evidence are process-local;
-crash-time plan reconstruction is not implemented, and neither attempt nor
-request IDs have a wire representation. The profile's per-mutation epoch
-remains revocable and therefore cannot itself release a long-lived exclusive
-Rust writer. All storage V1 shapes remain unstable
-pre-`0.1` contracts rather than permanent compatibility promises.
+On their own these are directional value checks, not storage evidence. They do
+not compare selection JSON, authenticate reads or cursor exhaustion, observe a
+resolver transaction's terminal `complete`, prove a current head, or confer
+writer authority.
+
+Version `0.0.39` implements the process-local root-only resolver boundary.
+`Uncertain`, `AttemptAborted`, `NotAttempted`, and `HostAttestedCommitted` root
+states can begin a non-`Clone` resolution; a rotation is recoverably rejected.
+One borrowed adapter request mints one opaque request ID at egress. Ordinary
+read evidence is applicable only after that exact fixed-scope serialized
+transaction emits terminal `complete` after all reads and cursor scans. Request
+success, `commit()` return, abort, callback loss, or another transaction's
+completion classifies nothing. Applying evidence before request egress or with
+a stale or cross-request ID returns both the unchanged resolver and unapplied
+evidence.
+Physical database absence uses a separate fail-closed open attestation: a
+versionless open must report `oldVersion == 0`, synchronously abort the upgrade,
+and then emit terminal open-request `error`. It cannot be laundered through the
+fixed-scope transaction-complete constructor.
+`restart_resolution` retains the exact source plan and bytes but clears the
+volatile correlation, so its next request has a distinct ID and old evidence is
+stale.
+
+The core validates closed physical findings against the retained plan and
+produces `CommittedSelectedAtResolution`, `CommittedSuperseded`,
+`ResolutionRetired`, `RetryEligibleAtResolution`, `ScopeAlreadyProvisioned`,
+`CollisionOrCorruption`, or `StorageResetOrIndeterminate`. Precedence depends
+on source history: clean planned-scope absence is advisory retry eligibility
+only for an uncertain, aborted, or unattempted source. For a surviving
+`HostAttestedCommitted` source, clean absence or a different valid scope is
+reset/indeterminate and never retry authority; for the other sources, a
+different valid scope is already provisioned. Physical database absence, a
+different valid metadata incarnation, or a schema-compatible database with no
+`meta/profile` record and all five stores empty is reset/indeterminate for every
+source. Any record in any store without valid profile metadata is collision or
+corruption, as is a still-present expected scope missing its append-only
+candidate/index association. Retired identity additionally requires the
+candidate committed-head index, current scope graph, and one of two
+direct-successor proofs. If that successor is still the exact current
+predecessor,
+strict selected normalization privately retains its byte-derived sealed log ID
+and frame; the resolver requires both to equal the root plan's active generation
+without accepting another host-supplied scalar assertion. If the successor is
+already retired, its Profile V1 tombstone has discarded the JSON and
+sealed-generation fields: the resolver can then prove only its retained
+transaction/head identity, committed-head index, and the planned active
+generation's `retiredBy` link, not the discarded successor contents. The
+candidate tombstone's equal byte length likewise never attests the old
+candidate bytes.
+
+Only the retry-eligible outcome can exact-resubmit, preserving the plan and
+bytes under a fresh attempt ID. It is advisory after the resolver transaction:
+copied request bytes may still publish later, and every later attempt must
+repeat storage comparisons and acquire separate authority. Resolver IDs,
+evidence, plans, and states have no wire or process-restart representation.
+Rust performs no IndexedDB I/O, cannot authenticate the host's terminal event,
+and grants no durability, current writer, or ownership claim. Rotation
+resolution remains the separate `0.0.40` checkpoint. The profile's revocable
+per-mutation epoch cannot release a long-lived exclusive Rust writer. All
+Storage V1 shapes remain unstable pre-`0.1` contracts rather than permanent
+compatibility promises.
 
 ## Development
 

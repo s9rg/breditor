@@ -37,27 +37,68 @@ const PROFILE: &str = "breditor/selected-rotation-tests";
 const SCOPE: &str = "scope:selected-rotation-tests";
 const SESSION: &str = "session:selected-rotation-tests";
 
-struct SelectedRotationFixture {
-    context: EditorContext,
-    selected: LocalLogStorageSelectedRoot,
+pub(super) struct SelectedRotationFixture {
+    pub(super) context: EditorContext,
+    pub(super) selected: LocalLogStorageSelectedRoot,
     outcome: LocalLogTailCompactionOutcome,
     binding: LocalLogStorageGenerationBinding,
     inputs: LocalLogStorageGenerationPreparationInputs,
 }
 
 impl SelectedRotationFixture {
-    fn new(kind: LocalLogStorageSelectionKind) -> TestResult<Self> {
+    pub(super) fn new(kind: LocalLogStorageSelectionKind) -> TestResult<Self> {
         Self::new_with_reclaimed_checkpoint(kind, false)
     }
 
-    fn reclaimed_rotation() -> TestResult<Self> {
+    pub(super) fn reclaimed_rotation() -> TestResult<Self> {
         Self::new_with_reclaimed_checkpoint(LocalLogStorageSelectionKind::Rotation, true)
     }
 
-    #[allow(clippy::too_many_lines)]
+    pub(super) fn rotation_with_next_active_reusing_root_checkpoint_generation() -> TestResult<Self>
+    {
+        Self::new_with_generation_layout(
+            LocalLogStorageSelectionKind::Rotation,
+            false,
+            true,
+            false,
+            None,
+        )
+    }
+
+    pub(super) fn rotation_with_next_active_reusing_root_active_fence() -> TestResult<Self> {
+        Self::new_with_generation_layout(
+            LocalLogStorageSelectionKind::Rotation,
+            false,
+            false,
+            true,
+            None,
+        )
+    }
+
+    pub(super) fn rotation_with_unrelated_checkpoint_generation() -> TestResult<Self> {
+        Self::new_with_generation_layout(
+            LocalLogStorageSelectionKind::Rotation,
+            false,
+            false,
+            false,
+            Some("log:unrelated"),
+        )
+    }
+
     fn new_with_reclaimed_checkpoint(
         kind: LocalLogStorageSelectionKind,
         reclaimed_checkpoint: bool,
+    ) -> TestResult<Self> {
+        Self::new_with_generation_layout(kind, reclaimed_checkpoint, false, false, None)
+    }
+
+    #[allow(clippy::too_many_lines)]
+    fn new_with_generation_layout(
+        kind: LocalLogStorageSelectionKind,
+        reclaimed_checkpoint: bool,
+        next_active_reuses_root_checkpoint: bool,
+        next_active_reuses_root_fence: bool,
+        rotation_checkpoint_log: Option<&str>,
     ) -> TestResult<Self> {
         if kind == LocalLogStorageSelectionKind::Root && reclaimed_checkpoint {
             return Err("a root fixture cannot have a reclaimed checkpoint".into());
@@ -76,18 +117,28 @@ impl SelectedRotationFixture {
             None,
         )?;
 
-        let (checkpoint_log, active_log, successor_log) = match kind {
+        let (default_checkpoint_log, active_log, default_successor_log) = match kind {
             LocalLogStorageSelectionKind::Root => ("log:g0", "log:g1", "log:g2"),
             LocalLogStorageSelectionKind::Rotation => ("log:g1", "log:g2", "log:g3"),
         };
+        let checkpoint_log = match kind {
+            LocalLogStorageSelectionKind::Root => default_checkpoint_log,
+            LocalLogStorageSelectionKind::Rotation => {
+                rotation_checkpoint_log.unwrap_or(default_checkpoint_log)
+            }
+        };
+        let successor_log =
+            if next_active_reuses_root_checkpoint { "log:g0" } else { default_successor_log };
         let (selected_head, next_head) = match kind {
             LocalLogStorageSelectionKind::Root => ("head:h0", "head:h1"),
             LocalLogStorageSelectionKind::Rotation => ("head:h1", "head:h2"),
         };
-        let (next_transaction, next_fence) = match kind {
+        let (next_transaction, default_next_fence) = match kind {
             LocalLogStorageSelectionKind::Root => ("transaction:t1", "fence:f1"),
             LocalLogStorageSelectionKind::Rotation => ("transaction:t2", "fence:f2"),
         };
+        let next_fence =
+            if next_active_reuses_root_fence { "fence:f0" } else { default_next_fence };
 
         let session_id = LocalSessionId::try_new(SESSION)?;
         let checkpoint_log_id = LocalLogId::try_new(checkpoint_log)?;
@@ -326,11 +377,11 @@ impl SelectedRotationFixture {
         Ok(Self { context, selected, outcome, binding, inputs })
     }
 
-    fn codec(&self) -> LocalLogStorageGenerationJsonCodec {
+    pub(super) fn codec(&self) -> LocalLogStorageGenerationJsonCodec {
         LocalLogStorageGenerationJsonCodec::new(self.context.clone(), self.binding.clone())
     }
 
-    fn prepared(
+    pub(super) fn prepared(
         &self,
     ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
         self.codec().prepare_rotation_from_selected(&self.selected, &self.outcome, &self.inputs)

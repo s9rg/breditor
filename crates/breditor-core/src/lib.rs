@@ -218,12 +218,55 @@
 //! [`codec::LocalLogStorageRetiredTransactionBinding`] exposes only facts
 //! retained by the tombstone; its byte length does not attest byte equality.
 //! These comparisons perform no storage observation, exact-JSON comparison,
-//! range/index validation, or resolver-terminal attestation. Future resolver
-//! evidence becomes applicable only after its exact fixed-scope serialized
-//! transaction emits terminal `complete`; request success, `commit()` return,
-//! abort, callback loss, or unrelated completion classifies nothing. Root
-//! resolution is deferred to `0.0.39` and rotation resolution to `0.0.40`. All
-//! storage V1 shapes remain unstable pre-`0.1` contracts.
+//! range/index validation, or resolver-terminal attestation.
+//!
+//! Version `0.0.39` adds a process-local root-only resolver over surviving
+//! uncertain, aborted, unattempted, or host-attested-committed state. Rotation
+//! sources are recoverably rejected. One borrowed
+//! [`codec::LocalLogStorageRootResolutionRequest`] mints an opaque
+//! [`local_log::LocalLogStorageRootResolutionRequestId`] only at egress.
+//! [`codec::LocalLogStorageRootResolutionEvidence::transaction_completed`] is
+//! applicable only after that exact fixed-scope serialized transaction emits
+//! terminal `complete` after all reads and cursor scans. Request success,
+//! `commit()` return, abort, callback loss, or unrelated completion classifies
+//! nothing.
+//! A physically absent database instead uses the separate
+//! [`codec::LocalLogStorageRootResolutionEvidence::database_open_absent`]
+//! boundary after a versionless open reports `oldVersion == 0`, synchronously
+//! aborts its upgrade, and reaches terminal open-request `error`.
+//!
+//! Applying evidence before request egress or with a stale/cross-request ID
+//! returns the unchanged [`codec::LocalLogStorageRootResolution`] and unapplied
+//! evidence. `restart_resolution` preserves the exact source plan and bytes,
+//! clears only resolver correlation, and makes old evidence stale for the next
+//! request. IDs, evidence, plans, and states remain process-local with no wire
+//! or crash-restart reconstruction.
+//!
+//! The closed [`codec::LocalLogStorageRootResolutionOutcome`] distinguishes
+//! selected commit, immediate-predecessor commit, retired identity, advisory
+//! retry eligibility, another valid scope, collision/corruption, and
+//! reset/indeterminate. Clean planned-scope absence yields retry eligibility
+//! only for a non-host-committed source. With surviving host-attested commit it
+//! becomes reset/indeterminate, as does a different valid scope. Physical
+//! database absence, a different valid metadata incarnation, or an all-five-
+//! stores-empty compatible database without `meta/profile` is reset/
+//! indeterminate for every source. Any record without valid profile metadata,
+//! or an expected scope whose append-only candidate association is missing, is
+//! collision or corruption. Retired resolution separately validates the
+//! candidate's direct successor. An exact current-predecessor successor uses
+//! its privately retained, byte-derived sealed log ID and frame, both of which
+//! must equal the root plan's active generation without another host scalar. A
+//! retired successor's Profile V1 tombstone has discarded those JSON/sealed
+//! facts, so only its retained transaction/head identity, head-index mapping,
+//! and the planned active generation's `retiredBy` link are proved—not its
+//! discarded contents. Candidate byte length remains identity screening, not
+//! byte equality. Only
+//! [`codec::LocalLogStorageRootRetryEligibleAtResolution`] can exact-resubmit,
+//! under a fresh attempt ID, and that eligibility is advisory after the read
+//! transaction. No outcome authenticates `IndexedDB`, proves durability or stable
+//! currentness, or releases writer/semantic ownership. Rotation resolution is
+//! deferred to `0.0.40`, and all Storage V1 shapes remain unstable pre-`0.1`
+//! contracts.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

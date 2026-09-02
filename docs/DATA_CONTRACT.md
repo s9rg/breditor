@@ -111,6 +111,12 @@ The implemented Rust slice owns:
   validation under a distinct superseding head, and a closed
   `LocalLogStorageRetiredTransactionBinding` limited to tombstone-retained
   identity and byte-length facts;
+- a process-local root-only resolver over the four surviving attempt states,
+  with recoverable rotation rejection, one request identity minted at egress,
+  exact ordinary-read terminal-complete or physical-database-absence terminal-
+  open-error evidence correlation, ownership-preserving stale-ID rejection and
+  resolver restart, closed physical findings and semantic outcomes, and
+  advisory exact resubmission only after clean non-host-committed scope absence;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -137,12 +143,12 @@ The following remain deliberately unimplemented:
 - ordered tail storage and recovery orchestration, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
-- storage-generation initial provisioning, serialized resolver evidence,
-  plan-level definite-noncommit proof, restart plan reconstruction, transaction
-  ownership typestate, adapter capabilities, authoritative-head integration,
-  and an executable filesystem or IndexedDB adapter (only the profile contract,
-  pure-Rust values/attempt mechanics, and process-local host terminal
-  attestations exist);
+- storage-generation initial provisioning, rotation-resolution evidence,
+  plan-level definite-noncommit proof, process-restart plan reconstruction,
+  transaction ownership typestate, adapter capabilities, authoritative-head
+  integration, and an executable filesystem or IndexedDB adapter (only the
+  profile contract, pure-Rust values/attempt mechanics, process-local host
+  terminal attestations, and the root resolver state machine exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -694,8 +700,35 @@ for active retirement, and retain only tombstone facts including stored byte
 length. They compare caller-supplied typed values only: they do not compare
 selection JSON, observe storage, validate keys, indexes, or complete range
 scans, authenticate resolver transaction completion, classify commit, or
-release authority. Root and rotation resolvers remain the separate `0.0.39`
-and `0.0.40` gates.
+release authority.
+
+Version `0.0.39` implements the root-only process-local resolver state machine.
+It consumes one surviving root attempt state, emits at most one borrowed
+request per resolver invocation, and accepts terminal evidence only with the
+opaque request ID minted at that egress. Ordinary read evidence is a trusted
+host assertion that the exact fixed-scope serialized transaction emitted
+terminal `complete` after all reads and scans. Physical database absence instead
+requires a versionless open to report `oldVersion == 0`, synchronously abort its
+upgrade, and emit terminal open-request `error`. Pre-egress or stale/cross-
+request evidence returns the unchanged resolver and unapplied evidence;
+`restart_resolution` preserves the source plan and bytes while clearing
+correlation and making old evidence stale. Neither identity nor state survives
+process restart.
+
+The root resolver validates a closed physical observation against the exact
+plan before producing one of seven semantic outcomes. Clean planned-scope
+absence is advisory retry eligibility only for uncertain, aborted, or
+unattempted sources; for `HostAttestedCommitted`, missing/replaced scope lifetime
+is reset/indeterminate and can never retry. Physical database absence, a
+different valid metadata incarnation, or a schema-compatible database without
+`meta/profile` and with all five stores empty is reset/indeterminate for every
+source. Any record in any store without valid profile metadata is collision/
+corruption, as is a still-present expected scope with its append-only candidate/
+index association missing. Only retry eligibility preserves exact resubmission
+under a fresh attempt ID, and a later attempt must repeat every comparison and
+authority check. No outcome authenticates IndexedDB, proves durability or
+stable currentness, or releases ownership. Rotation resolution remains the
+separate `0.0.40` checkpoint.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -2561,7 +2594,7 @@ new active-generation codec binding and starts at generation-relative offset
 zero. The old offset and old recovery/frame policy are never carried forward
 implicitly.
 
-### Storage root, selection, and generation validation (no storage transaction)
+### Storage roots, attempts, and root resolution (no storage I/O)
 
 Version `0.0.32` implements the platform-neutral value and validation subset of
 [`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). The
@@ -2813,23 +2846,125 @@ Candidate preparation also temporarily decodes and reconstructs the candidate
 anchor for final strict normalization before dropping it.
 
 This complete pure-Rust boundary performs no filesystem, IndexedDB, JavaScript,
-Wasm, or other I/O; creates no adapter capability or serialized resolver
-evidence; makes no head compare-and-swap, stable-currentness, writer-fencing,
-durability, or crash-recovery claim; cannot prove host-event provenance, global
-ID/fence freshness, or that a physical successor is fresh and empty; and
-releases no writable successor owner. The retained selection receipt bindings
-are caller-supplied validation facts, not commit receipts or authority.
-`HostAttestedCommitted`, `NotAttempted`, and `AttemptAborted` are v0.0.37 Rust
-evidence types, but only as trusted process-local physical-attempt
-attestations. Version `0.0.38` adds directional same-selection and
-active-to-retired/reclaimed value comparison plus a record-shaped retired
-transaction binding. None is serialized resolver evidence.
-`DefinitelyNotCommitted` and resolver outcomes remain prospective
-v0.0.39/v0.0.40 names. Attempt IDs, request IDs, attestations, plans, and states
-have no wire or restart representation; resolution requires the exact plan to
-survive in memory, and crash-time plan reconstruction is not implemented.
-Consuming ownership release still requires a separately frozen held-lock,
-transaction-coupled admission, or revocable/speculative-branch contract.
+Wasm, or other I/O; creates no adapter capability; makes no head compare-and-
+swap, stable-currentness, writer-fencing, durability, or crash-recovery claim;
+cannot prove host-event provenance, global ID/fence freshness, or that a
+physical successor is fresh and empty; and releases no writable successor
+owner. The retained selection receipt bindings are caller-supplied validation
+facts, not commit receipts or authority. `HostAttestedCommitted`,
+`NotAttempted`, and `AttemptAborted` are trusted process-local physical-attempt
+states. Version `0.0.38` adds directional same-selection and active-to-retired/
+reclaimed value comparison plus the tombstone-shaped retired transaction
+binding; those helpers are not storage evidence.
+
+Version `0.0.39` adds a root-only resolution state machine. Each of
+`LocalLogStorageUncertainAttempt`, `LocalLogStorageAttemptAborted`,
+`LocalLogStorageNotAttempted`, and `LocalLogStorageHostAttestedCommitted` can
+consume `try_begin_root_resolution` when its retained plan is a root. A rotation
+returns `LocalLogStorageRootResolutionStartFailure<T>` with the complete
+unchanged source owner. The non-`Clone` resolution retains that exact source
+object, attempt ID, plan allocations, and candidate bytes; beginning performs
+no read and grants no authority.
+
+`LocalLogStorageRootResolution::adapter_request` emits at most one borrowed
+payload request for one resolver invocation and mints its opaque
+`LocalLogStorageRootResolutionRequestId` only at that egress. Safe callers can
+clone the ID only from the request to construct either completed-transaction or
+database-open-absence evidence. The host may construct `transaction_completed`
+only after the exact fixed-scope serialized resolver transaction emitted
+terminal `complete` after every relevant read and cursor scan finished.
+Individual request success, `commit()` return, abort, callback loss,
+cancellation, or another transaction's completion is not evidence. Rust checks
+allocation identity but cannot inspect IndexedDB or authenticate the event.
+
+A physically absent database cannot open that fixed five-store transaction.
+`database_open_absent` is the nominally separate correlated assertion that a
+versionless open reported `oldVersion == 0`, the handler synchronously aborted
+the upgrade transaction, and the open request then emitted terminal `error`.
+The aborted upgrade cannot provision or migrate storage. An existing database
+whose valid meta record carries another incarnation remains an ordinary
+completed-transaction observation. A schema-compatible existing database with
+no `meta/profile` record is reset/indeterminate only when that same completed
+transaction exhaustively proves all five stores empty. If any store contains a
+record without valid profile metadata, the observation is instead
+`BrokenProfileAssociation::ProfileMetadata` and fails as collision/corruption.
+
+Applying evidence checks `RequestNotIssued` before `RequestIdMismatch`.
+Rejection returns the unchanged resolution and unapplied evidence, and
+classifies no finding. Consuming `restart_resolution` preserves the exact
+source, plan allocations, and candidate bytes but clears the volatile resolver
+correlation. The next request receives a distinct identity, making evidence
+from the earlier invocation stale. This is a fresh in-process resolver read,
+not crash restart: attempt IDs, resolver request IDs, evidence, plans, and
+typestates have no wire, cross-process meaning, or process-restart
+reconstruction.
+
+The terminal physical observation set is closed: expected database
+unavailable, completely absent planned scope, exact candidate selected, exact
+candidate as immediate predecessor, retained candidate identity after
+retirement, another complete valid scope incarnation, planned identity
+collision, or broken profile-database/expected-scope association. A retired
+finding preserves whether the candidate's direct-successor transaction is still
+the exact current predecessor or is itself already retired, plus that
+successor's head-index mapping. In the exact case, strict selected normalization
+privately retains the predecessor bytes' decoded sealed log ID and frame; the
+core requires both to equal the root candidate's planned active generation and
+does not accept a second host-supplied scalar description. In the
+already-retired case, the Profile V1 tombstone has discarded the successor JSON
+and sealed fields. That branch can therefore prove only the successor's retained
+transaction/head identity and index plus the planned active generation's
+`retiredBy` linkage, not the discarded successor contents. The core otherwise
+checks supplied normalized selections, exact candidate/predecessor bytes where
+they still exist, head-index mappings, permanent generation facts, retired
+candidate identity/length, and scope lifetime relationships against the
+retained plan before returning a semantic outcome.
+Ordinary observation constructors remain trusted host assertions about complete
+reads and exhausted ranges; physical absence is available only through the
+separate aborted-open evidence constructor.
+
+The outcome and precedence rules are:
+
+- exact current candidate and exact immediate predecessor become
+  `CommittedSelectedAtResolution` and `CommittedSuperseded`; these are
+  historical classifications at the resolver transaction, not permanent
+  currentness or writer authority;
+- a matching retired tombstone, the case-specific direct-successor proof, both
+  head-index mappings, and required current/generation graph become
+  `ResolutionRetired`; the exact-successor case additionally proves the sealed
+  log/frame relationship from normalized predecessor bytes, while the
+  retired-successor case cannot prove that successor's discarded contents, and
+  neither case attests the discarded candidate bytes merely from stored byte
+  length;
+- complete planned-scope and artifact absence becomes advisory
+  `RetryEligibleAtResolution` only for an uncertain, aborted, or unattempted
+  source;
+- for a surviving `HostAttestedCommitted` source, a missing planned scope or a
+  different complete valid scope lifetime becomes
+  `StorageResetOrIndeterminate`, never retry or already-provisioned authority;
+- a different complete valid scope becomes `ScopeAlreadyProvisioned` for the
+  three non-host-committed sources;
+- physical database absence, a different valid metadata incarnation, or a
+  schema-compatible database without `meta/profile` whose five stores are all
+  empty is reset/indeterminate; any stored record without valid profile
+  metadata is collision/corruption; and
+- identity conflicts, mismatched supplied relationships, and a still-present
+  expected scope whose append-only candidate or index is missing become
+  `CollisionOrCorruption`.
+
+Only `LocalLogStorageRootRetryEligibleAtResolution` exposes
+`begin_exact_resubmission`. It preserves the immutable plan allocations and
+candidate bytes under a fresh publication attempt ID, but eligibility is only a
+snapshot of the completed read transaction. Copied request bytes can publish
+later, so a later attempt must repeat every storage comparison and acquire
+separate revocable authority. Every other root outcome is non-retry and exposes
+no writer, checkpoint anchor, semantic owner, or ownership-release transition.
+The API implements no plan-level `DefinitelyNotCommitted` proof.
+
+Rotation resolution remains deferred to `0.0.40` with a nominally separate
+request, observation, and outcome contract. Crash-time plan reconstruction and
+all executable adapters remain unimplemented. Consuming ownership release still
+requires a separately frozen held-lock, transaction-coupled admission, or
+revocable/speculative-branch contract.
 
 ### Genesis local-log recovery
 
@@ -3333,39 +3468,80 @@ value helpers do not compare selection JSON, read storage, validate keys/indexes
 or complete range scans, authenticate browser events, classify commit, or
 release authority.
 
-Version `0.0.39` is the separate root-resolver gate. It must validate the
-expected database incarnation, complete exact root/scope/generation/index
-association or complete absence of the planned scope and every full artifact
-range, and distinguish selected, superseded, retired, another-valid-scope,
-reset, collision, and corrupt cases. Version `0.0.40` then adds rotation
-resolution with its nominally separate token/evidence shape. Rotation absence
-requires the prior selected envelope under the directional cleanup relation,
-exact current/optional-predecessor bytes, and absence of candidate transaction,
-head index, successor generation, and complete successor prefix. Positive
-selected/superseded cases also validate plan-known older tombstones.
+Version `0.0.39` implements the separate root-resolver gate in pure Rust. The
+four surviving root attempt states can enter one non-`Clone` resolution; a
+rotation is rejected with its unchanged owner. One adapter request mints one
+opaque process-local ID at egress, and only evidence carrying that allocation
+identity can close the invocation. Restarting the resolution clears that
+correlation while preserving the exact source plan, so any old evidence is
+stale. Pre-egress and mismatched evidence are rejected without classification
+and returned with the unchanged resolver.
 
-Evidence for either resolver becomes applicable only after its exact fixed-
-scope serialized transaction emits terminal `complete`; request success,
-`commit()` return, abort, callback loss, or unrelated completion classifies
-nothing. Exact selected/superseded evidence can establish historical commit;
-retired, reset, collision, and corrupt cases fail closed. Absence is
-shape-specific: clean absent root scope or exact prior rotation selection is
-advisory `RetryEligibleAtResolution`, another valid root scope is
-`ScopeAlreadyProvisioned`, and another valid rotation head in the same
-incarnation is `DefinitelyNotCommittedConflict`. A later retry must repeat every
-check and authority test or combine comparison and writes atomically. A
-surviving `HostAttestedCommitted` source changes same-incarnation absence to
-corruption rather than retry/conflict/provisioned; a missing/different expected
-incarnation remains reset/indeterminate.
+Ordinary read evidence becomes applicable only after its exact fixed-scope
+serialized transaction emits terminal `complete` after all reads and scans;
+request success, `commit()` return, abort, callback loss, or unrelated
+completion classifies nothing. Physical database absence instead requires the
+correlated versionless open to report `oldVersion == 0`, synchronously abort its
+upgrade, and emit terminal open-request `error`. The implemented root
+observations distinguish unavailable expected database, complete planned-scope
+absence, exact selected, exact immediate predecessor, retired identity, another
+valid scope, permanent identity collision, and a broken profile-database or
+expected-scope graph.
+Rust validates each finding against the surviving exact plan before producing
+the seven closed root outcomes.
 
-Only after both resolver contracts are adversarially tested should a JavaScript
-adapter be implemented and the profile validated in real browsers before being
-called executable. Historical commit does not grant stable currentness: every
-IndexedDB mutation must recheck the exact head, active generation, writer epoch,
-and current writer fence inside its own serialized transaction. Consuming
-exclusive-owner typestate requires a separately specified held lock,
-transaction-coupled semantic admission, or revocable/speculative branch and is
-not part of Profile V1.
+Retired-root validation is case-specific. If the direct successor remains the
+exact current predecessor, strict selected normalization privately carries its
+byte-derived sealed log ID and frame into resolution; both must equal the root
+plan's active generation, with no separate host scalar accepted for that
+claim. If the direct successor has itself become a Profile V1 tombstone, its
+JSON and sealed-generation fields no longer exist. `ResolutionRetired` then
+proves only that successor's retained transaction/head identity, committed-head
+index, and the planned active generation's `retiredBy` linkage—not the
+discarded successor contents. Candidate tombstone length remains collision
+screening rather than candidate-byte evidence.
+
+Root absence precedence is source-aware. Complete planned-scope and artifact
+absence is advisory `RetryEligibleAtResolution` only for uncertain, aborted, or
+unattempted sources. A different valid scope is `ScopeAlreadyProvisioned` for
+those sources. For `HostAttestedCommitted`, a missing planned scope lifetime or
+a different valid scope lifetime is `StorageResetOrIndeterminate`: disappearance
+or replacement after historical commit cannot distinguish reset or eviction and
+never authorizes retry. Physical database absence, a different valid metadata
+incarnation, or a schema-compatible database lacking `meta/profile` with all
+five stores empty is likewise reset/indeterminate. Any record in any store
+without valid profile metadata is collision/corruption. This does not forgive
+append-only inconsistency: if the expected database and planned scope still
+exist but the candidate transaction or committed-head association is missing,
+the adapter must report
+`BrokenProfileAssociation::ExpectedScopeCandidateMissing`, which becomes
+`CollisionOrCorruption`. Identity conflicts and malformed associations also
+fail closed.
+
+Only `RetryEligibleAtResolution` can exact-resubmit under a fresh attempt ID,
+and it remains advisory after the resolver transaction. A later transaction
+must repeat all comparisons and authority checks or combine comparison and
+writes atomically. Selected/superseded classifications establish only
+historical commit; retired identity cannot attest discarded bytes; no outcome
+releases a writer or semantic owner. Resolver IDs/evidence have no wire or
+process-restart representation, and the exact plan must survive in memory.
+
+Version `0.0.40` remains the separate rotation-resolution gate. It needs its own
+request/evidence shapes because rotation absence requires the prior selected
+envelope under the directional cleanup relation, exact current/optional-
+predecessor bytes, and absence of candidate transaction, head index, successor
+generation, and complete successor prefix. Positive selected/superseded cases
+also validate plan-known older tombstones. Another valid rotation head is not a
+root `ScopeAlreadyProvisioned` case.
+
+Only after rotation resolution and its adversarial tests are stable should a
+JavaScript adapter be implemented and the profile validated in real browsers
+before being called executable. Historical commit does not grant stable
+currentness: every IndexedDB mutation must recheck the exact head, active
+generation, writer epoch, and current writer fence inside its own serialized
+transaction. Consuming exclusive-owner typestate requires a separately
+specified held lock, transaction-coupled semantic admission, or
+revocable/speculative branch and is not part of Profile V1.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and

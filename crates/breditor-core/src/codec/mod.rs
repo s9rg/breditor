@@ -69,6 +69,27 @@ mod local_log_storage_root_error;
 mod local_log_storage_root_json;
 mod local_log_storage_root_preparation_inputs;
 mod local_log_storage_root_prepare;
+mod local_log_storage_root_resolution;
+mod local_log_storage_root_resolution_adapter_request;
+#[cfg(test)]
+mod local_log_storage_root_resolution_adversarial_tests;
+mod local_log_storage_root_resolution_apply;
+mod local_log_storage_root_resolution_begin;
+mod local_log_storage_root_resolution_collision_reason;
+mod local_log_storage_root_resolution_evidence;
+mod local_log_storage_root_resolution_failure;
+mod local_log_storage_root_resolution_observation;
+mod local_log_storage_root_resolution_outcome;
+mod local_log_storage_root_resolution_request;
+mod local_log_storage_root_resolution_restart;
+mod local_log_storage_root_resolution_retry;
+mod local_log_storage_root_resolution_source;
+mod local_log_storage_root_resolution_source_kind;
+mod local_log_storage_root_resolution_start_error;
+mod local_log_storage_root_resolution_start_failure;
+mod local_log_storage_root_resolution_transition_error;
+mod local_log_storage_root_resolved;
+mod local_log_storage_root_retry_eligible_at_resolution;
 mod local_log_storage_root_selection;
 #[cfg(test)]
 mod local_log_storage_root_tests;
@@ -227,6 +248,31 @@ pub use local_log_storage_root_json::{
     LocalLogStorageRootJsonCodec,
 };
 pub use local_log_storage_root_preparation_inputs::LocalLogStorageRootPreparationInputs;
+pub use local_log_storage_root_resolution::LocalLogStorageRootResolution;
+pub use local_log_storage_root_resolution_collision_reason::LocalLogStorageRootResolutionCollisionReason;
+pub use local_log_storage_root_resolution_evidence::LocalLogStorageRootResolutionEvidence;
+pub use local_log_storage_root_resolution_failure::LocalLogStorageRootResolutionFailure;
+pub use local_log_storage_root_resolution_observation::{
+    LocalLogStorageRootDirectSuccessorObservation, LocalLogStorageRootOtherScopeObservation,
+    LocalLogStorageRootResolutionBrokenAssociation, LocalLogStorageRootResolutionIdentityCollision,
+    LocalLogStorageRootResolutionObservation, LocalLogStorageRootResolutionObservationKind,
+    LocalLogStorageRootRetiredObservation, LocalLogStorageRootSelectedObservation,
+    LocalLogStorageRootSupersededObservation,
+};
+pub use local_log_storage_root_resolution_outcome::{
+    LocalLogStorageRootResolutionOutcome, LocalLogStorageRootResolutionOutcomeKind,
+};
+pub use local_log_storage_root_resolution_request::LocalLogStorageRootResolutionRequest;
+pub use local_log_storage_root_resolution_source_kind::LocalLogStorageRootResolutionSourceKind;
+pub use local_log_storage_root_resolution_start_error::{
+    LocalLogStorageRootResolutionStartError, LocalLogStorageRootResolutionStartErrorCode,
+};
+pub use local_log_storage_root_resolution_start_failure::LocalLogStorageRootResolutionStartFailure;
+pub use local_log_storage_root_resolution_transition_error::{
+    LocalLogStorageRootResolutionTransitionError, LocalLogStorageRootResolutionTransitionErrorCode,
+};
+pub use local_log_storage_root_resolved::LocalLogStorageRootResolved;
+pub use local_log_storage_root_retry_eligible_at_resolution::LocalLogStorageRootRetryEligibleAtResolution;
 pub use local_log_storage_root_selection::LocalLogStorageRootSelection;
 pub(crate) use local_log_storage_root_selection::LocalLogStorageRootSelectionParts;
 pub use local_log_storage_selected_binding::{
