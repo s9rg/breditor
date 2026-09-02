@@ -121,6 +121,18 @@ or that the physical successor is empty. The implemented validation-only
 permanent compatibility promise. Local Log Checkpoint V1 and Frame V1 remain
 unchanged.
 
+Version `0.0.33` adds no Rust storage API. It freezes the separate
+[IndexedDB local-log profile](../../docs/INDEXEDDB_STORAGE_PROFILE.md),
+including a distinct initial-root format, current-selection normalization,
+database/scope incarnations, exact current and immediate-prior selection
+records, identity tombstones, empty-generation reservation, uncertain-outcome
+resolution, revocable per-mutation writer epochs, and generation-payload
+reclamation. The next Rust checkpoint can implement those pure values without
+placing browser handles or asynchronous I/O inside `breditor-core`.
+The profile cannot release a long-lived exclusive Rust writer; that still
+needs a separately held lock, transaction-coupled admission, or explicit
+revocable/speculative branch semantics.
+
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch
 cannot reset the allowance. An explicitly named transition can reauthorize a

@@ -92,6 +92,11 @@
 //! There is deliberately no public seed/provisioning path yet, and this crate
 //! still exports no prepared/committed/uncertain typestate, receipt, adapter, or
 //! storage I/O API. Checkpoint V1 and Frame V1 are unchanged.
+//! Breditor `0.0.33` separately freezes a concrete `IndexedDB` profile and a
+//! distinct initial-root/current-selection contract in the repository design
+//! documents. That checkpoint is specification-only: none of its root,
+//! incarnation, selected-root, transaction-receipt, writer-epoch, or browser-
+//! adapter values are exported here yet.
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

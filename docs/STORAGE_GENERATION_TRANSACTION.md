@@ -1,7 +1,8 @@
 # Local-log storage-generation transaction
 
 Status: value and strict ordinary-rotation validation implemented in Breditor
-`0.0.32`; storage transaction and ownership release remain specification only
+`0.0.32`; initial provisioning and the first IndexedDB profile frozen as a
+`0.0.33` contract; storage I/O and ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -48,9 +49,13 @@ several roles:
 2. The host coordinator chooses the storage scope, lifetime-unique transaction
    and head identifiers, storage profile, successor Frame V1 policy, and the
    point at which an unobserved old-generation suffix is abandoned.
-3. A writer-fence authority supplies a non-secret fence identifier plus an
-   adapter capability. The capability, not the identifier, authorizes and
-   fences physical writes. It is never persisted in this manifest.
+3. A profile-specific writer authority supplies unpersisted publication
+   capability and its validation rules. The manifest's non-secret `fenceId`
+   is the candidate generation's immutable activation correlation identity,
+   not necessarily the identity of the capability authorizing the rotation.
+   The IndexedDB V1 profile, for example, checks the currently selected
+   generation's revocable writer token while publishing a fresh candidate
+   activation fence. No capability is persisted in this manifest.
 4. A platform adapter implements one named profile's compare-and-swap,
    atomicity, visibility, and durability rules and produces host-attested
    attempt classifications.
@@ -66,6 +71,14 @@ does not yet preserve transaction ownership. It cannot prove that a supplied
 binding or prior manifest is authoritative, that a host-issued capability is
 current, that a writer was fenced, or that a platform operation became durable.
 A future host-attested receipt remains a trusted external assertion.
+
+Version `0.0.33` freezes the first concrete browser realization in
+[`INDEXEDDB_STORAGE_PROFILE.md`](INDEXEDDB_STORAGE_PROFILE.md). That profile
+adds no executable adapter. It chooses a separate canonical root-selection
+format, O(1) profile-attested current selection, database/scope incarnations,
+transaction/head/generation identity tombstones, one fixed five-store
+`readwrite` transaction, a mutable writer epoch separate from the immutable
+activation fence, uncertain-outcome resolution, and payload cleanup.
 
 ## Authoritative manifest and head
 
@@ -85,14 +98,17 @@ CAS(
 )
 ```
 
-The adapter may attempt publication only while holding the unpersisted
-capability associated with `fenceId`. A successful operation atomically changes
-the scope's authoritative head from `expectedHeadId` to `committedHeadId` and
-makes the exact new manifest the record selected by that head. The same
-profile operation must also establish the successor as a lifetime-fresh empty
-generation reservation, or select a lifetime-fresh absent generation that only
-a postcommit current-fence holder can create lazily. No nonempty successor tail
-may become selected by this publication.
+The adapter may attempt publication only while holding the profile-defined
+unpersisted authority for the currently selected head/generation, and it must
+validate that authority inside the same publication operation. A successful
+operation atomically changes the scope's authoritative head from
+`expectedHeadId` to `committedHeadId`, makes the exact new manifest the record
+selected by that head, and persists its `fenceId` as the successor generation's
+immutable activation fact. The same profile operation must also establish the
+successor as a lifetime-fresh empty generation reservation, or select a
+lifetime-fresh absent generation that only profile-defined postcommit authority
+can create lazily. No nonempty successor tail may become selected by this
+publication.
 
 This contract is rotation-only. Before an ordinary transaction, the scope has
 one already validated prior manifest selected by `expectedHeadId`. Every public
@@ -204,7 +220,9 @@ lease secret, file descriptor, browser transaction handle, authentication
 token, or other authority. The adapter's actual capability stays outside the
 record and outside debug output. Reconstructing or copying `fenceId` never
 reconstructs authority. A profile must prevent fence-ID reuse from creating an
-ABA window while an older attempt can still complete.
+ABA window while an older attempt can still complete. A profile may bind its
+publication capability to this identity, but that is not a platform-neutral
+requirement; it must state the binding explicitly if it does.
 
 `sessionId`, `sealedLogId`, and `successorLogId` use their existing local-log
 identity types. Preparation derives them from the
@@ -326,15 +344,15 @@ silently racing a separately activated successor.
 `DefinitelyNotCommitted` means the profile has positively established that the
 exact in-flight attempt did not become authoritative and cannot publish later
 without a new explicit retry. It owns the same plan, anchor,
-capability/evidence relationship, and metadata. It may retry the byte-identical
-transaction if its authority remains valid, or a later API may reprepare after
-reauthorization. Repreparation preserves the outcome-derived session, sealed
-and successor generation IDs, checkpoint bytes, accepted prefix, and sealed
-frame policy. It uses fresh transaction and committed-head IDs, refreshes the
-fence capability/ID when required, and may explicitly reselect only the
-pre-append successor frame policy. Changing generation or checkpoint facts
-requires a newly derived compaction outcome. This state does not release the
-anchor.
+publication-authority/evidence relationship, and metadata. It may retry the
+byte-identical transaction if its authority remains valid, or a later API may
+reprepare after reauthorization. Repreparation preserves the outcome-derived
+session, sealed and successor generation IDs, checkpoint bytes, accepted
+prefix, and sealed frame policy. It uses fresh transaction and committed-head
+IDs, chooses a fresh candidate activation fence and profile authority when
+required, and may explicitly reselect only the pre-append successor frame
+policy. Changing generation or checkpoint facts requires a newly derived
+compaction outcome. This state does not release the anchor.
 
 A synchronous error, timeout, closed handle, visible old head, or absence of a
 new record is not automatically this state. The named profile must define the
@@ -348,12 +366,14 @@ equals `committedHeadId`, that the selected record is the exact planned record,
 and that the profile's commit/fence conditions completed. This state is a host
 assertion, not an independent proof by `breditor-core`.
 
-It is the only state allowed to release the owned anchor, exactly once. The
-successor cursor is then derived from that anchor with the already selected
-successor Frame V1 policy, an explicit runtime `LocalLogRecoveryLimits`, the new
-generation binding, and generation-relative offset zero. Consuming ownership
-must prevent a duplicate receipt or identical retry from releasing a second
-semantic owner.
+Version `0.0.33` corrects an earlier overclaim: historical commit evidence alone
+cannot release a long-lived exclusive semantic owner. A profile-specific
+consuming transition may release the owned anchor exactly once only when it
+also holds authority that cannot be revoked outside that owner's lifetime, or
+when it defines transaction-coupled admission or explicit speculative-branch
+semantics. It must prevent a duplicate receipt or identical retry from
+releasing a second exclusive owner. The IndexedDB V1 profile has no such
+transition; its per-mutation epoch can be revoked before an event callback.
 
 ### Uncertain
 
@@ -363,8 +383,12 @@ return a bare anchor, change a transaction fact, create another transaction,
 or authorize old-generation cleanup.
 
 It may resubmit only the byte-identical plan under the same transaction ID,
-scope, expected/committed heads, fence identity/capability, checkpoint bytes,
-accepted prefix, frame policies, and generation identities. It may resolve to
+scope, expected/committed heads, candidate activation-fence identity,
+checkpoint bytes, accepted prefix, frame policies, and generation identities.
+The attempt must present profile-valid publication authority; a profile may
+replace revocable volatile authority only through its serialized
+resolution/reacquisition rules, never by treating the persisted `fenceId` as
+that authority. It may resolve to
 `HostAttestedCommitted` only after an exact authoritative match plus the
 profile's finality and fence attestation, or to
 `DefinitelyNotCommitted` only after profile-defined positive noncommit proof.
@@ -374,8 +398,10 @@ After an uncertain attempt, observing that the authoritative head still equals
 `expectedHeadId` is insufficient by itself. An earlier asynchronous, queued, or
 partially completed operation might still publish later. The profile must first
 prove that the transaction cannot subsequently commit—for example through its
-own terminal abort/cancellation rule—before the state can become
-`DefinitelyNotCommitted`.
+own final plan-level cancellation/resolution barrier—before the state can
+become `DefinitelyNotCommitted`. For IndexedDB V1, an `abort` event proves only
+that one database transaction rolled back; another context may already have
+retried the same plan, so the fixed overlapping resolver is still required.
 
 ## Retry and idempotency rules
 
@@ -383,7 +409,8 @@ own terminal abort/cancellation rule—before the state can become
   scope. Changing even one byte or field requires a new transaction ID after
   the old attempt is terminally resolved.
 - An uncertain attempt never retries under a new transaction ID, successor log
-  ID, head ID, fence, checkpoint string, prefix, or frame policy.
+  ID, head ID, candidate activation fence, checkpoint string, prefix, or frame
+  policy.
 - Exact reapplication that finds `committedHeadId` plus the exact manifest is
   one idempotent success. It does not rerun semantic compaction or advance
   ownership twice.
@@ -392,9 +419,12 @@ own terminal abort/cancellation rule—before the state can become
   overwritten as a retry.
 - A current head other than the expected or exact committed head is a stale or
   conflicting plan. Lexical or apparent temporal ordering cannot resolve it.
-- Replacing an expired/lost fence or changing the plan requires positive proof
-  that the old attempt cannot later publish, followed by fresh transaction and
-  committed-head IDs. Copying `fenceId` is never renewal.
+- Reacquiring expired/lost volatile publication authority follows the named
+  profile's serialized resolution rules and does not silently change the
+  immutable plan. Changing the candidate activation fence or any other plan
+  fact requires positive proof that the old attempt cannot later publish,
+  followed by fresh transaction and committed-head IDs. Copying `fenceId` is
+  never authority renewal.
 - A volatile receipt lost at process failure is not reconstructed from memory.
   Restart resolution uses the authoritative manifest/head and the profile's
   exact rules.
@@ -415,8 +445,10 @@ or newest-looking tail.
    those artifacts under the profile's rules. No successor Frame V1 append or
    semantic admission may occur before committed ownership release. If an
    operation may still publish, case 5 applies instead.
-3. A profile-defined final compare-and-swap failure or terminal abort yields
-   `DefinitelyNotCommitted`; the old head remains authoritative.
+3. A profile-defined final compare-and-swap failure or plan-level terminal
+   barrier yields `DefinitelyNotCommitted`; the old head remains authoritative.
+   A concrete IndexedDB `abort` event is only `AttemptAborted`, not that
+   barrier.
 4. Once the atomic head switch selects `committedHeadId`, the exact manifest,
    and the profile-established empty/absent successor reservation, restart
    selects those recoverable bytes after profile finality validation. This
@@ -460,13 +492,14 @@ behavior, and postcommit cleanup barrier. Rename alone is neither writer
 fencing nor a universal durability proof. Platform and filesystem differences
 must remain explicit.
 
-An IndexedDB profile must state the object stores and keys participating in one
-authoritative transaction, when comparison and publication occur, which
-terminal transaction events prove committed or definitely not committed, how
-connection/page/process loss becomes uncertain, and how a later transaction
-resolves the exact head and record. It must not claim native `fsync`, rename, or
-directory semantics. Reading the expected head while an earlier transaction
-can still complete is not positive noncommit proof.
+The concrete `breditor/indexeddb-local-log@1` contract states the object stores
+and keys participating in one authoritative transaction, when comparison and
+publication occur, what `complete` and `abort` prove for one attempt, how
+connection/page/process loss becomes uncertain, and how a later overlapping
+transaction establishes plan-level resolution from the exact transaction and
+selected record. It does not claim native `fsync`, rename, or directory
+semantics. A request-level success is not commit evidence, and neither an abort
+event nor reading an expected head bypasses the fixed serialized resolver.
 
 Both profiles must keep the old authoritative generation recoverable until the
 new exact record is committed, bound to the same plan and fence decision, and
@@ -512,17 +545,23 @@ and a successful manifest remains inspection data rather than permission to
 activate the successor. All public rotation actions require an already
 validated prior manifest; there is deliberately no public initial seed.
 
-For `0.0.33`, freeze initial scope/head provisioning and one concrete platform
-profile before adding any ownership-release typestate. The recommended first
-profile is a narrowly scoped IndexedDB profile whose document names the exact
-object stores/keys, comparison and publication transaction, terminal commit
-and definite-noncommit evidence, lost-response/connection recovery,
-successor-empty reservation, restart resolution, and cleanup barrier. This is
-a sequencing recommendation, not a claim that an IndexedDB adapter, Wasm
-binding, writer fence, atomic publication, or durability guarantee exists.
+Version `0.0.33` now freezes initial scope/head provisioning and the concrete
+`breditor/indexeddb-local-log@1` profile. It names the exact object stores/keys
+and committed-head index, comparison and publication transaction, terminal
+commit and definite-noncommit evidence, lost-response/connection recovery,
+checkpoint-only and empty-active reservations, restart resolution, exact
+receipt-retirement window, mutable writer epoch, and cleanup barrier. This
+remains a contract, not a claim that an IndexedDB adapter, Wasm binding,
+atomic publication implementation, or durability guarantee exists.
 
-Only an executable, red-teamed profile can justify later `Prepared`,
-`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` ownership
-states. The provisioning contract must not manufacture its first manifest
-through an unchecked public constructor or infer authority from in-memory
-genesis compaction.
+For `0.0.34`, implement the pure bounded incarnation, private root-selection
+codec, trusted selected binding, and O(1) selected-root normalization before
+adding storage-attempt evidence. An executable, red-teamed profile can justify
+later non-owning `Prepared`, `DefinitelyNotCommitted`,
+`HostAttestedCommitted`, and `Uncertain` evidence, but IndexedDB profile V1
+cannot release a long-lived exclusive Rust owner: every mutation fence is
+revocable between transactions. Consuming ownership additionally requires a
+separately held lock, transaction-coupled semantic admission, or an explicitly
+revocable/speculative branch. The provisioning contract must not manufacture
+its first manifest through an unchecked public constructor or treat in-memory
+compaction as storage authority.

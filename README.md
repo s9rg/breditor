@@ -106,6 +106,20 @@ validation cannot prove ID/fence freshness or an empty successor. The
 implemented validation-only `breditor/local-log-storage-generation@1` shape
 remains a pre-`0.1` contract rather than a permanent compatibility promise.
 
+Version `0.0.33` is contract-only. It freezes one correctness-first
+[IndexedDB local-log profile](docs/INDEXEDDB_STORAGE_PROFILE.md): a distinct
+canonical initial root selection, O(1) trusted restart selection without a
+manifest-chain walk, database and scope incarnations, one authoritative head,
+exact-then-retired transaction identity records, permanent generation
+tombstones, atomic empty-successor reservation, lost-completion resolution,
+revocable per-mutation writer epochs, and independent retired-payload cleanup.
+Only IndexedDB transaction `complete` attests historical commit; missing
+terminal observation stays uncertain, and `strict` durability remains a
+browser hint. No Rust root/selected value, IndexedDB adapter, Wasm binding,
+ownership typestate, or writable owner is implemented yet.
+The profile's per-mutation epoch is revocable and therefore cannot itself
+release a long-lived exclusive Rust writer.
+
 ## Development
 
 ```sh

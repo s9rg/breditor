@@ -14,6 +14,8 @@ Local-log-frame format: binary `Local Log Frame`, version `1`
 Storage-generation validation format: `breditor/local-log-storage-generation`,
 version `1` (implemented only for strict ordinary-rotation validation in
 `0.0.32`; still a pre-`0.1`, non-permanent compatibility contract)
+Initial storage-root format: `breditor/local-log-storage-root`, proposed version
+`1` (contract-only in `0.0.33`; not a Rust value or permanent promise)
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -100,8 +102,9 @@ The following remain deliberately unimplemented:
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
 - storage-generation initial provisioning, transaction ownership typestate,
-  adapter capabilities or receipts, authoritative-head integration, and any
-  executable filesystem or IndexedDB profile;
+  adapter capabilities or receipts, authoritative-head integration, and an
+  executable filesystem or IndexedDB adapter (the first IndexedDB profile is
+  frozen only as a `0.0.33` contract);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -117,6 +120,17 @@ validation subset of the storage-generation transaction frozen in
 [`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). It
 does not implement that transaction's authority, I/O, finality, or ownership
 state machine.
+
+Version `0.0.33` freezes the first concrete
+[`breditor/indexeddb-local-log@1` profile](INDEXEDDB_STORAGE_PROFILE.md). It
+chooses a distinct canonical initial root rather than a sentinel prior head,
+normalizes root and rotation selections into one O(1) trusted current summary,
+and specifies database/scope incarnations, exact current and immediate-prior
+selection bytes, transaction/head/generation tombstones, one fixed atomic
+transaction scope, revocable writer epochs, terminal-event evidence,
+uncertain-outcome recovery, and payload cleanup. This is specification only;
+it adds no root codec, selected-root value, ownership typestate,
+IndexedDB/Wasm adapter, or durability guarantee.
 
 Runtime values and serialization records are deliberately different types:
 
@@ -541,6 +555,16 @@ an independently trusted binding, a private-constructor non-`Clone` manifest,
 independent limits, and separate borrowed preparation, canonical encoding, and
 strict decoding actions. It adds no seed manifest, adapter capability, receipt,
 I/O, compare-and-swap, durability, or ownership-release typestate.
+Version `0.0.33` is specification-only. It freezes the concrete
+`breditor/indexeddb-local-log@1` profile and the proposed
+`breditor/local-log-storage-root@1` value. The profile uses a distinct first
+root, O(1) current selection, database/scope incarnations, a unique committed-
+head index, exact current/immediate-prior receipts plus permanent identity
+tombstones, checkpoint-only and active generation reservations, revocable
+writer epochs checked on every mutation, and serialized uncertain-outcome
+resolution. IndexedDB `complete` proves historical commit, not stable
+currentness or permanent durability. No new Rust type or executable browser
+adapter is added.
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2382,7 +2406,8 @@ or a wire-version selector. It cannot describe or select a future frame format;
 that requires an explicitly versioned extension. Neither value is encoded by
 Local Log Checkpoint V1. Storage Generation V1 can now encode and structurally
 validate their association with the checkpoint, but authoritative persistence,
-selection, and restart recovery still require a future trusted adapter profile.
+selection, and restart recovery still require a future trusted adapter
+implementation of the now-frozen profile.
 
 Successful invocation is explicit host authorization to stop semantic
 admission for the old generation at that accepted prefix. The transition reads
@@ -2921,34 +2946,34 @@ owner budget, so the core alone does not bound repeated hostile validation CPU.
 
 ## Next gate
 
-For `0.0.33`, first freeze an explicit initial-provisioning contract and exactly
-one concrete platform profile before implementing any ownership-release
-typestate. The provisioning contract must explain how the first authoritative
-scope/head, initial manifest or distinct seed record, session/generation
-binding, and empty append target come into existence; which inputs are trusted;
-what exact bytes become authoritative; and how every partial or uncertain case
-is recovered without guessing. It must not bypass the strict ordinary-rotation
-codec with a public unchecked manifest constructor.
+Version `0.0.33` now freezes the explicit initial-root contract and the concrete
+`breditor/indexeddb-local-log@1` profile in
+[`INDEXEDDB_STORAGE_PROFILE.md`](INDEXEDDB_STORAGE_PROFILE.md). It specifies
+the five stores and committed-head index, exact transaction lifecycle,
+database/scope incarnations, first checkpoint-only plus empty-active generation
+reservation, exact current/immediate-prior receipt retention, identity
+tombstones, request-versus-transaction terminal evidence, uncertain resolution,
+revocable writer epochs, and payload cleanup. It deliberately makes no
+filesystem claim and adds no executable adapter.
 
-The recommended first profile is a narrowly scoped IndexedDB profile, specified
-for named object stores/keys and one exact transaction lifecycle. The profile
-must define where head comparison occurs, which transaction event positively
-attests commit or definite noncommit, how connection/page/process loss is
-classified, how exact retry and restart resolution work, how an empty or absent
-successor reservation is established, and when old-generation cleanup becomes
-safe. This is a sequencing recommendation, not a claim that an IndexedDB
-adapter, Wasm binding, atomic publication, fencing, or durability guarantee
-already exists. If implementation evidence instead selects a native profile,
-it must be equally narrow about supported operating systems/filesystems and
-must not infer universal `rename`/`fsync` semantics.
+For `0.0.34`, implement the pure Rust storage-incarnation, private root codec,
+trusted selected binding, and O(1) selected-root normalization. Ordinary
+rotation should validate against that selected summary rather than require a
+retained predecessor chain. The root preparation action may snapshot a complete
+compaction outcome with content/history/tombstones; “root” means first storage
+authority, not an empty editor. It must atomically require a permanent
+checkpoint-generation identity and distinct empty active generation at the
+profile boundary.
 
-The `0.0.33` gate should remain contract-first and red-team the seed-to-first-
-rotation boundary, same-head/different-record collisions, delayed completion,
-capability loss, restart selection, successor emptiness, and cleanup barriers.
-Only after that profile has executable authority and finality semantics should
-the project design `Prepared`, `DefinitelyNotCommitted`,
-`HostAttestedCommitted`, and `Uncertain` ownership states or permit one exact
-committed receipt to release a writable successor.
+After those value contracts, add only the non-owning `Prepared`,
+`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` evidence
+boundary; then implement the JavaScript adapter and validate the profile in
+real browsers before calling it executable. Historical commit does not grant
+stable currentness: every IndexedDB mutation must recheck the exact head,
+active generation, writer epoch, and current writer fence inside its own
+serialized transaction. Consuming exclusive-owner typestate requires a
+separately specified held lock, transaction-coupled semantic admission, or
+revocable/speculative branch and is not part of profile V1.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and
