@@ -83,7 +83,10 @@ The implemented Rust slice owns:
 - trusted selected receipt/checkpoint/active-generation bindings and strict
   normalization of either one root or one current rotation plus its immediate
   predecessor into a private-constructor non-`Clone` selected root that
-  privately retains its decoded checkpoint anchor;
+  privately retains its complete checked binding, byte-exact current/optional-
+  predecessor selections, and decoded checkpoint anchor, plus a public
+  byte-exact envelope-validation action whose retained raw JSON access remains
+  core-private;
 - next-rotation preparation, encoding, and decoding validated against that
   selected root without retaining a complete predecessor-manifest chain;
 - atomic transactions, explicit selection/pending-format updates, typed
@@ -113,7 +116,7 @@ The following remain deliberately unimplemented:
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
 - storage-generation initial provisioning, non-owning storage-attempt evidence,
-  transaction ownership typestate, adapter capabilities or receipts,
+  transaction ownership typestate, adapter capabilities or commit receipts,
   authoritative-head integration, and an executable filesystem or IndexedDB
   adapter (only the profile contract and pure-Rust value validation exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
@@ -150,12 +153,22 @@ root. The normalized value privately owns its checkpoint anchor and exposes
 inspection facts only. O(1) means constant in rotation-history length, not in
 input bytes or document size: rotation normalization still processes bounded
 current and immediate-predecessor selection bytes. It strictly decodes both
-nested checkpoints; the current checkpoint is decoded again to retain its anchor. It performs no I/O
-and proves no provisioning, CAS/head currentness, lifetime
-ID/fence freshness, empty-generation reservation, writer authority/epoch,
+nested checkpoints; the current checkpoint is decoded again to retain its
+anchor. It performs no I/O and proves no provisioning, CAS/head currentness,
+lifetime ID/fence freshness, empty-generation reservation, writer authority/epoch,
 durability, commit evidence, or ownership release. No IndexedDB, JavaScript,
 Wasm, or filesystem adapter exists, and these storage formats remain unstable
 pre-`0.1` contracts.
+
+Version `0.0.35` retains the complete checked selected binding and the exact
+canonical current/optional-immediate-predecessor selection bytes in the
+non-`Clone` selected root. Public callers can borrow the current and optional
+predecessor receipt bindings, inspect the retained byte lengths, and ask the
+root to validate caller-supplied exact envelope bytes. Direct access to the raw
+retained selection JSON remains core-private. The selected root's `Debug` and
+all exact-envelope errors remain payload-redacted. This closes a byte-identity
+gap without adding storage authority, currentness, I/O, or commit evidence. Its
+selection receipt bindings are caller-supplied validation facts.
 
 Runtime values and serialization records are deliberately different types:
 
@@ -599,6 +612,13 @@ authoritative-head integration, provisioning, writer authority, or ownership
 release. Its O(1) restart claim concerns rotation-history length only; bounded
 selection/checkpoint bytes and the represented document/session are still
 decoded.
+
+Version `0.0.35` makes the normalized selection byte-exact after validation. It
+retains the complete selected binding and exact current/optional-predecessor
+canonical selection strings, exposes borrowed receipts and byte lengths, and
+adds payload-redacted exact-envelope validation without exposing the retained
+raw strings or adding storage authority.
+
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -2559,14 +2579,30 @@ generation, and active-generation bindings. A
 kind. It normalizes either exact root JSON or exact current rotation JSON plus
 its exact immediate predecessor into one private-constructor non-`Clone`
 `LocalLogStorageSelectedRoot`. Rotation normalization strict-decodes both
-retained values, verifies their receipt/head/log/frame/fence/session cross-links,
-and then discards the predecessor payload. The selected result privately owns
-the decoded checkpoint anchor and exposes no public anchor or writer-opening
-operation. Mutable writer epoch/current-writer-fence facts are intentionally
-absent. Anchor quarantine is ownership/API hygiene rather than secrecy or
-exclusive authority: public canonical checkpoint bytes and binding identities
-can reconstruct a separate structurally checked, still non-authoritative
-anchor.
+values and verifies their receipt/head/log/frame/fence/session cross-links.
+
+Version `0.0.35` retains the complete checked `LocalLogStorageSelectedBinding`,
+the byte-exact canonical current selection, and the byte-exact immediate
+predecessor for a rotation inside that selected root. The public inspection
+surface exposes borrowed current and optional predecessor receipt bindings and
+the exact retained selection byte lengths. Direct getters for the retained raw
+selection JSON remain core-private: public code instead supplies the current
+and optional predecessor strings to `validate_exact_selection_envelope`. That
+action compares UTF-8 bytes only, without parsing, canonicalizing, hashing, or
+reinterpreting them, and rejects a missing/unexpected predecessor or a
+current/predecessor byte mismatch with stable typed errors. Successful equality
+proves only identity with the values that passed normalization, not that storage
+still selects them.
+
+The selected result privately owns the decoded checkpoint anchor and exposes no
+public anchor or writer-opening operation. Mutable writer epoch/current-writer-
+fence facts are intentionally absent. Its `Debug` reports byte lengths rather
+than selection/checkpoint payloads, and exact-envelope errors retain no JSON,
+checkpoint, document, session, or byte preview. Anchor and exact-envelope
+quarantine are ownership/API hygiene rather than secrecy or exclusive
+authority: public canonical checkpoint bytes and binding identities can
+reconstruct a separate structurally checked, still non-authoritative anchor,
+and a caller can copy any bytes it already owns.
 
 The next ordinary rotation can be prepared, encoded, and decoded against this
 selected summary rather than a complete historical manifest chain through
@@ -2582,22 +2618,27 @@ selected root rather than storage-generation wire fields; a future evidence or
 adapter boundary must retain the selected root alongside the candidate
 manifest.
 
-The O(1) claim is only in rotation-history length: root normalization reads one
-selection, while rotation normalization reads one current and one immediate-
-predecessor selection. Both still process bounded selection bytes and decode a
-complete bounded checkpoint for each selection; the current checkpoint is
-decoded again to retain its anchor. Their content/history/document costs are
-not constant. No manifest-chain walk is required, but this is not O(1) in
+The O(1) claim is only in rotation-history length: root normalization reads and
+retains one selection, while rotation normalization reads and retains one
+current and one immediate-predecessor selection. Both still process bounded
+selection bytes and decode a complete bounded checkpoint for each selection;
+the current checkpoint is decoded again to retain its anchor. The selected root
+therefore owns up to two complete outer canonical selection strings, each of
+which may embed a full checkpoint, in addition to its retained current
+checkpoint text and decoded anchor. Their byte/content/history/document costs
+are not constant. No manifest-chain walk is required, but this is not O(1) in
 bytes, document size, session history, or replay-tombstone count.
 
 This complete pure-Rust boundary performs no filesystem, IndexedDB, JavaScript,
-Wasm, or other I/O; creates no adapter capability or receipt; makes no head
-compare-and-swap, stable-currentness, finality, writer-fencing, durability, or
+Wasm, or other I/O; creates no adapter capability, storage-attempt evidence, or
+commit receipt; makes no head compare-and-swap, stable-currentness, finality,
+writer-fencing, durability, or
 crash-recovery claim; cannot prove global ID/fence freshness or that a physical
 successor is fresh and empty; and releases no writable successor owner. The
-non-owning attempt evidence states remain `Prepared`,
+retained selection receipt bindings are caller-supplied validation facts, not
+commit receipts or authority. The non-owning attempt evidence states remain `Prepared`,
 `DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain`. They are
-specification names, not `0.0.34` Rust types. Consuming ownership release still
+specification names, not `0.0.35` Rust types. Consuming ownership release still
 requires a separately frozen held-lock, transaction-coupled admission, or
 revocable/speculative-branch contract.
 
@@ -3051,17 +3092,31 @@ may inspect a complete compaction outcome with content/history/tombstones;
 does not establish that authority or atomically reserve its permanent
 checkpoint-generation identity and distinct empty active generation.
 
-For the next checkpoint, add only the non-owning `Prepared`,
-`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` evidence
-contract and pure values. They must bind one exact immutable plan without
-fabricating authority, finality, or owner release. Only after that contract is
-adversarially tested should a JavaScript adapter be implemented and the profile
-validated in real browsers before being called executable. Historical commit
-does not grant stable currentness: every IndexedDB mutation must recheck the
-exact head, active generation, writer epoch, and current writer fence inside
-its own serialized transaction. Consuming exclusive-owner typestate requires
-a separately specified held lock, transaction-coupled semantic admission, or
-revocable/speculative branch and is not part of profile V1.
+Version `0.0.35` retains the complete checked selected binding and exact
+canonical current/optional-predecessor selections in the non-`Clone` selected
+root. It exposes borrowed receipt bindings, byte lengths, and a public
+byte-comparison action while keeping direct raw-selection access core-private
+and all `Debug`/error output payload-redacted. This is exact plan input, not
+storage currentness, attempt evidence, or authority.
+
+Version `0.0.36` should add only non-`Clone` exact root/rotation attempt plans,
+the non-owning `Prepared` state, a plan-bound attempt identity that rejects
+stale terminal observations, and `Uncertain` mechanics. It must not classify
+commit/noncommit, release an owner, or treat request success, `commit()` return,
+or an abort callback as plan-level finality.
+
+Version `0.0.37` should then add terminal and serialized-resolver evidence:
+matching transaction `complete` as host-attested historical commit, exact
+selected/superseded resolution, same-incarnation absence as definite
+noncommit, and fail-closed retired/reset/corrupt classifications. Only after
+that contract is adversarially tested should a JavaScript adapter be
+implemented and the profile validated in real browsers before being called
+executable. Historical commit does not grant stable currentness: every
+IndexedDB mutation must recheck the exact head, active generation, writer
+epoch, and current writer fence inside its own serialized transaction.
+Consuming exclusive-owner typestate requires a separately specified held lock,
+transaction-coupled semantic admission, or revocable/speculative branch and is
+not part of profile V1.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and

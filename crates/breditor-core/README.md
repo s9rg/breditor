@@ -18,7 +18,8 @@ scanner plus an owner-derived active-tail cursor with atomic semantic/physical
 progress and recoverable cursor compaction, plus six bounded storage
 identity/version values, distinct database/scope incarnation IDs, strict root
 and storage-generation codecs, trusted root/rotation selection normalization,
-and selected-root-aware next-rotation preparation/encoding/decoding,
+byte-exact selected-envelope retention/comparison, and selected-root-aware
+next-rotation preparation/encoding/decoding,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -114,7 +115,7 @@ nested Checkpoint V1 and outer manifest bytes.
 
 This remains rotation-only: there is no public seed/bootstrap constructor. The
 crate performs no storage I/O and exports no writer capability, adapter
-receipt, prepared/committed/uncertain ownership typestate, head
+commit receipt, prepared/committed/uncertain ownership typestate, head
 compare-and-swap, durability assertion, or writable successor owner. Validation
 cannot prove that the prior was authoritative, that an ID or fence is fresh,
 or that the physical successor is empty. The implemented validation-only
@@ -144,19 +145,34 @@ strict next-rotation `prepare_rotation_from_selected`,
 `encode_rotation_from_selected`, and `decode_rotation_from_selected` without a
 retained manifest chain.
 
+Version `0.0.35` makes that normalized value an exact selected identity
+envelope. `LocalLogStorageSelectedRoot` retains the complete checked selected
+binding, the byte-exact canonical current selection, and the byte-exact
+immediate predecessor when the selection is a rotation. Its public API exposes
+borrowed current/predecessor receipt bindings and exact selection byte lengths,
+but raw retained selection JSON stays core-private. The separate public
+`validate_exact_selection_envelope` action compares caller-supplied UTF-8 bytes
+without parsing or reinterpretation. Its typed errors and the selected root's
+`Debug` omit raw selection/checkpoint JSON, document content, and session-state
+payloads. `Debug` may still show bounded identity values such as the session
+ID. Retained selection receipt bindings remain caller-supplied validation
+facts, not commit evidence.
+
 The O(1) claim is only with respect to rotation-history length. Rotation
 normalization still processes bounded current/immediate-predecessor JSON and
 strictly decodes both nested checkpoints; the current checkpoint is decoded
-again to retain its anchor. CPU and memory can therefore scale with those byte
-ceilings and the document/session content represented by both checkpoints. The crate
-still has no IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter;
-performs no I/O; provisions no database/scope/head/generation; and proves no
-CAS, head currentness, lifetime ID or fence freshness, empty generation,
-writer authority or epoch, durability, commit evidence, or ownership release.
-The profile cannot release a long-lived exclusive Rust writer; that still
-needs a separately held lock, transaction-coupled admission, or explicit
-revocable/speculative branch semantics. These storage formats remain unstable
-pre-`0.1` contracts.
+again to retain its anchor. The selected root also retains up to two complete
+canonical selection envelopes, each of which may embed a full checkpoint. CPU
+and retained memory can therefore scale with those byte ceilings and the
+document/session content represented by both checkpoints. The crate still has
+no IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter; performs
+no I/O; provisions no database/scope/head/generation; and proves no CAS, head
+currentness, lifetime ID or fence freshness, empty generation, writer authority
+or epoch, durability, commit evidence, or ownership release. Exact envelope
+equality is not storage authority or currentness. The profile cannot release a
+long-lived exclusive Rust writer; that still needs a separately held lock,
+transaction-coupled admission, or explicit revocable/speculative branch
+semantics. These storage formats remain unstable pre-`0.1` contracts.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

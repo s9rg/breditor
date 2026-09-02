@@ -2,11 +2,13 @@ use crate::local_log::{LocalLogId, LocalLogStorageFenceId};
 
 use super::{
     LocalLogStorageGenerationFrameV1, LocalLogStorageSelectedJsonCodec,
-    LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootError,
-    LocalLogStorageSelectedRootGenerationField, LocalLogStorageSelectedRootParts,
+    LocalLogStorageSelectedRootError, LocalLogStorageSelectedRootGenerationField,
     LocalLogStorageSelectedRootValueRole, LocalLogStorageSelectionKind,
     LocalLogStorageSelectionReceiptBinding,
     local_log_storage_selected_json::validate_receipt_assertions,
+    local_log_storage_selected_root::{
+        LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootParts,
+    },
 };
 
 struct DecodedPredecessorActive {
@@ -22,8 +24,9 @@ impl LocalLogStorageSelectedJsonCodec {
     ///
     /// The predecessor codec is selected solely from its independently trusted
     /// receipt kind. A rotation predecessor is intrinsically and fully bound
-    /// decoded without requiring an older manifest. Both decoded payloads are
-    /// discarded after the current checkpoint anchor is privately quarantined.
+    /// decoded without requiring an older manifest. Both exact canonical outer
+    /// values are retained after the current checkpoint anchor is privately
+    /// quarantined so later evidence can reject byte-different substitutions.
     ///
     /// # Errors
     ///
@@ -120,29 +123,13 @@ impl LocalLogStorageSelectedJsonCodec {
             active.log_id(),
             current.checkpoint_json(),
         )?;
-        let previous_head_id = current_receipt
-            .expected_head_id()
-            .cloned()
-            .ok_or(LocalLogStorageSelectedRootError::RuntimeInvariant)?;
-
-        Ok(LocalLogStorageSelectedRoot::from_parts(LocalLogStorageSelectedRootParts {
-            profile_id: current_receipt.profile_id().clone(),
-            profile_version: current_receipt.profile_version(),
-            database_incarnation_id: current_receipt.database_incarnation_id().clone(),
-            scope_id: current_receipt.scope_id().clone(),
-            scope_incarnation_id: current_receipt.scope_incarnation_id().clone(),
-            selected_head_id: current_receipt.committed_head_id().clone(),
-            previous_head_id: Some(previous_head_id),
-            selection_kind: LocalLogStorageSelectionKind::Rotation,
-            transaction_id: current_receipt.transaction_id().clone(),
-            activation_fence_id: active.activated_fence_id().clone(),
-            session_id: current_receipt.session_id().clone(),
-            checkpoint_log_id: checkpoint.log_id().clone(),
-            active_log_id: active.log_id().clone(),
-            active_frame: active.frame(),
+        LocalLogStorageSelectedRoot::try_from_parts(LocalLogStorageSelectedRootParts {
+            binding: self.binding().clone(),
             checkpoint_json: current.checkpoint_json().to_owned(),
+            current_selection_json: current_json.to_owned(),
+            predecessor_selection_json: Some(predecessor_json.to_owned()),
             checkpoint_anchor,
-        }))
+        })
     }
 
     fn decode_predecessor_active(

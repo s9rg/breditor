@@ -3,8 +3,9 @@
 Status: value and strict ordinary-rotation validation implemented in Breditor
 `0.0.32`; initial provisioning and the first IndexedDB profile frozen as a
 `0.0.33` contract; pure-Rust root/selected normalization and selected-root-aware
-next-rotation validation implemented in `0.0.34`; storage I/O, attempt evidence,
-and ownership release remain unimplemented
+next-rotation validation implemented in `0.0.34`; exact selected-envelope
+retention/comparison implemented in `0.0.35`; storage I/O, attempt evidence, and
+ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -33,6 +34,15 @@ writer authority, durability, or ownership release. Its O(1) property concerns
 rotation-history length only; bounded current/predecessor/checkpoint bytes and
 both strictly decoded checkpoints' document/session content still determine
 work and memory.
+
+Version `0.0.35` retains the complete checked selected binding and byte-exact
+canonical current/optional-immediate-predecessor selections inside the
+non-`Clone` selected root. Public inspection exposes borrowed receipt bindings
+and byte lengths, not direct access to the retained raw selection JSON. A
+separate public action compares caller-supplied exact envelope bytes. Its typed
+errors and the selected root's `Debug` are payload-redacted. Exact equality is
+still neither storage currentness nor authority; selection receipt bindings
+remain caller-supplied validation facts, not commit evidence.
 
 The contract is deliberately platform-neutral. It defines the facts that a
 native-filesystem or IndexedDB profile must associate and the ownership states
@@ -101,6 +111,13 @@ Root and selected values remain inspection state, and selected-root-aware
 rotation validation proves only the supplied value/cross-link consistency. It
 does not read or mutate IndexedDB, establish head currentness, validate a
 mutable writer epoch, reserve an empty generation, or attest commit.
+
+Version `0.0.35` closes a narrower identity gap in that value boundary. The
+selected root keeps the full checked selected binding and exact current plus
+optional predecessor canonical selection bytes so a future attempt plan can
+reject byte-different records that share the same normalized scalar summary.
+The raw retained selections remain core-private; public code can borrow the
+receipt bindings, inspect byte lengths, and request exact comparison.
 
 ## Authoritative manifest and head
 
@@ -332,49 +349,57 @@ outer and nested fields does not authenticate either value or prove causal
 provenance.
 
 No public diagnostic, `Debug`, or `Display` output may contain
-`checkpointJson`, manifest bytes, editor/session/history payloads, an adapter
-capability, or opaque adapter evidence. Bounded profile, scope, transaction,
-head, fence, session, and log identifiers may appear where needed for typed
-diagnosis; therefore diagnostics are not a general secret-redaction boundary.
-The `0.0.32` manifest has no public constructor, deliberately does not
-implement `Clone`, and omits checkpoint content from `Debug`. Future prepared
-and uncertain owners must likewise avoid payload-revealing debug or
-unrestricted cloning.
+`checkpointJson`, selection or manifest bytes, editor/session/history payloads,
+an adapter capability, or opaque adapter evidence. Bounded profile, scope,
+transaction, head, fence, session, and log identifiers may appear where needed
+for typed diagnosis; therefore diagnostics are not a general secret-redaction
+boundary. The `0.0.32` manifest has no public constructor, deliberately does
+not implement `Clone`, and omits checkpoint content from `Debug`. The `0.0.35`
+selected root likewise has no public constructor or `Clone`, reports only exact
+selection byte lengths in `Debug`, and keeps raw retained selection access
+core-private. Its public byte-validation errors identify only shape or
+current/predecessor role. Future prepared/uncertain values must likewise avoid
+payload-revealing debug or unrestricted cloning.
 
-## Ownership state machine
+## Attempt-evidence state machine
 
-The future Rust boundary must be consuming and single-owner. The names below
-specify states, not public `0.0.32` types. The current borrowed
-`prepare_rotation` validation action is not the future `Prepared` state.
+The next Rust boundary is non-owning with respect to checkpoint anchors,
+semantic sessions, and writer authority. Its exact attempt plans and evidence
+states must be non-`Clone`, but they carry only immutable plan/evidence data and
+can never release a writable owner. The names below remain specification states,
+not public `0.0.35` types. The existing borrowed `prepare_rotation` and
+`prepare_rotation_from_selected` validation actions are not `Prepared`.
 
 ### Prepared
 
-A future consuming preparation would take one
-`LocalLogTailCompactionOutcome`, validate every runtime/host association,
-canonically encode Checkpoint V1, and fix the complete immutable transaction
-plan. Failure before publication of `Prepared` would return the unchanged
-outcome and all caller-owned authority inputs. This is not the borrowed
-`0.0.32` validation method.
+A future preparation validates one already checked root or rotation candidate
+against its exact selected envelope as applicable, fixes the complete immutable
+transaction plan, and associates a fresh attempt identity only when an adapter
+attempt begins. The non-`Clone` plan retains the exact request bytes and every
+comparison fact required to reject substitution; it does not own or expose a
+checkpoint anchor, semantic owner, or writer capability. Failure leaves all
+caller-owned semantic and authority inputs outside the evidence value.
 
-Successful preparation quarantines the checkpoint anchor. `Prepared` cannot
-start the successor cursor or expose a bare anchor. Only its attempt transition
-may expose the exact immutable adapter request. This prevents storage work from
-silently racing a separately activated successor.
+`Prepared` may expose the exact immutable adapter request but cannot authorize
+storage, start a successor cursor, or classify an outcome. Request-level
+success and a `commit()` call/return are observations about one attempt, not a
+transition to committed evidence.
 
 ### DefinitelyNotCommitted
 
 `DefinitelyNotCommitted` means the profile has positively established that the
 exact in-flight attempt did not become authoritative and cannot publish later
-without a new explicit retry. It owns the same plan, anchor,
-publication-authority/evidence relationship, and metadata. It may retry the
-byte-identical transaction if its authority remains valid, or a later API may
-reprepare after reauthorization. Repreparation preserves the outcome-derived
+without a new explicit retry. It retains the same exact plan and its classified
+evidence, but no checkpoint anchor, semantic owner, or publication authority.
+It may retry the byte-identical transaction if separately supplied authority
+remains valid, or a later API may reprepare after reauthorization.
+Repreparation preserves the outcome-derived
 session, sealed and successor generation IDs, checkpoint bytes, accepted
 prefix, and sealed frame policy. It uses fresh transaction and committed-head
 IDs, chooses a fresh candidate activation fence and profile authority when
 required, and may explicitly reselect only the pre-append successor frame
 policy. Changing generation or checkpoint facts requires a newly derived
-compaction outcome. This state does not release the anchor.
+compaction outcome. This state releases no owner.
 
 A synchronous error, timeout, closed handle, visible old head, or absence of a
 new record is not automatically this state. The named profile must define the
@@ -390,23 +415,27 @@ assertion, not an independent proof by `breditor-core`.
 
 Version `0.0.33` corrects an earlier overclaim: historical commit evidence alone
 cannot release a long-lived exclusive semantic owner. A profile-specific
-consuming transition may release the owned anchor exactly once only when it
+future transition may release a separately held owner exactly once only when it
 also holds authority that cannot be revoked outside that owner's lifetime, or
 when it defines transaction-coupled admission or explicit speculative-branch
-semantics. It must prevent a duplicate receipt or identical retry from
+semantics. The non-owning evidence state itself can never do so. Any later
+release boundary must prevent a duplicate receipt or identical retry from
 releasing a second exclusive owner. The IndexedDB V1 profile has no such
 transition; its per-mutation epoch can be revoked before an event callback.
 
 ### Uncertain
 
-`Uncertain` owns and quarantines the complete exact plan and anchor when the
-adapter cannot prove either terminal state. It cannot start a successor,
-return a bare anchor, change a transaction fact, create another transaction,
-or authorize old-generation cleanup.
+`Uncertain` retains the complete exact plan and matching attempt identity when
+the adapter has no accepted terminal or resolver evidence. It owns no anchor or
+writer capability. It cannot start a successor, change a transaction fact,
+create a differently identified retry, classify commit/noncommit, or authorize
+old-generation cleanup.
 
 It may resubmit only the byte-identical plan under the same transaction ID,
 scope, expected/committed heads, candidate activation-fence identity,
-checkpoint bytes, accepted prefix, frame policies, and generation identities.
+checkpoint bytes, accepted prefix, frame policies, and generation identities,
+using a fresh attempt identity so delayed terminal events from an earlier
+attempt cannot classify the later one.
 The attempt must present profile-valid publication authority; a profile may
 replace revocable volatile authority only through its serialized
 resolution/reacquisition rules, never by treating the persisted `fenceId` as
@@ -532,9 +561,10 @@ metadata, and the head as independently drifting updates.
 
 This specification and the implemented validation values do not provide:
 
-- actual storage bootstrap/provisioning, storage-attempt evidence or ownership
-  typestate, receipt, adapter, async API, writer capability, or I/O
-  implementation in `0.0.34`; the checked root value is only a proposal;
+- actual storage bootstrap/provisioning, storage-attempt/commit evidence or
+  ownership typestate, adapter, async API, writer capability, or I/O
+  implementation in `0.0.35`; selected receipt bindings are trusted validation
+  inputs, while the checked root value is only a proposal;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -587,13 +617,26 @@ still value validation: no adapter operation proves provisioning, current
 head, global ID/fence freshness, empty generation, writer epoch/authority,
 commit, durability, or owner release.
 
-The next checkpoint should freeze and implement only the non-owning `Prepared`,
-`DefinitelyNotCommitted`, `HostAttestedCommitted`, and `Uncertain` attempt-
-evidence contract before any browser adapter. Those values must bind one exact
-immutable plan without releasing a checkpoint anchor or claiming stable
-currentness. IndexedDB profile V1 cannot release a long-lived exclusive Rust
-owner: every mutation fence is revocable between transactions. Consuming
-ownership additionally requires a separately held lock, transaction-coupled
-semantic admission, or an explicitly revocable/speculative branch. The
-provisioning contract must not treat a checked root or in-memory compaction as
-storage authority.
+Version `0.0.35` retains the complete checked selected binding plus the exact
+canonical current and optional immediate-predecessor selections. It exposes
+borrowed receipt bindings, byte lengths, and public exact-envelope comparison,
+while direct retained-byte access remains core-private and `Debug`/errors remain
+payload-redacted. O(1) still means only independent of older rotation count:
+up to two complete outer selections, their embedded checkpoints, the retained
+current checkpoint text, and the decoded anchor make memory payload-sized.
+
+Version `0.0.36` should implement only non-`Clone` exact root/rotation attempt
+plans, a non-owning `Prepared` state, fresh attempt identities, stale-terminal
+rejection, and `Uncertain` mechanics. These values must not classify a request
+success, `commit()` return, or abort callback as plan-level finality, release a
+checkpoint anchor, or claim stable currentness.
+
+Version `0.0.37` should add the terminal and serialized-resolver evidence
+classifications: matching transaction completion as host-attested historical
+commit, exact selected/superseded resolution, same-incarnation absence as
+definite noncommit, and fail-closed retired/reset/corrupt outcomes. IndexedDB
+profile V1 still cannot release a long-lived exclusive Rust owner: every
+mutation fence is revocable between transactions. Consuming ownership requires
+a separately held lock, transaction-coupled semantic admission, or an explicitly
+revocable/speculative branch. The provisioning contract must not treat a
+checked root, exact envelope match, or in-memory compaction as storage authority.

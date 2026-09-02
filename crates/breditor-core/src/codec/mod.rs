@@ -53,6 +53,8 @@ mod local_log_storage_root_selection;
 #[cfg(test)]
 mod local_log_storage_root_tests;
 mod local_log_storage_selected_binding;
+mod local_log_storage_selected_envelope_error;
+mod local_log_storage_selected_envelope_validate;
 mod local_log_storage_selected_generation_binding;
 mod local_log_storage_selected_json;
 mod local_log_storage_selected_root;
@@ -173,6 +175,9 @@ pub use local_log_storage_selected_binding::{
     LocalLogStorageSelectedBindingErrorCode, LocalLogStorageSelectedGenerationMismatchField,
     LocalLogStorageSelectedReceiptMismatchField,
 };
+pub use local_log_storage_selected_envelope_error::{
+    LocalLogStorageSelectedEnvelopeError, LocalLogStorageSelectedEnvelopeErrorCode,
+};
 pub use local_log_storage_selected_generation_binding::{
     LocalLogStorageSelectedActiveGenerationBinding,
     LocalLogStorageSelectedCheckpointGenerationBinding,
@@ -180,7 +185,6 @@ pub use local_log_storage_selected_generation_binding::{
 };
 pub use local_log_storage_selected_json::LocalLogStorageSelectedJsonCodec;
 pub use local_log_storage_selected_root::LocalLogStorageSelectedRoot;
-pub(crate) use local_log_storage_selected_root::LocalLogStorageSelectedRootParts;
 pub use local_log_storage_selected_root_error::{
     LocalLogStorageSelectedRootError, LocalLogStorageSelectedRootErrorCode,
     LocalLogStorageSelectedRootGenerationField, LocalLogStorageSelectedRootReceiptField,

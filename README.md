@@ -28,7 +28,8 @@ This repository currently contains the first end-to-end Rust-core slice:
   storage-generation identity/version types, distinct database/scope
   incarnation IDs, strict root and rotation codecs with exact nested-checkpoint
   and outer canonical bytes, trusted root/rotation selection normalization,
-  and next-rotation validation against that normalized selected state;
+  byte-exact selected-envelope retention and comparison, and next-rotation
+  validation against that normalized selected state;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -131,18 +132,33 @@ owns its decoded checkpoint anchor and exposes inspection facts only. The
 selected-aware actions are named `prepare_rotation_from_selected`,
 `encode_rotation_from_selected`, and `decode_rotation_from_selected`.
 
-Here O(1) means constant in rotation-history length. Rotation normalization
-still reads bounded current and immediate-predecessor selection bytes and
-strictly decodes both nested checkpoints; the current checkpoint is decoded
-again to retain its anchor. Work and memory may therefore scale with those byte
-limits and with both checkpoints' document/session sizes. This release performs no
-IndexedDB, JavaScript, Wasm, or other storage I/O; proves no compare-and-swap,
+Version `0.0.35` closes the selected-envelope identity gap. The non-`Clone`
+selected root now retains its complete checked selected binding together with
+the byte-exact canonical current selection and, for a rotation, its byte-exact
+immediate predecessor. Public inspection exposes borrowed current/predecessor
+receipt bindings and exact byte lengths, while the retained raw selection JSON
+remains core-private. `validate_exact_selection_envelope` publicly compares
+caller-supplied bytes without parsing, canonicalizing, or hashing them. Its
+typed failures, and the selected root's `Debug`, reveal no raw selection or
+checkpoint JSON, document content, or session-state payload. `Debug` may still
+show bounded identity values such as the session ID. Retained selection receipt
+bindings remain caller-supplied validation facts, not commit evidence.
+
+Here O(1) means constant in rotation-history length, not constant bytes.
+Rotation normalization still reads bounded current and immediate-predecessor
+selection bytes and strictly decodes both nested checkpoints; the current
+checkpoint is decoded again to retain its anchor. The selected root additionally
+keeps up to two complete canonical selection envelopes, each of which may embed
+a full checkpoint. Work and retained memory may therefore scale with those byte
+limits and with both checkpoints' document/session sizes. This release performs
+no IndexedDB, JavaScript, Wasm, or other storage I/O; proves no compare-and-swap,
 head currentness, global ID/fence freshness, generation emptiness, writer
 authority/epoch, durability, commit evidence, or ownership release; and does
-not provision a database, scope, head, or generation. The profile's
-per-mutation epoch remains revocable and therefore cannot itself release a
-long-lived exclusive Rust writer. All storage V1 shapes remain unstable
-pre-`0.1` contracts rather than permanent compatibility promises.
+not provision a database, scope, head, or generation. Exact byte equality is
+not storage currentness or authority. The profile's per-mutation epoch remains
+revocable and therefore cannot itself release a long-lived exclusive Rust
+writer. All storage V1 shapes remain unstable pre-`0.1` contracts rather than
+permanent compatibility promises.
 
 ## Development
 

@@ -108,11 +108,27 @@
 //! complete predecessor chain through `prepare_rotation_from_selected`,
 //! `encode_rotation_from_selected`, and `decode_rotation_from_selected`.
 //!
-//! That normalization is O(1) only in rotation-history length. Rotation
-//! normalization still reads bounded current/immediate-predecessor JSON and
-//! strictly decodes both nested checkpoints; the current checkpoint is decoded
-//! again to retain its anchor. Work and memory can scale with those byte limits
-//! and both checkpoints' document/session sizes. These values perform no I/O, provision
+//! Breditor `0.0.35` closes the selected-envelope identity gap. The non-`Clone`
+//! selected root retains its complete checked selected binding, byte-exact
+//! canonical current selection, and byte-exact immediate predecessor for a
+//! rotation. Public inspection exposes borrowed current/predecessor receipt
+//! bindings and exact byte lengths; raw retained selection JSON remains
+//! core-private. The public `validate_exact_selection_envelope` action compares
+//! caller-supplied UTF-8 bytes without parsing, canonicalization, or hashing.
+//! Its typed errors and the selected root's `Debug` contain no raw selection or
+//! checkpoint JSON, document content, or session-state payload. `Debug` may
+//! still show bounded identity values such as the session ID. Retained
+//! selection receipt bindings remain caller-supplied validation facts, not
+//! commit evidence.
+//!
+//! That normalization is O(1) only in rotation-history length, not in retained
+//! bytes. Rotation normalization still reads bounded current/immediate-
+//! predecessor JSON and strictly decodes both nested checkpoints; the current
+//! checkpoint is decoded again to retain its anchor. The result also keeps up
+//! to two complete canonical selection envelopes, each of which may embed a
+//! full checkpoint. Work and retained memory can therefore scale with those
+//! byte limits and both checkpoints' document/session sizes. Exact equality is
+//! not storage authority or currentness. These values perform no I/O, provision
 //! no database/scope/head/generation, and prove no compare-and-swap, head
 //! currentness, lifetime ID/fence freshness, empty generation, writer
 //! authority/epoch, durability, commit evidence, or ownership release. No

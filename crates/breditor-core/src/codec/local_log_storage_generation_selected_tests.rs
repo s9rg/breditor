@@ -19,8 +19,12 @@ use super::{
     LocalLogStorageGenerationContinuityErrorCode, LocalLogStorageGenerationFrameV1,
     LocalLogStorageGenerationJsonCodec, LocalLogStorageGenerationManifest,
     LocalLogStorageGenerationManifestParts, LocalLogStorageGenerationPreparationInputs,
-    LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootParts, LocalLogStorageSelectionKind,
-    LocalLogTailCompactionOutcome, local_log_storage_generation_json::manifest_record,
+    LocalLogStorageRootBinding, LocalLogStorageRootJsonCodec, LocalLogStorageRootSelection,
+    LocalLogStorageRootSelectionParts, LocalLogStorageSelectedActiveGenerationBinding,
+    LocalLogStorageSelectedBinding, LocalLogStorageSelectedCheckpointGenerationBinding,
+    LocalLogStorageSelectedJsonCodec, LocalLogStorageSelectedRoot, LocalLogStorageSelectionKind,
+    LocalLogStorageSelectionReceiptBinding, LocalLogTailCompactionOutcome,
+    local_log_storage_generation_json::manifest_record,
 };
 
 type TestResult<T = ()> = Result<T, Box<dyn Error>>;
@@ -38,6 +42,7 @@ struct SelectedRotationFixture {
 }
 
 impl SelectedRotationFixture {
+    #[allow(clippy::too_many_lines)]
     fn new(kind: LocalLogStorageSelectionKind) -> TestResult<Self> {
         let context = EditorContext::default();
         let document = DocumentJsonCodec::new(context.schema().clone())
@@ -57,17 +62,13 @@ impl SelectedRotationFixture {
             LocalLogStorageSelectionKind::Root => ("log:g0", "log:g1", "log:g2"),
             LocalLogStorageSelectionKind::Rotation => ("log:g1", "log:g2", "log:g3"),
         };
-        let (selected_head, previous_head, next_head) = match kind {
-            LocalLogStorageSelectionKind::Root => ("head:h0", None, "head:h1"),
-            LocalLogStorageSelectionKind::Rotation => ("head:h1", Some("head:h0"), "head:h2"),
+        let (selected_head, next_head) = match kind {
+            LocalLogStorageSelectionKind::Root => ("head:h0", "head:h1"),
+            LocalLogStorageSelectionKind::Rotation => ("head:h1", "head:h2"),
         };
-        let (selected_transaction, next_transaction, selected_fence, next_fence) = match kind {
-            LocalLogStorageSelectionKind::Root => {
-                ("transaction:t0", "transaction:t1", "fence:f0", "fence:f1")
-            }
-            LocalLogStorageSelectionKind::Rotation => {
-                ("transaction:t1", "transaction:t2", "fence:f1", "fence:f2")
-            }
+        let (next_transaction, next_fence) = match kind {
+            LocalLogStorageSelectionKind::Root => ("transaction:t1", "fence:f1"),
+            LocalLogStorageSelectionKind::Rotation => ("transaction:t2", "fence:f2"),
         };
 
         let session_id = LocalSessionId::try_new(SESSION)?;
@@ -75,7 +76,7 @@ impl SelectedRotationFixture {
         let active_log_id = LocalLogId::try_new(active_log)?;
         let successor_log_id = LocalLogId::try_new(successor_log)?;
         let anchor = LocalLogRecovery::new(session_id.clone(), checkpoint_log_id.clone())
-            .recover(EditorSession::new(state), Vec::new())?
+            .recover(EditorSession::new(state.clone()), Vec::new())?
             .try_into_checkpoint_anchor(
                 active_log_id.clone(),
                 LocalLogCompactionLimits::default(),
@@ -89,7 +90,6 @@ impl SelectedRotationFixture {
             )?,
         );
         let checkpoint_json = checkpoint_codec.encode(&anchor)?;
-        let selected_anchor = checkpoint_codec.decode(&checkpoint_json)?;
 
         let active_frame_limits = LocalLogFrameLimits::new(4_096);
         let cursor =
@@ -102,29 +102,185 @@ impl SelectedRotationFixture {
         let profile_id = LocalLogStorageProfileId::try_new(PROFILE)?;
         let profile_version = LocalLogStorageProfileVersion::try_new(1)?;
         let scope_id = LocalLogStorageScopeId::try_new(SCOPE)?;
+        let database_incarnation_id =
+            LocalLogStorageDatabaseIncarnationId::try_new("database:selected-rotation-tests")?;
+        let scope_incarnation_id = LocalLogStorageScopeIncarnationId::try_new(
+            "scope-incarnation:selected-rotation-tests",
+        )?;
         let selected_head_id = LocalLogStorageHeadId::try_new(selected_head)?;
-        let selected = LocalLogStorageSelectedRoot::from_parts(LocalLogStorageSelectedRootParts {
-            profile_id: profile_id.clone(),
-            profile_version,
-            database_incarnation_id: LocalLogStorageDatabaseIncarnationId::try_new(
-                "database:selected-rotation-tests",
-            )?,
-            scope_id: scope_id.clone(),
-            scope_incarnation_id: LocalLogStorageScopeIncarnationId::try_new(
-                "scope-incarnation:selected-rotation-tests",
-            )?,
-            selected_head_id: selected_head_id.clone(),
-            previous_head_id: previous_head.map(LocalLogStorageHeadId::try_new).transpose()?,
-            selection_kind: kind,
-            transaction_id: LocalLogStorageTransactionId::try_new(selected_transaction)?,
-            activation_fence_id: LocalLogStorageFenceId::try_new(selected_fence)?,
-            session_id,
-            checkpoint_log_id,
-            active_log_id,
-            active_frame: LocalLogStorageGenerationFrameV1::new(active_frame_limits),
-            checkpoint_json,
-            checkpoint_anchor: selected_anchor,
-        });
+
+        let receipt = |selection_kind,
+                       transaction_id: &str,
+                       expected_head_id: Option<&str>,
+                       committed_head_id: &str|
+         -> TestResult<LocalLogStorageSelectionReceiptBinding> {
+            Ok(LocalLogStorageSelectionReceiptBinding::try_new(
+                profile_id.clone(),
+                profile_version,
+                database_incarnation_id.clone(),
+                scope_id.clone(),
+                scope_incarnation_id.clone(),
+                LocalLogStorageTransactionId::try_new(transaction_id)?,
+                expected_head_id.map(LocalLogStorageHeadId::try_new).transpose()?,
+                LocalLogStorageHeadId::try_new(committed_head_id)?,
+                selection_kind,
+                session_id.clone(),
+            )?)
+        };
+        let active_frame = LocalLogStorageGenerationFrameV1::new(active_frame_limits);
+        let (selected_binding, current_selection_json, predecessor_selection_json) = match kind {
+            LocalLogStorageSelectionKind::Root => {
+                let current_receipt =
+                    receipt(LocalLogStorageSelectionKind::Root, "transaction:t0", None, "head:h0")?;
+                let selected_binding = LocalLogStorageSelectedBinding::try_new(
+                    current_receipt,
+                    None,
+                    LocalLogStorageSelectedCheckpointGenerationBinding::checkpoint_only(
+                        checkpoint_log_id.clone(),
+                        session_id.clone(),
+                        selected_head_id.clone(),
+                    ),
+                    LocalLogStorageSelectedActiveGenerationBinding::new(
+                        active_log_id.clone(),
+                        session_id.clone(),
+                        active_frame,
+                        LocalLogStorageFenceId::try_new("fence:f0")?,
+                        selected_head_id.clone(),
+                    ),
+                )?;
+                let selection =
+                    LocalLogStorageRootSelection::from_parts(LocalLogStorageRootSelectionParts {
+                        profile_id: profile_id.clone(),
+                        profile_version,
+                        scope_id: scope_id.clone(),
+                        transaction_id: LocalLogStorageTransactionId::try_new("transaction:t0")?,
+                        committed_head_id: selected_head_id.clone(),
+                        fence_id: LocalLogStorageFenceId::try_new("fence:f0")?,
+                        session_id: session_id.clone(),
+                        checkpoint_log_id: checkpoint_log_id.clone(),
+                        active_log_id: active_log_id.clone(),
+                        active_frame,
+                        checkpoint_json: checkpoint_json.clone(),
+                    });
+                let codec = LocalLogStorageRootJsonCodec::new(
+                    context.clone(),
+                    LocalLogStorageRootBinding::new(
+                        profile_id.clone(),
+                        profile_version,
+                        scope_id.clone(),
+                        selected_head_id.clone(),
+                    ),
+                );
+                (selected_binding, codec.encode_root(&selection)?, None)
+            }
+            LocalLogStorageSelectionKind::Rotation => {
+                let predecessor_frame =
+                    LocalLogStorageGenerationFrameV1::new(LocalLogFrameLimits::new(2_048));
+                let current_receipt = receipt(
+                    LocalLogStorageSelectionKind::Rotation,
+                    "transaction:t1",
+                    Some("head:h0"),
+                    "head:h1",
+                )?;
+                let predecessor_receipt =
+                    receipt(LocalLogStorageSelectionKind::Root, "transaction:t0", None, "head:h0")?;
+                let selected_binding = LocalLogStorageSelectedBinding::try_new(
+                    current_receipt,
+                    Some(predecessor_receipt),
+                    LocalLogStorageSelectedCheckpointGenerationBinding::retired(
+                        checkpoint_log_id.clone(),
+                        session_id.clone(),
+                        predecessor_frame,
+                        LocalLogStorageFenceId::try_new("fence:f0")?,
+                        LocalLogStorageHeadId::try_new("head:h0")?,
+                        selected_head_id.clone(),
+                    ),
+                    LocalLogStorageSelectedActiveGenerationBinding::new(
+                        active_log_id.clone(),
+                        session_id.clone(),
+                        active_frame,
+                        LocalLogStorageFenceId::try_new("fence:f1")?,
+                        selected_head_id.clone(),
+                    ),
+                )?;
+                let current = LocalLogStorageGenerationManifest::from_parts(
+                    LocalLogStorageGenerationManifestParts {
+                        profile_id: profile_id.clone(),
+                        profile_version,
+                        scope_id: scope_id.clone(),
+                        transaction_id: LocalLogStorageTransactionId::try_new("transaction:t1")?,
+                        expected_head_id: LocalLogStorageHeadId::try_new("head:h0")?,
+                        committed_head_id: selected_head_id.clone(),
+                        fence_id: LocalLogStorageFenceId::try_new("fence:f1")?,
+                        session_id: session_id.clone(),
+                        sealed_log_id: checkpoint_log_id.clone(),
+                        successor_log_id: active_log_id.clone(),
+                        accepted_prefix_bytes: 0,
+                        sealed_frame: predecessor_frame,
+                        successor_frame: active_frame,
+                        checkpoint_json: checkpoint_json.clone(),
+                    },
+                );
+                let predecessor_checkpoint_log_id = LocalLogId::try_new("log:g0")?;
+                let predecessor_anchor = LocalLogRecovery::new(
+                    session_id.clone(),
+                    predecessor_checkpoint_log_id.clone(),
+                )
+                .recover(EditorSession::new(state), Vec::new())?
+                .try_into_checkpoint_anchor(
+                    checkpoint_log_id.clone(),
+                    LocalLogCompactionLimits::default(),
+                )?;
+                let predecessor_checkpoint_json = LocalLogCheckpointJsonCodec::new(
+                    context.clone(),
+                    LocalLogCheckpointBinding::try_new(
+                        session_id.clone(),
+                        predecessor_checkpoint_log_id.clone(),
+                        checkpoint_log_id.clone(),
+                    )?,
+                )
+                .encode(&predecessor_anchor)?;
+                let predecessor =
+                    LocalLogStorageRootSelection::from_parts(LocalLogStorageRootSelectionParts {
+                        profile_id: profile_id.clone(),
+                        profile_version,
+                        scope_id: scope_id.clone(),
+                        transaction_id: LocalLogStorageTransactionId::try_new("transaction:t0")?,
+                        committed_head_id: LocalLogStorageHeadId::try_new("head:h0")?,
+                        fence_id: LocalLogStorageFenceId::try_new("fence:f0")?,
+                        session_id: session_id.clone(),
+                        checkpoint_log_id: predecessor_checkpoint_log_id,
+                        active_log_id: checkpoint_log_id.clone(),
+                        active_frame: predecessor_frame,
+                        checkpoint_json: predecessor_checkpoint_json,
+                    });
+                let predecessor_codec = LocalLogStorageRootJsonCodec::new(
+                    context.clone(),
+                    LocalLogStorageRootBinding::new(
+                        profile_id.clone(),
+                        profile_version,
+                        scope_id.clone(),
+                        LocalLogStorageHeadId::try_new("head:h0")?,
+                    ),
+                );
+                (
+                    selected_binding,
+                    serde_json::to_string(&manifest_record(&current))?,
+                    Some(predecessor_codec.encode_root(&predecessor)?),
+                )
+            }
+        };
+        let selected_codec =
+            LocalLogStorageSelectedJsonCodec::new(context.clone(), selected_binding);
+        let selected = match (kind, predecessor_selection_json.as_deref()) {
+            (LocalLogStorageSelectionKind::Root, None) => {
+                selected_codec.normalize_root(&current_selection_json)?
+            }
+            (LocalLogStorageSelectionKind::Rotation, Some(predecessor_json)) => {
+                selected_codec.normalize_rotation(&current_selection_json, predecessor_json)?
+            }
+            _ => return Err("selected fixture envelope shape disagrees with its kind".into()),
+        };
         let binding = LocalLogStorageGenerationBinding::try_new(
             profile_id,
             profile_version,

@@ -1,8 +1,11 @@
 use super::{
-    LocalLogStorageSelectedJsonCodec, LocalLogStorageSelectedRoot,
-    LocalLogStorageSelectedRootError, LocalLogStorageSelectedRootGenerationField,
-    LocalLogStorageSelectedRootParts, LocalLogStorageSelectedRootValueRole,
-    LocalLogStorageSelectionKind, local_log_storage_selected_json::validate_receipt_assertions,
+    LocalLogStorageSelectedJsonCodec, LocalLogStorageSelectedRootError,
+    LocalLogStorageSelectedRootGenerationField, LocalLogStorageSelectedRootValueRole,
+    LocalLogStorageSelectionKind,
+    local_log_storage_selected_json::validate_receipt_assertions,
+    local_log_storage_selected_root::{
+        LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootParts,
+    },
 };
 
 impl LocalLogStorageSelectedJsonCodec {
@@ -72,24 +75,13 @@ impl LocalLogStorageSelectedJsonCodec {
             selection.checkpoint_json(),
         )?;
 
-        Ok(LocalLogStorageSelectedRoot::from_parts(LocalLogStorageSelectedRootParts {
-            profile_id: receipt.profile_id().clone(),
-            profile_version: receipt.profile_version(),
-            database_incarnation_id: receipt.database_incarnation_id().clone(),
-            scope_id: receipt.scope_id().clone(),
-            scope_incarnation_id: receipt.scope_incarnation_id().clone(),
-            selected_head_id: receipt.committed_head_id().clone(),
-            previous_head_id: None,
-            selection_kind: LocalLogStorageSelectionKind::Root,
-            transaction_id: receipt.transaction_id().clone(),
-            activation_fence_id: active.activated_fence_id().clone(),
-            session_id: receipt.session_id().clone(),
-            checkpoint_log_id: checkpoint.log_id().clone(),
-            active_log_id: active.log_id().clone(),
-            active_frame: active.frame(),
+        LocalLogStorageSelectedRoot::try_from_parts(LocalLogStorageSelectedRootParts {
+            binding: self.binding().clone(),
             checkpoint_json: selection.checkpoint_json().to_owned(),
+            current_selection_json: json.to_owned(),
+            predecessor_selection_json: None,
             checkpoint_anchor,
-        }))
+        })
     }
 }
 
