@@ -12,9 +12,10 @@ implemented in `0.0.38`; process-local root resolution implemented in `0.0.39`
 and rotation resolution implemented in `0.0.40`; canonical writer epoch, exact
 non-authority mutation-fence comparison, and checked acquisition planning
 implemented in `0.0.41`; process-local request-correlated writer-fence
-acquisition and revocable-token issuance implemented in `0.0.42`; storage I/O,
-process-restart reconstruction, append, and ownership release remain
-unimplemented
+acquisition and revocable-token issuance implemented in `0.0.42`;
+pure token-and-tail-cursor single-frame append preparation implemented in
+`0.0.43`; storage I/O, process-restart reconstruction, executable append/
+acknowledgement, and durable ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -105,10 +106,14 @@ several roles:
 
 1. `breditor-core` owns semantic proof, cursor compaction, deterministic Local
    Log Checkpoint V1 encoding, exact in-memory ownership, and the strict
-   storage-generation value/validation boundary. It performs no storage I/O.
+   storage-generation value/validation boundary. A future durable append state
+   machine must also own FIFO plan and acknowledgement order, including the
+   append/rotation barrier. It performs no storage I/O.
 2. The host coordinator chooses the storage scope, lifetime-unique transaction
    and head identifiers, storage profile, successor Frame V1 policy, and the
-   point at which an unobserved old-generation suffix is abandoned.
+   point at which an unobserved old-generation suffix is abandoned. It owns
+   asynchronous scheduling, batching policy, backpressure, cancellation, and
+   rate limiting, but may not reorder core durable transitions.
 3. A profile-specific writer authority supplies unpersisted publication
    capability and its validation rules. The manifest's non-secret `fenceId`
    is the candidate generation's immutable activation correlation identity,
@@ -751,7 +756,7 @@ scope is `ScopeAlreadyProvisioned`. The equivalent rotation sources require the
 exact prior envelope and complete candidate namespace absence for advisory
 retry, or the exact direct competing rotation above for nonretry conflict.
 
-### Mutation-fence comparison and acquisition lifecycle (`0.0.41`–`0.0.42`)
+### Mutation-fence comparison, acquisition, and append preparation (`0.0.41`–`0.0.43`)
 
 Version `0.0.41` adds a pure value layer for the mutable writer facts that were
 previously kept entirely outside Rust. `LocalLogStorageWriterEpoch` represents
@@ -844,10 +849,64 @@ or volatile state is lost, the stored tuple cannot attribute the commit, exact
 retry encounters a writer mismatch, and no next epoch exists. Profile V1 has no
 in-contract way to issue another token without later migration or reset. A
 maximum-epoch token already issued before loss could still be checked by a
-future append implementation.
+future adapter.
+
+Version `0.0.43` adds a pure, storage-neutral preparation boundary for one
+append. `LocalLogStorageMutationToken::try_prepare_append` consumes one token
+and one `LocalLogTailCursor` while borrowing one `LocalLogEntry`. Validation
+requires the token-selected session, checkpoint generation, active generation,
+and active Frame V1 policy to agree with the cursor. It then deterministically
+encodes exactly one complete frame and feeds those exact bytes through the
+cursor's existing atomic semantic-admission transition. This preparation
+performs no I/O and proves neither token currentness nor physical tail
+provenance.
+
+A typed `LocalLogStorageAppendPreparationFailure` owns the complete unchanged
+token and cursor; the entry remains caller-owned. Success returns a private-
+constructor non-`Clone` `LocalLogStorageAppendPlan` owning the token, exact
+frame, checked generation-relative start and exclusive end, admission outcome,
+and speculative advanced cursor. The start uses the canonical
+`LocalLogStorageChunkStart` value: exactly twenty zero-padded ASCII decimal
+digits over the full `u64` domain. The plan exposes no public raw-frame or
+consuming-parts accessor. Its post-cursor remains quarantined and is not an
+append acknowledgement, durable state, or writable owner.
+
+The concrete IndexedDB V1 profile assigns exactly one complete Frame V1 with no
+trailing bytes to each `chunks` value. The fourth compound-key component is
+`chunkStart`, the frame's generation-relative byte start rather than an
+ordinal. The first start is zero and every later start equals the prior start
+plus the complete prior value length. Malformed keys, invalid/empty values,
+multiple or truncated frames, trailing bytes, gaps, overlaps, and end overflow
+are corruption.
+
+A future executable append transaction must revalidate the complete token
+binding and active-generation metadata, validate the complete physical chunk
+prefix, and require the exact current last tail end to equal the plan start
+before writing the plan's exact frame. The exact same complete bytes already at
+the target, with no later record, may be idempotently present; different bytes
+or an incompatible tail fail closed. A rotation transaction must validate that
+same current last tail end against the candidate manifest's
+`acceptedPrefixBytes`. The shared serialized comparison prevents append and
+rotation from committing against different sealed-prefix assumptions.
+
+The append plan deliberately has no adapter/request/terminal/acknowledgement,
+uncertain resolver, retry classification, or restart representation. Cursor
+byte provenance remains caller-trusted, and non-`Clone` is ownership hygiene
+rather than linear enforcement. The one-frame-record layout adds per-record
+overhead, and IndexedDB Profile V1 continues to serialize all scopes through
+its common five-store transaction set.
 
 ## Retry and idempotency rules
 
+- One append plan names one exact frame at one exact generation-relative start.
+  A future append transaction may classify byte-identical complete data at that
+  target as idempotently present only after rechecking the full mutation-token
+  binding, validating the complete tail, and proving that no later record
+  exists. It never overwrites different bytes or skips a gap.
+- Append and rotation share one ordered tail barrier. Rotation cannot publish a
+  manifest until its transaction proves that the current complete tail end
+  equals `acceptedPrefixBytes`; a host scheduler cannot substitute enqueue
+  order for that serialized storage check.
 - One transaction ID names exactly one immutable plan for the lifetime of its
   scope. Changing even one byte or field requires a new transaction ID after
   the old attempt is terminally resolved.
@@ -911,8 +970,9 @@ or newest-looking tail.
    instead governed by cases 2 and 5.
 7. A crash after commit but before the first successor append recovers a valid
    empty or profile-guaranteed absent successor at offset zero after the fresh
-   fence/recheck step. Later complete successor frames are handled by the
-   existing Frame V1 and tail-cursor contracts.
+   fence/recheck step. Version `0.0.43` can prepare a speculative next frame,
+   but a future adapter/terminal contract must durably append it and release
+   the quarantined cursor.
 8. Old-generation truncation, deletion, or garbage collection begins only after
    exact commit resolution and any profile retention barrier. It is forbidden
    while prepared, in flight, physically aborted/not-attempted, retry-eligible,
@@ -956,14 +1016,16 @@ This specification and the implemented values do not provide:
 
 - actual storage bootstrap/provisioning, a general ownership-bearing
   `DefinitelyNotCommitted` state, ownership typestate, adapter, async API,
-  or I/O implementation through `0.0.42`; the implemented publication-attempt
+  or I/O implementation through `0.0.43`; the implemented publication-attempt
   terminal states, root/rotation resolution evidence, and writer-fence
   acquisition completion are trusted process-local host assertions. The
-  v0.0.42 mutation token is revocable authority only under that contract, not
+  v0.0.42 mutation token is revocable authority only under that contract, and
+  the v0.0.43 append plan is only speculative in-memory preparation; neither is
   authenticated proof that its binding is presently current;
 - filesystem, object-store, or IndexedDB durability by themselves;
-- proof of EOF, physical old-tail length, truncation, append completion, flush,
-  `fsync`, acknowledgement, atomic replacement, or crash recovery;
+- proof of EOF, physical old-tail length or cursor provenance, truncation,
+  append completion, flush, `fsync`, acknowledgement, atomic replacement, or
+  crash recovery;
 - authentication, authorization, cryptographic integrity, content addressing,
   rollback protection, causal provenance, or multi-writer consensus;
 - proof that a transaction, head, fence, session, or generation identity is
@@ -977,10 +1039,15 @@ This specification and the implemented values do not provide:
 - writer-fence acquisition resolution after callback loss, durable token
   reconstruction, or a Profile V1 liveness escape after an unattributed final-
   epoch commit;
+- an append adapter/request/terminal lifecycle, durable release of the
+  speculative post-cursor, append resolver/restart reconstruction, or
+  multi-frame storage chunks;
 - a change to Local Log Checkpoint V1 or Local Log Frame V1;
 - durable encoding of recovery, compaction, or checkpoint resource policies;
-- generation garbage collection, tail-wide replay, migration, retry scheduling,
-  backpressure, cancellation APIs, or queue ordering; or
+- generation garbage collection, tail-wide replay, migration, host retry
+  scheduling, backpressure, or cancellation APIs; a future core state machine
+  must own durable FIFO/acknowledgement order even though the host chooses when
+  to schedule it; or
 - a permanent compatibility promise for the implemented pre-`0.1` V1 shape.
 
 `EndOfInput`, a valid CRC, successful JSON decode, object existence, file
@@ -1099,10 +1166,22 @@ not-attempted preserve the exact plan for fresh-identity resubmission, and
 transition rejection preserves both owner and evidence. Every storage mutation
 must still recheck the token's complete binding inside its own transaction.
 
+Version `0.0.43` implements only the pure token-and-tail-cursor append plan.
+`try_prepare_append` consumes both owners, borrows one entry, validates exact
+session/checkpoint/active-generation/Frame V1 agreement, encodes and
+semantically admits one exact frame, and either returns both owners unchanged
+on typed failure or quarantines the token, frame, and speculative post-cursor in
+a non-`Clone` plan. `LocalLogStorageChunkStart` freezes the canonical twenty-
+digit generation-relative offset key. The IndexedDB profile fixes one complete
+Frame V1 with no trailing bytes per chunk and requires future append and
+rotation transactions to compare the same exact current tail end.
+
 This is not an executable adapter. The IndexedDB host must still perform the
 primary-key plus unique current-head-index read, complete selection/generation/
 writer comparison, and scope-control-only writer-pair update in one fixed
 strict five-store transaction. The core cannot authenticate callbacks, prevent
 copied dispatch, resolve callback loss, reconstruct IDs or tokens after process
 restart, or recover acquisition liveness after an unattributed commit at
-`u64::MAX`. Append and consuming semantic-owner integration remain future work.
+`u64::MAX`. Executable append request/terminal/acknowledgement, durable cursor
+release, restart reconstruction, and the core FIFO state machine remain future
+work; the host will own scheduling and backpressure without owning order.

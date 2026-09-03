@@ -24,6 +24,12 @@ mod local_log_frame_codec;
 mod local_log_frame_error;
 mod local_log_frame_limits;
 mod local_log_frame_scan;
+#[cfg(test)]
+mod local_log_storage_append_adversarial_tests;
+mod local_log_storage_append_plan;
+mod local_log_storage_append_preparation_error;
+mod local_log_storage_append_preparation_failure;
+mod local_log_storage_append_prepare;
 mod local_log_storage_attempt_aborted;
 mod local_log_storage_attempt_aborted_resubmit;
 mod local_log_storage_attempt_plan;
@@ -234,6 +240,11 @@ pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, Loca
 pub use local_log_frame_scan::{
     BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
+pub use local_log_storage_append_plan::LocalLogStorageAppendPlan;
+pub use local_log_storage_append_preparation_error::{
+    LocalLogStorageAppendPreparationError, LocalLogStorageAppendPreparationErrorCode,
+};
+pub use local_log_storage_append_preparation_failure::LocalLogStorageAppendPreparationFailure;
 pub use local_log_storage_attempt_aborted::LocalLogStorageAttemptAborted;
 pub use local_log_storage_attempt_preparation_error::{
     LocalLogStorageAttemptPreparationError, LocalLogStorageAttemptPreparationErrorCode,

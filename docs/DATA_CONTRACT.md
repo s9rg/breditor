@@ -125,6 +125,13 @@ The implemented Rust slice owns:
   correlation, three terminal host-attestation kinds, recoverable negative
   states, exact resubmission, and non-`Clone` revocable mutation-token issuance
   only from matching completion;
+- a canonical fixed-width generation-relative storage chunk start and a pure
+  non-`Clone` single-frame append plan that consumes one mutation token plus one
+  active-tail cursor, validates their required session, generation, and frame-
+  policy relationship,
+  encodes and semantically admits one borrowed entry, and quarantines the exact
+  frame with its speculative advanced cursor while typed failure returns both
+  unchanged owners;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -148,7 +155,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered tail storage and recovery orchestration, atomic checkpoint/log
+- ordered tail I/O and recovery orchestration, append request/terminal/
+  acknowledgement and uncertain-resolution lifecycles, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
 - storage-generation initial provisioning, a general plan-level
@@ -157,7 +165,8 @@ The following remain deliberately unimplemented:
   integration, and an executable filesystem or IndexedDB adapter (only the
   profile contract, pure-Rust values/attempt mechanics, process-local host
   terminal attestations, both resolver state machines, writer-fence comparison/
-  planning, and the process-local acquisition/token lifecycle exist);
+  planning, the process-local acquisition/token lifecycle, and pure append
+  preparation exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -772,6 +781,24 @@ negative outcomes for exact fresh-identity resubmission, and creates a
 non-`Clone`, nonserializable revocable mutation token only on matching
 completion. The token is historical trusted host evidence and must be rechecked
 inside each protected storage transaction. No adapter or append is added.
+
+Version `0.0.43` implements only pure preparation for one token-authorized
+append. It consumes a mutation token and active-tail cursor, validates the
+selected session/checkpoint/active-generation and Frame V1 relationships,
+encodes one exact frame, checks its generation-relative byte range, and admits
+that frame through the existing semantic cursor transition. Success owns the
+exact frame and a quarantined speculative post-cursor in a non-`Clone` append
+plan; typed failure returns the unchanged token and cursor. The plan is neither
+an adapter request nor evidence of I/O, acknowledgement, terminal completion,
+or durability.
+
+IndexedDB Profile V1 now fixes one complete Frame V1 with no trailing bytes per
+chunk value. The fourth key component is the canonical twenty-digit
+generation-relative `chunkStart`: zero for the first frame and, thereafter,
+the prior start plus the prior complete value length. A future append
+transaction must recheck the full token binding and exact storage tail end;
+rotation must compare that same tail end with `acceptedPrefixBytes` in its own
+serialized transaction. These decisions add no executable adapter or resolver.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -3696,8 +3723,8 @@ the selected binding plus allocation-identical current/predecessor JSON while
 changing only epoch/fence to the plan's checked pair. The token has no clone,
 serialization, equality, hash, ordering, display, or public constructor. Its
 public surface exposes the binding, selected binding, acquired epoch/fence,
-attempt ID, and JSON byte lengths, but neither raw JSON nor the retained request
-ID. Its completion is historical trusted host evidence, not stable currentness,
+attempt/request IDs, and JSON byte lengths, but not raw JSON. Its completion is
+historical trusted host evidence, not stable currentness,
 durability, a long-lived lock, or semantic-owner release. Another acquisition,
 rotation, reset, or conflicting mutation can revoke it before the callback
 runs; each protected mutation must re-read and directionally compare the
@@ -3717,7 +3744,8 @@ and JSON untouched. A mismatch aborts; finding the target writer pair already
 stored is never idempotent success. Only this exact transaction's terminal
 `complete` qualifies for `AcquisitionCompleted`.
 
-No such IndexedDB/JavaScript/Wasm adapter and no append operation exists yet.
+No such IndexedDB/JavaScript/Wasm adapter or executable append/acknowledgement
+operation exists yet.
 Attempt/request IDs and fence values are non-secret correlation, not
 authenticated provenance. The borrowed one-shot request cannot prevent copied
 or duplicate host dispatch, and allocation identity has no persistence or
@@ -3726,8 +3754,65 @@ reconstruction. In particular, if `u64::MAX - 1 -> u64::MAX` commits but its
 completion callback or volatile process state is lost, exact retry cannot
 attribute the stored tuple and no successor epoch exists. Profile V1 then has
 no in-contract path to acquire another token without later migration or reset;
-an already issued maximum-epoch token could still be checked by a future append
-implementation.
+an already issued maximum-epoch token can still prepare an append and could be
+checked by a future adapter.
+
+Version `0.0.43` implements the pure single-frame append-preparation boundary.
+`LocalLogStorageMutationToken::try_prepare_append` consumes the token and one
+`LocalLogTailCursor` while borrowing one `LocalLogEntry`. Its validation keeps
+storage and semantic scopes fail closed: the token-selected session, checkpoint
+generation, active generation, and active Frame V1 policy must agree with the
+cursor; the entry must encode under that owner-derived policy; the generation-
+relative start plus complete frame length must fit `u64`; and the encoded frame
+must pass the existing semantic tail-admission transition.
+
+Failure returns `LocalLogStorageAppendPreparationFailure`, retaining both the
+complete unchanged token and cursor; the borrowed entry remains caller-owned.
+Success returns a private-constructor non-`Clone`
+`LocalLogStorageAppendPlan`. It owns the token, exact canonical frame bytes,
+checked start/end, and speculative cursor produced by admitting exactly those
+bytes. This is one atomic in-memory preparation: there is no separately
+supplied post-state, frame boundary, or sequence claim. The advanced cursor is
+quarantined inside the plan because no physical append has yet been attested.
+Public inspection and diagnostics must not turn the retained document-bearing
+frame into an accidental payload dump.
+
+The corresponding IndexedDB Profile V1 chunk layout assigns exactly one
+complete Local Log Frame V1, with no trailing bytes, to each chunk value. The
+fourth compound-key member is `chunkStart`, not a sequence or record ordinal.
+It is the canonical twenty-ASCII-digit, zero-padded generation-relative start
+offset. The first key is `00000000000000000000`; every next key equals the
+preceding key plus that preceding value's exact byte length. Starts and ends
+must fit `u64`, and gaps, overlaps, malformed keys, empty values, multiple
+frames, truncation, or trailing bytes are corruption.
+
+A future executable append transaction must revalidate the complete token
+selection and writer pair inside the fixed five-store transaction, validate the
+active generation and its frame policy, and prove that the current complete
+last chunk ends exactly at the plan start before writing. If the target key
+already contains byte-identical complete frame data and there is no later
+record, the transaction may classify the exact plan as idempotently present;
+different bytes or any incompatible tail shape fail closed. A rotation in the
+same profile must independently validate that this exact last tail end equals
+the manifest's `acceptedPrefixBytes` before changing the selected head. That
+shared comparison prevents append and rotation from committing against
+different notions of the sealed prefix.
+
+The v0.0.43 plan performs no storage read or write, creates no adapter request
+or physical attempt/request identity, observes no terminal event, and supplies
+no acknowledgement, uncertain resolver, retry classification, or restart
+representation. `LocalLogTailCursor::from_trusted_parts` still makes physical
+byte provenance caller-authoritative. A token or plan placed behind shared
+ownership can defeat non-`Clone` exclusivity hygiene, so transactional checks
+remain authoritative. One-frame chunk values add record/key overhead, and the
+fixed five-store IndexedDB scope still serializes unrelated editor scopes.
+
+Correct durable FIFO dispatch, acknowledgement order, and the barrier between
+pending appends and rotation are core state-machine responsibilities rather
+than unchecked host conventions. The host remains responsible for when to run
+that state machine: asynchronous scheduling, batching policy, backpressure,
+cancellation, browser task lifetime, and rate limiting. Version `0.0.43`
+contains only one plan primitive and does not yet implement that queue.
 
 A JavaScript adapter and real-browser profile validation remain later work.
 Consuming exclusive-owner typestate still requires a separately specified held
@@ -3740,9 +3825,9 @@ optional authenticity, authorization ownership, atomic checkpoint/log replace
 and append/flush/fsync/ack behavior, actual crash-tail truncation, retry
 reconstruction after process failure, rollback protection, and multi-writer
 fencing remain separate storage-layer gates.
-Queue order, backpressure, cancellation, asynchronous scheduling, and admission
-rate limiting remain host concerns, not hidden inside the deterministic Rust
-state machine.
+Asynchronous scheduling, batching policy, backpressure, cancellation, and
+admission rate limiting remain host concerns. A future host queue may not
+reorder the core's durable FIFO or acknowledgement transitions.
 The log must not silently treat optimistic operation guards or caller-owned
 lineage/revision values as exactly-once delivery. Browser `beforeinput`,
 composition ownership, IME buffering, and paste chunking remain adapter

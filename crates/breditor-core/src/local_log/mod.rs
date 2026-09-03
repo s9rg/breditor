@@ -40,6 +40,8 @@ mod replay_id;
 mod sequence;
 mod storage_attempt_id;
 mod storage_attempt_request_id;
+mod storage_chunk_start;
+mod storage_chunk_start_parse_error;
 mod storage_database_incarnation_id;
 mod storage_fence_id;
 mod storage_head_id;
@@ -97,6 +99,12 @@ pub use replay_id::ReplayId;
 pub use sequence::{LocalLogSequence, LocalLogSequenceError};
 pub use storage_attempt_id::LocalLogStorageAttemptId;
 pub use storage_attempt_request_id::LocalLogStorageAttemptRequestId;
+pub use storage_chunk_start::{
+    LOCAL_LOG_STORAGE_CHUNK_START_DECIMAL_BYTES, LocalLogStorageChunkStart,
+};
+pub use storage_chunk_start_parse_error::{
+    LocalLogStorageChunkStartParseError, LocalLogStorageChunkStartParseErrorCode,
+};
 pub use storage_database_incarnation_id::LocalLogStorageDatabaseIncarnationId;
 pub use storage_fence_id::LocalLogStorageFenceId;
 pub use storage_head_id::LocalLogStorageHeadId;

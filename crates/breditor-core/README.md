@@ -25,7 +25,8 @@ attempt identities, one-shot borrowed request views, exact resubmission, typed
 physical terminal states, and request-correlated root and rotation resolution,
 plus exact mutation-fence comparison/planning and a nominally separate
 request-correlated writer-fence acquisition lifecycle that can issue a
-revocable process-local mutation token,
+revocable process-local mutation token, plus a pure token-and-tail-cursor
+single-frame append plan with a quarantined speculative post-cursor,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -69,7 +70,7 @@ action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, durable append/acknowledgement,
+scope provisioning, executable append/acknowledgement,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -399,13 +400,45 @@ complete binding transactionally. Opaque IDs and fences are non-secret; a
 borrowed one-shot request cannot prevent copied or duplicate dispatch, and the
 core cannot authenticate host callbacks.
 
-No IndexedDB/JavaScript/Wasm/filesystem adapter or append action exists. The
-lifecycle has no durable/restart representation or acquisition resolver. If
+No IndexedDB/JavaScript/Wasm/filesystem adapter exists. The lifecycle has no
+durable/restart representation or acquisition resolver. If
 `u64::MAX - 1 -> u64::MAX` commits and its terminal callback or volatile state
 is lost, the stored target tuple cannot safely reconstruct request-correlated
 authority and the epoch cannot advance again. Profile V1 therefore has no
 in-contract path to acquire another token, although a token already issued at
-maximum could still be transactionally checked by a future append operation.
+maximum can still prepare an append and could be transactionally checked by a
+future adapter.
+
+Version `0.0.43` adds the pure append-preparation action.
+`LocalLogStorageMutationToken::try_prepare_append` consumes one token and one
+`LocalLogTailCursor` while borrowing the candidate `LocalLogEntry`. It validates
+the token's selected session, checkpoint generation, active generation, and
+Frame V1 policy against the cursor, encodes exactly one canonical frame, checks
+its generation-relative byte range, and semantically admits that encoded frame
+through the existing tail transition. Typed
+`LocalLogStorageAppendPreparationFailure` returns the complete unchanged token
+and cursor. Success produces a private-constructor non-`Clone`
+`LocalLogStorageAppendPlan` that owns the exact frame, token, and speculative
+advanced cursor; the post-cursor remains quarantined rather than becoming a
+durability claim.
+
+For IndexedDB Profile V1, one chunk is now exactly one complete Frame V1 value
+with no trailing bytes. Its fourth key component is `chunkStart`, a canonical
+twenty-digit zero-padded generation-relative byte start. Zero is first, and
+each successor start is the preceding start plus that value's complete byte
+length. A future append transaction must recheck the token's complete binding
+and require the observed last tail end to equal the plan start. Exact same bytes
+at the target may be treated as idempotent; different bytes, a gap, overlap, or
+later record fail closed. Rotation must compare that same last tail end with
+`acceptedPrefixBytes` inside its serialized transaction.
+
+This release has no append adapter request, I/O, terminal attestation,
+acknowledgement, uncertain resolver, or restart reconstruction. Cursor byte
+provenance is still caller-trusted, non-`Clone` remains ownership hygiene, one
+frame per record adds storage overhead, and all scopes still serialize through
+the profile's fixed store set. Future core typestate must own durable FIFO/order
+correctness, while the host owns scheduling, batching, backpressure, and
+cancellation.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

@@ -5,8 +5,9 @@
 //! transaction-request, contextual complete editor-state, replay-proved
 //! durable commit, bounded session-checkpoint, replay-identified local-log
 //! entry, complete local-log-checkpoint JSON decoding, checksummed binary
-//! local-log frame scanning, atomic framed-tail observation, genesis-prefix
-//! recovery, checkpoint-linked batch and incremental successor admission,
+//! local-log frame scanning, atomic framed-tail observation, pure token-bound
+//! single-frame append preparation, genesis-prefix recovery, checkpoint-linked
+//! batch and incremental successor admission,
 //! repeated compaction,
 //! snapshot-local points and selections, immutable editor states,
 //! paragraph-local text splices,
@@ -396,11 +397,42 @@
 //! inside its own serialized transaction. IDs and fences are non-secret, and
 //! the one-shot borrow cannot prevent copied or duplicate dispatch.
 //!
-//! No browser adapter or append operation is implemented. The lifecycle is
-//! volatile and has no acquisition resolver. If `u64::MAX - 1 -> u64::MAX`
+//! No browser adapter or executable append operation is implemented. The
+//! lifecycle is volatile and has no acquisition resolver. If
+//! `u64::MAX - 1 -> u64::MAX`
 //! commits but its terminal callback or process state is lost, restart cannot
 //! reconstruct the request-correlated token and cannot advance the epoch again;
 //! Profile V1 has no in-contract liveness recovery for that terminal case.
+//!
+//! Version `0.0.43` adds pure, storage-neutral preparation for one append.
+//! `LocalLogStorageMutationToken::try_prepare_append` consumes one token and one
+//! [`codec::LocalLogTailCursor`] while borrowing a [`local_log::LocalLogEntry`].
+//! It validates the token-selected session, checkpoint generation, active
+//! generation, and Frame V1 policy against the cursor, encodes one exact frame,
+//! checks its generation-relative start/end arithmetic, and admits that frame
+//! through the existing semantic tail transition. Typed failure returns the
+//! complete unchanged token and cursor. Success returns a private-constructor
+//! non-`Clone` `LocalLogStorageAppendPlan` owning the token, exact frame, and
+//! speculative advanced cursor. The post-cursor remains quarantined and is not
+//! an acknowledgement or durable publication.
+//!
+//! `IndexedDB` Profile V1 assigns each chunk value exactly one complete Frame V1
+//! with no trailing bytes. Its fourth key is `chunkStart`, the canonical
+//! twenty-digit zero-padded generation-relative byte start. The first start is
+//! zero; every next start is the preceding start plus the complete stored value
+//! length. A future transaction must recheck the complete token binding and the
+//! exact storage tail end. Exact identical bytes already at the target may be
+//! idempotent success; different bytes, gaps, overlaps, and later records fail
+//! closed. Rotation must transactionally match the same tail end to
+//! `acceptedPrefixBytes`.
+//!
+//! The plan performs no adapter request, I/O, terminal observation,
+//! acknowledgement, uncertain resolution, or restart reconstruction. Cursor
+//! byte provenance remains caller-trusted; non-`Clone` is ownership hygiene,
+//! one-frame records add per-record overhead, and the fixed `IndexedDB` store set
+//! still serializes independent scopes. Future core typestate owns durable FIFO
+//! and acknowledgement order; hosts own asynchronous scheduling, batching,
+//! backpressure, and cancellation without reordering those plans.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

@@ -34,7 +34,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   attestations, and request-correlated root and rotation resolver typestates and
   classifications, plus exact writer-fence bindings and checked acquisition
   plans, a separate request-correlated acquisition lifecycle, and revocable
-  process-local storage-mutation tokens;
+  process-local storage-mutation tokens, plus a pure single-frame append plan
+  that atomically joins one token, one active-tail cursor, one canonical frame,
+  and its speculative post-append semantic cursor;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -371,9 +373,9 @@ with the checked target. Completion is historical host evidence, not stable
 currentness: the token may already be revoked when returned, and every future
 protected mutation must re-read and directionally compare its complete binding
 inside that mutation's serialized transaction. No IndexedDB, JavaScript, Wasm,
-or filesystem adapter and no append operation is implemented. IDs and fence
-values are non-secret correlation, and a one-shot Rust request cannot prevent a
-host from copying or dispatching it twice.
+or filesystem adapter is implemented. IDs and fence values are non-secret
+correlation, and a one-shot Rust request cannot prevent a host from copying or
+dispatching it twice.
 
 The final epoch has a deliberate liveness limit. If an acquisition from
 `u64::MAX - 1` commits `u64::MAX` but its terminal callback or process-local
@@ -382,6 +384,39 @@ issue the token from the stored tuple. The current epoch also cannot advance
 again, so Profile V1 has no in-contract recovery path for acquiring a new
 token; an already issued maximum-epoch token could still be checked by a future
 append implementation.
+
+Version `0.0.43` adds the pure, storage-neutral preparation boundary for one
+append. `LocalLogStorageMutationToken::try_prepare_append` consumes one token
+and one `LocalLogTailCursor`, borrows one `LocalLogEntry`, and either returns a
+non-`Clone` `LocalLogStorageAppendPlan` or a typed
+`LocalLogStorageAppendPreparationFailure` containing both unchanged owners. It
+checks the token-selected session, checkpoint generation, active generation,
+and Frame V1 policy against the cursor; encodes one exact canonical frame;
+derives its checked generation-relative start and end; and admits that frame
+through the existing semantic tail transition. Success quarantines the
+speculatively advanced cursor together with the token and exact frame bytes in
+the plan. It is not an append acknowledgement or permission to expose that
+post-cursor as durable state.
+
+IndexedDB Profile V1 now defines one chunk value as exactly one complete Local
+Log Frame V1 with no trailing bytes. The fourth key component is `chunkStart`,
+the frame's canonical twenty-digit, zero-padded generation-relative byte start:
+the first is zero and every later start equals the preceding start plus its
+complete value length. A future executable append transaction must recheck the
+token's complete selected/writer binding and require storage's exact last tail
+end to equal the plan start. Exact identical bytes already present at that
+start may resolve as idempotent success; any different bytes, gap, overlap, or
+later record fails closed. A rotation must make the same serialized tail-end
+check against `acceptedPrefixBytes`, preventing an append/rotation race.
+
+The plan performs no I/O and has no adapter request, physical-attempt identity,
+terminal attestation, acknowledgement, uncertain resolver, or restart form.
+Its cursor provenance remains caller-trusted, and non-`Clone` is ownership
+hygiene rather than linear enforcement. One-frame records add IndexedDB record
+overhead, and the profile's fixed five-store transactions still serialize all
+scopes. Durable FIFO/order correctness belongs in future core typestate; a host
+queue will own asynchronous scheduling, batching policy, backpressure, and
+cancellation without being allowed to reorder core plans.
 
 ## Development
 
