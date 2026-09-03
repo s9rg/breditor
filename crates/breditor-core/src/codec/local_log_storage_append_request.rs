@@ -25,17 +25,20 @@ use super::{
 /// directionally compare the complete expected binding; compare both retained
 /// selection JSON values byte-for-byte; compare the writer epoch and fence;
 /// validate the selected active generation and its frame policy; and scan the
-/// complete active-generation chunk prefix. Every stored chunk must contain
+/// complete active-generation chunk prefix. Every visited chunk must contain
 /// exactly one complete valid frame at its canonical contiguous start, with no
-/// gap, overlap, malformed frame, trailing bytes, or later record.
+/// gap, overlap, malformed frame, or trailing bytes.
 ///
 /// There are only two admissible physical shapes for this request. If the
 /// valid prefix ends at the requested start and that key is absent, the
 /// adapter may `add` exactly the requested frame at exactly that key. If the
 /// target record is already the valid final record, its key and bytes must
 /// match this request exactly and the prefix immediately before it must end at
-/// the requested start. That second shape is only idempotently present; a
-/// future core checkpoint will define terminal evidence and queue advancement.
+/// the requested start; no record may follow the target. That second shape is
+/// idempotently present. Either
+/// qualifying branch becomes terminal evidence only after this exact
+/// transaction emits `complete` and the host applies a request-correlated
+/// terminal attestation; a separate consuming action then advances one head.
 /// Any differing bytes, gap, overlap, later record, stale binding, malformed
 /// value, or failed request requires explicit transaction abort.
 ///
@@ -80,7 +83,7 @@ impl<'a> LocalLogStorageAppendRequest<'a> {
         self.request_id.attempt_id()
     }
 
-    /// Returns the correlation identity reserved for future terminal evidence.
+    /// Returns the correlation identity required by terminal evidence.
     #[must_use]
     pub const fn request_id(&self) -> &'a LocalLogStorageAppendRequestId {
         self.request_id

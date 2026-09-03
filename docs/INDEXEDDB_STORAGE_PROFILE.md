@@ -14,9 +14,11 @@ acquisition and revocable-token issuance implemented in `0.0.42`;
 pure token-and-tail-cursor single-frame append preparation implemented in
 `0.0.43`; pure nonempty bounded speculative append FIFO implemented in
 `0.0.44`; process-local uncertain FIFO-head attempt and one-shot exact request
-implemented in `0.0.45`; no IndexedDB/JavaScript/Wasm adapter, process-restart
-plan reconstruction, append terminal/acknowledgement lifecycle, durable
-ownership release, or executable provisioning exists
+implemented in `0.0.45`; attempt/request-correlated-as-appropriate append
+terminal classification and explicit one-head acknowledgement implemented in
+`0.0.46`; no IndexedDB/
+JavaScript/Wasm adapter, lost-append-callback resolver, process-restart append
+reconstruction, or executable provisioning exists
 
 Profile identifier: `breditor/indexeddb-local-log`
 
@@ -44,7 +46,7 @@ every browser implementation is bug-free.
 
 ## Decisions
 
-Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.45`
+Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.46`
 implement only their profile-independent Rust value, attempt, and resolution
 subset:
 
@@ -95,7 +97,7 @@ subset:
 ## Authority split
 
 `breditor-core` remains synchronous, deterministic, and free of browser
-handles. Versions `0.0.34` through `0.0.45` can:
+handles. Versions `0.0.34` through `0.0.46` can:
 
 - prepare and strictly encode the root-selection value from one borrowed local
   log compaction outcome;
@@ -163,7 +165,12 @@ handles. Versions `0.0.34` through `0.0.45` can:
 - consume that FIFO into uncertainty before egress, emit one borrowed exact
   head request under distinct process-local attempt/request IDs, exact-resubmit
   the allocation-identical queue under a fresh attempt ID, and keep accepting
-  logical followers without making any follower physically dispatchable.
+  logical followers without making any follower physically dispatchable; and
+- correlate trusted transaction-completed, transaction-aborted, or not-
+  attempted callbacks; retain the complete queue on negative results; publish
+  a separate head-present state on strict exact-tail completion; and consume
+  that state to acknowledge exactly one head into a typed pending or drained
+  owner.
 
 The v0.0.37 boundary checks typed host terminal evidence against one exact
 prepared plan without treating per-transaction IndexedDB fencing as release of
@@ -176,8 +183,9 @@ acquisition plan. Version `0.0.42` adds the separate process-local acquisition
 request/terminal/token lifecycle. Version `0.0.43` adds pure single-frame
 append preparation. Version `0.0.44` adds the pure bounded append FIFO, but
 still no IndexedDB implementation. Version `0.0.45` adds the process-local
-append-head attempt/request boundary, but no executable adapter, terminal
-observation, acknowledgement, or head-removal lifecycle.
+append-head attempt/request boundary. Version `0.0.46` adds correlated terminal
+observation and explicit one-head acknowledgement, but no executable adapter,
+lost-callback resolver, or restart reconstruction.
 
 The JavaScript adapter owns `IDBDatabase`, `IDBTransaction`, requests, events,
 connection reopening, exact key construction, structured-clone values, and the
@@ -762,7 +770,9 @@ one final speculative cursor, exact count/byte totals, and ordered frame
 allocations. Version `0.0.45` can consume that queue into uncertainty before
 egress and yield one borrowed request exposing only the immutable head's exact
 bytes and comparison facts; that request exposes no follower raw bytes,
-dispatch authorization, or final cursor.
+dispatch authorization, or final cursor. Version `0.0.46` can correlate the
+trusted terminal callback, publish a separate head-present state after exact
+completion, and acknowledge exactly one head into pending or drained ownership.
 
 The v0.0.45 request binds that distinguished head to the complete expected
 mutation-fence and selected bindings, exact current and optional predecessor
@@ -1405,11 +1415,63 @@ and speculative cursor. It does not renew a stale token; the prior request may
 still commit, so every invocation repeats the same serialized exact-tail and
 same-key/same-bytes checks. Logical enqueue remains available before and after
 request egress, preserves attempt/request IDs, and advances only the private
-tail. No core-issued request exposes or authorizes a follower. Only a future
-terminal and durable acknowledgement transition may remove the head and publish
-a drained owner eligible for cursor release. Version `0.0.45` has no such
-terminal, pop, drain, resolver, rotation, or restart transition; these are the
-`0.0.46` gate.
+tail. No core-issued request exposes or authorizes a follower. At the `0.0.45`
+checkpoint, only a future terminal and acknowledgement transition could remove
+the head and publish a drained owner eligible for cursor release. Version
+`0.0.45` had no such terminal, pop, drain, resolver, rotation, or restart
+transition; those remained the next implementation gate at that checkpoint.
+
+Version `0.0.46` adds
+`LocalLogStorageUncertainAppendAttempt::observe_terminal_attestation`. Its
+current attestation kinds are `TransactionCompleted`, `TransactionAborted`, and
+`NotAttempted`. Completed and aborted callbacks correlate the exact emitted
+request ID; not-attempted correlates the attempt ID and is legal before or after
+egress. Error precedence is fixed: attempt-ID mismatch, then, for request-
+bearing evidence, request not issued and request-ID mismatch.
+`LocalLogStorageAppendTerminalFailure` returns both
+the unchanged uncertain owner and exact attestation. These callbacks are
+trusted profile attestations. The Rust core does not authenticate the browser
+event or physical storage, and the terminal surface accepts no raw encoded
+frame payload or host-selected pop.
+
+`TransactionCompleted` may produce
+`LocalLogStorageAppendTerminalOutcome::HeadPresent` only when the adapter
+attests terminal `complete` for the whole strict five-store transaction and one
+exact-final-tail condition. The transaction must revalidate the complete token
+binding, both selected-transaction lookup paths, selected checkpoint and active
+generation, exact current/predecessor selection JSON, expected writer pair,
+active Frame V1 policy, and complete serialized tail. It must either add the
+exact requested frame where an absent target equals the exact previous tail, or
+observe that same key and byte-identical frame as the exact final record with a
+valid prefix ending at its start. Individual request success, calling
+`commit()`, partial store work, different bytes, a gap, overlap, malformed
+record, or later record is never `HeadPresent`.
+
+Positive classification remains separate from removal.
+`LocalLogStorageAppendHeadPresent::acknowledge_head` consumes the positive state
+and advances exactly one FIFO head. A
+`LocalLogStorageAppendHeadAcknowledgementOutcome::Pending` owns
+`LocalLogStorageAppendHeadAcknowledged`, promotes the allocation-identical first
+follower, preserves FIFO order, token, limits, and final speculative cursor,
+and decrements counts/bytes by exactly the acknowledged head. The queue must
+begin another attempt, issue another request,
+and receive another matching completed attestation before that promoted head
+can be acknowledged. `Drained(LocalLogStorageAppendQueueDrained)` owns the
+token, final cursor, limits, acknowledged request ID, and bounded acknowledged-
+head metadata and is the only successful edge that releases the final cursor.
+
+`AttemptAborted(LocalLogStorageAppendAttemptAborted)` and
+`NotAttempted(LocalLogStorageAppendNotAttempted)` remove nothing and preserve
+the allocation-identical complete queue for `begin_exact_resubmission` under a
+fresh attempt ID with restored one-shot request eligibility. A copied request
+may outlive either negative attestation and still commit, so same-key/same-bytes
+idempotency remains mandatory. The token may be
+stale, and the base cursor remains caller-trusted.
+
+Lost-callback resolution is deferred explicitly to `0.0.47`. Version `0.0.46`
+has no process-restart reconstruction; dropping the volatile owner still loses
+its queue and correlation state. `durability: "strict"` remains an IndexedDB
+hint, not proof that committed data reached durable media.
 
 Rotation uses the same tail authority. Its serialized transaction must inspect
 the complete old active-generation prefix and require the current exact last
@@ -1428,12 +1490,11 @@ manifest are insufficient separately.
 Consequently this profile can never release a long-lived exclusive writable
 `breditor-core` cursor or session. An already returned Rust owner cannot be
 synchronously revoked when another browser transaction advances the epoch.
-Versions `0.0.43` through `0.0.45` begin the transaction-coupled speculative
+Versions `0.0.43` through `0.0.46` implement a transaction-coupled speculative
 policy by quarantining one advanced cursor, then a bounded exact pending prefix,
-then one uncertain-head request, but have no durable completion transition.
-A later implementation must either hold a separately specified lock for an
-entire released-owner lifetime or couple each semantic admission and its one-
-time cursor release to one successfully attested storage mutation.
+then one uncertain-head request, and finally one-at-a-time trusted completion
+and cursor release when drained. That release is revocable historical evidence,
+not a held lock: the returned token can already be stale before its next use.
 
 Profile `0.0.33` freezes these obligations. Version `0.0.41` implements the
 canonical epoch, exact non-authority mutation-fence binding, directional
@@ -1441,11 +1502,12 @@ comparison, and checked acquisition plan. Version `0.0.42` implements only the
 process-local request/terminal/token boundary around that plan. Version
 `0.0.43` implements the pure append plan and quarantined speculative cursor;
 version `0.0.44` implements the pure bounded FIFO and its atomic logical
-enqueue; version `0.0.45` implements the uncertain-head request boundary. None
-proves storage provenance, authenticates atomic co-observation
-or browser events, performs CAS or I/O, establishes global fence freshness,
-reconstructs authority after restart, appends or acknowledges bytes, or
-releases a durable Rust semantic owner. Those remain later design gates.
+enqueue; version `0.0.45` implements the uncertain-head request boundary; and
+version `0.0.46` implements trusted terminal correlation and explicit one-head
+acknowledgement. None proves storage provenance, authenticates atomic co-
+observation or browser events, performs CAS or I/O, establishes global fence
+freshness, reconstructs authority after restart, or releases a durable exclusive
+Rust writer. Those remain later design gates.
 
 ## Retired-generation cleanup
 
@@ -1500,9 +1562,9 @@ capabilities.
 ## Explicit V1 limitations
 
 - No IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter exists
-  through `0.0.45`; the implemented Rust values, attempt states, resolvers,
-  writer-fence acquisition lifecycle, append plan/FIFO, and uncertain append-
-  head request boundary perform no I/O.
+  through `0.0.46`; the implemented Rust values, attempt states, resolvers,
+  writer-fence acquisition lifecycle, append plan/FIFO, uncertain append-head
+  request, terminal, and acknowledgement boundaries perform no I/O.
 - Root preparation/encoding/decoding, selected receipt/generation bindings,
   root/rotation normalization, and selected-root-aware next-rotation validation
   prove only bounded value and cross-link consistency. They do not provision a
@@ -1541,17 +1603,18 @@ capabilities.
   token from persisted epoch/fence values. Losing the completion callback or
   process state after committing the final epoch can permanently prevent a new
   Profile V1 acquisition without migration or reset.
-- The v0.0.45 append request and attempt/request IDs are process-local and
-  volatile. There is no terminal attestation, acknowledgement, head pop,
-  uncertain resolver, retry classification, drained owner, cursor release,
-  rotation edge, or restart representation. The final speculative cursor
-  remains quarantined.
+- The append attempt/request IDs and terminal states remain process-local and
+  volatile. Version `0.0.46` adds correlated terminal classification and one-
+  head acknowledgement, but no lost-callback resolver, transition from the
+  drained append owner into rotation, or restart representation. Lost-callback
+  resolution is the `0.0.47` gate.
 - One append attempt yields at most one borrowed request, but its raw frame and
   selection JSON can be copied and externally dispatched more than once. One
   request ID names one invocation and at most one append-capable transaction;
   it cannot authenticate browser-event provenance or prove single dispatch.
   Request return, individual request success, and `commit()` return are not
-  completion.
+  completion. A copied request can outlive an aborted/not-attempted attestation
+  and still race to commit.
 - Append-queue limits count retained encoded frame slots and bytes only. They do
   not bound the cursor's editor session, history, replay indexes, decoded
   entries, queue/`Arc` metadata, shared selection bindings, or allocator
@@ -1561,9 +1624,9 @@ capabilities.
 - Safe Rust may drop the whole volatile append queue. Drop is neither
   cancellation nor acknowledgement and loses its token, speculative cursor,
   and pending frames. Recovery requires durable storage plus separately
-  retained application intent; v0.0.45 has no restart, stale-token rebase, or
-  ownership-extraction transition. After request egress, drop or process loss
-  also cannot decide whether copied or dispatched work committed.
+  retained application intent; v0.0.46 has no restart or stale-token rebase.
+  After request egress, drop or process loss also cannot decide whether copied
+  or dispatched work committed.
 - `LocalLogTailCursor::from_trusted_parts` leaves physical tail-byte provenance
   caller-trusted. The append plan validates internal identity, frame-policy,
   encoding, arithmetic, and semantic admission consistency; it cannot prove
@@ -1587,16 +1650,20 @@ capabilities.
 - IndexedDB alone provides no stable exclusive writer between transactions;
   every mutation pays for a serialized head/generation/writer-epoch recheck.
 - Profile V1 cannot release a long-lived exclusive Rust writer; a held-lock,
-  or completed transaction-coupled acknowledgements for the v0.0.45
-  speculative queue are still required.
+  or another separately specified lifetime-authority protocol, is still
+  required. Version `0.0.46` releases a drained cursor only from a trusted
+  transaction-coupled acknowledgement, and the returned token may be stale.
 - The nonempty chunk layout is fixed at one complete Frame V1 per record. This
   adds record/key overhead and deliberately provides no multi-frame chunking or
-  batching format. Executable append, flush/acknowledgement, aggregate tail
-  replay, and crash-tail truncation remain undefined.
-- The v0.0.45 uncertain-head boundary additionally owns request egress,
-  correlation, and logical enqueue while uncertain, but proves no terminal
-  result. Durable acknowledgement order, head removal, and the drained append/
-  rotation barrier still require the v0.0.46 core transitions. The host owns
+  batching format. Executable adapter append/flush, aggregate tail replay, and
+  crash-tail truncation remain undefined; the Rust acknowledgement is only a
+  consuming transition from trusted terminal evidence.
+- The v0.0.46 terminal/acknowledgement boundary owns correlation and exact one-
+  head advancement. Negative states preserve the complete queue for exact
+  resubmission; a pending positive promotes only the first follower; a drained
+  positive owns token, final cursor, and limits. Lost-callback resolution and
+  a transition from the drained append owner into rotation remain later work.
+  The host owns
   asynchronous scheduling, batching
   choice, backpressure, cancellation, browser task lifetime, and rate limiting,
   but may dispatch only the head and may not coalesce or reorder queue items.
@@ -1715,6 +1782,19 @@ uncertain, but no core-issued request exposes or authorizes a follower. Request
 return, individual request success, and `commit()` return are not terminal
 evidence.
 
+Version `0.0.46` adds trusted, exact-correlation terminal observation and the
+separate consuming acknowledgement. Terminal kinds are
+`TransactionCompleted`, `TransactionAborted`, and `NotAttempted`; correlation
+errors prefer attempt mismatch, then, for request-bearing evidence, missing
+request egress and request mismatch, and retain both owner and attestation.
+Completed evidence may publish
+`HeadPresent` only for a complete strict five-store transaction and exact added-
+tail or byte-identical exact-final-tail qualification. One explicit
+`acknowledge_head` advances one item into either a pending owner that promotes
+the exact first follower or a drained owner retaining the token, final cursor,
+and limits. Negative states advance nothing and preserve the exact queue for
+resubmission.
+
 The Profile V1 `chunks` layout is now one complete Frame V1 per value, with no
 trailing bytes, keyed by its canonical twenty-digit generation-relative byte
 start. A future append transaction must recheck the full token binding and
@@ -1725,20 +1805,26 @@ sealed boundary.
 
 These releases do not execute the fixed-scope IndexedDB transaction, inspect or
 authenticate a browser event, prevent copied dispatch, resolve a lost
-acquisition or append callback, reconstruct state after restart, terminally
-classify an append, or acknowledge/remove its head.
-The host contract includes an exact primary-key and `byCommittedHead` index
-read of the selected transaction, complete selected-envelope/generation and
-writer-pair comparison, and a scope-control-only writer-pair update in one
-strict five-store transaction. A JavaScript adapter and real-browser profile
-validation remain later work. One-frame-per-record overhead, caller-trusted
+acquisition or append callback, or reconstruct state after restart. A copied
+request may outlive a negative attestation; token currentness and the base
+cursor's physical provenance remain outside the terminal callback.
+The writer-fence acquisition contract includes an exact primary-key and
+`byCommittedHead` index read of the selected transaction, complete selected-
+envelope/generation and writer-pair comparison, and a scope-control-only
+writer-pair update in one strict five-store transaction. The append contract
+repeats those authoritative reads and the writer-pair comparison but may add
+only the exact head chunk, or write nothing for the byte-identical exact-final-
+tail branch; append must not update the writer pair. A JavaScript adapter and
+real-browser profile validation remain later work. One-frame-per-record overhead, caller-trusted
 cursor provenance, fixed-scope cross-editor serialization, and non-`Clone`-only
 ownership hygiene are explicit limitations.
 
-The implemented uncertain-head owner fixes logical preparation order, head
-identity, and request correlation, but terminal/acknowledgement order and the
-drained append/rotation barrier remain the `0.0.46` core gate. Host scheduling,
-batching choice, backpressure, and cancellation remain outside that
-deterministic state machine and may not bypass its head. Durable cursor release
-remains blocked on a separately frozen held-lock or matching transaction-
-coupled append-completion contract.
+The implemented terminal/acknowledgement owners fix logical preparation order,
+request correlation, and exactly-one-head advancement. Lost append callback
+resolution is the `0.0.47` core gate; process restart reconstruction and a
+transition from the drained append owner into rotation remain later work.
+Host scheduling, batching
+choice, backpressure, and cancellation remain outside the deterministic state
+machine and may not bypass its head. The drained cursor release is transaction-
+coupled trusted evidence, not a stable exclusive lock, and its token may
+already be stale. `durability: "strict"` remains only an IndexedDB hint.

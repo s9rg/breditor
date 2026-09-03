@@ -5,7 +5,7 @@ use super::LocalLogStorageAppendAttemptId;
 /// Opaque process-local identity of one emitted queue-head append request.
 ///
 /// The core creates this value only when an uncertain append attempt yields its
-/// one borrowed adapter request. A future terminal append-complete or
+/// one borrowed adapter request. A terminal transaction-complete or
 /// transaction-abort attestation must carry the emitted request identity,
 /// which is unavailable before request egress through the safe public API. The
 /// embedded attempt ID binds it to one adapter invocation; allocation identity

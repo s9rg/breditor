@@ -11,15 +11,18 @@ use super::{
 ///
 /// The queue owns one revocable mutation token, a cursor advanced through every
 /// retained frame, and one structurally distinguished head followed by zero or
-/// more ordered successors. Only head metadata is publicly inspectable. Raw
-/// frame bytes, followers, removal, acknowledgement, and cursor release remain
-/// core-private so a host cannot select a later frame or claim durability.
+/// more ordered successors. Of the retained frame items on this plain queue,
+/// only head metadata is publicly inspectable: raw frame bytes, followers,
+/// removal, acknowledgement, and cursor release are unavailable. Consuming the
+/// queue into the separate attempt,
+/// request, terminal, and acknowledgement typestates is the only public route
+/// to those controlled lifecycle transitions.
 ///
 /// Enqueuing another borrowed entry is an atomic consuming action. Capacity is
 /// checked before semantic admission, and failure returns this complete queue
-/// unchanged. A future adapter lifecycle must revalidate the token and exact
-/// physical tail before dispatching only the head. This queue exposes no
-/// rotation transition while it is nonempty.
+/// unchanged. An executable adapter, still outside the Rust core, must revalidate
+/// the token and exact physical tail before dispatching only the requested head.
+/// This queue exposes no rotation transition while it is nonempty.
 ///
 /// This value is deliberately non-`Clone`, nonserializable, and privately
 /// constructed. Those properties are ownership hygiene rather than proof of
@@ -39,7 +42,8 @@ use super::{
 /// }
 /// ```
 ///
-/// Raw head bytes are unavailable outside the core:
+/// Raw head bytes are unavailable directly from the plain queue; only its
+/// later borrowed adapter-request state can expose them:
 ///
 /// ```compile_fail
 /// fn expose(queue: &breditor_core::codec::LocalLogStorageAppendQueue) -> &[u8] {
@@ -52,6 +56,14 @@ use super::{
 /// ```compile_fail
 /// fn dismantle(queue: breditor_core::codec::LocalLogStorageAppendQueue) {
 ///     let _ = queue.into_parts();
+/// }
+/// ```
+///
+/// A plain queue cannot acknowledge its head without matching terminal evidence:
+///
+/// ```compile_fail
+/// fn acknowledge(queue: breditor_core::codec::LocalLogStorageAppendQueue) {
+///     let _ = queue.acknowledge_head();
 /// }
 /// ```
 #[must_use = "a nonempty append queue owns speculative state and pending exact frames"]
@@ -167,6 +179,11 @@ impl LocalLogStorageAppendQueue {
 
     pub(super) const fn head_frame(&self) -> &Arc<[u8]> {
         self.head.frame()
+    }
+
+    #[cfg(test)]
+    pub(super) fn follower_frame_pointers(&self) -> Vec<*const u8> {
+        self.followers.iter().map(|item| item.frame().as_ptr()).collect()
     }
 
     /// Returns the retained revocable storage-mutation authority.

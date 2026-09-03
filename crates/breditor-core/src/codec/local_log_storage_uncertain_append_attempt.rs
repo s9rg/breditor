@@ -20,10 +20,13 @@ use super::{
 /// eligibility. An earlier transaction may still complete, so resubmission
 /// remains uncertain and must use the same serialized exact-head protocol.
 ///
-/// This version intentionally has no terminal observation or head-removal API.
-/// Neither constructing, inspecting, dropping, nor resubmitting this owner
-/// acknowledges an append, proves storage currentness, or releases a durable
-/// cursor.
+/// A matching terminal attestation can classify this exact attempt. Completion
+/// first produces a distinct head-present owner; only its separate consuming
+/// acknowledgement may remove exactly that head. Abort and not-attempted
+/// outcomes remove nothing and preserve the queue for exact resubmission.
+/// Neither constructing, inspecting, dropping, nor resubmitting this uncertain
+/// owner acknowledges an append, proves storage currentness, or releases its
+/// final cursor. Lost terminal callbacks remain unresolved in this version.
 ///
 /// ```compile_fail
 /// fn require_clone<T: Clone>() {}
@@ -70,6 +73,23 @@ use super::{
 /// ) {
 ///     let Ok(request) = owner.adapter_request() else { return };
 ///     let _step = owner.try_enqueue(entry);
+///     drop(request);
+/// }
+/// ```
+///
+/// The same borrow also prevents terminal classification from consuming the
+/// owner while adapter request data is live:
+///
+/// ```compile_fail
+/// fn terminal_conflict(
+///     mut owner: breditor_core::codec::LocalLogStorageUncertainAppendAttempt,
+/// ) {
+///     let Ok(request) = owner.adapter_request() else { return };
+///     let attestation =
+///         breditor_core::codec::LocalLogStorageAppendTerminalAttestation::transaction_completed(
+///             request.request_id(),
+///         );
+///     let _outcome = owner.observe_terminal_attestation(attestation);
 ///     drop(request);
 /// }
 /// ```

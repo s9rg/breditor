@@ -19,9 +19,12 @@ impl LocalLogStorageMutationToken {
     /// contains exactly this one frame.
     ///
     /// Preparation performs no storage I/O and proves no token currentness,
-    /// append, or durability. A future adapter request must re-observe the
-    /// complete token binding and append the exact planned frame inside one
-    /// serialized transaction before releasing the speculative cursor.
+    /// append, or durability. An adapter request must re-observe the complete
+    /// token binding and, inside one serialized transaction, either add the
+    /// exact planned frame or prove it is already the byte-identical final
+    /// record. Only matching terminal evidence followed by explicit head
+    /// acknowledgement can release the final speculative cursor, without
+    /// proving that cursor or token remains durable or current.
     ///
     /// # Errors
     ///

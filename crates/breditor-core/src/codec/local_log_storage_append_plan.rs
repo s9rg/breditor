@@ -11,9 +11,11 @@ use super::{
 /// Preparation has already encoded exactly one complete Local Log Frame V1 and
 /// atomically admitted those exact bytes into the owned cursor. The resulting
 /// post-append cursor remains quarantined inside this plan or the append queue
-/// that consumes it: the transition is speculative until a future request-
-/// correlated storage transaction compares the token binding, appends the
-/// exact frame, and emits terminal completion.
+/// that consumes it. A request-correlated storage transaction must compare the
+/// token binding and either add the exact frame or prove it is already the
+/// byte-identical final record before emitting terminal `complete`; the host
+/// then supplies trusted terminal evidence and the core explicitly acknowledges
+/// the head.
 /// One future storage chunk is exactly this one frame and its key component is
 /// the frame's generation-relative starting byte offset.
 ///
@@ -32,7 +34,8 @@ use super::{
 /// }
 /// ```
 ///
-/// Raw encoded bytes are deliberately unavailable to public callers:
+/// Raw encoded bytes are deliberately unavailable directly from the plan;
+/// only its later borrowed adapter-request state can expose them:
 ///
 /// ```compile_fail
 /// fn expose(plan: &breditor_core::codec::LocalLogStorageAppendPlan) -> &[u8] {
@@ -60,7 +63,7 @@ use super::{
 ///     );
 /// }
 /// ```
-#[must_use = "an append plan must enter a queue or remain quarantined until storage completion"]
+#[must_use = "an append plan must enter a queue or remain quarantined until host-attested completion"]
 pub struct LocalLogStorageAppendPlan {
     token: LocalLogStorageMutationToken,
     speculative_cursor: LocalLogTailCursor,
@@ -124,8 +127,9 @@ impl LocalLogStorageAppendPlan {
     ///
     /// Shared inspection grants no way to publish or continue this cursor.
     /// Consuming the plan into an append queue may continue the same
-    /// speculative branch; its state is not durable until a later terminal
-    /// contract releases it.
+    /// speculative branch. A later matching completion and explicit head
+    /// acknowledgement can release the final cursor, but neither makes its
+    /// state durable, current, eviction-proof, or rollback-proof.
     #[must_use]
     pub const fn speculative_cursor(&self) -> &LocalLogTailCursor {
         &self.speculative_cursor

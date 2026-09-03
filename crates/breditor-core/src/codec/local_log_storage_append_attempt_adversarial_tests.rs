@@ -28,12 +28,12 @@ use super::{
     local_log_storage_generation_selected_tests::SelectedRotationFixture,
 };
 
-type TestResult<T = ()> = Result<T, Box<dyn Error>>;
+pub(super) type TestResult<T = ()> = Result<T, Box<dyn Error>>;
 
 const CURRENT_WRITER_FENCE: &str = "fence:append-attempt-current";
 const ACQUIRED_WRITER_FENCE: &str = "fence:append-attempt-acquired";
-const FRAME_SENTINEL: &str = "APPEND-ATTEMPT-PRIVATE-FRAME-SENTINEL";
-const SELECTION_SENTINEL: &str = "ROTATIONATTEMPTPAYLOADSENTINEL";
+pub(super) const FRAME_SENTINEL: &str = "APPEND-ATTEMPT-PRIVATE-FRAME-SENTINEL";
+pub(super) const SELECTION_SENTINEL: &str = "ROTATIONATTEMPTPAYLOADSENTINEL";
 
 fn acquire_token(fixture: &SelectedRotationFixture) -> TestResult<LocalLogStorageMutationToken> {
     let binding = LocalLogStorageMutationFenceBinding::from_selected(
@@ -72,7 +72,7 @@ fn selected_cursor(fixture: &SelectedRotationFixture) -> TestResult<LocalLogTail
     ))
 }
 
-fn insertion_entry(
+pub(super) fn insertion_entry(
     cursor: &LocalLogTailCursor,
     replay_id: &str,
     text: impl Into<String>,
@@ -154,7 +154,7 @@ fn control_entry(
     ))
 }
 
-fn queue(
+pub(super) fn queue(
     kind: LocalLogStorageSelectionKind,
     replay_id: &str,
     text: impl Into<String>,
@@ -169,11 +169,12 @@ fn queue(
 }
 
 #[derive(Clone)]
-struct QueueSnapshot {
+pub(super) struct QueueSnapshot {
     token_request_id: crate::local_log::LocalLogStorageWriterFenceAcquisitionRequestId,
     current_json: *const u8,
     predecessor_json: Option<*const u8>,
     head_frame: *const u8,
+    follower_frames: Vec<*const u8>,
     head_start: crate::local_log::LocalLogStorageChunkStart,
     head_end: u64,
     head_bytes: usize,
@@ -187,7 +188,7 @@ struct QueueSnapshot {
 }
 
 impl QueueSnapshot {
-    fn capture(queue: &LocalLogStorageAppendQueue) -> Self {
+    pub(super) fn capture(queue: &LocalLogStorageAppendQueue) -> Self {
         Self {
             token_request_id: queue.token().request_id().clone(),
             current_json: queue.expected_binding().current_selection_json().as_ptr(),
@@ -196,6 +197,7 @@ impl QueueSnapshot {
                 .predecessor_selection_json()
                 .map(str::as_ptr),
             head_frame: queue.head_frame().as_ptr(),
+            follower_frames: queue.follower_frame_pointers(),
             head_start: queue.head_chunk_start(),
             head_end: queue.head_frame_end(),
             head_bytes: queue.head_frame_bytes(),
@@ -209,7 +211,7 @@ impl QueueSnapshot {
         }
     }
 
-    fn assert_queue(&self, queue: &LocalLogStorageAppendQueue) {
+    pub(super) fn assert_queue(&self, queue: &LocalLogStorageAppendQueue) {
         assert_eq!(queue.token().request_id(), &self.token_request_id);
         assert_eq!(queue.expected_binding().current_selection_json().as_ptr(), self.current_json);
         assert_eq!(
@@ -217,6 +219,7 @@ impl QueueSnapshot {
             self.predecessor_json
         );
         assert_eq!(queue.head_frame().as_ptr(), self.head_frame);
+        assert_eq!(queue.follower_frame_pointers(), self.follower_frames);
         assert_eq!(queue.head_chunk_start(), self.head_start);
         assert_eq!(queue.head_frame_end(), self.head_end);
         assert_eq!(queue.head_frame_bytes(), self.head_bytes);
@@ -232,7 +235,7 @@ impl QueueSnapshot {
         assert_eq!(queue.limits(), self.limits);
     }
 
-    fn assert_attempt(&self, attempt: &LocalLogStorageUncertainAppendAttempt) {
+    pub(super) fn assert_attempt(&self, attempt: &LocalLogStorageUncertainAppendAttempt) {
         self.assert_queue(attempt.queue());
     }
 }

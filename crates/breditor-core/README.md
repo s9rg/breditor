@@ -29,7 +29,8 @@ revocable process-local mutation token, plus pure token-and-tail-cursor
 single-frame append planning and a nonempty bounded FIFO with one final
 speculative cursor and an exact ordered pending prefix, plus a process-local
 uncertain FIFO-head attempt with one-shot borrowed exact request egress, exact
-resubmission, and logical enqueue behind the head,
+resubmission, logical enqueue behind the head, request-correlated transaction
+terminal classification, and an explicit consuming one-head acknowledgement,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -74,7 +75,8 @@ scheduler,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, executable append I/O, terminal observation/acknowledgement,
+scope provisioning, executable append I/O, lost-append-callback resolution,
+process-restart append reconstruction,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -84,9 +86,11 @@ construct another entry without reconstructing the checkpoint. Fresh genesis
 is still a complete-vector boundary; an empty genesis generation can be
 compacted to bootstrap only this in-memory successor-admission path, not a
 storage scope, authoritative head, or first storage-generation manifest. The
-core does not schedule, persist, flush, acknowledge, or rate-limit attempts.
-Its append FIFO is synchronous process-local speculative ownership, not an
-asynchronous browser work queue.
+core does not schedule, persist, flush, or rate-limit attempts. Append
+acknowledgement is a pure ownership transition driven by a trusted profile
+terminal attestation; the core neither performs nor authenticates the physical
+transaction. Its append FIFO is synchronous process-local speculative
+ownership, not an asynchronous browser work queue.
 
 Framed successor observation can instead begin from a checkpoint anchor at
 generation-relative byte offset zero. The cursor fixes one frame policy and
@@ -469,8 +473,9 @@ the complete binding in its own serialized transaction. A later uncertain-head
 state must retain logical enqueue, but no core-issued request may expose or
 authorize a follower until that exact head is resolved. Version `0.0.44` has no
 append attempt/request lifecycle, terminal attestation, resolver, restart form,
-or drained/rotation transition. The host continues to own scheduling, batching
-choice, admission pacing, and cancellation without gaining permission to
+drained owner, or transition from that owner into rotation. The host continues
+to own scheduling, batching choice, admission pacing, and cancellation without
+gaining permission to
 select a follower, coalesce, or reorder the core FIFO.
 
 The queue byte ceiling counts encoded frame allocations, not the semantic
@@ -509,14 +514,72 @@ transaction may still commit, so same-key/same-bytes idempotency is mandatory.
 The uncertain owner can keep logically enqueueing before or after request
 egress without changing its attempt/request correlation. Only its private tail
 advances; no core-issued request exposes or authorizes a follower. No terminal
-attestation, durable acknowledgement, head pop, drained owner, cursor release,
-resolver, rotation edge, or restart reconstruction exists in `0.0.45`; these
-form the `0.0.46` gate. Drop or process loss cannot decide whether copied or
-dispatched work committed and discards the volatile queue and IDs. The `0.0.44`
+attestation, explicit head acknowledgement, head pop, drained owner, cursor
+release, resolver, transition from a drained owner into rotation, or restart
+reconstruction exists in `0.0.45`; those remained the next implementation gate
+at that checkpoint. Drop or process loss
+cannot decide whether copied or dispatched work committed and discards the
+volatile queue and IDs. The `0.0.44`
 queue's retained-byte exclusions and transient candidate-allocation peak are
 unchanged.
 Profile V1 exact-tail validation may scan every active-generation chunk, while
 the fixed five-store scope serializes otherwise independent editor scopes.
+
+Version `0.0.46` adds that process-local terminal boundary without making the
+core an I/O engine. `LocalLogStorageUncertainAppendAttempt::observe_terminal_attestation`
+correlates the exact attempt and, when required, its issued request, then
+classifies one trusted adapter callback as
+`LocalLogStorageAppendTerminalAttestationKind::TransactionCompleted`,
+`TransactionAborted`, or `NotAttempted`. `NotAttempted` is legal before or
+after request egress. Correlation errors are checked in this order: append-
+attempt ID mismatch, then, for request-bearing evidence, request not issued and
+append-request ID mismatch.
+`LocalLogStorageAppendTerminalFailure` returns the unchanged uncertain owner
+and supplied attestation. Raw frame bytes never enter the terminal contract;
+callbacks are trusted IndexedDB Profile V1 attestations, not facts the Rust
+core can independently authenticate.
+
+`TransactionCompleted` produces
+`LocalLogStorageAppendTerminalOutcome::HeadPresent(LocalLogStorageAppendHeadPresent)`
+only after the adapter attests that the complete strict five-store transaction
+emitted `complete` and the serialized active-generation tail qualified exactly: either
+the target was absent at the exact prior tail and the exact frame was added, or
+the target was already the exact final tail record with byte-identical Frame V1
+bytes. Request success, calling `commit()`, incomplete transaction work, or a
+partial mutation is insufficient. `HeadPresent` is deliberately separate from the
+consuming `LocalLogStorageAppendHeadPresent::acknowledge_head` transition, so
+terminal classification alone cannot remove queue state.
+
+One `acknowledge_head` call advances exactly one FIFO head and returns
+`LocalLogStorageAppendHeadAcknowledgementOutcome`. `Pending` owns
+`LocalLogStorageAppendHeadAcknowledged`, promotes the allocation-identical first
+follower to the next head, preserves order, token, final speculative cursor and
+limits, decrements count and bytes by exactly the acknowledged head, and records
+the acknowledged request ID. A second head cannot be acknowledged from that
+state: the caller must recover the
+queue, begin a new head attempt, issue its request, and obtain a matching
+`TransactionCompleted`/`HeadPresent`. `Drained` owns
+`LocalLogStorageAppendQueueDrained`, including the token, final cursor, limits,
+and acknowledged request ID; it is the only successful append transition that
+releases that final cursor.
+
+`AttemptAborted(LocalLogStorageAppendAttemptAborted)` and
+`NotAttempted(LocalLogStorageAppendNotAttempted)` remove nothing. Both typed
+negative owners preserve the complete allocation-identical queue for
+`begin_exact_resubmission` under a fresh attempt ID with restored one-shot
+request eligibility; the host cannot select a follower, supply raw bytes, or
+choose what to pop. A copied request may
+outlive either negative attestation and still race to commit, so every later
+invocation retains the same exact-key/exact-bytes idempotency rule. The retained
+mutation token may already be stale, and the queue's base-cursor provenance
+remains caller-trusted.
+
+The lost-callback resolver is explicitly deferred to `0.0.47`. Version
+`0.0.46` has no process-restart reconstruction, so dropping the volatile owner
+still loses correlation state. IndexedDB `durability: "strict"` remains only a
+requested hint; successful append completion/head presence means a trusted
+callback attested the frozen profile transaction and exact-tail qualification,
+not that Rust proved media persistence.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

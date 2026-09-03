@@ -38,7 +38,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   and a nonempty bounded FIFO that retains one token, one final speculative
   cursor, and an exact ordered frame prefix without exposing follower bytes,
   plus a process-local uncertain FIFO-head attempt with one-shot borrowed exact
-  request egress, exact resubmission, and logical enqueue behind the head;
+  request egress, exact resubmission, logical enqueue behind the head, correlated
+  terminal classification, and an explicit one-head acknowledgement transition
+  to either the next pending queue or a drained token/cursor owner;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -89,8 +91,8 @@ attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
-scope provisioning, executable append I/O, terminal observation and
-acknowledgement,
+scope provisioning, executable append I/O, lost-append-callback resolution and
+process-restart append reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -446,7 +448,8 @@ revalidate the full binding. A future uncertain-head lifecycle must retain
 logical enqueue behind that head, but no core-issued request may expose or
 authorize a follower until the head is resolved. Version `0.0.44` still has no
 append adapter request, physical-attempt identity, terminal attestation,
-acknowledgement, resolver, restart representation, or drained/rotation edge.
+acknowledgement, resolver, restart representation, drained owner, or transition
+from that owner into rotation.
 The host owns asynchronous scheduling, batching choice, admission pacing, and
 cancellation; it has no permission to select, coalesce, or reorder queued
 frames. The byte ceiling covers retained encoded frames only, not cursor,
@@ -481,15 +484,54 @@ requires the same-key/same-bytes idempotency rule.
 Logical `try_enqueue` remains available both before and after head request
 egress and preserves attempt/request correlation while advancing only the
 private speculative tail. No core-issued request exposes or authorizes a
-follower. Version `0.0.45` deliberately adds no terminal attestation, durable
+follower. Version `0.0.45` deliberately added no terminal attestation,
 acknowledgement, head pop, drained owner, cursor release, resolver, rotation
-edge, or restart reconstruction; those are the `0.0.46` gate. Dropping the
+edge, or restart reconstruction; those remained the next implementation gate at
+that checkpoint. Dropping the
 owner or losing the process cannot determine whether copied or dispatched work
 committed, and loses the volatile queue and correlation identities. The
 existing frame/byte-limit exclusions and transient-candidate memory peak still
 apply. Profile V1 exact-tail validation may scan every active-generation chunk,
 and its fixed five-store scope continues to serialize otherwise independent
 editor scopes.
+
+Version `0.0.46` adds the process-local append terminal and acknowledgement
+boundary without adding storage I/O. Its current host-attested terminal kinds are
+`TransactionCompleted`, `TransactionAborted`, and `NotAttempted`. Completion and
+abort must name the exact request emitted by the retained attempt;
+not-attempted names that attempt and is legal before or after request egress.
+Consuming observation validates attempt identity first and, for request-bearing
+evidence, request issuance second and request identity third. Rejection returns
+the complete unchanged owner and unapplied attestation. These callbacks remain
+trusted profile assertions: Rust cannot authenticate the browser event or
+inspect its transaction.
+
+Matching completion produces `HeadPresent`, not an implicit queue pop. It is
+valid only when the exact request's strict five-store transaction emitted
+`complete` after revalidating every binding and byte-exact selection fact and
+either adding the head at an absent exact tail or proving the same key and
+byte-identical frame is already the final record. Request success and
+`commit()` return still do not qualify. A separate consuming
+`LocalLogStorageAppendHeadPresent::acknowledge_head` transition then removes
+exactly that retained head without accepting a host-supplied index, key, frame,
+or raw bytes. `LocalLogStorageAppendHeadAcknowledgementOutcome::Pending`
+promotes the allocation-identical first follower and preserves FIFO order,
+token, final speculative cursor, and limits while decrementing count/byte totals
+by exactly the acknowledged head. `Drained` owns the token, final cursor, and
+limits and is the only successful cursor-release boundary. Both outcomes retain
+the acknowledged request identity. The token may
+already be stale and must be revalidated by every later protected mutation.
+
+`TransactionAborted` and `NotAttempted` remove nothing. Their typed states retain
+the complete queue and can exact-resubmit it under a fresh attempt identity.
+They close only the correlated invocation: copied request data may outlive the
+negative attestation and may already be executing elsewhere. Lost terminal
+callback resolution remains the `0.0.47` gate, and there is still no
+process-restart reconstruction of the volatile queue or IDs. The base cursor's
+physical-byte provenance remains caller-trusted. `IndexedDB`
+`durability: "strict"` is a hint, so `HeadPresent` is host-attested presence and
+`Drained` is a resulting ownership state—not an immortal, `fsync`-equivalent,
+eviction-proof, or rollback-proof durability receipt.
 
 ## Development
 

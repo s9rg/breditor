@@ -142,6 +142,12 @@ The implemented Rust slice owns:
   distinct attempt/request identities, one borrowed exact head request, exact
   allocation-preserving resubmission, and logical enqueue that preserves the
   attempt while no core-issued request exposes or authorizes a follower;
+- attempt/request-correlated-as-appropriate append terminal attestations for
+  transaction-completed, transaction-aborted, and not-attempted callbacks; a
+  separate consuming
+  acknowledgement that advances exactly one head; typed pending ownership that
+  promotes the exact first follower; and a drained owner that owns and can
+  release the token, final speculative cursor, and queue limits;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -165,10 +171,10 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered tail I/O and recovery orchestration, append terminal/
-  acknowledgement and uncertain-resolution lifecycles, atomic checkpoint/log
-  replacement, durable restart continuation, cryptographic integrity or
-  authenticity, rollback protection, migration, and crash-tail truncation;
+- ordered tail I/O and recovery orchestration, lost-append-callback resolution,
+  process-restart append reconstruction, atomic checkpoint/log replacement,
+  durable restart continuation, cryptographic integrity or authenticity,
+  rollback protection, migration, and crash-tail truncation;
 - storage-generation initial provisioning, a general plan-level
   `DefinitelyNotCommitted` ownership state, process-restart plan reconstruction,
   transaction ownership typestate, adapter capabilities, authoritative-head
@@ -177,7 +183,8 @@ The following remain deliberately unimplemented:
   terminal attestations, both resolver state machines, writer-fence comparison/
   planning, the process-local acquisition/token lifecycle, pure append
   preparation, the process-local bounded append FIFO, and its uncertain-head
-  request boundary exist);
+  request, terminal-classification, and explicit one-head-acknowledgement
+  boundaries exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -877,13 +884,65 @@ so same-key/same-bytes idempotency is required.
 Logical enqueue can continue both before and after egress while preserving the
 attempt/request IDs; only the private speculative tail advances, and no
 core-issued request exposes or authorizes a follower. Version `0.0.45` has no
-terminal attestation, durable acknowledgement, head pop, drained owner, cursor
-release, resolver, rotation edge, or restart reconstruction. These are the
-`0.0.46` gate. Drop or process loss cannot decide whether copied/dispatched work
-committed and loses the owner and volatile IDs. All `0.0.44` byte-ceiling
+terminal attestation, explicit head acknowledgement, head pop, drained owner,
+cursor release, resolver, transition from a drained owner into rotation, or
+restart reconstruction. Those remained the next implementation gate at that
+checkpoint. Drop or process loss cannot
+decide whether copied/dispatched work committed and loses the owner and
+volatile IDs. All `0.0.44` byte-ceiling
 exclusions and transient candidate-allocation behavior remain in force. Profile
 V1 exact-tail validation may scan every active-generation chunk, and its fixed
 five-store scope serializes otherwise independent editor scopes.
+
+Version `0.0.46` adds
+`LocalLogStorageUncertainAppendAttempt::observe_terminal_attestation` and the
+current `LocalLogStorageAppendTerminalAttestationKind` variants:
+`TransactionCompleted`, `TransactionAborted`, and `NotAttempted`.
+Completed/aborted evidence names the exact emitted request; not-attempted names
+the attempt and is legal before or after request egress. Correlation checks use
+fixed precedence: attempt-ID mismatch, then, for request-bearing evidence,
+request not issued and request-ID mismatch.
+`LocalLogStorageAppendTerminalFailure` retains the complete unchanged
+uncertain owner and exact supplied attestation on rejection. The callback is a
+trusted Profile V1 attestation, not independently authenticated physical
+evidence, and the terminal API accepts no raw encoded frame payload.
+
+A matching `TransactionCompleted` produces only
+`LocalLogStorageAppendTerminalOutcome::HeadPresent`. The adapter may attest it
+only after the complete strict five-store transaction reaches terminal
+`complete` and the serialized active-generation tail has one exact qualifying
+shape: either the target was absent at the exact previous tail and the exact
+requested frame was added, or the target already was the byte-identical exact
+final tail record. Individual request success, a `commit()` call, a partial
+store update, different bytes, a gap, overlap, malformed record, or later tail
+record cannot qualify.
+
+`HeadPresent` deliberately retains the queue until the separate consuming
+`LocalLogStorageAppendHeadPresent::acknowledge_head` action. One call removes
+exactly one head and returns
+`LocalLogStorageAppendHeadAcknowledgementOutcome`. `Pending` owns
+`LocalLogStorageAppendHeadAcknowledged`, promotes the allocation-identical first
+follower, preserves order, token, final speculative cursor, and limits, and
+decrements count and bytes by exactly the acknowledged head. A new attempt,
+request, and matching completed attestation are required before that next head
+can be acknowledged. `Drained` owns
+`LocalLogStorageAppendQueueDrained`, its token, final cursor, limits, and
+acknowledged request/head metadata. It is the only successful append edge that
+releases the final cursor. The host cannot select a follower or choose what to
+pop.
+
+`AttemptAborted(LocalLogStorageAppendAttemptAborted)` and
+`NotAttempted(LocalLogStorageAppendNotAttempted)` advance nothing. Their typed
+owners retain the allocation-identical complete queue for exact resubmission
+under a fresh attempt ID with restored one-shot request eligibility. A copied
+request can outlive a negative attestation and still commit; exact-key/exact-bytes idempotency therefore
+remains mandatory. The token can be stale, and the base cursor's physical-byte
+provenance remains caller-trusted.
+
+Lost-callback resolution is explicitly deferred to `0.0.47`. There is no
+process-restart reconstruction, and dropping a volatile owner loses its queue
+and correlation state. IndexedDB `durability: "strict"` remains a requested
+hint rather than a Rust-verifiable media-persistence guarantee.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -3829,8 +3888,7 @@ and JSON untouched. A mismatch aborts; finding the target writer pair already
 stored is never idempotent success. Only this exact transaction's terminal
 `complete` qualifies for `AcquisitionCompleted`.
 
-No such IndexedDB/JavaScript/Wasm adapter or executable append/acknowledgement
-operation exists yet.
+No such IndexedDB/JavaScript/Wasm adapter or executable append I/O exists yet.
 Attempt/request IDs and fence values are non-secret correlation, not
 authenticated provenance. The borrowed one-shot request cannot prevent copied
 or duplicate host dispatch, and allocation identity has no persistence or
@@ -3921,22 +3979,24 @@ frame's bounded metadata.
 There is no public pop, discard, reorder, coalesce, consuming-parts, cursor-
 release, or rotation action. Thus the implemented FIFO proves in-memory
 preparation order, capacity accounting, and head selection, but not physical
-dispatch or durable acknowledgement order.
+dispatch or terminal storage-completion order.
 
 The root token can cover this whole speculative prefix because append does not
 change its selected/writer binding. It still may be revoked between any two
 transactions, so every future head attempt must repeat the complete binding and
-tail comparison. A future uncertain-head lifecycle must retain this queue and
+tail comparison. At the `0.0.44` checkpoint, a future uncertain-head lifecycle
+had to retain this queue and
 continue logical enqueue behind the head, but no core-issued request may expose
 raw follower bytes or authorize follower dispatch until the head is terminally
 resolved.
-Only a future acknowledgement transition may remove that head, update durable
-prefix accounting, and ultimately publish a drained owner eligible for cursor
-release or rotation.
+Only a future acknowledgement transition could remove that head, decrement
+volatile pending accounting, and publish a drained owner that releases its final
+cursor. A transition from that drained owner into rotation was a separate
+future edge.
 
-Correct durable FIFO dispatch, acknowledgement order, and the append/rotation
-barrier remain future core state-machine responsibilities rather than unchecked
-host conventions. The host remains responsible for asynchronous scheduling,
+Executable FIFO dispatch and a transition from the drained append owner into
+rotation remain later state-machine responsibilities rather than unchecked host
+conventions. The host remains responsible for asynchronous scheduling,
 batching choice, admission pacing, cancellation, browser task lifetime, and
 rate limiting, without permission to select a follower, coalesce, or reorder
 queue items. Dropping the owner is possible but has no cancellation or
@@ -4001,14 +4061,91 @@ leaves the head fixed, and advances only the private speculative tail. Failure
 returns the complete unchanged uncertain owner. Followers remain inaccessible
 to core-issued requests and receive no dispatch authorization. No terminal-
 attestation, durable-acknowledgement, pop, drained-owner, cursor-release,
-resolver, rotation, or restart transition exists in `0.0.45`; those form the
-`0.0.46` gate. Dropping the owner or losing its process loses the queue and
-correlation IDs and cannot determine whether an already copied/dispatched
-transaction committed. The queue-limit exclusions, transient candidate peak,
-allocation-failure gap, and stale-token limitation remain exactly those
-described for `0.0.44`. With no separately authenticated tail summary, exact
-validation may scan every active-generation chunk; the fixed five-store scope
-also serializes otherwise independent editor scopes.
+resolver, rotation, or restart transition exists in `0.0.45`; those remained
+the next implementation gate at that checkpoint. Dropping the owner or losing
+its process loses the queue and correlation IDs and cannot determine whether an
+already copied/dispatched transaction committed. The queue-limit exclusions,
+transient candidate peak, allocation-failure gap, and stale-token limitation
+remain exactly those described for `0.0.44`. With no separately authenticated
+tail summary, exact validation may scan every active-generation chunk; the
+fixed five-store scope also serializes otherwise independent editor scopes.
+
+Version `0.0.46` adds the append-terminal observation transition with the
+current attestation kinds.
+`LocalLogStorageAppendTerminalAttestation::transaction_completed` and
+`transaction_aborted` borrow the exact request ID; `not_attempted` borrows the
+attempt ID and remains valid whether egress occurred or not. Consuming
+`LocalLogStorageUncertainAppendAttempt::observe_terminal_attestation` first
+checks attempt identity, then that a request was issued when request evidence
+requires one, then request identity. This fixed precedence yields
+`AttemptIdMismatch`, `RequestNotIssued`, or `RequestIdMismatch` without losing
+either the unchanged uncertain owner or the supplied attestation.
+
+The current `LocalLogStorageAppendTerminalOutcome` variants are:
+`HeadPresent(LocalLogStorageAppendHeadPresent)`,
+`AttemptAborted(LocalLogStorageAppendAttemptAborted)`, or
+`NotAttempted(LocalLogStorageAppendNotAttempted)`. The callback is a trusted
+profile attestation: the core correlates it but cannot authenticate browser
+events, physical storage, or the adapter's transaction reads. Terminal evidence
+contains correlation and classification, not raw encoded frame bytes, and gives
+the host no follower-selection or pop authority.
+
+The adapter may report `TransactionCompleted` only after the single strict
+`readwrite` transaction over all five stores emits terminal `complete` and all
+required reads, checks, and writes have succeeded. It must have revalidated meta
+and scope control, the selected transaction through both primary and committed-
+head paths, the optional predecessor, selected checkpoint and active
+generations, byte-exact selection JSON, expected writer pair, active Frame V1
+policy, and the complete serialized tail. The final tail must have exactly one
+of two shapes:
+
+1. the valid prior prefix ends at the requested start, the target key is absent,
+   and that transaction adds the exact requested complete frame as the final
+   record; or
+2. the target key already stores byte-identical complete frame bytes, the valid
+   prefix immediately before it ends at the requested start, and no later
+   record exists.
+
+The second form is idempotent exact-final-tail qualification. Individual
+IndexedDB request success, calling `commit()`, a transaction abort, partial
+five-store work, different bytes, gaps, overlaps, malformed values, or later
+records cannot produce `HeadPresent`.
+
+Positive classification still advances nothing. Only the distinct consuming
+`LocalLogStorageAppendHeadPresent::acknowledge_head` transition removes exactly
+that one FIFO head. It returns
+`LocalLogStorageAppendHeadAcknowledgementOutcome::Pending` with
+`LocalLogStorageAppendHeadAcknowledged` when followers remain. That owner keeps
+the token, limits, and final speculative cursor, decrements count and byte
+accounting by exactly the acknowledged head, and promotes the allocation-
+identical first follower. The caller can inspect the queue through `queue` or
+recover it through `into_queue`; it must begin a fresh head attempt, issue its
+request, and obtain a matching completed attestation before another
+acknowledgement can occur.
+
+When no follower remains, acknowledgement returns
+`LocalLogStorageAppendHeadAcknowledgementOutcome::Drained` with
+`LocalLogStorageAppendQueueDrained`. The drained owner retains the token, final
+cursor, immutable limits, acknowledged request ID, and bounded acknowledged-head
+metadata and can split the token, cursor, and limits through `into_parts`. This
+is the only successful append transition that releases the speculative final
+cursor. Neither outcome prints raw encoded payload bytes through `Debug`.
+
+`AttemptAborted` and `NotAttempted` are negative owners, not acknowledgements.
+They remove nothing and preserve the exact allocation graph, head, followers,
+token, final cursor, limits, counters, and bytes for
+`begin_exact_resubmission`. Resubmission creates a fresh attempt ID and restores
+one-shot request eligibility, but does not prove an old copied request stopped.
+Such a request can outlive the negative attestation
+and still commit, so every invocation must retain exact-key/exact-bytes
+idempotency. It also cannot refresh a stale token or authenticate the caller-
+supplied base cursor.
+
+Lost terminal callbacks remain unresolved in `0.0.46`; the resolver is the
+explicit `0.0.47` gate. There is no process-restart reconstruction, and dropping
+the volatile owner loses the queue and correlation IDs. IndexedDB
+`durability: "strict"` is only a hint requested from the browser; the trusted
+completion attestation is not proof of media persistence.
 
 A JavaScript adapter and real-browser profile validation remain later work.
 Consuming exclusive-owner typestate still requires a separately specified held
@@ -4023,7 +4160,7 @@ reconstruction after process failure, rollback protection, and multi-writer
 fencing remain separate storage-layer gates.
 Asynchronous scheduling, batching choice, backpressure, cancellation, and
 admission rate limiting remain host concerns. A host scheduler may not bypass
-the core FIFO's head or future acknowledgement transitions.
+the core FIFO's head or acknowledgement transitions.
 The log must not silently treat optimistic operation guards or caller-owned
 lineage/revision values as exactly-once delivery. Browser `beforeinput`,
 composition ownership, IME buffering, and paste chunking remain adapter

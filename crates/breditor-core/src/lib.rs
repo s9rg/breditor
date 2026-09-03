@@ -6,8 +6,9 @@
 //! durable commit, bounded session-checkpoint, replay-identified local-log
 //! entry, complete local-log-checkpoint JSON decoding, checksummed binary
 //! local-log frame scanning, atomic framed-tail observation, pure token-bound
-//! single-frame append preparation, a bounded speculative FIFO, and one
-//! process-local uncertain FIFO-head request boundary,
+//! single-frame append preparation, a bounded speculative FIFO, a process-local
+//! uncertain FIFO-head request boundary, request-correlated transaction
+//! terminal classification, and an explicit consuming one-head acknowledgement,
 //! genesis-prefix recovery, checkpoint-linked batch and incremental successor
 //! admission,
 //! repeated compaction,
@@ -499,15 +500,65 @@
 //! invocation requires exact same-key/same-bytes idempotency. Logical
 //! `try_enqueue` remains available before or after request egress and preserves
 //! attempt/request correlation while advancing only the private speculative
-//! tail; no core-issued request exposes or authorizes a follower. Version `0.0.45` has no terminal
-//! attestation, durable acknowledgement, head pop, drained owner, cursor
-//! release, resolver, rotation edge, or restart reconstruction. Those are the
-//! `0.0.46` gate. Drop or process loss cannot classify copied or dispatched
-//! work and loses the volatile queue and correlation IDs. The queue's retained-
+//! tail; no core-issued request exposes or authorizes a follower. Version
+//! `0.0.45` has no terminal attestation, explicit head acknowledgement, head
+//! pop, drained owner, cursor release, resolver, transition from a drained owner
+//! into rotation, or restart reconstruction. Those remained the next
+//! implementation gate at that checkpoint. Drop or process loss cannot
+//! classify copied or dispatched work and loses the volatile queue and
+//! correlation IDs. The queue's retained-
 //! byte exclusions and transient candidate-allocation peak remain unchanged.
 //! Profile V1 exact-tail validation may scan every active-generation chunk,
 //! and its fixed five-store scope serializes otherwise independent editor
 //! scopes.
+//!
+//! Version `0.0.46` adds the process-local terminal and acknowledgement
+//! boundary. `LocalLogStorageUncertainAppendAttempt::observe_terminal_attestation`
+//! correlates a trusted callback with the exact attempt and, when required, its
+//! issued request, then classifies it as `TransactionCompleted`,
+//! `TransactionAborted`, or
+//! `NotAttempted`; the last is valid before or after request egress. Correlation
+//! errors take precedence in this order: attempt ID mismatch, then, for
+//! request-bearing evidence, request not issued and request ID mismatch. A
+//! failure returns the unchanged uncertain owner
+//! and exact attestation. The callback carries no raw frame bytes and is a
+//! trusted Profile V1 attestation, not independently authenticated physical
+//! evidence.
+//!
+//! `TransactionCompleted` can publish only
+//! `LocalLogStorageAppendTerminalOutcome::HeadPresent` and only when the adapter
+//! attests that the complete strict five-store transaction committed with an
+//! exact serialized-tail qualification: an absent exact-tail target was filled
+//! with the requested frame, or the same key was already the byte-identical
+//! final tail record. An `IndexedDB` request success, `commit()` call, partial
+//! store update, gap, overlap, different bytes, malformed record, or later
+//! record does not qualify. The positive state is intentionally separate from
+//! the consuming `LocalLogStorageAppendHeadPresent::acknowledge_head` action.
+//!
+//! One acknowledgement advances exactly one head. Its `Pending` outcome owns
+//! `LocalLogStorageAppendHeadAcknowledged`, promotes the allocation-identical
+//! first follower, preserves FIFO order, token, limits, and final speculative
+//! cursor, and decrements count and bytes by exactly the acknowledged head. The
+//! next head requires a new attempt, request, and matching completed attestation
+//! before another acknowledgement.
+//! `Drained` owns `LocalLogStorageAppendQueueDrained`, including the token,
+//! final cursor, limits, and acknowledged request ID, and is the sole successful
+//! append edge that releases the final cursor.
+//!
+//! `AttemptAborted` and `NotAttempted` own typed negative states, remove no
+//! frame, and preserve the complete allocation-identical queue for exact
+//! resubmission under a fresh attempt ID with restored one-shot request
+//! eligibility. The host cannot submit raw bytes, select a follower, or choose
+//! a pop. A copied request may outlive a negative
+//! attestation and later commit, the retained mutation token may be stale, and
+//! base-cursor provenance remains caller-trusted. Exact-key/exact-bytes
+//! idempotency is therefore mandatory on every invocation.
+//!
+//! Lost-callback resolution is the `0.0.47` gate. Version `0.0.46` has no
+//! process-restart reconstruction; dropping the volatile owner loses its
+//! correlation state. `IndexedDB` `durability: "strict"` is only a requested hint.
+//! A positive callback attests the frozen profile transaction and exact-tail
+//! condition; it does not let Rust prove persistence to durable media.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

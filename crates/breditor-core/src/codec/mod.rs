@@ -26,16 +26,27 @@ mod local_log_frame_limits;
 mod local_log_frame_scan;
 #[cfg(test)]
 mod local_log_storage_append_adversarial_tests;
+mod local_log_storage_append_attempt_aborted;
+mod local_log_storage_append_attempt_aborted_resubmit;
 #[cfg(test)]
 mod local_log_storage_append_attempt_adversarial_tests;
+mod local_log_storage_append_head_acknowledge;
+mod local_log_storage_append_head_acknowledged;
+mod local_log_storage_append_head_acknowledgement;
+mod local_log_storage_append_head_acknowledgement_outcome;
+mod local_log_storage_append_head_present;
+mod local_log_storage_append_not_attempted;
+mod local_log_storage_append_not_attempted_resubmit;
 mod local_log_storage_append_plan;
 mod local_log_storage_append_preparation_error;
 mod local_log_storage_append_preparation_failure;
 mod local_log_storage_append_prepare;
 mod local_log_storage_append_queue;
+mod local_log_storage_append_queue_advance_head;
 #[cfg(test)]
 mod local_log_storage_append_queue_adversarial_tests;
 mod local_log_storage_append_queue_begin_head_attempt;
+mod local_log_storage_append_queue_drained;
 mod local_log_storage_append_queue_enqueue;
 mod local_log_storage_append_queue_enqueue_error;
 mod local_log_storage_append_queue_enqueue_failure;
@@ -45,6 +56,11 @@ mod local_log_storage_append_queue_start;
 mod local_log_storage_append_queue_start_error;
 mod local_log_storage_append_queue_start_failure;
 mod local_log_storage_append_request;
+#[cfg(test)]
+mod local_log_storage_append_terminal_adversarial_tests;
+mod local_log_storage_append_terminal_attestation;
+mod local_log_storage_append_terminal_failure;
+mod local_log_storage_append_terminal_outcome;
 mod local_log_storage_append_transition_error;
 mod local_log_storage_attempt_aborted;
 mod local_log_storage_attempt_aborted_resubmit;
@@ -74,6 +90,7 @@ mod local_log_storage_generation_selected_tests;
 #[cfg(test)]
 mod local_log_storage_generation_tests;
 mod local_log_storage_host_attested_committed;
+mod local_log_storage_issued_append_attempt;
 mod local_log_storage_issued_attempt;
 mod local_log_storage_issued_writer_fence_acquisition;
 mod local_log_storage_mutation_fence_binding;
@@ -86,6 +103,7 @@ mod local_log_storage_not_attempted;
 mod local_log_storage_not_attempted_resubmit;
 mod local_log_storage_prepared_attempt;
 mod local_log_storage_prepared_begin_attempt;
+mod local_log_storage_retained_append_attempt;
 mod local_log_storage_retained_attempt;
 mod local_log_storage_retained_writer_fence_acquisition;
 mod local_log_storage_retired_generation_observation;
@@ -168,6 +186,7 @@ mod local_log_storage_uncertain_append_attempt_adapter_request;
 mod local_log_storage_uncertain_append_attempt_enqueue;
 mod local_log_storage_uncertain_append_attempt_enqueue_failure;
 mod local_log_storage_uncertain_append_attempt_enqueue_step;
+mod local_log_storage_uncertain_append_attempt_observe_terminal;
 mod local_log_storage_uncertain_append_attempt_resubmit;
 mod local_log_storage_uncertain_attempt;
 mod local_log_storage_uncertain_attempt_match;
@@ -262,12 +281,18 @@ pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, Loca
 pub use local_log_frame_scan::{
     BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
+pub use local_log_storage_append_attempt_aborted::LocalLogStorageAppendAttemptAborted;
+pub use local_log_storage_append_head_acknowledged::LocalLogStorageAppendHeadAcknowledged;
+pub use local_log_storage_append_head_acknowledgement_outcome::LocalLogStorageAppendHeadAcknowledgementOutcome;
+pub use local_log_storage_append_head_present::LocalLogStorageAppendHeadPresent;
+pub use local_log_storage_append_not_attempted::LocalLogStorageAppendNotAttempted;
 pub use local_log_storage_append_plan::LocalLogStorageAppendPlan;
 pub use local_log_storage_append_preparation_error::{
     LocalLogStorageAppendPreparationError, LocalLogStorageAppendPreparationErrorCode,
 };
 pub use local_log_storage_append_preparation_failure::LocalLogStorageAppendPreparationFailure;
 pub use local_log_storage_append_queue::LocalLogStorageAppendQueue;
+pub use local_log_storage_append_queue_drained::LocalLogStorageAppendQueueDrained;
 pub use local_log_storage_append_queue_enqueue_error::{
     LocalLogStorageAppendQueueEnqueueError, LocalLogStorageAppendQueueEnqueueErrorCode,
 };
@@ -282,6 +307,11 @@ pub use local_log_storage_append_queue_start_error::{
 };
 pub use local_log_storage_append_queue_start_failure::LocalLogStorageAppendQueueStartFailure;
 pub use local_log_storage_append_request::LocalLogStorageAppendRequest;
+pub use local_log_storage_append_terminal_attestation::{
+    LocalLogStorageAppendTerminalAttestation, LocalLogStorageAppendTerminalAttestationKind,
+};
+pub use local_log_storage_append_terminal_failure::LocalLogStorageAppendTerminalFailure;
+pub use local_log_storage_append_terminal_outcome::LocalLogStorageAppendTerminalOutcome;
 pub use local_log_storage_append_transition_error::{
     LocalLogStorageAppendTransitionError, LocalLogStorageAppendTransitionErrorCode,
 };

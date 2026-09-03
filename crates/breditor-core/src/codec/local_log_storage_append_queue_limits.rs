@@ -7,10 +7,12 @@ pub const DEFAULT_LOCAL_LOG_STORAGE_APPEND_QUEUE_MAX_PENDING_BYTES: u64 = 64 * 1
 /// Host-authoritative encoded-frame resource policy for one append queue.
 ///
 /// Frame count and encoded bytes are independent limits. Both may be zero,
-/// which rejects even the first append plan. Limits apply only to frames that
-/// have not received a future durable acknowledgement; they neither change the
-/// Frame V1 payload policy nor prove that retained bytes reached storage. They
-/// do not bound total heap: the queue also retains its semantic cursor,
+/// which rejects even the first append plan. Limits apply only to frames still
+/// retained by the queue; matching terminal completion produces a separate
+/// head-present state, and only its explicit core acknowledgement removes one
+/// frame from this accounting. The limits neither change the Frame V1 payload
+/// policy nor prove that retained bytes reached durable media. They do not
+/// bound total heap: the queue also retains its semantic cursor,
 /// session, history, replay indexes, decoded entries, container metadata, and
 /// allocation overhead under their own policies. Enqueue must encode one exact
 /// candidate before applying the aggregate-byte limit, so transient peak memory
