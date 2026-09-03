@@ -50,6 +50,10 @@ mod storage_rotation_resolution_request_id;
 mod storage_scope_id;
 mod storage_scope_incarnation_id;
 mod storage_transaction_id;
+mod storage_writer_epoch;
+mod storage_writer_epoch_exhausted;
+mod storage_writer_epoch_parse_error;
+mod storage_writer_epoch_value_error;
 mod successor_recovery;
 #[cfg(test)]
 mod test_support;
@@ -104,3 +108,9 @@ pub use storage_rotation_resolution_request_id::LocalLogStorageRotationResolutio
 pub use storage_scope_id::LocalLogStorageScopeId;
 pub use storage_scope_incarnation_id::LocalLogStorageScopeIncarnationId;
 pub use storage_transaction_id::LocalLogStorageTransactionId;
+pub use storage_writer_epoch::{
+    LocalLogStorageWriterEpoch, MAX_LOCAL_LOG_STORAGE_WRITER_EPOCH_DECIMAL_BYTES,
+};
+pub use storage_writer_epoch_exhausted::LocalLogStorageWriterEpochExhausted;
+pub use storage_writer_epoch_parse_error::LocalLogStorageWriterEpochParseError;
+pub use storage_writer_epoch_value_error::LocalLogStorageWriterEpochValueError;

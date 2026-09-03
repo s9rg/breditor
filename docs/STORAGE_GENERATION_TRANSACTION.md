@@ -9,8 +9,11 @@ retention/comparison implemented in `0.0.35`; exact non-owning attempt plans and
 physical-attempt terminal attestations implemented in `0.0.37`; directional
 resolution-value comparisons and the closed retired-transaction binding
 implemented in `0.0.38`; process-local root resolution implemented in `0.0.39`
-and rotation resolution implemented in `0.0.40`; storage I/O, process-restart
-reconstruction, and ownership release remain unimplemented
+and rotation resolution implemented in `0.0.40`; canonical writer epoch, exact
+non-authority mutation-fence comparison, and checked acquisition planning
+implemented in `0.0.41`; storage I/O, correlated acquisition/token issuance,
+process-restart reconstruction, append, and ownership release remain
+unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -747,6 +750,52 @@ scope is `ScopeAlreadyProvisioned`. The equivalent rotation sources require the
 exact prior envelope and complete candidate namespace absence for advisory
 retry, or the exact direct competing rotation above for nonretry conflict.
 
+### Mutation-fence comparison and acquisition plan (`0.0.41`)
+
+Version `0.0.41` adds a pure value layer for the mutable writer facts that were
+previously kept entirely outside Rust. `LocalLogStorageWriterEpoch` represents
+the shortest unsigned ASCII decimal encoding of a nonzero `u64`; it rejects
+empty, signed, whitespace-bearing, leading-zero, zero, nondecimal, and
+overflowing text. Checked succession never wraps.
+
+`LocalLogStorageMutationFenceBinding::from_selected` snapshots the complete
+selected scalar binding, `Arc`-shares its byte-exact current and optional
+predecessor JSON, and records one caller-supplied writer epoch and current writer
+fence. It neither consumes nor exposes the selected root's private checkpoint
+anchor. Its directional comparison applies
+`LocalLogStorageSelectedBinding::compare_later_observation`, compares current
+and optional predecessor bytes exactly, and then compares epoch and fence
+exactly. The only accepted change is checkpoint cleanup from `Retired` to
+`Reclaimed`; `Reclaimed -> Retired` and every immutable, byte, epoch, or fence
+change reject. Structural equality remains stricter than this directional
+relation.
+
+Consuming `try_prepare_writer_fence_acquisition` derives exactly the successor
+epoch and returns a checked non-`Clone`
+`LocalLogStorageWriterFenceAcquisitionPlan` only when the proposed fence differs
+from the current fence. Epoch exhaustion has precedence over equality. A typed
+failure owns and returns the complete unchanged binding and proposed fence.
+Advancing `u64::MAX - 1` to `u64::MAX` is valid; once maximum is current, no
+further acquisition or root-changing rotation can advance it. Because append
+does not itself increment the epoch, a future token already issued at maximum
+could still be compared for append; “epoch exhausted” is not a proof that all
+mutation authority vanished.
+
+Neither the cloneable binding nor the non-`Clone` plan is a request, token,
+lease, capability, CAS result, terminal receipt, or storage observation. The
+constructor cannot prove that the selected envelope and writer facts came from
+storage or one atomic transaction. Proposed-fence inequality does not prove
+lifetime/global freshness. Public inspection and `Debug` expose byte lengths,
+not retained raw JSON. There is no adapter, request correlation, terminal
+evidence, browser-event provenance, restart reconstruction, owner release, or
+append operation in `0.0.41`.
+
+Version `0.0.42` is intended to consume the checked plan into one correlated
+acquisition request, pair it with the exact selected envelope, and issue a
+revocable token only after the exact acquisition transaction emits terminal
+`complete`. Every later mutation must still repeat the complete selected and
+writer-fence comparison in its own serialized transaction.
+
 ## Retry and idempotency rules
 
 - One transaction ID names exactly one immutable plan for the lifetime of its
@@ -857,10 +906,11 @@ This specification and the implemented values do not provide:
 
 - actual storage bootstrap/provisioning, a general ownership-bearing
   `DefinitelyNotCommitted` state, ownership typestate, adapter, async API,
-  writer capability, or I/O implementation through `0.0.40`; the implemented
+  writer capability, or I/O implementation through `0.0.41`; the implemented
   attempt terminal states and root/rotation resolution evidence are trusted
-  process-local host assertions, selected receipt/comparison bindings are
-  caller-supplied typed inputs, and every checked candidate is only a proposal;
+  process-local host assertions, selected and mutation-fence comparison
+  bindings are caller-supplied typed inputs, and every checked publication or
+  acquisition plan is only a proposal;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -977,7 +1027,17 @@ transaction-coupled semantic admission, or an explicitly revocable/speculative
 branch. The provisioning contract must not treat a checked root, exact envelope
 match, host attestation, or in-memory compaction as storage authority.
 
-The next pure-Rust boundary should freeze the mutable writer epoch/fence as an
-exact non-authority comparison binding and checked acquisition plan. It must
-precede append and browser I/O; a later request-correlated transition can then
-issue revocable mutation authority that every storage transaction rechecks.
+Version `0.0.41` freezes the mutable writer epoch/fence as an exact non-authority
+comparison binding and checked acquisition plan. The binding retains the full
+selected binding and `Arc`-shared exact current/optional-predecessor JSON plus
+the writer pair. Directional comparison accepts only `Retired -> Reclaimed`
+checkpoint cleanup; the consuming plan action derives one exact successor epoch
+and rejects a proposed fence equal to the current fence while returning both
+inputs on failure. It adds no raw-JSON public surface, provenance, atomic co-
+observation, CAS, request, terminal evidence, token, authority, global fence
+freshness, browser adapter, restart reconstruction, owner release, or append.
+
+Version `0.0.42` should add request-correlated acquisition with exact selected-
+envelope pairing and issue revocable mutation authority only after the exact
+acquisition transaction's terminal `complete`. Every storage mutation must
+still recheck that authority inside its own transaction.

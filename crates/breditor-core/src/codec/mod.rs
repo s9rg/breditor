@@ -53,6 +53,10 @@ mod local_log_storage_generation_selected_tests;
 mod local_log_storage_generation_tests;
 mod local_log_storage_host_attested_committed;
 mod local_log_storage_issued_attempt;
+mod local_log_storage_mutation_fence_binding;
+mod local_log_storage_mutation_fence_binding_compare_later;
+mod local_log_storage_mutation_fence_binding_from_selected;
+mod local_log_storage_mutation_fence_binding_observation_error;
 mod local_log_storage_not_attempted;
 mod local_log_storage_not_attempted_resubmit;
 mod local_log_storage_prepared_attempt;
@@ -137,6 +141,12 @@ mod local_log_storage_uncertain_attempt;
 mod local_log_storage_uncertain_attempt_match;
 mod local_log_storage_uncertain_observe_terminal;
 mod local_log_storage_uncertain_resubmit;
+mod local_log_storage_writer_fence_acquisition_plan;
+mod local_log_storage_writer_fence_acquisition_preparation_error;
+mod local_log_storage_writer_fence_acquisition_preparation_failure;
+mod local_log_storage_writer_fence_acquisition_prepare;
+#[cfg(test)]
+mod local_log_storage_writer_fence_adversarial_tests;
 mod local_log_tail_begin;
 mod local_log_tail_compaction;
 mod local_log_tail_compaction_outcome;
@@ -244,6 +254,11 @@ pub use local_log_storage_generation_manifest::LocalLogStorageGenerationManifest
 pub(crate) use local_log_storage_generation_manifest::LocalLogStorageGenerationManifestParts;
 pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerationPreparationInputs;
 pub use local_log_storage_host_attested_committed::LocalLogStorageHostAttestedCommitted;
+pub use local_log_storage_mutation_fence_binding::LocalLogStorageMutationFenceBinding;
+pub use local_log_storage_mutation_fence_binding_observation_error::{
+    LocalLogStorageMutationFenceBindingObservationError,
+    LocalLogStorageMutationFenceBindingObservationErrorCode,
+};
 pub use local_log_storage_not_attempted::LocalLogStorageNotAttempted;
 pub use local_log_storage_prepared_attempt::LocalLogStoragePreparedAttempt;
 pub use local_log_storage_retired_generation_observation::LocalLogStorageRetiredGenerationObservation;
@@ -358,6 +373,12 @@ pub use local_log_storage_selection_receipt_binding::{
     LocalLogStorageSelectionReceiptBindingErrorCode,
 };
 pub use local_log_storage_uncertain_attempt::LocalLogStorageUncertainAttempt;
+pub use local_log_storage_writer_fence_acquisition_plan::LocalLogStorageWriterFenceAcquisitionPlan;
+pub use local_log_storage_writer_fence_acquisition_preparation_error::{
+    LocalLogStorageWriterFenceAcquisitionPreparationError,
+    LocalLogStorageWriterFenceAcquisitionPreparationErrorCode,
+};
+pub use local_log_storage_writer_fence_acquisition_preparation_failure::LocalLogStorageWriterFenceAcquisitionPreparationFailure;
 pub use local_log_tail_compaction_outcome::LocalLogTailCompactionOutcome;
 pub use local_log_tail_cursor::LocalLogTailCursor;
 pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};

@@ -334,6 +334,33 @@
 //! after process restart, or releases semantic ownership. All Storage V1 shapes
 //! remain unstable pre-`0.1` contracts.
 //!
+//! Version `0.0.41` adds the pure writer-fence comparison and acquisition-plan
+//! boundary. [`local_log::LocalLogStorageWriterEpoch`] is a canonical nonzero,
+//! nonwrapping `u64`. [`codec::LocalLogStorageMutationFenceBinding`] snapshots
+//! the complete selected binding, `Arc`-shares the exact current and optional
+//! predecessor JSON, and records the observed epoch and current writer fence.
+//! Its directional later-observation comparison requires exact selection bytes
+//! and writer facts, accepts only checkpoint cleanup from `Retired` to
+//! `Reclaimed`, and rejects the reverse transition. Neither its public API nor
+//! `Debug` exposes the retained JSON payloads.
+//!
+//! Consuming
+//! [`codec::LocalLogStorageMutationFenceBinding::try_prepare_writer_fence_acquisition`]
+//! derives exactly the next epoch and returns a non-`Clone`
+//! [`codec::LocalLogStorageWriterFenceAcquisitionPlan`] only when the proposed
+//! fence differs from the expected current fence. Typed preparation failure
+//! retains both unchanged inputs. Advancing `u64::MAX - 1` to `u64::MAX` is
+//! valid; only another acquisition or rotation is then impossible. A future
+//! already-issued epoch-maximum token could still be compared for append.
+//!
+//! These are non-authority values. They do not prove provenance, atomic co-
+//! observation, storage currentness, compare-and-swap, request dispatch,
+//! terminal completion, token issuance, global fence freshness, restart
+//! reconstruction, owner release, append, or browser behavior. Version
+//! `0.0.42` is intended to add request-correlated acquisition, exact selected-
+//! envelope pairing, and revocable-token issuance only after the exact
+//! acquisition transaction's terminal `complete`.
+//!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

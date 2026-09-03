@@ -149,7 +149,8 @@ The following remain deliberately unimplemented:
   transaction ownership typestate, adapter capabilities, authoritative-head
   integration, and an executable filesystem or IndexedDB adapter (only the
   profile contract, pure-Rust values/attempt mechanics, process-local host
-  terminal attestations, and both resolver state machines exist);
+  terminal attestations, both resolver state machines, and the non-authority
+  writer-fence comparison/acquisition-plan values exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -742,6 +743,16 @@ rotation is a nonretry conflict only for the three non-host-committed sources.
 Selected, superseded, and retired outcomes validate branch-specific bytes,
 indexes, generation transitions, and required tombstones. No rotation outcome
 releases ownership or authenticates its host observation.
+
+Version `0.0.41` implements a canonical nonzero, nonwrapping `u64` writer epoch,
+an exact mutation-fence binding over the full selected binding plus `Arc`-shared
+current/optional-predecessor JSON and writer pair, and a checked non-`Clone`
+acquisition plan. Directional comparison accepts only `Retired -> Reclaimed`
+cleanup; plan preparation derives exactly the next epoch, requires the proposed
+fence to differ from the current fence, and returns both unchanged inputs on
+failure. These are non-authority values: they provide no storage provenance,
+atomic co-observation, request, terminal evidence, token, CAS, browser adapter,
+owner release, or append.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -3516,11 +3527,13 @@ evidence:
   retained by the tombstone. Equal length screens collisions but never attests
   candidate bytes. It does not fabricate profile/session/JSON fields.
 
-Mutable writer epoch/current-fence facts stay outside the selected binding, and
-an active tail may grow without changing immutable selection metadata. These
-value helpers do not compare selection JSON, read storage, validate keys/indexes
-or complete range scans, authenticate browser events, classify commit, or
-release authority.
+Mutable writer epoch/current-fence facts stay outside
+`LocalLogStorageSelectedBinding`, and an active tail may grow without changing
+immutable selection metadata. Version `0.0.41` later composes those facts with
+the selected binding and exact selection bytes in a separate non-authority
+mutation-fence binding. The `0.0.38` helpers themselves do not compare selection
+JSON, read storage, validate keys/indexes or complete range scans, authenticate
+browser events, classify commit, or release authority.
 
 Version `0.0.39` implements the separate root-resolver gate in pure Rust. The
 four surviving root attempt states can enter one non-`Clone` resolution; a
@@ -3604,16 +3617,45 @@ and the exact-or-retired successor/index evidence. Exact successor sealed-log/
 frame facts come privately from normalized bytes; an already-retired successor
 cannot attest its discarded JSON/sealed fields.
 
-With both resolver boundaries implemented, the next pure-Rust storage gate is a
-non-authority writer-epoch/fence comparison binding and checked acquisition
-plan. Request-correlated revocable token issuance, a JavaScript adapter, and
-real-browser profile validation are still required before the storage profile
-is executable. Historical commit does not grant stable currentness: every
-IndexedDB mutation must recheck the exact head, active generation, writer epoch,
-and current writer fence inside its own serialized transaction. Consuming
-exclusive-owner typestate requires a separately specified held lock,
-transaction-coupled semantic admission, or revocable/speculative branch and is
-not part of Profile V1.
+Version `0.0.41` implements the next pure-Rust storage value boundary.
+`LocalLogStorageWriterEpoch` is a canonical nonzero, nonwrapping `u64`: text is
+the shortest unsigned ASCII decimal representation and checked succession
+never normalizes or wraps malformed/exhausted input. A cloneable
+`LocalLogStorageMutationFenceBinding` snapshots the complete selected binding,
+`Arc`-shares its byte-exact current and optional predecessor JSON, and records
+the observed writer epoch and current writer fence. Its later-observation
+comparison applies the existing directional selected-binding relation first,
+then requires exact current JSON, predecessor JSON, epoch, and fence. Thus
+`Retired -> Reclaimed` checkpoint cleanup remains valid while the reverse
+transition and every immutable or writer-fence change fail.
+
+Consuming `try_prepare_writer_fence_acquisition` derives exactly the checked
+successor epoch and returns a non-`Clone`
+`LocalLogStorageWriterFenceAcquisitionPlan` only when the proposed fence differs
+from the current writer fence. If the epoch is exhausted or the fence is
+reused, the recoverable failure retains the complete unchanged binding and
+proposed fence; exhaustion has precedence. `u64::MAX - 1 -> u64::MAX` is a
+valid plan. At `u64::MAX`, further acquisition or rotation is impossible, but
+an already issued epoch-maximum token could still be compared by a future
+append contract because append need not advance the epoch.
+
+The binding and plan expose byte lengths rather than their retained raw JSON,
+and `Debug` does not print those payloads. They do not prove that selected and
+writer facts came from storage or one atomic observation, perform CAS, create
+an adapter request, consume terminal evidence, issue a token, establish writer
+authority or global fence freshness, survive process restart, release the
+quarantined checkpoint anchor or another semantic owner, or append anything.
+Historical commit likewise does not grant stable currentness: every IndexedDB
+mutation must recheck its complete expected selection and writer facts inside
+the mutation's serialized transaction.
+
+Version `0.0.42` is the next intended boundary: request-correlated writer-fence
+acquisition, exact selected-envelope pairing, and issuance of a revocable token
+only after the exact acquisition transaction emits terminal `complete`. A
+JavaScript adapter and real-browser profile validation remain later work.
+Consuming exclusive-owner typestate still requires a separately specified held
+lock, transaction-coupled semantic admission, or revocable/speculative branch
+and is not part of Profile V1.
 
 Repeated in-memory compaction still does not make file replacement
 durable. Aggregate tail-size policy, migration, cryptographic integrity and

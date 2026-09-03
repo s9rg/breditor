@@ -331,6 +331,34 @@ boundary: the crate still has no adapter, browser-event authentication,
 durability, stable writer authority, process-restart reconstruction, arbitrary
 far-later conflict classification, or ownership release.
 
+Version `0.0.41` adds the pure Rust writer-fence comparison and acquisition-
+planning boundary. `LocalLogStorageWriterEpoch` accepts only the shortest
+unsigned ASCII decimal representation of a nonzero `u64`, never wraps, and
+provides checked succession. A cloneable
+`LocalLogStorageMutationFenceBinding` snapshots the complete selected binding,
+`Arc`-shares its exact current and optional predecessor JSON, and records one
+observed writer epoch/current-fence pair. `compare_later_observation` keeps the
+exact JSON and writer pair unchanged while reusing the directional selected-
+binding rule: `Retired -> Reclaimed` checkpoint cleanup is accepted and
+`Reclaimed -> Retired` is rejected. Structural `Eq` remains stricter than this
+directional comparison.
+
+Consuming `try_prepare_writer_fence_acquisition` derives exactly the next epoch
+and returns a non-`Clone` `LocalLogStorageWriterFenceAcquisitionPlan` only when
+the proposed fence differs from the current fence. Epoch exhaustion takes
+precedence, and its typed failure retains the complete unchanged binding and
+proposed fence. `u64::MAX - 1 -> u64::MAX` is valid; an epoch-maximum binding
+can still be compared for a future append token, although no later acquisition
+or rotation can advance it.
+
+The binding and plan expose byte lengths rather than raw selection JSON, and
+their diagnostics omit retained JSON payloads. They provide no storage-read
+provenance, atomic co-observation, CAS, request or terminal evidence, revocable
+token, writer authority, browser adapter, global fence-freshness proof, restart
+reconstruction, semantic-owner release, or append operation. Version `0.0.42`
+is intended to add request-correlated acquisition with exact selected-envelope
+pairing and terminal-`complete` issuance of a revocable token.
+
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch
 cannot reset the allowance. An explicitly named transition can reauthorize a

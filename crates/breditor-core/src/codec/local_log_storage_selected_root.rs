@@ -266,7 +266,7 @@ impl LocalLogStorageSelectedRoot {
         &self.binding
     }
 
-    /// Atomically snapshots the non-authority facts required by an attempt plan.
+    /// Atomically snapshots the non-authority facts required by a storage plan.
     pub(super) fn snapshot_attempt_envelope(
         &self,
     ) -> (LocalLogStorageSelectedBinding, Arc<str>, Option<Arc<str>>) {

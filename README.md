@@ -318,6 +318,32 @@ classification, durability, or ownership release is implemented. All Storage
 V1 shapes remain unstable pre-`0.1` contracts rather than permanent
 compatibility promises.
 
+Version `0.0.41` implements the next pure-Rust writer-fence value boundary.
+`LocalLogStorageWriterEpoch` is a canonical, nonzero, nonwrapping `u64` with
+checked succession. The cloneable `LocalLogStorageMutationFenceBinding`
+snapshots the full selected binding, `Arc`-shares its byte-exact current and
+optional predecessor JSON, and adds the observed writer epoch and current
+writer fence. Its
+directional comparison keeps both JSON values and the mutable writer facts
+exact while accepting only selected-checkpoint cleanup from `Retired` to
+`Reclaimed`; the reverse transition is rejected.
+
+Consuming `try_prepare_writer_fence_acquisition` produces a checked non-`Clone`
+plan with exactly the next epoch and a proposed fence distinct from the current
+writer fence. Typed failure retains both unchanged inputs. Advancing
+`u64::MAX - 1` to `u64::MAX` is valid; only another acquisition or rotation is
+then impossible. A future already-issued epoch-maximum token could still be
+compared for append, so epoch exhaustion is not by itself a blanket assertion
+that the scope contains no writable authority.
+
+These values expose no public access to the retained selection JSON and keep
+those payloads out of `Debug`. They prove neither provenance nor atomic co-observation, currentness,
+compare-and-swap, request dispatch, terminal completion, token issuance,
+authority, global fence freshness, restart reconstruction, owner release, nor
+append durability. Version `0.0.42` is intended to add request-correlated
+acquisition, pair it with the exact selected envelope, and issue a revocable
+token only after the exact acquisition transaction's terminal `complete`.
+
 ## Development
 
 ```sh
