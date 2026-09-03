@@ -356,10 +356,51 @@
 //! These are non-authority values. They do not prove provenance, atomic co-
 //! observation, storage currentness, compare-and-swap, request dispatch,
 //! terminal completion, token issuance, global fence freshness, restart
-//! reconstruction, owner release, append, or browser behavior. Version
-//! `0.0.42` is intended to add request-correlated acquisition, exact selected-
-//! envelope pairing, and revocable-token issuance only after the exact
-//! acquisition transaction's terminal `complete`.
+//! reconstruction, owner release, append, or browser behavior.
+//!
+//! Version `0.0.42` adds the separate process-local writer-fence acquisition
+//! lifecycle. Consuming `begin_acquisition` puts the exact checked plan in
+//! non-`Clone` [`codec::LocalLogStorageUncertainWriterFenceAcquisition`] under
+//! a fresh opaque [`local_log::LocalLogStorageWriterFenceAcquisitionAttemptId`]
+//! before egress. Its one borrowed
+//! [`codec::LocalLogStorageWriterFenceAcquisitionRequest`] mints a distinct
+//! [`local_log::LocalLogStorageWriterFenceAcquisitionRequestId`] and exposes the
+//! complete expected binding, raw current/optional-predecessor JSON, expected
+//! writer pair, and exact planned successor pair required by one adapter
+//! invocation. Diagnostics redact the JSON payloads.
+//!
+//! `IndexedDB` Profile V1 requires a future host to execute this as one fixed
+//! five-store strict `readwrite` transaction. It reads the selected transaction
+//! by primary key and independently through unique `byCommittedHead`, validates
+//! the optional predecessor, selected generation records, exact selection
+//! bytes, and expected writer pair, and then replaces only the scope control's
+//! writer pair. An already-present target pair is not idempotent success; only
+//! this exact transaction's terminal `complete` qualifies.
+//!
+//! [`codec::LocalLogStorageWriterFenceAcquisitionTerminalAttestation`] separates
+//! acquisition-completed, transaction-aborted, and not-attempted host claims.
+//! Completion and abort require the exact request ID emitted at egress;
+//! not-attempted names the attempt and is legal on either side of egress when
+//! no transaction was created. Consuming observation rejects attempt mismatch,
+//! pre-egress transaction evidence, then stale/cross-request identity while
+//! retaining both owner and unapplied attestation. Negative terminal states
+//! preserve the exact plan for resubmission under a fresh attempt ID.
+//!
+//! Matching completion creates non-`Clone`, nonserializable
+//! [`codec::LocalLogStorageMutationToken`]. Its post-acquisition binding keeps
+//! the complete selected envelope and allocation-identical JSON while changing
+//! only the checked successor epoch and proposed fence. This is trusted
+//! historical request correlation, not stable currentness: another acquisition
+//! or rotation may revoke the token before its callback runs, and every
+//! protected mutation must re-read and directionally compare the whole binding
+//! inside its own serialized transaction. IDs and fences are non-secret, and
+//! the one-shot borrow cannot prevent copied or duplicate dispatch.
+//!
+//! No browser adapter or append operation is implemented. The lifecycle is
+//! volatile and has no acquisition resolver. If `u64::MAX - 1 -> u64::MAX`
+//! commits but its terminal callback or process state is lost, restart cannot
+//! reconstruct the request-correlated token and cannot advance the epoch again;
+//! Profile V1 has no in-contract liveness recovery for that terminal case.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

@@ -118,6 +118,13 @@ The implemented Rust slice owns:
   resolver restart, closed physical findings and semantic outcomes, source-
   aware absence/conflict precedence, and advisory exact resubmission only from
   the shape-valid non-host-committed absence outcome;
+- a canonical nonzero, nonwrapping writer epoch; an exact cloneable mutation-
+  fence binding with directional cleanup-aware comparison; checked non-`Clone`
+  acquisition planning; and a separate process-local writer-fence acquisition
+  lifecycle with one borrowed exact request, egress-created attempt/request
+  correlation, three terminal host-attestation kinds, recoverable negative
+  states, exact resubmission, and non-`Clone` revocable mutation-token issuance
+  only from matching completion;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -149,8 +156,8 @@ The following remain deliberately unimplemented:
   transaction ownership typestate, adapter capabilities, authoritative-head
   integration, and an executable filesystem or IndexedDB adapter (only the
   profile contract, pure-Rust values/attempt mechanics, process-local host
-  terminal attestations, both resolver state machines, and the non-authority
-  writer-fence comparison/acquisition-plan values exist);
+  terminal attestations, both resolver state machines, writer-fence comparison/
+  planning, and the process-local acquisition/token lifecycle exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -753,6 +760,18 @@ fence to differ from the current fence, and returns both unchanged inputs on
 failure. These are non-authority values: they provide no storage provenance,
 atomic co-observation, request, terminal evidence, token, CAS, browser adapter,
 owner release, or append.
+
+Version `0.0.42` implements a separate process-local acquisition lifecycle.
+The checked plan begins under a fresh opaque attempt ID; its first borrowed
+adapter request creates an opaque request ID and exposes the complete expected
+binding, exact retained selection JSON, expected writer pair, and planned next
+pair. Completion and abort host attestations require that emitted request ID;
+not-attempted names the attempt. Consuming observation rejects mismatched or
+pre-egress transaction evidence without losing the owner/evidence, retains
+negative outcomes for exact fresh-identity resubmission, and creates a
+non-`Clone`, nonserializable revocable mutation token only on matching
+completion. The token is historical trusted host evidence and must be rechecked
+inside each protected storage transaction. No adapter or append is added.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -3649,10 +3668,68 @@ Historical commit likewise does not grant stable currentness: every IndexedDB
 mutation must recheck its complete expected selection and writer facts inside
 the mutation's serialized transaction.
 
-Version `0.0.42` is the next intended boundary: request-correlated writer-fence
-acquisition, exact selected-envelope pairing, and issuance of a revocable token
-only after the exact acquisition transaction emits terminal `complete`. A
-JavaScript adapter and real-browser profile validation remain later work.
+Version `0.0.42` implements the nominally separate process-local writer-fence
+acquisition lifecycle. `begin_acquisition` consumes the checked plan into
+`LocalLogStorageUncertainWriterFenceAcquisition` and core-creates a fresh opaque
+attempt ID before egress. The first `adapter_request` call permanently records
+egress and mints an allocation-identity request ID. Its borrowed non-`Clone`
+view exposes the complete expected mutation binding, raw byte-exact current and
+optional-predecessor selection JSON, expected epoch/fence, and exact planned
+successor epoch/proposed fence. This request is the lifecycle's only public raw-
+JSON boundary; all diagnostics remain payload-redacted.
+
+`LocalLogStorageWriterFenceAcquisitionTerminalAttestation` has exactly three
+host-observed kinds: `AcquisitionCompleted`, `TransactionAborted`, and
+`NotAttempted`. Completion and abort require a clone of the emitted request ID
+and are therefore unconstructible before egress through the safe API. Not-
+attempted names the attempt and is valid before or after egress only when that
+invocation created no transaction. Consuming observation checks attempt
+identity before request existence and then exact request allocation identity.
+A transition failure retains the unchanged owner and unapplied attestation.
+Aborted/not-attempted states and direct uncertain resubmission preserve the
+exact plan and JSON allocations while creating a fresh attempt identity; an
+earlier uncertain transaction may still complete.
+
+Only matching completion creates `LocalLogStorageMutationToken`. It privately
+retains the exact nominal request identity and a target binding that preserves
+the selected binding plus allocation-identical current/predecessor JSON while
+changing only epoch/fence to the plan's checked pair. The token has no clone,
+serialization, equality, hash, ordering, display, or public constructor. Its
+public surface exposes the binding, selected binding, acquired epoch/fence,
+attempt ID, and JSON byte lengths, but neither raw JSON nor the retained request
+ID. Its completion is historical trusted host evidence, not stable currentness,
+durability, a long-lived lock, or semantic-owner release. Another acquisition,
+rotation, reset, or conflicting mutation can revoke it before the callback
+runs; each protected mutation must re-read and directionally compare the
+complete token binding in its own serialized transaction.
+
+For IndexedDB Profile V1, a conforming host must implement one fixed five-store
+strict `readwrite` transaction. It reads meta and scope control; the selected
+transaction by primary key and independently through unique
+`byCommittedHead[scopeId, scopeIncarnationId, committedHeadId]`; any named
+predecessor; and the selected checkpoint/active generation records. It must
+reconstruct and directionally compare the complete selected binding, compare
+both selection JSON byte strings exactly, and require the expected writer pair.
+Only then may it update the same scope record by replacing exactly
+`writerEpoch` and `currentWriterFenceId` with the planned pair. It must leave
+the head/selection fields, index and transaction records, generation records,
+and JSON untouched. A mismatch aborts; finding the target writer pair already
+stored is never idempotent success. Only this exact transaction's terminal
+`complete` qualifies for `AcquisitionCompleted`.
+
+No such IndexedDB/JavaScript/Wasm adapter and no append operation exists yet.
+Attempt/request IDs and fence values are non-secret correlation, not
+authenticated provenance. The borrowed one-shot request cannot prevent copied
+or duplicate host dispatch, and allocation identity has no persistence or
+cross-process meaning. There is no acquisition resolver or restart
+reconstruction. In particular, if `u64::MAX - 1 -> u64::MAX` commits but its
+completion callback or volatile process state is lost, exact retry cannot
+attribute the stored tuple and no successor epoch exists. Profile V1 then has
+no in-contract path to acquire another token without later migration or reset;
+an already issued maximum-epoch token could still be checked by a future append
+implementation.
+
+A JavaScript adapter and real-browser profile validation remain later work.
 Consuming exclusive-owner typestate still requires a separately specified held
 lock, transaction-coupled semantic admission, or revocable/speculative branch
 and is not part of Profile V1.

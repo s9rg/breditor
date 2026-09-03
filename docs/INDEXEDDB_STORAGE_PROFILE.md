@@ -9,9 +9,10 @@ resolution-value comparisons and the closed retired-transaction binding
 implemented in `0.0.38`; process-local root resolution implemented in `0.0.39`
 and rotation resolution implemented in `0.0.40`; canonical writer epoch,
 exact non-authority mutation-fence comparison, and checked acquisition planning
-implemented in `0.0.41`; no IndexedDB/JavaScript/Wasm adapter, correlated
-acquisition/token issuance, process-restart plan reconstruction, ownership
-typestate, append, or executable provisioning exists
+implemented in `0.0.41`; process-local request-correlated writer-fence
+acquisition and revocable-token issuance implemented in `0.0.42`; no
+IndexedDB/JavaScript/Wasm adapter, process-restart plan reconstruction,
+ownership typestate, append, or executable provisioning exists
 
 Profile identifier: `breditor/indexeddb-local-log`
 
@@ -39,7 +40,7 @@ every browser implementation is bug-free.
 
 ## Decisions
 
-Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.41`
+Version `0.0.33` freezes these decisions; versions `0.0.34` through `0.0.42`
 implement only their profile-independent Rust value, attempt, and resolution
 subset:
 
@@ -86,7 +87,7 @@ subset:
 ## Authority split
 
 `breditor-core` remains synchronous, deterministic, and free of browser
-handles. Versions `0.0.34` through `0.0.41` can:
+handles. Versions `0.0.34` through `0.0.42` can:
 
 - prepare and strictly encode the root-selection value from one borrowed local
   log compaction outcome;
@@ -135,7 +136,12 @@ handles. Versions `0.0.34` through `0.0.41` can:
   predecessor JSON together with a canonical writer epoch/current-fence pair,
   compare it directionally across only `Retired -> Reclaimed` cleanup, and
   consume it into a checked non-`Clone` acquisition plan for exactly the next
-  epoch and a proposed fence distinct from the current fence.
+  epoch and a proposed fence distinct from the current fence; and
+- consume that plan into a fresh process-local acquisition attempt, expose one
+  borrowed exact adapter request, correlate typed terminal host attestations to
+  its egress-created request ID, retain negative terminal plans for exact
+  resubmission, and issue a non-`Clone` revocable mutation token only from a
+  matching acquisition-completed attestation.
 
 The v0.0.37 boundary checks typed host terminal evidence against one exact
 prepared plan without treating per-transaction IndexedDB fencing as release of
@@ -143,8 +149,9 @@ an exclusive semantic owner. Version `0.0.38` adds directional selected-binding
 and active-to-retired/reclaimed comparisons plus the closed retired-transaction
 record shape. Version `0.0.39` adds the process-local root resolver state
 machine; version `0.0.40` adds the nominally separate rotation resolver state
-machine. Version `0.0.41` adds only the non-authority mutation-fence binding and
-acquisition plan; it adds no IndexedDB request or revocable token.
+machine. Version `0.0.41` adds the non-authority mutation-fence binding and
+acquisition plan. Version `0.0.42` adds the separate process-local acquisition
+request/terminal/token lifecycle, but still no IndexedDB implementation.
 
 The JavaScript adapter owns `IDBDatabase`, `IDBTransaction`, requests, events,
 connection reopening, exact key construction, structured-clone values, and the
@@ -245,10 +252,11 @@ binding when present. The mutable writer epoch/fence remains excluded from
 `0.0.41` can separately snapshot that selected binding and its `Arc`-shared
 exact JSON together with caller-supplied writer facts as
 `LocalLogStorageMutationFenceBinding`. The pure constructor cannot prove that
-those facts came from this scope control or were atomically co-observed. A
-future adapter must validate that provenance before a separately acquired
-revocable token can use the comparison. Candidate JSON can never select its
-own authority.
+those facts came from this scope control or were atomically co-observed. The
+v0.0.42 borrowed acquisition request carries the exact retained envelope and
+writer facts to the host, but only a conforming future adapter can perform the
+fixed-scope observation and write. Candidate JSON can never select its own
+authority.
 
 Strict selected decode accepts either:
 
@@ -490,7 +498,7 @@ non-secret and never interchangeable at a Rust or Wasm boundary.
 
 `chunkOrdinal` is exactly twenty ASCII decimal digits, zero padded on the left.
 This avoids JavaScript integer precision and gives deterministic key ordering
-through `18446744073709551615`. Through version `0.0.41`, no append or
+through `18446744073709551615`. Through version `0.0.42`, no append or
 chunk-size protocol is defined; therefore the only valid newly reserved
 generation has no chunk records. A future append checkpoint must freeze chunk
 boundaries before writing nonempty values.
@@ -1166,20 +1174,91 @@ payload-redacted.
 Multiple callers can prepare the same next epoch and proposed fence. That tuple
 cannot attribute a later commit to one caller. Token issuance must remain
 correlated to the exact request whose acquisition transaction emitted terminal
-`complete`; a future resolver without that callback must require a lifetime-
-unique proposal, persist a separate request identity, or decline to issue
-authority from the observed tuple alone.
+`complete`; observing the target tuple later is not equivalent.
 
-The intended future acquisition operation opens the fixed transaction,
-rechecks the complete expected selected envelope and writer facts, advances the
-epoch, and stores a fresh `currentWriterFenceId`. Only that exact transaction's
-terminal `complete` may issue a revocable token. Another acquisition or
+Version `0.0.42` implements that process-local correlation boundary without
+implementing IndexedDB. `begin_acquisition` consumes the plan into an uncertain
+state and creates a fresh opaque attempt ID before egress. The first
+`adapter_request` call permanently records egress, creates a distinct opaque
+request ID, and yields one borrowed non-`Clone` request. It exposes the complete
+expected selected binding, exact current and optional-predecessor JSON,
+expected epoch/fence, and planned successor epoch/proposed fence. Its raw JSON
+is the narrow public payload surface; request and state diagnostics report only
+facts and lengths.
+
+A conforming future IndexedDB host must execute that request as exactly one
+fixed five-store strict `readwrite` transaction. In its creation task and
+request callbacks it must:
+
+1. read and validate `meta/profile` and `scopes/scopeId` for the expected
+   database and scope incarnations;
+2. read the expected selected transaction by its primary key and independently
+   read `transactions.byCommittedHead` at
+   `[scopeId, scopeIncarnationId, committedHeadId]`; the unique index result
+   must be that same exact transaction record;
+3. read the optional immediate-predecessor transaction when named and the
+   selected checkpoint and active generation records, then reconstruct the
+   complete observed selected envelope from those records;
+4. directionally compare that observed envelope with the request binding,
+   allowing only checkpoint cleanup from `Retired` to `Reclaimed`, and compare
+   both retained JSON byte strings exactly;
+5. require the scope control's `writerEpoch` and `currentWriterFenceId` to equal
+   the request's expected pair; and
+6. only after every read and comparison succeeds, update that same scope record
+   by replacing only the writer pair with the exact planned successor epoch and
+   proposed fence. The selected head, transaction IDs, selection kind, session,
+   incarnations, transaction/index records, generation records, and JSON remain
+   unchanged.
+
+Every comparison and the scope write is part of that one transaction. The
+adapter must abort on mismatch; it must never reinterpret “target pair already
+present” as success, because a value-identical contender or copied dispatch may
+have written it. As elsewhere in the profile, no promise or unrelated task may
+separate the final successful comparison from enqueueing the write. Only that
+exact request's transaction `complete` qualifies for acquisition completion.
+
+The terminal kinds are `AcquisitionCompleted`, `TransactionAborted`, and
+`NotAttempted`. Completion and abort attestations require a clone of the opaque
+request ID emitted at egress, while not-attempted names the attempt and means
+that invocation created no transaction. Consuming observation checks attempt
+identity, then whether transaction evidence was even issuable, then request
+allocation identity. A rejection retains the unchanged owner and unapplied
+attestation. Abort and not-attempted retain the exact plan and allocations for
+a fresh-attempt exact resubmission; an uncertain attempt may also be exactly
+resubmitted, but an earlier transaction can still complete.
+
+Only matching `AcquisitionCompleted` produces
+`LocalLogStorageMutationToken`. The token retains the exact nominal request ID
+and a post-acquisition binding that preserves the complete selected envelope
+and exact JSON allocations while replacing only epoch/fence with the plan's
+target pair. It is non-`Clone`, nonserializable, and privately constructed.
+Public inspection exposes its binding, selected binding, acquired pair,
+attempt/request IDs, and JSON lengths, but not raw JSON.
+Non-`Clone` is ownership hygiene rather than linear enforcement: callers can
+retain references or wrap it in shared ownership. Another acquisition or
 rotation may revoke it before its callback runs, so every append and rotation
 must recheck the token's exact selected envelope, active log, writer epoch, and
 current writer fence inside that mutation's own transaction. Acquiring a token
-will not mutate or invalidate the immutable selected-root summary merely
-because its epoch advanced; a mutation uses both values and rejects if either
-no longer matches storage.
+does not invalidate the immutable selected-root summary merely because its
+epoch advanced; a mutation uses both values and rejects if either no longer
+matches storage.
+
+Attempt IDs, request IDs, epochs, and fences are non-secret correlation values,
+not authentication or capabilities by themselves. Rust allocation identity
+rejects stale/cross-request attestations only within the surviving process; it
+does not authenticate a host callback. The borrowed one-shot request cannot
+stop a host from copying its data or dispatching it twice, and copied dispatch
+effects are outside the nominal one-request/one-transaction contract.
+
+The maximum epoch creates a terminal liveness hazard. If an acquisition from
+`u64::MAX - 1` commits `u64::MAX` but its `complete` callback is lost, an exact
+resubmission observes a writer mismatch rather than proving which transaction
+won. If the process restarts, its attempt/request identities and plan are also
+gone. The stored target tuple cannot safely reconstruct the token, yet no
+further acquisition or rotation can increment the epoch. Profile V1 defines no
+resolver or in-place recovery for this case; recovery requires a later profile,
+migration, or out-of-profile reset. A maximum-epoch token already issued before
+loss could still be checked by a future append implementation.
 
 Pure IndexedDB V1 provides fencing at each mutation, not a long-lived exclusive
 lock between transactions. No finite postcommit recheck removes that race. A
@@ -1198,11 +1277,12 @@ quarantined on conflict. Profile V1 chooses none of those policies.
 
 Profile `0.0.33` freezes these obligations. Version `0.0.41` implements the
 canonical epoch, exact non-authority mutation-fence binding, directional
-comparison, and checked acquisition plan, but not provenance or atomic co-
-observation, CAS, an acquisition request, terminal evidence, the revocable-
-token allocator, global fence freshness, a browser adapter, restart
-reconstruction, append, an exclusive lock, a speculative branch, or consuming
-Rust ownership typestate. Those remain later design gates.
+comparison, and checked acquisition plan. Version `0.0.42` implements only the
+process-local request/terminal/token boundary around that plan. It does not
+prove storage provenance, authenticate atomic co-observation or browser events,
+perform CAS or I/O, establish global fence freshness, reconstruct authority
+after restart, append, provide an exclusive lock/speculative branch, or consume
+a Rust semantic owner. Those remain later design gates.
 
 ## Retired-generation cleanup
 
@@ -1257,16 +1337,18 @@ capabilities.
 ## Explicit V1 limitations
 
 - No IndexedDB, JavaScript, Wasm, filesystem, or other storage adapter exists
-  through `0.0.41`; the implemented Rust values, attempt states, and root/
-  rotation resolvers perform no I/O.
+  through `0.0.42`; the implemented Rust values, attempt states, resolvers, and
+  writer-fence acquisition lifecycle perform no I/O.
 - Root preparation/encoding/decoding, selected receipt/generation bindings,
   root/rotation normalization, and selected-root-aware next-rotation validation
   prove only bounded value and cross-link consistency. They do not provision a
   database, scope, head, checkpoint generation, or empty active generation.
 - No pure-Rust value proves CAS or current-head status, global ID/fence
   freshness, physical generation emptiness, provenance or atomic co-observation
-  of the represented mutable writer epoch/fence, writer authority,
-  authenticated browser-event provenance, durability, or ownership release.
+  of the represented mutable writer epoch/fence, authenticated browser-event
+  provenance, durability, or ownership release. The v0.0.42 token is revocable
+  process-local authority derived from a trusted host attestation; it is not
+  independent proof that its binding is still current.
   The v0.0.37 terminal states validate process-local correlation around trusted
   host assertions only, and v0.0.39/v0.0.40 root/rotation resolver evidence is
   another trusted process-local host assertion rather than authenticated
@@ -1290,6 +1372,11 @@ capabilities.
   more than once. One attempt ID nevertheless names one adapter invocation and
   at most one associated publication transaction; duplicate dispatches are
   outside that correlation. This API guard is not single-dispatch evidence.
+- Writer-fence acquisition attempt/request IDs and plans are likewise volatile
+  and non-secret. The core has no acquisition resolver and cannot reconstruct a
+  token from persisted epoch/fence values. Losing the completion callback or
+  process state after committing the final epoch can permanently prevent a new
+  Profile V1 acquisition without migration or reset.
 - All writes serialize across all scopes because IndexedDB scheduling is
   object-store-granular and the profile deliberately fixes one common scope.
 - Transaction and generation identity tombstones grow without bound.
@@ -1381,10 +1468,23 @@ and current fences, returning both inputs on failure. It does not prove storage
 provenance, atomic co-observation, CAS, or global fence freshness and issues no
 request, terminal evidence, token, authority, owner, or append operation.
 
-Version `0.0.42` is intended to add request-correlated acquisition, pair the
-request with the exact selected envelope, and issue a revocable token only from
-the exact acquisition transaction's terminal `complete`. A JavaScript adapter,
-browser-event authentication, restart reconstruction, and real-browser profile
+Version `0.0.42` implements the request-correlated acquisition lifecycle. It
+consumes the checked plan into a fresh attempt, exposes one borrowed request
+with the exact selected envelope and writer pairs, and accepts
+`AcquisitionCompleted`, `TransactionAborted`, or `NotAttempted` host
+attestations under exact attempt/request correlation. Negative outcomes retain
+the allocation-identical plan for resubmission; only exact terminal completion
+issues a non-`Clone` revocable token carrying the post-acquisition binding and
+nominal request identity. Rejected observations retain both owner and evidence,
+and diagnostics redact raw JSON.
+
+This release does not execute the fixed-scope IndexedDB transaction, inspect or
+authenticate a browser event, prevent copied dispatch, resolve a lost
+acquisition callback, reconstruct state after restart, or implement append.
+The host contract includes an exact primary-key and `byCommittedHead` index
+read of the selected transaction, complete selected-envelope/generation and
+writer-pair comparison, and a scope-control-only writer-pair update in one
+strict five-store transaction. A JavaScript adapter and real-browser profile
 validation remain later work.
 
 Consuming exclusive-owner typestate remains blocked on a separately frozen

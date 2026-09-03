@@ -10,15 +10,16 @@ use super::LocalLogStorageMutationFenceBinding;
 /// nonwrapping writer epoch and a proposed current writer fence distinct from
 /// the expected current fence. It performs no I/O and is neither a request,
 /// commit receipt, currentness proof, revocable writer token, nor capability.
-/// A future request-correlated transition must retain this plan until terminal
-/// transaction evidence before it may issue mutation authority.
+/// [`Self::begin_acquisition`] moves it into the request-correlated lifecycle,
+/// which retains the plan until matching terminal transaction evidence can
+/// issue mutation authority.
 ///
-/// The plan is deliberately non-`Clone` in preparation for a later consuming
-/// request lifecycle. That is ownership hygiene only: callers can reconstruct
-/// equivalent non-secret inputs, and only a future opaque request identity can
-/// establish unambiguous process-local correlation.
+/// The plan is deliberately non-`Clone` for its consuming request lifecycle.
+/// That is ownership hygiene only: callers can reconstruct
+/// equivalent non-secret inputs, and only the emitted request's opaque identity
+/// establishes unambiguous process-local correlation.
 /// In particular, two contenders may prepare the same next epoch and proposed
-/// fence. A future terminal callback must correlate the exact emitted request;
+/// fence. A positive terminal callback must correlate the exact emitted request;
 /// the observed epoch/fence tuple alone cannot attribute which contender won.
 ///
 /// ```compile_fail
@@ -59,6 +60,15 @@ impl LocalLogStorageWriterFenceAcquisitionPlan {
     #[must_use]
     pub const fn proposed_writer_fence_id(&self) -> &LocalLogStorageFenceId {
         &self.proposed_writer_fence_id
+    }
+
+    /// Consumes the plan into its already-validated constituent values.
+    pub(super) fn into_parts(
+        self,
+    ) -> (LocalLogStorageMutationFenceBinding, LocalLogStorageWriterEpoch, LocalLogStorageFenceId)
+    {
+        let Self { expected_binding, next_writer_epoch, proposed_writer_fence_id } = self;
+        (expected_binding, next_writer_epoch, proposed_writer_fence_id)
     }
 }
 

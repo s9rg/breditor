@@ -23,6 +23,9 @@ next-rotation preparation/encoding/decoding, plus exact root/rotation attempt
 preparation, non-`Clone` `Prepared`/`Uncertain` state, core-issued process-local
 attempt identities, one-shot borrowed request views, exact resubmission, typed
 physical terminal states, and request-correlated root and rotation resolution,
+plus exact mutation-fence comparison/planning and a nominally separate
+request-correlated writer-fence acquisition lifecycle that can issue a
+revocable process-local mutation token,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -355,9 +358,54 @@ The binding and plan expose byte lengths rather than raw selection JSON, and
 their diagnostics omit retained JSON payloads. They provide no storage-read
 provenance, atomic co-observation, CAS, request or terminal evidence, revocable
 token, writer authority, browser adapter, global fence-freshness proof, restart
-reconstruction, semantic-owner release, or append operation. Version `0.0.42`
-is intended to add request-correlated acquisition with exact selected-envelope
-pairing and terminal-`complete` issuance of a revocable token.
+reconstruction, semantic-owner release, or append operation.
+
+Version `0.0.42` adds a nominally separate, process-local acquisition state
+machine. `begin_acquisition` consumes the checked plan into non-`Clone`
+`LocalLogStorageUncertainWriterFenceAcquisition` under a fresh opaque attempt
+ID. Its first `adapter_request` call permanently records egress, mints a
+distinct opaque request ID, and returns one borrowed non-`Clone` request with
+the expected binding, raw current/optional-predecessor JSON, expected writer
+pair, and planned next pair. The request is the only public raw-payload surface
+for this lifecycle; state, token, ID, failure, and request diagnostics remain
+payload-redacted.
+
+The IndexedDB Profile V1 host contract is one fixed five-store strict
+`readwrite` transaction. It must read the selected transaction both by primary
+key and through unique `byCommittedHead`, validate the optional predecessor,
+selected generation records, exact selection bytes, and expected writer pair,
+then replace only the scope control's writer pair. An already-present target
+pair is not idempotent success, and only this transaction's terminal
+`complete` qualifies.
+
+The host can attest `AcquisitionCompleted` or `TransactionAborted` only with a
+clone of that emitted request ID. `NotAttempted` names the attempt and is legal
+before or after request egress when the invocation created no transaction.
+Consuming observation checks attempt identity first, request existence second,
+then exact allocation identity. Rejection retains the unchanged owner and
+unapplied attestation. Abort/not-attempted outcomes preserve the exact plan for
+fresh-identity resubmission; only matching completion creates
+`LocalLogStorageMutationToken`.
+
+The non-`Clone`, nonserializable token retains the exact nominal request ID and
+post-acquisition binding. Target construction preserves the complete selected
+binding and allocation-identical selection JSON while replacing only the epoch
+and fence with the checked successor and proposal. Public inspection exposes
+the binding, selected binding, acquired pair, attempt/request IDs, and JSON byte
+lengths, but not raw JSON. This is historical trusted host
+evidence, not proof of present currentness, a long-lived lock, durability, or
+semantic ownership. Every protected mutation must re-read and compare the
+complete binding transactionally. Opaque IDs and fences are non-secret; a
+borrowed one-shot request cannot prevent copied or duplicate dispatch, and the
+core cannot authenticate host callbacks.
+
+No IndexedDB/JavaScript/Wasm/filesystem adapter or append action exists. The
+lifecycle has no durable/restart representation or acquisition resolver. If
+`u64::MAX - 1 -> u64::MAX` commits and its terminal callback or volatile state
+is lost, the stored target tuple cannot safely reconstruct request-correlated
+authority and the epoch cannot advance again. Profile V1 therefore has no
+in-contract path to acquire another token, although a token already issued at
+maximum could still be transactionally checked by a future append operation.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

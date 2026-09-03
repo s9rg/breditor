@@ -32,7 +32,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   validation against that normalized selected state, plus exact non-owning
   publication plans, process-local physical attempt IDs, typed host terminal
   attestations, and request-correlated root and rotation resolver typestates and
-  classifications;
+  classifications, plus exact writer-fence bindings and checked acquisition
+  plans, a separate request-correlated acquisition lifecycle, and revocable
+  process-local storage-mutation tokens;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -337,12 +339,49 @@ compared for append, so epoch exhaustion is not by itself a blanket assertion
 that the scope contains no writable authority.
 
 These values expose no public access to the retained selection JSON and keep
-those payloads out of `Debug`. They prove neither provenance nor atomic co-observation, currentness,
-compare-and-swap, request dispatch, terminal completion, token issuance,
-authority, global fence freshness, restart reconstruction, owner release, nor
-append durability. Version `0.0.42` is intended to add request-correlated
-acquisition, pair it with the exact selected envelope, and issue a revocable
-token only after the exact acquisition transaction's terminal `complete`.
+those payloads out of `Debug`. They prove neither provenance nor atomic co-
+observation, currentness, compare-and-swap, request dispatch, terminal
+completion, token issuance, authority, global fence freshness, restart
+reconstruction, owner release, nor append durability.
+
+Version `0.0.42` implements the separate process-local writer-fence acquisition
+lifecycle. Consuming `begin_acquisition` creates a fresh opaque attempt ID
+before egress. One borrowed, non-`Clone` adapter request exposes the complete
+expected selected binding, exact current/optional-predecessor JSON, expected
+writer pair, and exact planned successor pair; minting its opaque request ID at
+egress makes completion and abort attestations unconstructible beforehand
+through the safe API. `AcquisitionCompleted`, `TransactionAborted`, and
+`NotAttempted` are distinct host-attested terminal kinds. Observation rejects
+attempt mismatch, pre-egress transaction evidence, and stale/cross-request IDs
+without consuming the owner or evidence. Abort and not-attempted retain the
+exact plan for a fresh-identity resubmission.
+
+For IndexedDB Profile V1, a future host must execute the request in one fixed
+five-store strict `readwrite` transaction: validate meta/scope, read the
+selected transaction both by primary key and through the unique current-head
+`byCommittedHead` index, read the optional predecessor and selected generation
+records, compare the full envelope/JSON/writer pair, then change only the scope
+record's writer pair. A mismatch, including an already-present target pair,
+must abort; only that exact transaction's terminal `complete` qualifies.
+
+A matching completion consumes the plan into one non-`Clone`, nonserializable
+`LocalLogStorageMutationToken`. The token preserves the complete selected
+envelope and exact JSON allocations while replacing only the epoch/fence pair
+with the checked target. Completion is historical host evidence, not stable
+currentness: the token may already be revoked when returned, and every future
+protected mutation must re-read and directionally compare its complete binding
+inside that mutation's serialized transaction. No IndexedDB, JavaScript, Wasm,
+or filesystem adapter and no append operation is implemented. IDs and fence
+values are non-secret correlation, and a one-shot Rust request cannot prevent a
+host from copying or dispatching it twice.
+
+The final epoch has a deliberate liveness limit. If an acquisition from
+`u64::MAX - 1` commits `u64::MAX` but its terminal callback or process-local
+state is lost, a restart cannot reconstruct the request identity or safely
+issue the token from the stored tuple. The current epoch also cannot advance
+again, so Profile V1 has no in-contract recovery path for acquiring a new
+token; an already issued maximum-epoch token could still be checked by a future
+append implementation.
 
 ## Development
 

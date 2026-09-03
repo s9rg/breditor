@@ -98,6 +98,20 @@ impl LocalLogStorageMutationFenceBinding {
     pub(super) fn predecessor_selection_json(&self) -> Option<&str> {
         self.predecessor_selection_json.as_deref()
     }
+
+    /// Consumes the mutable pair while preserving the exact selected envelope.
+    pub(super) fn into_selected_envelope(
+        self,
+    ) -> (LocalLogStorageSelectedBinding, Arc<str>, Option<Arc<str>>) {
+        let Self {
+            selected_binding,
+            current_selection_json,
+            predecessor_selection_json,
+            writer_epoch: _,
+            current_writer_fence_id: _,
+        } = self;
+        (selected_binding, current_selection_json, predecessor_selection_json)
+    }
 }
 
 impl fmt::Debug for LocalLogStorageMutationFenceBinding {

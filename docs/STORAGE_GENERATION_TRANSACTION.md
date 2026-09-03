@@ -11,7 +11,8 @@ resolution-value comparisons and the closed retired-transaction binding
 implemented in `0.0.38`; process-local root resolution implemented in `0.0.39`
 and rotation resolution implemented in `0.0.40`; canonical writer epoch, exact
 non-authority mutation-fence comparison, and checked acquisition planning
-implemented in `0.0.41`; storage I/O, correlated acquisition/token issuance,
+implemented in `0.0.41`; process-local request-correlated writer-fence
+acquisition and revocable-token issuance implemented in `0.0.42`; storage I/O,
 process-restart reconstruction, append, and ownership release remain
 unimplemented
 
@@ -750,7 +751,7 @@ scope is `ScopeAlreadyProvisioned`. The equivalent rotation sources require the
 exact prior envelope and complete candidate namespace absence for advisory
 retry, or the exact direct competing rotation above for nonretry conflict.
 
-### Mutation-fence comparison and acquisition plan (`0.0.41`)
+### Mutation-fence comparison and acquisition lifecycle (`0.0.41`–`0.0.42`)
 
 Version `0.0.41` adds a pure value layer for the mutable writer facts that were
 previously kept entirely outside Rust. `LocalLogStorageWriterEpoch` represents
@@ -790,11 +791,60 @@ not retained raw JSON. There is no adapter, request correlation, terminal
 evidence, browser-event provenance, restart reconstruction, owner release, or
 append operation in `0.0.41`.
 
-Version `0.0.42` is intended to consume the checked plan into one correlated
-acquisition request, pair it with the exact selected envelope, and issue a
-revocable token only after the exact acquisition transaction emits terminal
-`complete`. Every later mutation must still repeat the complete selected and
-writer-fence comparison in its own serialized transaction.
+Version `0.0.42` consumes the checked plan into a nominally separate process-
+local acquisition lifecycle. `begin_acquisition` creates a fresh opaque attempt
+ID before egress. The first `adapter_request` permanently records egress, mints
+a distinct opaque request ID, and yields one borrowed non-`Clone` view of the
+complete expected binding, exact current/optional-predecessor JSON, expected
+writer pair, and planned successor pair. State, request, terminal, failure, ID,
+and token diagnostics redact the retained JSON.
+
+The three terminal host-attestation kinds are `AcquisitionCompleted`,
+`TransactionAborted`, and `NotAttempted`. Completion and abort require a clone
+of the request ID minted at egress; not-attempted names the attempt and asserts
+that the invocation created no transaction. Consuming observation checks
+attempt identity first, request existence second, and exact request allocation
+identity third. Rejection retains both unchanged owner and unapplied evidence.
+Abort/not-attempted and direct uncertain resubmission preserve the exact plan
+and payload allocations under a fresh attempt ID; an earlier uncertain
+transaction can still complete.
+
+Only matching completion issues a privately constructed, non-`Clone`,
+nonserializable `LocalLogStorageMutationToken`. It retains the exact nominal
+request identity and a post-acquisition binding whose selected envelope and
+JSON allocations are unchanged while only epoch/fence become the checked
+target pair. Its public inspection surface exposes binding and writer facts,
+attempt/request identities, and JSON lengths, but not raw JSON.
+The host attestation is historical, not proof that the token is still current
+when returned. Another acquisition, rotation, reset, or conflicting mutation
+may already have revoked it. Every protected storage mutation must re-read and
+directionally compare the complete token binding in its own serialized
+transaction.
+
+For the concrete IndexedDB V1 profile, a future adapter must execute each
+borrowed acquisition request in exactly one fixed five-store strict
+`readwrite` transaction. It reads meta and scope control; the expected selected
+transaction both by primary key and through the unique `byCommittedHead` index
+at `[scopeId, scopeIncarnationId, committedHeadId]`; the optional predecessor;
+and both selected generation records. It reconstructs the observed selected
+envelope, permits only `Retired -> Reclaimed` checkpoint cleanup, compares both
+JSON values byte-for-byte, and requires the expected writer epoch/fence. Only
+then may it update the scope record by replacing exactly that writer pair with
+the planned successor/proposal. The selected head and every transaction,
+index, generation, and JSON fact remain unchanged. A mismatch aborts, and an
+already-present target tuple is never idempotent success. Only this exact
+transaction's terminal `complete` qualifies for acquisition completion.
+
+The Rust lifecycle performs no I/O and cannot authenticate that callback.
+Attempt/request IDs, epochs, and fences are non-secret process-local
+correlation; one-shot borrowing cannot prevent copied or duplicate host
+dispatch. No acquisition resolver or restart reconstruction exists. If the
+valid `u64::MAX - 1 -> u64::MAX` acquisition commits but its terminal callback
+or volatile state is lost, the stored tuple cannot attribute the commit, exact
+retry encounters a writer mismatch, and no next epoch exists. Profile V1 has no
+in-contract way to issue another token without later migration or reset. A
+maximum-epoch token already issued before loss could still be checked by a
+future append implementation.
 
 ## Retry and idempotency rules
 
@@ -906,11 +956,11 @@ This specification and the implemented values do not provide:
 
 - actual storage bootstrap/provisioning, a general ownership-bearing
   `DefinitelyNotCommitted` state, ownership typestate, adapter, async API,
-  writer capability, or I/O implementation through `0.0.41`; the implemented
-  attempt terminal states and root/rotation resolution evidence are trusted
-  process-local host assertions, selected and mutation-fence comparison
-  bindings are caller-supplied typed inputs, and every checked publication or
-  acquisition plan is only a proposal;
+  or I/O implementation through `0.0.42`; the implemented publication-attempt
+  terminal states, root/rotation resolution evidence, and writer-fence
+  acquisition completion are trusted process-local host assertions. The
+  v0.0.42 mutation token is revocable authority only under that contract, not
+  authenticated proof that its binding is presently current;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -924,6 +974,9 @@ This specification and the implemented values do not provide:
 - proof that one borrowed request was dispatched only once, that an attempt or
   request ID match is authenticated browser-event provenance, or that process-
   local attempt state and its exact plan survive restart;
+- writer-fence acquisition resolution after callback loss, durable token
+  reconstruction, or a Profile V1 liveness escape after an unattributed final-
+  epoch commit;
 - a change to Local Log Checkpoint V1 or Local Log Frame V1;
 - durable encoding of recovery, compaction, or checkpoint resource policies;
 - generation garbage collection, tail-wide replay, migration, retry scheduling,
@@ -1037,7 +1090,19 @@ inputs on failure. It adds no raw-JSON public surface, provenance, atomic co-
 observation, CAS, request, terminal evidence, token, authority, global fence
 freshness, browser adapter, restart reconstruction, owner release, or append.
 
-Version `0.0.42` should add request-correlated acquisition with exact selected-
-envelope pairing and issue revocable mutation authority only after the exact
-acquisition transaction's terminal `complete`. Every storage mutation must
-still recheck that authority inside its own transaction.
+Version `0.0.42` implements that process-local request-correlated acquisition
+boundary. One exact plan becomes an uncertain attempt before egress; one
+borrowed request mints nominal attempt/request correlation and carries the
+complete selected envelope plus expected and target writer pairs. Matching
+terminal completion creates a non-`Clone` revocable mutation token; abort and
+not-attempted preserve the exact plan for fresh-identity resubmission, and
+transition rejection preserves both owner and evidence. Every storage mutation
+must still recheck the token's complete binding inside its own transaction.
+
+This is not an executable adapter. The IndexedDB host must still perform the
+primary-key plus unique current-head-index read, complete selection/generation/
+writer comparison, and scope-control-only writer-pair update in one fixed
+strict five-store transaction. The core cannot authenticate callbacks, prevent
+copied dispatch, resolve callback loss, reconstruct IDs or tokens after process
+restart, or recover acquisition liveness after an unattributed commit at
+`u64::MAX`. Append and consuming semantic-owner integration remain future work.

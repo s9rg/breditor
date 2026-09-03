@@ -54,6 +54,8 @@ mod storage_writer_epoch;
 mod storage_writer_epoch_exhausted;
 mod storage_writer_epoch_parse_error;
 mod storage_writer_epoch_value_error;
+mod storage_writer_fence_acquisition_attempt_id;
+mod storage_writer_fence_acquisition_request_id;
 mod successor_recovery;
 #[cfg(test)]
 mod test_support;
@@ -114,3 +116,5 @@ pub use storage_writer_epoch::{
 pub use storage_writer_epoch_exhausted::LocalLogStorageWriterEpochExhausted;
 pub use storage_writer_epoch_parse_error::LocalLogStorageWriterEpochParseError;
 pub use storage_writer_epoch_value_error::LocalLogStorageWriterEpochValueError;
+pub use storage_writer_fence_acquisition_attempt_id::LocalLogStorageWriterFenceAcquisitionAttemptId;
+pub use storage_writer_fence_acquisition_request_id::LocalLogStorageWriterFenceAcquisitionRequestId;
