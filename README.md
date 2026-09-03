@@ -34,9 +34,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   attestations, and request-correlated root and rotation resolver typestates and
   classifications, plus exact writer-fence bindings and checked acquisition
   plans, a separate request-correlated acquisition lifecycle, and revocable
-  process-local storage-mutation tokens, plus a pure single-frame append plan
-  that atomically joins one token, one active-tail cursor, one canonical frame,
-  and its speculative post-append semantic cursor;
+  process-local storage-mutation tokens, plus pure single-frame append planning
+  and a nonempty bounded FIFO that retains one token, one final speculative
+  cursor, and an exact ordered frame prefix without exposing follower bytes;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -87,7 +87,7 @@ attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
-scope provisioning, durable append and acknowledgement,
+scope provisioning, executable append requests and acknowledgement,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -414,9 +414,43 @@ terminal attestation, acknowledgement, uncertain resolver, or restart form.
 Its cursor provenance remains caller-trusted, and non-`Clone` is ownership
 hygiene rather than linear enforcement. One-frame records add IndexedDB record
 overhead, and the profile's fixed five-store transactions still serialize all
-scopes. Durable FIFO/order correctness belongs in future core typestate; a host
-queue will own asynchronous scheduling, batching policy, backpressure, and
-cancellation without being allowed to reorder core plans.
+scopes.
+
+Version `0.0.44` adds the pure, nonempty bounded append FIFO.
+`LocalLogStorageAppendPlan::try_into_queue` consumes one checked plan under
+host-selected `LocalLogStorageAppendQueueLimits`. The independent defaults are
+1,024 pending frames and 64 MiB of aggregate encoded frame bytes; either limit
+may be zero to reject even the seed. A start failure returns the exact unchanged
+plan. Success preserves its token, exact frame allocation, and speculative
+cursor as the queue's distinguished head.
+
+`LocalLogStorageAppendQueue::try_enqueue` borrows another `LocalLogEntry`, first
+checks fixed-width frame-count capacity, encodes the exact next frame, checks
+frame and aggregate-byte arithmetic and capacity, then advances the queue's
+single final speculative cursor through the existing atomic tail transition.
+Only complete success adds that exact allocation at the FIFO back and returns
+an enqueue step owning the queue plus that new frame's bounded metadata and
+admission outcome. Every typed failure returns the complete unchanged queue and
+leaves the entry caller-owned. The queue reports exact count/byte totals,
+remaining capacity, final speculative tail end, and metadata for only its
+immutable head. Followers, raw frame bytes, removal, acknowledgement, request
+egress, cursor release, and rotation remain unavailable.
+
+One token therefore authorizes a sequential speculative prefix without becoming
+a currentness claim: each future physical append must still transactionally
+revalidate the full binding. A future uncertain-head lifecycle must retain
+logical enqueue behind that head, but no follower may be physically dispatched
+or acknowledged until the head is resolved. Version `0.0.44` still has no
+append adapter request, physical-attempt identity, terminal attestation,
+acknowledgement, resolver, restart representation, or drained/rotation edge.
+The host owns asynchronous scheduling, batching choice, admission pacing, and
+cancellation; it has no permission to select, coalesce, or reorder queued
+frames. The byte ceiling covers retained encoded frames only, not cursor,
+session, history, replay state, or allocation overhead. Rust can drop the whole
+volatile queue, but that is neither cancellation nor acknowledgement and loses
+the speculative branch. Enqueue encodes its candidate before the aggregate-byte
+decision, so transient peak memory can exceed that ceiling. Allocation failure,
+process loss, and stale-token rebase remain outside this typed checkpoint.
 
 ## Development
 

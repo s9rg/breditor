@@ -14,7 +14,8 @@ non-authority mutation-fence comparison, and checked acquisition planning
 implemented in `0.0.41`; process-local request-correlated writer-fence
 acquisition and revocable-token issuance implemented in `0.0.42`;
 pure token-and-tail-cursor single-frame append preparation implemented in
-`0.0.43`; storage I/O, process-restart reconstruction, executable append/
+`0.0.43`; pure nonempty bounded speculative append FIFO implemented in
+`0.0.44`; storage I/O, process-restart reconstruction, executable append/
 acknowledgement, and durable ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
@@ -106,14 +107,17 @@ several roles:
 
 1. `breditor-core` owns semantic proof, cursor compaction, deterministic Local
    Log Checkpoint V1 encoding, exact in-memory ownership, and the strict
-   storage-generation value/validation boundary. A future durable append state
-   machine must also own FIFO plan and acknowledgement order, including the
-   append/rotation barrier. It performs no storage I/O.
+   storage-generation value/validation boundary. The implemented append FIFO
+   owns speculative preparation order and a distinguished head; future durable
+   transitions must add dispatch/acknowledgement order and the drained append/
+   rotation barrier. It performs no storage I/O.
 2. The host coordinator chooses the storage scope, lifetime-unique transaction
    and head identifiers, storage profile, successor Frame V1 policy, and the
    point at which an unobserved old-generation suffix is abandoned. It owns
-   asynchronous scheduling, batching policy, backpressure, cancellation, and
-   rate limiting, but may not reorder core durable transitions.
+   asynchronous scheduling, batching choice, backpressure, cancellation, and
+   rate limiting, but may dispatch only the head and may not coalesce or reorder
+   queue items. Dropping the owner is volatile loss, not cancellation or
+   acknowledgement.
 3. A profile-specific writer authority supplies unpersisted publication
    capability and its validation rules. The manifest's non-secret `fenceId`
    is the candidate generation's immutable activation correlation identity,
@@ -756,7 +760,7 @@ scope is `ScopeAlreadyProvisioned`. The equivalent rotation sources require the
 exact prior envelope and complete candidate namespace absence for advisory
 retry, or the exact direct competing rotation above for nonretry conflict.
 
-### Mutation-fence comparison, acquisition, and append preparation (`0.0.41`–`0.0.43`)
+### Mutation fencing, append preparation, and FIFO ownership (`0.0.41`–`0.0.44`)
 
 Version `0.0.41` adds a pure value layer for the mutable writer facts that were
 previously kept entirely outside Rust. `LocalLogStorageWriterEpoch` represents
@@ -896,13 +900,56 @@ rather than linear enforcement. The one-frame-record layout adds per-record
 overhead, and IndexedDB Profile V1 continues to serialize all scopes through
 its common five-store transaction set.
 
+Version `0.0.44` adds the pure nonempty `LocalLogStorageAppendQueue`. A queue
+can begin only by consuming one checked append plan through `try_into_queue`.
+Its immutable host-selected `LocalLogStorageAppendQueueLimits` independently
+bound pending-frame count and exact retained encoded bytes; their defaults are
+1,024 frames and 64 MiB. Either ceiling may be zero. Start checks frame count
+before bytes, returns the complete unchanged plan on rejection, and otherwise
+preserves its token, frame allocation, and speculative cursor as one
+structurally distinguished head.
+
+Consuming `try_enqueue` borrows another entry and checks pending-frame count
+arithmetic and policy, deterministic Frame V1 encoding, platform frame-length
+conversion, aggregate pending-byte arithmetic and policy, then semantic tail
+admission. Success retains that same frame allocation at the FIFO back and
+publishes one final cursor advanced through the entire pending prefix. Its
+enqueue step owns the updated queue and reports the new frame's bounded range,
+length, and admission outcome. The head cannot change. Every typed failure
+returns the complete unchanged queue and leaves the borrowed entry caller-owned.
+
+The queue exposes exact pending totals and remaining capacity, its full-prefix
+speculative cursor/end, and only head start/end/length/admission metadata. Raw
+frame bytes, followers, removal, acknowledgement, cursor release, and rotation
+remain unavailable. The original mutation token is owned once at the queue
+root; it can cover sequential frames because append does not alter its selected
+or writer binding, but it can still be revoked before any physical transaction.
+Each future head attempt must repeat the complete binding and tail comparison.
+
+A future uncertain-head typestate must keep accepting logical entries behind
+the in-flight head, but it must block every physical follower until that exact
+head is resolved. A future acknowledgement transition alone may remove the
+head, update a durable prefix, and finally produce a drained owner eligible for
+cursor release or rotation. Version `0.0.44` adds none of that lifecycle, I/O,
+terminal correlation, resolution, or restart state.
+
+The frame and byte ceilings do not bound total queue heap: the speculative
+cursor also retains session, history, replay indexes, decoded entries, and
+allocation/container overhead. Enqueue fully encodes one candidate before
+checking aggregate retained-byte capacity, so transient peak memory may exceed
+that ceiling. Rust can drop the queue, but drop is neither a storage
+cancellation nor an acknowledgement and loses the volatile speculative branch.
+Allocation failure and stale-token rebase/extraction are not typed in this
+release.
+
 ## Retry and idempotency rules
 
-- One append plan names one exact frame at one exact generation-relative start.
-  A future append transaction may classify byte-identical complete data at that
-  target as idempotently present only after rechecking the full mutation-token
-  binding, validating the complete tail, and proving that no later record
-  exists. It never overwrites different bytes or skips a gap.
+- One append plan names one exact frame at one exact generation-relative start;
+  a queue retains it as the only dispatch-eligible head. A future append
+  transaction may classify byte-identical complete data at that target as
+  idempotently present only after rechecking the full mutation-token binding,
+  validating the complete tail, and proving that no later record exists. It
+  never selects a follower, overwrites different bytes, or skips a gap.
 - Append and rotation share one ordered tail barrier. Rotation cannot publish a
   manifest until its transaction proves that the current complete tail end
   equals `acceptedPrefixBytes`; a host scheduler cannot substitute enqueue
@@ -970,9 +1017,10 @@ or newest-looking tail.
    instead governed by cases 2 and 5.
 7. A crash after commit but before the first successor append recovers a valid
    empty or profile-guaranteed absent successor at offset zero after the fresh
-   fence/recheck step. Version `0.0.43` can prepare a speculative next frame,
-   but a future adapter/terminal contract must durably append it and release
-   the quarantined cursor.
+   fence/recheck step. Version `0.0.43` can prepare a speculative next frame and
+   version `0.0.44` can retain a bounded FIFO behind it, but a future adapter/
+   terminal contract must durably acknowledge heads before releasing the final
+   quarantined cursor.
 8. Old-generation truncation, deletion, or garbage collection begins only after
    exact commit resolution and any profile retention barrier. It is forbidden
    while prepared, in flight, physically aborted/not-attempted, retry-eligible,
@@ -1016,12 +1064,13 @@ This specification and the implemented values do not provide:
 
 - actual storage bootstrap/provisioning, a general ownership-bearing
   `DefinitelyNotCommitted` state, ownership typestate, adapter, async API,
-  or I/O implementation through `0.0.43`; the implemented publication-attempt
+  or I/O implementation through `0.0.44`; the implemented publication-attempt
   terminal states, root/rotation resolution evidence, and writer-fence
   acquisition completion are trusted process-local host assertions. The
   v0.0.42 mutation token is revocable authority only under that contract, and
-  the v0.0.43 append plan is only speculative in-memory preparation; neither is
-  authenticated proof that its binding is presently current;
+  the v0.0.43 append plan plus v0.0.44 FIFO are only speculative in-memory
+  preparation/ownership; none is authenticated proof that its binding is
+  presently current;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length or cursor provenance, truncation,
   append completion, flush, `fsync`, acknowledgement, atomic replacement, or
@@ -1040,14 +1089,15 @@ This specification and the implemented values do not provide:
   reconstruction, or a Profile V1 liveness escape after an unattributed final-
   epoch commit;
 - an append adapter/request/terminal lifecycle, durable release of the
-  speculative post-cursor, append resolver/restart reconstruction, or
-  multi-frame storage chunks;
+  speculative final cursor, head acknowledgement/removal, a drained/rotation
+  edge, append resolver/restart reconstruction, or multi-frame storage chunks;
 - a change to Local Log Checkpoint V1 or Local Log Frame V1;
 - durable encoding of recovery, compaction, or checkpoint resource policies;
 - generation garbage collection, tail-wide replay, migration, host retry
-  scheduling, backpressure, or cancellation APIs; a future core state machine
-  must own durable FIFO/acknowledgement order even though the host chooses when
-  to schedule it; or
+  scheduling, backpressure, or cancellation APIs; the current FIFO owns only
+  logical preparation/head order, while future core transitions must own
+  durable acknowledgement order even though the host chooses when to schedule
+  them; or
 - a permanent compatibility promise for the implemented pre-`0.1` V1 shape.
 
 `EndOfInput`, a valid CRC, successful JSON decode, object existence, file
@@ -1176,6 +1226,16 @@ digit generation-relative offset key. The IndexedDB profile fixes one complete
 Frame V1 with no trailing bytes per chunk and requires future append and
 rotation transactions to compare the same exact current tail end.
 
+Version `0.0.44` implements the pure nonempty bounded append FIFO. One checked
+plan becomes its immutable head under independent frame-count and aggregate-
+byte limits. Further borrowed entries are encoded, resource-checked, and
+semantically admitted at the final speculative tail before their exact frame
+allocations join the back. Every failure returns the complete unchanged plan or
+queue. The queue owns one token, one full-prefix speculative cursor, exact
+totals, and ordered private items; public inspection cannot select a follower
+or obtain any frame bytes. It implements no request, physical attempt, terminal
+observation, acknowledgement, head removal, drained state, or rotation edge.
+
 This is not an executable adapter. The IndexedDB host must still perform the
 primary-key plus unique current-head-index read, complete selection/generation/
 writer comparison, and scope-control-only writer-pair update in one fixed
@@ -1183,5 +1243,6 @@ strict five-store transaction. The core cannot authenticate callbacks, prevent
 copied dispatch, resolve callback loss, reconstruct IDs or tokens after process
 restart, or recover acquisition liveness after an unattributed commit at
 `u64::MAX`. Executable append request/terminal/acknowledgement, durable cursor
-release, restart reconstruction, and the core FIFO state machine remain future
-work; the host will own scheduling and backpressure without owning order.
+release, restart reconstruction, and the FIFO's durable head-removal/drained
+transitions remain future work; the host will own scheduling and backpressure
+without owning order.

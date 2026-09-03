@@ -6,8 +6,9 @@
 //! durable commit, bounded session-checkpoint, replay-identified local-log
 //! entry, complete local-log-checkpoint JSON decoding, checksummed binary
 //! local-log frame scanning, atomic framed-tail observation, pure token-bound
-//! single-frame append preparation, genesis-prefix recovery, checkpoint-linked
-//! batch and incremental successor admission,
+//! single-frame append preparation and a bounded speculative FIFO,
+//! genesis-prefix recovery, checkpoint-linked batch and incremental successor
+//! admission,
 //! repeated compaction,
 //! snapshot-local points and selections, immutable editor states,
 //! paragraph-local text splices,
@@ -19,7 +20,7 @@
 //! text-insertion, paragraph-break, backward-delete, and strong-format actions
 //! (including extended cross-paragraph ranges), and a
 //! synchronous exact-publication session with bounded linear history. It
-//! deliberately contains no browser, framework, asynchronous queue, clock,
+//! deliberately contains no browser, framework, asynchronous scheduler, clock,
 //! random-number, collaboration, or Wasm binding code.
 //!
 //! # Construction boundary
@@ -430,9 +431,42 @@
 //! acknowledgement, uncertain resolution, or restart reconstruction. Cursor
 //! byte provenance remains caller-trusted; non-`Clone` is ownership hygiene,
 //! one-frame records add per-record overhead, and the fixed `IndexedDB` store set
-//! still serializes independent scopes. Future core typestate owns durable FIFO
-//! and acknowledgement order; hosts own asynchronous scheduling, batching,
-//! backpressure, and cancellation without reordering those plans.
+//! still serializes independent scopes.
+//!
+//! Version `0.0.44` adds pure, nonempty
+//! [`codec::LocalLogStorageAppendQueue`] ownership. A checked append plan can
+//! enter the queue only through `try_into_queue` under immutable host-selected
+//! [`codec::LocalLogStorageAppendQueueLimits`]. Its independent defaults admit
+//! 1,024 pending frames and 64 MiB of aggregate encoded bytes; zero is an
+//! explicit rejecting policy. Start rejection returns the complete unchanged
+//! plan.
+//!
+//! `LocalLogStorageAppendQueue::try_enqueue` borrows another entry, checks
+//! frame-count arithmetic and capacity before encoding, then checks exact frame
+//! and aggregate-byte arithmetic/capacity before atomically advancing the one
+//! final speculative cursor. Success adds that allocation behind the unchanged
+//! distinguished head and returns a step with that new frame's bounded metadata
+//! and admission outcome. Failure returns the complete unchanged queue and
+//! leaves the entry caller-owned. Public inspection exposes exact totals,
+//! remaining capacity, final speculative state, and only head metadata; it
+//! exposes no raw frame, follower, pop, acknowledgement, or consuming cursor
+//! edge.
+//!
+//! One original token remains at the queue root for the whole sequential
+//! speculative prefix. It does not become a cached currentness proof: each
+//! future physical head append must revalidate the complete binding. Future
+//! uncertain-head state must retain logical enqueue behind the head, but must
+//! block physical follower dispatch and acknowledgement until resolution. No
+//! append request/attempt lifecycle, I/O, terminal attestation, resolver,
+//! restart form, durable cursor release, or rotation edge exists yet. Hosts own
+//! asynchronous scheduling, batching choice, admission pacing, and cancellation
+//! without permission to select, coalesce, or reorder queued frames. The byte
+//! ceiling excludes cursor/session/history/replay state and allocation overhead.
+//! Enqueue encodes a candidate before applying that aggregate ceiling, so peak
+//! transient memory may exceed it. Dropping the volatile queue is possible but
+//! is neither cancellation nor acknowledgement; it loses the speculative
+//! branch. Allocation failure, restart reconstruction, and stale-token rebase
+//! remain outside this release.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

@@ -63,8 +63,8 @@ impl LocalLogStorageMutationToken {
             ));
         }
 
-        let frame = match cursor.frame_codec.encode(entry) {
-            Ok(frame) => frame,
+        let frame: Arc<[u8]> = match cursor.frame_codec.encode(entry) {
+            Ok(frame) => frame.into(),
             Err(error) => {
                 return Err(LocalLogStorageAppendPreparationFailure::new(
                     self,
@@ -98,7 +98,7 @@ impl LocalLogStorageMutationToken {
         Ok(LocalLogStorageAppendPlan::new(
             self,
             speculative_cursor,
-            Arc::from(frame),
+            frame,
             LocalLogStorageChunkStart::new(frame_start),
             frame_end,
             observation,

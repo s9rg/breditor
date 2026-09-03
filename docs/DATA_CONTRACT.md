@@ -132,6 +132,11 @@ The implemented Rust slice owns:
   encodes and semantically admits one borrowed entry, and quarantines the exact
   frame with its speculative advanced cursor while typed failure returns both
   unchanged owners;
+- a pure nonempty bounded append FIFO seeded only from that checked plan, with
+  immutable host-selected pending-frame and encoded-byte limits, one token at
+  the root, exact aggregate accounting, an immutable head, ordered followers,
+  and one final speculative cursor; enqueue failure returns the complete
+  unchanged queue while public inspection exposes no frame bytes or followers;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -165,8 +170,8 @@ The following remain deliberately unimplemented:
   integration, and an executable filesystem or IndexedDB adapter (only the
   profile contract, pure-Rust values/attempt mechanics, process-local host
   terminal attestations, both resolver state machines, writer-fence comparison/
-  planning, the process-local acquisition/token lifecycle, and pure append
-  preparation exist);
+  planning, the process-local acquisition/token lifecycle, pure append
+  preparation, and the process-local bounded append FIFO exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -799,6 +804,43 @@ the prior start plus the prior complete value length. A future append
 transaction must recheck the full token binding and exact storage tail end;
 rotation must compare that same tail end with `acceptedPrefixBytes` in its own
 serialized transaction. These decisions add no executable adapter or resolver.
+
+Version `0.0.44` implements the pure nonempty bounded FIFO around checked
+append plans. `LocalLogStorageAppendPlan::try_into_queue` applies immutable
+`LocalLogStorageAppendQueueLimits`, checking the frame-count ceiling before the
+aggregate encoded-byte ceiling. Its defaults are 1,024 frames and 64 MiB;
+either ceiling may be zero. Start rejection returns the exact unchanged plan,
+while success preserves the token, speculative cursor, and frame allocation as
+the distinguished head.
+
+`LocalLogStorageAppendQueue::try_enqueue` borrows another entry, checks pending-
+frame arithmetic and policy, encodes one exact frame, checks frame and pending-
+byte arithmetic and policy, then semantically admits those bytes at the final
+speculative tail. Success adds the same allocation at the back without changing
+the head and returns a step with that new frame's range, byte length, and
+admission outcome. Failure returns the complete unchanged queue and leaves the
+entry caller-owned. The queue exposes exact count/byte totals and remaining
+capacity, the final speculative cursor/end, and only head
+start/end/length/admission metadata. It exposes no raw frame, follower
+selection, removal, request, acknowledgement, cursor release, or rotation edge.
+
+The original token is retained once at the queue root for the whole sequential
+speculative prefix. It is not presumed current: each future physical head
+append must still compare its complete binding transactionally. A future
+uncertain-head state must keep accepting logical tail entries, but all physical
+followers remain blocked until that exact head is resolved. The implementation
+has no append attempt/request/terminal lifecycle, resolver, restart form,
+drained state, or durable FIFO acknowledgement yet.
+
+These limits count only exact encoded frame bytes and frame slots. They do not
+bound the speculative cursor's editor session, history, replay indexes, decoded
+entries, queue/`Arc` metadata, or allocator overhead. Dropping the queue is
+possible but has no contract meaning: it is neither cancellation nor
+acknowledgement and loses the volatile speculative branch. Enqueue materializes
+one exact candidate before checking aggregate retained-byte capacity, so
+transient peak memory can exceed that ceiling. Allocation failure, process
+restart, and rebasing or extracting a queue whose token became stale remain
+outside this version's typed recovery.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -3807,12 +3849,61 @@ ownership can defeat non-`Clone` exclusivity hygiene, so transactional checks
 remain authoritative. One-frame chunk values add record/key overhead, and the
 fixed five-store IndexedDB scope still serializes unrelated editor scopes.
 
-Correct durable FIFO dispatch, acknowledgement order, and the barrier between
-pending appends and rotation are core state-machine responsibilities rather
-than unchecked host conventions. The host remains responsible for when to run
-that state machine: asynchronous scheduling, batching policy, backpressure,
-cancellation, browser task lifetime, and rate limiting. Version `0.0.43`
-contains only one plan primitive and does not yet implement that queue.
+Version `0.0.44` consumes one checked plan into a nonempty
+`LocalLogStorageAppendQueue`. The queue owns exactly one root token, one final
+cursor already advanced through its entire pending prefix, a structurally
+distinguished head, and zero or more FIFO followers. Its immutable
+`LocalLogStorageAppendQueueLimits` independently cap pending frames and exact
+aggregate encoded bytes. The default ceilings are 1,024 and 67,108,864 bytes;
+zero is an explicit disabled policy. Starting checks count before bytes and
+returns the allocation-identical plan on either rejection.
+
+`try_enqueue` has fixed validation precedence: pending-frame count overflow,
+pending-frame limit, deterministic frame encoding, platform frame-length
+conversion, aggregate pending-byte overflow, pending-byte limit, then the
+existing atomic tail transition. The byte policy is therefore decided before
+semantic cursor advancement. On success the admitted `Arc<[u8]>` becomes the
+new back item and the original head is unchanged. The returned enqueue step
+causally exposes only that new frame's bounded range, length, and semantic
+outcome while owning the updated queue. On every typed failure the whole queue,
+including its token, cursor, head/follower allocations, counters, and limits,
+is returned unchanged; the borrowed entry remains caller-owned.
+
+Public queue inspection exposes its binding and token by shared reference,
+final speculative cursor/end, limits, exact pending totals and remaining
+capacity, and only the head's start, end, encoded length, and semantic
+observation outcome. Raw frame bytes and follower metadata remain core-private.
+There is no public pop, discard, reorder, coalesce, consuming-parts, cursor-
+release, or rotation action. Thus the implemented FIFO proves in-memory
+preparation order, capacity accounting, and head selection, but not physical
+dispatch or durable acknowledgement order.
+
+The root token can cover this whole speculative prefix because append does not
+change its selected/writer binding. It still may be revoked between any two
+transactions, so every future head attempt must repeat the complete binding and
+tail comparison. A future uncertain-head lifecycle must retain this queue and
+continue logical enqueue behind the head, but must not expose any follower for
+physical dispatch or acknowledgement until the head is terminally resolved.
+Only a future acknowledgement transition may remove that head, update durable
+prefix accounting, and ultimately publish a drained owner eligible for cursor
+release or rotation.
+
+Correct durable FIFO dispatch, acknowledgement order, and the append/rotation
+barrier remain future core state-machine responsibilities rather than unchecked
+host conventions. The host remains responsible for asynchronous scheduling,
+batching choice, admission pacing, cancellation, browser task lifetime, and
+rate limiting, without permission to select a follower, coalesce, or reorder
+queue items. Dropping the owner is possible but has no cancellation or
+acknowledgement meaning.
+
+The queue limits cover encoded frame slots and bytes, not total heap retained by
+the speculative cursor, session/history/replay state, decoded entries,
+containers, shared bindings, or allocator overhead. Rust may drop the entire
+queue, but no drop is an acknowledgement or cancellation; it loses the volatile
+branch. One candidate is fully encoded before aggregate capacity is decided, so
+transient peak memory may exceed the retained-byte ceiling. Allocation failure,
+process loss, and a stale-token rebase/extraction path have no typed transition
+in v0.0.44.
 
 A JavaScript adapter and real-browser profile validation remain later work.
 Consuming exclusive-owner typestate still requires a separately specified held
@@ -3825,9 +3916,9 @@ optional authenticity, authorization ownership, atomic checkpoint/log replace
 and append/flush/fsync/ack behavior, actual crash-tail truncation, retry
 reconstruction after process failure, rollback protection, and multi-writer
 fencing remain separate storage-layer gates.
-Asynchronous scheduling, batching policy, backpressure, cancellation, and
-admission rate limiting remain host concerns. A future host queue may not
-reorder the core's durable FIFO or acknowledgement transitions.
+Asynchronous scheduling, batching choice, backpressure, cancellation, and
+admission rate limiting remain host concerns. A host scheduler may not bypass
+the core FIFO's head or future acknowledgement transitions.
 The log must not silently treat optimistic operation guards or caller-owned
 lineage/revision values as exactly-once delivery. Browser `beforeinput`,
 composition ownership, IME buffering, and paste chunking remain adapter

@@ -10,9 +10,10 @@ use super::{
 ///
 /// Preparation has already encoded exactly one complete Local Log Frame V1 and
 /// atomically admitted those exact bytes into the owned cursor. The resulting
-/// post-append cursor remains quarantined inside this plan: the transition is
-/// speculative until a future request-correlated storage transaction compares
-/// the token binding, appends the exact frame, and emits terminal completion.
+/// post-append cursor remains quarantined inside this plan or the append queue
+/// that consumes it: the transition is speculative until a future request-
+/// correlated storage transaction compares the token binding, appends the
+/// exact frame, and emits terminal completion.
 /// One future storage chunk is exactly this one frame and its key component is
 /// the frame's generation-relative starting byte offset.
 ///
@@ -59,7 +60,7 @@ use super::{
 ///     );
 /// }
 /// ```
-#[must_use = "an append plan quarantines speculative state until storage completion"]
+#[must_use = "an append plan must enter a queue or remain quarantined until storage completion"]
 pub struct LocalLogStorageAppendPlan {
     token: LocalLogStorageMutationToken,
     speculative_cursor: LocalLogTailCursor,
@@ -81,6 +82,30 @@ impl LocalLogStorageAppendPlan {
         Self { token, speculative_cursor, frame, chunk_start, frame_end, observation }
     }
 
+    pub(super) const fn frame(&self) -> &Arc<[u8]> {
+        &self.frame
+    }
+
+    pub(super) fn into_parts(
+        self,
+    ) -> (
+        LocalLogStorageMutationToken,
+        LocalLogTailCursor,
+        Arc<[u8]>,
+        LocalLogStorageChunkStart,
+        u64,
+        LocalLogObservationOutcome,
+    ) {
+        (
+            self.token,
+            self.speculative_cursor,
+            self.frame,
+            self.chunk_start,
+            self.frame_end,
+            self.observation,
+        )
+    }
+
     /// Returns the retained revocable mutation authority.
     ///
     /// The token must be revalidated inside the future append transaction and
@@ -97,8 +122,10 @@ impl LocalLogStorageAppendPlan {
 
     /// Returns the quarantined cursor after speculative exact-frame admission.
     ///
-    /// Shared inspection grants no way to publish or continue this cursor. Its
-    /// state is not durable until a later terminal contract releases it.
+    /// Shared inspection grants no way to publish or continue this cursor.
+    /// Consuming the plan into an append queue may continue the same
+    /// speculative branch; its state is not durable until a later terminal
+    /// contract releases it.
     #[must_use]
     pub const fn speculative_cursor(&self) -> &LocalLogTailCursor {
         &self.speculative_cursor

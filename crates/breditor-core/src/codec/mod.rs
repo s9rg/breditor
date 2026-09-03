@@ -30,6 +30,17 @@ mod local_log_storage_append_plan;
 mod local_log_storage_append_preparation_error;
 mod local_log_storage_append_preparation_failure;
 mod local_log_storage_append_prepare;
+mod local_log_storage_append_queue;
+#[cfg(test)]
+mod local_log_storage_append_queue_adversarial_tests;
+mod local_log_storage_append_queue_enqueue;
+mod local_log_storage_append_queue_enqueue_error;
+mod local_log_storage_append_queue_enqueue_failure;
+mod local_log_storage_append_queue_enqueue_step;
+mod local_log_storage_append_queue_limits;
+mod local_log_storage_append_queue_start;
+mod local_log_storage_append_queue_start_error;
+mod local_log_storage_append_queue_start_failure;
 mod local_log_storage_attempt_aborted;
 mod local_log_storage_attempt_aborted_resubmit;
 mod local_log_storage_attempt_plan;
@@ -245,6 +256,20 @@ pub use local_log_storage_append_preparation_error::{
     LocalLogStorageAppendPreparationError, LocalLogStorageAppendPreparationErrorCode,
 };
 pub use local_log_storage_append_preparation_failure::LocalLogStorageAppendPreparationFailure;
+pub use local_log_storage_append_queue::LocalLogStorageAppendQueue;
+pub use local_log_storage_append_queue_enqueue_error::{
+    LocalLogStorageAppendQueueEnqueueError, LocalLogStorageAppendQueueEnqueueErrorCode,
+};
+pub use local_log_storage_append_queue_enqueue_failure::LocalLogStorageAppendQueueEnqueueFailure;
+pub use local_log_storage_append_queue_enqueue_step::LocalLogStorageAppendQueueEnqueueStep;
+pub use local_log_storage_append_queue_limits::{
+    DEFAULT_LOCAL_LOG_STORAGE_APPEND_QUEUE_MAX_PENDING_BYTES,
+    DEFAULT_LOCAL_LOG_STORAGE_APPEND_QUEUE_MAX_PENDING_FRAMES, LocalLogStorageAppendQueueLimits,
+};
+pub use local_log_storage_append_queue_start_error::{
+    LocalLogStorageAppendQueueStartError, LocalLogStorageAppendQueueStartErrorCode,
+};
+pub use local_log_storage_append_queue_start_failure::LocalLogStorageAppendQueueStartFailure;
 pub use local_log_storage_attempt_aborted::LocalLogStorageAttemptAborted;
 pub use local_log_storage_attempt_preparation_error::{
     LocalLogStorageAttemptPreparationError, LocalLogStorageAttemptPreparationErrorCode,

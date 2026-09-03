@@ -25,8 +25,9 @@ attempt identities, one-shot borrowed request views, exact resubmission, typed
 physical terminal states, and request-correlated root and rotation resolution,
 plus exact mutation-fence comparison/planning and a nominally separate
 request-correlated writer-fence acquisition lifecycle that can issue a
-revocable process-local mutation token, plus a pure token-and-tail-cursor
-single-frame append plan with a quarantined speculative post-cursor,
+revocable process-local mutation token, plus pure token-and-tail-cursor
+single-frame append planning and a nonempty bounded FIFO with one final
+speculative cursor and an exact ordered pending prefix,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -66,7 +67,8 @@ Operation records retain exact optimistic guards and pass checked constructors
 plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
-action-state subscription/delivery layer, presentation manifest, browser queue,
+action-state subscription/delivery layer, presentation manifest, browser
+scheduler,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
@@ -80,8 +82,9 @@ construct another entry without reconstructing the checkpoint. Fresh genesis
 is still a complete-vector boundary; an empty genesis generation can be
 compacted to bootstrap only this in-memory successor-admission path, not a
 storage scope, authoritative head, or first storage-generation manifest. The
-core does not queue, schedule, persist, flush, acknowledge, or rate-limit
-attempts.
+core does not schedule, persist, flush, acknowledge, or rate-limit attempts.
+Its append FIFO is synchronous process-local speculative ownership, not an
+asynchronous browser work queue.
 
 Framed successor observation can instead begin from a checkpoint anchor at
 generation-relative byte offset zero. The cursor fixes one frame policy and
@@ -436,9 +439,45 @@ This release has no append adapter request, I/O, terminal attestation,
 acknowledgement, uncertain resolver, or restart reconstruction. Cursor byte
 provenance is still caller-trusted, non-`Clone` remains ownership hygiene, one
 frame per record adds storage overhead, and all scopes still serialize through
-the profile's fixed store set. Future core typestate must own durable FIFO/order
-correctness, while the host owns scheduling, batching, backpressure, and
-cancellation.
+the profile's fixed store set.
+
+Version `0.0.44` adds `LocalLogStorageAppendQueue`, a pure nonempty bounded FIFO
+seeded only by consuming one checked append plan. Start checks pending-frame
+capacity before aggregate encoded-byte capacity and returns the allocation-
+identical plan on rejection. `LocalLogStorageAppendQueueLimits` independently
+bounds pending frames and retained encoded bytes; its defaults are 1,024 frames
+and 64 MiB, while zero in either relevant dimension can reject the first plan.
+
+Consuming `try_enqueue` borrows one entry and checks frame-count arithmetic and
+policy, deterministic Frame V1 encoding, frame/aggregate-byte arithmetic and
+policy, then semantic tail admission. Success appends the same encoded
+allocation behind the immutable head and publishes one final cursor advanced
+through every pending frame. A success step owns that queue and reports the
+just-enqueued frame's bounded range, byte length, and admission outcome. Failure
+returns the complete unchanged queue and leaves the entry caller-owned. Public
+inspection exposes exact totals, remaining capacity, speculative tail state,
+and only head start/end/length and observation metadata. Raw bytes, follower
+selection, removal, dispatch, acknowledgement, pop, cursor release, and
+rotation are unavailable.
+
+The queue owns the original token once for the whole speculative prefix. This
+does not cache token currentness: each future physical head append must compare
+the complete binding in its own serialized transaction. A later uncertain-head
+state must retain logical enqueue, but it must block all follower dispatch
+and acknowledgement until that exact head is resolved. This release has no
+append attempt/request lifecycle, terminal attestation, resolver, restart form,
+or drained/rotation transition. The host continues to own scheduling, batching
+choice, admission pacing, and cancellation without gaining permission to
+select a follower, coalesce, or reorder the core FIFO.
+
+The queue byte ceiling counts encoded frame allocations, not the semantic
+cursor's session, history, replay indexes, decoded entries, container metadata,
+or allocation overhead. Enqueue encodes one exact candidate before applying the
+aggregate-byte ceiling, so transient peak memory can exceed it. Dropping the
+volatile queue is possible in Rust but is not cancellation or acknowledgement;
+it loses the speculative branch. There is no typed allocation-failure recovery,
+process-restart reconstruction, or stale-token rebase/extraction path in this
+release.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch
