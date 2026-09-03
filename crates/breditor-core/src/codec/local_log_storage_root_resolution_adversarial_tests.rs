@@ -327,8 +327,22 @@ fn retired_observation_case(
     selection_byte_length_delta: u64,
     corrupt_successor_index: bool,
 ) -> TestResult<(LocalLogStorageRootResolution, LocalLogStorageRootResolutionObservation)> {
-    let resolution = predecessor_root_resolution(fixture)?;
     let current = next_selected_rotation(fixture)?;
+    retired_observation_case_with_current(
+        fixture,
+        current,
+        selection_byte_length_delta,
+        corrupt_successor_index,
+    )
+}
+
+fn retired_observation_case_with_current(
+    fixture: &SelectedRotationFixture,
+    current: LocalLogStorageSelectedRoot,
+    selection_byte_length_delta: u64,
+    corrupt_successor_index: bool,
+) -> TestResult<(LocalLogStorageRootResolution, LocalLogStorageRootResolutionObservation)> {
+    let resolution = predecessor_root_resolution(fixture)?;
     let candidate = resolution.candidate_receipt();
     let candidate_transaction_id = candidate.transaction_id().clone();
     let selection_byte_length = u64::try_from(resolution.candidate_json_bytes())?
@@ -1033,7 +1047,9 @@ fn retired_tombstone_and_direct_successor_mismatches_are_distinct() -> TestResul
 fn retired_current_graph_cannot_reuse_nonadjacent_candidate_generation() -> TestResult {
     let fixture =
         SelectedRotationFixture::rotation_with_next_active_reusing_root_checkpoint_generation()?;
-    let (resolution, observation) = retired_observation_case(&fixture, 0, false)?;
+    let current = fixture.candidate_selected_bypassing_identity_freshness()?;
+    let (resolution, observation) =
+        retired_observation_case_with_current(&fixture, current, 0, false)?;
     assert_eq!(
         collision_reason(complete(resolution, observation)?)?,
         LocalLogStorageRootResolutionCollisionReason::CurrentIdentityReuse
@@ -1044,7 +1060,7 @@ fn retired_current_graph_cannot_reuse_nonadjacent_candidate_generation() -> Test
 #[test]
 fn retired_current_active_generation_cannot_reuse_candidate_active_fence() -> TestResult {
     let fixture = SelectedRotationFixture::rotation_with_next_active_reusing_root_active_fence()?;
-    let current = next_selected_rotation(&fixture)?;
+    let current = fixture.candidate_selected_bypassing_identity_freshness()?;
     let resolution = predecessor_root_resolution(&fixture)?;
     let current_binding = current.binding();
     let candidate_binding = resolution.candidate_binding();
@@ -1070,7 +1086,9 @@ fn retired_current_active_generation_cannot_reuse_candidate_active_fence() -> Te
     );
     drop(resolution);
 
-    let (resolution, observation) = retired_observation_case(&fixture, 0, false)?;
+    let current = fixture.candidate_selected_bypassing_identity_freshness()?;
+    let (resolution, observation) =
+        retired_observation_case_with_current(&fixture, current, 0, false)?;
     assert_eq!(
         collision_reason(complete(resolution, observation)?)?,
         LocalLogStorageRootResolutionCollisionReason::CurrentIdentityReuse
@@ -1173,6 +1191,36 @@ fn other_scope_is_source_aware_and_same_incarnation_fails_closed() -> TestResult
         collision_reason(outcome)?,
         LocalLogStorageRootResolutionCollisionReason::OtherScopeMismatch
     );
+    Ok(())
+}
+
+#[test]
+fn replacement_scope_may_reuse_scalar_ids_namespaced_by_its_incarnation() -> TestResult {
+    let candidate = candidate_fixture()?;
+    for (source, expected) in [
+        (
+            LocalLogStorageRootResolutionSourceKind::Uncertain,
+            LocalLogStorageRootResolutionOutcomeKind::ScopeAlreadyProvisioned,
+        ),
+        (
+            LocalLogStorageRootResolutionSourceKind::HostAttestedCommitted,
+            LocalLogStorageRootResolutionOutcomeKind::StorageResetOrIndeterminate,
+        ),
+    ] {
+        let resolution = candidate.resolution(source)?;
+        let selected = candidate.normalized_root(DATABASE_INCARNATION, OTHER_SCOPE_INCARNATION)?;
+        assert_eq!(selected.transaction_id(), resolution.candidate_receipt().transaction_id());
+        assert_eq!(selected.selected_head_id(), resolution.candidate_receipt().committed_head_id());
+        assert_ne!(
+            selected.scope_incarnation_id(),
+            resolution.candidate_receipt().scope_incarnation_id()
+        );
+        let index_transaction_id = selected.transaction_id().clone();
+        let observation = LocalLogStorageRootResolutionObservation::other_valid_scope(
+            LocalLogStorageRootOtherScopeObservation::new(selected, index_transaction_id),
+        );
+        assert_eq!(complete(resolution, observation)?.kind(), expected);
+    }
     Ok(())
 }
 

@@ -22,7 +22,7 @@ byte-exact selected-envelope retention/comparison, and selected-root-aware
 next-rotation preparation/encoding/decoding, plus exact root/rotation attempt
 preparation, non-`Clone` `Prepared`/`Uncertain` state, core-issued process-local
 attempt identities, one-shot borrowed request views, exact resubmission, typed
-physical terminal states, and request-correlated root-only resolution,
+physical terminal states, and request-correlated root and rotation resolution,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -66,7 +66,7 @@ action-state subscription/delivery layer, presentation manifest, browser queue,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, rotation resolution, durable append/acknowledgement,
+scope provisioning, durable append/acknowledgement,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -301,9 +301,35 @@ can still publish later, so every attempt must repeat comparison and authority
 checks. All other outcomes are non-retry classifications and release no writer,
 checkpoint anchor, or semantic owner. The crate still performs no storage I/O
 and cannot authenticate host events, prove durable or present currentness, or
-release a long-lived exclusive Rust writer. Rotation resolution remains
-deferred to `0.0.40`, crash-time plan reconstruction remains unimplemented, and
-these storage formats remain unstable pre-`0.1` contracts.
+release a long-lived exclusive Rust writer. Crash-time plan reconstruction
+remains unimplemented, and these storage formats remain unstable pre-`0.1`
+contracts.
+
+Version `0.0.40` adds the nominally separate rotation resolver over the same
+four surviving attempt sources. Its separate request identity is minted at
+egress; pre-egress or stale evidence is returned with the unchanged resolver,
+and restart preserves the in-memory plan while clearing correlation. In an
+intact expected scope, clean candidate absence is advisory
+`RetryEligibleAtResolution` only for an uncertain, aborted, or unattempted
+source and only while the exact snapshotted prior selected envelope remains
+current. Candidate transaction, committed-head index,
+candidate active-generation key, and the complete candidate active-generation
+chunk prefix must all be absent. The same absence after
+`HostAttestedCommitted` is `CollisionOrCorruption`; one exact direct competing
+rotation is
+`DefinitelyNotCommittedConflict` only for the three non-host-committed sources.
+Rotation never yields root-only `ScopeAlreadyProvisioned`.
+
+Positive classifications validate branch-specific exact selection bytes,
+generation transitions, head indexes, and required older tombstones. Retired
+resolution distinguishes an exact direct successor, whose normalized bytes
+privately supply the sealed log ID/frame check, from an already-retired
+successor whose tombstone can prove only retained transaction/head/index facts
+and the candidate active generation's retirement link. Only retry eligibility
+can exact-resubmit. This remains a pure-Rust, process-local classification
+boundary: the crate still has no adapter, browser-event authentication,
+durability, stable writer authority, process-restart reconstruction, arbitrary
+far-later conflict classification, or ownership release.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

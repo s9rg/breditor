@@ -19,9 +19,11 @@ use super::{
 ///
 /// The value retains the complete independently trusted selected binding, the
 /// byte-exact canonical current selection, the byte-exact immediate predecessor
-/// for a rotation, and the complete decoded checkpoint anchor. Its retained
-/// rotation history is O(1), but the exact current and predecessor values may
-/// each contain a full checkpoint payload and therefore are not constant-size.
+/// for a rotation, the predecessor's byte-derived checkpoint-generation
+/// identity (plus its sealed frame when that predecessor is a rotation), and
+/// the complete decoded checkpoint anchor. Its retained rotation history is
+/// O(1), but the exact current and predecessor values may each contain a full
+/// checkpoint payload and therefore are not constant-size.
 ///
 /// This type deliberately has neither `Clone` nor a public constructor. Its
 /// inspection getters do not return the anchor, open a writable successor,
@@ -36,6 +38,7 @@ pub struct LocalLogStorageSelectedRoot {
     checkpoint_json: String,
     current_selection_json: Arc<str>,
     predecessor_selection_json: Option<Arc<str>>,
+    predecessor_checkpoint_log_id: Option<LocalLogId>,
     predecessor_rotation_sealed_generation:
         Option<LocalLogStoragePredecessorRotationSealedGeneration>,
     _checkpoint_anchor: LocalLogCheckpointAnchor,
@@ -73,6 +76,7 @@ pub(super) struct LocalLogStorageSelectedRootParts {
     pub(super) checkpoint_json: String,
     pub(super) current_selection_json: String,
     pub(super) predecessor_selection_json: Option<String>,
+    pub(super) predecessor_checkpoint_log_id: Option<LocalLogId>,
     pub(super) predecessor_rotation_sealed_generation:
         Option<LocalLogStoragePredecessorRotationSealedGeneration>,
     pub(super) checkpoint_anchor: LocalLogCheckpointAnchor,
@@ -87,6 +91,7 @@ impl LocalLogStorageSelectedRoot {
             == LocalLogStorageSelectionKind::Rotation;
         if requires_predecessor != parts.binding.predecessor_receipt().is_some()
             || requires_predecessor != parts.predecessor_selection_json.is_some()
+            || requires_predecessor != parts.predecessor_checkpoint_log_id.is_some()
         {
             return Err(LocalLogStorageSelectedRootError::RuntimeInvariant);
         }
@@ -102,6 +107,7 @@ impl LocalLogStorageSelectedRoot {
             checkpoint_json: parts.checkpoint_json,
             current_selection_json: Arc::from(parts.current_selection_json),
             predecessor_selection_json: parts.predecessor_selection_json.map(Arc::from),
+            predecessor_checkpoint_log_id: parts.predecessor_checkpoint_log_id,
             predecessor_rotation_sealed_generation: parts.predecessor_rotation_sealed_generation,
             _checkpoint_anchor: parts.checkpoint_anchor,
         })
@@ -243,6 +249,11 @@ impl LocalLogStorageSelectedRoot {
         self.predecessor_selection_json.as_deref()
     }
 
+    /// Returns the permanent checkpoint generation decoded from the exact predecessor.
+    pub(super) const fn predecessor_checkpoint_log_id(&self) -> Option<&LocalLogId> {
+        self.predecessor_checkpoint_log_id.as_ref()
+    }
+
     /// Returns sealed-generation facts decoded from an exact rotation predecessor.
     pub(super) const fn predecessor_rotation_sealed_generation(
         &self,
@@ -275,6 +286,7 @@ impl LocalLogStorageSelectedRoot {
             checkpoint_json: _,
             current_selection_json,
             predecessor_selection_json,
+            predecessor_checkpoint_log_id: _,
             predecessor_rotation_sealed_generation: _,
             _checkpoint_anchor: _,
         } = self;
@@ -306,6 +318,7 @@ impl fmt::Debug for LocalLogStorageSelectedRoot {
                 "predecessor_selection_json_bytes",
                 &self.predecessor_selection_json.as_ref().map(|json| json.len()),
             )
+            .field("predecessor_checkpoint_log_id", &self.predecessor_checkpoint_log_id)
             .field(
                 "predecessor_rotation_sealed_generation",
                 &self.predecessor_rotation_sealed_generation,

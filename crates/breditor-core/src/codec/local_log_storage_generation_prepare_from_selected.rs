@@ -90,19 +90,37 @@ fn validate_known_identity_reuse(
     outcome: &LocalLogTailCompactionOutcome,
     inputs: &LocalLogStorageGenerationPreparationInputs,
 ) -> Result<(), LocalLogStorageGenerationCodecError> {
-    if inputs.transaction_id() == selected.transaction_id() {
+    if inputs.transaction_id() == selected.transaction_id()
+        || selected
+            .predecessor_receipt()
+            .is_some_and(|receipt| inputs.transaction_id() == receipt.transaction_id())
+    {
         return Err(LocalLogStorageGenerationContinuityError::TransactionIdReused.into());
     }
     if selected
         .previous_head_id()
         .is_some_and(|head_id| codec.binding().committed_head_id() == head_id)
+        || selected
+            .predecessor_receipt()
+            .and_then(|receipt| receipt.expected_head_id())
+            .is_some_and(|head_id| codec.binding().committed_head_id() == head_id)
     {
         return Err(LocalLogStorageGenerationContinuityError::KnownHeadIdReused.into());
     }
-    if outcome.anchor().successor_log_id() == selected.checkpoint_log_id() {
+    if outcome.anchor().successor_log_id() == selected.checkpoint_log_id()
+        || selected
+            .predecessor_checkpoint_log_id()
+            .is_some_and(|log_id| outcome.anchor().successor_log_id() == log_id)
+    {
         return Err(LocalLogStorageGenerationContinuityError::KnownGenerationIdReused.into());
     }
-    if inputs.fence_id() == selected.activation_fence_id() {
+    if inputs.fence_id() == selected.activation_fence_id()
+        || selected
+            .binding()
+            .checkpoint_generation()
+            .activated_fence_id()
+            .is_some_and(|fence_id| inputs.fence_id() == fence_id)
+    {
         return Err(LocalLogStorageGenerationContinuityError::KnownFenceIdReused.into());
     }
     Ok(())

@@ -31,7 +31,7 @@ This repository currently contains the first end-to-end Rust-core slice:
   byte-exact selected-envelope retention and comparison, and next-rotation
   validation against that normalized selected state, plus exact non-owning
   publication plans, process-local physical attempt IDs, typed host terminal
-  attestations, and request-correlated root-only resolver typestates and
+  attestations, and request-correlated root and rotation resolver typestates and
   classifications;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
@@ -83,8 +83,7 @@ attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
-scope provisioning, rotation storage resolution, durable append and
-acknowledgement,
+scope provisioning, durable append and acknowledgement,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -288,10 +287,35 @@ copied request bytes may still publish later, and every later attempt must
 repeat storage comparisons and acquire separate authority. Resolver IDs,
 evidence, plans, and states have no wire or process-restart representation.
 Rust performs no IndexedDB I/O, cannot authenticate the host's terminal event,
-and grants no durability, current writer, or ownership claim. Rotation
-resolution remains the separate `0.0.40` checkpoint. The profile's revocable
-per-mutation epoch cannot release a long-lived exclusive Rust writer. All
-Storage V1 shapes remain unstable pre-`0.1` contracts rather than permanent
+and grants no durability, current writer, or ownership claim.
+
+Version `0.0.40` implements the nominally separate process-local rotation
+resolver over the same four surviving attempt sources. It compares one complete
+current scope graph with the rotation plan's candidate and snapshotted prior
+selection. Its separate request identity is minted at egress; pre-egress or
+stale evidence is returned with the unchanged resolver, and restart preserves
+the in-memory plan while clearing correlation. Clean absence is advisory retry
+eligibility only when the source is
+uncertain, aborted, or unattempted, the exact prior selected envelope remains
+current under the directional cleanup relation, and the candidate transaction,
+committed-head index, candidate active-generation key, and complete candidate
+active-generation chunk prefix are absent. The same intact-scope absence after
+`HostAttestedCommitted` is collision/corruption. One exact direct competing
+rotation is `DefinitelyNotCommittedConflict` only for the three non-host-
+committed sources; rotation has no `ScopeAlreadyProvisioned` outcome.
+
+Selected, superseded, and retired classifications validate their branch-
+specific exact bytes, generation relationships, indexes, and transaction
+tombstones. Retired direct-successor validation keeps the same soundness split
+as root resolution: an exact successor uses sealed log/frame facts privately
+derived from normalized bytes, while an already-retired successor proves only
+retained transaction/head/index facts and the active generation's retirement
+link. Only retry eligibility can exact-resubmit. The profile's revocable per-
+mutation epoch cannot release a long-lived exclusive Rust writer. Rotation
+resolution remains pure Rust: no IndexedDB adapter, browser-event
+authentication, process-restart reconstruction, arbitrary far-later conflict
+classification, durability, or ownership release is implemented. All Storage
+V1 shapes remain unstable pre-`0.1` contracts rather than permanent
 compatibility promises.
 
 ## Development

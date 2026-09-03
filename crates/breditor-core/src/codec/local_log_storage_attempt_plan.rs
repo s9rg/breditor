@@ -1,5 +1,7 @@
 use std::{fmt, sync::Arc};
 
+use crate::local_log::LocalLogId;
+
 use super::{
     LocalLogStorageAttemptPreparationError, LocalLogStorageSelectedBinding,
     LocalLogStorageSelectedCheckpointGenerationState, LocalLogStorageSelectedRoot,
@@ -20,6 +22,7 @@ pub(super) struct LocalLogStorageRotationAttemptContext {
     selected_binding: LocalLogStorageSelectedBinding,
     current_selection_json: Arc<str>,
     predecessor_selection_json: Option<Arc<str>>,
+    predecessor_checkpoint_log_id: Option<LocalLogId>,
 }
 
 impl LocalLogStorageRotationAttemptContext {
@@ -33,6 +36,11 @@ impl LocalLogStorageRotationAttemptContext {
 
     pub(super) fn predecessor_selection_json(&self) -> Option<&str> {
         self.predecessor_selection_json.as_deref()
+    }
+
+    /// Returns the permanent checkpoint generation decoded from the retained predecessor.
+    pub(super) const fn predecessor_checkpoint_log_id(&self) -> Option<&LocalLogId> {
+        self.predecessor_checkpoint_log_id.as_ref()
     }
 }
 
@@ -89,12 +97,14 @@ impl LocalLogStorageAttemptPlan {
     ) -> Result<Self, LocalLogStorageAttemptPreparationError> {
         let (candidate_binding, candidate_json, candidate_predecessor_json) =
             normalized_candidate.into_attempt_envelope();
+        let predecessor_checkpoint_log_id = selected.predecessor_checkpoint_log_id().cloned();
         let (selected_binding, current_selection_json, predecessor_selection_json) =
             selected.snapshot_attempt_envelope();
         let rotation_context = LocalLogStorageRotationAttemptContext {
             selected_binding,
             current_selection_json,
             predecessor_selection_json,
+            predecessor_checkpoint_log_id,
         };
         Self::rotation_from_envelopes(
             candidate_binding,
@@ -119,6 +129,8 @@ impl LocalLogStorageAttemptPlan {
                 != Some(rotation_context.selected_binding.current_receipt())
             || selected_requires_predecessor
                 != rotation_context.predecessor_selection_json.is_some()
+            || selected_requires_predecessor
+                != rotation_context.predecessor_checkpoint_log_id.is_some()
             || candidate_predecessor_json != Some(rotation_context.current_selection_json.as_ref())
         {
             return Err(LocalLogStorageAttemptPreparationError::RuntimeInvariant {
@@ -156,6 +168,20 @@ impl LocalLogStorageAttemptPlan {
 
     pub(super) const fn candidate(&self) -> &LocalLogStorageAttemptCandidate {
         &self.candidate
+    }
+
+    pub(super) fn rotation_context(&self) -> Option<&LocalLogStorageRotationAttemptContext> {
+        match &self.candidate {
+            LocalLogStorageAttemptCandidate::Root => None,
+            LocalLogStorageAttemptCandidate::Rotation { context } => Some(context),
+        }
+    }
+
+    pub(super) fn validated_rotation_context(&self) -> &LocalLogStorageRotationAttemptContext {
+        let Some(context) = self.rotation_context() else {
+            unreachable!("validated rotation owner retained a root plan")
+        };
+        context
     }
 
     pub(super) fn selected_binding(&self) -> Option<&LocalLogStorageSelectedBinding> {
@@ -410,6 +436,7 @@ mod tests {
             selected_binding: root_binding()?,
             current_selection_json: Arc::from("CURRENTPAYLOADSENTINEL"),
             predecessor_selection_json: None,
+            predecessor_checkpoint_log_id: None,
         };
         assert!(matches!(
             LocalLogStorageAttemptPlan::rotation_from_envelopes(
@@ -427,6 +454,7 @@ mod tests {
             selected_binding: first_rotation_binding()?,
             current_selection_json: Arc::from("CURRENTPAYLOADSENTINEL"),
             predecessor_selection_json: None,
+            predecessor_checkpoint_log_id: Some(LocalLogId::try_new("log:g0")?),
         };
         assert!(matches!(
             LocalLogStorageAttemptPlan::rotation_from_envelopes(
@@ -444,6 +472,7 @@ mod tests {
             selected_binding: root_binding()?,
             current_selection_json: Arc::from("CURRENTPAYLOADSENTINEL"),
             predecessor_selection_json: Some(Arc::from("PREDECESSORPAYLOADSENTINEL")),
+            predecessor_checkpoint_log_id: None,
         };
         assert!(matches!(
             LocalLogStorageAttemptPlan::rotation_from_envelopes(
@@ -461,6 +490,7 @@ mod tests {
             selected_binding: root_binding()?,
             current_selection_json: Arc::from("CURRENTPAYLOADSENTINEL"),
             predecessor_selection_json: None,
+            predecessor_checkpoint_log_id: None,
         };
         assert!(matches!(
             LocalLogStorageAttemptPlan::rotation_from_envelopes(
@@ -478,6 +508,7 @@ mod tests {
             selected_binding: first_rotation_binding()?,
             current_selection_json: Arc::from("CURRENTPAYLOADSENTINEL"),
             predecessor_selection_json: Some(Arc::from("PREDECESSORPAYLOADSENTINEL")),
+            predecessor_checkpoint_log_id: Some(LocalLogId::try_new("log:g0")?),
         };
         assert!(matches!(
             LocalLogStorageAttemptPlan::rotation_from_envelopes(
@@ -495,6 +526,7 @@ mod tests {
             selected_binding: first_rotation_binding()?,
             current_selection_json: Arc::from("CURRENTPAYLOADSENTINEL"),
             predecessor_selection_json: Some(Arc::from("PREDECESSORPAYLOADSENTINEL")),
+            predecessor_checkpoint_log_id: Some(LocalLogId::try_new("log:g0")?),
         };
         assert!(matches!(
             LocalLogStorageAttemptPlan::rotation_from_envelopes(
@@ -523,6 +555,7 @@ mod tests {
                 selected_binding: first_rotation_binding()?,
                 current_selection_json: Arc::from(CURRENT),
                 predecessor_selection_json: Some(Arc::from(PREDECESSOR)),
+                predecessor_checkpoint_log_id: Some(LocalLogId::try_new("log:g0")?),
             },
         )?;
         let prepared = LocalLogStoragePreparedAttempt::new(plan);

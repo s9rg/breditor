@@ -229,8 +229,7 @@
 //! applicable only after that exact fixed-scope serialized transaction emits
 //! terminal `complete` after all reads and cursor scans. Request success,
 //! `commit()` return, abort, callback loss, or unrelated completion classifies
-//! nothing.
-//! A physically absent database instead uses the separate
+//! nothing. A physically absent database instead uses the separate
 //! [`codec::LocalLogStorageRootResolutionEvidence::database_open_absent`]
 //! boundary after a versionless open reports `oldVersion == 0`, synchronously
 //! aborts its upgrade, and reaches terminal open-request `error`.
@@ -245,28 +244,96 @@
 //! The closed [`codec::LocalLogStorageRootResolutionOutcome`] distinguishes
 //! selected commit, immediate-predecessor commit, retired identity, advisory
 //! retry eligibility, another valid scope, collision/corruption, and
-//! reset/indeterminate. Clean planned-scope absence yields retry eligibility
-//! only for a non-host-committed source. With surviving host-attested commit it
-//! becomes reset/indeterminate, as does a different valid scope. Physical
-//! database absence, a different valid metadata incarnation, or an all-five-
-//! stores-empty compatible database without `meta/profile` is reset/
+//! reset/indeterminate. Clean planned-scope absence asserts that the scope key,
+//! candidate transaction/index, both generation keys, and every complete
+//! transaction/generation/chunk range for the planned incarnation are
+//! empty. It yields retry eligibility only for a non-host-committed source; a
+//! surviving host-attested commit instead yields reset/indeterminate. A
+//! different scope incarnation is not accepted from a bare scope scalar: its
+//! observation carries a complete normalized valid selected graph plus the
+//! transaction read from its current-head index and proves a distinct lifetime
+//! in the same database/logical scope. It also asserts the planned-incarnation
+//! candidate/index/generation keys and complete candidate chunk prefixes are
+//! absent. That is `ScopeAlreadyProvisioned` only for a non-host-committed
+//! source and reset/indeterminate for a surviving host-attested commit.
+//! Physical database absence, a different valid metadata incarnation, or an
+//! all-five-stores-empty compatible database without `meta/profile` is reset/
 //! indeterminate for every source. Any record without valid profile metadata,
 //! or an expected scope whose append-only candidate association is missing, is
-//! collision or corruption. Retired resolution separately validates the
-//! candidate's direct successor. An exact current-predecessor successor uses
-//! its privately retained, byte-derived sealed log ID and frame, both of which
-//! must equal the root plan's active generation without another host scalar. A
-//! retired successor's Profile V1 tombstone has discarded those JSON/sealed
-//! facts, so only its retained transaction/head identity, head-index mapping,
-//! and the planned active generation's `retiredBy` link are proved—not its
-//! discarded contents. Candidate byte length remains identity screening, not
-//! byte equality. Only
-//! [`codec::LocalLogStorageRootRetryEligibleAtResolution`] can exact-resubmit,
-//! under a fresh attempt ID, and that eligibility is advisory after the read
-//! transaction. No outcome authenticates `IndexedDB`, proves durability or stable
-//! currentness, or releases writer/semantic ownership. Rotation resolution is
-//! deferred to `0.0.40`, and all Storage V1 shapes remain unstable pre-`0.1`
-//! contracts.
+//! collision or corruption.
+//!
+//! Retired root resolution separately validates the candidate's direct
+//! successor. An exact current-predecessor successor uses its privately
+//! retained, byte-derived sealed log ID and frame, both of which must equal the
+//! root plan's active generation without another host scalar. A retired
+//! successor's Profile V1 tombstone has discarded those JSON/sealed facts, so
+//! only its retained transaction/head identity, head-index mapping, and the
+//! planned active generation's `retiredBy` link are proved—not its discarded
+//! contents. Candidate byte length remains identity screening, not byte
+//! equality. Only [`codec::LocalLogStorageRootRetryEligibleAtResolution`] can
+//! exact-resubmit, under a fresh attempt ID, and that eligibility is advisory
+//! after the read transaction.
+//!
+//! Version `0.0.40` adds the nominally separate process-local rotation resolver
+//! over the same four surviving attempt sources. Its borrowed
+//! [`codec::LocalLogStorageRotationResolutionRequest`] mints a distinct opaque
+//! [`local_log::LocalLogStorageRotationResolutionRequestId`] only at egress,
+//! and [`codec::LocalLogStorageRotationResolutionEvidence`] preserves the same
+//! ordinary terminal-`complete` versus physical-database-absence terminal-open-
+//! `error` split. Pre-egress or stale/cross-request evidence returns the
+//! unchanged [`codec::LocalLogStorageRotationResolution`] and unapplied
+//! evidence; restart retains the exact in-memory plan and clears correlation.
+//!
+//! The closed [`codec::LocalLogStorageRotationResolutionOutcome`] is source-
+//! aware. If the exact snapshotted prior selection remains current, advisory
+//! retry requires the candidate transaction, committed-head index, candidate
+//! active-generation key, and complete candidate active-generation chunk
+//! prefix all to be absent, and is available only to an uncertain, aborted, or
+//! unattempted source. The same intact-scope absence after
+//! host-attested commit is collision/corruption. For those three non-host-
+//! committed sources, one exact direct competing rotation can instead produce
+//! `DefinitelyNotCommittedConflict` only when its immediate predecessor is the
+//! plan's prior current selection and its generation, index, and optional old-
+//! predecessor tombstone facts match. A host-attested source with that absent
+//! candidate namespace is collision/corruption. Arbitrary far-later conflict
+//! classification is outside `0.0.40`, and rotation never yields root-only
+//! `ScopeAlreadyProvisioned`.
+//!
+//! An absent expected rotation scope is reset/indeterminate only through the
+//! observation that its scope key and every complete transaction, generation,
+//! and chunk range for the old incarnation are empty. A replacement lifetime
+//! likewise requires a complete normalized valid selected graph plus its
+//! current-head index result; a bare different-incarnation scalar is
+//! insufficient. Missing/replaced database or scope lifetime is reset/
+//! indeterminate for every rotation source, while malformed associations and
+//! conflicting permanent identities fail closed as collision/corruption.
+//!
+//! Rotation selected, superseded, and retired proofs validate only their
+//! branch-specific exact bytes, indexes, generation transitions, and required
+//! tombstones. Selected keeps the plan prior-current transaction exact as the
+//! candidate predecessor and requires an older indexed tombstone only when the
+//! prior selection was itself a rotation. Superseded requires the exact
+//! candidate as the valid current graph's immediate predecessor, both candidate
+//! generation transitions, and a matching current head index. Superseded and
+//! retired proofs also validate the directional prior checkpoint and require
+//! the plan prior-current indexed tombstone plus any optional older predecessor
+//! tombstone. A retired candidate proves its
+//! indexed Profile V1 tombstone, both candidate generation retirement edges,
+//! and an exact-or-retired direct successor. An exact successor's sealed log/
+//! frame facts come privately from normalized bytes; a retired successor can
+//! prove only retained transaction/head/index facts and the candidate active
+//! generation's retirement link, not discarded JSON or sealed fields.
+//! Candidate tombstone length is not byte evidence. Complete candidate chunk-
+//! prefix exhaustion belongs only to absence/conflict observations, not
+//! positive selected/superseded/retired proofs.
+//!
+//! Only [`codec::LocalLogStorageRotationRetryEligibleAtResolution`] can exact-
+//! resubmit the rotation plan under a fresh attempt ID. Neither resolver
+//! authenticates `IndexedDB` events, performs storage I/O, proves durability or
+//! stable currentness, grants adapter/writer authority, reconstructs a plan
+//! after process restart, or releases semantic ownership. All Storage V1 shapes
+//! remain unstable pre-`0.1` contracts.
+//!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and

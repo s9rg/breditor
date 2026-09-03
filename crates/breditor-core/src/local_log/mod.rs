@@ -46,6 +46,7 @@ mod storage_head_id;
 mod storage_profile_id;
 mod storage_profile_version;
 mod storage_root_resolution_request_id;
+mod storage_rotation_resolution_request_id;
 mod storage_scope_id;
 mod storage_scope_incarnation_id;
 mod storage_transaction_id;
@@ -99,6 +100,7 @@ pub use storage_profile_version::{
     LocalLogStorageProfileVersionErrorCode,
 };
 pub use storage_root_resolution_request_id::LocalLogStorageRootResolutionRequestId;
+pub use storage_rotation_resolution_request_id::LocalLogStorageRotationResolutionRequestId;
 pub use storage_scope_id::LocalLogStorageScopeId;
 pub use storage_scope_incarnation_id::LocalLogStorageScopeIncarnationId;
 pub use storage_transaction_id::LocalLogStorageTransactionId;

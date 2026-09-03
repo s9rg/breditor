@@ -67,6 +67,28 @@ impl LocalLogStorageSelectedBinding {
     }
 }
 
+/// Compares one independently observed checkpoint record with an earlier
+/// record for the same permanent generation identity.
+///
+/// This crate-private helper is intentionally narrower than selected-envelope
+/// comparison: rotation resolution can observe a plan-known checkpoint after
+/// it has left the current envelope. Immutable facts must remain exact and the
+/// only accepted state change is cleanup from `Retired` to `Reclaimed`.
+pub(super) fn checkpoint_generation_matches_later(
+    expected: &LocalLogStorageSelectedCheckpointGenerationBinding,
+    observed: &LocalLogStorageSelectedCheckpointGenerationBinding,
+) -> bool {
+    checkpoint_immutable_facts_match(expected, observed)
+        && match (expected.state(), observed.state()) {
+            (expected_state, observed_state) if expected_state == observed_state => true,
+            (
+                LocalLogStorageSelectedCheckpointGenerationState::Retired,
+                LocalLogStorageSelectedCheckpointGenerationState::Reclaimed,
+            ) => true,
+            _ => false,
+        }
+}
+
 fn checkpoint_immutable_facts_match(
     expected: &LocalLogStorageSelectedCheckpointGenerationBinding,
     observed: &LocalLogStorageSelectedCheckpointGenerationBinding,

@@ -59,9 +59,9 @@ impl SelectedRotationFixture {
         Self::new_with_generation_layout(
             LocalLogStorageSelectionKind::Rotation,
             false,
-            true,
             false,
             None,
+            Some("log:g0"),
         )
     }
 
@@ -69,9 +69,19 @@ impl SelectedRotationFixture {
         Self::new_with_generation_layout(
             LocalLogStorageSelectionKind::Rotation,
             false,
-            false,
             true,
             None,
+            None,
+        )
+    }
+
+    fn rotation_with_next_active_log(successor_log: &str) -> TestResult<Self> {
+        Self::new_with_generation_layout(
+            LocalLogStorageSelectionKind::Rotation,
+            false,
+            false,
+            Some("log:outcome-source-checkpoint"),
+            Some(successor_log),
         )
     }
 
@@ -80,8 +90,8 @@ impl SelectedRotationFixture {
             LocalLogStorageSelectionKind::Rotation,
             false,
             false,
-            false,
             Some("log:unrelated"),
+            None,
         )
     }
 
@@ -89,16 +99,16 @@ impl SelectedRotationFixture {
         kind: LocalLogStorageSelectionKind,
         reclaimed_checkpoint: bool,
     ) -> TestResult<Self> {
-        Self::new_with_generation_layout(kind, reclaimed_checkpoint, false, false, None)
+        Self::new_with_generation_layout(kind, reclaimed_checkpoint, false, None, None)
     }
 
     #[allow(clippy::too_many_lines)]
     fn new_with_generation_layout(
         kind: LocalLogStorageSelectionKind,
         reclaimed_checkpoint: bool,
-        next_active_reuses_root_checkpoint: bool,
         next_active_reuses_root_fence: bool,
         rotation_checkpoint_log: Option<&str>,
+        successor_log_override: Option<&str>,
     ) -> TestResult<Self> {
         if kind == LocalLogStorageSelectionKind::Root && reclaimed_checkpoint {
             return Err("a root fixture cannot have a reclaimed checkpoint".into());
@@ -127,8 +137,7 @@ impl SelectedRotationFixture {
                 rotation_checkpoint_log.unwrap_or(default_checkpoint_log)
             }
         };
-        let successor_log =
-            if next_active_reuses_root_checkpoint { "log:g0" } else { default_successor_log };
+        let successor_log = successor_log_override.unwrap_or(default_successor_log);
         let (selected_head, next_head) = match kind {
             LocalLogStorageSelectionKind::Root => ("head:h0", "head:h1"),
             LocalLogStorageSelectionKind::Rotation => ("head:h1", "head:h2"),
@@ -386,6 +395,75 @@ impl SelectedRotationFixture {
     ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
         self.codec().prepare_rotation_from_selected(&self.selected, &self.outcome, &self.inputs)
     }
+
+    /// Builds a normalized hostile-observation value without running the
+    /// freshness checks that legitimate preparation must enforce.
+    pub(super) fn candidate_selected_bypassing_identity_freshness(
+        &self,
+    ) -> TestResult<LocalLogStorageSelectedRoot> {
+        let anchor = self.outcome.anchor();
+        let checkpoint_binding = LocalLogCheckpointBinding::try_new(
+            anchor.session_id().clone(),
+            anchor.checkpoint_log_id().clone(),
+            anchor.successor_log_id().clone(),
+        )?;
+        let checkpoint_json =
+            LocalLogCheckpointJsonCodec::new(self.context.clone(), checkpoint_binding)
+                .encode(anchor)?;
+        let successor_frame =
+            LocalLogStorageGenerationFrameV1::new(self.inputs.successor_frame_limits());
+        let manifest =
+            LocalLogStorageGenerationManifest::from_parts(LocalLogStorageGenerationManifestParts {
+                profile_id: self.binding.profile_id().clone(),
+                profile_version: self.binding.profile_version(),
+                scope_id: self.binding.scope_id().clone(),
+                transaction_id: self.inputs.transaction_id().clone(),
+                expected_head_id: self.binding.expected_head_id().clone(),
+                committed_head_id: self.binding.committed_head_id().clone(),
+                fence_id: self.inputs.fence_id().clone(),
+                session_id: anchor.session_id().clone(),
+                sealed_log_id: anchor.checkpoint_log_id().clone(),
+                successor_log_id: anchor.successor_log_id().clone(),
+                accepted_prefix_bytes: self.outcome.accepted_prefix_bytes(),
+                sealed_frame: LocalLogStorageGenerationFrameV1::new(self.outcome.frame_limits()),
+                successor_frame,
+                checkpoint_json,
+            });
+        let candidate_receipt = LocalLogStorageSelectionReceiptBinding::try_new(
+            self.binding.profile_id().clone(),
+            self.binding.profile_version(),
+            self.selected.database_incarnation_id().clone(),
+            self.binding.scope_id().clone(),
+            self.selected.scope_incarnation_id().clone(),
+            self.inputs.transaction_id().clone(),
+            Some(self.binding.expected_head_id().clone()),
+            self.binding.committed_head_id().clone(),
+            LocalLogStorageSelectionKind::Rotation,
+            anchor.session_id().clone(),
+        )?;
+        let candidate_binding = LocalLogStorageSelectedBinding::try_new(
+            candidate_receipt,
+            Some(self.selected.current_receipt().clone()),
+            LocalLogStorageSelectedCheckpointGenerationBinding::retired(
+                self.selected.active_log_id().clone(),
+                self.selected.session_id().clone(),
+                self.selected.active_frame(),
+                self.selected.activation_fence_id().clone(),
+                self.selected.selected_head_id().clone(),
+                self.binding.committed_head_id().clone(),
+            ),
+            LocalLogStorageSelectedActiveGenerationBinding::new(
+                anchor.successor_log_id().clone(),
+                anchor.session_id().clone(),
+                successor_frame,
+                self.inputs.fence_id().clone(),
+                self.binding.committed_head_id().clone(),
+            ),
+        )?;
+        let json = serde_json::to_string(&manifest_record(&manifest))?;
+        Ok(LocalLogStorageSelectedJsonCodec::new(self.context.clone(), candidate_binding)
+            .normalize_rotation(&json, self.selected.current_selection_json())?)
+    }
 }
 
 fn copied_manifest_parts(
@@ -407,6 +485,18 @@ fn copied_manifest_parts(
         successor_frame: value.successor_frame(),
         checkpoint_json: value.checkpoint_json().to_owned(),
     }
+}
+
+fn normalized_candidate(
+    fixture: &SelectedRotationFixture,
+) -> TestResult<LocalLogStorageSelectedRoot> {
+    let codec = fixture.codec();
+    let manifest = fixture.prepared()?;
+    let json = codec.encode_rotation_from_selected(&manifest, &fixture.selected)?;
+    let binding =
+        codec.prepare_rotation_attempt(&fixture.selected, &manifest)?.candidate_binding().clone();
+    Ok(LocalLogStorageSelectedJsonCodec::new(fixture.context.clone(), binding)
+        .normalize_rotation(&json, fixture.selected.current_selection_json())?)
 }
 
 fn assert_continuity(
@@ -516,6 +606,53 @@ fn preparation_rejects_every_immediately_known_identity_reuse() -> TestResult {
         LocalLogStorageGenerationContinuityError::TransactionIdReused,
     );
 
+    let rotation = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+    let reused_predecessor_transaction = LocalLogStorageGenerationPreparationInputs::new(
+        rotation
+            .selected
+            .predecessor_receipt()
+            .ok_or("rotation needs a predecessor")?
+            .transaction_id()
+            .clone(),
+        rotation.inputs.fence_id().clone(),
+        rotation.inputs.successor_frame_limits(),
+    );
+    assert_continuity(
+        &rotation.codec().prepare_rotation_from_selected(
+            &rotation.selected,
+            &rotation.outcome,
+            &reused_predecessor_transaction,
+        ),
+        LocalLogStorageGenerationContinuityError::TransactionIdReused,
+    );
+
+    let reused_predecessor_fence = LocalLogStorageGenerationPreparationInputs::new(
+        rotation.inputs.transaction_id().clone(),
+        rotation
+            .selected
+            .binding()
+            .checkpoint_generation()
+            .activated_fence_id()
+            .ok_or("rotation checkpoint needs an activation fence")?
+            .clone(),
+        rotation.inputs.successor_frame_limits(),
+    );
+    assert_continuity(
+        &rotation.codec().prepare_rotation_from_selected(
+            &rotation.selected,
+            &rotation.outcome,
+            &reused_predecessor_fence,
+        ),
+        LocalLogStorageGenerationContinuityError::KnownFenceIdReused,
+    );
+
+    let reused_predecessor_checkpoint =
+        SelectedRotationFixture::rotation_with_next_active_reusing_root_checkpoint_generation()?;
+    assert_continuity(
+        &reused_predecessor_checkpoint.prepared(),
+        LocalLogStorageGenerationContinuityError::KnownGenerationIdReused,
+    );
+
     let reused_fence = LocalLogStorageGenerationPreparationInputs::new(
         root.inputs.transaction_id().clone(),
         root.selected.activation_fence_id().clone(),
@@ -526,7 +663,6 @@ fn preparation_rejects_every_immediately_known_identity_reuse() -> TestResult {
         LocalLogStorageGenerationContinuityError::KnownFenceIdReused,
     );
 
-    let rotation = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
     let reused_head_binding = LocalLogStorageGenerationBinding::try_new(
         rotation.selected.profile_id().clone(),
         rotation.selected.profile_version(),
@@ -542,6 +678,62 @@ fn preparation_rejects_every_immediately_known_identity_reuse() -> TestResult {
                 &rotation.inputs,
             ),
         LocalLogStorageGenerationContinuityError::KnownHeadIdReused,
+    );
+    Ok(())
+}
+
+#[test]
+fn preparation_rejects_identities_from_the_oldest_retained_rotation_edge() -> TestResult {
+    let fixture = SelectedRotationFixture::new(LocalLogStorageSelectionKind::Rotation)?;
+    let selected = normalized_candidate(&fixture)?;
+    let oldest_head = selected
+        .predecessor_receipt()
+        .and_then(LocalLogStorageSelectionReceiptBinding::expected_head_id)
+        .ok_or("second rotation omitted its oldest retained head")?
+        .clone();
+    assert_ne!(selected.previous_head_id(), Some(&oldest_head));
+    let fresh_inputs = LocalLogStorageGenerationPreparationInputs::new(
+        LocalLogStorageTransactionId::try_new("transaction:t3")?,
+        LocalLogStorageFenceId::try_new("fence:f3")?,
+        LocalLogFrameLimits::new(32_768),
+    );
+    let reused_head_codec = LocalLogStorageGenerationJsonCodec::new(
+        fixture.context.clone(),
+        LocalLogStorageGenerationBinding::try_new(
+            selected.profile_id().clone(),
+            selected.profile_version(),
+            selected.scope_id().clone(),
+            selected.selected_head_id().clone(),
+            oldest_head,
+        )?,
+    );
+    assert_continuity(
+        &reused_head_codec.prepare_rotation_from_selected(
+            &selected,
+            &fixture.outcome,
+            &fresh_inputs,
+        ),
+        LocalLogStorageGenerationContinuityError::KnownHeadIdReused,
+    );
+
+    let outcome_with_reused_log = SelectedRotationFixture::rotation_with_next_active_log("log:g1")?;
+    let fresh_codec = LocalLogStorageGenerationJsonCodec::new(
+        fixture.context.clone(),
+        LocalLogStorageGenerationBinding::try_new(
+            selected.profile_id().clone(),
+            selected.profile_version(),
+            selected.scope_id().clone(),
+            selected.selected_head_id().clone(),
+            LocalLogStorageHeadId::try_new("head:h3")?,
+        )?,
+    );
+    assert_continuity(
+        &fresh_codec.prepare_rotation_from_selected(
+            &selected,
+            &outcome_with_reused_log.outcome,
+            &fresh_inputs,
+        ),
+        LocalLogStorageGenerationContinuityError::KnownGenerationIdReused,
     );
     Ok(())
 }

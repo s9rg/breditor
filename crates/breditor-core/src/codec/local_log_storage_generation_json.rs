@@ -290,16 +290,35 @@ fn validate_selected_continuity(
     if value.sealed_frame() != selected.active_frame() {
         return Err(LocalLogStorageGenerationContinuityError::SealedFrameMismatch.into());
     }
-    if value.transaction_id() == selected.transaction_id() {
+    if value.transaction_id() == selected.transaction_id()
+        || selected
+            .predecessor_receipt()
+            .is_some_and(|receipt| value.transaction_id() == receipt.transaction_id())
+    {
         return Err(LocalLogStorageGenerationContinuityError::TransactionIdReused.into());
     }
-    if selected.previous_head_id().is_some_and(|head_id| value.committed_head_id() == head_id) {
+    if selected.previous_head_id().is_some_and(|head_id| value.committed_head_id() == head_id)
+        || selected
+            .predecessor_receipt()
+            .and_then(|receipt| receipt.expected_head_id())
+            .is_some_and(|head_id| value.committed_head_id() == head_id)
+    {
         return Err(LocalLogStorageGenerationContinuityError::KnownHeadIdReused.into());
     }
-    if value.successor_log_id() == selected.checkpoint_log_id() {
+    if value.successor_log_id() == selected.checkpoint_log_id()
+        || selected
+            .predecessor_checkpoint_log_id()
+            .is_some_and(|log_id| value.successor_log_id() == log_id)
+    {
         return Err(LocalLogStorageGenerationContinuityError::KnownGenerationIdReused.into());
     }
-    if value.fence_id() == selected.activation_fence_id() {
+    if value.fence_id() == selected.activation_fence_id()
+        || selected
+            .binding()
+            .checkpoint_generation()
+            .activated_fence_id()
+            .is_some_and(|fence_id| value.fence_id() == fence_id)
+    {
         return Err(LocalLogStorageGenerationContinuityError::KnownFenceIdReused.into());
     }
     Ok(())

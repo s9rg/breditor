@@ -8,9 +8,9 @@ retention/comparison implemented in `0.0.35`; exact non-owning attempt plans and
 `Prepared`/`Uncertain` mechanics implemented in `0.0.36`; process-local exact
 physical-attempt terminal attestations implemented in `0.0.37`; directional
 resolution-value comparisons and the closed retired-transaction binding
-implemented in `0.0.38`; process-local root-only resolution implemented in
-`0.0.39`; rotation resolution, storage I/O, process-restart reconstruction, and
-ownership release remain unimplemented
+implemented in `0.0.38`; process-local root resolution implemented in `0.0.39`
+and rotation resolution implemented in `0.0.40`; storage I/O, process-restart
+reconstruction, and ownership release remain unimplemented
 
 Validation format name: `breditor/local-log-storage-generation`
 
@@ -157,8 +157,8 @@ one borrowed payload request. Version `0.0.37` can consume one matching typed
 host attestation and retain the plan in a positive or negative physical-attempt
 state. Identity matching and event classification remain process-local. Version
 `0.0.38` freezes directional resolution-value comparisons. Version `0.0.39`
-implements process-local root resolution; rotation resolution remains the
-`0.0.40` boundary.
+implements process-local root resolution; version `0.0.40` implements the
+nominally separate rotation resolution boundary.
 
 ## Authoritative manifest and head
 
@@ -421,11 +421,13 @@ semantic sessions, adapters, and writer authority. Its private exact plan and
 public private-constructor attempt/evidence states are non-`Clone`; they carry
 immutable plan data, volatile correlation, and typed host assertions only and
 can never release a writable owner. `HostAttestedCommitted`, `NotAttempted`,
-and `AttemptAborted` are Rust types. Version `0.0.39` also implements the closed
-root-resolution outcomes. Plan-level `DefinitelyNotCommitted` and rotation-
-resolution outcomes remain prospective `0.0.40` states. The older borrowed
-`prepare_rotation` and `prepare_rotation_from_selected` value-validation
-actions are not `Prepared`.
+and `AttemptAborted` are Rust types. Version `0.0.39` implements the closed root-
+resolution outcomes and version `0.0.40` implements the nominally separate
+rotation-resolution outcomes, including nonretry
+`DefinitelyNotCommittedConflict`. A general ownership-bearing
+`DefinitelyNotCommitted` state remains unimplemented. The older borrowed
+`prepare_rotation` and `prepare_rotation_from_selected` value-validation actions
+are not `Prepared`.
 
 ### Prepared
 
@@ -620,27 +622,26 @@ Profile V1 tombstone: database/scope incarnations and scope ID, transaction ID,
 expected/committed heads, selection kind, and `selectionByteLength`. It cannot
 synthesize profile ID/version, session ID, or selection bytes that the record
 does not retain. Matching length screens a collision but is never evidence that
-caller-supplied bytes committed. The root resolver separately validates the
-transaction key and exact `byCommittedHead` index mapping; the rotation resolver
-must do the same when added.
+caller-supplied bytes committed. Both implemented resolvers separately validate
+the transaction key and exact `byCommittedHead` index mapping.
 
-### Root resolver (`0.0.39`) and prospective rotation resolver (`0.0.40`)
+### Root resolver (`0.0.39`) and rotation resolver (`0.0.40`)
 
-Version `0.0.39` implements process-local root resolution; rotation resolution
-remains deferred to `0.0.40`. Each shape consumes a surviving exact plan;
-ordinary findings come from one later profile-serialized transaction. The root
-boundary accepts surviving uncertain, aborted, unattempted, or host-attested-
-committed state only when its plan is a root; rotation rejection returns the
-unchanged source owner. One borrowed request mints one opaque resolver request
-identity at egress. Restarting that resolver preserves its exact source plan but
-clears the correlation, so the next request ID is distinct and old evidence is
-stale. This is not process-restart reconstruction.
+Version `0.0.39` implements process-local root resolution and version `0.0.40`
+implements nominally separate rotation resolution. Each consumes a surviving
+exact plan from uncertain, aborted, unattempted, or host-attested-committed
+state; a plan-shape mismatch returns the unchanged source owner. Ordinary
+findings come from one later profile-serialized transaction. One borrowed
+shape-specific request mints one opaque resolver request identity at egress.
+Restarting preserves the exact source plan but clears correlation, so the next
+request ID is distinct and old evidence is stale. This is not process-restart
+reconstruction.
 
 Ordinary read evidence becomes applicable only after the exact fixed-scope
 resolver transaction emits terminal `complete`; individual request success,
 `commit()` return, resolver abort, callback loss, or unrelated completion
 classifies nothing. Pre-egress or stale/cross-request evidence returns the
-unchanged root resolver and unapplied evidence. Root and rotation request tokens
+unchanged resolver and unapplied evidence. Root and rotation request tokens
 and observation shapes remain nominally separate because their prepublication
 authority shapes differ:
 
@@ -671,24 +672,34 @@ observed empty. Any record in any store without valid profile metadata is instea
   retained transaction/head identity and head-index mapping plus the planned
   active generation's `retiredBy` linkage, not the discarded successor
   contents.
-- The future rotation resolver must validate both expected incarnations and
-  classify case-specific exact evidence. Absence/retry eligibility requires the
-  observed current selection to equal the complete snapshotted prior selected
-  envelope under the directional cleanup relation plus exact current and
-  optional predecessor bytes. It also requires the candidate transaction/head
-  index, candidate successor-generation key, and complete successor chunk
-  prefix to be absent. Selected commit instead requires the candidate binding/
-  JSON as current and the plan's prior selected-current JSON as its immediate
-  predecessor.
-  Superseded commit requires a valid later current with the exact candidate as
-  its immediate predecessor and validates the candidate's former active
-  generation as the exact retired/reclaimed checkpoint under the later head.
-  Retired evidence also preserves whether the candidate's direct successor is
-  still exact or already retired, validates its committed-head index, and uses
-  that independently observed successor head to validate the planned active-
-  generation retirement. It can validate immutable candidate identity and byte
-  length only. Every branch validates the associated current generations and
-  all plan-known older tombstones required by publication.
+- The implemented rotation resolver validates both expected incarnations, the
+  complete current scope graph and head index, the candidate transaction/index,
+  candidate active-generation key, and branch-specific prior transaction and
+  generation facts. Absence and conflict also require the complete candidate
+  active-generation chunk prefix to be empty. Clean absence compares the full
+  snapshotted prior selected binding under the directional cleanup relation plus
+  exact current/optional-predecessor bytes, and requires the candidate
+  transaction, committed-head index, candidate active-generation key, and
+  complete candidate active-generation chunk prefix to be absent.
+
+  Selected commit requires the candidate binding/JSON as current and the plan
+  prior-current receipt/JSON as its exact predecessor; only the optional prior
+  predecessor becomes an indexed tombstone. Superseded commit requires a valid
+  later current with the exact candidate as immediate predecessor, candidate
+  checkpoint retirement by the candidate head, candidate active retirement by
+  the later head, the plan prior checkpoint under directional cleanup, and
+  indexed plan prior-current plus optional prior-predecessor tombstones.
+
+  Retired evidence requires the indexed candidate tombstone, both candidate
+  generation retirement edges, the plan prior checkpoint under directional
+  cleanup, indexed plan prior-current and optional prior-predecessor tombstones,
+  and a direct successor with its exact head-index mapping. If that successor is
+  the exact normalized current predecessor, its privately retained byte-derived
+  sealed log ID/frame must equal the candidate active generation. If the
+  successor is already retired, its tombstone cannot prove discarded JSON or
+  sealed facts; it proves only retained transaction/head/index facts and the
+  candidate active generation's `retiredByHeadId` linkage. Candidate length is
+  collision screening, not candidate-byte evidence.
 
 For either shape, an exact selected candidate may classify historical commit;
 an exact candidate that is the valid immediate predecessor may classify
@@ -696,32 +707,45 @@ superseded commit; a matching retired identity cannot attest the old supplied
 bytes; identity/byte collisions, broken associations, and resets fail closed.
 Absence is shape-specific. A root with an absent planned scope and every
 planned/artifact range empty may produce `RetryEligibleAtResolution` only from
-an uncertain, aborted, or unattempted source. A future rotation whose exact
+an uncertain, aborted, or unattempted source. A rotation whose exact
 prior selected envelope remains current and whose complete candidate namespace
-is absent may also produce that outcome. It is advisory after the resolver
-transaction finishes, never definite plan-level noncommit, because copied
-request bytes can still be dispatched in another later transaction. Another
-completely valid root scope is `ScopeAlreadyProvisioned` only for the three
-non-host-committed sources; the host-committed source instead yields reset or
-indeterminate. A rotation with a fully valid different current head in the same
-scope incarnation is `DefinitelyNotCommittedConflict` and cannot exact-
-resubmit the immutable old plan. An exact candidate record that is neither
-selected nor the immediate predecessor is corruption, not retry or conflict.
+is absent may also produce that outcome only for those three sources. It is
+advisory after the resolver transaction finishes, never definite plan-level
+noncommit, because copied request bytes can still be dispatched in another
+later transaction. Another completely valid root scope is
+`ScopeAlreadyProvisioned` only for the three non-host-committed sources; the
+host-committed source instead yields reset or indeterminate. Rotation has no
+`ScopeAlreadyProvisioned` result.
+
+For a non-host-committed rotation source, complete candidate namespace absence
+plus one exact direct competing rotation is
+`DefinitelyNotCommittedConflict` and cannot exact-resubmit the immutable old
+plan. The competing current must name the plan prior current receipt and exact
+JSON as its immediate predecessor. Its checkpoint generation is the plan prior
+active generation in the exact retired/reclaimed state under the competing
+head, its current head index must match, the plan prior checkpoint follows
+directional cleanup, and an optional older predecessor must be the matching
+indexed tombstone. An arbitrary far-later current is outside the `0.0.40`
+conflict observation and must fail closed. `HostAttestedCommitted` plus
+candidate namespace absence in the intact expected scope is
+`CollisionOrCorruption`, never retry or conflict. An exact candidate record
+that is neither selected nor the immediate predecessor is also corruption.
 
 A retry performed in a separate transaction must repeat every comparison and
 authority check; an atomic compare-and-retry must keep the reads and writes in
-the same transaction. Source history changes root-absence precedence. For
-`HostAttestedCommitted`, physical database absence, a different valid metadata
-incarnation, an all-five-stores-empty compatible database without
+the same transaction. For either shape, physical database absence, a different
+valid metadata incarnation, an all-five-stores-empty compatible database without
 `meta/profile`, or a missing/replaced planned scope lifetime is
 `StorageResetOrIndeterminate`, not retry or already provisioned. Any record in
-any store without valid profile metadata is `CollisionOrCorruption`. Only when
-the expected database and planned scope lifetime still exist but the append-
-only candidate transaction or committed-head association is missing does
-`BrokenProfileAssociation::ExpectedScopeCandidateMissing` classify as
-`CollisionOrCorruption`. The three non-host-committed root sources may receive
+any store without valid profile metadata is `CollisionOrCorruption`. When the
+expected database and planned scope lifetime still exist, a host-attested
+source whose append-only candidate transaction or committed-head association is
+missing is `CollisionOrCorruption`; a reported malformed association also fails
+closed for every source. The three non-host-committed root sources may receive
 advisory retry for complete planned-scope/artifact absence; a different valid
-scope is `ScopeAlreadyProvisioned`.
+scope is `ScopeAlreadyProvisioned`. The equivalent rotation sources require the
+exact prior envelope and complete candidate namespace absence for advisory
+retry, or the exact direct competing rotation above for nonretry conflict.
 
 ## Retry and idempotency rules
 
@@ -831,12 +855,12 @@ metadata, and the head as independently drifting updates.
 
 This specification and the implemented values do not provide:
 
-- actual storage bootstrap/provisioning, rotation-resolution evidence,
-  plan-level definite-noncommit proof, ownership typestate, adapter, async API,
-  writer capability, or I/O implementation through `0.0.39`; the implemented
-  attempt terminal states and root-resolution evidence are trusted process-
-  local host assertions, selected receipt/comparison bindings are caller-
-  supplied typed inputs, and the checked root value is only a proposal;
+- actual storage bootstrap/provisioning, a general ownership-bearing
+  `DefinitelyNotCommitted` state, ownership typestate, adapter, async API,
+  writer capability, or I/O implementation through `0.0.40`; the implemented
+  attempt terminal states and root/rotation resolution evidence are trusted
+  process-local host assertions, selected receipt/comparison bindings are
+  caller-supplied typed inputs, and every checked candidate is only a proposal;
 - filesystem, object-store, or IndexedDB durability by themselves;
 - proof of EOF, physical old-tail length, truncation, append completion, flush,
   `fsync`, acknowledgement, atomic replacement, or crash recovery;
@@ -936,14 +960,24 @@ evidence.
 
 Version `0.0.39` implements the root-resolver request, terminal evidence,
 ownership-preserving failure, source-aware outcome, and advisory exact-retry
-mechanics. Version `0.0.40` should add the nominally separate rotation resolver.
-Shape-valid absence may be advisory `RetryEligibleAtResolution` only for a
-non-host-committed root source when complete planned-scope/artifact absence is
-observed, or prospectively for a rotation when its exact prepublication state
-still holds. It is not the blanket result for another valid scope or conflicting
-rotation head. IndexedDB Profile V1 still cannot release a
-long-lived exclusive Rust owner: every mutation fence is revocable between
-transactions. Consuming ownership requires a separately held lock,
+mechanics. Version `0.0.40` implements the nominally separate rotation resolver,
+including branch-specific selected/superseded/retired graphs, exact direct-
+competitor conflict evidence, and source-aware host-committed corruption
+precedence.
+Shape-valid absence is advisory `RetryEligibleAtResolution` only for a non-host-
+committed root source after complete planned-scope/artifact absence, or for an
+equivalent rotation source while the exact prepublication envelope remains
+current and the complete candidate namespace is absent. It is not the blanket
+result for another valid scope or conflicting rotation head. Arbitrary far-
+later conflict classification remains a later extension. IndexedDB Profile V1
+still cannot release a long-lived exclusive Rust owner: every mutation fence is
+revocable between transactions. Consuming ownership requires a separately held
+lock,
 transaction-coupled semantic admission, or an explicitly revocable/speculative
 branch. The provisioning contract must not treat a checked root, exact envelope
 match, host attestation, or in-memory compaction as storage authority.
+
+The next pure-Rust boundary should freeze the mutable writer epoch/fence as an
+exact non-authority comparison binding and checked acquisition plan. It must
+precede append and browser I/O; a later request-correlated transition can then
+issue revocable mutation authority that every storage transaction rechecks.

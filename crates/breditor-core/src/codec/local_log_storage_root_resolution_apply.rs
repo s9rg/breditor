@@ -438,8 +438,6 @@ fn validate_other_scope(
         || selected.database_incarnation_id() != candidate.database_incarnation_id()
         || selected.scope_id() != candidate.scope_id()
         || selected.scope_incarnation_id() == candidate.scope_incarnation_id()
-        || selected.transaction_id() == candidate.transaction_id()
-        || selected.selected_head_id() == candidate.committed_head_id()
     {
         return Err(LocalLogStorageRootResolutionCollisionReason::OtherScopeMismatch);
     }
