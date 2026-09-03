@@ -6,7 +6,8 @@
 //! durable commit, bounded session-checkpoint, replay-identified local-log
 //! entry, complete local-log-checkpoint JSON decoding, checksummed binary
 //! local-log frame scanning, atomic framed-tail observation, pure token-bound
-//! single-frame append preparation and a bounded speculative FIFO,
+//! single-frame append preparation, a bounded speculative FIFO, and one
+//! process-local uncertain FIFO-head request boundary,
 //! genesis-prefix recovery, checkpoint-linked batch and incremental successor
 //! admission,
 //! repeated compaction,
@@ -447,16 +448,17 @@
 //! final speculative cursor. Success adds that allocation behind the unchanged
 //! distinguished head and returns a step with that new frame's bounded metadata
 //! and admission outcome. Failure returns the complete unchanged queue and
-//! leaves the entry caller-owned. Public inspection exposes exact totals,
-//! remaining capacity, final speculative state, and only head metadata; it
-//! exposes no raw frame, follower, pop, acknowledgement, or consuming cursor
-//! edge.
+//! leaves the entry caller-owned. The queue's shared view exposes exact totals,
+//! remaining capacity, final speculative state, and persistent metadata only
+//! for the head. The success step's bounded causal metadata is not an arbitrary
+//! follower view. No raw frame, follower selection, pop, acknowledgement, or
+//! consuming cursor edge is exposed.
 //!
 //! One original token remains at the queue root for the whole sequential
 //! speculative prefix. It does not become a cached currentness proof: each
 //! future physical head append must revalidate the complete binding. Future
-//! uncertain-head state must retain logical enqueue behind the head, but must
-//! block physical follower dispatch and acknowledgement until resolution. No
+//! uncertain-head state must retain logical enqueue behind the head, but no
+//! core-issued request may expose or authorize a follower until resolution. No
 //! append request/attempt lifecycle, I/O, terminal attestation, resolver,
 //! restart form, durable cursor release, or rotation edge exists yet. Hosts own
 //! asynchronous scheduling, batching choice, admission pacing, and cancellation
@@ -467,6 +469,45 @@
 //! is neither cancellation nor acknowledgement; it loses the speculative
 //! branch. Allocation failure, restart reconstruction, and stale-token rebase
 //! remain outside this release.
+//!
+//! Version `0.0.45` adds
+//! [`codec::LocalLogStorageUncertainAppendAttempt`]. Consuming
+//! `LocalLogStorageAppendQueue::begin_head_append_attempt` enters conservative
+//! uncertainty before request egress under a fresh process-local
+//! [`local_log::LocalLogStorageAppendAttemptId`]. The first `adapter_request`
+//! call permanently records egress, mints a distinct
+//! [`local_log::LocalLogStorageAppendRequestId`], and returns one borrowed,
+//! non-`Clone` [`codec::LocalLogStorageAppendRequest`] for only the immutable
+//! FIFO head. One request ID names one adapter invocation and at most one
+//! append-capable transaction.
+//!
+//! The request exposes the complete expected mutation-fence and selected
+//! bindings, exact current and optional predecessor selection JSON, expected
+//! writer epoch/fence, canonical head start/end, and exact complete Frame V1
+//! bytes. Raw frame and selection payloads are sensitive and copyable, but are
+//! redacted from `Debug`; this boundary cannot prove single dispatch. A profile
+//! adapter must revalidate those complete bindings and byte-exact selections
+//! and scan the serialized tail. Only an absent target at the exact tail or the
+//! same key with byte-identical final bytes is admissible. Different bytes,
+//! gaps, overlaps, malformed records, or later records fail closed. A returned
+//! request, `IndexedDB` request success, or `commit()` return is not completion.
+//!
+//! Consuming `begin_exact_resubmission` preserves the allocation-identical
+//! queue, head and follower bytes, token, limits, and final speculative cursor
+//! while issuing a fresh attempt ID and restoring request eligibility. It does
+//! not refresh a stale token, and the old request may still commit, so every
+//! invocation requires exact same-key/same-bytes idempotency. Logical
+//! `try_enqueue` remains available before or after request egress and preserves
+//! attempt/request correlation while advancing only the private speculative
+//! tail; no core-issued request exposes or authorizes a follower. Version `0.0.45` has no terminal
+//! attestation, durable acknowledgement, head pop, drained owner, cursor
+//! release, resolver, rotation edge, or restart reconstruction. Those are the
+//! `0.0.46` gate. Drop or process loss cannot classify copied or dispatched
+//! work and loses the volatile queue and correlation IDs. The queue's retained-
+//! byte exclusions and transient candidate-allocation peak remain unchanged.
+//! Profile V1 exact-tail validation may scan every active-generation chunk,
+//! and its fixed five-store scope serializes otherwise independent editor
+//! scopes.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

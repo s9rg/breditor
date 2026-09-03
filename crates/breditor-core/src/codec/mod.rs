@@ -26,6 +26,8 @@ mod local_log_frame_limits;
 mod local_log_frame_scan;
 #[cfg(test)]
 mod local_log_storage_append_adversarial_tests;
+#[cfg(test)]
+mod local_log_storage_append_attempt_adversarial_tests;
 mod local_log_storage_append_plan;
 mod local_log_storage_append_preparation_error;
 mod local_log_storage_append_preparation_failure;
@@ -33,6 +35,7 @@ mod local_log_storage_append_prepare;
 mod local_log_storage_append_queue;
 #[cfg(test)]
 mod local_log_storage_append_queue_adversarial_tests;
+mod local_log_storage_append_queue_begin_head_attempt;
 mod local_log_storage_append_queue_enqueue;
 mod local_log_storage_append_queue_enqueue_error;
 mod local_log_storage_append_queue_enqueue_failure;
@@ -41,6 +44,8 @@ mod local_log_storage_append_queue_limits;
 mod local_log_storage_append_queue_start;
 mod local_log_storage_append_queue_start_error;
 mod local_log_storage_append_queue_start_failure;
+mod local_log_storage_append_request;
+mod local_log_storage_append_transition_error;
 mod local_log_storage_attempt_aborted;
 mod local_log_storage_attempt_aborted_resubmit;
 mod local_log_storage_attempt_plan;
@@ -158,6 +163,12 @@ mod local_log_storage_selected_tests;
 mod local_log_storage_selection_kind;
 mod local_log_storage_selection_receipt_binding;
 mod local_log_storage_uncertain_adapter_request;
+mod local_log_storage_uncertain_append_attempt;
+mod local_log_storage_uncertain_append_attempt_adapter_request;
+mod local_log_storage_uncertain_append_attempt_enqueue;
+mod local_log_storage_uncertain_append_attempt_enqueue_failure;
+mod local_log_storage_uncertain_append_attempt_enqueue_step;
+mod local_log_storage_uncertain_append_attempt_resubmit;
 mod local_log_storage_uncertain_attempt;
 mod local_log_storage_uncertain_attempt_match;
 mod local_log_storage_uncertain_observe_terminal;
@@ -270,6 +281,10 @@ pub use local_log_storage_append_queue_start_error::{
     LocalLogStorageAppendQueueStartError, LocalLogStorageAppendQueueStartErrorCode,
 };
 pub use local_log_storage_append_queue_start_failure::LocalLogStorageAppendQueueStartFailure;
+pub use local_log_storage_append_request::LocalLogStorageAppendRequest;
+pub use local_log_storage_append_transition_error::{
+    LocalLogStorageAppendTransitionError, LocalLogStorageAppendTransitionErrorCode,
+};
 pub use local_log_storage_attempt_aborted::LocalLogStorageAttemptAborted;
 pub use local_log_storage_attempt_preparation_error::{
     LocalLogStorageAttemptPreparationError, LocalLogStorageAttemptPreparationErrorCode,
@@ -430,6 +445,9 @@ pub use local_log_storage_selection_receipt_binding::{
     LocalLogStorageSelectionReceiptBinding, LocalLogStorageSelectionReceiptBindingError,
     LocalLogStorageSelectionReceiptBindingErrorCode,
 };
+pub use local_log_storage_uncertain_append_attempt::LocalLogStorageUncertainAppendAttempt;
+pub use local_log_storage_uncertain_append_attempt_enqueue_failure::LocalLogStorageUncertainAppendEnqueueFailure;
+pub use local_log_storage_uncertain_append_attempt_enqueue_step::LocalLogStorageUncertainAppendEnqueueStep;
 pub use local_log_storage_uncertain_attempt::LocalLogStorageUncertainAttempt;
 pub use local_log_storage_uncertain_writer_fence_acquisition::LocalLogStorageUncertainWriterFenceAcquisition;
 pub use local_log_storage_writer_fence_acquisition_aborted::LocalLogStorageWriterFenceAcquisitionAborted;

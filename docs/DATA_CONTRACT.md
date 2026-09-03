@@ -136,7 +136,12 @@ The implemented Rust slice owns:
   immutable host-selected pending-frame and encoded-byte limits, one token at
   the root, exact aggregate accounting, an immutable head, ordered followers,
   and one final speculative cursor; enqueue failure returns the complete
-  unchanged queue while public inspection exposes no frame bytes or followers;
+  unchanged queue while its shared view exposes no frame bytes or arbitrary
+  follower view; enqueue success reports only its just-admitted frame metadata;
+- a process-local uncertain append-head attempt entered before egress, with
+  distinct attempt/request identities, one borrowed exact head request, exact
+  allocation-preserving resubmission, and logical enqueue that preserves the
+  attempt while no core-issued request exposes or authorizes a follower;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -160,7 +165,7 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered tail I/O and recovery orchestration, append request/terminal/
+- ordered tail I/O and recovery orchestration, append terminal/
   acknowledgement and uncertain-resolution lifecycles, atomic checkpoint/log
   replacement, durable restart continuation, cryptographic integrity or
   authenticity, rollback protection, migration, and crash-tail truncation;
@@ -171,7 +176,8 @@ The following remain deliberately unimplemented:
   profile contract, pure-Rust values/attempt mechanics, process-local host
   terminal attestations, both resolver state machines, writer-fence comparison/
   planning, the process-local acquisition/token lifecycle, pure append
-  preparation, and the process-local bounded append FIFO exist);
+  preparation, the process-local bounded append FIFO, and its uncertain-head
+  request boundary exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
@@ -823,12 +829,15 @@ entry caller-owned. The queue exposes exact count/byte totals and remaining
 capacity, the final speculative cursor/end, and only head
 start/end/length/admission metadata. It exposes no raw frame, follower
 selection, removal, request, acknowledgement, cursor release, or rotation edge.
+The bounded metadata returned by one successful enqueue describes only that
+causal admission and does not create a persistent or arbitrary follower view.
 
 The original token is retained once at the queue root for the whole sequential
 speculative prefix. It is not presumed current: each future physical head
 append must still compare its complete binding transactionally. A future
 uncertain-head state must keep accepting logical tail entries, but all physical
-followers remain blocked until that exact head is resolved. The implementation
+followers remain without core-issued request authorization until that exact
+head is resolved. The implementation
 has no append attempt/request/terminal lifecycle, resolver, restart form,
 drained state, or durable FIFO acknowledgement yet.
 
@@ -841,6 +850,40 @@ one exact candidate before checking aggregate retained-byte capacity, so
 transient peak memory can exceed that ceiling. Allocation failure, process
 restart, and rebasing or extracting a queue whose token became stale remain
 outside this version's typed recovery.
+
+Version `0.0.45` consumes the complete queue into
+`LocalLogStorageUncertainAppendAttempt` before any head request can cross the
+adapter boundary. Its fresh append-attempt ID exists before egress. The first
+`adapter_request` call permanently records egress, mints a separate request ID
+for one adapter invocation and at most one append-capable transaction, and
+returns one non-`Clone` borrow exposing only the head. That request carries the
+full expected mutation-fence and selected bindings, byte-exact current and
+optional predecessor selection JSON, expected writer epoch/fence, canonical
+head start and end, and exact complete Frame V1 bytes. Payload bytes are
+copyable and sensitive but are redacted from `Debug`; no API property proves
+single external dispatch.
+
+Every invocation must re-observe and compare the complete binding and exact
+selection bytes, then validate the serialized physical tail. Only the absent
+target at the exact tail or the same key and byte-identical final frame is
+admissible; different bytes, gaps, overlaps, malformed records, or any later
+record fail closed. A returned request, IndexedDB request success, or
+`commit()` return is not terminal append evidence. Exact resubmission issues a
+fresh attempt ID but preserves the queue, token, head/follower allocations,
+limits, and final speculative cursor exactly. It neither refreshes a stale
+token nor proves the old request stopped; the old transaction may still commit,
+so same-key/same-bytes idempotency is required.
+
+Logical enqueue can continue both before and after egress while preserving the
+attempt/request IDs; only the private speculative tail advances, and no
+core-issued request exposes or authorizes a follower. Version `0.0.45` has no
+terminal attestation, durable acknowledgement, head pop, drained owner, cursor
+release, resolver, rotation edge, or restart reconstruction. These are the
+`0.0.46` gate. Drop or process loss cannot decide whether copied/dispatched work
+committed and loses the owner and volatile IDs. All `0.0.44` byte-ceiling
+exclusions and transient candidate-allocation behavior remain in force. Profile
+V1 exact-tail validation may scan every active-generation chunk, and its fixed
+five-store scope serializes otherwise independent editor scopes.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -3872,7 +3915,9 @@ is returned unchanged; the borrowed entry remains caller-owned.
 Public queue inspection exposes its binding and token by shared reference,
 final speculative cursor/end, limits, exact pending totals and remaining
 capacity, and only the head's start, end, encoded length, and semantic
-observation outcome. Raw frame bytes and follower metadata remain core-private.
+observation outcome. Raw follower bytes and any persistent or arbitrary
+follower view remain core-private; one enqueue step reports only its causal
+frame's bounded metadata.
 There is no public pop, discard, reorder, coalesce, consuming-parts, cursor-
 release, or rotation action. Thus the implemented FIFO proves in-memory
 preparation order, capacity accounting, and head selection, but not physical
@@ -3882,8 +3927,9 @@ The root token can cover this whole speculative prefix because append does not
 change its selected/writer binding. It still may be revoked between any two
 transactions, so every future head attempt must repeat the complete binding and
 tail comparison. A future uncertain-head lifecycle must retain this queue and
-continue logical enqueue behind the head, but must not expose any follower for
-physical dispatch or acknowledgement until the head is terminally resolved.
+continue logical enqueue behind the head, but no core-issued request may expose
+raw follower bytes or authorize follower dispatch until the head is terminally
+resolved.
 Only a future acknowledgement transition may remove that head, update durable
 prefix accounting, and ultimately publish a drained owner eligible for cursor
 release or rotation.
@@ -3904,6 +3950,65 @@ branch. One candidate is fully encoded before aggregate capacity is decided, so
 transient peak memory may exceed the retained-byte ceiling. Allocation failure,
 process loss, and a stale-token rebase/extraction path have no typed transition
 in v0.0.44.
+
+Version `0.0.45` adds one consuming
+`LocalLogStorageAppendQueue::begin_head_append_attempt` transition. It enters a
+non-`Clone` `LocalLogStorageUncertainAppendAttempt` under a fresh nominal
+`LocalLogStorageAppendAttemptId` before any raw head data can leave the core.
+That conservative state covers both an invocation that never reached storage
+and one whose transaction committed while its terminal callback was lost. Its
+first `adapter_request` call permanently records egress, mints a nominal
+`LocalLogStorageAppendRequestId`, and lends one non-`Clone`
+`LocalLogStorageAppendRequest`. The borrow cannot outlive or be consumed apart
+from its owner. A second request from the same attempt fails with the stable
+`RequestAlreadyIssued` transition category.
+
+The request is the only public raw-head surface. It exposes the request and
+attempt IDs; complete expected mutation-fence and selected bindings; exact
+canonical current selection JSON and optional immediate-predecessor JSON;
+expected writer epoch and current writer-fence ID; exact head `chunkStart`,
+exclusive end, byte length, and already encoded complete Frame V1 bytes. It
+exposes neither a follower nor the final speculative cursor. Frame and
+selection JSON can contain document data and can be copied after crossing the
+borrowed boundary, so request and owner `Debug` deliberately omit those bytes.
+The one-shot borrow is ownership hygiene and correlation, not proof that an
+external adapter dispatched the bytes only once.
+
+One request ID names exactly one adapter invocation and at most one
+append-capable transaction. That transaction must use the fixed serialized
+profile scope; independently re-observe the complete binding, byte-exact
+current/predecessor selections, writer pair, active generation, and Frame V1
+policy; and validate the complete exact tail. If the valid prefix ends at the
+requested start and the key is absent, it may add exactly the head bytes. If
+the head already is the final record, the key and bytes must be identical and
+the prefix immediately before it must end at the requested start. This latter
+case is only idempotently present. Different bytes, gaps, overlaps, malformed
+keys/values, later records, or binding mismatch require abort. Returning the
+request, receiving an individual IndexedDB request success, or returning from
+`IDBTransaction.commit()` is not completion and releases no owner.
+
+Consuming `begin_exact_resubmission` preserves the entire queue allocation
+graph—token, head bytes, followers, limits, counters, and final speculative
+cursor—while replacing only the attempt ID and clearing request correlation.
+It does not refresh or rebase a stale token. An old copied or dispatched
+request may still commit after the new attempt begins, so every attempt must
+obey the same serialized same-key/same-bytes idempotency rule. The new ID names
+the new invocation; it does not reclassify the old one.
+
+The uncertain owner retains logical `try_enqueue` both before and after request
+egress. Successful enqueue preserves the exact attempt and optional request ID,
+leaves the head fixed, and advances only the private speculative tail. Failure
+returns the complete unchanged uncertain owner. Followers remain inaccessible
+to core-issued requests and receive no dispatch authorization. No terminal-
+attestation, durable-acknowledgement, pop, drained-owner, cursor-release,
+resolver, rotation, or restart transition exists in `0.0.45`; those form the
+`0.0.46` gate. Dropping the owner or losing its process loses the queue and
+correlation IDs and cannot determine whether an already copied/dispatched
+transaction committed. The queue-limit exclusions, transient candidate peak,
+allocation-failure gap, and stale-token limitation remain exactly those
+described for `0.0.44`. With no separately authenticated tail summary, exact
+validation may scan every active-generation chunk; the fixed five-store scope
+also serializes otherwise independent editor scopes.
 
 A JavaScript adapter and real-browser profile validation remain later work.
 Consuming exclusive-owner typestate still requires a separately specified held

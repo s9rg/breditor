@@ -36,7 +36,9 @@ This repository currently contains the first end-to-end Rust-core slice:
   plans, a separate request-correlated acquisition lifecycle, and revocable
   process-local storage-mutation tokens, plus pure single-frame append planning
   and a nonempty bounded FIFO that retains one token, one final speculative
-  cursor, and an exact ordered frame prefix without exposing follower bytes;
+  cursor, and an exact ordered frame prefix without exposing follower bytes,
+  plus a process-local uncertain FIFO-head attempt with one-shot borrowed exact
+  request egress, exact resubmission, and logical enqueue behind the head;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -87,7 +89,8 @@ attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
-scope provisioning, executable append requests and acknowledgement,
+scope provisioning, executable append I/O, terminal observation and
+acknowledgement,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -431,16 +434,17 @@ single final speculative cursor through the existing atomic tail transition.
 Only complete success adds that exact allocation at the FIFO back and returns
 an enqueue step owning the queue plus that new frame's bounded metadata and
 admission outcome. Every typed failure returns the complete unchanged queue and
-leaves the entry caller-owned. The queue reports exact count/byte totals,
-remaining capacity, final speculative tail end, and metadata for only its
-immutable head. Followers, raw frame bytes, removal, acknowledgement, request
-egress, cursor release, and rotation remain unavailable.
+leaves the entry caller-owned. The queue's shared view reports exact count/byte
+totals, remaining capacity, final speculative tail end, and persistent metadata
+for only its immutable head. The success step's bounded causal metadata is not
+an arbitrary follower view. Raw frame bytes, follower selection, removal,
+acknowledgement, request egress, cursor release, and rotation remain unavailable.
 
 One token therefore authorizes a sequential speculative prefix without becoming
 a currentness claim: each future physical append must still transactionally
 revalidate the full binding. A future uncertain-head lifecycle must retain
-logical enqueue behind that head, but no follower may be physically dispatched
-or acknowledged until the head is resolved. Version `0.0.44` still has no
+logical enqueue behind that head, but no core-issued request may expose or
+authorize a follower until the head is resolved. Version `0.0.44` still has no
 append adapter request, physical-attempt identity, terminal attestation,
 acknowledgement, resolver, restart representation, or drained/rotation edge.
 The host owns asynchronous scheduling, batching choice, admission pacing, and
@@ -451,6 +455,41 @@ volatile queue, but that is neither cancellation nor acknowledgement and loses
 the speculative branch. Enqueue encodes its candidate before the aggregate-byte
 decision, so transient peak memory can exceed that ceiling. Allocation failure,
 process loss, and stale-token rebase remain outside this typed checkpoint.
+
+Version `0.0.45` adds the process-local FIFO-head append-attempt boundary.
+`LocalLogStorageAppendQueue::begin_head_append_attempt` consumes the queue into
+a non-`Clone` uncertain owner before any request can cross the adapter boundary.
+Its first `adapter_request` call permanently records egress, creates nominal
+attempt/request correlation for one invocation and at most one append-capable
+transaction, and returns one borrowed, non-`Clone` view of only the immutable
+head. The request carries the complete expected mutation-fence and selected
+bindings, exact current and optional predecessor selection JSON, expected
+writer epoch/fence, exact head start/end/length, and the already encoded head
+bytes. Raw frame and selection payloads can be copied by the adapter but are
+redacted from `Debug`; no follower or final speculative cursor is exposed.
+
+The adapter must re-observe the complete binding and exact selection bytes and
+perform an exact serialized tail scan. At the target it may add only the exact
+head, or recognize the same key and byte-identical final frame as idempotently
+present; different bytes, gaps, overlaps, malformed records, or later records
+fail closed. A request return, IndexedDB request success, or `commit()` return
+is not append completion. `begin_exact_resubmission` creates a fresh attempt ID
+while preserving the allocation-identical queue and head bytes. It does not
+refresh a stale token, and an older request may still commit, so every retry
+requires the same-key/same-bytes idempotency rule.
+
+Logical `try_enqueue` remains available both before and after head request
+egress and preserves attempt/request correlation while advancing only the
+private speculative tail. No core-issued request exposes or authorizes a
+follower. Version `0.0.45` deliberately adds no terminal attestation, durable
+acknowledgement, head pop, drained owner, cursor release, resolver, rotation
+edge, or restart reconstruction; those are the `0.0.46` gate. Dropping the
+owner or losing the process cannot determine whether copied or dispatched work
+committed, and loses the volatile queue and correlation identities. The
+existing frame/byte-limit exclusions and transient-candidate memory peak still
+apply. Profile V1 exact-tail validation may scan every active-generation chunk,
+and its fixed five-store scope continues to serialize otherwise independent
+editor scopes.
 
 ## Development
 

@@ -27,7 +27,9 @@ plus exact mutation-fence comparison/planning and a nominally separate
 request-correlated writer-fence acquisition lifecycle that can issue a
 revocable process-local mutation token, plus pure token-and-tail-cursor
 single-frame append planning and a nonempty bounded FIFO with one final
-speculative cursor and an exact ordered pending prefix,
+speculative cursor and an exact ordered pending prefix, plus a process-local
+uncertain FIFO-head attempt with one-shot borrowed exact request egress, exact
+resubmission, and logical enqueue behind the head,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -72,7 +74,7 @@ scheduler,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, executable append/acknowledgement,
+scope provisioning, executable append I/O, terminal observation/acknowledgement,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -435,7 +437,7 @@ at the target may be treated as idempotent; different bytes, a gap, overlap, or
 later record fail closed. Rotation must compare that same last tail end with
 `acceptedPrefixBytes` inside its serialized transaction.
 
-This release has no append adapter request, I/O, terminal attestation,
+Version `0.0.43` has no append adapter request, I/O, terminal attestation,
 acknowledgement, uncertain resolver, or restart reconstruction. Cursor byte
 provenance is still caller-trusted, non-`Clone` remains ownership hygiene, one
 frame per record adds storage overhead, and all scopes still serialize through
@@ -456,15 +458,16 @@ through every pending frame. A success step owns that queue and reports the
 just-enqueued frame's bounded range, byte length, and admission outcome. Failure
 returns the complete unchanged queue and leaves the entry caller-owned. Public
 inspection exposes exact totals, remaining capacity, speculative tail state,
-and only head start/end/length and observation metadata. Raw bytes, follower
-selection, removal, dispatch, acknowledgement, pop, cursor release, and
+and persistent metadata only for the head. The success step's bounded causal
+metadata is not an arbitrary follower view. Raw bytes, follower selection,
+removal, dispatch authorization, acknowledgement, pop, cursor release, and
 rotation are unavailable.
 
 The queue owns the original token once for the whole speculative prefix. This
 does not cache token currentness: each future physical head append must compare
 the complete binding in its own serialized transaction. A later uncertain-head
-state must retain logical enqueue, but it must block all follower dispatch
-and acknowledgement until that exact head is resolved. This release has no
+state must retain logical enqueue, but no core-issued request may expose or
+authorize a follower until that exact head is resolved. Version `0.0.44` has no
 append attempt/request lifecycle, terminal attestation, resolver, restart form,
 or drained/rotation transition. The host continues to own scheduling, batching
 choice, admission pacing, and cancellation without gaining permission to
@@ -478,6 +481,42 @@ volatile queue is possible in Rust but is not cancellation or acknowledgement;
 it loses the speculative branch. There is no typed allocation-failure recovery,
 process-restart reconstruction, or stale-token rebase/extraction path in this
 release.
+
+Version `0.0.45` adds `LocalLogStorageUncertainAppendAttempt`. Consuming
+`begin_head_append_attempt` enters that conservative state before adapter
+egress and issues a fresh process-local append-attempt ID. The first
+`adapter_request` call permanently records egress, mints a distinct request ID,
+and yields one borrowed, non-`Clone` request for only the immutable FIFO head.
+One request ID names one adapter invocation and at most one append-capable
+transaction. The request exposes the complete expected mutation-fence and
+selected bindings, exact current and optional predecessor selection JSON,
+expected writer epoch/fence, canonical head start and end, and exact complete
+Frame V1 bytes. Those payloads are sensitive and copyable, so `Debug` reports
+only bounded metadata and does not prove single dispatch.
+
+The profile adapter must independently revalidate the full binding and
+byte-exact selections and scan the complete serialized tail. Only an absent
+target at the exact tail or the same key plus byte-identical final frame is
+admissible; any different bytes, gap, overlap, malformed record, or later
+record fails closed. Returning the Rust request, observing an IndexedDB request
+success, or calling `commit()` does not classify completion.
+`begin_exact_resubmission` preserves the allocation-identical queue, head
+bytes, followers, token, limits, and final speculative cursor while issuing a
+fresh attempt ID and restoring one-shot request eligibility. It neither
+refreshes a stale token nor proves the earlier request stopped; an older
+transaction may still commit, so same-key/same-bytes idempotency is mandatory.
+
+The uncertain owner can keep logically enqueueing before or after request
+egress without changing its attempt/request correlation. Only its private tail
+advances; no core-issued request exposes or authorizes a follower. No terminal
+attestation, durable acknowledgement, head pop, drained owner, cursor release,
+resolver, rotation edge, or restart reconstruction exists in `0.0.45`; these
+form the `0.0.46` gate. Drop or process loss cannot decide whether copied or
+dispatched work committed and discards the volatile queue and IDs. The `0.0.44`
+queue's retained-byte exclusions and transient candidate-allocation peak are
+unchanged.
+Profile V1 exact-tail validation may scan every active-generation chunk, while
+the fixed five-store scope serializes otherwise independent editor scopes.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch
