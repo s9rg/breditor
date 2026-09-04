@@ -554,11 +554,35 @@
 //! base-cursor provenance remains caller-trusted. Exact-key/exact-bytes
 //! idempotency is therefore mandatory on every invocation.
 //!
-//! Lost-callback resolution is the `0.0.47` gate. Version `0.0.46` has no
-//! process-restart reconstruction; dropping the volatile owner loses its
-//! correlation state. `IndexedDB` `durability: "strict"` is only a requested hint.
-//! A positive callback attests the frozen profile transaction and exact-tail
-//! condition; it does not let Rust prove persistence to durable media.
+//! Version `0.0.47` adds same-process append lost-callback resolution over
+//! uncertain, aborted, and not-attempted owners. It preserves exact source
+//! provenance, queue ownership, and an honestly optional append-request ID;
+//! emits one borrowed, opaque-ID-correlated resolver request per invocation;
+//! permits logical follower enqueue without changing the immutable head or
+//! correlation; and accepts only closed terminal physical observations.
+//!
+//! The request discloses the expected selected scalar binding, writer pair, and
+//! bounded head/selection lengths, never the complete clonable mutation
+//! binding, private expected head bytes, or selection JSON. An observed
+//! current context consumes a separately normalized non-`Clone` selected root
+//! plus independently read writer and head-index facts; its complete mutation
+//! binding remains core-private. Rust derives advisory exact retry only from
+//! clean exact-tail absence with the complete writer pair unchanged, and
+//! historical head presence only from the byte-identical exact final record.
+//! Later writer-epoch movement may coexist with that historical fact; epoch
+//! regression, a selected-receipt change without a strict epoch advance, or
+//! same-epoch fence substitution fails closed. A later record never
+//! acknowledges the head, and a missing target before a later key is a gap.
+//!
+//! Positive resolution has a nominally separate explicit one-head
+//! acknowledgement family; all indeterminate, collision, and reset outcomes
+//! quarantine the queue. The exact five-store resolver snapshot is `readonly`,
+//! has no durability option, and must emit terminal `complete` after every read
+//! and full scan. This remains host-attested and process-local: dropping the
+//! volatile owner loses its correlation state, and there is no adapter,
+//! callback authentication, copied-request cancellation, token refresh, or
+//! process-restart reconstruction. `IndexedDB` `durability: "strict"` is only a
+//! requested hint, not proof of persistence to durable media.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

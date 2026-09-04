@@ -9,6 +9,13 @@ pub(super) struct LocalLogStorageRetainedAppendAttempt {
 }
 
 impl LocalLogStorageRetainedAppendAttempt {
+    pub(super) const fn from_parts(
+        queue: LocalLogStorageAppendQueue,
+        correlation: LocalLogStorageRetainedAppendAttemptCorrelation,
+    ) -> Self {
+        Self { queue, correlation }
+    }
+
     pub(super) const fn before_request(
         queue: LocalLogStorageAppendQueue,
         attempt_id: LocalLogStorageAppendAttemptId,
@@ -48,12 +55,25 @@ impl LocalLogStorageRetainedAppendAttempt {
         matches!(self.correlation, LocalLogStorageRetainedAppendAttemptCorrelation::Issued(_))
     }
 
+    pub(super) const fn request_id(&self) -> Option<&LocalLogStorageAppendRequestId> {
+        match &self.correlation {
+            LocalLogStorageRetainedAppendAttemptCorrelation::BeforeRequest(_) => None,
+            LocalLogStorageRetainedAppendAttemptCorrelation::Issued(request_id) => Some(request_id),
+        }
+    }
+
     pub(super) fn into_queue(self) -> LocalLogStorageAppendQueue {
         self.queue
     }
+
+    pub(super) fn into_parts(
+        self,
+    ) -> (LocalLogStorageAppendQueue, LocalLogStorageRetainedAppendAttemptCorrelation) {
+        (self.queue, self.correlation)
+    }
 }
 
-enum LocalLogStorageRetainedAppendAttemptCorrelation {
+pub(super) enum LocalLogStorageRetainedAppendAttemptCorrelation {
     BeforeRequest(LocalLogStorageAppendAttemptId),
     Issued(LocalLogStorageAppendRequestId),
 }

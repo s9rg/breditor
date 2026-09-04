@@ -26,7 +26,9 @@ use super::{
 /// outcomes remove nothing and preserve the queue for exact resubmission.
 /// Neither constructing, inspecting, dropping, nor resubmitting this uncertain
 /// owner acknowledges an append, proves storage currentness, or releases its
-/// final cursor. Lost terminal callbacks remain unresolved in this version.
+/// final cursor. A missing terminal callback can be investigated only by
+/// consuming this owner into the separate same-process append resolver; that
+/// resolver remains trusted observation and cannot recover after process loss.
 ///
 /// ```compile_fail
 /// fn require_clone<T: Clone>() {}

@@ -40,7 +40,10 @@ This repository currently contains the first end-to-end Rust-core slice:
   plus a process-local uncertain FIFO-head attempt with one-shot borrowed exact
   request egress, exact resubmission, logical enqueue behind the head, correlated
   terminal classification, and an explicit one-head acknowledgement transition
-  to either the next pending queue or a drained token/cursor owner;
+  to either the next pending queue or a drained token/cursor owner, plus a
+  separately correlated same-process lost-callback resolver with closed
+  physical observations, exact-head retry or presence outcomes, logical enqueue
+  during resolution, and its own one-head acknowledgement family;
 - root-relative paths, UTF-16-safe points, document-aware point ordering, and
   directional range selections;
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
@@ -91,8 +94,8 @@ attributes,
 action-state subscriptions and asynchronous delivery, presentation metadata
 and plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
-scope provisioning, executable append I/O, lost-append-callback resolution and
-process-restart append reconstruction,
+scope provisioning, executable append I/O and process-restart append
+reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
 Wasm bindings,
@@ -526,12 +529,57 @@ already be stale and must be revalidated by every later protected mutation.
 the complete queue and can exact-resubmit it under a fresh attempt identity.
 They close only the correlated invocation: copied request data may outlive the
 negative attestation and may already be executing elsewhere. Lost terminal
-callback resolution remains the `0.0.47` gate, and there is still no
-process-restart reconstruction of the volatile queue or IDs. The base cursor's
+callback resolution remained the next `0.0.47` gate at that checkpoint, and
+there was no process-restart reconstruction of the volatile queue or IDs. The base cursor's
 physical-byte provenance remains caller-trusted. `IndexedDB`
 `durability: "strict"` is a hint, so `HeadPresent` is host-attested presence and
 `Drained` is a resulting ownership state—not an immortal, `fsync`-equivalent,
 eviction-proof, or rollback-proof durability receipt.
+
+Version `0.0.47` adds same-process resolution when an append terminal callback
+is missing. `Uncertain`, `AttemptAborted`, and `NotAttempted` owners can enter a
+non-`Clone`, non-serializable `LocalLogStorageAppendResolution` without losing
+their exact source provenance, queue, token, final speculative cursor, or
+optional append-request ID. Each resolver invocation emits at most one borrowed
+request with a fresh opaque resolution ID. The adapter request exposes the
+expected selected scalar binding, writer pair, frame limits, head key/end/length, and expected
+selection byte lengths, but never the private expected head bytes or selection
+JSON.
+
+Ordinary resolution evidence is applicable only after one transaction scoped
+to exactly the five Profile V1 stores, opened `readonly` with no durability
+option, completes after every read and full cursor scan. The stable snapshot is
+scheduled after earlier overlapping writers and before later overlapping
+writers, while compatible readers can overlap. Physical database absence uses
+the separately correlated non-creating-open path. Evidence owns independently
+normalized current selection state, the independently read head-index
+transaction ID and writer pair, complete prefix boundaries, and any observed
+target bytes. The current observation consumes a non-`Clone` normalized
+selected root instead of accepting a mutation binding directly, and its
+complete mutation binding remains core-private. This enforces the strict
+normalization shape but cannot prove that the host performed a fresh
+independent read; evidence remains trusted.
+
+Rust alone derives five semantic outcomes. Clean absence at the exact valid tail
+permits advisory exact resubmission only when the complete selected envelope,
+canonical selection JSON, and writer pair remain exact. A byte-identical target
+is positive only when it is the exact final record; a strictly later writer
+epoch is allowed because it does not change that historical fact, while epoch
+regression, a selected-receipt change without a strict epoch advance, or a
+fence change at the same epoch fails closed. Any later record prevents
+acknowledgement, and an absent target followed by a later record is a
+gap/collision. Selection advance, reset, or insufficiently classifiable state
+keeps the queue quarantined.
+
+Only `HeadPresentAtResolution` can use the separate resolution acknowledgement
+to remove exactly one head; only `RetryEligibleAtResolution` can resubmit it.
+Logical followers may continue to enqueue during resolution without changing
+the immutable head or either correlation identity. The resolver remains
+host-attested and process-local: it is not executable IndexedDB I/O, callback
+authentication, cancellation of copied requests, process-restart recovery,
+fresh-token proof, rollback protection, or durable-media proof. A full scan is
+O(number of active-generation chunks), and the fixed five-store transaction
+scope can still couple otherwise independent editor scopes.
 
 ## Development
 

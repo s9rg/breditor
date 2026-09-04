@@ -148,6 +148,12 @@ The implemented Rust slice owns:
   acknowledgement that advances exactly one head; typed pending ownership that
   promotes the exact first follower; and a drained owner that owns and can
   release the token, final speculative cursor, and queue limits;
+- a same-process append lost-callback resolver over uncertain, aborted, and
+  not-attempted source owners, with honest optional append-request provenance,
+  one borrowed request per invocation, exact resolution correlation, closed
+  physical findings, core-derived retry/presence/indeterminate/collision/reset
+  outcomes, logical enqueue that preserves both correlations, and a nominally
+  separate consuming one-head acknowledgement family;
 - atomic transactions, explicit selection/pending-format updates, typed
   metadata, relocation, and operation-relative change sets;
 - immutable commits with helpers that construct undo and redo transactions;
@@ -171,8 +177,8 @@ The following remain deliberately unimplemented:
 - generic formatting kinds and attributes beyond property-free strong text;
 - action-state subscriptions and delivery queues, presentation metadata,
   keymaps, plugin dependencies/lifecycle, and durable registry manifests;
-- ordered tail I/O and recovery orchestration, lost-append-callback resolution,
-  process-restart append reconstruction, atomic checkpoint/log replacement,
+- ordered tail I/O and recovery orchestration, process-restart append
+  reconstruction, atomic checkpoint/log replacement,
   durable restart continuation, cryptographic integrity or authenticity,
   rollback protection, migration, and crash-tail truncation;
 - storage-generation initial provisioning, a general plan-level
@@ -939,10 +945,70 @@ request can outlive a negative attestation and still commit; exact-key/exact-byt
 remains mandatory. The token can be stale, and the base cursor's physical-byte
 provenance remains caller-trusted.
 
-Lost-callback resolution is explicitly deferred to `0.0.47`. There is no
-process-restart reconstruction, and dropping a volatile owner loses its queue
-and correlation state. IndexedDB `durability: "strict"` remains a requested
-hint rather than a Rust-verifiable media-persistence guarantee.
+Version `0.0.47` closes the process-local lost-callback gate. It does not add
+process-restart reconstruction: dropping a volatile owner still loses its
+queue and correlation state. IndexedDB `durability: "strict"` remains a
+requested hint rather than a Rust-verifiable media-persistence guarantee.
+
+`Uncertain`, `AttemptAborted`, and `NotAttempted` can each be consumed into one
+`LocalLogStorageAppendResolution`. The source kind, physical attempt ID,
+honestly optional append-request ID, complete queue, token, limits, counters,
+allocations, and final speculative cursor remain exact. One borrowed adapter
+request mints a fresh opaque resolution identity only at egress. Resolver
+restart clears only that identity. Logical enqueue behind the immutable head is
+allowed after the live request borrow ends and preserves both source and
+resolver correlation; failure returns the complete unchanged resolver.
+
+The adapter request exposes the typed expected selected scalar binding, writer
+pair, Frame V1 limits, target start/end/length, and the lengths of expected
+current and predecessor selection JSON. It deliberately exposes neither the
+complete clonable mutation binding, expected head bytes, nor exact expected
+selection JSON. An observed current context must
+instead consume a non-`Clone`, strictly normalized
+`LocalLogStorageSelectedRoot`, plus an independently read writer epoch/fence and
+current-head-index transaction ID. The constructor does not accept a mutation
+binding directly, keeping evidence on the strict normalization path, and the
+complete mutation binding remains core-private. Safe code can still retain or
+renormalize the same input bytes; freshness and independent I/O remain host-
+enforced rather than type-proven.
+
+Ordinary evidence applies only after one transaction scoped to exactly `meta`,
+`scopes`, `transactions`, `generations`, and `chunks`, opened `readonly` with no
+durability option, reaches terminal `complete` after every read and complete
+cursor scan. It is a stable snapshot ordered after earlier overlapping writers
+and before later overlapping writers; compatible readers may overlap. Physical
+database absence instead uses one correlated, aborted, non-creating open path.
+Neither request success nor scan completion before transaction completion is
+evidence.
+
+Rust compares that observation against the private queue. Clean target absence
+at the exact valid tail grants advisory exact resubmission only when the
+selected envelope, byte-exact current/optional-predecessor JSON, writer epoch,
+and writer fence still compare exactly (apart from the allowed retired-to-
+reclaimed checkpoint cleanup). A byte-identical target grants historical head
+presence only when it is the exact final record after the exact valid prefix.
+A strictly greater writer epoch does not invalidate that historical fact;
+writer-epoch regression, a selected-receipt change without a strict epoch
+advance, or a fence substitution at the same epoch is a collision. Any later
+record prevents positive acknowledgement, and an absent target followed by a
+later key is a gap/collision. A different valid selection with a strictly later
+writer epoch in the same scope lifetime is indeterminate rather than retryable;
+another scope lifetime, inconsistent selected bytes, or broken index fails
+closed.
+
+Only `LocalLogStorageAppendRetryEligibleAtResolution` can begin a fresh exact
+append attempt. Only `LocalLogStorageAppendHeadPresentAtResolution` can enter
+the separate resolution acknowledgement transition, which advances the same
+private exact FIFO head primitive as the terminal-callback path and returns
+resolution-specific pending or drained ownership. All other outcomes retain a
+quarantined queue with no retry, pop, cursor-release, or writer authority.
+
+The evidence remains a trusted host attestation rather than authenticated
+browser provenance. The resolver does not cancel copied dispatches, refresh a
+stale token, prove media durability/currentness, or recover across a process
+restart. Full active-tail scanning is O(chunks), observed target bytes are
+moved into one bounded `Box<[u8]>`, and the fixed five-store scope can couple
+otherwise independent editor scopes.
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
@@ -4141,11 +4207,14 @@ and still commit, so every invocation must retain exact-key/exact-bytes
 idempotency. It also cannot refresh a stale token or authenticate the caller-
 supplied base cursor.
 
-Lost terminal callbacks remain unresolved in `0.0.46`; the resolver is the
-explicit `0.0.47` gate. There is no process-restart reconstruction, and dropping
-the volatile owner loses the queue and correlation IDs. IndexedDB
-`durability: "strict"` is only a hint requested from the browser; the trusted
-completion attestation is not proof of media persistence.
+Version `0.0.47` resolves a missing terminal callback only while one exact
+volatile queue-owning source survives. Its request-correlated `readonly`
+snapshot can derive exact retry, exact final-head presence, or a quarantined
+indeterminate/collision/reset outcome; positive resolution still requires its
+own explicit one-head acknowledgement. There is no process-restart
+reconstruction, and dropping the owner loses the queue and correlation IDs.
+IndexedDB `durability: "strict"` is only a hint requested from the browser; no
+trusted callback or resolver observation proves media persistence.
 
 A JavaScript adapter and real-browser profile validation remain later work.
 Consuming exclusive-owner typestate still requires a separately specified held

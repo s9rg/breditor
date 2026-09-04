@@ -11,8 +11,9 @@ use super::{
 ///
 /// The abort closes only the associated transaction. It is not proof that
 /// copied request data made no storage change in an uncorrelated dispatch. No
-/// head is removed, and this state has consumed its terminal event. It accepts
-/// only allocation-preserving exact resubmission under a fresh attempt ID.
+/// head is removed, and this state has consumed its terminal event. It can
+/// either exact-resubmit under a fresh attempt ID or enter same-process
+/// observational resolution for a copied-dispatch race.
 ///
 /// ```compile_fail
 /// fn require_clone<T: Clone>() {}

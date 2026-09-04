@@ -12,7 +12,8 @@ use super::{
 /// This closes one invocation, not the queue or every possible dispatch. If a
 /// request was exposed, copied data may still have escaped outside the
 /// correlation contract. No head is removed, this state grants no authority,
-/// and it accepts only allocation-preserving exact resubmission.
+/// and it can either exact-resubmit or enter same-process observational
+/// resolution without discarding its honest pre/post-egress provenance.
 ///
 /// ```compile_fail
 /// fn require_clone<T: Clone>() {}

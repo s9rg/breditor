@@ -31,6 +31,9 @@ speculative cursor and an exact ordered pending prefix, plus a process-local
 uncertain FIFO-head attempt with one-shot borrowed exact request egress, exact
 resubmission, logical enqueue behind the head, request-correlated transaction
 terminal classification, and an explicit consuming one-head acknowledgement,
+plus a source-preserving, request-correlated same-process append resolver with
+closed physical observations, exact retry/presence outcomes, enqueue while
+resolving, and a nominally separate one-head acknowledgement family,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
@@ -75,8 +78,8 @@ scheduler,
 generic formatting-kind or attribute actions, log storage and tail-wide
 recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, executable append I/O, lost-append-callback resolution,
-process-restart append reconstruction,
+scope provisioning, executable append I/O, process-restart append
+reconstruction,
 collaboration transform, or Wasm adapter yet.
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
@@ -574,12 +577,44 @@ invocation retains the same exact-key/exact-bytes idempotency rule. The retained
 mutation token may already be stale, and the queue's base-cursor provenance
 remains caller-trusted.
 
-The lost-callback resolver is explicitly deferred to `0.0.47`. Version
-`0.0.46` has no process-restart reconstruction, so dropping the volatile owner
-still loses correlation state. IndexedDB `durability: "strict"` remains only a
-requested hint; successful append completion/head presence means a trusted
-callback attested the frozen profile transaction and exact-tail qualification,
-not that Rust proved media persistence.
+Version `0.0.47` implements the process-local lost-callback resolver without
+adding an I/O engine. `Uncertain`, `AttemptAborted`, and `NotAttempted` retain
+their exact provenance when consumed into `LocalLogStorageAppendResolution`,
+including an honestly optional source append-request ID. Each invocation can
+emit one borrowed request with a fresh opaque resolver ID; restart keeps the
+source and queue but invalidates that ID. Live borrowing prevents apply,
+restart, or logical enqueue through the safe API, while a completed borrow may
+be followed by enqueue without changing the head or source/resolver
+correlation.
+
+The request exposes the expected selected scalar binding, writer pair, and
+bounded metadata, not the complete clonable mutation binding, private expected
+frame, or exact selection JSON. A current observation must
+consume a non-`Clone` `LocalLogStorageSelectedRoot` independently normalized
+from observed storage, plus the writer pair and selected head-index transaction
+ID read in that snapshot. This keeps evidence on the strict normalization path
+and keeps the complete mutation binding core-private, but cannot prove that the
+host performed a fresh read. Ordinary evidence is valid only after the exact
+five-store `readonly` transaction, opened without a durability option,
+completes after all reads and full cursor scans. Physical database absence has
+its own correlated non-creating-open evidence path.
+
+The core alone compares the evidence with the private queue. Exact-tail absence
+with the complete writer pair unchanged yields advisory
+`RetryEligibleAtResolution`. The byte-identical exact final target yields
+`HeadPresentAtResolution`; a later writer epoch is permitted, but regression or
+a selected-receipt change without a strict epoch advance or a same-epoch fence
+substitution is a collision. A later record never yields a positive outcome,
+and a missing target before a later key is a physical gap. Selection advance,
+reset, and other indeterminate states quarantine the queue.
+The positive state has its own acknowledgement outcome types and removes
+exactly one head by the same private FIFO primitive used by the callback path.
+
+This remains process-local, host-attested observation—not callback
+authentication, cancellation, process-restart reconstruction, token refresh,
+or durable-media proof. Dropping the volatile owner loses correlation state;
+the target scan is O(chunks), and the fixed store scope can couple independent
+editor scopes. IndexedDB `durability: "strict"` remains only a requested hint.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

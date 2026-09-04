@@ -40,6 +40,7 @@ mod replay_id;
 mod sequence;
 mod storage_append_attempt_id;
 mod storage_append_request_id;
+mod storage_append_resolution_request_id;
 mod storage_attempt_id;
 mod storage_attempt_request_id;
 mod storage_chunk_start;
@@ -101,6 +102,7 @@ pub use replay_id::ReplayId;
 pub use sequence::{LocalLogSequence, LocalLogSequenceError};
 pub use storage_append_attempt_id::LocalLogStorageAppendAttemptId;
 pub use storage_append_request_id::LocalLogStorageAppendRequestId;
+pub use storage_append_resolution_request_id::LocalLogStorageAppendResolutionRequestId;
 pub use storage_attempt_id::LocalLogStorageAttemptId;
 pub use storage_attempt_request_id::LocalLogStorageAttemptRequestId;
 pub use storage_chunk_start::{
