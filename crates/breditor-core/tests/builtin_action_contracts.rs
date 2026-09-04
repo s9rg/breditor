@@ -9,8 +9,10 @@ use breditor_core::{
         ActionActivationContract, ActionExecutionError, ActionId, ActionInvocation,
         ActionPreparation, ActionRegistry, ActionStateDomains, PreparedAction,
         builtins::{
-            base_action_registry, delete_backward_action_id, insert_paragraph_break_action_id,
-            insert_text_action_id, insert_text_input_contract, toggle_strong_action_id,
+            base_action_registry, delete_backward_action_id, delete_forward_action_id,
+            delete_selection_action_id, insert_paragraph_break_action_id,
+            insert_plain_text_action_id, insert_plain_text_input_contract, insert_text_action_id,
+            insert_text_input_contract, toggle_strong_action_id,
         },
     },
     codec::DocumentJsonCodec,
@@ -192,25 +194,37 @@ fn assert_disabled(
 #[test]
 fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -> TestResult {
     let registry = base_action_registry()?;
-    let delete_id = delete_backward_action_id();
+    let delete_backward_id = delete_backward_action_id();
+    let delete_forward_id = delete_forward_action_id();
+    let delete_selection_id = delete_selection_action_id();
     let enter_id = insert_paragraph_break_action_id();
+    let insert_plain_text_id = insert_plain_text_action_id();
     let insert_text_id = insert_text_action_id();
     let strong_id = toggle_strong_action_id();
-    assert_eq!(delete_id.as_str(), "breditor/delete-backward");
+    assert_eq!(delete_backward_id.as_str(), "breditor/delete-backward");
+    assert_eq!(delete_forward_id.as_str(), "breditor/delete-forward");
+    assert_eq!(delete_selection_id.as_str(), "breditor/delete-selection");
     assert_eq!(enter_id.as_str(), "breditor/insert-paragraph-break");
+    assert_eq!(insert_plain_text_id.as_str(), "breditor/insert-plain-text");
     assert_eq!(insert_text_id.as_str(), "breditor/insert-text");
     assert_eq!(strong_id.as_str(), "breditor/toggle-strong");
-    assert_eq!(registry.len(), 4);
+    assert_eq!(registry.len(), 7);
     let descriptors = registry.descriptors().collect::<Vec<_>>();
-    assert_eq!(descriptors[0].id(), &delete_id);
-    assert_eq!(descriptors[1].id(), &enter_id);
-    assert_eq!(descriptors[2].id(), &insert_text_id);
-    assert_eq!(descriptors[3].id(), &strong_id);
+    assert_eq!(descriptors[0].id(), &delete_backward_id);
+    assert_eq!(descriptors[1].id(), &delete_forward_id);
+    assert_eq!(descriptors[2].id(), &delete_selection_id);
+    assert_eq!(descriptors[3].id(), &enter_id);
+    assert_eq!(descriptors[4].id(), &insert_plain_text_id);
+    assert_eq!(descriptors[5].id(), &insert_text_id);
+    assert_eq!(descriptors[6].id(), &strong_id);
     assert_eq!(descriptors[0].input_contract(), None);
     assert_eq!(descriptors[1].input_contract(), None);
-    assert_eq!(descriptors[2].input_contract(), Some(&insert_text_input_contract()));
+    assert_eq!(descriptors[2].input_contract(), None);
     assert_eq!(descriptors[3].input_contract(), None);
-    let insert_effects = descriptors[2].state_spec().effects();
+    assert_eq!(descriptors[4].input_contract(), Some(&insert_plain_text_input_contract()));
+    assert_eq!(descriptors[5].input_contract(), Some(&insert_text_input_contract()));
+    assert_eq!(descriptors[6].input_contract(), None);
+    let insert_effects = descriptors[5].state_spec().effects();
     assert_eq!(
         insert_effects.reads(),
         ActionStateDomains::DOCUMENT
@@ -228,11 +242,11 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
             | ActionStateDomains::SNAPSHOT
     );
     assert_eq!(
-        descriptors[3].state_spec().contract().activation_contract(),
+        descriptors[6].state_spec().contract().activation_contract(),
         ActionActivationContract::Tracked
     );
-    assert_eq!(descriptors[3].state_spec().contract().value_contract(), None);
-    let strong_effects = descriptors[3].state_spec().effects();
+    assert_eq!(descriptors[6].state_spec().contract().value_contract(), None);
+    let strong_effects = descriptors[6].state_spec().effects();
     assert_eq!(
         strong_effects.reads(),
         ActionStateDomains::DOCUMENT
@@ -259,7 +273,7 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
         "builtin-parity",
     )?;
     let original = initial.clone();
-    for id in [delete_id, enter_id, strong_id] {
+    for id in [delete_backward_id, delete_forward_id, enter_id, strong_id] {
         let keyboard = prepared(&registry, &initial, id.clone())?;
         let toolbar = prepared(&registry, &initial, id)?;
         assert_eq!(keyboard.transaction(), toolbar.transaction());
@@ -433,8 +447,7 @@ fn enter_explicitly_preserves_pending_formats_and_records_history() -> TestResul
 }
 
 #[test]
-fn delete_backward_removes_one_ascii_non_bmp_or_combining_scalar_and_crosses_run_seams()
--> TestResult {
+fn delete_backward_removes_one_extended_grapheme_and_crosses_formatting_run_seams() -> TestResult {
     struct Case {
         lineage: &'static str,
         source: Vec<(&'static str, bool)>,
@@ -458,11 +471,18 @@ fn delete_backward_removes_one_ascii_non_bmp_or_combining_scalar_and_crosses_run
             result_caret: text_point(0, 0, 1, Affinity::After)?,
         },
         Case {
-            lineage: "delete-combining-scalar",
+            lineage: "delete-combining-grapheme",
             source: vec![("e\u{301}", false)],
             caret: text_point(0, 0, 2, Affinity::Before)?,
-            result: vec![("e", false)],
-            result_caret: text_point(0, 0, 1, Affinity::After)?,
+            result: vec![],
+            result_caret: child_point(0, 0, Affinity::After)?,
+        },
+        Case {
+            lineage: "delete-combining-format-seam",
+            source: vec![("e", false), ("\u{301}", true)],
+            caret: child_point(0, 2, Affinity::After)?,
+            result: vec![],
+            result_caret: child_point(0, 0, Affinity::After)?,
         },
         Case {
             lineage: "delete-run-seam",
@@ -519,6 +539,7 @@ fn delete_backward_removes_forward_and_backward_ranges_and_canonicalizes_seams()
         assert_paragraph_runs(commit.after().document(), 0, &[("af", false)])?;
         assert_exact_caret(commit.after(), &text_point(0, 0, 1, Affinity::After)?)?;
         assert_eq!(commit.after().pending_formats(), None);
+        assert_action_metadata(&commit, &delete_id, &HistoryIntent::Record);
         results.push((commit.after().document().clone(), commit.after().selection().cloned()));
     }
     assert_eq!(results[0], results[1]);

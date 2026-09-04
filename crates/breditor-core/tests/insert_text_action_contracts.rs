@@ -351,6 +351,21 @@ fn typed_contract_is_a_bounded_bare_string_and_debug_redacts_it() -> TestResult 
 }
 
 #[test]
+fn direct_decoder_rejects_a_value_tagged_for_input_v2() -> TestResult {
+    let expected = insert_text_input_contract();
+    let actual = ActionInputContract::new(
+        QualifiedName::try_new(INSERT_TEXT_INPUT_CONTRACT_NAME)?,
+        ActionInputVersion::try_new(2)?,
+    );
+    let input = ActionInput::typed(actual.clone(), ActionValue::try_from_string("x")?);
+    assert_eq!(
+        InsertTextInput::decode(Some(&expected), &input),
+        Err(ActionInputError::ContractMismatch { expected, actual })
+    );
+    Ok(())
+}
+
+#[test]
 #[allow(clippy::too_many_lines)]
 fn collapsed_insertion_uses_pending_then_focus_affinity_across_point_aliases() -> TestResult {
     struct Case {

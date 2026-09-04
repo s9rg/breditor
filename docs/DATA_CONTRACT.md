@@ -164,8 +164,9 @@ The implemented Rust slice owns:
 - one-call action observation contracts plus a frozen, bounded direct/routed/
   history action-state catalog, immutable exact-base batches, and a
   synchronous single-observation cache with bounded local deltas;
-- semantic base actions for exact text insertion, paragraph breaks, backward
-  deletion, and strong formatting; and
+- seven semantic base actions: exact inline and structural plain-text
+  insertion, paragraph break, grapheme-aware backward and forward deletion,
+  exact selection deletion, and strong formatting; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
   linear undo/redo history and opaque history-observation identity;
 - a product-level `EditorEngine` that exclusively combines one session and one
@@ -1042,6 +1043,24 @@ browser, DOM, scheduling, subscription, or storage adapter. The bounded target
 through `0.1.0` is frozen in
 [`V0_1_SCOPE.md`](V0_1_SCOPE.md).
 
+Version `0.0.49` closes the first editing gaps without adding another primitive
+operation. `delete-backward` and the new `delete-forward` use default extended
+grapheme clusters from exact-pinned `unicode-segmentation` 1.13.3 / Unicode
+17.0.0 across formatting-run seams; a scalar-valid caret inside a cluster is
+disabled rather than snapped. The dedicated `delete-selection` action gives cut
+and other hosts a truthful independent-history command, and both directional
+delete actions share its normalized range planner. The new
+`insert-plain-text-input@1` action interprets CRLF, CR, and LF as paragraph
+boundaries and publishes one guarded `RootTextReplace` for every selection
+shape. It preserves other scalars exactly, applies one deterministically
+inherited format set across inserted lines, consumes pending formats, and
+requests independent history. It produces one undo step only if canonical
+execution retains a document operation; an exact replacement can be
+selection-only. It rejects a source over 64 KiB or 10,000 paragraphs. A soft
+break is deliberately absent: the base AST has no inline break node, and literal
+LF remains the older `insert-text@1` contract rather than an HTML `<br>`
+representation.
+
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -1126,8 +1145,13 @@ Children point = parent path + child boundary index + before/after affinity
   rejects root boundaries and endpoints outside a text container.
 - `Option<Selection>` represents editor focus/selection absence. Only range
   selection exists today; node, grid, and multi-range selections are future.
-- Grapheme, word, and line movement are future action semantics, not stored
-  coordinate units.
+- Extended-grapheme boundaries are computed only by the backward/forward delete
+  actions. Word and line movement remain future semantics. None of them changes
+  the stored coordinate unit: points continue to use checked UTF-16 scalar
+  boundaries. Selection deletion and both insertion type-over paths honor those
+  supplied scalar endpoints exactly, even inside one grapheme; a host can
+  therefore remove only a combining or joiner component until a later
+  selection-boundary policy exists.
 
 ## Editor state and snapshots
 
@@ -1376,7 +1400,14 @@ action or intent.
 `Send` and `Sync` make values thread-safe; they do not make parallel editor
 histories linear.
 
-Three base actions take no input, while text insertion accepts one typed input:
+Five base actions take no input. Inline and plain-text insertion each accept an
+independently versioned typed input:
+
+Both version-1 string ceilings equal the generic `ActionValue` text envelope.
+An oversized wire string therefore fails generic value construction before an
+action decoder can emit its reserved action-specific input-limit code. The
+independent action ceiling still prevents a future widening of `ActionValue`
+from silently widening either version-1 contract.
 
 - `breditor/insert-text` accepts input contract
   `breditor/insert-text-input@1`, whose complete value is one non-empty string
@@ -1402,6 +1433,25 @@ Three base actions take no input, while text insertion accepts one typed input:
   `breditor/typing`. Empty input is invalid input, never deletion, a no-op, or a
   disabled capability.
 
+- `breditor/insert-plain-text` accepts input contract
+  `breditor/insert-plain-text-input@1`, also as one non-empty bounded string.
+  CRLF, lone CR, and LF become structural paragraph boundaries; leading,
+  trailing, and consecutive separators retain empty paragraphs. U+0085,
+  U+2028, U+2029, and every other scalar remain literal text, with no Unicode
+  normalization. One guarded `RootTextReplace` performs every same- or
+  cross-paragraph replacement atomically. Collapsed insertion uses pending
+  formats and then focus-affinity context; an extended range uses the first
+  spatially selected run, falling back only to the retained left seam, retained
+  right seam, then plain text for a structural-only range. One inherited format
+  set applies to every non-empty inserted paragraph. Success consumes pending
+  formats, places a before-affinity caret after the final inserted fragment but
+  before retained suffix text, and requests `HistoryIntent::Record`. A session
+  creates one independent entry only if canonical execution retains a document
+  operation; an exact replacement can be a selection-only commit. The source
+  is limited to 65,536 UTF-8 bytes and UTF-16 code units and at most 10,000
+  normalized paragraphs. Active document limits may be smaller; an oversized
+  atomic result is disabled rather than chunked into partial edits.
+
 - `breditor/insert-paragraph-break` replaces an extended range with one block
   boundary, or performs one split for a collapsed range. A genuinely
   cross-paragraph range emits one `RootTextReplace` with exactly two empty
@@ -1418,21 +1468,39 @@ Three base actions take no input, while text insertion accepts one typed input:
   explicitly places an `Affinity::After` child-boundary caret at the new right
   paragraph start, preserves the exact pending-format option, and requests one
   independent history event.
-- `breditor/delete-backward` deletes an extended direct-root text range, deletes
-  the immediately preceding Unicode scalar for an interior collapsed caret, or
-  joins the previous paragraph at paragraph start. Same-paragraph range and
-  scalar deletion remain exact `TextSplice` operations, and collapsed deletion
-  at paragraph start remains `ParagraphJoin`. A genuinely cross-paragraph range
-  emits one `RootTextReplace` with exactly one empty paragraph fragment, so the
-  retained start prefix and end suffix join atomically without an intermediate
-  tree. A structural-only selection therefore deletes paragraph boundaries;
-  equal-format seam canonicalization is attempted, and the action is disabled
-  if the merged leaf would exceed a result limit. The action explicitly places
-  an `Affinity::After` caret at the spatial start, preserves the exact
-  pending-format option (necessarily `None` for a valid extended selection),
-  and requests merge group
-  `breditor/delete-backward`. A later contextual insertion at an unequal seam
-  consequently inherits the retained suffix/right-side format.
+- `breditor/delete-selection` deletes exactly one non-collapsed normalized text
+  range. A same-paragraph range is one `TextSplice`; a cross-paragraph range is
+  one `RootTextReplace` with one empty replacement fragment. It therefore also
+  deletes a structural-only paragraph boundary. The result collapses at the
+  spatial start with `Affinity::After`, preserves pending formats, and records
+  independently. A collapsed selection is disabled. Active shape and text
+  limits can also disable deletion when joining differently formatted retained
+  seams would canonicalize into an oversized leaf or otherwise exceed the
+  result bounds.
+- `breditor/delete-backward` and `breditor/delete-forward` delegate extended
+  ranges to that same selection-deletion planner. For a collapsed caret they
+  delete the preceding or following default extended grapheme cluster under
+  pinned Unicode 17.0.0 semantics. Formatting-run seams never create grapheme
+  boundaries. A caret on a valid scalar boundary inside a grapheme is disabled
+  as `breditor/caret-not-grapheme-boundary`; it is never snapped or widened.
+  Backward deletion at paragraph start joins the preceding paragraph; forward
+  deletion at paragraph end joins the following paragraph. With an available
+  operation slot, document edges use distinct `breditor/at-document-start` and
+  `breditor/at-document-end` reasons. A zero operation budget takes precedence
+  after selection applicability is known and before paragraph capture or
+  segmentation.
+  Collapsed backward/forward edits use `TextSplice` or `ParagraphJoin`, preserve
+  pending formats, place respectively after- and before-affinity carets, and
+  offer distinct directional history merge groups. If deleting text or joining
+  paragraphs forms one grapheme across the removed seam, backward deletion
+  snaps its core-produced caret to the cluster end and forward deletion snaps
+  to the cluster start. The core therefore never emits an interior-grapheme
+  caret from either collapsed deletion action. Extended selection deletion always records
+  independently, so a later backspace/delete begins a separate undo step. Exact
+  operations—not renewed segmentation—drive replay. Unicode 17.0.0 is frozen
+  for these action identities; a future Unicode-data upgrade must use a new
+  action generation or identity rather than silently changing a queued semantic
+  invocation.
 - `breditor/toggle-strong` reports tracked activation and toggles the base
   schema's property-free `breditor/strong` format. At a collapsed range,
   explicit pending formats take precedence; otherwise the focus endpoint's
@@ -1451,17 +1519,17 @@ Three base actions take no input, while text insertion accepts one typed input:
   paragraphs inside a range containing other text remain intact and do not
   affect activation.
 
-All four actions support point aliases and non-BMP scalar boundaries; the
+All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
 survives. Empty paragraphs and formatted seams have explicit behavior.
-Backward deletion is scalar-based,
-not grapheme-based: combining marks and components of a zero-width-joiner emoji
-can be deleted separately. Text insertion, paragraph break, and backward delete
-advertise stateless observations; strong formatting uses the same evaluation
-for capability and inactive/active/mixed state. The parameterized text action
-has no generic toolbar entry: a catalog may observe only an exact fixed-string
-invocation, such as an intentional snippet or macro control. If an extended
-replacement already contains exactly the requested text with the inherited
+Collapsed directional deletion is grapheme-based and Rust-authoritative;
+selection deletion remains exact at its supplied scalar boundaries. Text
+insertion, paragraph break, and all three delete actions advertise stateless
+observations; strong formatting uses the same evaluation for capability and
+inactive/active/mixed state. The two parameterized insertion actions have no
+generic toolbar entries: a catalog may observe either one only through an exact
+fixed-string invocation, such as an intentional snippet or macro control. If
+an extended replacement already contains exactly the requested text with the inherited
 formats, canonical operation filtering produces a selection-only commit. That
 commit creates no undo entry, preserves redo, and closes the active history
 merge group. A collapsed pending-format-only toggle likewise rotates the
@@ -1882,6 +1950,14 @@ checked global deltas instead of rescanning a matching-profile document, but:
   application also derive and canonicalize those slices repeatedly to prove
   same-type inverse closure; a private proof-carrying/cached derivation can
   remove that repeated allocation without changing the public contract;
+- collapsed grapheme deletion scans the complete source paragraph from its
+  start, then scans the result to guarantee a valid post-edit caret. A one-run
+  fragment is borrowed directly; each multi-run fragment copies its bounded
+  UTF-8 text into a temporary contiguous segmentation view so formatting seams
+  cannot trigger library chunk-context discrepancies. There is no cached
+  segmentation index, so repeated deletion in one long paragraph can be
+  quadratic in paragraph length. The exact-pinned Unicode data also contributes
+  code size to native and Wasm builds;
 - document JSON decoding routes a borrowed header and exact outer envelope,
   then walks the raw root once with a typed streaming preflight before parsing
   the owned record and rebuilding immutable nodes. The preflight bounds node,

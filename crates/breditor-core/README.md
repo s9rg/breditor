@@ -40,8 +40,10 @@ paragraph split/join operations, proof-backed local
 validation for fixed-base text edits, structural relocation, heterogeneous
 change notifications, guarded root-text range replacement with a closed
 same-type inverse, exact in-memory undo/redo requests, an immutable typed
-action registry, a frozen semantic intent router, and base text-insertion,
-paragraph-break, backward-delete, and strong-format actions. Registry
+action registry, a frozen semantic intent router, and seven base actions:
+inline and structural plain-text insertion, paragraph break, grapheme-aware
+backward and forward deletion, exact selection deletion, and strong-format
+toggle. Registry
 preparation is the authoritative integration path for semantic capability and
 execution: it preflights and caches an exact transaction result against one
 immutable state.
@@ -68,8 +70,10 @@ inherits deterministic context otherwise, replaces one exact direct-root text
 range, and offers adjacent edits to the `breditor/typing` history group.
 Same-paragraph insertion stays on the local splice path, while
 cross-paragraph type-over uses one guarded root-text replacement.
-Extended backward deletion likewise uses one guarded root-text replacement for
-cross-paragraph selections while preserving its local splice/join paths.
+Atomic plain-text insertion converts CRLF/CR/LF into structural paragraphs with
+one root-text replacement. Grapheme-aware backward and forward deletion share a
+dedicated exact-selection planner while preserving directional splice/join
+paths and merge groups for collapsed carets.
 Cross-paragraph paragraph breaks use the same atomic primitive with two empty
 replacement fragments, preserving the retained boundary text as two distinct
 paragraphs without a delete/split intermediate.
@@ -663,6 +667,26 @@ session publication. `LocalLogEntry` separately requires session/generation,
 sequence, and retry identities. A later log coordinator must reserve those and
 close conversion before publication. This facade adds no Wasm ABI, DOM/event
 adapter, subscription scheduler, or persistence I/O.
+
+Version `0.0.49` adds `delete-forward`, `delete-selection`, and
+`insert-plain-text` to the base action generation. Directional deletion uses
+default extended grapheme clusters from exact-pinned Unicode 17.0.0 across
+formatting runs; a scalar-valid caret inside a cluster is disabled. Extended
+selection deletion records independently, while collapsed backward/forward
+work uses distinct merge groups and joins the adjacent paragraph at structural
+edges. A cluster formed across any removed seam directionally snaps the
+core-produced caret to a valid cluster boundary. Replay applies exact recorded
+operations and never reruns segmentation.
+
+Plain-text input version 1 treats CRLF, CR, and LF as structural boundaries,
+preserves every other scalar, applies one deterministic inherited format set to
+all non-empty lines, consumes pending formats, and requests independent history
+with exactly one `RootTextReplace`. Canonical execution can drop an exact
+replacement, yielding a selection-only commit and no undo entry. Its source cap
+is 65,536 bytes and UTF-16 code units plus 10,000 paragraphs; active document
+limits can reject a smaller result. The existing `insert-text` contract retains
+literal newlines. Soft break remains outside the base AST rather than being
+faked with inline LF.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

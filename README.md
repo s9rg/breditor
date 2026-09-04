@@ -71,11 +71,12 @@ This repository currently contains the first end-to-end Rust-core slice:
   identities, immutable exact-base direct/routed/history batches, and a
   synchronous single-observation cache with domain invalidation, exact-source
   coalescing, and bounded local deltas;
-- semantic `insert-text`, `insert-paragraph-break`, `delete-backward`, and
+- semantic `insert-text`, atomic `insert-plain-text`, paragraph break,
+  grapheme-aware backward/forward delete, exact selection delete, and
   `toggle-strong` actions exposed through the same registry for future
   keyboard, toolbar, palette, and API adapters; typed insertion consumes
-  pending formats, insertion, paragraph breaks, and extended deletion
-  atomically replace cross-paragraph selections, while `toggle-strong`
+  pending formats, multiline insertion and extended deletion atomically replace
+  cross-paragraph selections, while `toggle-strong`
   publishes tracked inactive/active/mixed state and preserves selected block
   boundaries during cross-paragraph formatting;
 - a synchronous `EditorSession` publication boundary with exact-base commit
@@ -621,6 +622,28 @@ identities before publication. Version `0.1.0` instead uses atomic
 session-checkpoint persistence.
 `EditorEngine` adds no Wasm ABI, browser event loop, DOM projection, scheduler,
 subscription delivery, or storage I/O.
+
+Version `0.0.49` expands the base registry from four to seven actions without
+expanding the primitive operation algebra. Backward and forward deletion use
+exact-pinned Unicode 17.0.0 extended grapheme boundaries across formatting
+runs, join adjacent paragraphs at structural edges, and keep distinct merge
+groups. `delete-selection` is the independent-history document mutation half
+of cut; clipboard acquisition, write success, and ordering remain host work.
+Directional deletion delegates every extended range to that same planner.
+Host-supplied carets inside a grapheme are disabled instead of snapped; a join
+or text deletion that forms a grapheme across the removed seam directionally
+snaps its core-produced caret to a valid cluster boundary.
+
+`insert-plain-text-input@1` converts CRLF, CR, and LF into paragraph boundaries
+and uses one `RootTextReplace` for same- and cross-paragraph selections. It
+preserves all other scalars, applies one inherited format set to non-empty
+inserted lines, clears pending typing formats, and requests independent
+history. A session creates one undo step only when canonical execution retains
+a document operation; an exact replacement may be selection-only. Input is
+capped at 65,536 bytes/code units and 10,000 paragraphs, with active document
+limits allowed to be smaller. This is the paste primitive; the older
+`insert-text-input@1` continues to treat newlines as literal inline text. A
+truthful soft break remains deferred until the AST has an inline break node.
 
 ## Development
 

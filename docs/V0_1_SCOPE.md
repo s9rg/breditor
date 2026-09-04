@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation is still in progress
+Status: frozen product target; implementation completed through `0.0.49`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -106,7 +106,8 @@ a smaller safe boundary, but a later gate must not be claimed first.
 1. `0.0.48`: guarded Rust `EditorEngine` facade over actions, selection
    observation, history replay, and history-group boundaries.
 2. `0.0.49`: close the first editing gaps: forward deletion, Unicode-grapheme
-   deletion behavior, and an atomic multiline plain-text insertion path.
+   deletion behavior, a dedicated selection-delete command, and an atomic
+   multiline plain-text insertion path. Complete.
 3. `0.0.50`: separate Wasm crate and generated TypeScript declarations with a
    deliberately narrow, structured-error ABI.
 4. `0.0.51`: deterministic AST-to-DOM projection with stable node mapping and

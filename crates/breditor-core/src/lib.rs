@@ -18,9 +18,10 @@
 //! operations, atomic transactions, proof-backed local text validation,
 //! structural relocation, and exact in-memory undo/redo requests. It also owns
 //! a deterministic typed action
-//! registry, a frozen semantic intent router, the first semantic
-//! text-insertion, paragraph-break, backward-delete, and strong-format actions
-//! (including extended cross-paragraph ranges), and a
+//! registry, a frozen semantic intent router, semantic inline and multiline
+//! text insertion, paragraph-break, grapheme-aware directional deletion,
+//! exact selection deletion, and strong-format actions (including extended
+//! cross-paragraph ranges), and a
 //! synchronous exact-publication session with bounded linear history, plus a
 //! engine-instance/state/history-observation-guarded product-level engine that closes action
 //! preparation,
@@ -607,6 +608,23 @@
 //! a [`local_log::LocalLogEntry`] additionally needs pre-reserved durable
 //! identities. It adds no Wasm, DOM, scheduler, subscription, or storage
 //! adapter.
+//!
+//! Version `0.0.49` adds forward delete, dedicated selection delete, and atomic
+//! multiline plain-text insertion while retaining the existing operation
+//! algebra. Backward/forward deletion use default extended grapheme clusters
+//! from exact-pinned `unicode-segmentation` 1.13.3 / Unicode 17.0.0 across
+//! formatting seams. A caret inside a cluster is disabled, selected deletion
+//! records independently, and exact stored operations—not renewed segmentation—
+//! drive replay. A text or block-boundary deletion that forms a cluster across
+//! the removed seam directionally snaps the core-produced caret to a cluster boundary.
+//! Plain-text input version 1 maps CRLF/CR/LF to paragraph
+//! boundaries in one `RootTextReplace`, preserves other scalars, uses one
+//! inherited format set, consumes pending formats, and requests independent
+//! history. Canonical execution can reduce an exact replacement to a
+//! selection-only commit with no undo entry. It caps source input at 65,536
+//! bytes/code units and 10,000 paragraphs. The older inline `insert-text`
+//! contract still preserves literal newlines; a soft break remains deferred
+//! until the AST can represent one explicitly.
 //!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous

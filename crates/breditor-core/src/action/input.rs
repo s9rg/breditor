@@ -134,6 +134,12 @@ pub(crate) fn validate_input_contract(
 pub trait DecodeActionInput: Sized + Send + Sync + 'static {
     /// Decodes and validates one invocation input.
     ///
+    /// Registry dispatch checks the envelope before calling this method, but
+    /// the trait is public and direct callers receive no such preflight.
+    /// Implementations whose semantics are bound to one contract identity must
+    /// therefore compare both `registered_contract` and the input's declared
+    /// contract themselves. Built-in versioned decoders do so defensively.
+    ///
     /// # Errors
     ///
     /// Returns [`ActionInputError`] when the input contract or value is invalid.
@@ -148,7 +154,9 @@ pub trait DecodeActionInput: Sized + Send + Sync + 'static {
 /// [`crate::action::ActionRegistration::with_input`] requires this marker, so a
 /// unit/no-input decoder cannot accidentally advertise a typed descriptor.
 /// The registry validates the invocation's envelope and exact contract before
-/// calling the decoder; implementations only validate the contract's value.
+/// calling the decoder. A direct-call-safe, version-bound implementation still
+/// validates the registered identity, the payload's declared identity, and the
+/// contract-specific value rather than depending on that outer preflight.
 pub trait TypedActionInput: DecodeActionInput {}
 
 impl DecodeActionInput for () {

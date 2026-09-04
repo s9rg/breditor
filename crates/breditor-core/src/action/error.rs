@@ -107,12 +107,12 @@ pub enum ActionInputError {
         /// Required input contract.
         expected: ActionInputContract,
     },
-    /// A typed input declared a different contract.
+    /// A typed input or a version-bound decoder observed a different contract.
     #[error("action expects input contract {expected}, but received {actual}")]
     ContractMismatch {
         /// Required input contract.
         expected: ActionInputContract,
-        /// Supplied input contract.
+        /// Supplied input or registered handler contract.
         actual: ActionInputContract,
     },
     /// The contract matched, but its value did not satisfy action-defined rules.

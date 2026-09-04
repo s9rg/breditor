@@ -268,12 +268,7 @@ fn normalized_direction_affinity_and_endpoint_aliases_build_one_exact_root_repla
                             transaction.pending_formats_update(),
                             &PendingFormatsUpdate::Set(None)
                         );
-                        assert_eq!(
-                            transaction.metadata().history(),
-                            &HistoryIntent::Merge {
-                                group: delete_backward_action_id().qualified_name().clone(),
-                            }
-                        );
+                        assert_eq!(transaction.metadata().history(), &HistoryIntent::Record);
 
                         let commit = prepared.execute(&initial)?;
                         assert!(matches!(
@@ -655,7 +650,7 @@ fn catalog_reports_enabled_and_result_disabled_cross_sources_without_mutation() 
 }
 
 #[test]
-fn cross_then_adjacent_scalar_delete_merges_and_undo_redo_restore_exact_direction() -> TestResult {
+fn selected_then_adjacent_grapheme_delete_are_distinct_undo_steps() -> TestResult {
     let registry = base_action_registry()?;
     let context = EditorContext::default();
     let initial_selection =
@@ -687,31 +682,40 @@ fn cross_then_adjacent_scalar_delete_merges_and_undo_redo_restore_exact_directio
     assert_paragraph_runs(session.state().document(), 0, &[("a", false), ("CD", true)])?;
     assert_exact_caret(session.state(), &text_point(0, 1, 0, Affinity::After)?)?;
     assert_eq!(session.state().pending_formats(), None);
-    assert_eq!((session.undo_depth(), session.redo_depth()), (1, 0));
+    assert_eq!((session.undo_depth(), session.redo_depth()), (2, 0));
     let final_state = session.state().clone();
 
-    let Some(undo) = session.undo()? else {
-        return Err(test_error("merged cross-paragraph deletion was not undoable").into());
+    let Some(undo_grapheme) = session.undo()? else {
+        return Err(test_error("adjacent grapheme deletion was not undoable").into());
     };
-    assert!(matches!(
-        undo.forward_operations(),
-        [Operation::TextSplice(_), Operation::RootTextReplace(_)]
-    ));
-    assert_eq!(undo.after().document(), initial_copy.document());
-    assert_eq!(undo.after().selection(), Some(&initial_selection));
-    assert_eq!(undo.after().pending_formats(), None);
-    assert_eq!((session.undo_depth(), session.redo_depth()), (0, 1));
+    assert!(matches!(undo_grapheme.forward_operations(), [Operation::TextSplice(_)]));
+    assert_paragraph_runs(session.state().document(), 0, &[("ab", false), ("CD", true)])?;
+    assert_exact_caret(session.state(), &text_point(0, 1, 0, Affinity::After)?)?;
+    assert_eq!((session.undo_depth(), session.redo_depth()), (1, 1));
 
-    let Some(redo) = session.redo()? else {
-        return Err(test_error("merged cross-paragraph deletion was not redoable").into());
+    let Some(undo_selection) = session.undo()? else {
+        return Err(test_error("selected cross-paragraph deletion was not undoable").into());
     };
-    assert!(matches!(
-        redo.forward_operations(),
-        [Operation::RootTextReplace(_), Operation::TextSplice(_)]
-    ));
-    assert_eq!(redo.after().document(), final_state.document());
-    assert_eq!(redo.after().selection(), final_state.selection());
-    assert_eq!(redo.after().pending_formats(), None);
-    assert_eq!((session.undo_depth(), session.redo_depth()), (1, 0));
+    assert!(matches!(undo_selection.forward_operations(), [Operation::RootTextReplace(_)]));
+    assert_eq!(undo_selection.after().document(), initial_copy.document());
+    assert_eq!(undo_selection.after().selection(), Some(&initial_selection));
+    assert_eq!(undo_selection.after().pending_formats(), None);
+    assert_eq!((session.undo_depth(), session.redo_depth()), (0, 2));
+
+    let Some(redo_selection) = session.redo()? else {
+        return Err(test_error("selected cross-paragraph deletion was not redoable").into());
+    };
+    assert!(matches!(redo_selection.forward_operations(), [Operation::RootTextReplace(_)]));
+    assert_paragraph_runs(session.state().document(), 0, &[("ab", false), ("CD", true)])?;
+    assert_eq!((session.undo_depth(), session.redo_depth()), (1, 1));
+
+    let Some(redo_grapheme) = session.redo()? else {
+        return Err(test_error("adjacent grapheme deletion was not redoable").into());
+    };
+    assert!(matches!(redo_grapheme.forward_operations(), [Operation::TextSplice(_)]));
+    assert_eq!(redo_grapheme.after().document(), final_state.document());
+    assert_eq!(redo_grapheme.after().selection(), final_state.selection());
+    assert_eq!(redo_grapheme.after().pending_formats(), None);
+    assert_eq!((session.undo_depth(), session.redo_depth()), (2, 0));
     Ok(())
 }

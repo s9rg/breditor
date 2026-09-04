@@ -162,7 +162,7 @@ fn enabled_action_is_prepared_and_published_inside_one_guarded_call() -> TestRes
     assert_eq!(engine.session().redo_depth(), 0);
 
     let engine_debug = format!("{engine:?}");
-    assert!(engine_debug.contains("action_count: 4"));
+    assert!(engine_debug.contains("action_count: 7"));
     assert!(!engine_debug.contains(PRIVATE_TEXT));
     Ok(())
 }
@@ -477,10 +477,10 @@ fn immutable_engine_views_compose_with_toolbar_catalogs_and_round_trip_into_part
     let (session, registry) = engine.into_parts();
     assert_eq!(session.state().snapshot(), &snapshot);
     assert_eq!(session.history_status(), history);
-    assert_eq!(registry.len(), 4);
+    assert_eq!(registry.len(), 7);
     let rebuilt = EditorEngine::new(session, registry);
     assert_eq!(rebuilt.state().snapshot(), &snapshot);
-    assert_eq!(rebuilt.action_registry().len(), 4);
+    assert_eq!(rebuilt.action_registry().len(), 7);
     Ok(())
 }
 

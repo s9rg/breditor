@@ -38,7 +38,12 @@ pub const INSERT_TEXT_INPUT_NOT_STRING_CODE: &str = "breditor/insert-text-input-
 /// Stable code used when a text-insertion string is empty.
 pub const INSERT_TEXT_EMPTY_INPUT_CODE: &str = "breditor/insert-text-input-empty";
 
-/// Stable code used when a text-insertion string exceeds an input bound.
+/// Stable code reserved for a text-insertion string that exceeds an input bound.
+///
+/// The current generic [`crate::action::ActionValue`] string envelope has the
+/// same byte ceiling, so an oversized wire value fails during value
+/// construction before this action decoder runs. The code remains reserved by
+/// input contract version 1 in case the generic envelope is widened later.
 pub const INSERT_TEXT_INPUT_LIMIT_CODE: &str = "breditor/insert-text-input-limit";
 
 /// Stable history group offered by adjacent semantic text insertions.
@@ -180,12 +185,17 @@ impl DecodeActionInput for InsertTextInput {
         registered_contract: Option<&ActionInputContract>,
         input: &ActionInput,
     ) -> Result<Self, ActionInputError> {
-        let Some(expected) = registered_contract else {
+        let Some(registered) = registered_contract else {
             return Err(ActionInputError::MissingRegisteredContract);
         };
-        let ActionInput::Typed { value, .. } = input else {
-            return Err(ActionInputError::ExpectedTyped { expected: expected.clone() });
-        };
+        let expected = insert_text_input_contract();
+        if registered != &expected {
+            return Err(ActionInputError::ContractMismatch {
+                expected,
+                actual: registered.clone(),
+            });
+        }
+        let value = input.require_typed(registered)?;
         let text =
             value.as_string().ok_or_else(|| invalid_input(INSERT_TEXT_INPUT_NOT_STRING_CODE))?;
         Self::try_new(text).map_err(|error| match error {

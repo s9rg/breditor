@@ -1,13 +1,29 @@
 //! Built-in semantic actions for the exact Breditor base schema.
 
 mod delete_backward;
+mod delete_forward;
+mod delete_selection;
+mod grapheme_boundary;
 mod insert_paragraph_break;
+mod insert_plain_text;
 mod insert_text;
 mod support;
 mod toggle_strong;
 
 pub use delete_backward::{DeleteBackwardAction, delete_backward_action_id};
+pub use delete_forward::{DeleteForwardAction, delete_forward_action_id};
+pub use delete_selection::{DeleteSelectionAction, delete_selection_action_id};
+pub use grapheme_boundary::GRAPHEME_UNICODE_VERSION;
 pub use insert_paragraph_break::{InsertParagraphBreakAction, insert_paragraph_break_action_id};
+pub use insert_plain_text::{
+    INSERT_PLAIN_TEXT_ACTION_NAME, INSERT_PLAIN_TEXT_EMPTY_INPUT_CODE,
+    INSERT_PLAIN_TEXT_INPUT_CONTRACT_NAME, INSERT_PLAIN_TEXT_INPUT_LIMIT_CODE,
+    INSERT_PLAIN_TEXT_INPUT_NOT_STRING_CODE, INSERT_PLAIN_TEXT_INPUT_VERSION,
+    INSERT_PLAIN_TEXT_PARAGRAPH_LIMIT_CODE, InsertPlainTextAction, InsertPlainTextInput,
+    InsertPlainTextInputError, MAX_INSERT_PLAIN_TEXT_BYTES, MAX_INSERT_PLAIN_TEXT_PARAGRAPHS,
+    MAX_INSERT_PLAIN_TEXT_UTF16_CODE_UNITS, insert_plain_text_action_id,
+    insert_plain_text_input_contract,
+};
 pub use insert_text::{
     INSERT_TEXT_ACTION_NAME, INSERT_TEXT_EMPTY_INPUT_CODE, INSERT_TEXT_HISTORY_GROUP_NAME,
     INSERT_TEXT_INPUT_CONTRACT_NAME, INSERT_TEXT_INPUT_LIMIT_CODE,
@@ -28,7 +44,14 @@ use crate::action::{ActionRegistration, ActionRegistry, ActionRegistryError};
 pub fn base_action_registrations() -> Vec<ActionRegistration> {
     vec![
         ActionRegistration::new(delete_backward_action_id(), DeleteBackwardAction),
+        ActionRegistration::new(delete_forward_action_id(), DeleteForwardAction),
+        ActionRegistration::new(delete_selection_action_id(), DeleteSelectionAction),
         ActionRegistration::new(insert_paragraph_break_action_id(), InsertParagraphBreakAction),
+        ActionRegistration::with_input(
+            insert_plain_text_action_id(),
+            insert_plain_text_input_contract(),
+            InsertPlainTextAction,
+        ),
         ActionRegistration::with_input(
             insert_text_action_id(),
             insert_text_input_contract(),
