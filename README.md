@@ -81,6 +81,11 @@ This repository currently contains the first end-to-end Rust-core slice:
 - a synchronous `EditorSession` publication boundary with exact-base commit
   acceptance, intent/action execution, bounded linear history, deterministic
   merge groups, atomic undo/redo replay, and durable local checkpoint restore;
+- a guarded product-level `EditorEngine` that owns one session and one frozen
+  action registry, requires an exact combined engine-instance/state/history observation for
+  every mutation, keeps executable action preparations inside one synchronous
+  call, and returns private-constructor semantic events for action, selection,
+  undo, redo, and effective history controls without a mutable-session escape;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -103,10 +108,12 @@ a DOM bridge,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
-current performance limitations. Fresh-genesis admission remains batch-only;
-hosts that need one-entry admission can compact an empty genesis generation
-into its first in-memory successor. That does not provision a storage scope,
-authoritative head, or first storage-generation manifest.
+current performance limitations. The deliberately narrow browser-product
+target and remaining checkpoint sequence are frozen in
+[`docs/V0_1_SCOPE.md`](docs/V0_1_SCOPE.md). Fresh-genesis admission remains
+batch-only; hosts that need one-entry admission can compact an empty genesis
+generation into its first in-memory successor. That does not provision a
+storage scope, authoritative head, or first storage-generation manifest.
 
 Version `0.0.32` implements only the pure validation layer of the proposed
 platform-neutral [storage-generation transaction](docs/STORAGE_GENERATION_TRANSACTION.md).
@@ -580,6 +587,40 @@ authentication, cancellation of copied requests, process-restart recovery,
 fresh-token proof, rollback protection, or durable-media proof. A full scan is
 O(number of active-generation chunks), and the fixed five-store transaction
 scope can still couple otherwise independent editor scopes.
+
+Version `0.0.48` adds `EditorEngine`, the first guarded Rust product facade.
+It exclusively owns an `EditorSession` and immutable `ActionRegistry`; shared
+inspection exposes the current state, session, and registry, while no mutable
+session reference escapes. Every mutating method requires an exact
+`EditorEngineObservation` containing a private live-engine identity, the current
+`SnapshotId`, and opaque history status. Delayed browser work therefore fails
+before action lookup,
+decoding, planning, selection validation, replay, or history-only mutation;
+`StaleEngine`, `StaleSnapshot`, and `StaleHistory` remain distinct stable categories.
+
+`execute_action` prepares, preflights, and publishes inside one synchronous
+call. Enabled work returns `EditorActionOutcome::Committed` with a sealed
+`EditorEngineEvent`; expected unavailability returns
+`Disabled(EditorDisabledAction)` with the action ID, reason, coherent indicator,
+and unchanged observation, but drops the preparation's document-bearing base.
+`set_selection` ignores an exact echo; a real guarded change clears pending
+typing formats and returns a selection event over one state-only commit.
+Guarded undo, redo, merge-group close, and history clear likewise return
+private-constructor event kinds when effective. Commit-bearing events lend the
+exact renderer transition without surrendering it for direct accidental
+relabeling. Event sealing is not authorization or provenance: a host can copy a
+borrowed commit through the public codec.
+
+`EditorEngineEvent` is deliberately not `LocalLogEvent`. It preserves ephemeral
+command classification and the resulting engine observation. No infallible
+internal mapping to the separately sealed `LocalLogEvent` exists yet; checked
+undo/redo conversion can still fail after session replay has published. A
+`LocalLogEntry` additionally needs pre-reserved session/generation, sequence,
+and retry identities. A future coordinator must close conversion and those
+identities before publication. Version `0.1.0` instead uses atomic
+session-checkpoint persistence.
+`EditorEngine` adds no Wasm ABI, browser event loop, DOM projection, scheduler,
+subscription delivery, or storage I/O.
 
 ## Development
 

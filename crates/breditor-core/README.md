@@ -54,15 +54,19 @@ synchronous single-observation cache keys complete state plus exact history,
 coalesces exact duplicate sources, and emits bounded local
 full/unchanged/delta updates. A synchronous `EditorSession` owns exact commit
 publication plus bounded deterministic linear undo/redo history and an opaque
-history-observation stamp. The strong-format action is the first toolbar-shaped
-control: it reports inactive, active, or mixed state, toggles explicit pending
-formats at a caret, performs one guarded same-paragraph splice for a local
-extended selection, and uses one guarded root-text replacement while preserving
-every selected paragraph boundary for a cross-paragraph selection. The typed
-text-insertion action consumes that pending override, inherits deterministic
-context otherwise, replaces one exact direct-root text range, and offers
-adjacent edits to the `breditor/typing` history group. Same-paragraph insertion
-stays on the local splice path, while
+history-observation stamp. `EditorEngine` combines one such session with one
+frozen action registry behind complete engine-instance/state/history observation guards and
+sealed action, selection, undo, redo, and history-boundary event results; no
+mutable session, executable preparation, or owned raw commit escapes that
+product facade. The strong-format action is the first
+toolbar-shaped control: it reports inactive, active, or mixed state, toggles
+explicit pending formats at a caret, performs one guarded same-paragraph splice
+for a local extended selection, and uses one guarded root-text replacement
+while preserving every selected paragraph boundary for a cross-paragraph
+selection. The typed text-insertion action consumes that pending override,
+inherits deterministic context otherwise, replaces one exact direct-root text
+range, and offers adjacent edits to the `breditor/typing` history group.
+Same-paragraph insertion stays on the local splice path, while
 cross-paragraph type-over uses one guarded root-text replacement.
 Extended backward deletion likewise uses one guarded root-text replacement for
 cross-paragraph selections while preserving its local splice/join paths.
@@ -81,6 +85,8 @@ checkpoint/log atomic replacement, storage-generation publication or initial
 scope provisioning, executable append I/O, process-restart append
 reconstruction,
 collaboration transform, or Wasm adapter yet.
+The intentionally narrow browser release promise is tracked separately in
+[`docs/V0_1_SCOPE.md`](../../docs/V0_1_SCOPE.md).
 
 Checkpoint-linked one-observation admission is synchronous and in-memory. A
 typed rejection returns the unchanged active owner and exact rejected entry, so
@@ -615,6 +621,48 @@ authentication, cancellation, process-restart reconstruction, token refresh,
 or durable-media proof. Dropping the volatile owner loses correlation state;
 the target scan is O(chunks), and the fixed store scope can couple independent
 editor scopes. IndexedDB `durability: "strict"` remains only a requested hint.
+
+Version `0.0.48` adds the observation-guarded `EditorEngine` facade without
+changing the lower-level `EditorSession`, action registry, or history
+contracts. `new` accepts a caller-built frozen registry, while
+`try_with_base_actions` installs the exact built-in action generation. Shared
+`state`, `session`, and `action_registry` access supports rendering,
+checkpointing, and separately composed action-state catalogs; mutation remains
+available only through guarded engine methods. `into_parts` is an explicit
+consuming ownership boundary rather than a mutable escape.
+
+Every mutator receives an `EditorEngineObservation` containing the private live-engine
+identity, caller's observed `SnapshotId`, and complete opaque `SessionHistoryStatus`.
+Engine-instance, snapshot, and history mismatches return distinct stable categories before
+action lookup, decoding, planning, selection validation, replay, or
+history-only mutation. This matters because effective close and clear controls
+rotate history identity without changing the document snapshot.
+`execute_action` keeps registry preparation and session publication in one
+synchronous call. Success returns `EditorActionOutcome::Committed` with a
+private-constructor `EditorEngineEvent` of kind `Action`;
+expected contextual unavailability returns a payload-redacting
+`EditorDisabledAction` carrying only action identity, reason, and the coherent
+same-evaluation indicator plus the unchanged observation. Preparation and
+publication faults remain distinct typed error categories.
+
+`set_selection` returns `None` for an exact browser echo, preserving revision,
+pending formats, and an open merge group. A real guarded change publishes a
+state-only commit, clears pending typing formats, updates adjacent undo/redo
+cursor boundaries, and closes merging. Guarded `undo`, `redo`,
+`close_history_group`, and `clear_history` return an optional sealed event whose
+kind cannot be selected by callers. Each event retains the complete resulting
+observation; commit-bearing events expose the exact renderer transition only by
+reference. This prevents a direct accidental move into an ordinary log event,
+but it is not authorization or provenance because public codecs can copy the
+commit. Payload-bearing sources are omitted from engine `Debug`.
+
+`EditorEngineEvent` is a process-local controller result, not
+`LocalLogEvent`. No infallible internal mapping to that separately sealed event
+exists yet, and checked undo/redo conversion is still a fallible step after
+session publication. `LocalLogEntry` separately requires session/generation,
+sequence, and retry identities. A later log coordinator must reserve those and
+close conversion before publication. This facade adds no Wasm ABI, DOM/event
+adapter, subscription scheduler, or persistence I/O.
 
 Proof-dropping compaction has its own host-selected cumulative replay policy.
 The first transition selects it; ordinary rotations inherit it, so a new batch

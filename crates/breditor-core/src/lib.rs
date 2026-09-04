@@ -21,7 +21,11 @@
 //! registry, a frozen semantic intent router, the first semantic
 //! text-insertion, paragraph-break, backward-delete, and strong-format actions
 //! (including extended cross-paragraph ranges), and a
-//! synchronous exact-publication session with bounded linear history. It
+//! synchronous exact-publication session with bounded linear history, plus a
+//! engine-instance/state/history-observation-guarded product-level engine that closes action
+//! preparation,
+//! selection observation, undo/redo, and history controls behind one exclusive
+//! owner. It
 //! deliberately contains no browser, framework, asynchronous scheduler, clock,
 //! random-number, collaboration, or Wasm binding code.
 //!
@@ -584,6 +588,26 @@
 //! process-restart reconstruction. `IndexedDB` `durability: "strict"` is only a
 //! requested hint, not proof of persistence to durable media.
 //!
+//! Version `0.0.48` adds [`engine::EditorEngine`], a guarded product-level owner
+//! of one [`session::EditorSession`] and frozen [`action::ActionRegistry`]. Every
+//! mutation checks the caller's exact combined engine-instance, state, and
+//! history observation before action lookup, selection validation, replay, or
+//! history-only work.
+//! Action preparation and publication remain inside one synchronous call;
+//! expected disabled actions become coherent reason-and-indicator data rather
+//! than an error. A real host selection change clears pending typing formats
+//! through a state-only commit, while an exact echo changes neither state nor
+//! history. Effective work returns a private-constructor
+//! [`engine::EditorEngineEvent`] that preserves action, selection, undo, redo,
+//! close-group, or clear-history kind and lends any renderer commit without an
+//! owned escape. That blocks direct accidental relabeling but is not provenance;
+//! a public codec can copy the commit. It is not an append-ready
+//! [`local_log::LocalLogEvent`]: no
+//! infallible internal mapping to that separately sealed value exists yet, and
+//! a [`local_log::LocalLogEntry`] additionally needs pre-reserved durable
+//! identities. It adds no Wasm, DOM, scheduler, subscription, or storage
+//! adapter.
+//!
 //! [`local_log::LocalLogRecovery`] can consume a caller-authoritative
 //! empty-history session and a complete in-memory batch, prove one contiguous
 //! genesis-anchored generation, apply all five event kinds exactly once, and
@@ -604,6 +628,7 @@
 pub mod action;
 pub mod codec;
 pub mod document;
+pub mod engine;
 pub mod identity;
 pub mod local_log;
 pub mod operation;

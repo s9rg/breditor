@@ -167,7 +167,12 @@ The implemented Rust slice owns:
 - semantic base actions for exact text insertion, paragraph breaks, backward
   deletion, and strong formatting; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
-  linear undo/redo history and opaque history-observation identity.
+  linear undo/redo history and opaque history-observation identity;
+- a product-level `EditorEngine` that exclusively combines one session and one
+  frozen action registry behind complete engine-instance/state/history observation guards,
+  returning sealed action, selection, undo, redo, history-close, and
+  history-clear event kinds without exposing a mutable session, executable
+  action preparation, or owned raw commit.
 
 The following remain deliberately unimplemented:
 
@@ -192,6 +197,9 @@ The following remain deliberately unimplemented:
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
 - Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
+- atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
+  boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
+  append coordination;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
 - generic subtree summaries and incremental validation for structural or
@@ -1010,6 +1018,30 @@ restart. Full active-tail scanning is O(chunks), observed target bytes are
 moved into one bounded `Box<[u8]>`, and the fixed five-store scope can couple
 otherwise independent editor scopes.
 
+Version `0.0.48` adds the first guarded Rust `EditorEngine` facade. It owns one
+`EditorSession` and one immutable `ActionRegistry`; shared observation and an
+explicit consuming `into_parts` remain available, but a mutable session and
+executable preparation cannot escape. Each mutating entry point first checks
+the caller's exact `EditorEngineObservation`, including its private live-engine
+identity, `SnapshotId`, and opaque history status. Action preparation and publication then occur
+synchronously in one call. Expected disabled work is returned as coherent
+action ID, reason, state indicator, and unchanged observation rather than an
+error. Real selection movement clears pending formats and publishes a
+state-only commit, while an exact selection echo is a complete no-op. Action,
+selection, undo, redo, merge-group close, and history clear return distinct
+private-constructor `EditorEngineEvent` kinds when effective.
+
+The engine event preserves process-local renderer/controller classification
+but is not a `LocalLogEvent`. No infallible internal mapping to that separately
+sealed value exists yet, and checked undo/redo conversion can still fail after
+a session mutation has already published. A `LocalLogEntry` separately requires
+durable session/generation, sequence, and retry identity. Therefore `0.0.48`
+makes no false atomic append claim; a later pre-publication coordinator must
+reserve those identities and close event conversion. This release adds no Wasm,
+browser, DOM, scheduling, subscription, or storage adapter. The bounded target
+through `0.1.0` is frozen in
+[`V0_1_SCOPE.md`](V0_1_SCOPE.md).
+
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 
@@ -1747,6 +1779,90 @@ collaboration undo manager, browser FIFO, or clock/IME policy. Collaboration
 must eventually map inverse operations and cursor boundaries through remote
 changes or use a collaboration-aware history protocol; it cannot silently
 reuse this stack.
+
+## Guarded EditorEngine facade
+
+`EditorEngine` is the intended product-facing owner immediately inside a
+future Wasm boundary. It contains exactly one `EditorSession` and one immutable
+`ActionRegistry`. `new` accepts an application-composed registry;
+`try_with_base_actions` installs the compiled-in base actions. `state`,
+`session`, and `action_registry` expose shared observations for rendering,
+checkpointing, and independently composed action-state catalogs. `into_parts`
+consumes the engine and is the only way to regain its owned components. No
+method lends `&mut EditorSession`.
+
+Every mutation accepts `&EditorEngineObservation` and first compares its opaque
+live-engine identity, then its `SnapshotId` and `SessionHistoryStatus`, with the
+authoritative owner before doing command-specific work. A fresh identity on
+every `EditorEngine::new` invalidates observations when `into_parts` is followed
+by reconstruction, even if the session is unchanged or a cloned registry is
+replaced. `StaleEngine` takes precedence across that ownership boundary;
+`StaleSnapshot` takes precedence when state
+identity differs; `StaleHistory` identifies a matching document snapshot whose
+opaque history observation changed. Both precede registry lookup, input
+decoding, handler evaluation, selection validation, undo/redo preflight, or a
+history-only mutation. The observation is process-local queue currency, not a
+serialized capability, permission token, content hash, or durable ordering
+value.
+
+`execute_action` calls `ActionRegistry::prepare` and
+`EditorSession::execute_prepared_action` within one synchronous borrow. No
+`ActionPreparation` or prepared capability crosses the boundary. An enabled
+action returns `EditorActionOutcome::Committed` with a sealed action-kind
+`EditorEngineEvent`. Expected contextual unavailability returns
+`EditorActionOutcome::Disabled(EditorDisabledAction)` and publishes nothing.
+The disabled projection retains only the action ID, bounded
+`DisabledReason`, `ActionStateIndicator`, and unchanged engine observation
+obtained from the same evaluation; it drops the immutable document-bearing base
+state retained by lower-level preparation.
+
+`set_selection` accepts `Option<Selection>` against the guarded current
+snapshot. Equality with the current selection returns `Ok(None)` without
+validation work, revision allocation, pending-format change, history-stamp
+change, or merge-group close. A different selection is applied as an empty
+operation transaction with explicit selection replacement and
+`PendingFormatsUpdate::Set(None)`. Success returns a selection-kind engine event
+that owns its state-only commit and lends a borrowed view, advances the snapshot,
+updates adjacent history cursor boundaries, and closes merging without adding a
+content-history entry.
+Invalid points, ordering, or pending result state fail atomically through the
+selection-update category.
+
+Guarded `undo` and `redo` preserve `EditorSession` replay semantics and return
+`Ok(None)` when their branch is unavailable. Success returns a sealed undo- or
+redo-kind event that owns the exact replay commit and lends a borrowed view, and
+advances both state and history observation. Guarded `close_history_group` and
+`clear_history` return a
+correspondingly sealed event only when effective; a repeated no-op returns
+`None` and does not rotate the history stamp. Every effective event retains the
+new complete engine observation for the next queued command.
+
+`EditorEngineErrorCode` has stable categories for stale engine, stale snapshot,
+stale history, action preparation, action execution, selection update, and history
+replay. Errors are atomic with respect to the engine. The error value preserves exact typed
+sources for Rust recovery, while custom `Debug` output redacts
+document-bearing execution, transaction, and replay payloads. A disabled
+action and unavailable undo/redo are expected outcomes, not errors.
+
+Successful engine mutations expose a private-constructor `EditorEngineEvent`,
+not an owned raw `Commit` or `LocalLogEvent`. Its semantic kind distinguishes
+action, selection, undo, redo, close-group, and clear-history. A
+commit-bearing event lends the exact renderer contract—before/after states,
+operations, relocation, and changes—without a consuming getter, preventing a
+direct accidental move through the ordinary local-log constructor. This is not
+authorization or provenance: the public commit codec can copy the borrowed
+value, so durable classification must come from a trusted coordinator rather
+than event sealing.
+
+This sealed process-local classification is still not append-ready durable
+evidence. No infallible internal mapping to the separately sealed
+`LocalLogEvent` exists, and checked conversion of an already published undo or
+redo is fallible. `LocalLogEntry` additionally needs session/generation,
+sequence, and retry identity plus failure-atomic publication. The `0.1.0`
+browser target therefore uses atomic Session Checkpoint V1 save/restore. A
+future coordinator must reserve entry identity, close event conversion before
+mutation, publish the session transition, and hand off append ownership as one
+protocol.
 
 ## Current performance limitations
 
