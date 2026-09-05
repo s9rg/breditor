@@ -208,9 +208,10 @@ out-of-memory.
 - Root-internal paragraph boundaries are intentionally ambiguous. Only the two
   exterior host boundaries used by select-all are normalized.
 - The bridge does not define keyboard movement or word/line navigation.
-  Non-composition event ordering and clipboard staging are separate `0.0.53`
-  contracts; composition ownership and final clipboard policy remain later
-  checkpoints.
+  Non-composition event ordering is the separate `0.0.53` contract, composition
+  ownership arrived in `0.0.54`, and guarded base-subset clipboard policy
+  arrived in `0.0.55`; see [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md)
+  and [`CLIPBOARD.md`](CLIPBOARD.md).
 - A platform without an API capable of preserving backward anchor/focus cannot
   receive a backward programmatic selection from this adapter.
 

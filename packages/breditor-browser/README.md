@@ -1,10 +1,10 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.54` renders the validated base-schema AST into disposable DOM,
+Version `0.0.55` renders the validated base-schema AST into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
-strict paragraph-local composition lease without making the DOM an editor
-model.
+strict paragraph-local composition lease plus guarded copy/cut/paste without
+making the DOM or clipboard HTML an editor model.
 
 The package is private while the pre-`0.1` package boundary is still moving.
 Its public entry point is nevertheless compiled and declaration-checked so a
@@ -116,8 +116,8 @@ outside this host.
 
 ## Event and command contract
 
-`BreditorBrowserEventController` snapshots `beforeinput`, `keydown`, `input`,
-and actual clipboard-event fields synchronously. It accepts only events owned by
+`BreditorBrowserEventController` snapshots `beforeinput`, `keydown`, and `input`
+fields synchronously. It accepts only events owned by
 the exact connected light-DOM host, maps the current DOM selection through the
 same bridge used by the command adapter, normalizes at most one target range,
 and discards every native object before queue admission.
@@ -196,16 +196,42 @@ authoritative projection without calling Rust. Recovery failure keeps both the
 controller and queue quarantined. A successful settlement may suppress one
 exact late terminal `input` echo.
 
-Copy, cut, and paste are staged in this version. Cut contains no eager delete,
-and paste contains no payload until the actual clipboard capability is handled
-by the `0.0.55` integration. See
-[`BROWSER_EVENT_PIPELINE.md`](../../docs/BROWSER_EVENT_PIPELINE.md) for the full
-contract, exact-once laws, and recovery model.
+## Clipboard contract
+
+`BreditorClipboardController` independently owns synchronous copy, cut, paste,
+and their exact optional event echoes. It reserves the queue built from the
+exact adapter executor before reading an event, clipboard capability, or DOM
+selection. Copy slices the semantic projection, never DOM markup. Cut writes
+both `text/plain` and escaped attribute-free paragraph/strong HTML, confirms
+native cancellation, and only then submits one selection deletion. Paste gives
+advertised plain text precedence; HTML is considered only when plain is absent,
+then must pass a parse5-backed closed allowlist and is flattened for one atomic
+plain-text insertion.
+
+The controller never retains an event, `DataTransfer`, clipboard payload, or
+generated handle. A command failure is never retried, and clipboard/core work
+cannot be rolled back as one transaction. Until the later unified router,
+integrations must front-route actual clipboard events and clipboard-shaped
+`beforeinput`/`input` to this controller; the ordinary controller reports
+`clipboardOwns` for those input types. See
+[`CLIPBOARD.md`](../../docs/CLIPBOARD.md) for exact formats, limits, ordering,
+echoes, and failure semantics.
+
+This low-level wiring is host-trusted: the controller structurally snapshots an
+adapter-compatible JavaScript surface, and its lease excludes only submissions
+through the shared queue. Forging or mutating that surface, or calling the
+adapter directly during a clipboard callback, violates the integration
+contract. A direct state change is detected at the next guarded base check but
+cannot undo an already completed clipboard side effect. The later high-level
+runtime encapsulates these pieces for ordinary consumers.
 
 ## Current limitations
 
-- Clipboard serialization/parsing and final mutation, toolbar delivery,
-  persistence, and React integration belong to later checkpoints.
+- Toolbar delivery, persistence, and React integration belong to later
+  checkpoints.
+- Clipboard support is limited to synchronous event `clipboardData`, plain
+  text, and the base paragraph/strong subset. There is no async Clipboard API,
+  custom internal MIME, files/images, or mixed-format rich paste.
 - No arbitrary elements, formats, properties, entity IDs, nested blocks, or
   extension DOM renderers are accepted yet.
 - DOM APIs do not provide an atomic transaction across several retained
@@ -250,7 +276,9 @@ The workspace pins TypeScript, Vitest, and jsdom exactly in
 mapping lifetime, text-container identity retention, shifted root-splice
 rebinding, stale/foreign guards, DOM-drift fallback, broad-impact full renders,
 Wasm-view consumption/disposal, directional and Unicode selection mapping,
-focus separation, select-all, outside-host protection, exact target-range
+focus separation, select-all, outside-host protection, semantic clipboard
+serialization, strict HTML admission, guarded multi-representation writes,
+authoritative plain-text preference, exact clipboard echoes, exact target-range
 normalization, bounded command admission, non-recursive FIFO ordering,
 translation policy, one-shot event-echo suppression, exact composition/queue/
 renderer leases, alternate terminal event orders, strict temporary-DOM

@@ -35,21 +35,8 @@ export type EngineCommand =
   | Readonly<{ kind: "history"; operation: "undo" | "redo" }>
   | Readonly<{ kind: "control"; operation: "closeHistoryGroup" }>;
 
-/**
- * A clipboard request, deliberately not an editor mutation.
- *
- * Copy/cut serialization and paste admission are added by the clipboard
- * checkpoint. In particular, `cut` carries no deletion command which could run
- * before a clipboard write succeeds.
- */
-export type StagedClipboardCommand = Readonly<{
-  kind: "clipboard";
-  operation: "copy" | "cut" | "paste";
-  stage: "request";
-}>;
-
-/** Closed v0.0.53 command set accepted by the shared queue. */
-export type EditorCommand = EngineCommand | StagedClipboardCommand;
+/** Closed executable command set accepted by the shared queue. */
+export type EditorCommand = EngineCommand;
 
 /** Work which must occur before the command can be delivered. */
 export interface EditorCommandRequirements {
@@ -72,7 +59,7 @@ export interface EditorCommandRequest {
   readonly selection: EditorSelectionSync;
   readonly source: EditorCommandSource;
   readonly requirements: Readonly<EditorCommandRequirements>;
-  readonly command: EditorCommand;
+  readonly command: EngineCommand;
 }
 
 declare const EDITOR_DELIVERY_TOKEN_BRAND: unique symbol;
@@ -244,11 +231,6 @@ export interface EngineCommandRequest extends EditorCommandRequest {
   readonly command: EngineCommand;
 }
 
-/** A request whose clipboard capability remains staged in the browser. */
-export interface StagedClipboardCommandRequest extends EditorCommandRequest {
-  readonly command: StagedClipboardCommand;
-}
-
 /** Captures one owned range for exact later synchronization. */
 export function rangeSelectionSync(selection: BaseRangeSelection): EditorSelectionSync {
   if (!isOwnedBaseRangeSelection(selection)) {
@@ -353,27 +335,6 @@ export function closeHistoryGroupRequest(
   );
 }
 
-/** Creates an immutable staged clipboard request with no implicit mutation. */
-export function stagedClipboardRequest(
-  delivery: EditorDeliveryToken,
-  selection: EditorSelectionSync,
-  source: EditorCommandSource,
-  operation: "copy" | "cut" | "paste",
-): StagedClipboardCommandRequest {
-  const safeSource = requireSource(source);
-  if (operation !== "copy" && operation !== "cut" && operation !== "paste") {
-    throw new TypeError("clipboard operation is invalid");
-  }
-  const safeDelivery = requireDelivery(delivery);
-  return freezeRequest(
-    safeDelivery,
-    requireSelection(selection, safeDelivery),
-    safeSource,
-    operation === "copy" ? "preserve" : "closeBefore",
-    Object.freeze({ kind: "clipboard", operation, stage: "request" }),
-  );
-}
-
 /** Returns whether a string fits both browser-side action-input ceilings. */
 export function browserCommandTextIsAdmissible(value: unknown): value is string {
   if (
@@ -428,7 +389,7 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
       "selection",
       "history",
     ]);
-    const command = snapshotEditorCommand(outer?.["command"]);
+    const command = snapshotEngineCommand(outer?.["command"]);
     if (
       delivery === null ||
       selection === null ||
@@ -447,9 +408,6 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
     }
     if (command.kind === "control") {
       return closeHistoryGroupRequest(delivery, selection, source);
-    }
-    if (command.kind === "clipboard") {
-      return stagedClipboardRequest(delivery, selection, source, command.operation);
     }
     return command.input.kind === "none"
       ? noInputActionRequest(delivery, selection, source, command.actionId, history)
@@ -475,7 +433,7 @@ export function isEngineCommand(value: unknown): value is EngineCommand {
   }
 }
 
-function freezeRequest<TCommand extends EditorCommand>(
+function freezeRequest<TCommand extends EngineCommand>(
   delivery: EditorDeliveryToken,
   selection: EditorSelectionSync,
   source: EditorCommandSource,
@@ -544,16 +502,13 @@ function isIssuedEditorDeliveryToken(value: unknown): value is EditorDeliveryTok
 
 function requirementsMatchCommand(
   history: unknown,
-  command: EditorCommand,
+  command: EngineCommand,
 ): boolean {
   if (command.kind === "history") {
     return history === "closeBefore";
   }
   if (command.kind === "control") {
     return history === "preserve";
-  }
-  if (command.kind === "clipboard") {
-    return history === (command.operation === "copy" ? "preserve" : "closeBefore");
   }
   return history === "preserve" || history === "closeBefore";
 }
@@ -598,29 +553,6 @@ function requireHistory(value: unknown): asserts value is EditorCommandRequireme
 
 function isQualifiedName(value: string): boolean {
   return value.length <= 128 && /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
-}
-
-function snapshotEditorCommand(value: unknown): EditorCommand | null {
-  const engine = snapshotEngineCommand(value);
-  if (engine !== null) {
-    return engine;
-  }
-  const clipboard = readExactDataRecord(value, ["kind", "operation", "stage"]);
-  if (
-    clipboard === null ||
-    clipboard["kind"] !== "clipboard" ||
-    (clipboard["operation"] !== "copy" &&
-      clipboard["operation"] !== "cut" &&
-      clipboard["operation"] !== "paste") ||
-    clipboard["stage"] !== "request"
-  ) {
-    return null;
-  }
-  return Object.freeze({
-    kind: "clipboard",
-    operation: clipboard["operation"],
-    stage: "request",
-  });
 }
 
 function snapshotEngineCommand(value: unknown): EngineCommand | null {

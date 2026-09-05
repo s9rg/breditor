@@ -1,5 +1,4 @@
 import { translateBeforeInput } from "./beforeinput.js";
-import { translateClipboardCommand, type ClipboardOperation } from "./clipboard_command.js";
 import { type CommandQueueSubmission, BreditorCommandQueue } from "./command_queue.js";
 import { mapDomTargetRange } from "./dom_target_range.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
@@ -35,18 +34,6 @@ import {
   baseSelectionPointsEqual,
   type BaseRangeSelection,
 } from "./selection.js";
-
-interface ReceiptBase {
-  readonly rendered: RenderedProjection;
-  readonly rendererGeneration: bigint;
-  readonly delivery: EditorDeliveryToken;
-}
-
-interface ClipboardReceipt extends ReceiptBase {
-  readonly kind: "clipboard";
-  readonly operation: "cut" | "paste";
-  readonly phase: "beforeinput" | "input";
-}
 
 interface KeyboardReceipt {
   readonly kind: "keyboard";
@@ -116,7 +103,6 @@ export class BreditorBrowserEventController<TResult> {
   readonly #compositionActive: () => boolean;
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #deliveryAuthority: EditorDeliveryAuthority;
-  #clipboardReceipt: ClipboardReceipt | undefined;
   #keyboardReceipt: KeyboardReceipt | undefined;
 
   constructor(
@@ -177,6 +163,10 @@ export class BreditorBrowserEventController<TResult> {
         defaultPrevented: false,
       });
     }
+    if (translation.kind === "clipboardEcho") {
+      this.#clearReceipts();
+      return ignored("clipboardOwns", base.defaultPrevented);
+    }
     if (!base.cancelable) {
       this.#clearReceipts();
       return reconcile("noncancelableMutation", false);
@@ -215,23 +205,6 @@ export class BreditorBrowserEventController<TResult> {
       return this.#cancelBlocked(event, base, "targetRangeCount");
     }
 
-    if (translation.kind === "clipboardEcho") {
-      this.#keyboardReceipt = undefined;
-      return this.#handleClipboardBeforeInputEcho(
-        event,
-        base,
-        admitted.rendered,
-        delivery,
-        translation.operation,
-        targets,
-      );
-    }
-
-    const clipboardWasPending = this.#clipboardReceipt !== undefined;
-    this.#clipboardReceipt = undefined;
-    if (clipboardWasPending) {
-      this.#keyboardReceipt = undefined;
-    }
     if (translation.kind === "blocked") {
       this.#keyboardReceipt = undefined;
       return this.#cancelBlocked(event, base, translation.reason);
@@ -354,70 +327,6 @@ export class BreditorBrowserEventController<TResult> {
     return submissionDisposition(submission);
   }
 
-  /** Stages copy/cut/paste; cut never carries an eager deletion command. */
-  handleClipboard(
-    event: ClipboardEvent,
-    rendered: RenderedProjection,
-    delivery: EditorDeliveryToken,
-  ): BrowserEventDisposition<TResult> {
-    const operation = readClipboardOperation(event);
-    if (operation === null) {
-      this.#clearReceipts();
-      return reconcile("eventAccessFailed", false);
-    }
-    const admitted = this.#admitEvent(event, rendered, delivery, operation);
-    if (!admitted.ok) {
-      if (!admitted.preserveReceipts) {
-        this.#clearReceipts();
-      }
-      return admitted.disposition;
-    }
-    this.#clearReceipts();
-    const compositionActive = this.#readCompositionPhase();
-    if (compositionActive === null) {
-      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
-    }
-    if (compositionActive) {
-      return Object.freeze({
-        kind: "compositionPending",
-        defaultPrevented: false,
-      });
-    }
-    if (!admitted.base.cancelable) {
-      return reconcile("noncancelableMutation", false);
-    }
-
-    let request: EditorCommandRequest;
-    try {
-      const capturedSelection = this.#captureRangeSelection(admitted.rendered);
-      if (capturedSelection === undefined) {
-        return this.#cancelBlocked(event, admitted.base, "selectionUnavailable");
-      }
-      request = translateClipboardCommand(operation, delivery, capturedSelection);
-    } catch {
-      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
-    }
-    const canceled = cancelOwnedEvent<TResult>(event, admitted.base);
-    if (!canceled.ok) {
-      return canceled.disposition;
-    }
-    const submission = this.#submit(request);
-    if (
-      operation !== "copy" &&
-      (submission.status === "completed" || submission.status === "queued")
-    ) {
-      this.#clipboardReceipt = Object.freeze({
-        kind: "clipboard",
-        operation,
-        phase: "beforeinput",
-        rendered: admitted.rendered,
-        rendererGeneration: admitted.rendered.rendererGeneration,
-        delivery,
-      });
-    }
-    return submissionDisposition(submission);
-  }
-
   /** Treats `input` only as a postcondition; it never submits a command. */
   handleInput(
     event: InputEvent,
@@ -460,7 +369,11 @@ export class BreditorBrowserEventController<TResult> {
       });
     }
 
-    const clipboardReceipt = this.#clipboardReceipt;
+    if (isClipboardInputType(input.inputType)) {
+      this.#clearReceipts();
+      return ignored("clipboardOwns", base.defaultPrevented);
+    }
+
     const keyboardReceipt = this.#keyboardReceipt;
     this.#clearReceipts();
     const canonical = rendered.current && rendered.validateCanonicalDom();
@@ -468,21 +381,6 @@ export class BreditorBrowserEventController<TResult> {
       return reconcile("domDrift", base.defaultPrevented);
     }
 
-    if (
-      clipboardReceipt !== undefined &&
-      (clipboardReceipt.phase === "beforeinput" || clipboardReceipt.phase === "input") &&
-      clipboardReceipt.rendered === rendered &&
-      clipboardReceipt.rendererGeneration === rendered.rendererGeneration &&
-      clipboardInputTypes(clipboardReceipt.operation).includes(input.inputType)
-    ) {
-      return Object.freeze({
-        kind: "inputPostcondition",
-        expectedEcho: Object.freeze({
-          kind: "clipboard",
-          operation: clipboardReceipt.operation,
-        }),
-      });
-    }
     if (
       keyboardReceipt !== undefined &&
       (keyboardReceipt.phase === "beforeinput" || keyboardReceipt.phase === "input") &&
@@ -504,40 +402,6 @@ export class BreditorBrowserEventController<TResult> {
   /** Clears one-use browser echo state, for lifecycle or composition boundaries. */
   forgetEchoReceipts(): void {
     this.#clearReceipts();
-  }
-
-  #handleClipboardBeforeInputEcho(
-    event: InputEvent,
-    base: EventBase,
-    rendered: RenderedProjection,
-    delivery: EditorDeliveryToken,
-    operation: "cut" | "paste",
-    targets: AcceptedTargetRangeSnapshot,
-  ): BrowserEventDisposition<TResult> {
-    const receipt = this.#clipboardReceipt;
-    this.#clipboardReceipt = undefined;
-    if (
-      receipt?.phase !== "beforeinput" ||
-      receipt.operation !== operation ||
-      receipt.rendered !== rendered ||
-      receipt.rendererGeneration !== rendered.rendererGeneration ||
-      receipt.delivery !== delivery
-    ) {
-      return this.#cancelBlocked(event, base, "clipboardEchoWithoutReceipt");
-    }
-    if (targets.count === 1 && !mapDomTargetRange(rendered, targets.range).ok) {
-      return this.#cancelBlocked(event, base, "targetRangeInvalid");
-    }
-    const canceled = cancelOwnedEvent<TResult>(event, base);
-    if (!canceled.ok) {
-      return canceled.disposition;
-    }
-    this.#clipboardReceipt = Object.freeze({ ...receipt, phase: "input" });
-    return Object.freeze({
-      kind: "clipboardEcho",
-      defaultPrevented: true,
-      operation,
-    });
   }
 
   #admitEvent(
@@ -671,7 +535,6 @@ export class BreditorBrowserEventController<TResult> {
   }
 
   #clearReceipts(): void {
-    this.#clipboardReceipt = undefined;
     this.#keyboardReceipt = undefined;
   }
 }
@@ -886,19 +749,12 @@ function cancelOwnedEvent<TResult>(
   }
 }
 
-function readClipboardOperation(event: unknown): ClipboardOperation | null {
-  try {
-    const type = (event as Event).type;
-    return type === "copy" || type === "cut" || type === "paste" ? type : null;
-  } catch {
-    return null;
-  }
-}
-
-function clipboardInputTypes(operation: "cut" | "paste"): readonly string[] {
-  return operation === "cut"
-    ? Object.freeze(["deleteByCut"])
-    : Object.freeze(["insertFromPaste", "insertFromPasteAsQuotation"]);
+function isClipboardInputType(inputType: string): boolean {
+  return (
+    inputType === "deleteByCut" ||
+    inputType === "insertFromPaste" ||
+    inputType === "insertFromPasteAsQuotation"
+  );
 }
 
 function keyboardEchoInputTypes(request: EditorCommandRequest): readonly string[] {
@@ -932,9 +788,6 @@ function commandFingerprint(request: EditorCommandRequest): string {
   const command = request.command;
   if (command.kind === "history") {
     return `history:${command.operation}`;
-  }
-  if (command.kind === "clipboard") {
-    return `clipboard:${command.operation}`;
   }
   if (command.kind === "control") {
     return `control:${command.operation}`;

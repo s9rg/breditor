@@ -77,7 +77,6 @@ export {
   noInputActionRequest,
   noSelectionSync,
   rangeSelectionSync,
-  stagedClipboardRequest,
   stringActionRequest,
   type EditorCommand,
   type EditorCommandRequest,
@@ -88,8 +87,6 @@ export {
   type EditorSelectionSync,
   type EngineCommand,
   type EngineCommandRequest,
-  type StagedClipboardCommand,
-  type StagedClipboardCommandRequest,
 } from "./editor_command.js";
 export {
   BreditorCommandQueue,
@@ -114,9 +111,41 @@ export {
   type KeyboardTranslationPolicy,
 } from "./keyboard.js";
 export {
-  translateClipboardCommand,
-  type ClipboardOperation,
+  cutDeleteRequest,
+  pasteInsertRequest,
 } from "./clipboard_command.js";
+export {
+  MAX_CLIPBOARD_FRAGMENT_HTML_UTF16,
+  MAX_CLIPBOARD_FRAGMENT_HTML_UTF8,
+  MAX_CLIPBOARD_FRAGMENT_TEXT_UTF16,
+  MAX_CLIPBOARD_FRAGMENT_TEXT_UTF8,
+  serializeClipboardSelection,
+  type ClipboardFragmentError,
+  type ClipboardFragmentErrorCode,
+  type ClipboardFragmentSerialization,
+  type ClipboardFragmentSerializationResult,
+} from "./clipboard_fragment.js";
+export {
+  MAX_CLIPBOARD_HTML_DEPTH,
+  MAX_CLIPBOARD_HTML_NODES,
+  MAX_CLIPBOARD_HTML_PARAGRAPHS,
+  MAX_CLIPBOARD_HTML_SOURCE_UTF16,
+  MAX_CLIPBOARD_HTML_SOURCE_UTF8,
+  parseClipboardHtmlToPlainText,
+  type ClipboardHtmlError,
+  type ClipboardHtmlErrorCode,
+  type ClipboardHtmlParseResult,
+} from "./clipboard_html.js";
+export {
+  BreditorClipboardController,
+  type ClipboardControllerClipboardState,
+  type ClipboardControllerCommandState,
+  type ClipboardControllerDisposition,
+  type ClipboardControllerFailureReason,
+  type ClipboardControllerIgnoreReason,
+  type ClipboardControllerOperation,
+  type ClipboardControllerPartialState,
+} from "./clipboard_controller.js";
 export {
   BaseTargetRange,
   baseTargetRangesEqual,

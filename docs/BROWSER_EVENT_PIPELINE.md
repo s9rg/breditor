@@ -1,6 +1,6 @@
 # Breditor browser event pipeline
 
-Status: implemented for the closed base schema through `0.0.54`; pre-`0.1` API
+Status: implemented for the closed base schema through `0.0.55`; pre-`0.1` API
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -333,18 +333,26 @@ selection installation fails, the adapter retains that authoritative successor
 and projection in `reconcile`. `restoreCanonicalRender()` performs an explicit
 full render and selection restore. The semantic action is never retried.
 
-## Clipboard staging
+## Clipboard ownership (`0.0.55`)
 
-Version `0.0.53` recognizes actual copy, cut, and paste events and submits a
-staged clipboard request. A cut request deliberately contains no eager delete;
-a paste request contains no untrusted payload. Clipboard serialization,
-allowlisted HTML parsing, `DataTransfer` writes/reads, and the final atomic
-delete/insert command are the separate `0.0.55` contract.
+`BreditorClipboardController` owns synchronous copy, cut, paste, and their
+optional `beforeinput`/`input` echoes for the supplied adapter surface. It
+reserves the idle queue constructed from that surface's same captured executor
+before reading any event or clipboard capability.
+Copy serializes the semantic selection without a Rust command. Cut writes both
+plain and closed-vocabulary HTML forms and confirms cancellation before one
+selection-delete action. Paste gives advertised plain text precedence; only
+when plain text is absent may strict allowlisted HTML be parsed and flattened
+before one atomic multiline plain-text insertion.
 
-An integration must route staged requests to its clipboard executor and engine
-requests to `BreditorWasmCommandAdapter.execute`. Sending a staged request to the
-Wasm command adapter is a controlled type/runtime rejection, never a document
-mutation.
+Native `Event` and `DataTransfer` objects never enter a command or receipt. The
+admitted paste string deliberately becomes the bounded action payload and is
+therefore visible to the synchronous queue executor and any application queue
+observer. The ordinary controller delegates clipboard-shaped `beforeinput` and
+`input` signals with `clipboardOwns`; until the unified router exists,
+integrations must front-route those signals and actual clipboard events to the
+clipboard controller. See [the complete clipboard contract](CLIPBOARD.md) for
+formats, resource limits, failure states, and deliberately unsupported content.
 
 ## Atomicity and recovery limits
 
@@ -355,12 +363,14 @@ later action returns an error. DOM APIs cannot participate in a Rust transaction
 Consequently an uncertain later failure quarantines the queue and requires
 reconciliation; it does not roll back or retry already published prestages.
 
-Other intentional limits through `0.0.54`:
+Other intentional limits through `0.0.55`:
 
 - one connected light-DOM host and one range selection;
 - no shadow-DOM composed-path ownership;
 - no asynchronous command executor;
 - no generic browser DOM-to-AST parser;
+- no asynchronous Clipboard API, custom/internal MIME, or rich mixed-format
+  paste;
 - no direct persistence append in the event callback;
 - full DOM validation, projection/selection conversion, and composition
   reconciliation remain linear in the bounded document; and
@@ -395,4 +405,12 @@ The release tests establish at least:
 15. stale, foreign, refined-away, and replayed composition capabilities cannot
     settle or release a lease; and
 16. settlement and recovery failures quarantine without retrying a semantic
-    command or exposing native composition payloads.
+    command or exposing native composition payloads;
+17. clipboard capabilities are touched only under the adapter-executor queue
+    lease, so reentrant submissions through that queue cannot interleave work;
+18. cut deletion occurs only after both semantic representations are written
+    and native mutation is canceled;
+19. advertised plain text is authoritative, while HTML-only paste must pass the
+    bounded closed allowlist and is reduced to plain text; and
+20. a committed cut or paste creates at most one exact echo receipt and never
+    executes a second semantic command.

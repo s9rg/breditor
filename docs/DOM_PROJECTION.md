@@ -127,9 +127,10 @@ optimizations; they may not weaken failure atomicity.
 - Selection mapping is the separate snapshot/generation-bound contract added in
   `0.0.52`; see [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md). The guarded
   non-composition event/queue/command coordinator added in `0.0.53` is documented
-  in [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md). Composition,
-  final clipboard mutation, toolbar delivery, persistence I/O, and framework
-  integration remain separate checkpoints.
+  in [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md). Composition
+  ownership arrived in `0.0.54`, and guarded base-subset clipboard handling
+  arrived in `0.0.55`; see [`CLIPBOARD.md`](CLIPBOARD.md). Toolbar delivery,
+  persistence I/O, and framework integration remain separate checkpoints.
 
 The package-level API and development commands are documented in
 `packages/breditor-browser/README.md`.

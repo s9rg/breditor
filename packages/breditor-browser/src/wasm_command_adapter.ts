@@ -1176,12 +1176,14 @@ export class BreditorWasmCommandAdapter {
 // application code replace methods after construction.
 Object.freeze(BreditorWasmCommandAdapter.prototype);
 
-/** Runtime helper for dispatchers accepting the wider staged-command union. */
+/**
+ * @deprecated Every admitted editor request is executable as of 0.0.55; use
+ * {@link isEditorCommandRequest} for new dispatchers.
+ */
 export function isEngineCommandRequest(
   request: EditorCommandRequest,
 ): request is EngineCommandRequest {
-  const canonical = canonicalEditorCommandRequest(request);
-  return canonical !== null && isEngineCommand(canonical.command);
+  return canonicalEditorCommandRequest(request) !== null;
 }
 
 function prepareSelection(selection: EditorSelectionSync): PreparedSelection | null {

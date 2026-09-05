@@ -112,6 +112,52 @@ describe("editor command contract", () => {
     ).toBeNull();
   });
 
+  it.each([
+    ["copy", "preserve"],
+    ["cut", "closeBefore"],
+    ["paste", "closeBefore"],
+  ] as const)("rejects the removed staged clipboard %s shape at runtime", (operation, history) => {
+    const { token, selection } = delivery();
+    const staged = {
+      delivery: token,
+      selection,
+      source: { kind: "clipboard", detail: operation },
+      requirements: { selection: "synchronize", history },
+      command: { kind: "clipboard", operation, stage: "request" },
+    };
+
+    expect(isEngineCommand(staged.command)).toBe(false);
+    expect(isEditorCommandRequest(staged)).toBe(false);
+    expect(canonicalEditorCommandRequest(staged)).toBeNull();
+  });
+
+  it("rejects staged clipboard accessors without invoking them", () => {
+    const { token, selection } = delivery();
+    let reads = 0;
+    const command = Object.defineProperties({}, {
+      kind: { enumerable: true, value: "clipboard" },
+      operation: {
+        enumerable: true,
+        get() {
+          reads += 1;
+          return "cut";
+        },
+      },
+      stage: { enumerable: true, value: "request" },
+    });
+
+    expect(
+      canonicalEditorCommandRequest({
+        delivery: token,
+        selection,
+        source: { kind: "clipboard", detail: "cut" },
+        requirements: { selection: "synchronize", history: "closeBefore" },
+        command,
+      }),
+    ).toBeNull();
+    expect(reads).toBe(0);
+  });
+
   it("makes public guards total and rejects accessors, proxies, and extra fields", () => {
     const { token, selection } = delivery();
     const valid = noInputActionRequest(

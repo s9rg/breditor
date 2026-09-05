@@ -197,9 +197,9 @@ The following remain deliberately unimplemented:
   preparation, the process-local bounded append FIFO, and its uncertain-head
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
-- published consumer packaging, a unified end-user browser event router, final
-  clipboard mutation, toolbar delivery, persistence/React integration, and the
-  real-browser support matrix;
+- published consumer packaging, a unified end-user browser event router,
+  toolbar delivery, persistence/React integration, and the real-browser support
+  matrix (guarded base-subset clipboard mutation exists at `0.0.55`);
 - atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
   boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
   append coordination;
@@ -4544,9 +4544,9 @@ session before publication, so admission time is linear in checkpoint size and
 transient memory includes candidate plus encoded bytes. Semantic projection
 also copies strings through Wasm and is synchronous. At the `0.0.51` checkpoint
 there were no persistent node IDs, custom schema renderers, selection conversion,
-event adapter, composition owner, clipboard policy, toolbar delivery, IndexedDB
-I/O, or React runtime. Later sections record the selection, event, and
-composition additions. The full projection contract and limits are in
+  event adapter, composition owner, clipboard policy, toolbar delivery, IndexedDB
+  I/O, or React runtime. Later sections record the selection, event,
+  composition, and clipboard additions. The full projection contract and limits are in
 [`DOM_PROJECTION.md`](DOM_PROJECTION.md).
 
 ## Guarded browser selection mapping (`0.0.52`)
@@ -4621,8 +4621,8 @@ selection fails closed.
 The initial mapping is one-range and light-DOM only. At the `0.0.52` checkpoint,
 shadow/composed ranges, node/grid/table selections, remote selections, internal
 root-boundary bias, keyboard movement, composition, and input-event ordering
-were not implemented; `0.0.53` and `0.0.54` add only the closed event and
-paragraph-local composition slices described below.
+were not implemented; `0.0.53` through `0.0.55` add only the closed event,
+paragraph-local composition, and base-subset clipboard slices described below.
 Preorder endpoint lookup and full synchronous DOM validation are O(document)
 within existing projection limits. The full contract and acceptance laws are in
 [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md).
@@ -4633,7 +4633,9 @@ The framework-neutral browser package now reduces owned non-composition browser
 signals to Breditor's own immutable command request. The request contains one
 opaque adapter-issued delivery token, an exact semantic range captured against
 that token's browser projection, bounded source metadata, an explicit history
-requirement, and exactly one action/history command or staged clipboard request.
+requirement, and exactly one action/history command. At that historical
+checkpoint a separate staged clipboard request also existed; `0.0.55` removes
+it in favor of guarded capability handling before one ordinary engine command.
 No native event, DOM node, target range, clipboard object, callback, promise, or
 Wasm handle enters the queue.
 
@@ -4684,7 +4686,7 @@ This sequence is serialized but not rollback-atomic across prestages. A
 selection update, and then a requested history close, may publish before a later
 action error. DOM APIs also cannot participate in a Rust transaction. The queue
 therefore fail-stops rather than retrying or pretending those earlier effects
-were undone. Clipboard mutation remains staged. At `0.0.53`, IME composition
+were undone. Clipboard mutation remained staged at `0.0.53`. IME composition
 still required the separate temporary-DOM lease implemented by `0.0.54`. The
 complete contract is in
 [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md).
@@ -4726,3 +4728,76 @@ future task; command delivery is synchronous too. Deterministic DOM tests cover
 the implemented event orders and all three bounded alias paths. The real
 Chromium, Firefox, and WebKit/Safari IME matrix remains the `0.0.59` gate; this
 checkpoint defines no separate mobile support matrix.
+
+## Guarded browser clipboard delivery (`0.0.55`)
+
+Clipboard handling adds no Rust wire format or Wasm method. The browser
+controller requires a queue built with the same captured Wasm adapter executor
+and obtains a private queue lease before inspecting an event, cancellation
+state, DOM selection, `DataTransfer`, or clipboard string. It repeatedly proves
+the same connected canonical render and one exact semantic range after each
+caller-controlled effect boundary. Ordinary, toolbar, API, observer, and
+reentrant submissions through that queue reject while this lease is held.
+Direct adapter execution bypasses queue coordination, violates the low-level
+integration contract, and is detected only at the next base revalidation. The
+structurally checked JavaScript adapter surface is host-trusted until the
+high-level runtime encapsulates this wiring.
+
+Copy slices the directional selection's spatial extent directly from the
+branded base projection. Plain text joins paragraphs with LF; HTML uses only
+escaped text, attribute-free paragraphs and strong wrappers, and a sole `<br>`
+for an empty paragraph. Cut first clears the clipboard, writes `text/plain`,
+then writes `text/html`, and confirms native cancellation. Only after all four
+steps succeed can one `breditor/delete-selection` action with a `closeBefore`
+history boundary run. Copy performs no Rust command, and a collapsed cut cannot
+delete.
+
+Paste treats advertised `text/plain` as authoritative and never falls back to
+HTML when that item is empty, invalid, oversized, or throws. HTML is read only
+when plain text is absent. parse5 constructs a non-DOM fragment whose complete
+repaired tree must contain only direct attribute-free `<p>` blocks, direct text
+or one-level attribute-free `<strong>`/`<b>` runs, and canonical empty
+paragraphs, with an optional exact fragment-comment pair. The admitted tree is
+flattened with LF and passed to one atomic `breditor/insert-plain-text` action
+with `closeBefore`; strong structure is deliberately not preserved because the
+current action cannot represent mixed clipboard formats.
+
+This is a repaired-tree policy, not a source-language sanitizer. Source wrappers
+or attributes which parse5 discards are absent from the tree that admission
+checks; for example, ignored `<html>`/`<body>` wrappers around an otherwise exact
+paragraph do not themselves cause rejection. Any unsupported element,
+attribute, or namespace that survives repair does fail closed, and no admitted
+markup is ever installed in the editor DOM.
+
+The parser and serializer reject ill-formed Unicode, HTML tokenizer-control
+scalars, and Unicode noncharacters. An instrumented parse5 adapter bounds
+transient node construction, tree-repair mutations, and the open-element stack
+before the final repaired-tree audit enforces independent UTF-16/UTF-8, source,
+result, node, depth, and paragraph limits. Files, images, custom MIME, and
+arbitrary surviving clipboard structure fail closed. Copy/cut
+can publish roughly 8 MiB of plain text, while the one-action paste boundary is
+65,536 UTF-16 code units and 65,536 UTF-8 bytes; a successful Breditor copy or
+cut is therefore not guaranteed to fit one Breditor paste. The controller
+retains no event, DOM node, `DataTransfer`, Wasm handle, callback, or promise;
+dispositions expose only bounded state and stable payload-free reasons.
+Admitted paste text deliberately
+becomes the bounded string-action payload, so the synchronous executor and any
+application queue observer can see and retain it even though the package queue
+does not retain the leased request after return.
+
+A committed cut or paste records one post-command receipt tied to the exact new
+render, delivery epoch, and operation. It can cancel one matching clipboard
+`beforeinput` and consume one matching `input` postcondition (or consume the
+`input` directly when `beforeinput` is omitted) without a second Rust command.
+The ordinary controller delegates those clipboard input types. Separate
+ordinary, composition, and clipboard controllers remain an explicit integration
+burden until the unified router checkpoint.
+
+Clipboard writes, event cancellation, Rust publication, DOM projection, and
+selection restoration are not one rollback transaction. Known failure before a
+cut command yields at worst copied data without deletion; known paste failure
+cancels without insertion. Uncertainty after command submission is never
+retried and requires canonical reconciliation. The async Clipboard API,
+permission-driven programmatic operations, mixed-format rich paste, shadow or
+multi-range ownership, and real-browser interoperability remain outside this
+checkpoint. The exact contract is in [`CLIPBOARD.md`](CLIPBOARD.md).

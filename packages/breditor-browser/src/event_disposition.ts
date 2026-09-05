@@ -10,7 +10,6 @@ export type BrowserEventBlockReason =
   | "targetRangeCount"
   | "targetRangeMismatch"
   | "targetRangeInvalid"
-  | "clipboardEchoWithoutReceipt"
   | "unsupportedEditingShortcut"
   | "unsupportedLineBreak"
   | "textRequiresBeforeInput"
@@ -63,11 +62,6 @@ export type BrowserEventDisposition<TResult> =
       reason: BrowserEventReconcileReason;
     }>
   | Readonly<{
-      kind: "clipboardEcho";
-      defaultPrevented: true;
-      operation: "cut" | "paste";
-    }>
-  | Readonly<{
       kind: "keyboardEcho";
       defaultPrevented: true;
       inputType: string;
@@ -75,7 +69,6 @@ export type BrowserEventDisposition<TResult> =
   | Readonly<{
       kind: "inputPostcondition";
       expectedEcho:
-        | Readonly<{ kind: "clipboard"; operation: "cut" | "paste" }>
         | Readonly<{ kind: "keyboard"; inputType: string }>
         | undefined;
     }>;

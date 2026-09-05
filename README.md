@@ -103,7 +103,8 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
   a bounded non-recursive command FIFO, deliberate `beforeinput` and keyboard
   translation, event-echo suppression, and an observation/render-owning Wasm
   command adapter, plus an exact queue/renderer composition lease that
-  reconciles one paragraph-local native IME replacement back through Rust;
+  reconciles one paragraph-local native IME replacement back through Rust, and
+  guarded semantic copy/cut/paste with a bounded base-subset HTML allowlist;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -121,7 +122,7 @@ scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
-a unified end-user browser router and final clipboard mutation adapters,
+  a unified end-user browser router and asynchronous/programmatic clipboard,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
@@ -745,9 +746,10 @@ the exact successor and projection update, restores canonical DOM and the core
 selection, and frees every generated handle before returning a handle-free
 notification. Valid published successors survive DOM-write failure for explicit
 full-render recovery; malformed, stale, aliased, or uncertain results fault the
-adapter. Clipboard mutations remain staged until `0.0.55`, and the multi-stage
-sequence is serialized but cannot roll back a selection/history prestage when a
-later action fails.
+adapter. At this historical checkpoint clipboard mutations remained staged;
+`0.0.55` replaces that staged command variant with a guarded browser clipboard
+owner. The multi-stage engine sequence is serialized but cannot roll back a
+selection/history prestage when a later action fails.
 
 Version `0.0.54` adds strict composition/IME ownership to the same
 [browser event pipeline contract](docs/BROWSER_EVENT_PIPELINE.md). A dedicated
@@ -776,6 +778,26 @@ The current implementation is limited to one range and one paragraph in a
 connected light-DOM host. It has no cross-block, shadow/composed-range,
 multi-range, arbitrary-IME-markup, or general mobile support claim; the real
 Chromium, Firefox, and WebKit/Safari matrix remains checkpoint `0.0.59`.
+
+Version `0.0.55` adds the [clipboard contract](docs/CLIPBOARD.md). A dedicated
+controller reserves the idle queue built from the same captured adapter
+executor before touching native
+clipboard capabilities. Copy slices the semantic projection rather than DOM
+markup. Cut clears and writes both plain text and escaped base-subset HTML,
+confirms native cancellation, and only then submits one selection deletion.
+Paste gives advertised plain text precedence; HTML is read only when plain text
+is absent, must pass a bounded parse5 tree allowlist, and is flattened before
+one atomic multiline plain-text insertion.
+
+Native clipboard objects never enter engine commands or echo receipts. Admitted
+paste text deliberately becomes the bounded string-action payload and is
+visible to the synchronous queue executor and any application queue observer.
+A committed cut or paste can suppress one exact optional `beforeinput`/`input`
+echo without executing twice. Clipboard and Rust state do not share rollback,
+so known failures choose no-delete/no-insert behavior and uncertain post-command
+failures require canonical reconciliation. Async clipboard access, arbitrary
+rich content, a unified event router, and real browser interoperability remain
+later work.
 
 ## Development
 

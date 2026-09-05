@@ -376,23 +376,11 @@ describe("BreditorBrowserEventController", () => {
     )).toEqual(["a", "b"]);
   });
 
-  it("stages cut once and suppresses its beforeinput and input echoes", () => {
+  it("delegates clipboard beforeinput and input to the clipboard owner", () => {
     const fixture = createFixture();
     installDomSelection(fixture.host, 1, 4);
     const delivered: EditorCommandRequest[] = [];
     const controller = createController(fixture.bridge, delivered);
-    const cut = new Event("cut", { bubbles: true, cancelable: true });
-
-    expect(
-      dispatch(fixture.host, cut, (observed) =>
-        controller.handleClipboard(
-          observed as ClipboardEvent,
-          fixture.rendered,
-          fixture.delivery,
-        ),
-      ).kind,
-    ).toBe("handled");
-    expect(cut.defaultPrevented).toBe(true);
 
     const before = inputEvent("beforeinput", "deleteByCut", null, []);
     expect(
@@ -403,7 +391,12 @@ describe("BreditorBrowserEventController", () => {
           fixture.delivery,
         ),
       ),
-    ).toEqual({ kind: "clipboardEcho", defaultPrevented: true, operation: "cut" });
+    ).toEqual({
+      kind: "ignored",
+      defaultPrevented: false,
+      reason: "clipboardOwns",
+    });
+    expect(before.defaultPrevented).toBe(false);
 
     const input = inputEvent("input", "deleteByCut", null);
     expect(
@@ -411,18 +404,14 @@ describe("BreditorBrowserEventController", () => {
         controller.handleInput(observed as InputEvent, fixture.rendered),
       ),
     ).toEqual({
-      kind: "inputPostcondition",
-      expectedEcho: { kind: "clipboard", operation: "cut" },
+      kind: "ignored",
+      defaultPrevented: false,
+      reason: "clipboardOwns",
     });
-    expect(delivered).toHaveLength(1);
-    expect(delivered[0]?.command).toEqual({
-      kind: "clipboard",
-      operation: "cut",
-      stage: "request",
-    });
+    expect(delivered).toHaveLength(0);
   });
 
-  it("blocks a clipboard beforeinput without an exact event receipt", () => {
+  it("delegates paste beforeinput without inspecting target ranges", () => {
     const fixture = createFixture();
     installCollapsedDomSelection(fixture.host, 1);
     const delivered: EditorCommandRequest[] = [];
@@ -437,10 +426,11 @@ describe("BreditorBrowserEventController", () => {
       ),
     );
     expect(disposition).toEqual({
-      kind: "blocked",
-      defaultPrevented: true,
-      reason: "clipboardEchoWithoutReceipt",
+      kind: "ignored",
+      defaultPrevented: false,
+      reason: "clipboardOwns",
     });
+    expect(event.defaultPrevented).toBe(false);
     expect(delivered).toHaveLength(0);
   });
 

@@ -1,29 +1,49 @@
 import {
-  stagedClipboardRequest,
+  BASE_ACTION_IDS,
+  noInputActionRequest,
+  stringActionRequest,
   type EditorDeliveryToken,
-  type EditorCommandRequest,
   type EditorSelectionSync,
+  type EngineCommandRequest,
 } from "./editor_command.js";
 
-/** Clipboard event operations owned as staged requests in v0.0.53. */
-export type ClipboardOperation = "copy" | "cut" | "paste";
-
 /**
- * Translates an actual clipboard event, never its keyboard chord.
+ * Creates the exact deletion admitted only after a cut write has succeeded.
  *
- * The result contains no `DataTransfer`, DOM Event, serialized content, paste
- * action, or cut deletion. Those capabilities remain staged for the clipboard
- * integration checkpoint.
+ * Clipboard serialization, writing, and cancellation remain browser-controller
+ * responsibilities. This request retains no Event or DataTransfer capability.
  */
-export function translateClipboardCommand(
-  operation: ClipboardOperation,
+export function cutDeleteRequest(
   delivery: EditorDeliveryToken,
   selection: EditorSelectionSync,
-): EditorCommandRequest {
-  return stagedClipboardRequest(
+): EngineCommandRequest {
+  return noInputActionRequest(
     delivery,
     selection,
-    Object.freeze({ kind: "clipboard", detail: operation }),
-    operation,
+    Object.freeze({ kind: "clipboard", detail: "cut" }),
+    BASE_ACTION_IDS.deleteSelection,
+    "closeBefore",
+  );
+}
+
+/**
+ * Creates the exact insertion admitted from a sanitized plain-text paste.
+ *
+ * Reading DataTransfer data and reducing HTML to plain text happen before this
+ * pure boundary. Empty, oversized, or ill-formed strings are rejected by the
+ * shared browser command-text contract.
+ */
+export function pasteInsertRequest(
+  delivery: EditorDeliveryToken,
+  selection: EditorSelectionSync,
+  text: string,
+): EngineCommandRequest {
+  return stringActionRequest(
+    delivery,
+    selection,
+    Object.freeze({ kind: "clipboard", detail: "paste" }),
+    BASE_ACTION_IDS.insertPlainText,
+    text,
+    "closeBefore",
   );
 }

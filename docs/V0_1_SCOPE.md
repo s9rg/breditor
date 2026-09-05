@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.54`
+Status: frozen product target; implementation completed through `0.0.55`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -137,7 +137,13 @@ a smaller safe boundary, but a later gate must not be claimed first.
    The integration is controller-only; the real-browser matrix remains
    checkpoint `0.0.59`, and this checkpoint makes no broader device claim.
 8. `0.0.55`: sanitized supported-subset HTML copy/paste plus atomic multiline
-   paste integration.
+   paste integration. Complete: semantic selections serialize to bounded plain
+   text and escaped base-subset HTML; HTML-only paste uses a strict parse5 tree
+   allowlist and reduces to plain text; a same-executor queue lease
+   guards synchronous clipboard capability access, cancellation, one final Rust
+   delete/insert, and operation-bound echo receipts. Clipboard/core work is not
+   rollback-atomic, and the async Clipboard API, rich mixed-format paste, and
+   real-browser matrix remain outside this checkpoint.
 9. `0.0.56`: extensible accessible toolbar and action-state refresh/delivery
    layer.
 10. `0.0.57`: atomic IndexedDB `SessionCheckpoint` autosave, reload restore,

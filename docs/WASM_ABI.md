@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.54` boundary contract; intentionally narrow and unstable before
+Status: `0.0.55` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
@@ -278,9 +278,9 @@ The crate imports no DOM, IndexedDB, timer, clipboard, console, allocator, or
 panic-hook API. DOM selection conversion, focus, non-composition event ordering,
 bounded reentrancy, guarded command/result ownership, and the paragraph-local
 composition lease are implemented by the framework-neutral browser package.
-Final clipboard data handling, a unified editable-host router, persistence
-scheduling, and framework integration remain TypeScript responsibilities in
-later checkpoints.
+Clipboard data handling is implemented outside Wasm in the framework-neutral
+browser package. A unified editable-host router, persistence scheduling, and
+framework integration remain TypeScript responsibilities in later checkpoints.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
 numeric/string coercions can execute before Rust entry; the host queue must not

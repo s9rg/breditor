@@ -1,29 +1,33 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import * as clipboardCommands from "./clipboard_command.js";
+import { cutDeleteRequest, pasteInsertRequest } from "./clipboard_command.js";
 import { BreditorDomRenderer, type RenderedProjection } from "./dom_renderer.js";
 import {
+  MAX_BROWSER_COMMAND_TEXT_UTF16,
+  isEditorCommandRequest,
+  isEngineCommand,
   issueEditorDeliveryToken,
   rangeSelectionSync,
   type EditorDeliveryToken,
   type EditorSelectionSync,
 } from "./editor_command.js";
-import { translateClipboardCommand, type ClipboardOperation } from "./clipboard_command.js";
 import { BaseDocumentProjection } from "./projection.js";
 import { BaseRangeSelection } from "./selection.js";
 
-interface TranslationFixture {
+interface CommandFixture {
   readonly delivery: EditorDeliveryToken;
   readonly selection: EditorSelectionSync;
   readonly rendered: RenderedProjection;
   readonly renderer: BreditorDomRenderer;
 }
 
-let fixture: TranslationFixture;
+let fixture: CommandFixture;
 
 beforeAll(() => {
   const projectionResult = BaseDocumentProjection.create({
     schema: { name: "breditor/base", version: 1 },
-    snapshot: { lineage: "clipboard-translation-tests", revision: "0" },
+    snapshot: { lineage: "clipboard-command-tests", revision: "0" },
     paragraphs: [{ runs: [] }],
   });
   if (!projectionResult.ok) throw new Error("projection fixture failed");
@@ -66,41 +70,93 @@ afterAll(() => {
   fixture.renderer.release(fixture.rendered);
 });
 
-describe("translateClipboardCommand", () => {
-  it.each([
-    ["copy", "preserve"],
-    ["cut", "closeBefore"],
-    ["paste", "closeBefore"],
-  ] as const)("creates only the staged %s request", (operation, history) => {
-    const request = translateClipboardCommand(operation, fixture.delivery, fixture.selection);
+describe("clipboard engine command factories", () => {
+  it("creates only the exact post-write cut deletion", () => {
+    const request = cutDeleteRequest(fixture.delivery, fixture.selection);
+
     expect(request.delivery).toBe(fixture.delivery);
     expect(request.selection.kind).toBe("range");
-    expect(request.source).toEqual({ kind: "clipboard", detail: operation });
-    expect(request.requirements).toEqual({ selection: "synchronize", history });
-    expect(request.command).toEqual({ kind: "clipboard", operation, stage: "request" });
-    expect(Reflect.ownKeys(request.command)).toEqual(["kind", "operation", "stage"]);
+    expect(request.source).toEqual({ kind: "clipboard", detail: "cut" });
+    expect(request.requirements).toEqual({
+      selection: "synchronize",
+      history: "closeBefore",
+    });
+    expect(request.command).toEqual({
+      kind: "action",
+      actionId: "breditor/delete-selection",
+      input: { kind: "none" },
+    });
+    expect(Reflect.ownKeys(request)).toEqual([
+      "delivery",
+      "selection",
+      "source",
+      "requirements",
+      "command",
+    ]);
+    expect(Reflect.ownKeys(request.command)).toEqual(["kind", "actionId", "input"]);
+    expect(isEngineCommand(request.command)).toBe(true);
+    expect(isEditorCommandRequest(request)).toBe(true);
     expect(Object.isFrozen(request)).toBe(true);
     expect(Object.isFrozen(request.command)).toBe(true);
-  });
-
-  it("does not encode an eager deletion, action, payload, or browser object for cut", () => {
-    const request = translateClipboardCommand("cut", fixture.delivery, fixture.selection);
-    expect(request.command.kind).toBe("clipboard");
-    expect(request.command).not.toHaveProperty("actionId");
-    expect(request.command).not.toHaveProperty("input");
-    expect(request.command).not.toHaveProperty("delete");
-    expect(request.command).not.toHaveProperty("payload");
-    expect(request.command).not.toHaveProperty("event");
+    expect(request).not.toHaveProperty("event");
     expect(request).not.toHaveProperty("clipboardData");
   });
 
-  it("rejects operations outside the closed staged clipboard set", () => {
+  it("preserves admitted plain text exactly in one paste insertion", () => {
+    const text = "first\r\nsecond 😀";
+    const request = pasteInsertRequest(fixture.delivery, fixture.selection, text);
+
+    expect(request.delivery).toBe(fixture.delivery);
+    expect(request.source).toEqual({ kind: "clipboard", detail: "paste" });
+    expect(request.requirements).toEqual({
+      selection: "synchronize",
+      history: "closeBefore",
+    });
+    expect(request.command).toEqual({
+      kind: "action",
+      actionId: "breditor/insert-plain-text",
+      input: { kind: "string", value: text },
+    });
+    expect(Reflect.ownKeys(request.command)).toEqual(["kind", "actionId", "input"]);
+    expect(isEngineCommand(request.command)).toBe(true);
+    expect(isEditorCommandRequest(request)).toBe(true);
+    expect(Object.isFrozen(request)).toBe(true);
+    expect(Object.isFrozen(request.command)).toBe(true);
+    expect(request).not.toHaveProperty("event");
+    expect(request).not.toHaveProperty("clipboardData");
+  });
+
+  it.each([
+    ["empty", ""],
+    ["unpaired surrogate", "\ud800"],
+    ["oversized", "x".repeat(MAX_BROWSER_COMMAND_TEXT_UTF16 + 1)],
+  ])("rejects %s paste text before constructing a request", (_label, pastedText) => {
     expect(() =>
-      translateClipboardCommand(
-        "drop" as ClipboardOperation,
-        fixture.delivery,
-        fixture.selection,
-      ),
-    ).toThrow(TypeError);
+      pasteInsertRequest(fixture.delivery, fixture.selection, pastedText),
+    ).toThrow(RangeError);
+  });
+
+  it("rejects forged delivery tokens and accessor-backed selections", () => {
+    const forgedDelivery = { ...fixture.delivery } as unknown as EditorDeliveryToken;
+    expect(() => cutDeleteRequest(forgedDelivery, fixture.selection)).toThrow(TypeError);
+
+    let reads = 0;
+    const hostileSelection = Object.defineProperties({}, {
+      kind: { enumerable: true, value: "range" },
+      selection: {
+        enumerable: true,
+        get() {
+          reads += 1;
+          return fixture.selection.kind === "range" ? fixture.selection.selection : undefined;
+        },
+      },
+    }) as unknown as EditorSelectionSync;
+    expect(() => cutDeleteRequest(fixture.delivery, hostileSelection)).toThrow(TypeError);
+    expect(reads).toBe(0);
+  });
+
+  it("exposes no request factory for copy and no staged translation API", () => {
+    expect("copyRequest" in clipboardCommands).toBe(false);
+    expect("translateClipboardCommand" in clipboardCommands).toBe(false);
   });
 });
