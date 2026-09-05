@@ -65,3 +65,86 @@ export {
   type SemanticSelectionPointKind,
   type SemanticSelectionView,
 } from "./wasm_selection_adapter.js";
+export {
+  BASE_ACTION_IDS,
+  MAX_BROWSER_COMMAND_TEXT_UTF16,
+  MAX_BROWSER_COMMAND_TEXT_UTF8,
+  browserCommandTextIsAdmissible,
+  historyRequest,
+  isEditorCommandRequest,
+  isEngineCommand,
+  noInputActionRequest,
+  noSelectionSync,
+  rangeSelectionSync,
+  stagedClipboardRequest,
+  stringActionRequest,
+  type EditorCommand,
+  type EditorCommandRequest,
+  type EditorCommandRequirements,
+  type EditorCommandSource,
+  type EditorDeliveryAuthority,
+  type EditorDeliveryToken,
+  type EditorSelectionSync,
+  type EngineCommand,
+  type EngineCommandRequest,
+  type StagedClipboardCommand,
+  type StagedClipboardCommandRequest,
+} from "./editor_command.js";
+export {
+  BreditorCommandQueue,
+  DEFAULT_COMMAND_QUEUE_CAPACITY,
+  MAX_COMMAND_QUEUE_CAPACITY,
+  type CommandQueueDelivery,
+  type CommandQueueFailure,
+  type CommandQueueFailureCode,
+  type CommandQueueObserver,
+  type CommandQueueSubmission,
+  type EditorCommandExecutor,
+} from "./command_queue.js";
+export {
+  translateBeforeInput,
+  type BeforeInputSnapshot,
+  type BeforeInputTranslation,
+} from "./beforeinput.js";
+export {
+  translateKeyDown,
+  type KeyboardSnapshot,
+  type KeyboardTranslation,
+  type KeyboardTranslationPolicy,
+} from "./keyboard.js";
+export {
+  translateClipboardCommand,
+  type ClipboardOperation,
+} from "./clipboard_command.js";
+export {
+  BaseTargetRange,
+  baseTargetRangesEqual,
+  type BaseTargetRangeInput,
+} from "./target_range.js";
+export { mapDomTargetRange } from "./dom_target_range.js";
+export type {
+  BrowserEventBlockReason,
+  BrowserEventDisposition,
+  BrowserEventIgnoreReason,
+  BrowserEventReconcileReason,
+} from "./event_disposition.js";
+export {
+  BreditorBrowserEventController,
+  type BrowserEventControllerOptions,
+} from "./browser_event_controller.js";
+export {
+  BreditorWasmCommandAdapter,
+  isEngineCommandRequest,
+  type BreditorWasmCommandAdapterOptions,
+  type WasmCommandEngineView,
+  type WasmCommandError,
+  type WasmCommandErrorView,
+  type WasmCommandObservationView,
+  type WasmCommandOutcome,
+  type WasmCommandRenderMetadata,
+  type WasmCommandResultView,
+  type WasmCommandSequenceOutcome,
+  type WasmCommandSnapshot,
+  type WasmRenderReconciliationOutcome,
+  type WasmSelectionResultView,
+} from "./wasm_command_adapter.js";

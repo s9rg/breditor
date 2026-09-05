@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.52`
+Status: frozen product target; implementation completed through `0.0.53`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -122,7 +122,11 @@ a smaller safe boundary, but a later gate must not be claimed first.
    snapshot/generation-bound, direction-preserving, drift-checked, and keeps
    focus separate from semantic absence.
 6. `0.0.53`: `beforeinput`, keyboard fallback, and supported clipboard command
-   translation outside composition.
+   translation outside composition. Complete: exact semantic selection and
+   target-range capture, one-use observation/render delivery, non-recursive
+   bounded FIFO ordering, key/clipboard echo receipts, `input`-as-postcondition,
+   and handle-owning Wasm execution/reconciliation are explicit; clipboard
+   mutation remains deliberately staged for `0.0.55`.
 7. `0.0.54`: composition/IME ownership, cancellation, and browser reconciliation.
 8. `0.0.55`: sanitized supported-subset HTML copy/paste plus atomic multiline
    paste integration.

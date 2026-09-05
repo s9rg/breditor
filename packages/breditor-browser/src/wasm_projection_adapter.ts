@@ -110,16 +110,19 @@ export function consumeSemanticProjection(
  * The adapter verifies duplicated base/result snapshot fields, maps the closed
  * impact enum, takes and consumes the result projection, and then lets
  * {@link BaseProjectionUpdate.create} prove every claimed reusable paragraph.
+ * Owning adapters may supply outer generated handles as identity-only guards;
+ * a nested alias is rejected without reading or freeing the protected owner.
  */
 export function consumeSemanticProjectionUpdate(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
+  protectedHandles: readonly unknown[] = [],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
   let result: BrowserProjectionResult<BaseProjectionUpdate> = projectionFailure(
     "projection.invalid_update",
   );
   try {
-    result = readSemanticProjectionUpdate(base, view);
+    result = readSemanticProjectionUpdate(base, view, protectedHandles);
   } catch {
     result = projectionFailure("projection.invalid_update");
   } finally {
@@ -253,6 +256,7 @@ function readSemanticProjection(
 function readSemanticProjectionUpdate(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
+  protectedHandles: readonly unknown[],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
   if (
     !isSemanticProjectionUpdateView(view) ||
@@ -269,6 +273,15 @@ function readSemanticProjectionUpdate(
   }
   const resultView = view.takeProjection();
   if (resultView === undefined) {
+    return projectionFailure("projection.invalid_update");
+  }
+  // `takeProjection` crosses a second generated-handle boundary. A hostile or
+  // corrupted wrapper must not smuggle an outer owner into the projection
+  // consumer, whose normal contract is to free the value it receives.
+  if (
+    (resultView as unknown) === view ||
+    protectedHandles.some((handle) => resultView === handle)
+  ) {
     return projectionFailure("projection.invalid_update");
   }
   const projectionResult = consumeSemanticProjection(resultView);

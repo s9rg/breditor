@@ -125,8 +125,10 @@ optimizations; they may not weaken failure atomicity.
   checkpoint work is synchronous and can block the main thread near configured
   limits.
 - Selection mapping is the separate snapshot/generation-bound contract added in
-  `0.0.52`; see [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md). Input events,
-  composition, clipboard, toolbar delivery, persistence I/O, and framework
+  `0.0.52`; see [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md). The guarded
+  non-composition event/queue/command coordinator added in `0.0.53` is documented
+  in [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md). Composition,
+  final clipboard mutation, toolbar delivery, persistence I/O, and framework
   integration remain separate checkpoints.
 
 The package-level API and development commands are documented in

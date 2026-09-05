@@ -1,8 +1,9 @@
 # `@breditor/browser`
 
-`@breditor/browser` is Breditor's framework-neutral browser projection layer.
-Version `0.0.52` renders the validated base-schema AST into disposable DOM and
-maps one directional selection without making the DOM an editor model.
+`@breditor/browser` is Breditor's framework-neutral browser editing layer.
+Version `0.0.53` renders the validated base-schema AST into disposable DOM,
+maps one directional selection, and serializes non-composition browser intent
+into guarded semantic commands without making the DOM an editor model.
 
 The package is private while the pre-`0.1` package boundary is still moving.
 Its public entry point is nevertheless compiled and declaration-checked so a
@@ -112,10 +113,53 @@ affinities. Focus is observed separately. The bridge never calls `focus()` or
 `blur()`, and clearing semantic selection does not erase a DOM selection wholly
 outside this host.
 
+## Event and command contract
+
+`BreditorBrowserEventController` snapshots `beforeinput`, `keydown`, `input`,
+and actual clipboard-event fields synchronously. It accepts only events owned by
+the exact connected light-DOM host, maps the current DOM selection through the
+same bridge used by the command adapter, normalizes at most one target range,
+and discards every native object before queue admission.
+
+Controller construction also requires the opaque `deliveryAuthority` exposed
+by that adapter. The package exports `EditorDeliveryToken` only as an opaque
+type, not as a constructible value. Foreign, stale, forged, or spent tokens are
+rejected before cancellation and cannot consume keyboard or clipboard receipts.
+
+The recognized non-composition set covers text and multiline text insertion,
+paragraph insertion, backward/forward/selection deletion, strong formatting,
+undo, and redo. Unknown edit intents are blocked instead of approximated.
+Keyboard input never supplies text; an explicit host policy selects
+`beforeinput`-primary behavior or the narrow Backspace/Delete/Enter fallback.
+AltGraph, dead keys, key code 229, and active composition remain native.
+
+`BreditorCommandQueue` is a bounded synchronous, non-recursive FIFO. Reentrant
+delivery appends. An executor or observer throw permanently quarantines the
+queue because the head may already have published; no item is retried.
+Generation-bound one-use receipts suppress matching keydown and clipboard event
+echoes, while `input` is only a postcondition and never executes a second
+command.
+
+`BreditorWasmCommandAdapter` owns the exact observation, browser projection,
+renderer handle, selection bridge, and private one-use delivery epoch. One
+engine request synchronizes its already captured semantic selection, optionally
+closes a history group, executes one action/undo/redo, validates the exact
+successor and projection update, updates the DOM, restores the resulting core
+selection, and frees all generated handles before returning a handle-free
+outcome. A valid semantic successor whose DOM publication fails is retained for
+explicit full-render recovery; malformed or stale results fault the adapter.
+
+Copy, cut, and paste are staged in this version. Cut contains no eager delete,
+and paste contains no payload until the actual clipboard capability is handled
+by the `0.0.55` integration. See
+[`BROWSER_EVENT_PIPELINE.md`](../../docs/BROWSER_EVENT_PIPELINE.md) for the full
+contract, exact-once laws, and recovery model.
+
 ## Current limitations
 
-- Input translation, composition, clipboard handling, toolbar delivery,
-  persistence, and React integration belong to later checkpoints.
+- Composition settlement, clipboard serialization/parsing and final mutation,
+  toolbar delivery, persistence, and React integration belong to later
+  checkpoints.
 - No arbitrary elements, formats, properties, entity IDs, nested blocks, or
   extension DOM renderers are accepted yet.
 - DOM APIs do not provide an atomic transaction across several retained
@@ -133,6 +177,9 @@ outside this host.
   cross-shadow-root, browser multi-range, and ambiguous internal host-boundary
   positions fail closed. DOM mapping and validation are currently linear in the
   bounded document.
+- Command execution is synchronous. Selection synchronization or a history
+  boundary can publish before a later command error; queue fail-stop and
+  canonical reconciliation are provided, but cross-stage rollback is not.
 
 ## Development
 
@@ -149,5 +196,6 @@ The workspace pins TypeScript, Vitest, and jsdom exactly in
 mapping lifetime, text-container identity retention, shifted root-splice
 rebinding, stale/foreign guards, DOM-drift fallback, broad-impact full renders,
 Wasm-view consumption/disposal, directional and Unicode selection mapping,
-focus separation, select-all, outside-host protection, and one-shot echo
-suppression.
+focus separation, select-all, outside-host protection, exact target-range
+normalization, bounded command admission, non-recursive FIFO ordering,
+translation policy, and one-shot event-echo suppression.

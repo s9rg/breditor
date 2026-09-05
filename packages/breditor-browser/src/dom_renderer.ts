@@ -285,6 +285,24 @@ export class BreditorDomRenderer {
   readonly #rendererToken = Symbol("BreditorDomRenderer instance");
   #generation = 0n;
 
+  /** Proves that this renderer owns one exact current canonical handle. */
+  owns(rendered: unknown): rendered is RenderedProjection {
+    if (!isOwnedRenderedProjection(rendered)) {
+      return false;
+    }
+    try {
+      const ownership = HOST_OWNERS.get(rendered.host);
+      return (
+        rendered.current &&
+        ownership?.rendererToken === this.#rendererToken &&
+        ownership.handle === rendered &&
+        rendered.validateCanonicalDom()
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Replaces a host's children with a complete safe DOM projection.
    *
@@ -449,7 +467,7 @@ export class BreditorDomRenderer {
 
 /** @internal */
 export function isOwnedRenderedProjection(
-  rendered: RenderedProjection,
+  rendered: unknown,
 ): rendered is RenderedProjectionHandle {
   return (
     typeof rendered === "object" &&

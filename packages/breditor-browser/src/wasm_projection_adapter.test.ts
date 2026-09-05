@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type BrowserProjectionResult,
@@ -274,5 +274,46 @@ describe("Wasm semantic projection adapter", () => {
     expect(consumeSemanticProjectionUpdate(base, updateView).ok).toBe(false);
     expect(updateView.freeCalls).toBe(1);
     expect(resultView.freeCalls).toBe(0);
+  });
+
+  it("rejects a protected nested projection without freeing its owner", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const protectedProjection = new FakeProjectionView("1", [[]]);
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "root",
+      projection: protectedProjection,
+    });
+
+    expect(
+      consumeSemanticProjectionUpdate(base, updateView, [protectedProjection]).ok,
+    ).toBe(false);
+    expect(updateView.freeCalls).toBe(1);
+    expect(protectedProjection.freeCalls).toBe(0);
+  });
+
+  it("frees a self-aliased update exactly once", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    let updateView: SemanticProjectionUpdateView;
+    const free = vi.fn();
+    updateView = {
+      baseLineage: "adapter-tests",
+      baseRevision: "0",
+      resultLineage: "adapter-tests",
+      resultRevision: "1",
+      impact: "root",
+      affectedParagraphCount: 0,
+      oldChildStart: undefined,
+      oldChildEnd: undefined,
+      newChildStart: undefined,
+      newChildEnd: undefined,
+      affectedParagraphIndex: () => undefined,
+      takeProjection: () => updateView as unknown as SemanticProjectionView,
+      free,
+    };
+
+    expect(consumeSemanticProjectionUpdate(base, updateView).ok).toBe(false);
+    expect(free).toHaveBeenCalledOnce();
   });
 });

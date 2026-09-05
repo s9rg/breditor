@@ -99,7 +99,10 @@ narrow WebAssembly boundary:
 - a private framework-neutral `@breditor/browser` package that consumes that
   projection without JSON, creates a closed safe DOM vocabulary, maintains
   snapshot-local AST/DOM maps, retains proved paragraph identity, and rebuilds
-  conservatively on broad impact or DOM drift;
+  conservatively on broad impact or DOM drift, plus exact range/target mapping,
+  a bounded non-recursive command FIFO, deliberate `beforeinput` and keyboard
+  translation, event-echo suppression, and an observation/render-owning Wasm
+  command adapter;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -117,7 +120,7 @@ scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
-browser selection, input-event, composition, and clipboard adapters,
+composition settlement and final clipboard mutation adapters,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
@@ -715,8 +718,35 @@ once. Focus and blur remain separate browser state: mapping never steals focus,
 blur does not clear the Rust selection, and clearing this editor never erases a
 selection wholly outside its host. Cross-host, shadow-root, multi-range, and
 noncanonical cases fail closed. Selection reads and DOM validation remain
-linear in the bounded document; input events and composition still belong to
-later checkpoints.
+linear in the bounded document; input events and composition were still later
+checkpoints at `0.0.52`.
+
+Version `0.0.53` adds the
+[browser event pipeline contract](docs/BROWSER_EVENT_PIPELINE.md). The browser
+layer reduces owned `beforeinput`, keyboard, `input`, and clipboard signals to
+bounded immutable command requests carrying an exact captured semantic
+selection and a private one-use delivery token. It recognizes only the base
+text, paragraph, deletion, strong, and history intents; unsupported edits fail
+closed, keyboard events never supply text, and composition is delegated to the
+next checkpoint.
+
+A synchronous bounded FIFO serializes requests without recursive execution and
+permanently quarantines later work after executor or observer uncertainty.
+One-use receipts suppress matching keydown/beforeinput/input and clipboard
+echoes so one physical edit cannot become two Rust commands. Native target
+ranges are immediately normalized into projection/generation-bound semantic
+ranges and never retained.
+
+The Wasm command adapter exclusively owns the current observation, projection,
+renderer handle, and shared selection bridge. It synchronizes selection,
+applies an optional history boundary, executes one semantic command, validates
+the exact successor and projection update, restores canonical DOM and the core
+selection, and frees every generated handle before returning a handle-free
+notification. Valid published successors survive DOM-write failure for explicit
+full-render recovery; malformed, stale, aliased, or uncertain results fault the
+adapter. Clipboard mutations remain staged until `0.0.55`, and the multi-stage
+sequence is serialized but cannot roll back a selection/history prestage when a
+later action fails.
 
 ## Development
 

@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.52` boundary contract; intentionally narrow and unstable before
+Status: `0.0.53` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
@@ -66,7 +66,8 @@ bookkeeping is not a capability boundary and must not be exposed to hostile
 same-realm code. Passing an inert or freed class instance into a mutating method
 can fail after `wasm-bindgen` has borrowed the receiver and leave that receiver
 unusable; discard it rather than attempting recovery. The framework-neutral
-TypeScript facade will keep raw handles behind its checked lifecycle API.
+TypeScript facade keeps command-path raw handles behind its checked lifecycle
+API.
 
 ## Engine construction
 
@@ -108,7 +109,7 @@ A successful admission check does not reserve the engine. If two queued
 commands share one observation, the first effective mutation wins and the
 second fails stale.
 
-The `0.0.52` action surface is deliberately limited to:
+The action surface introduced in `0.0.52` is deliberately limited to:
 
 - `executeNoInputAction`, for a compiled action whose registered descriptor
   declares no input; and
@@ -274,14 +275,50 @@ distinguish this malformed input must reject it before crossing the boundary;
 valid surrogate pairs and all Rust-representable Unicode are retained exactly.
 
 The crate imports no DOM, IndexedDB, timer, clipboard, console, allocator, or
-panic-hook API. DOM selection conversion and focus are implemented by the
-framework-neutral browser package; event ordering, reentrancy policy,
-composition ownership, editable-host behavior, persistence scheduling, and
-framework integration remain TypeScript responsibilities in later checkpoints.
+panic-hook API. DOM selection conversion, focus, non-composition event ordering,
+bounded reentrancy, and guarded command/result ownership are implemented by the
+framework-neutral browser package. Composition ownership, final clipboard data
+handling, editable-host lifecycle, persistence scheduling, and framework
+integration remain TypeScript responsibilities in later checkpoints.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
 numeric/string coercions can execute before Rust entry; the host queue must not
 treat argument evaluation as part of the guarded mutation.
+
+## Browser command owner (`0.0.53`)
+
+`BreditorWasmCommandAdapter` owns exactly one generated observation together
+with the matching consumed browser projection, current renderer handle, and DOM
+selection bridge. It issues private-authority delivery tokens for that exact
+observation/render epoch. A token is spent before the first Wasm call and cannot
+be reused after any rejection.
+
+The token has no public constructor. The adapter's separate opaque
+`deliveryAuthority` capability is required by browser event admission and
+consults the adapter's live state, so visible token diagnostics alone never
+authorize event cancellation or echo suppression.
+
+One accepted request synchronizes its already captured semantic selection,
+optionally closes the history merge group, and then executes one action, undo,
+or redo. The adapter verifies the exact result shape, handle distinctness,
+lineage, revision transition, event kind, disabled action identity, and
+projection-update correlation before adopting a successor. It consumes the
+update, renders the result, reads the core selection, writes it to the matching
+DOM generation, and independently frees old observations and temporary result
+handles. The returned outcome contains only copied primitives, browser
+projection values, and render metadata.
+
+Stale structured errors, malformed results, generated-handle aliasing, and
+uncertain glue or cleanup failures permanently fault the adapter and queue.
+When a fully correlated semantic successor has published but DOM rendering or
+selection installation fails, the successor is retained in an explicit
+reconciliation state and can be full-rendered without retrying the command.
+Selection synchronization and a history close are separate core publications,
+so they can remain effective if the later command fails; the browser sequence
+is non-interleaved but is not a rollback transaction.
+
+The complete event, target-range, exact-once, FIFO, and recovery rules are in
+[`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md).
 
 A checkpoint is strictly decoded and replay-proved, but is not authenticated,
 globally ordered, or fresh. Loading an older valid checkpoint deliberately
@@ -299,6 +336,8 @@ does not replace the JSON codec contracts documented here and in
 `DATA_CONTRACT.md`. The same gate runs a dependency-free Node.js probe against
 the generated web glue to cover ownership transfer, explicit disposal, numeric
 admission, redaction, wrong-class rejection, and inert/freed-handle behavior
-that direct Rust `wasm-bindgen-test` calls cannot exercise. Version `0.0.52`
-also probes real selection-view lifecycles and proves that coercible
-number/string objects cannot publish a selection mutation.
+that direct Rust `wasm-bindgen-test` calls cannot exercise. Version `0.0.53`
+also type-checks the generated command/observation/selection result classes
+against the structural browser adapter, while the glue probe exercises real
+selection-view lifecycles and proves that coercible number/string objects cannot
+publish a selection mutation.

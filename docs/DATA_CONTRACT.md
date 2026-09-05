@@ -4621,3 +4621,64 @@ keyboard movement, composition, and input-event ordering are not implemented.
 Preorder endpoint lookup and full synchronous DOM validation are O(document)
 within existing projection limits. The full contract and acceptance laws are in
 [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md).
+
+## Guarded browser event delivery (`0.0.53`)
+
+The framework-neutral browser package now reduces owned non-composition browser
+signals to Breditor's own immutable command request. The request contains one
+opaque adapter-issued delivery token, an exact semantic range captured against
+that token's browser projection, bounded source metadata, an explicit history
+requirement, and exactly one action/history command or staged clipboard request.
+No native event, DOM node, target range, clipboard object, callback, promise, or
+Wasm handle enters the queue.
+
+The delivery token binds the exact projection object, current renderer handle
+and generation, copied snapshot identity, adapter-private authority, and
+observation epoch. Complete preflight spends the epoch before the first Wasm
+call. Stale, foreign, replayed, or render-mismatched requests fail without being
+rebound to a fresh observation. Browser event paths require a range; explicit
+semantic absence is reserved for trusted API integrations and is never inferred
+from missing DOM focus or selection.
+
+The package root exposes the token only as an opaque type, with no public
+constructor or issuer. A browser controller must be wired with the owning
+adapter's distinct opaque `deliveryAuthority`; rejection happens before native
+event cancellation and leaves pending keyboard/clipboard echo receipts intact.
+
+`beforeinput` recognizes only the closed base editing set. Text is admitted as
+valid scalar Unicode within 65,536 UTF-16 units and 65,536 UTF-8 bytes.
+Replacement target ranges must exactly equal the captured selection. Collapsed
+delete targets are validated but Rust retains ownership of grapheme deletion.
+Unknown input types, unsupported shortcuts, malformed/multiple ranges, and
+noncanonical DOM are not approximated. Keyboard events never supply text, and
+composition evidence is delegated without producing an ordinary command.
+
+A bounded synchronous FIFO prevents recursive command execution. Reentrant
+submissions append in order. An executor or observer throw marks one exact
+sequence uncertain, quarantines all followers, and never retries the head.
+Generation-bound one-use receipts correlate the keydown/beforeinput/input and
+clipboard-event echoes which browsers may emit for one physical edit; `input`
+is always a postcondition and cannot submit a second Rust command.
+
+The Wasm command adapter owns the generated observation and every temporary
+result, error, projection-update, projection, and selection handle. Each
+non-error result must obey its exact shape and successor law before adoption:
+selection/action/undo/redo commits advance the same lineage by one and provide
+an exact projection transition; effective history close, disabled, and
+unchanged results retain the visible snapshot and provide no transition. A
+disabled result must name the requested action. Aliasing any generated handles
+is rejected.
+
+After consuming the transition, the adapter updates the canonical DOM and
+restores the exact semantic successor selection. Only frozen handle-free
+metadata leaves the executor. A valid published semantic successor is retained
+for explicit full-render recovery if DOM publication fails; stale or malformed
+results and uncertain glue/cleanup failures fault the adapter permanently.
+
+This sequence is serialized but not rollback-atomic across prestages. A
+selection update, and then a requested history close, may publish before a later
+action error. DOM APIs also cannot participate in a Rust transaction. The queue
+therefore fail-stops rather than retrying or pretending those earlier effects
+were undone. Clipboard mutation remains staged, and IME composition requires a
+separate temporary-DOM lease. The complete contract is in
+[`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md).

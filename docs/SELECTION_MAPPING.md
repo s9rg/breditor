@@ -174,9 +174,10 @@ coalesced browser events are safe because an exact Rust semantic echo is also a
 no-op at the guarded engine boundary.
 
 Selection conversion and command dispatch are synchronous within one queued
-browser event. Later input and composition checkpoints own the event queue and
-reentrancy policy; `0.0.52` does not authorize direct recursive dispatch from a
-DOM callback.
+browser event. Version `0.0.53` adds the bounded non-recursive FIFO and exact
+event-delivery contract in
+[`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md); `0.0.52` by itself did
+not authorize direct recursive dispatch from a DOM callback.
 
 ## Complexity and resource limits
 
@@ -206,9 +207,10 @@ out-of-memory.
   and exact-echo preservation are promised.
 - Root-internal paragraph boundaries are intentionally ambiguous. Only the two
   exterior host boundaries used by select-all are normalized.
-- The bridge does not define keyboard movement, word/line navigation,
-  composition ownership, clipboard policy, or editor event ordering; those are
-  later checkpoints.
+- The bridge does not define keyboard movement or word/line navigation.
+  Non-composition event ordering and clipboard staging are separate `0.0.53`
+  contracts; composition ownership and final clipboard policy remain later
+  checkpoints.
 - A platform without an API capable of preserving backward anchor/focus cannot
   receive a backward programmatic selection from this adapter.
 

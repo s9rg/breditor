@@ -2,12 +2,12 @@ import {
   type RenderedProjection,
   isOwnedRenderedProjection,
 } from "./dom_renderer.js";
+import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
 import {
   BaseRangeSelection,
   type BaseEditorSelection,
   type BaseSelectionPoint,
   isOwnedBaseRangeSelection,
-  isUnicodeScalarBoundary,
 } from "./selection.js";
 import type {
   BrowserSelectionErrorCode,
@@ -62,20 +62,12 @@ interface DomPoint {
   readonly offset: number;
 }
 
-interface PointMapping {
-  readonly point: BaseSelectionPoint;
-}
-
 interface SuppressionReceipt {
   readonly rendered: RenderedProjection;
   readonly rendererGeneration: bigint;
   readonly signature: string;
   readonly selection: BaseRangeSelection | null;
 }
-
-type PointMappingResult =
-  | { readonly ok: true; readonly value: PointMapping }
-  | { readonly ok: false; readonly code: BrowserSelectionErrorCode };
 
 type RenderPreflight =
   | { readonly ok: true }
@@ -174,20 +166,28 @@ export class BreditorDomSelectionBridge {
           Object.freeze({ kind: "unavailable", reason: "outsideHost", origin: "dom" }),
         );
       }
-      const anchor = pointFromDom(rendered, anchorNode, anchorOffset);
+      const anchor = mapDomPointToBaseSelectionPoint(
+        rendered,
+        anchorNode,
+        anchorOffset,
+      );
       if (!anchor.ok) {
         this.#receipt = undefined;
         return selectionFailure(anchor.code);
       }
-      const focus = pointFromDom(rendered, focusNode, focusOffset);
+      const focus = mapDomPointToBaseSelectionPoint(
+        rendered,
+        focusNode,
+        focusOffset,
+      );
       if (!focus.ok) {
         this.#receipt = undefined;
         return selectionFailure(focus.code);
       }
       const created = BaseRangeSelection.create(rendered.projection, {
         kind: "range",
-        anchor: anchor.value.point,
-        focus: focus.value.point,
+        anchor: anchor.value,
+        focus: focus.value,
       });
       if (!created.ok) {
         this.#receipt = undefined;
@@ -630,168 +630,6 @@ function domSelectionMatchesSnapshot(
   );
 }
 
-function pointFromDom(
-  rendered: RenderedProjection,
-  node: Node,
-  offset: number,
-): PointMappingResult {
-  if (node === rendered.host) {
-    const paragraphCount = rendered.projection.paragraphs.length;
-    if (offset === 0) {
-      return {
-        ok: true,
-        value: {
-          point: Object.freeze({
-            kind: "children",
-            parentPath: Object.freeze([0]),
-            childIndex: 0,
-            affinity: "after",
-          }),
-        },
-      };
-    }
-    if (offset === paragraphCount) {
-      const paragraphIndex = paragraphCount - 1;
-      const paragraph = rendered.projection.paragraphs[paragraphIndex];
-      if (paragraph === undefined) {
-        return { ok: false, code: "selection.ambiguous_dom_point" };
-      }
-      return {
-        ok: true,
-        value: {
-          point: Object.freeze({
-            kind: "children",
-            parentPath: Object.freeze([paragraphIndex]),
-            childIndex: paragraph.runs.length,
-            affinity: paragraph.runs.length === 0 ? "after" : "before",
-          }),
-        },
-      };
-    }
-    return { ok: false, code: "selection.ambiguous_dom_point" };
-  }
-  const exactPath = rendered.astPathForDomNode(node);
-  if (exactPath !== null) {
-    if (exactPath.length === 2) {
-      const paragraphIndex = exactPath[0];
-      const runIndex = exactPath[1];
-      const run =
-        paragraphIndex === undefined || runIndex === undefined
-          ? undefined
-          : rendered.projection.paragraphs[paragraphIndex]?.runs[runIndex];
-      if (run === undefined || node.nodeType !== 3 || offset > run.text.length) {
-        return { ok: false, code: "selection.ambiguous_dom_point" };
-      }
-      if (!isUnicodeScalarBoundary(run.text, offset)) {
-        return { ok: false, code: "selection.invalid_utf16_boundary" };
-      }
-      return {
-        ok: true,
-        value: {
-          point: Object.freeze({
-            kind: "text",
-            textPath: exactPath,
-            utf16Offset: offset,
-            affinity: boundaryAffinity(offset, run.text.length),
-          }),
-        },
-      };
-    }
-    if (exactPath.length === 1) {
-      const paragraphIndex = exactPath[0];
-      const paragraph =
-        paragraphIndex === undefined ? undefined : rendered.projection.paragraphs[paragraphIndex];
-      if (paragraph === undefined) {
-        return { ok: false, code: "selection.ambiguous_dom_point" };
-      }
-      const childIndex =
-        paragraph.runs.length === 0 && (offset === 0 || offset === 1) ? 0 : offset;
-      if (childIndex > paragraph.runs.length || (paragraph.runs.length === 0 && offset > 1)) {
-        return { ok: false, code: "selection.ambiguous_dom_point" };
-      }
-      return {
-        ok: true,
-        value: {
-          point: Object.freeze({
-            kind: "children",
-            parentPath: exactPath,
-            childIndex,
-            affinity: boundaryAffinity(childIndex, paragraph.runs.length),
-          }),
-        },
-      };
-    }
-    return { ok: false, code: "selection.ambiguous_dom_point" };
-  }
-
-  if (isHtmlElementNamed(node, "STRONG")) {
-    const paragraph = node.parentNode;
-    const paragraphPath = paragraph === null ? null : rendered.astPathForDomNode(paragraph);
-    if (
-      paragraph === null ||
-      paragraphPath === null ||
-      paragraphPath.length !== 1 ||
-      (offset !== 0 && offset !== 1)
-    ) {
-      return { ok: false, code: "selection.ambiguous_dom_point" };
-    }
-    const runIndex = indexOfChild(paragraph, node);
-    const paragraphIndex = paragraphPath[0];
-    const run =
-      paragraphIndex === undefined || runIndex < 0
-        ? undefined
-        : rendered.projection.paragraphs[paragraphIndex]?.runs[runIndex];
-    const text = node.childNodes[0];
-    if (
-      paragraphIndex === undefined ||
-      runIndex < 0 ||
-      run === undefined ||
-      !run.strong ||
-      text === undefined ||
-      text.nodeType !== 3
-    ) {
-      return { ok: false, code: "selection.ambiguous_dom_point" };
-    }
-    return {
-      ok: true,
-      value: {
-        point: Object.freeze({
-          kind: "text",
-          textPath: Object.freeze([paragraphIndex, runIndex]),
-          utf16Offset: offset === 0 ? 0 : run.text.length,
-          affinity: boundaryAffinity(offset === 0 ? 0 : run.text.length, run.text.length),
-        }),
-      },
-    };
-  }
-
-  if (isHtmlElementNamed(node, "BR") && offset === 0) {
-    const paragraph = node.parentNode;
-    const paragraphPath = paragraph === null ? null : rendered.astPathForDomNode(paragraph);
-    const paragraphIndex = paragraphPath?.[0];
-    if (
-      paragraphPath === null ||
-      paragraphPath.length !== 1 ||
-      paragraphIndex === undefined ||
-      rendered.projection.paragraphs[paragraphIndex]?.runs.length !== 0
-    ) {
-      return { ok: false, code: "selection.ambiguous_dom_point" };
-    }
-    return {
-      ok: true,
-      value: {
-        point: Object.freeze({
-          kind: "children",
-          parentPath: paragraphPath,
-          childIndex: 0,
-          affinity: "after",
-        }),
-      },
-    };
-  }
-  return { ok: false, code: "selection.ambiguous_dom_point" };
-}
-
 function domPointForSemantic(
   rendered: RenderedProjection,
   point: BaseSelectionPoint,
@@ -910,8 +748,4 @@ function isHtmlElementNamed(node: Node, localName: "STRONG" | "BR"): node is HTM
 
 function isDomOffset(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 4_294_967_295;
-}
-
-function boundaryAffinity(offset: number, length: number): "before" | "after" {
-  return length > 0 && offset === length ? "before" : "after";
 }
