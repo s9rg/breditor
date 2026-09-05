@@ -1,9 +1,9 @@
 [workspace]
-members = ["crates/breditor-core"]
+members = ["crates/breditor-core", "crates/breditor-wasm"]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.49"
+version = "0.0.50"
 edition = "2024"
 rust-version = "1.98"
 
@@ -12,6 +12,8 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "=1.0.151", features = ["raw_value"] }
 thiserror = "2.0.20"
 unicode-segmentation = "=1.13.3"
+wasm-bindgen = "=0.2.127"
+wasm-bindgen-test = "=0.3.77"
 
 [workspace.lints.rust]
 missing_docs = "deny"

@@ -135,6 +135,28 @@ fn engine_is_send_and_sync() {
 }
 
 #[test]
+fn observation_check_is_read_only_and_uses_guard_precedence() -> TestResult {
+    let first = engine("engine-observation-check-first", "a", None, None)?;
+    let second = engine("engine-observation-check-second", "a", None, None)?;
+    let current = first.observation();
+    let foreign = second.observation();
+    let before = first.state().clone();
+    let history_before = first.session().history_status();
+
+    first.check_observation(&current)?;
+    let error = require_engine_error(
+        first.check_observation(&foreign),
+        "a foreign observation passed the admission check",
+    )?;
+
+    assert_stale_engine(&error);
+    assert_eq!(first.state(), &before);
+    assert_eq!(first.session().history_status(), history_before);
+    assert_eq!(first.observation(), current);
+    Ok(())
+}
+
+#[test]
 fn enabled_action_is_prepared_and_published_inside_one_guarded_call() -> TestResult {
     const PRIVATE_TEXT: &str = "private-engine-payload";
 

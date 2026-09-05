@@ -1,0 +1,228 @@
+# Breditor Wasm boundary
+
+Status: `0.0.50` boundary contract; intentionally narrow and unstable before
+`0.1.0`
+
+At this checkpoint the Rust crate and generated declaration are
+repository-internal review artifacts. There is no installable npm package, and
+the `publish = false` Wasm crate cannot complete an isolated Cargo package
+verification until its `breditor-core` dependency has a distribution source.
+Consumer packaging and clean-project installation are release gate `0.0.58`.
+
+The `breditor-wasm` crate is the synchronous, no-DOM adapter around the Rust
+`EditorEngine`. Rust remains the sole owner of the document AST, editor state,
+action evaluation, transactions, linear history, and durable checkpoint
+validation. JavaScript receives observations and results; it cannot install a
+state or publish a prepared transaction directly.
+
+This is Breditor's own API. It does not implement a ProseMirror, Lexical,
+Tiptap, or CKEditor protocol.
+
+## Boundary objects
+
+The generated TypeScript declaration exposes six opaque Wasm-owned classes:
+
+- `BreditorEngine` owns one editor session and the compiled base action
+  registry;
+- `BreditorObservation` owns the exact private engine/state/history token for
+  one instant;
+- `BreditorEngineResult` is the structured result of engine construction;
+- `BreditorCommandResult` is a committed, disabled, unchanged, or error
+  command outcome; and
+- `BreditorStringResult` is a successful string or a structured error from a
+  fallible codec read; and
+- `BreditorError` contains a stable failure code and fixed redacted message.
+
+The boundary never forwards a core error's `Display` or `Debug` text. Domain
+rejection is returned as data instead of using JavaScript exceptions as normal
+control flow for calls that satisfy the generated TypeScript argument types and
+use live handles. Raw JavaScript calls with a wrong primitive/class type can
+coerce values, execute caller code, or throw in `wasm-bindgen`'s generated glue
+before Rust receives the call. Allocation failure or a Rust panic traps; using
+an inert or explicitly freed Wasm object throws or traps. WebAssembly is not a
+process-isolation boundary.
+
+No exported class exposes a mutable Rust reference. Wasm-generated `free()`
+methods release handles and must not be called while the handle may still be
+used. The generated TypeScript constructors are private, but the emitted
+JavaScript classes cannot enforce a runtime-private constructor: raw `new` can
+create an inert zero handle whose later use fails in glue. Generated pointer
+bookkeeping is not a capability boundary and must not be exposed to hostile
+same-realm code. Passing an inert or freed class instance into a mutating method
+can fail after `wasm-bindgen` has borrowed the receiver and leave that receiver
+unusable; discard it rather than attempting recovery. The framework-neutral
+TypeScript facade will keep raw handles behind its checked lifecycle API.
+
+## Engine construction
+
+`BreditorEngine.fromDocumentJson(lineageId, documentJson, historyCapacity)`
+strictly decodes Document V1 under the default base schema and interactive
+resource limits, creates revision zero with no selection or pending formats,
+and installs the bounded base-action session. `historyCapacity` must be a
+finite whole JavaScript number in `0..=100`; the upper bound matches the Wasm
+checkpoint admission policy so the factory cannot create a session that its
+own default checkpoint decoder rejects solely because of capacity. The caller
+owns the requirement that `lineageId` identifies one logically independent
+history.
+
+`BreditorEngine.fromSessionCheckpointJson(checkpointJson)` strictly decodes and
+replay-proves Session Checkpoint V1 under the same default context. Restoration
+always creates fresh process-local engine and history identities, so an old
+observation cannot cross a reload or reconstruction boundary.
+
+A failed factory returns no partial engine. The result's engine can be taken at
+most once. Its status changes from `engine` to `taken` after that transfer.
+
+`breditorWasmAbiVersion()` returns the transport generation (`"1"`), while
+`breditorVersion()` returns the crate release embedded in the module. A later
+TypeScript package can reject an incompatible generated module without opening
+or deserializing editor state.
+
+## Observations and commands
+
+`engine.observation()` returns an opaque, engine-created
+`BreditorObservation`. Its public lineage, decimal revision, history capacity,
+and undo/redo depths are informational. The private engine identity and history
+stamp remain inside Rust and are never serialized. A raw-constructed JavaScript
+wrapper is not a valid observation.
+
+Every command borrows an observation. The adapter first performs a read-only
+admission check before action-ID or action-value construction, and the
+`EditorEngine` repeats the full check immediately before command-specific work.
+A successful admission check does not reserve the engine. If two queued
+commands share one observation, the first effective mutation wins and the
+second fails stale.
+
+The `0.0.50` action surface is deliberately limited to:
+
+- `executeNoInputAction`, for a compiled action whose registered descriptor
+  declares no input; and
+- `executeStringAction`, for a compiled action whose exact registered input
+  contract is derived inside Rust.
+
+The host cannot choose or spoof an input contract. String routing is an exact
+allowlist of the action ID and registered contract/version for
+`breditor/insert-text` and `breditor/insert-plain-text`; a future typed base
+action fails closed until this ABI deliberately adds its input shape. This
+covers the complete base action set planned for `0.1.0`; it is not a generic
+third-party Wasm plugin ABI. Undo, redo, close-history-group, and clear-history
+are separate guarded commands. Browser selection conversion and `setSelection`
+intentionally arrive with the guarded DOM selection mapper in `0.0.52`.
+
+Known invalid values for those two built-ins retain their finite, stable input
+rule code (for example `breditor/insert-text-input-empty` or
+`breditor/insert-plain-text-paragraph-limit`) with a fixed payload-free message.
+Every other action-preparation source remains the generic redacted
+`editor_engine.action_preparation` category.
+
+Command status has these meanings:
+
+- `committed`: an action, undo, or redo published a commit, or an effective
+  history-only control published an event;
+- `disabled`: action evaluation expectedly found the command unavailable and
+  published nothing;
+- `unchanged`: an undo/redo/history control had no effective work and published
+  nothing; or
+- `error`: validation, stale observation, preparation, or replay failed and the
+  engine did not change.
+
+Every non-error result owns the exact observation after that outcome. Disabled
+and unchanged results therefore return an observation equal to the supplied
+one; committed results return its successor. Callers should replace their
+queued/rendered observation only from that returned handle or from a fresh
+`engine.observation()`.
+
+The generated declaration uses literal unions for status, event kind,
+activation, and indicator-value status. These aliases make switches exhaustive,
+but the raw class does not correlate sibling optional getters into a
+discriminated union. The later framework-neutral TypeScript facade owns that
+stronger result shape.
+
+## Publication and serialization are separate
+
+A command result retains its sealed Rust `EditorEngineEvent`. `commitJson()` is
+a separate fallible read, and `stateJson()` and `sessionCheckpointJson()` are
+separate engine reads. This separation is required because a valid in-memory
+commit or state can exceed the configured JSON output budget.
+
+An encoding failure after a successful mutation must never turn the command
+status into `error`: the mutation already published. The caller keeps the
+committed result and successor observation, may report the separate codec
+failure, and must not retry the original command as though it were rejected.
+History-only events and unchanged/disabled/error results have no commit; asking
+them for commit JSON returns an `absent` string result.
+
+This truthful separation also exposes a current product limitation. Repeated
+valid edits can produce an in-memory document whose escaped JSON exceeds the
+codec output budget even though its raw text remains within the document
+limits. The crossing command commits, after which commit, state, and checkpoint
+JSON reads may all be unavailable; a zero-capacity history offers no rollback.
+The browser product must close this recovery gap before `0.1.0`, either by
+preflighting a boundary-representable successor or by providing a bounded
+non-JSON projection/checkpoint path. A renderer or autosave adapter must not
+assume that every successful command implies a successful JSON read.
+
+Retained results are deliberately independent: an engine survives freeing the
+factory result after `takeEngine()`, a cloned observation survives freeing its
+command result, a cloned error survives freeing its result, and a JavaScript
+string returned by `takeValue()` survives freeing its string result. This also
+means a committed result can retain a complete before/after edit until it is
+released. `FinalizationRegistry` cleanup is nondeterministic and is not a memory
+bound for a long editing loop.
+
+The normal disposal sequence is: take the engine and free its factory result;
+for each command, consume and free any string results and cloned errors, extract
+the successor observation, free the command result, then free the superseded
+observation; finally free the live observation and engine on teardown. A host
+may use `Symbol.dispose` where available, but must preserve the same ownership
+order.
+
+## Representation and resource limits
+
+All durable state, checkpoint, and commit values cross as owned UTF-8 JSON
+strings and retain their existing versioned codec contracts. Revisions remain
+canonical decimal strings rather than lossy JavaScript numbers. History
+capacity and depths are bounded `u32` values after checked admission. A
+successful `BreditorStringResult` supports `takeValue()` so a large encoded
+value can cross without first being cloned inside Wasm; its status then changes
+from `value` to `taken`.
+
+`wasm-bindgen` copies JavaScript strings into Wasm memory before Rust can apply
+its byte limits or stale-observation precedence. A hostile same-realm caller can
+therefore cause allocation pressure before the core rejects an oversized or
+stale value. Session-checkpoint restore is synchronous and its bounded replay
+work can still block the browser main thread; the TypeScript layer must schedule
+large loads deliberately.
+
+JavaScript strings may contain unpaired UTF-16 surrogates, while Rust strings
+contain Unicode scalar values. The generated glue can replacement-normalize an
+unpaired surrogate before Rust observes it. Browser adapters that need to
+distinguish this malformed input must reject it before crossing the boundary;
+valid surrogate pairs and all Rust-representable Unicode are retained exactly.
+
+The crate imports no DOM, IndexedDB, timer, clipboard, console, allocator, or
+panic-hook API. Event ordering, reentrancy policy, selection mapping,
+composition ownership, DOM projection, persistence scheduling, and framework
+integration remain TypeScript responsibilities in their later checkpoints.
+No exported Rust call invokes host JavaScript while holding the mutable engine,
+so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
+numeric/string coercions can execute before Rust entry; the host queue must not
+treat argument evaluation as part of the guarded mutation.
+
+A checkpoint is strictly decoded and replay-proved, but is not authenticated,
+globally ordered, or fresh. Loading an older valid checkpoint deliberately
+creates a new engine and can roll application state back. Authentication,
+anti-rollback policy, and storage provenance belong to the host envelope.
+
+## Generated declaration gate
+
+`crates/breditor-wasm/api/breditor_wasm.d.ts` is generated by the exact
+`wasm-bindgen` CLI version paired with the Rust dependency. Run
+`./scripts/check-wasm-api.sh` to build the release Wasm module, regenerate the
+declaration in an isolated `target` directory, and compare it byte-for-byte
+with the reviewed snapshot. The declaration describes the transport types; it
+does not replace the JSON codec contracts documented here and in
+`DATA_CONTRACT.md`. The same gate runs a dependency-free Node.js probe against
+the generated web glue to cover ownership transfer, explicit disposal, numeric
+admission, redaction, wrong-class rejection, and inert/freed-handle behavior
+that direct Rust `wasm-bindgen-test` calls cannot exercise.

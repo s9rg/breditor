@@ -91,6 +91,27 @@ impl EditorEngine {
         )
     }
 
+    /// Checks whether an observation is current without reserving future work.
+    ///
+    /// This is an admission hint for boundaries that should reject delayed
+    /// commands before parsing their remaining untrusted input. A successful
+    /// check is not a capability or lock: another command may publish before
+    /// the caller acts, and every mutating method therefore repeats the same
+    /// check immediately before command-specific work.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EditorEngineError::StaleEngine`],
+    /// [`EditorEngineError::StaleSnapshot`], or
+    /// [`EditorEngineError::StaleHistory`] using the same precedence as every
+    /// guarded mutation. The engine is never changed.
+    pub fn check_observation(
+        &self,
+        actual: &EditorEngineObservation,
+    ) -> Result<(), EditorEngineError> {
+        self.require_observation(actual)
+    }
+
     /// Consumes the engine and releases both owned components.
     ///
     /// Reassembling them with [`Self::new`] creates a new engine identity and

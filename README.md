@@ -5,7 +5,8 @@ the HTML `<br>` element with “editor.” Other editors are research examples o
 Breditor does not implement their document model, operation format, or plugin
 protocol.
 
-This repository currently contains the first end-to-end Rust-core slice:
+This repository currently contains the deterministic Rust core and its first
+narrow WebAssembly boundary:
 
 - immutable, structurally shared document values;
 - proof-derived cached document measurements for node count, maximum depth,
@@ -87,6 +88,11 @@ This repository currently contains the first end-to-end Rust-core slice:
   every mutation, keeps executable action preparations inside one synchronous
   call, and returns private-constructor semantic events for action, selection,
   undo, redo, and effective history controls without a mutable-session escape;
+- a separate no-DOM `breditor-wasm` crate with opaque engine-created
+  observation handles, structured domain results, guarded no-input/string
+  action commands, history controls, strict document/checkpoint factories,
+  separate state/commit/checkpoint reads, runtime ABI/version probes, and an
+  exact generated TypeScript declaration gate;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -104,8 +110,7 @@ scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
-Wasm bindings,
-a DOM bridge,
+a DOM bridge and browser event adapter,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
@@ -645,6 +650,27 @@ limits allowed to be smaller. This is the paste primitive; the older
 `insert-text-input@1` continues to treat newlines as literal inline text. A
 truthful soft break remains deferred until the AST has an inline break node.
 
+Version `0.0.50` adds the first [Wasm boundary](docs/WASM_ABI.md) as a separate
+crate with no DOM or browser imports. Only Rust-created live observation handles
+contain the private engine/history token, and it is never serialized. Every
+command first rejects a stale observation, then the authoritative
+`EditorEngine` repeats the guard immediately before mutation. The initial ABI
+covers the complete base action input shapes (none or bounded string),
+undo/redo, and effective history controls; it is deliberately not a generic
+Wasm plugin protocol. Construction, commands, and codec reads return stable
+payload-redacting result objects.
+Commit/state/checkpoint encoding remains separate from mutation publication so
+an output-limit failure cannot make a published edit look rejected. A checked
+finite integer history capacity is capped at the checkpoint profile's `100`
+entries. The exact `wasm-bindgen`-generated TypeScript declaration is reviewed
+and reproducibly compared by `scripts/check-wasm-api.sh`. DOM projection,
+selection mapping, event timing, composition, clipboard, and persistence I/O
+remain later browser-layer checkpoints.
+
+The `0.0.50` Wasm crate and declaration are repository-internal review
+artifacts, not an installable npm or crates.io package. Consumer packaging and
+isolated-install verification are deliberately deferred to `0.0.58`.
+
 ## Development
 
 ```sh
@@ -653,6 +679,7 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 cargo check --workspace --target wasm32-unknown-unknown
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen ./scripts/check-wasm-api.sh
 ```
 
 The open-source license is intentionally not selected yet; MIT versus Apache-2.0

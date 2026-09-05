@@ -1061,6 +1061,47 @@ break is deliberately absent: the base AST has no inline break node, and literal
 LF remains the older `insert-text@1` contract rather than an HTML `<br>`
 representation.
 
+Version `0.0.50` adds a separate `breditor-wasm` adapter without changing any
+durable JSON format. The only mutable owner exported to JavaScript wraps one
+base-action `EditorEngine`. Its observation class contains the real private
+engine/state/history token and has no public constructor or serialized form.
+Before constructing an action ID or bounded string value, the adapter uses the
+engine's read-only observation check as an early admission hint; the mutating
+engine call always repeats that check. This preserves stale-engine,
+stale-snapshot, and stale-history precedence without treating a successful
+precheck as a reservation.
+
+The first action ABI has exactly two input shapes: no input and string input.
+For a string action, Rust looks up and installs the descriptor's exact input
+contract; JavaScript cannot choose its name or version. This covers all seven
+base actions and intentionally does not define generic action-value JSON or a
+third-party Wasm plugin ABI. Undo, redo, merge-group close, and history clear
+remain separate guarded methods. DOM selection reporting is deferred to the
+selection-mapping checkpoint rather than exposing an unvalidated ad hoc shape.
+
+Construction, commands, and codec reads return opaque nonthrowing result
+objects with stable codes and fixed payload-redacting messages for correctly
+typed calls. A raw JavaScript wrong-type call may still fail in generated
+`wasm-bindgen` glue before Rust receives it. Every disabled or unchanged result
+retains its unchanged observation; every committed result retains the exact
+successor observation and sealed engine event. Commit V1 encoding is a separate
+read of that event, while Editor State V1 and Session Checkpoint V1 encoding
+are separate engine reads. An output-limit failure therefore cannot turn an
+already published mutation into an apparent command failure.
+
+The fresh-document factory accepts only a finite integral history capacity in
+`0..=100`, matching the default session-checkpoint admission ceiling. Its
+JavaScript number is validated as an `f64` before conversion, so fractional,
+negative, non-finite, wrapped, and oversized raw values cannot silently become
+a different `u32`. Visible revisions remain decimal strings; private engine and
+history identities never cross the ABI. The adapter imports no DOM, storage,
+timer, clipboard, console, panic-hook, or custom allocator API. Generated
+TypeScript declarations are tied to exact `wasm-bindgen` 0.2.127 and checked
+byte-for-byte by `scripts/check-wasm-api.sh`; the transport generation and
+crate release are also available through explicit runtime version functions.
+The complete boundary contract and raw-glue limitations are recorded in
+[`WASM_ABI.md`](WASM_ABI.md).
+
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
 

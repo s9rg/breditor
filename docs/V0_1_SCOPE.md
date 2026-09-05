@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.49`
+Status: frozen product target; implementation completed through `0.0.50`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -109,9 +109,11 @@ a smaller safe boundary, but a later gate must not be claimed first.
    deletion behavior, a dedicated selection-delete command, and an atomic
    multiline plain-text insertion path. Complete.
 3. `0.0.50`: separate Wasm crate and generated TypeScript declarations with a
-   deliberately narrow, structured-error ABI.
+   deliberately narrow, structured-error ABI. Complete.
 4. `0.0.51`: deterministic AST-to-DOM projection with stable node mapping and
-   renderer invalidation driven by commits.
+   renderer invalidation driven by commits. The projection path must also make
+   the post-publication JSON-output-limit recovery policy explicit; the browser
+   must not become irrecoverably blind to a committed state.
 5. `0.0.52`: guarded bidirectional DOM/Rust selection mapping, focus handling,
    and selection-loop suppression.
 6. `0.0.53`: `beforeinput`, keyboard fallback, and supported clipboard command
@@ -145,6 +147,8 @@ a smaller safe boundary, but a later gate must not be claimed first.
 - malformed documents, stale snapshots, unsupported pasted content, corrupt
   checkpoints, and failed persistence return controlled errors without
   installing partial state; and
+- every committed state remains renderable and recoverably checkpointable even
+  when escaped JSON would exceed a codec output budget; and
 - the documentation distinguishes implemented behavior, experimental formats,
   host-trusted evidence, and future work.
 
