@@ -101,10 +101,14 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
   snapshot-local AST/DOM maps, retains proved paragraph identity, and rebuilds
   conservatively on broad impact or DOM drift, plus exact range/target mapping,
   a bounded non-recursive command FIFO, deliberate `beforeinput` and keyboard
-  translation, event-echo suppression, and an observation/render-owning Wasm
-  command adapter, plus an exact queue/renderer composition lease that
+  translation, event-echo suppression, queue-routed document selection
+  changes, and an observation/render-owning Wasm command adapter, plus an
+  exact queue/renderer composition lease that
   reconciles one paragraph-local native IME replacement back through Rust, and
-  guarded semantic copy/cut/paste with a bounded base-subset HTML allowlist;
+  guarded semantic copy/cut/paste with a bounded base-subset HTML allowlist,
+  plus handle-free guarded action-state refresh, a last-good subscription
+  store, and a bounded manifest-driven native-button toolbar whose commands
+  preserve semantic selection and re-enter the same FIFO;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -115,8 +119,8 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
 This is still a proof slice, not a complete editor. Structural edits beyond
 direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
-action-state subscriptions and asynchronous delivery, presentation metadata
-and plugin lifecycle management, ordered log storage and tail-wide recovery,
+  asynchronous action-state delivery, dynamic catalog registration,
+  presentation plugin lifecycle management, ordered log storage and tail-wide recovery,
 checkpoint/log atomic replacement, storage-generation publication and initial
 scope provisioning, executable append I/O and process-restart append
 reconstruction,
@@ -798,6 +802,35 @@ so known failures choose no-delete/no-insert behavior and uncertain post-command
 failures require canonical reconciliation. Async clipboard access, arbitrary
 rich content, a unified event router, and real browser interoperability remain
 later work.
+
+Version `0.0.56` adds the [toolbar and action-state contract](docs/TOOLBAR.md).
+The Wasm engine owns one frozen base catalog and synchronous cache for Bold,
+Undo, and Redo. `actionStates(expected)` is guarded by the complete engine
+observation and returns a disposable complete snapshot classified as full,
+unchanged, or delta. The browser boundary validates correlation, canonical
+ordering, status/value coherence, bounded typed value JSON, and generated
+handle uniqueness before publishing a deeply frozen handle-free value.
+
+`BreditorActionStateStore` retains the last valid complete snapshot, rejects
+invalid transitions without erasing it, exposes fresh/stale/unavailable/terminal
+status, and notifies synchronous subscribers in stable non-recursive order.
+Stale display data cannot admit a toolbar command. Document `selectionchange` is now explicit queue
+work: a real in-host range synchronizes Rust selection, while absent or outside
+ranges remain focus observations and do not clear the semantic selection. A
+toolbar invocation uses the complementary `preserve` policy, so pointer or
+keyboard focus in the toolbar cannot replace the editor range before Bold,
+Undo, or Redo executes.
+
+The presentation layer is Breditor's own bounded, immutable, callback-free
+manifest rather than a ProseMirror-style plugin protocol. It renders native
+buttons in an owned inner toolbar root with roving focus, fresh availability,
+tracked pressed/mixed state, and exact synchronous dispatch outcomes. Keyboard
+activation restores the same toolbar button after a command. Custom manifests can reorder or describe additional
+controls when a host supplies matching state and command implementations, but
+the distributed Rust/Wasm catalog itself remains the three base controls.
+Dynamic JavaScript action registration, styling/icons, menus, asynchronous
+delivery, and real browser/assistive-technology certification remain later
+gates.
 
 ## Development
 

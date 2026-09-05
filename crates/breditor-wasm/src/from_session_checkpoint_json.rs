@@ -34,9 +34,7 @@ impl BreditorEngine {
         };
         match Self::try_new(engine) {
             Ok(engine) => BreditorEngineResult::success(engine),
-            Err(error) => {
-                BreditorEngineResult::from_error(BreditorError::checkpointed_engine(&error))
-            }
+            Err(error) => BreditorEngineResult::from_error(error),
         }
     }
 }

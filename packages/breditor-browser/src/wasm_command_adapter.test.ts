@@ -6,9 +6,14 @@ import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
 import {
   closeHistoryGroupRequest,
   editorDeliveryAuthorityAccepts,
+  noInputActionRequest,
   noSelectionSync,
+  preserveSelectionSync,
   rangeSelectionSync,
+  selectionSynchronizationRequest,
   stringActionRequest,
+  type EditorCommandRequest,
+  type EditorDeliveryToken,
   type EngineCommandRequest,
 } from "./editor_command.js";
 import { BaseDocumentProjection } from "./projection.js";
@@ -20,11 +25,18 @@ import type {
 } from "./wasm_projection_adapter.js";
 import type { SemanticSelectionView } from "./wasm_selection_adapter.js";
 import {
+  isOwnedBrowserActionStateReadResult,
+  type WasmActionStateSnapshotView,
+  type WasmActionStateStringResultView,
+  type WasmActionStatesResultView,
+} from "./wasm_action_state_adapter.js";
+import {
   BreditorWasmCommandAdapter,
   type WasmCommandEngineView,
   type WasmCommandErrorView,
   type WasmCommandObservationView,
   type WasmCommandResultView,
+  type WasmCommandSequenceOutcome,
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
 
@@ -58,6 +70,158 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(surface).not.toContain("consumeResult");
     expect(surface).not.toContain("requireCompositionLease");
     expect(surface).not.toContain("requireObservation");
+  });
+
+  it.each(["own properties", "subclass overrides"] as const)(
+    "keeps captured execution and token authority behind private dispatch despite %s",
+    (overrideKind) => {
+      const base = projectionFixture(0, "a");
+      const initial = observation(0);
+      const successor = observation(0);
+      const disabled = commandResult({
+        status: "disabled",
+        successor,
+        disabledActionId: "breditor/toggle-strong",
+        disabledReasonCode: "breditor/not-enabled",
+        activation: "inactive",
+      });
+      const executeOverride = vi.fn((_request: EditorCommandRequest): never => {
+        throw new Error("shadowed execute must not run");
+      });
+      const acceptsOverride = vi.fn((_token: unknown): boolean => true);
+      class HostileAdapter extends BreditorWasmCommandAdapter {
+        override execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
+          return executeOverride(request);
+        }
+
+        override acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken {
+          return acceptsOverride(token);
+        }
+      }
+      const Adapter =
+        overrideKind === "subclass overrides"
+          ? HostileAdapter
+          : BreditorWasmCommandAdapter;
+      const adapter = new Adapter(
+        engineQueues({ noInputAction: [disabled.view] }),
+        initial,
+        {
+          renderer: base.renderer,
+          rendered: base.rendered,
+          selectionBridge: new BreditorDomSelectionBridge(),
+        },
+      );
+      const token = adapter.deliveryToken();
+      const executor = adapter.commandExecutor;
+      const authority = adapter.deliveryAuthority;
+      if (overrideKind === "own properties") {
+        Object.defineProperty(adapter, "execute", { value: executeOverride });
+        Object.defineProperty(adapter, "acceptsDeliveryToken", {
+          value: acceptsOverride,
+        });
+      }
+
+      expect(editorDeliveryAuthorityAccepts(authority, {})).toBe(false);
+      expect(editorDeliveryAuthorityAccepts(authority, token)).toBe(true);
+      const outcome = executor(
+        noInputActionRequest(
+          token,
+          preserveSelectionSync(),
+          { kind: "toolbar", detail: "bold" },
+          "breditor/toggle-strong",
+        ),
+      );
+
+      expect(outcome.command.status).toBe("disabled");
+      expect(executeOverride).not.toHaveBeenCalled();
+      expect(acceptsOverride).not.toHaveBeenCalled();
+      expect(disabled.free).toHaveBeenCalledOnce();
+      expect(initial.free).toHaveBeenCalledOnce();
+      adapter.dispose();
+      expect(successor.free).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("exposes a stable handle-free action-state port without recursive reads", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const actionState = emptyActionStateResult(0);
+    let nested: unknown;
+    let port: BreditorWasmCommandAdapter["actionStateReadPort"];
+    const engine = engineQueues({});
+    engine.actionStates = () => {
+      nested = port.read();
+      return actionState.view;
+    };
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    port = adapter.actionStateReadPort;
+
+    const result = port.read();
+
+    expect(adapter.actionStateReadPort).toBe(port);
+    expect(nested).toBeUndefined();
+    expect(result?.ok).toBe(true);
+    expect(isOwnedBrowserActionStateReadResult(result)).toBe(true);
+    expect(actionState.free).toHaveBeenCalledOnce();
+    expect(actionState.snapshotFree).toHaveBeenCalledOnce();
+    expect(actionState.valueFree).toHaveBeenCalledOnce();
+    expect(initial.free).not.toHaveBeenCalled();
+    expect(adapter.state).toBe("live");
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+    expect(port.read()).toBeUndefined();
+  });
+
+  it("does not free its private observation when a hostile action-state result aliases it", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const resultFree = vi.fn();
+    const aliased: WasmActionStatesResultView = {
+      status: "full",
+      error: undefined,
+      takeSnapshot: () => initial as unknown as WasmActionStateSnapshotView,
+      free: resultFree,
+    };
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ actionStates: [aliased] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(adapter.actionStateReadPort.read()?.ok).toBe(false);
+    expect(resultFree).toHaveBeenCalledOnce();
+    expect(initial.free).not.toHaveBeenCalled();
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it("does not free its engine receiver when a hostile action-state result aliases it", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const free = vi.fn();
+    const engine = engineQueues({});
+    Object.assign(engine, { free });
+    engine.actionStates = () => engine as unknown as WasmActionStatesResultView;
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    expect(adapter.actionStateReadPort.read()?.ok).toBe(false);
+    expect(free).not.toHaveBeenCalled();
+    expect(initial.free).not.toHaveBeenCalled();
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+    expect(free).not.toHaveBeenCalled();
   });
 
   it("runs selection then command, renders the update, and returns no Wasm handles", () => {
@@ -129,6 +293,95 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(observed.ok && observed.value.kind === "range"
       ? observed.value.origin
       : "missing").toBe("programmaticEcho");
+    adapter.dispose();
+    expect(committed.free).toHaveBeenCalledOnce();
+  });
+
+  it("executes a toolbar action against the preserved semantic selection", () => {
+    const base = projectionFixture(0, "a");
+    const bridge = new BreditorDomSelectionBridge();
+    const initial = observation(0);
+    const successor = observation(0);
+    const disabled = commandResult({
+      status: "disabled",
+      successor,
+      disabledActionId: "breditor/toggle-strong",
+      disabledReasonCode: "breditor/not-enabled",
+      activation: "inactive",
+    });
+    const engine = engineQueues({ noInputAction: [disabled.view] });
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const write = vi.spyOn(bridge, "write");
+
+    const outcome = adapter.execute(
+      noInputActionRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "toolbar", detail: "bold" },
+        "breditor/toggle-strong",
+      ),
+    );
+
+    expect(outcome.selection).toEqual({
+      status: "preserved",
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
+    expect(outcome.command.status).toBe("disabled");
+    expect(write).not.toHaveBeenCalled();
+    expect(disabled.free).toHaveBeenCalledOnce();
+    expect(initial.free).toHaveBeenCalledOnce();
+    adapter.dispose();
+    expect(successor.free).toHaveBeenCalledOnce();
+  });
+
+  it("delivers selection-only synchronization without a second engine command", () => {
+    const base = projectionFixture(0, "a");
+    const resultProjection = projection(1, "a");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    const initial = observation(0);
+    const committed = observation(1);
+    const update = projectionUpdate(base.projection, resultProjection);
+    const synchronized = commandResult({
+      status: "committed",
+      eventKind: "selection",
+      successor: committed,
+      update: update.view,
+    });
+    const semanticSelection = selectionResult(selectionView(1, 1));
+    const engine = engineQueues({
+      setSelection: [synchronized.view],
+      selection: [semanticSelection.view],
+    });
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+
+    const outcome = adapter.execute(
+      selectionSynchronizationRequest(
+        adapter.deliveryToken(),
+        selected,
+        { kind: "selectionchange", detail: "document-selection" },
+      ),
+    );
+
+    expect(outcome.selection).toMatchObject({
+      status: "committed",
+      eventKind: "selection",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    expect(outcome.command).toBe(outcome.selection);
+    expect(outcome.boundary).toBeUndefined();
+    expect(adapter.snapshot.revision).toBe("1");
+    expect(synchronized.free).toHaveBeenCalledOnce();
+    expect(update.free).toHaveBeenCalledOnce();
+    expect(semanticSelection.free).toHaveBeenCalledOnce();
     adapter.dispose();
     expect(committed.free).toHaveBeenCalledOnce();
   });
@@ -1613,6 +1866,46 @@ function selectionResult(view: SemanticSelectionView) {
   };
 }
 
+function emptyActionStateResult(revision: number) {
+  const valueFree = vi.fn();
+  const valueResult: WasmActionStateStringResultView = {
+    status: "absent",
+    error: undefined,
+    takeValue: () => undefined,
+    free: valueFree,
+  };
+  const snapshotFree = vi.fn();
+  const snapshot: WasmActionStateSnapshotView = {
+    snapshotLineage: "adapter-tests",
+    snapshotRevision: String(revision),
+    entryCount: 0,
+    changedCount: 0,
+    entryId: () => undefined,
+    entryStatus: () => undefined,
+    entryActivation: () => undefined,
+    entryReasonCode: () => undefined,
+    entryValueStatus: () => undefined,
+    entryValueContractName: () => undefined,
+    entryValueContractVersion: () => undefined,
+    entryUniformValueJson: () => valueResult,
+    changedId: () => undefined,
+    free: snapshotFree,
+  };
+  const free = vi.fn();
+  let taken = false;
+  const view: WasmActionStatesResultView = {
+    status: "full",
+    error: undefined,
+    takeSnapshot: () => {
+      if (taken) return undefined;
+      taken = true;
+      return snapshot;
+    },
+    free,
+  };
+  return { view, free, snapshotFree, valueFree };
+}
+
 function engineQueues(input: Readonly<{
   setSelection?: WasmCommandResultView[];
   setRangeSelection?: () => WasmCommandResultView;
@@ -1620,6 +1913,7 @@ function engineQueues(input: Readonly<{
   noInputAction?: WasmCommandResultView[];
   closeHistory?: WasmCommandResultView[];
   selection?: WasmSelectionResultView[];
+  actionStates?: WasmActionStatesResultView[];
 }>): WasmCommandEngineView {
   const take = <T>(values: T[] | undefined, name: string): T => {
     const value = values?.shift();
@@ -1627,6 +1921,7 @@ function engineQueues(input: Readonly<{
     return value;
   };
   return {
+    actionStates: () => take(input.actionStates, "actionStates"),
     clearSelection: () => take(input.setSelection, "clearSelection"),
     setRangeSelection: () => input.setRangeSelection?.() ?? take(input.setSelection, "setRangeSelection"),
     selection: () => take(input.selection, "selection"),

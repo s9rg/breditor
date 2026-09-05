@@ -44,6 +44,12 @@ import {
   type SemanticRangeSelectionScalars,
   type SemanticSelectionView,
 } from "./wasm_selection_adapter.js";
+import {
+  consumeWasmActionStates,
+  type BrowserActionStateReadResult,
+  type WasmActionStateReadPort,
+  type WasmActionStatesResultView,
+} from "./wasm_action_state_adapter.js";
 
 /** Structural subset of the generated opaque observation owned by this adapter. */
 export interface WasmCommandObservationView {
@@ -89,6 +95,7 @@ export interface WasmSelectionResultView {
 
 /** Structural generated-engine surface used by the atomic browser sequence. */
 export interface WasmCommandEngineView {
+  actionStates(expected: WasmCommandObservationView): WasmActionStatesResultView;
   clearSelection(expected: WasmCommandObservationView): WasmCommandResultView;
   setRangeSelection(
     expected: WasmCommandObservationView,
@@ -154,11 +161,17 @@ export type WasmCommandOutcome =
     }>
   | Readonly<{ status: "unchanged"; snapshot: WasmCommandSnapshot }>;
 
-/** One request is delivered as selection sync, optional boundary, then command. */
+/** Selection prestage result, including an explicit no-DOM preservation path. */
+export type WasmCommandSelectionOutcome =
+  | WasmCommandOutcome
+  | Readonly<{ status: "preserved"; snapshot: WasmCommandSnapshot }>;
+
+/** One request is delivered as selection policy, optional boundary, then command. */
 export interface WasmCommandSequenceOutcome {
   readonly status: "delivered";
-  readonly selection: WasmCommandOutcome;
+  readonly selection: WasmCommandSelectionOutcome;
   readonly boundary: WasmCommandOutcome | undefined;
+  /** Equals `selection` for a selection-synchronization-only request. */
   readonly command: WasmCommandOutcome;
   readonly rendered: RenderedProjection;
 }
@@ -201,13 +214,14 @@ type AdapterState =
   | "live"
   | "composition"
   | "executing"
+  | "readingActionState"
   | "reconcile"
   | "faulted"
   | "disposed";
 type ExpectedEventKind = "selection" | "action" | "undo" | "redo" | "closeHistoryGroup";
 
 interface PreparedSelection {
-  readonly kind: "none" | "range";
+  readonly kind: "none" | "preserve" | "range";
   readonly scalars?: SemanticRangeSelectionScalars;
 }
 
@@ -238,13 +252,15 @@ interface ActiveCompositionLease {
  */
 export class BreditorWasmCommandAdapter {
   readonly #engine: WasmCommandEngineView;
+  readonly #engineOwner: WasmCommandEngineView;
   readonly #renderer: BreditorDomRenderer;
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #host: HTMLElement;
   readonly #authority = Symbol("breditor-command-adapter");
   readonly #deliveryAuthority: EditorDeliveryAuthority;
   readonly #commandExecutor = (request: EditorCommandRequest) =>
-    this.execute(request);
+    this.#execute(request);
+  readonly #actionStateReadPort: WasmActionStateReadPort;
   #observation: WasmCommandObservationView | undefined;
   #snapshot: WasmCommandSnapshot;
   #projection: BaseDocumentProjection;
@@ -264,7 +280,11 @@ export class BreditorWasmCommandAdapter {
     }
     const snapshot = readObservationSnapshot(observation);
     const dependencies = snapshotAdapterOptions(options);
-    if (snapshot === null || dependencies === null) {
+    if (
+      snapshot === null ||
+      dependencies === null ||
+      (engine as unknown) === observation
+    ) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
     if (
@@ -275,6 +295,7 @@ export class BreditorWasmCommandAdapter {
       throw new TypeError("initial render does not match the command observation");
     }
     this.#engine = safeEngine;
+    this.#engineOwner = engine;
     this.#observation = observation;
     this.#snapshot = snapshot;
     this.#renderer = dependencies.renderer;
@@ -283,8 +304,11 @@ export class BreditorWasmCommandAdapter {
     this.#host = dependencies.rendered.host;
     this.#selectionBridge = dependencies.selectionBridge;
     this.#deliveryAuthority = issueEditorDeliveryAuthority((token) =>
-      this.acceptsDeliveryToken(token),
+      this.#acceptsDeliveryToken(token),
     );
+    this.#actionStateReadPort = Object.freeze({
+      read: () => this.#readActionStates(),
+    });
   }
 
   /** Exact bridge which event admission must share with this adapter. */
@@ -304,6 +328,11 @@ export class BreditorWasmCommandAdapter {
     return this.#commandExecutor;
   }
 
+  /** Handle-free guarded action-state reader bound to this adapter's observation. */
+  get actionStateReadPort(): WasmActionStateReadPort {
+    return this.#actionStateReadPort;
+  }
+
   /** Current semantic snapshot, including while DOM reconciliation is required. */
   get snapshot(): WasmCommandSnapshot {
     return this.#snapshot;
@@ -321,6 +350,10 @@ export class BreditorWasmCommandAdapter {
 
   /** Issues one opaque, one-use token for the exact current canonical render. */
   deliveryToken(): EditorDeliveryToken {
+    return this.#deliveryToken();
+  }
+
+  #deliveryToken(): EditorDeliveryToken {
     this.#requireState("live");
     this.#requireObservation();
     if (
@@ -341,6 +374,10 @@ export class BreditorWasmCommandAdapter {
 
   /** Checks a queued token without refreshing, invoking Wasm, or rebasing it. */
   acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken {
+    return this.#acceptsDeliveryToken(token);
+  }
+
+  #acceptsDeliveryToken(token: unknown): token is EditorDeliveryToken {
     if (this.#state !== "live" || this.#observation === undefined) {
       return false;
     }
@@ -355,6 +392,28 @@ export class BreditorWasmCommandAdapter {
       token.snapshotRevision === this.#snapshot.revision &&
       this.#renderer.owns(this.#rendered)
     );
+  }
+
+  #readActionStates(): BrowserActionStateReadResult | undefined {
+    if (this.#state !== "live" || this.#observation === undefined) {
+      return undefined;
+    }
+    const observation = this.#observation;
+    const expected = this.#snapshot;
+    this.#state = "readingActionState";
+    try {
+      const result = this.#engine.actionStates(observation);
+      return consumeWasmActionStates(expected, result, [
+        observation,
+        this.#engineOwner,
+      ]);
+    } catch {
+      return undefined;
+    } finally {
+      if (this.#state === "readingActionState") {
+        this.#state = "live";
+      }
+    }
   }
 
   /**
@@ -378,7 +437,7 @@ export class BreditorWasmCommandAdapter {
       selection.projection !== this.#projection ||
       !isNonzeroU64(sessionId) ||
       !hostIsConnected(this.#host) ||
-      !this.acceptsDeliveryToken(delivery)
+      !this.#acceptsDeliveryToken(delivery)
     ) {
       throw new TypeError("composition lease base is invalid or stale");
     }
@@ -518,6 +577,12 @@ export class BreditorWasmCommandAdapter {
   restoreCompositionLease(
     token: CompositionDeliveryToken,
   ): WasmCompositionLeaseRestoreOutcome {
+    return this.#restoreCompositionLease(token);
+  }
+
+  #restoreCompositionLease(
+    token: CompositionDeliveryToken,
+  ): WasmCompositionLeaseRestoreOutcome {
     this.#requireState("composition");
     const lease = this.#requireCompositionLease(token);
     if (
@@ -561,6 +626,12 @@ export class BreditorWasmCommandAdapter {
    * @internal
    */
   recoverCompositionLease(
+    token: CompositionDeliveryToken,
+  ): WasmCompositionLeaseRestoreOutcome {
+    return this.#recoverCompositionLease(token);
+  }
+
+  #recoverCompositionLease(
     token: CompositionDeliveryToken,
   ): WasmCompositionLeaseRestoreOutcome {
     this.#requireState("composition");
@@ -630,7 +701,7 @@ export class BreditorWasmCommandAdapter {
     this.#state = "live";
     let delivery: EditorDeliveryToken;
     try {
-      delivery = this.deliveryToken();
+      delivery = this.#deliveryToken();
     } catch {
       this.#state = "reconcile";
       return compositionRestoreFailure("renderFailed");
@@ -650,13 +721,17 @@ export class BreditorWasmCommandAdapter {
    * history prestage can remain effective if a later structured command fails.
    */
   execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
+    return this.#execute(request);
+  }
+
+  #execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
     this.#requireState("live");
     const canonical = canonicalEditorCommandRequest(request);
     if (canonical === null || !isEngineCommand(canonical.command)) {
       throw new TypeError("request is not an exact executable engine command");
     }
     const engineRequest = canonical as EngineCommandRequest;
-    if (!this.acceptsDeliveryToken(engineRequest.delivery)) {
+    if (!this.#acceptsDeliveryToken(engineRequest.delivery)) {
       throw new TypeError("command delivery token is stale or foreign");
     }
     const selection = prepareSelection(engineRequest.selection);
@@ -669,9 +744,29 @@ export class BreditorWasmCommandAdapter {
     this.#deliveryEpoch += 1n;
     this.#state = "executing";
     try {
-      const selectionOutcome = this.#executeSelection(selection);
-      if (selectionOutcome.status === "unchanged") {
+      const selectionOutcome: WasmCommandSelectionOutcome =
+        selection.kind === "preserve"
+          ? Object.freeze({ status: "preserved", snapshot: this.#snapshot })
+          : this.#executeSelection(selection);
+      if (
+        selection.kind !== "preserve" &&
+        selectionOutcome.status === "unchanged"
+      ) {
         this.#installRequestedSelection(engineRequest.selection);
+      }
+
+      if (engineRequest.command.kind === "selection") {
+        if (selectionOutcome.status === "preserved") {
+          throw new TypeError("selection-only delivery cannot preserve selection");
+        }
+        this.#state = "live";
+        return Object.freeze({
+          status: "delivered",
+          selection: selectionOutcome,
+          boundary: undefined,
+          command: selectionOutcome,
+          rendered: this.#rendered,
+        });
       }
 
       let boundary: WasmCommandOutcome | undefined;
@@ -747,7 +842,7 @@ export class BreditorWasmCommandAdapter {
 
   /** Releases the current observation and render authority exactly once. */
   dispose(): void {
-    if (this.#state === "executing") {
+    if (this.#state === "executing" || this.#state === "readingActionState") {
       throw new TypeError("cannot dispose a command adapter during delivery");
     }
     if (this.#state === "disposed") {
@@ -763,9 +858,9 @@ export class BreditorWasmCommandAdapter {
         }
         let restored: WasmCompositionLeaseRestoreOutcome;
         try {
-          restored = this.restoreCompositionLease(token);
+          restored = this.#restoreCompositionLease(token);
         } catch {
-          restored = this.recoverCompositionLease(token);
+          restored = this.#recoverCompositionLease(token);
         }
         if (!restored.ok) {
           throw new TypeError(`composition disposal ${restored.reason}`);
@@ -799,6 +894,9 @@ export class BreditorWasmCommandAdapter {
   }
 
   #executeSelection(selection: PreparedSelection): WasmCommandOutcome {
+    if (selection.kind === "preserve") {
+      throw new TypeError("preserved selection cannot be synchronized");
+    }
     return this.#executeOne(
       (expected) =>
         selection.kind === "none"
@@ -828,12 +926,15 @@ export class BreditorWasmCommandAdapter {
     expectedActionId: string | undefined,
   ): WasmCommandOutcome {
     const previous = this.#requireObservation();
-    if ((result as unknown) === previous) {
+    if (
+      (result as unknown) === previous ||
+      (result as unknown) === this.#engineOwner
+    ) {
       throw new TypeError("Wasm command result handle is invalid or aliased");
     }
     if (!isCommandResultView(result)) {
       const cleanup = objectLike(result)
-        ? freeUnique([result], previous)
+        ? freeUnique([result], previous, [this.#engineOwner])
         : undefined;
       if (cleanup !== undefined) {
         throw cleanup;
@@ -857,6 +958,7 @@ export class BreditorWasmCommandAdapter {
       assertDistinctGeneratedHandles(
         previous,
         [result, errorView, successor, updateView],
+        [this.#engineOwner],
       );
 
       if (status === "error") {
@@ -875,7 +977,11 @@ export class BreditorWasmCommandAdapter {
         if (error === null) {
           throw new TypeError("Wasm command error is invalid");
         }
-        const cleanup = freeUnique([errorView, result], previous);
+        const cleanup = freeUnique(
+          [errorView, result],
+          previous,
+          [this.#engineOwner],
+        );
         errorView = undefined;
         resultOwned = false;
         if (cleanup !== undefined) {
@@ -926,7 +1032,7 @@ export class BreditorWasmCommandAdapter {
             ownedUpdate,
             successor,
             nextSnapshot,
-            [previous, result, successor],
+            [previous, result, successor, this.#engineOwner],
           );
         }
         outcome = Object.freeze({
@@ -974,7 +1080,11 @@ export class BreditorWasmCommandAdapter {
         throw new TypeError("Wasm command status is invalid");
       }
 
-      const cleanup = freeUnique([result, previous], successor);
+      const cleanup = freeUnique(
+        [result, previous],
+        successor,
+        [this.#engineOwner],
+      );
       resultOwned = false;
       this.#observation = successor;
       this.#snapshot = nextSnapshot;
@@ -994,6 +1104,7 @@ export class BreditorWasmCommandAdapter {
       const cleanup = freeUnique(
         [errorView, successor, updateView, resultOwned ? result : undefined],
         previous,
+        [this.#engineOwner],
       );
       if (cleanup !== undefined && this.#state === "executing") {
         this.#state = "faulted";
@@ -1083,7 +1194,11 @@ export class BreditorWasmCommandAdapter {
     let resultOwned = true;
     try {
       result = this.#engine.selection(observation);
-      if (!isSelectionResultView(result) || (result as unknown) === observation) {
+      if (
+        !isSelectionResultView(result) ||
+        (result as unknown) === observation ||
+        (result as unknown) === this.#engineOwner
+      ) {
         throw new TypeError("Wasm selection result handle is invalid or aliased");
       }
       const status = result.status;
@@ -1092,7 +1207,7 @@ export class BreditorWasmCommandAdapter {
       assertDistinctGeneratedHandles(
         observation,
         [result, errorView, selectionView],
-        protectedHandles,
+        [this.#engineOwner, ...protectedHandles],
       );
       if (status !== "selection" || errorView !== undefined || selectionView === undefined) {
         throw new TypeError("Wasm selection read violated its exact shape");
@@ -1103,7 +1218,11 @@ export class BreditorWasmCommandAdapter {
       if (!consumed.ok) {
         throw new TypeError("Wasm semantic selection is invalid");
       }
-      const cleanup = freeUnique([result], observation, protectedHandles);
+      const cleanup = freeUnique(
+        [result],
+        observation,
+        [this.#engineOwner, ...protectedHandles],
+      );
       resultOwned = false;
       if (cleanup !== undefined) {
         throw cleanup;
@@ -1113,7 +1232,7 @@ export class BreditorWasmCommandAdapter {
       const cleanup = freeUnique(
         [errorView, selectionView, resultOwned ? result : undefined],
         observation,
-        protectedHandles,
+        [this.#engineOwner, ...protectedHandles],
       );
       if (cleanup !== undefined) {
         throw cleanup;
@@ -1122,6 +1241,9 @@ export class BreditorWasmCommandAdapter {
   }
 
   #installRequestedSelection(selection: EditorSelectionSync): void {
+    if (selection.kind === "preserve") {
+      throw new TypeError("preserved selection cannot be installed into DOM");
+    }
     const value = selection.kind === "range" ? selection.selection : null;
     if (!this.#selectionBridge.write(this.#rendered, value).ok) {
       this.#state = "reconcile";
@@ -1190,6 +1312,9 @@ function prepareSelection(selection: EditorSelectionSync): PreparedSelection | n
   if (selection.kind === "none") {
     return Object.freeze({ kind: "none" });
   }
+  if (selection.kind === "preserve") {
+    return Object.freeze({ kind: "preserve" });
+  }
   const scalars = semanticRangeSelectionScalars(selection.selection);
   return scalars.ok
     ? Object.freeze({ kind: "range", scalars: scalars.value })
@@ -1219,6 +1344,9 @@ function invokeEngineCommand(
   expected: WasmCommandObservationView,
   command: EngineCommand,
 ): WasmCommandResultView {
+  if (command.kind === "selection") {
+    throw new TypeError("selection synchronization has no second engine command");
+  }
   if (command.kind === "history") {
     return command.operation === "undo"
       ? engine.undo(expected)
@@ -1302,7 +1430,9 @@ function readError(value: WasmCommandErrorView): WasmCommandError | null {
 
 function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
   try {
+    if (!objectLike(value)) return null;
     const receiver = value as WasmCommandEngineView;
+    const actionStates = receiver.actionStates;
     const clearSelection = receiver.clearSelection;
     const setRangeSelection = receiver.setRangeSelection;
     const selection = receiver.selection;
@@ -1312,6 +1442,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     const redo = receiver.redo;
     const closeHistoryGroup = receiver.closeHistoryGroup;
     if (
+      typeof actionStates !== "function" ||
       typeof clearSelection !== "function" ||
       typeof setRangeSelection !== "function" ||
       typeof selection !== "function" ||
@@ -1324,6 +1455,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
       return null;
     }
     const snapshot: WasmCommandEngineView = {
+      actionStates: (expected) => Reflect.apply(actionStates, value, [expected]),
       clearSelection: (expected) => Reflect.apply(clearSelection, value, [expected]),
       setRangeSelection: (
         expected,

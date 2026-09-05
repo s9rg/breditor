@@ -639,6 +639,129 @@ describe("BreditorBrowserEventController", () => {
       reason: "eventAccessFailed",
     });
   });
+
+  it("queue-routes real selection changes and ignores exact programmatic echoes", () => {
+    const fixture = createFixture();
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    installCollapsedDomSelection(fixture.host, 3);
+
+    const synchronized = controller.handleSelectionChange(
+      new Event("selectionchange"),
+      fixture.rendered,
+      fixture.delivery,
+    );
+
+    expect(synchronized.kind).toBe("synchronized");
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]).toMatchObject({
+      source: { kind: "selectionchange", detail: "document-selection" },
+      requirements: { selection: "synchronize", history: "preserve" },
+      command: { kind: "selection", operation: "synchronize" },
+    });
+
+    const exact = selectionValue(
+      BaseRangeSelection.create(fixture.rendered.projection, {
+        kind: "range",
+        anchor: textPoint(2, "before"),
+        focus: textPoint(2, "before"),
+      }),
+    );
+    expect(fixture.bridge.write(fixture.rendered, exact).ok).toBe(true);
+    expect(
+      controller.handleSelectionChange(
+        new Event("selectionchange"),
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    ).toEqual({ kind: "ignored", reason: "programmaticEcho" });
+    expect(delivered).toHaveLength(1);
+  });
+
+  it("preserves semantic selection when the DOM range is absent or outside", () => {
+    const fixture = createFixture();
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+
+    window.getSelection()?.removeAllRanges();
+    expect(
+      controller.handleSelectionChange(
+        new Event("selectionchange"),
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    ).toEqual({ kind: "ignored", reason: "noDomRange" });
+
+    const outside = document.createElement("div");
+    const outsideParagraph = document.createElement("p");
+    outsideParagraph.textContent = "outside";
+    outside.append(outsideParagraph);
+    document.body.append(outside);
+    installCollapsedDomSelection(outside, 2);
+    expect(
+      controller.handleSelectionChange(
+        new Event("selectionchange"),
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    ).toEqual({ kind: "ignored", reason: "outsideHost" });
+    expect(delivered).toHaveLength(0);
+  });
+
+  it("fails closed for active composition, stale delivery, drift, and queue uncertainty", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const event = new Event("selectionchange");
+    const composing = new BreditorBrowserEventController(
+      new BreditorCommandQueue(() => "unused"),
+      {
+        keyboard: keyboardPolicy(),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+        compositionActive: () => true,
+      },
+    );
+    expect(
+      composing.handleSelectionChange(event, fixture.rendered, fixture.delivery),
+    ).toEqual({ kind: "blocked", reason: "compositionActive" });
+
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const foreign = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      0n,
+      Symbol("foreign-selectionchange"),
+    );
+    expect(
+      controller.handleSelectionChange(event, fixture.rendered, foreign),
+    ).toEqual({ kind: "reconcileRequired", reason: "deliveryRejected" });
+
+    fixture.host.firstChild?.appendChild(document.createTextNode("drift"));
+    expect(
+      controller.handleSelectionChange(event, fixture.rendered, fixture.delivery),
+    ).toEqual({ kind: "reconcileRequired", reason: "domDrift" });
+
+    const fresh = createFixture();
+    installCollapsedDomSelection(fresh.host, 2);
+    const uncertain = new BreditorBrowserEventController(
+      new BreditorCommandQueue<never>(() => {
+        throw new Error("unknown publication point");
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        selectionBridge: fresh.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+      },
+    );
+    expect(
+      uncertain.handleSelectionChange(
+        new Event("selectionchange"),
+        fresh.rendered,
+        fresh.delivery,
+      ),
+    ).toEqual({ kind: "reconcileRequired", reason: "queueFailure" });
+  });
 });
 
 function createFixture(): Fixture {

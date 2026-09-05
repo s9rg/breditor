@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.55` boundary contract; intentionally narrow and unstable before
+Status: `0.0.56` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
@@ -24,10 +24,10 @@ Tiptap, or CKEditor protocol.
 
 ## Boundary objects
 
-The generated TypeScript declaration exposes eleven opaque Wasm-owned classes:
+The generated TypeScript declaration exposes thirteen opaque Wasm-owned classes:
 
 - `BreditorEngine` owns one editor session and the compiled base action
-  registry;
+  registry plus its base action-state cache;
 - `BreditorObservation` owns the exact private engine/state/history token for
   one instant;
 - `BreditorEngineResult` is the structured result of engine construction;
@@ -42,7 +42,10 @@ The generated TypeScript declaration exposes eleven opaque Wasm-owned classes:
   complete final projection;
 - `BreditorSelectionResult` owns a guarded one-shot semantic-selection read or
   error; and
-- `BreditorSelection` is one snapshot-bound optional directional range view.
+- `BreditorSelection` is one snapshot-bound optional directional range view;
+- `BreditorActionStatesResult` owns one guarded cache refresh result; and
+- `BreditorActionStateSnapshot` is one complete immutable action-state view
+  plus bounded changed-entry hints.
 
 The boundary never forwards a core error's `Display` or `Debug` text. Domain
 rejection is returned as data instead of using JavaScript exceptions as normal
@@ -169,6 +172,65 @@ activation, and indicator-value status. These aliases make switches exhaustive,
 but the raw class does not correlate sibling optional getters into a
 discriminated union. The later framework-neutral TypeScript facade owns that
 stronger result shape.
+
+## Action-state observation
+
+`engine.actionStates(expected)` exposes the core `ActionStateCatalog` and
+`ActionStateCache` through a guarded, synchronous, non-JSON read. It checks the
+complete engine/snapshot/history observation before consulting the cache. A
+stale call returns the same redacted stale-engine category as other guarded
+reads and leaves the prior cache observation installed.
+
+The compiled base catalog has three presentation-independent observable IDs in
+canonical lexical order:
+
+- `breditor/control-bold` directly prepares `breditor/toggle-strong`, so its
+  enabled state and inactive/active/mixed indicator come from the same semantic
+  evaluation a later click repeats;
+- `breditor/control-redo` preflights the current redo branch; and
+- `breditor/control-undo` preflights the current undo branch.
+
+These observable IDs are not command IDs, labels, icons, shortcuts, or toolbar
+positions. The browser manifest maps them to presentation and dispatch. A
+later extended catalog can add direct, routed, or history sources without
+changing the flattened entry contract.
+
+A successful result is `full`, `unchanged`, or `delta` and owns one complete
+snapshot. `takeSnapshot()` transfers it exactly once and changes the result to
+`taken`. The snapshot exposes its exact lineage/revision, canonical entry IDs,
+resolved availability, activation, stable disabled/blocked reason code, and
+typed value status/contract. Full baselines name every entry as changed, exact
+cache hits name none, and deltas name the core-proved lexical unique subset.
+Changed IDs are rerender hints only; consumers always receive the complete
+snapshot and must not treat them as a durable patch or executable capability.
+
+The `full`, `unchanged`, and `delta` relationship is relative to the engine's
+single internal cache observation, not to any particular JavaScript consumer.
+Core prior/new cache identities deliberately do not cross this first Wasm ABI.
+Independent consumers must therefore install any complete successful snapshot
+as their baseline and derive or verify changes against their own last-good
+copy; they cannot apply `changedId` values blindly as a caller-correlated patch.
+
+Only the stable disabled/blocked reason code crosses this action-state read.
+The core may retain a bounded machine-readable reason detail, but this ABI does
+not expose that detail to toolbar presentation. This keeps the first read
+surface small and payload-minimal; richer dynamic disabled explanations require
+a later explicit boundary addition.
+
+The complete action-state view never serializes as JSON. A uniform bounded
+`ActionValue` can be encoded separately with `entryUniformValueJson(index)`;
+unsupported, unset, mixed, unresolved, and out-of-range entries return an
+owned `BreditorStringResult` in `absent` state. This preserves the core's value
+contract for future select, color, font, and plugin controls without forcing
+every toolbar refresh through a complete JSON document. The isolated value
+payload remains bounded by the core action-value limits.
+
+Every numeric entry/change index is a raw generated `u32` parameter and shares
+the projection getter's JavaScript-coercion limitation. The reviewed browser
+adapter must admit exact nonnegative integers, verify complete cardinality,
+lexical uniqueness, changed-ID subset membership, status/optional-field
+coherence, and free the result, snapshot, nested value result, and cloned error
+on all paths.
 
 ## Publication, projection, and serialization
 

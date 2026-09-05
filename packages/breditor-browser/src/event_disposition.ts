@@ -72,3 +72,35 @@ export type BrowserEventDisposition<TResult> =
         | Readonly<{ kind: "keyboard"; inputType: string }>
         | undefined;
     }>;
+
+/** Stable reasons a document `selectionchange` did not enter the queue. */
+export type BrowserSelectionChangeBlockReason =
+  | "compositionActive"
+  | "invalidEvent"
+  | "selectionUnavailable"
+  | "queueRejected";
+
+/** Non-error reasons a document `selectionchange` deliberately did no work. */
+export type BrowserSelectionChangeIgnoreReason =
+  | "programmaticEcho"
+  | "noDomRange"
+  | "outsideHost";
+
+/** Total result of reducing one document `selectionchange` observation. */
+export type BrowserSelectionChangeDisposition<TResult> =
+  | Readonly<{
+      kind: "synchronized";
+      submission: CommandQueueSubmission<TResult>;
+    }>
+  | Readonly<{
+      kind: "blocked";
+      reason: BrowserSelectionChangeBlockReason;
+    }>
+  | Readonly<{
+      kind: "ignored";
+      reason: BrowserSelectionChangeIgnoreReason;
+    }>
+  | Readonly<{
+      kind: "reconcileRequired";
+      reason: "deliveryRejected" | "domDrift" | "queueFailure";
+    }>;

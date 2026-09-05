@@ -1,10 +1,13 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.55` renders the validated base-schema AST into disposable DOM,
+Version `0.0.56` renders the validated base-schema AST into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
 strict paragraph-local composition lease plus guarded copy/cut/paste without
-making the DOM or clipboard HTML an editor model.
+making the DOM or clipboard HTML an editor model. It also consumes guarded
+action-state snapshots, queue-routes real document selection changes, and
+renders an extensible accessible toolbar without making display state an
+execution capability.
 
 The package is private while the pre-`0.1` package boundary is still moving.
 Its public entry point is nevertheless compiled and declaration-checked so a
@@ -225,9 +228,38 @@ contract. A direct state change is detected at the next guarded base check but
 cannot undo an already completed clipboard side effect. The later high-level
 runtime encapsulates these pieces for ordinary consumers.
 
+## Action state and toolbar
+
+The observation-owning command adapter exposes a handle-free action-state read
+port. It consumes and frees the generated result, complete snapshot, nested
+value results, and cloned errors internally, while protecting the adapter's
+live observation from aliasing. `BreditorActionStateStore` publishes only
+validated complete snapshots, keeps the last good value on failure, and offers
+synchronous ordered subscriptions suitable for a command-queue observer. Each
+store compares complete snapshots locally; the engine-global full/delta/cache-hit
+relation is never mistaken for an individual consumer's baseline.
+
+`BreditorToolbar` is driven by a bounded immutable presentation manifest. The
+default manifest contains Bold, Undo, and Redo, but visible order, labels,
+and optional grouping keys are browser-owned. Retained manifest fields must be
+own data properties and controls must be a bounded dense array; accessors and
+inherited fields are not executed. Shortcut descriptions remain out of the
+v0.0.56 schema until the runtime can register and verify the behavior they
+advertise.
+
+The toolbar creates one isolated owned root inside a validated non-interactive
+mount. Native buttons expose only fresh availability and pressed/mixed state,
+implement roving focus, restore the exact keyboard button after synchronous
+delivery, and submit declarative `selection: "preserve"` invocations. Dispatch
+accepts only a minted synchronous outcome. The runtime converts invocations
+with `toolbarCommandRequest` and sends them through the same queue; Rust
+revalidates every command against the current observation.
+See [`TOOLBAR.md`](../../docs/TOOLBAR.md).
+
 ## Current limitations
 
-- Toolbar delivery, persistence, and React integration belong to later
+- The bundled toolbar catalog contains Bold, Undo, and Redo. Dynamic action or
+  catalog registration, persistence, and React integration belong to later
   checkpoints.
 - Clipboard support is limited to synchronous event `clipboardData`, plain
   text, and the base paragraph/strong subset. There is no async Clipboard API,
@@ -280,6 +312,8 @@ focus separation, select-all, outside-host protection, semantic clipboard
 serialization, strict HTML admission, guarded multi-representation writes,
 authoritative plain-text preference, exact clipboard echoes, exact target-range
 normalization, bounded command admission, non-recursive FIFO ordering,
-translation policy, one-shot event-echo suppression, exact composition/queue/
+translation policy, one-shot event-echo suppression, queue-routed selection
+changes, guarded action-state ownership and store transitions, toolbar
+manifest and keyboard/ARIA behavior, exact composition/queue/
 renderer leases, alternate terminal event orders, strict temporary-DOM
 reconciliation, cancellation history boundaries, and fail-safe recovery.

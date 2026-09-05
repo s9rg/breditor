@@ -1,3 +1,5 @@
+use std::fmt;
+
 use breditor_core::{
     action::{
         ActionInputError, ActionPrepareError,
@@ -32,6 +34,8 @@ pub(crate) const INVALID_SELECTION_COORDINATE_CODE: &str =
 pub(crate) const INVALID_SELECTION_AFFINITY_CODE: &str = "breditor_wasm.invalid_selection_affinity";
 pub(crate) const INVALID_SELECTION_NODE_CODE: &str = "breditor_wasm.invalid_selection_node";
 pub(crate) const SELECTION_READ_CODE: &str = "breditor_wasm.selection_read";
+pub(crate) const ACTION_STATE_CATALOG_CODE: &str = "breditor_wasm.action_state_catalog";
+pub(crate) const ACTION_STATE_READ_CODE: &str = "breditor_wasm.action_state_read";
 
 /// Structured, stable, payload-redacting error returned by the Wasm boundary.
 ///
@@ -44,6 +48,14 @@ pub struct BreditorError {
     code: &'static str,
     message: &'static str,
 }
+
+impl fmt::Display for BreditorError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(self.message)
+    }
+}
+
+impl std::error::Error for BreditorError {}
 
 impl BreditorError {
     pub(crate) const fn new(code: &'static str, message: &'static str) -> Self {
@@ -69,6 +81,17 @@ impl BreditorError {
 
     pub(crate) const fn codec(code: CodecErrorCode, message: &'static str) -> Self {
         Self::new(code.as_str(), message)
+    }
+
+    pub(crate) const fn action_state_catalog() -> Self {
+        Self::new(
+            ACTION_STATE_CATALOG_CODE,
+            "the compiled base action-state catalog is unavailable",
+        )
+    }
+
+    pub(crate) const fn action_state_read() -> Self {
+        Self::new(ACTION_STATE_READ_CODE, "the complete action state could not be represented")
     }
 }
 

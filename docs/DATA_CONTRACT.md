@@ -181,8 +181,10 @@ The following remain deliberately unimplemented:
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
 - generic formatting kinds and attributes beyond property-free strong text;
-- action-state subscriptions and delivery queues, presentation metadata,
-  keymaps, plugin dependencies/lifecycle, and durable registry manifests;
+- asynchronous action-state delivery, dynamic catalog registration,
+  presentation plugin lifecycle, generalized keymaps, and durable registry
+  manifests (the browser now has a synchronous last-good state store and a
+  bounded manifest-driven base toolbar);
 - ordered tail I/O and recovery orchestration, process-restart append
   reconstruction, atomic checkpoint/log replacement,
   durable restart continuation, cryptographic integrity or authenticity,
@@ -198,8 +200,9 @@ The following remain deliberately unimplemented:
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
 - published consumer packaging, a unified end-user browser event router,
-  toolbar delivery, persistence/React integration, and the real-browser support
-  matrix (guarded base-subset clipboard mutation exists at `0.0.55`);
+  persistence/React integration, and the real-browser support matrix (guarded
+  base-subset clipboard mutation exists at `0.0.55`; guarded action-state and
+  toolbar delivery exist at `0.0.56`);
 - atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
   boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
   append coordination;
@@ -1106,6 +1109,27 @@ The complete boundary contract and raw-glue limitations are recorded in
 
 None of these checkpoints changes document format version `1`, introduces an
 executable capability cache, or defines a durable action-state wire format.
+
+Version `0.0.56` exposes the existing Rust action-state abstraction without
+turning it into a durable protocol. Each Wasm engine constructs one frozen
+base catalog over its exact action registry and retains one synchronous cache.
+The fixed catalog observes Bold through the real `toggle-strong` action and
+observes Undo/Redo through authoritative history preflight. A guarded read
+checks the complete engine/state/history observation before touching the cache
+and returns a disposable complete non-JSON snapshot plus a bounded changed-ID
+hint.
+
+The browser consumes that generated ownership immediately. It verifies the
+exact snapshot, canonical IDs, status/activation/value combinations, changed
+subset, isolated bounded uniform-value JSON, and handle non-aliasing, then frees
+all generated objects. A last-good synchronous store validates full/unchanged/
+delta transitions and publishes deeply frozen handle-free snapshots. A
+callback-free presentation manifest and native-button toolbar consume only
+that read model. Toolbar commands preserve the current semantic selection and
+re-enter the ordinary guarded command FIFO; real in-editor `selectionchange`
+observations use a dedicated selection-only request. These are application
+contracts, not executable preparations, dynamic Rust plugin registration, or a
+new durable wire format.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a
@@ -4621,8 +4645,10 @@ selection fails closed.
 The initial mapping is one-range and light-DOM only. At the `0.0.52` checkpoint,
 shadow/composed ranges, node/grid/table selections, remote selections, internal
 root-boundary bias, keyboard movement, composition, and input-event ordering
-were not implemented; `0.0.53` through `0.0.55` add only the closed event,
-paragraph-local composition, and base-subset clipboard slices described below.
+were not implemented; `0.0.53` through `0.0.56` add the closed event,
+paragraph-local composition, base-subset clipboard, and queue-routed ordinary
+selection-change slices described below. Node/grid/table, remote, shadow, and
+multi-range selection remain absent.
 Preorder endpoint lookup and full synchronous DOM validation are O(document)
 within existing projection limits. The full contract and acceptance laws are in
 [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md).

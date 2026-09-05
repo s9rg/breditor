@@ -129,8 +129,9 @@ optimizations; they may not weaken failure atomicity.
   non-composition event/queue/command coordinator added in `0.0.53` is documented
   in [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md). Composition
   ownership arrived in `0.0.54`, and guarded base-subset clipboard handling
-  arrived in `0.0.55`; see [`CLIPBOARD.md`](CLIPBOARD.md). Toolbar delivery,
-  persistence I/O, and framework integration remain separate checkpoints.
+  arrived in `0.0.55`; see [`CLIPBOARD.md`](CLIPBOARD.md). Guarded action-state
+  and toolbar delivery arrived in `0.0.56`; see [`TOOLBAR.md`](TOOLBAR.md).
+  Persistence I/O and framework integration remain separate checkpoints.
 
 The package-level API and development commands are documented in
 `packages/breditor-browser/README.md`.

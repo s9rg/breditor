@@ -1,4 +1,6 @@
 import type {
+  BreditorActionStateSnapshot,
+  BreditorActionStatesResult,
   BreditorCommandResult,
   BreditorEngine,
   BreditorObservation,
@@ -6,6 +8,7 @@ import type {
   BreditorProjectionUpdate,
   BreditorSelection,
   BreditorSelectionResult,
+  BreditorStringResult,
 } from "../../../crates/breditor-wasm/api/breditor_wasm.js";
 
 import type {
@@ -14,6 +17,11 @@ import type {
   WasmCommandResultView,
   WasmSelectionResultView,
 } from "../src/wasm_command_adapter.js";
+import type {
+  WasmActionStateSnapshotView,
+  WasmActionStateStringResultView,
+  WasmActionStatesResultView,
+} from "../src/wasm_action_state_adapter.js";
 import type {
   SemanticProjectionUpdateView,
   SemanticProjectionView,
@@ -30,6 +38,9 @@ declare const generatedEngine: BreditorEngine;
 declare const generatedObservation: BreditorObservation;
 declare const generatedCommandResult: BreditorCommandResult;
 declare const generatedSelectionResult: BreditorSelectionResult;
+declare const generatedActionStateSnapshot: BreditorActionStateSnapshot;
+declare const generatedActionStatesResult: BreditorActionStatesResult;
+declare const generatedStringResult: BreditorStringResult;
 declare const semanticScalars: SemanticRangeSelectionScalars;
 
 const semanticProjection: SemanticProjectionView = generatedProjection;
@@ -39,6 +50,9 @@ const commandEngine: WasmCommandEngineView = generatedEngine;
 const commandObservation: WasmCommandObservationView = generatedObservation;
 const commandResult: WasmCommandResultView = generatedCommandResult;
 const selectionResult: WasmSelectionResultView = generatedSelectionResult;
+const actionStateSnapshot: WasmActionStateSnapshotView = generatedActionStateSnapshot;
+const actionStatesResult: WasmActionStatesResultView = generatedActionStatesResult;
+const actionStateStringResult: WasmActionStateStringResultView = generatedStringResult;
 
 generatedEngine.setRangeSelection(
   generatedObservation,
@@ -59,3 +73,6 @@ void commandEngine;
 void commandObservation;
 void commandResult;
 void selectionResult;
+void actionStateSnapshot;
+void actionStatesResult;
+void actionStateStringResult;

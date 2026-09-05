@@ -14,6 +14,12 @@ export type BreditorActionActivation = "stateless" | "inactive" | "active" | "mi
 /** Value state reported by an action indicator. */
 export type BreditorActionStateValueStatus = "unsupported" | "unset" | "uniform" | "mixed";
 
+/** Lifecycle and cache relationship of one guarded action-state read. */
+export type BreditorActionStatesResultStatus = "full" | "unchanged" | "delta" | "taken" | "error";
+
+/** Authoritative outcome of one observable action-state entry. */
+export type BreditorActionStateEntryStatus = "enabled" | "disabled" | "blocked" | "unhandled" | "fault";
+
 /** Lifecycle state of an engine-construction result. */
 export type BreditorEngineResultStatus = "engine" | "taken" | "error";
 

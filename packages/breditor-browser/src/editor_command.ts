@@ -16,7 +16,13 @@ export const MAX_BROWSER_COMMAND_TEXT_UTF8 = 65_536;
 
 /** Stable command origins. Presentation layers add detail without changing semantics. */
 export type EditorCommandSource = Readonly<{
-  kind: "beforeinput" | "keyboard" | "clipboard" | "toolbar" | "api";
+  kind:
+    | "beforeinput"
+    | "keyboard"
+    | "clipboard"
+    | "selectionchange"
+    | "toolbar"
+    | "api";
   detail: string;
 }>;
 
@@ -32,6 +38,7 @@ export type EngineCommand =
       actionId: string;
       input: Readonly<{ kind: "string"; value: string }>;
     }>
+  | Readonly<{ kind: "selection"; operation: "synchronize" }>
   | Readonly<{ kind: "history"; operation: "undo" | "redo" }>
   | Readonly<{ kind: "control"; operation: "closeHistoryGroup" }>;
 
@@ -40,8 +47,8 @@ export type EditorCommand = EngineCommand;
 
 /** Work which must occur before the command can be delivered. */
 export interface EditorCommandRequirements {
-  /** DOM selection must first be synchronized into the semantic core. */
-  readonly selection: "synchronize";
+  /** Whether delivery synchronizes a captured selection or uses core state. */
+  readonly selection: "synchronize" | "preserve";
   /** Whether the open typing group must be closed before delivery. */
   readonly history: "preserve" | "closeBefore";
 }
@@ -49,7 +56,8 @@ export interface EditorCommandRequirements {
 /** Exact semantic selection captured while deriving a command request. */
 export type EditorSelectionSync =
   | Readonly<{ kind: "range"; selection: BaseRangeSelection }>
-  | Readonly<{ kind: "none" }>;
+  | Readonly<{ kind: "none" }>
+  | Readonly<{ kind: "preserve" }>;
 
 /** Immutable source, requirements, and semantic command delivered as one FIFO item. */
 export interface EditorCommandRequest {
@@ -244,6 +252,11 @@ export function noSelectionSync(): EditorSelectionSync {
   return Object.freeze({ kind: "none" });
 }
 
+/** Uses the core's current semantic selection without reading or writing DOM. */
+export function preserveSelectionSync(): EditorSelectionSync {
+  return Object.freeze({ kind: "preserve" });
+}
+
 /** Fixed base action IDs used by browser input translation. */
 export const BASE_ACTION_IDS = Object.freeze({
   deleteBackward: "breditor/delete-backward",
@@ -335,6 +348,23 @@ export function closeHistoryGroupRequest(
   );
 }
 
+/** Creates queue-routed semantic selection synchronization with no other work. */
+export function selectionSynchronizationRequest(
+  delivery: EditorDeliveryToken,
+  selection: BaseRangeSelection,
+  source: EditorCommandSource,
+): EngineCommandRequest {
+  const safeDelivery = requireDelivery(delivery);
+  const synchronized = rangeSelectionSync(selection);
+  return freezeRequest(
+    safeDelivery,
+    requireSelection(synchronized, safeDelivery),
+    requireSource(source),
+    "preserve",
+    Object.freeze({ kind: "selection", operation: "synchronize" }),
+  );
+}
+
 /** Returns whether a string fits both browser-side action-input ceilings. */
 export function browserCommandTextIsAdmissible(value: unknown): value is string {
   if (
@@ -395,14 +425,25 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
       selection === null ||
       source === null ||
       requirements === null ||
-      requirements["selection"] !== "synchronize" ||
+      (requirements["selection"] !== "synchronize" &&
+        requirements["selection"] !== "preserve") ||
       (requirements["history"] !== "preserve" && requirements["history"] !== "closeBefore") ||
       command === null ||
+      !selectionRequirementMatches(requirements["selection"], selection) ||
       !requirementsMatchCommand(requirements["history"], command)
     ) {
       return null;
     }
     const history = requirements["history"];
+    if (command.kind === "selection") {
+      return selection.kind === "range"
+        ? selectionSynchronizationRequest(
+            delivery,
+            selection.selection,
+            source,
+          )
+        : null;
+    }
     if (command.kind === "history") {
       return historyRequest(delivery, selection, source, command.operation);
     }
@@ -445,7 +486,10 @@ function freezeRequest<TCommand extends EngineCommand>(
     delivery,
     selection,
     source: frozenSource,
-    requirements: Object.freeze({ selection: "synchronize" as const, history }),
+    requirements: Object.freeze({
+      selection: selection.kind === "preserve" ? "preserve" : "synchronize",
+      history,
+    }),
     command: Object.freeze(command) as TCommand,
   });
 }
@@ -467,6 +511,10 @@ function snapshotSelection(
 ): EditorSelectionSync | null {
   if (delivery === null) {
     return null;
+  }
+  const preserve = readExactDataRecord(value, ["kind"]);
+  if (preserve !== null && preserve["kind"] === "preserve") {
+    return Object.freeze({ kind: "preserve" });
   }
   const none = readExactDataRecord(value, ["kind"]);
   if (none !== null && none["kind"] === "none") {
@@ -510,7 +558,17 @@ function requirementsMatchCommand(
   if (command.kind === "control") {
     return history === "preserve";
   }
+  if (command.kind === "selection") {
+    return history === "preserve";
+  }
   return history === "preserve" || history === "closeBefore";
+}
+
+function selectionRequirementMatches(
+  requirement: unknown,
+  selection: EditorSelectionSync,
+): boolean {
+  return requirement === (selection.kind === "preserve" ? "preserve" : "synchronize");
 }
 
 function requireSource(source: EditorCommandSource): EditorCommandSource {
@@ -528,6 +586,7 @@ function snapshotSource(value: unknown): EditorCommandSource | null {
     (source["kind"] !== "beforeinput" &&
       source["kind"] !== "keyboard" &&
       source["kind"] !== "clipboard" &&
+      source["kind"] !== "selectionchange" &&
       source["kind"] !== "toolbar" &&
       source["kind"] !== "api") ||
     typeof source["detail"] !== "string" ||
@@ -556,6 +615,14 @@ function isQualifiedName(value: string): boolean {
 }
 
 function snapshotEngineCommand(value: unknown): EngineCommand | null {
+  const selection = readExactDataRecord(value, ["kind", "operation"]);
+  if (
+    selection !== null &&
+    selection["kind"] === "selection" &&
+    selection["operation"] === "synchronize"
+  ) {
+    return Object.freeze({ kind: "selection", operation: "synchronize" });
+  }
   const history = readExactDataRecord(value, ["kind", "operation"]);
   if (
     history !== null &&

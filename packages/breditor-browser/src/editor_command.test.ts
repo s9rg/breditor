@@ -12,7 +12,9 @@ import {
   isEngineCommand,
   issueEditorDeliveryToken,
   noInputActionRequest,
+  preserveSelectionSync,
   rangeSelectionSync,
+  selectionSynchronizationRequest,
   stringActionRequest,
 } from "./editor_command.js";
 
@@ -50,7 +52,11 @@ function delivery() {
     },
   });
   if (!selection.ok) throw new Error("selection fixture failed");
-  return { token, selection: rangeSelectionSync(selection.value) };
+  return {
+    token,
+    range: selection.value,
+    selection: rangeSelectionSync(selection.value),
+  };
 }
 
 describe("editor command contract", () => {
@@ -108,6 +114,49 @@ describe("editor command contract", () => {
       canonicalEditorCommandRequest({
         ...request,
         requirements: { selection: "synchronize", history: "closeBefore" },
+      }),
+    ).toBeNull();
+  });
+
+  it("distinguishes selection preservation from queue-routed synchronization", () => {
+    const { token, range } = delivery();
+    const preserved = noInputActionRequest(
+      token,
+      preserveSelectionSync(),
+      { kind: "toolbar", detail: "bold" },
+      "breditor/toggle-strong",
+    );
+    expect(preserved.selection).toEqual({ kind: "preserve" });
+    expect(preserved.requirements).toEqual({
+      selection: "preserve",
+      history: "preserve",
+    });
+    expect(canonicalEditorCommandRequest(preserved)).toEqual(preserved);
+
+    const synchronized = selectionSynchronizationRequest(
+      token,
+      range,
+      { kind: "selectionchange", detail: "document-selection" },
+    );
+    expect(synchronized).toMatchObject({
+      selection: { kind: "range", selection: range },
+      source: { kind: "selectionchange", detail: "document-selection" },
+      requirements: { selection: "synchronize", history: "preserve" },
+      command: { kind: "selection", operation: "synchronize" },
+    });
+    expect(isEngineCommand(synchronized.command)).toBe(true);
+    expect(canonicalEditorCommandRequest(synchronized)).toEqual(synchronized);
+    expect(
+      canonicalEditorCommandRequest({
+        ...preserved,
+        requirements: { selection: "synchronize", history: "preserve" },
+      }),
+    ).toBeNull();
+    expect(
+      canonicalEditorCommandRequest({
+        ...synchronized,
+        selection: preserveSelectionSync(),
+        requirements: { selection: "preserve", history: "preserve" },
       }),
     ).toBeNull();
   });

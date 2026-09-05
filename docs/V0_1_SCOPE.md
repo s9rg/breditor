@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.55`
+Status: frozen product target; implementation completed through `0.0.56`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -145,7 +145,14 @@ a smaller safe boundary, but a later gate must not be claimed first.
    rollback-atomic, and the async Clipboard API, rich mixed-format paste, and
    real-browser matrix remain outside this checkpoint.
 9. `0.0.56`: extensible accessible toolbar and action-state refresh/delivery
-   layer.
+   layer. Complete: the guarded Wasm engine owns the base Bold/Undo/Redo state
+   catalog and cache; the browser consumes its disposable complete snapshots
+   into a last-good synchronous store; real `selectionchange` work uses the
+   shared queue while toolbar focus explicitly preserves semantic selection;
+   and a bounded callback-free manifest drives native buttons with roving focus
+   and pressed/mixed state. JavaScript action registration, dynamic plugin
+   lifecycle, styling, and real assistive-technology claims remain outside this
+   checkpoint.
 10. `0.0.57`: atomic IndexedDB `SessionCheckpoint` autosave, reload restore,
     corruption handling, and schema/version rejection.
 11. `0.0.58`: framework-neutral package hardening and React reference editor.

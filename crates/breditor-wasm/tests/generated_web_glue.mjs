@@ -180,6 +180,86 @@ afterUnchanged.free();
 engine.free();
 otherEngine.free();
 
+const actionStateFactory = api.BreditorEngine.fromSessionCheckpointJson(
+  SELECTED_CHECKPOINT_JSON,
+);
+const actionStateEngine = actionStateFactory.takeEngine();
+actionStateFactory.free();
+const actionStateInitial = actionStateEngine.observation();
+
+const fullActionStates = actionStateEngine.actionStates(actionStateInitial);
+assert.equal(fullActionStates.status, "full");
+assert.equal(fullActionStates.error, undefined);
+const fullActionStateSnapshot = fullActionStates.takeSnapshot();
+assert.ok(fullActionStateSnapshot instanceof api.BreditorActionStateSnapshot);
+assert.equal(fullActionStates.status, "taken");
+assert.equal(fullActionStates.takeSnapshot(), undefined);
+fullActionStates.free();
+assert.equal(fullActionStateSnapshot.snapshotLineage, "web-glue-projection-update");
+assert.equal(fullActionStateSnapshot.snapshotRevision, "0");
+assert.equal(fullActionStateSnapshot.entryCount, 3);
+assert.equal(fullActionStateSnapshot.entryId(0), "breditor/control-bold");
+assert.equal(fullActionStateSnapshot.entryStatus(0), "enabled");
+assert.equal(fullActionStateSnapshot.entryActivation(0), "inactive");
+assert.equal(fullActionStateSnapshot.entryReasonCode(0), undefined);
+assert.equal(fullActionStateSnapshot.entryValueStatus(0), "unsupported");
+assert.equal(fullActionStateSnapshot.entryValueContractName(0), undefined);
+assert.equal(fullActionStateSnapshot.entryValueContractVersion(0), undefined);
+const absentActionValue = fullActionStateSnapshot.entryUniformValueJson(0);
+assert.equal(absentActionValue.status, "absent");
+absentActionValue.free();
+assert.equal(fullActionStateSnapshot.entryId(1), "breditor/control-redo");
+assert.equal(fullActionStateSnapshot.entryStatus(1), "disabled");
+assert.equal(fullActionStateSnapshot.entryReasonCode(1), "breditor/nothing-to-redo");
+assert.equal(fullActionStateSnapshot.entryId(2), "breditor/control-undo");
+assert.equal(fullActionStateSnapshot.entryReasonCode(2), "breditor/nothing-to-undo");
+assert.equal(fullActionStateSnapshot.entryId(3), undefined);
+assert.equal(fullActionStateSnapshot.entryStatus(3), undefined);
+assert.equal(fullActionStateSnapshot.changedCount, 3);
+for (let index = 0; index < fullActionStateSnapshot.entryCount; index += 1) {
+  assert.equal(
+    fullActionStateSnapshot.changedId(index),
+    fullActionStateSnapshot.entryId(index),
+  );
+}
+fullActionStateSnapshot.free();
+assert.throws(() => fullActionStateSnapshot.entryId(0));
+
+const unchangedActionStates = actionStateEngine.actionStates(actionStateInitial);
+assert.equal(unchangedActionStates.status, "unchanged");
+const unchangedActionStateSnapshot = unchangedActionStates.takeSnapshot();
+unchangedActionStates.free();
+assert.equal(unchangedActionStateSnapshot.entryCount, 3);
+assert.equal(unchangedActionStateSnapshot.changedCount, 0);
+unchangedActionStateSnapshot.free();
+
+const toggleActionState = actionStateEngine.executeNoInputAction(
+  actionStateInitial,
+  "breditor/toggle-strong",
+);
+const actionStateSuccessor = toggleActionState.observation();
+toggleActionState.free();
+const staleActionStates = actionStateEngine.actionStates(actionStateInitial);
+assert.equal(staleActionStates.status, "error");
+assert.equal(staleActionStates.takeSnapshot(), undefined);
+const staleActionStateError = staleActionStates.error;
+staleActionStates.free();
+assert.equal(staleActionStateError.code, "editor_engine.stale_snapshot");
+staleActionStateError.free();
+
+const deltaActionStates = actionStateEngine.actionStates(actionStateSuccessor);
+assert.equal(deltaActionStates.status, "delta");
+const deltaActionStateSnapshot = deltaActionStates.takeSnapshot();
+deltaActionStates.free();
+assert.equal(deltaActionStateSnapshot.snapshotRevision, "1");
+assert.equal(deltaActionStateSnapshot.entryActivation(0), "active");
+assert.equal(deltaActionStateSnapshot.changedCount, 1);
+assert.equal(deltaActionStateSnapshot.changedId(0), "breditor/control-bold");
+deltaActionStateSnapshot.free();
+actionStateInitial.free();
+actionStateSuccessor.free();
+actionStateEngine.free();
+
 const selectionFactory = api.BreditorEngine.fromSessionCheckpointJson(
   SELECTED_CHECKPOINT_JSON,
 );

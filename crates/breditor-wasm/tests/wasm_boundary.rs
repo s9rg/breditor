@@ -10,9 +10,9 @@ use breditor_core::{
     state::{EditorContext, EditorState, LineageId},
 };
 use breditor_wasm::{
-    BreditorCommandResult, BreditorEngine, BreditorEngineResult, BreditorObservation,
-    BreditorProjection, BreditorProjectionResult, BreditorStringResult, breditor_version,
-    breditor_wasm_abi_version,
+    BreditorActionStateSnapshot, BreditorActionStatesResult, BreditorCommandResult, BreditorEngine,
+    BreditorEngineResult, BreditorObservation, BreditorProjection, BreditorProjectionResult,
+    BreditorStringResult, breditor_version, breditor_wasm_abi_version,
 };
 #[cfg(target_arch = "wasm32")]
 use breditor_wasm::{BreditorSelection, BreditorSelectionResult};
@@ -156,6 +156,118 @@ fn semantic_projection_is_deterministic_non_json_and_lifecycle_guarded() -> Test
     assert_eq!(projection.element_type(3), None);
     assert_eq!(projection.node_kind(99), None);
     assert_eq!(projection.text(99), None);
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn action_states_are_complete_non_json_canonical_and_lifecycle_guarded() -> TestResult {
+    let checkpoint = selected_checkpoint("wasm-action-states")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+
+    let mut full = engine.action_states(&initial);
+    assert_eq!(full.status(), "full");
+    assert!(full.error().is_none());
+    let snapshot = require_action_state_snapshot(&mut full)?;
+    assert_eq!(full.status(), "taken");
+    assert!(full.take_snapshot().is_none());
+
+    assert_eq!(snapshot.snapshot_lineage(), "wasm-action-states");
+    assert_eq!(snapshot.snapshot_revision(), "0");
+    assert_eq!(snapshot.entry_count(), 3);
+    assert_eq!(snapshot.entry_id(0).as_deref(), Some("breditor/control-bold"));
+    assert_eq!(snapshot.entry_id(1).as_deref(), Some("breditor/control-redo"));
+    assert_eq!(snapshot.entry_id(2).as_deref(), Some("breditor/control-undo"));
+    assert_eq!(snapshot.entry_id(3), None);
+
+    assert_eq!(snapshot.entry_status(0).as_deref(), Some("enabled"));
+    assert_eq!(snapshot.entry_activation(0).as_deref(), Some("inactive"));
+    assert_eq!(snapshot.entry_reason_code(0), None);
+    assert_eq!(snapshot.entry_value_status(0).as_deref(), Some("unsupported"));
+    assert_eq!(snapshot.entry_value_contract_name(0), None);
+    assert_eq!(snapshot.entry_value_contract_version(0), None);
+    assert_eq!(snapshot.entry_uniform_value_json(0).status(), "absent");
+
+    for index in [1, 2] {
+        assert_eq!(snapshot.entry_status(index).as_deref(), Some("disabled"));
+        assert_eq!(snapshot.entry_activation(index).as_deref(), Some("stateless"));
+        assert_eq!(snapshot.entry_value_status(index).as_deref(), Some("unsupported"));
+    }
+    assert_eq!(snapshot.entry_reason_code(1).as_deref(), Some("breditor/nothing-to-redo"));
+    assert_eq!(snapshot.entry_reason_code(2).as_deref(), Some("breditor/nothing-to-undo"));
+    assert_eq!(snapshot.entry_status(3), None);
+    assert_eq!(snapshot.entry_activation(3), None);
+    assert_eq!(snapshot.entry_value_status(3), None);
+    assert_eq!(snapshot.entry_uniform_value_json(3).status(), "absent");
+
+    assert_eq!(snapshot.changed_count(), snapshot.entry_count());
+    for index in 0..snapshot.entry_count() {
+        assert_eq!(snapshot.changed_id(index), snapshot.entry_id(index));
+    }
+    assert_eq!(snapshot.changed_id(3), None);
+
+    let mut unchanged = engine.action_states(&initial);
+    assert_eq!(unchanged.status(), "unchanged");
+    let unchanged_snapshot = require_action_state_snapshot(&mut unchanged)?;
+    assert_eq!(unchanged_snapshot.entry_count(), 3);
+    assert_eq!(unchanged_snapshot.changed_count(), 0);
+    assert_eq!(unchanged_snapshot.changed_id(0), None);
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> TestResult {
+    let checkpoint = selected_checkpoint("wasm-action-state-delta")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+    let mut baseline = engine.action_states(&initial);
+    let baseline_snapshot = require_action_state_snapshot(&mut baseline)?;
+    assert_eq!(baseline_snapshot.entry_activation(0).as_deref(), Some("inactive"));
+
+    let toggled = engine.execute_no_input_action(&initial, "breditor/toggle-strong");
+    assert_eq!(toggled.status(), "committed");
+    let after_toggle = require_observation(&toggled)?;
+
+    let mut stale = engine.action_states(&initial);
+    assert_eq!(stale.status(), "error");
+    assert!(stale.take_snapshot().is_none());
+    let stale_error = stale.error().ok_or_else(|| test_error("stale state read omitted error"))?;
+    assert_eq!(stale_error.code(), "editor_engine.stale_snapshot");
+
+    let mut delta = engine.action_states(&after_toggle);
+    assert_eq!(delta.status(), "delta");
+    let delta_snapshot = require_action_state_snapshot(&mut delta)?;
+    assert_eq!(delta_snapshot.snapshot_revision(), "1");
+    assert_eq!(delta_snapshot.entry_activation(0).as_deref(), Some("active"));
+    assert_eq!(delta_snapshot.entry_status(2).as_deref(), Some("disabled"));
+    assert_eq!(changed_ids(&delta_snapshot), ["breditor/control-bold".to_owned()]);
+
+    let inserted = engine.execute_string_action(&after_toggle, "breditor/insert-text", "x");
+    assert_eq!(inserted.status(), "committed");
+    let after_insert = require_observation(&inserted)?;
+    let mut history_delta = engine.action_states(&after_insert);
+    assert_eq!(history_delta.status(), "delta");
+    let history_snapshot = require_action_state_snapshot(&mut history_delta)?;
+    assert_eq!(history_snapshot.entry_status(2).as_deref(), Some("enabled"));
+    assert_eq!(changed_ids(&history_snapshot), ["breditor/control-undo".to_owned()]);
+
+    let undone = engine.undo(&after_insert);
+    assert_eq!(undone.status(), "committed");
+    let after_undo = require_observation(&undone)?;
+    let mut replay_delta = engine.action_states(&after_undo);
+    assert_eq!(replay_delta.status(), "delta");
+    let replay_snapshot = require_action_state_snapshot(&mut replay_delta)?;
+    assert_eq!(replay_snapshot.entry_activation(0).as_deref(), Some("active"));
+    assert_eq!(replay_snapshot.entry_status(1).as_deref(), Some("enabled"));
+    assert_eq!(replay_snapshot.entry_status(2).as_deref(), Some("disabled"));
+    assert_eq!(
+        changed_ids(&replay_snapshot),
+        ["breditor/control-redo".to_owned(), "breditor/control-undo".to_owned(),]
+    );
     Ok(())
 }
 
@@ -803,6 +915,9 @@ fn history_only_publication_rotates_the_hidden_guard_at_the_same_revision() -> T
     let before_close = require_observation(&inserted)?;
     assert_eq!(before_close.snapshot_revision(), "1");
     assert_eq!(before_close.undo_depth(), 1);
+    let mut state_before_close = engine.action_states(&before_close);
+    assert_eq!(state_before_close.status(), "full");
+    assert_eq!(require_action_state_snapshot(&mut state_before_close)?.entry_count(), 3);
 
     let closed = engine.close_history_group(&before_close);
     assert_eq!(closed.status(), "committed");
@@ -812,6 +927,19 @@ fn history_only_publication_rotates_the_hidden_guard_at_the_same_revision() -> T
     assert_eq!(after_close.snapshot_revision(), before_close.snapshot_revision());
     assert_eq!(after_close.undo_depth(), before_close.undo_depth());
     assert_eq!(after_close.redo_depth(), before_close.redo_depth());
+
+    let mut stale_state = engine.action_states(&before_close);
+    assert_eq!(stale_state.status(), "error");
+    assert!(stale_state.take_snapshot().is_none());
+    let stale_state_error =
+        stale_state.error().ok_or_else(|| test_error("stale action state omitted its error"))?;
+    assert_eq!(stale_state_error.code(), "editor_engine.stale_history");
+
+    let mut state_after_close = engine.action_states(&after_close);
+    assert_eq!(state_after_close.status(), "delta");
+    let state_after_close = require_action_state_snapshot(&mut state_after_close)?;
+    assert_eq!(state_after_close.snapshot_revision(), "1");
+    assert_eq!(state_after_close.changed_count(), 0);
 
     let stale = engine.execute_no_input_action(&before_close, "not even an action ID");
     assert_command_error(&stale, "editor_engine.stale_history", "not even an action ID")?;
@@ -963,6 +1091,16 @@ fn require_observation(result: &BreditorCommandResult) -> TestResult<BreditorObs
 
 fn require_projection(result: &mut BreditorProjectionResult) -> TestResult<BreditorProjection> {
     result.take_projection().ok_or_else(|| test_error("projection result had no projection").into())
+}
+
+fn require_action_state_snapshot(
+    result: &mut BreditorActionStatesResult,
+) -> TestResult<BreditorActionStateSnapshot> {
+    result.take_snapshot().ok_or_else(|| test_error("action-state result had no snapshot").into())
+}
+
+fn changed_ids(snapshot: &BreditorActionStateSnapshot) -> Vec<String> {
+    (0..snapshot.changed_count()).filter_map(|index| snapshot.changed_id(index)).collect()
 }
 
 #[cfg(target_arch = "wasm32")]

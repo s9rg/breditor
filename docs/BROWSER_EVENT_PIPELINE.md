@@ -1,6 +1,6 @@
 # Breditor browser event pipeline
 
-Status: implemented for the closed base schema through `0.0.55`; pre-`0.1` API
+Status: implemented for the closed base schema through `0.0.56`; pre-`0.1` API
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -363,7 +363,24 @@ later action returns an error. DOM APIs cannot participate in a Rust transaction
 Consequently an uncertain later failure quarantines the queue and requires
 reconciliation; it does not roll back or retry already published prestages.
 
-Other intentional limits through `0.0.55`:
+## Selection-change and toolbar policy (`0.0.56`)
+
+A real document `selectionchange` is semantic input and enters the same FIFO as
+editing commands. The controller requires the exact live delivery/render base,
+maps and revalidates one canonical in-host range, and submits a dedicated
+`selection/synchronize` request. An exact programmatic echo is consumed without
+another Rust call. No DOM range or a range wholly outside the host is a focus
+observation: it deliberately preserves the last core selection rather than
+turning blur or toolbar focus into semantic absence.
+
+Toolbar commands use the complementary `selection: preserve` policy. They do
+not read, clear, prestage, or write DOM selection before execution; the current
+Rust selection remains the command target. `toolbarCommandRequest` converts a
+validated declarative control into an ordinary queue request, and Rust still
+revalidates availability at execution time. Action-state display and toolbar
+interaction details are specified in [the toolbar contract](TOOLBAR.md).
+
+Other intentional limits through `0.0.56`:
 
 - one connected light-DOM host and one range selection;
 - no shadow-DOM composed-path ownership;

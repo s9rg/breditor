@@ -10,6 +10,7 @@ import {
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   noSelectionSync,
   rangeSelectionSync,
+  selectionSynchronizationRequest,
   type EditorCommandRequest,
   type EditorDeliveryAuthority,
   type EditorDeliveryToken,
@@ -20,6 +21,7 @@ import type {
   BrowserEventDisposition,
   BrowserEventIgnoreReason,
   BrowserEventReconcileReason,
+  BrowserSelectionChangeDisposition,
 } from "./event_disposition.js";
 import {
   translateKeyDown,
@@ -397,6 +399,107 @@ export class BreditorBrowserEventController<TResult> {
       });
     }
     return reconcile("unexpectedInput", base.defaultPrevented);
+  }
+
+  /**
+   * Synchronizes a real document `selectionchange` through the shared queue.
+   *
+   * Missing or outside-host DOM ranges preserve the last semantic selection;
+   * they are focus observations, not proof that the core selection is absent.
+   */
+  handleSelectionChange(
+    event: Event,
+    rendered: RenderedProjection,
+    delivery: EditorDeliveryToken,
+  ): BrowserSelectionChangeDisposition<TResult> {
+    if (!editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery)) {
+      return selectionReconcile("deliveryRejected");
+    }
+    const base = readEventBase(event);
+    if (base === null || base.type !== "selectionchange") {
+      this.#clearReceipts();
+      return selectionBlocked("invalidEvent");
+    }
+    if (!isOwnedRenderedProjection(rendered)) {
+      this.#clearReceipts();
+      return selectionReconcile("domDrift");
+    }
+    let validBase = false;
+    let canonical = false;
+    try {
+      validBase = editorDeliveryTokenMatchesRender(delivery, rendered);
+      canonical = rendered.current && rendered.validateCanonicalDom();
+    } catch {
+      validBase = false;
+      canonical = false;
+    }
+    if (!validBase) {
+      return selectionReconcile("deliveryRejected");
+    }
+    if (!canonical) {
+      this.#clearReceipts();
+      return selectionReconcile("domDrift");
+    }
+
+    const compositionActive = this.#readCompositionPhase();
+    if (compositionActive === null) {
+      this.#clearReceipts();
+      return selectionBlocked("invalidEvent");
+    }
+    if (compositionActive) {
+      this.#clearReceipts();
+      return selectionBlocked("compositionActive");
+    }
+
+    let observed: ReturnType<BreditorDomSelectionBridge["read"]>;
+    try {
+      observed = this.#selectionBridge.read(rendered);
+    } catch {
+      this.#clearReceipts();
+      return selectionBlocked("selectionUnavailable");
+    }
+    if (!observed.ok) {
+      this.#clearReceipts();
+      return observed.error.code === "selection.dom_drift"
+        ? selectionReconcile("domDrift")
+        : selectionBlocked("selectionUnavailable");
+    }
+    if (observed.value.origin === "programmaticEcho") {
+      return selectionIgnored("programmaticEcho");
+    }
+    this.#clearReceipts();
+    if (observed.value.kind === "unavailable") {
+      return selectionIgnored(observed.value.reason);
+    }
+
+    // DOM reads and custom Selection methods are effect boundaries. Reprove
+    // the exact adapter/render base before constructing queue work.
+    try {
+      if (!editorDeliveryAuthorityAccepts(this.#deliveryAuthority, delivery) ||
+          !editorDeliveryTokenMatchesRender(delivery, rendered)) {
+        return selectionReconcile("deliveryRejected");
+      }
+      if (!rendered.current || !rendered.validateCanonicalDom()) {
+        return selectionReconcile("domDrift");
+      }
+      const request = selectionSynchronizationRequest(
+        delivery,
+        observed.value.selection,
+        Object.freeze({
+          kind: "selectionchange",
+          detail: "document-selection",
+        }),
+      );
+      const submission = this.#submit(request);
+      if (submission.status === "completed" || submission.status === "queued") {
+        return Object.freeze({ kind: "synchronized", submission });
+      }
+      return submission.status === "failed"
+        ? selectionReconcile("queueFailure")
+        : selectionBlocked("queueRejected");
+    } catch {
+      return selectionBlocked("invalidEvent");
+    }
   }
 
   /** Clears one-use browser echo state, for lifecycle or composition boundaries. */
@@ -792,6 +895,9 @@ function commandFingerprint(request: EditorCommandRequest): string {
   if (command.kind === "control") {
     return `control:${command.operation}`;
   }
+  if (command.kind === "selection") {
+    return `selection:${command.operation}`;
+  }
   return command.input.kind === "none"
     ? `action:${command.actionId}:none`
     : `action:${command.actionId}:string:${command.input.value.length}`;
@@ -925,6 +1031,33 @@ function reconcile<TResult>(
     defaultPrevented,
     reason,
   });
+}
+
+function selectionBlocked<TResult>(
+  reason: Extract<
+    BrowserSelectionChangeDisposition<TResult>,
+    Readonly<{ kind: "blocked" }>
+  >["reason"],
+): BrowserSelectionChangeDisposition<TResult> {
+  return Object.freeze({ kind: "blocked", reason });
+}
+
+function selectionIgnored<TResult>(
+  reason: Extract<
+    BrowserSelectionChangeDisposition<TResult>,
+    Readonly<{ kind: "ignored" }>
+  >["reason"],
+): BrowserSelectionChangeDisposition<TResult> {
+  return Object.freeze({ kind: "ignored", reason });
+}
+
+function selectionReconcile<TResult>(
+  reason: Extract<
+    BrowserSelectionChangeDisposition<TResult>,
+    Readonly<{ kind: "reconcileRequired" }>
+  >["reason"],
+): BrowserSelectionChangeDisposition<TResult> {
+  return Object.freeze({ kind: "reconcileRequired", reason });
 }
 
 function admissionFailure<TResult>(

@@ -11,6 +11,7 @@
 //! a serialization failure can therefore never disguise an already-published
 //! editor mutation.
 
+mod action_state;
 mod action_value_json;
 mod command;
 mod command_result;
@@ -29,6 +30,7 @@ mod string_result;
 mod typescript;
 mod version;
 
+pub use action_state::{BreditorActionStateSnapshot, BreditorActionStatesResult};
 pub use command_result::BreditorCommandResult;
 pub use engine::BreditorEngine;
 pub use engine_result::BreditorEngineResult;
