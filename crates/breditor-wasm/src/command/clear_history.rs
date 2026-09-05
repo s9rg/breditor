@@ -11,14 +11,16 @@ impl BreditorEngine {
     #[wasm_bindgen(js_name = clearHistory)]
     pub fn clear_history(&mut self, expected: &BreditorObservation) -> BreditorCommandResult {
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorCommandResult::from_error(BreditorError::engine(&error));
+            return BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error));
         }
         match self.inner.clear_history(expected.inner()) {
             Ok(event) => {
                 let observation = self.inner.observation();
                 BreditorCommandResult::from_optional_event(event, observation)
             }
-            Err(error) => BreditorCommandResult::from_error(BreditorError::engine(&error)),
+            Err(error) => {
+                BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error))
+            }
         }
     }
 }

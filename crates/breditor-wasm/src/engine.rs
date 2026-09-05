@@ -1,4 +1,7 @@
-use breditor_core::engine::EditorEngine;
+use breditor_core::{
+    codec::SessionCheckpointLimits,
+    engine::{CheckpointedEditorEngine, CheckpointedEditorEngineError, EditorEngine},
+};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 /// Exclusive JavaScript-visible owner of one guarded Breditor editor engine.
@@ -11,11 +14,12 @@ use wasm_bindgen::prelude::wasm_bindgen;
 /// in generated glue before Rust runs.
 #[wasm_bindgen]
 pub struct BreditorEngine {
-    pub(crate) inner: EditorEngine,
+    pub(crate) inner: CheckpointedEditorEngine,
 }
 
 impl BreditorEngine {
-    pub(crate) const fn new(inner: EditorEngine) -> Self {
-        Self { inner }
+    pub(crate) fn try_new(inner: EditorEngine) -> Result<Self, CheckpointedEditorEngineError> {
+        CheckpointedEditorEngine::try_new(inner, SessionCheckpointLimits::default())
+            .map(|inner| Self { inner })
     }
 }

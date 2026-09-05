@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "ESNext.Disposable"],
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "type-tests/**/*.ts",
+    "../../crates/breditor-wasm/api/breditor_wasm.d.ts"
+  ]
+}

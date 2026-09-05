@@ -56,6 +56,23 @@ impl fmt::Debug for EditorSession {
 }
 
 impl EditorSession {
+    /// Clones the complete owner for an internal pre-publication candidate.
+    ///
+    /// This is deliberately crate-private instead of a public [`Clone`]
+    /// implementation: two independently mutable sessions with the same
+    /// process-local history identity would violate the observation contract.
+    /// A candidate may only be used while its owning coordinator keeps the
+    /// authoritative session unchanged, then either replaces it wholesale or
+    /// drops the candidate.
+    pub(crate) fn clone_for_prepublication(&self) -> Self {
+        let Self { state, history, history_stamp } = self;
+        Self {
+            state: state.clone(),
+            history: history.clone(),
+            history_stamp: history_stamp.clone(),
+        }
+    }
+
     /// Starts a session with [`HistoryCapacity::default`].
     #[must_use]
     pub fn new(initial_state: EditorState) -> Self {

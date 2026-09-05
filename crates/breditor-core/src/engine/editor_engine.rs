@@ -39,6 +39,21 @@ pub struct EditorEngine {
 }
 
 impl EditorEngine {
+    /// Clones the complete owner for a sealed pre-publication candidate.
+    ///
+    /// Both opaque identities are intentionally shared with the unchanged
+    /// authoritative engine. The candidate must therefore remain private until
+    /// it either replaces this engine after all admission work succeeds or is
+    /// discarded without exposing a mutation result.
+    pub(super) fn clone_for_prepublication(&self) -> Self {
+        let Self { instance, session, action_registry } = self;
+        Self {
+            instance: instance.clone(),
+            session: session.clone_for_prepublication(),
+            action_registry: action_registry.clone(),
+        }
+    }
+
     /// Creates an engine from one session and one frozen action registry.
     ///
     /// Every call creates a fresh private instance identity. Observations from

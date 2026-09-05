@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-const [modulePath, wasmPath] = process.argv.slice(2);
-if (modulePath === undefined || wasmPath === undefined) {
-  throw new Error("usage: generated_web_glue.mjs <generated-module.mjs> <generated-bg.wasm>");
+const [modulePath, wasmPath, browserModulePath] = process.argv.slice(2);
+if (modulePath === undefined || wasmPath === undefined || browserModulePath === undefined) {
+  throw new Error(
+    "usage: generated_web_glue.mjs <generated-module.mjs> <generated-bg.wasm> <browser-module.js>",
+  );
 }
 
 const api = await import(pathToFileURL(modulePath).href);
+const browser = await import(pathToFileURL(browserModulePath).href);
 api.initSync({ module: readFileSync(wasmPath) });
 
 const EMPTY_DOCUMENT_JSON = JSON.stringify({
@@ -30,6 +33,9 @@ const EMPTY_DOCUMENT_JSON = JSON.stringify({
     ],
   },
 });
+
+const SELECTED_CHECKPOINT_JSON =
+  '{"format":"breditor/session-checkpoint","formatVersion":1,"historyBase":{"format":"breditor/editor-state","formatVersion":1,"snapshot":{"lineage":"web-glue-projection-update","revision":"0"},"document":{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[{"kind":"text","text":"a","formats":[]}]}]}},"selection":{"kind":"range","anchor":{"kind":"text","textPath":[0,0],"utf16Offset":1,"affinity":"after"},"focus":{"kind":"text","textPath":[0,0],"utf16Offset":1,"affinity":"after"}},"pendingFormats":null},"currentRevision":"0","historyCapacity":100,"cursor":0,"entries":[],"openMergeGroup":null}';
 
 function takeEngine(lineage, capacity = 2) {
   const result = api.BreditorEngine.fromDocumentJson(
@@ -116,6 +122,8 @@ assert.equal(successor.snapshotRevision, "0");
 
 const encodedState = takeString(engine.stateJson());
 assert.match(encodedState, /"format":"breditor\/editor-state"/);
+const encodedCheckpoint = takeString(engine.sessionCheckpointJson());
+assert.match(encodedCheckpoint, /"format":"breditor\/session-checkpoint"/);
 
 const otherEngine = takeEngine("web-glue-other");
 const crossEngine = otherEngine.undo(successor);
@@ -159,6 +167,86 @@ assert.throws(() => fabricatedEngine.observation());
 afterUnchanged.free();
 engine.free();
 otherEngine.free();
+
+const projectionFactory = api.BreditorEngine.fromSessionCheckpointJson(
+  SELECTED_CHECKPOINT_JSON,
+);
+assert.equal(projectionFactory.status, "engine");
+const projectionEngine = projectionFactory.takeEngine();
+projectionFactory.free();
+const projectionObservation = projectionEngine.observation();
+
+const rawProjectionResult = projectionEngine.projection(projectionObservation);
+assert.equal(rawProjectionResult.status, "projection");
+assert.equal(rawProjectionResult.error, undefined);
+const rawProjection = rawProjectionResult.takeProjection();
+assert.ok(rawProjection instanceof api.BreditorProjection);
+assert.equal(rawProjectionResult.status, "taken");
+assert.equal(rawProjectionResult.takeProjection(), undefined);
+rawProjectionResult.free();
+assert.equal(rawProjection.schemaName, "breditor/base");
+assert.equal(rawProjection.schemaVersion, 1);
+assert.equal(rawProjection.snapshotLineage, "web-glue-projection-update");
+assert.equal(rawProjection.snapshotRevision, "0");
+assert.equal(rawProjection.nodeCount, 3);
+assert.equal(rawProjection.rootIndex, 0);
+assert.equal(rawProjection.nodeKind(0), "element");
+assert.equal(rawProjection.elementType(1), "breditor/paragraph");
+assert.equal(rawProjection.childAt(1, 0), 2);
+assert.equal(rawProjection.text(2), "a");
+assert.equal(rawProjection.nodeKind(99), undefined);
+rawProjection.free();
+
+const adapterProjectionResult = projectionEngine.projection(projectionObservation);
+const adapterProjection = adapterProjectionResult.takeProjection();
+adapterProjectionResult.free();
+const browserBaseResult = browser.consumeSemanticProjection(adapterProjection);
+assert.equal(browserBaseResult.ok, true);
+const browserBase = browserBaseResult.value;
+assert.deepEqual(browserBase.snapshot, {
+  lineage: "web-glue-projection-update",
+  revision: "0",
+});
+assert.deepEqual(browserBase.paragraphs, [
+  { runs: [{ text: "a", strong: false }] },
+]);
+
+const projectionCommand = projectionEngine.executeStringAction(
+  projectionObservation,
+  "breditor/insert-text",
+  "b",
+);
+assert.equal(projectionCommand.status, "committed");
+const projectionSuccessor = projectionCommand.observation();
+const rawUpdate = projectionCommand.projectionUpdate();
+assert.ok(rawUpdate instanceof api.BreditorProjectionUpdate);
+assert.equal(rawUpdate.baseRevision, "0");
+assert.equal(rawUpdate.resultRevision, "1");
+assert.equal(rawUpdate.impact, "textContainers");
+assert.equal(rawUpdate.affectedParagraphCount, 1);
+assert.equal(rawUpdate.affectedParagraphIndex(0), 0);
+const updatedProjection = rawUpdate.takeProjection();
+assert.ok(updatedProjection instanceof api.BreditorProjection);
+assert.equal(rawUpdate.takeProjection(), undefined);
+rawUpdate.free();
+assert.equal(updatedProjection.text(2), "ab");
+updatedProjection.free();
+
+const adapterUpdate = projectionCommand.projectionUpdate();
+const browserUpdateResult = browser.consumeSemanticProjectionUpdate(
+  browserBase,
+  adapterUpdate,
+);
+assert.equal(browserUpdateResult.ok, true);
+assert.equal(browserUpdateResult.value.impact.kind, "textContainers");
+assert.equal(browserUpdateResult.value.result.paragraphs[0].runs[0].text, "ab");
+
+const droppedOwnedUpdate = projectionCommand.projectionUpdate();
+droppedOwnedUpdate.free();
+projectionCommand.free();
+projectionObservation.free();
+projectionSuccessor.free();
+projectionEngine.free();
 
 // A fabricated or freed class instance passes wasm-bindgen's JavaScript
 // `instanceof` check but fails during Rust ABI conversion. Conversion happens

@@ -4469,3 +4469,79 @@ composition ownership, IME buffering, and paste chunking remain adapter
 concerns. Presentation metadata stays outside the deterministic core;
 subscriber lifecycle, catalog replacement, backpressure, and coalescing still
 require a separate contract before exposing an observer API.
+
+## Checkpoint-admitted browser projection (`0.0.51`)
+
+`CheckpointedEditorEngine` seals the product engine behind one explicit
+Session Checkpoint V1 policy. Construction encodes the initial session. Each of
+the six effective mutation routes—action, selection, undo, redo, history-group
+close, and history clear—then runs against a private candidate carrying the
+same process-local engine and history identities. Only a successful complete
+candidate checkpoint encoding permits one owner replacement and event return.
+The wrapper exposes neither a mutable engine reference nor public cloning.
+
+A failed engine command or checkpoint representation drops the candidate and
+returns no event. The authoritative state, history topology and stamp, cached
+checkpoint bytes, and caller observation remain exact; the observation is
+therefore reusable. Disabled actions and exact no-ops may return an observation
+created from the discarded candidate because its immutable state and shared
+identities are exactly equal to the unchanged owner. They do not pay the full
+checkpoint encoding cost.
+
+Representation errors retain either the existing typed `EditorEngineError` or
+only the stable checkpoint codec category. Their `Debug` and `Display` surfaces
+do not contain candidate document, selection, history, action input, or encoded
+JSON. The Wasm adapter preserves the finite safe built-in input codes and maps a
+checkpoint representation failure to its payload-free codec code and fixed
+message.
+
+This closes the former blind-state gap at the browser mutation boundary. A
+live Wasm engine can always clone its already admitted canonical session
+checkpoint, and its current document can always be read through a typed non-JSON
+semantic projection. `commitJson` remains separately fallible: a complete
+before/after commit can be larger than the admitted current-session checkpoint.
+
+`BreditorProjection` owns an immutable snapshot-bound flattened preorder view.
+It exposes schema identity, exact decimal snapshot identity, element/text kind,
+qualified semantic element type, child indexes, text scalars, and semantic
+format types. These indexes are ephemeral coordinates, not entity IDs. No DOM,
+HTML tag, browser object, persistence record, or generic plugin protocol crosses
+this Rust boundary.
+
+A commit-bearing result can derive `BreditorProjectionUpdate`. Equal documents
+produce `none`. Only all-`TextSplice`, all-text-change commits whose changed
+containers are valid direct-root paragraphs in both states produce
+`textContainers`. Exactly one operation plus one valid root children change
+produces `rootSplice`. Every other changed document fails closed to `root`,
+including multi-operation structural edits. Each update includes exact
+base/result snapshots and owns a complete final projection, so classification
+is never required for correctness.
+
+The private framework-neutral browser package consumes the generic view into a
+deeply frozen closed-base-schema projection. Its DOM mapping is fixed and safe:
+the supplied host represents the document root, property-free `<p>` elements
+represent paragraphs, DOM text nodes represent text leaves, property-free
+`<strong>` wrappers represent strong presentation, and projection-only `<br>`
+nodes keep empty paragraphs visible. It never uses `innerHTML` or data-path
+attributes. Only host, paragraph, and text nodes have exact private AST paths;
+wrappers and placeholders are not semantic nodes.
+
+Browser update admission independently proves the same lineage and exact
+non-overflowing successor revision, then verifies all purportedly unchanged
+paragraphs before reusing DOM. Text-container changes preserve the paragraph
+element and replace its children. Root splices preserve exact prefix/suffix
+paragraphs and rebind shifted snapshot-local paths. Broad impact, malformed
+input, or retained DOM drift uses the complete safe projection. Out-of-band DOM
+observation is asynchronous and browser DOM writes are not transactionally
+atomic; unexpected write failure invalidates ownership and requires a full
+render from the canonical projection.
+
+The correctness cost is deliberate: every effective browser command currently
+clones structurally shared candidate ownership and encodes the complete retained
+session before publication, so admission time is linear in checkpoint size and
+transient memory includes candidate plus encoded bytes. Semantic projection
+also copies strings through Wasm and is synchronous. There are no persistent
+node IDs, custom schema renderers, selection conversion, event adapter,
+composition owner, clipboard policy, toolbar delivery, IndexedDB I/O, or React
+runtime at this checkpoint. The full contract and limits are in
+[`DOM_PROJECTION.md`](DOM_PROJECTION.md).

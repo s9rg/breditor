@@ -10,14 +10,16 @@ impl BreditorEngine {
     /// in the structured result for live typed handles.
     pub fn undo(&mut self, expected: &BreditorObservation) -> BreditorCommandResult {
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorCommandResult::from_error(BreditorError::engine(&error));
+            return BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error));
         }
         match self.inner.undo(expected.inner()) {
             Ok(event) => {
                 let observation = self.inner.observation();
                 BreditorCommandResult::from_optional_event(event, observation)
             }
-            Err(error) => BreditorCommandResult::from_error(BreditorError::engine(&error)),
+            Err(error) => {
+                BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error))
+            }
         }
     }
 }

@@ -27,7 +27,7 @@ impl BreditorEngine {
         value: &str,
     ) -> BreditorCommandResult {
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorCommandResult::from_error(BreditorError::engine(&error));
+            return BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error));
         }
         let Ok(action_id) = ActionId::try_new(action_id) else {
             return BreditorCommandResult::from_error(BreditorError::new(
@@ -67,7 +67,9 @@ impl BreditorEngine {
         let invocation = ActionInvocation::new(action_id, ActionInput::typed(contract, value));
         match self.inner.execute_action(expected.inner(), &invocation) {
             Ok(outcome) => BreditorCommandResult::from_action_outcome(outcome),
-            Err(error) => BreditorCommandResult::from_error(BreditorError::engine(&error)),
+            Err(error) => {
+                BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error))
+            }
         }
     }
 }

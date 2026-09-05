@@ -8,7 +8,7 @@ use breditor_core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    BreditorError, BreditorObservation, BreditorStringResult,
+    BreditorError, BreditorObservation, BreditorProjectionUpdate, BreditorStringResult,
     action_value_json::{action_value_json, state_value_status},
 };
 
@@ -155,6 +155,20 @@ impl BreditorCommandResult {
         }
     }
 
+    /// Returns a commit-derived renderer update for a commit-bearing outcome.
+    ///
+    /// Disabled, unchanged, error, and effective history-only outcomes return
+    /// `undefined`. The update owns an independently disposable final non-JSON
+    /// projection and carries exact source/result snapshot correlation.
+    #[must_use]
+    #[wasm_bindgen(js_name = projectionUpdate)]
+    pub fn projection_update(&self) -> Option<BreditorProjectionUpdate> {
+        let CommandResultValue::Committed(event) = &self.value else {
+            return None;
+        };
+        event.commit().map(BreditorProjectionUpdate::from_commit)
+    }
+
     /// Returns the action identity for a disabled action outcome.
     #[must_use]
     #[wasm_bindgen(getter, js_name = disabledActionId)]
@@ -250,7 +264,7 @@ mod tests {
         position::{Affinity, NodePath, Point},
         schema::DocumentLimits,
         selection::{RangeSelection, Selection},
-        session::EditorSession,
+        session::{EditorSession, HistoryCapacity},
         state::{EditorContext, EditorState, LineageId},
     };
 
@@ -304,6 +318,10 @@ mod tests {
         assert!(!error.message().contains("private-after"));
         assert_eq!(command.status(), "committed");
 
+        let mut checkpoint = engine.session_checkpoint_json();
+        assert_eq!(checkpoint.status(), "value");
+        assert!(checkpoint.take_value().is_some());
+
         let stale_retry =
             engine.execute_string_action(&initial, "breditor/insert-text", "private-after");
         assert_eq!(stale_retry.status(), "error");
@@ -312,8 +330,45 @@ mod tests {
             Some("editor_engine.stale_snapshot".to_owned())
         );
         let undo = engine.undo(&successor);
-        assert_eq!(undo.status(), "committed");
-        assert_eq!(undo.event_kind().as_deref(), Some("undo"));
+        assert_eq!(undo.status(), "unchanged");
+        Ok(())
+    }
+
+    #[test]
+    fn checkpoint_limit_rejects_command_without_publishing_or_blinding_engine()
+    -> Result<(), Box<dyn Error>> {
+        const PRIVATE_CANDIDATE: &str = "private-checkpoint-candidate";
+        let mut baseline = engine_with_max_json_bytes(None)?;
+        let initial_checkpoint = require_checkpoint(&baseline)?.len();
+        let baseline_observation = baseline.observation();
+        let committed = baseline.execute_string_action(
+            &baseline_observation,
+            "breditor/insert-text",
+            PRIVATE_CANDIDATE,
+        );
+        assert_eq!(committed.status(), "committed");
+        let candidate_checkpoint = require_checkpoint(&baseline)?.len();
+        assert!(candidate_checkpoint > initial_checkpoint);
+
+        let maximum = candidate_checkpoint - 1;
+        assert!(maximum >= initial_checkpoint);
+        let mut engine = engine_with_max_json_bytes(Some(maximum))?;
+        let before = engine.observation();
+        let checkpoint_before = require_checkpoint(&engine)?;
+        let rejected =
+            engine.execute_string_action(&before, "breditor/insert-text", PRIVATE_CANDIDATE);
+
+        assert_eq!(rejected.status(), "error");
+        let error = rejected
+            .error()
+            .ok_or_else(|| io::Error::other("checkpoint rejection omitted its error"))?;
+        assert_eq!(error.code(), "codec.output_too_large");
+        assert_eq!(error.message(), "the candidate session checkpoint could not be represented");
+        assert!(!error.message().contains(PRIVATE_CANDIDATE));
+        assert_eq!(engine.observation().snapshot_revision(), "0");
+        assert_eq!(require_checkpoint(&engine)?, checkpoint_before);
+        let projection = engine.projection(&before);
+        assert_eq!(projection.status(), "projection");
         Ok(())
     }
 
@@ -341,7 +396,15 @@ mod tests {
             Some(selection),
             None,
         )?;
-        let session = EditorSession::new(state);
-        Ok(BreditorEngine::new(EditorEngine::try_with_base_actions(session)?))
+        let session = EditorSession::with_history_capacity(state, HistoryCapacity::DISABLED);
+        Ok(BreditorEngine::try_new(EditorEngine::try_with_base_actions(session)?)?)
+    }
+
+    fn require_checkpoint(engine: &BreditorEngine) -> Result<String, Box<dyn Error>> {
+        let mut result = engine.session_checkpoint_json();
+        assert_eq!(result.status(), "value");
+        result
+            .take_value()
+            .ok_or_else(|| io::Error::other("checkpoint result omitted its value").into())
     }
 }

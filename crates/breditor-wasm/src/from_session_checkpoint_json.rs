@@ -26,12 +26,17 @@ impl BreditorEngine {
                 ));
             }
         };
-        match EditorEngine::try_with_base_actions(session) {
-            Ok(engine) => BreditorEngineResult::success(Self::new(engine)),
-            Err(_) => BreditorEngineResult::from_error(BreditorError::new(
+        let Ok(engine) = EditorEngine::try_with_base_actions(session) else {
+            return BreditorEngineResult::from_error(BreditorError::new(
                 BASE_ACTIONS_CODE,
                 "the compiled base action registry is unavailable",
-            )),
+            ));
+        };
+        match Self::try_new(engine) {
+            Ok(engine) => BreditorEngineResult::success(engine),
+            Err(error) => {
+                BreditorEngineResult::from_error(BreditorError::checkpointed_engine(&error))
+            }
         }
     }
 }

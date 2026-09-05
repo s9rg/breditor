@@ -93,6 +93,13 @@ narrow WebAssembly boundary:
   action commands, history controls, strict document/checkpoint factories,
   separate state/commit/checkpoint reads, runtime ABI/version probes, and an
   exact generated TypeScript declaration gate;
+- a checkpoint-constrained engine owner that admits every effective mutation
+  only after its complete canonical session checkpoint encodes, plus a generic
+  no-DOM semantic Wasm projection with conservative commit invalidation; and
+- a private framework-neutral `@breditor/browser` package that consumes that
+  projection without JSON, creates a closed safe DOM vocabulary, maintains
+  snapshot-local AST/DOM maps, retains proved paragraph identity, and rebuilds
+  conservatively on broad impact or DOM drift;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -110,7 +117,7 @@ scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
-a DOM bridge and browser event adapter,
+browser selection, input-event, composition, and clipboard adapters,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
@@ -671,6 +678,25 @@ The `0.0.50` Wasm crate and declaration are repository-internal review
 artifacts, not an installable npm or crates.io package. Consumer packaging and
 isolated-install verification are deliberately deferred to `0.0.58`.
 
+Version `0.0.51` adds the [DOM projection contract](docs/DOM_PROJECTION.md).
+`CheckpointedEditorEngine` runs every effective mutation against a private
+same-identity candidate and publishes only after Session Checkpoint V1 encoding
+succeeds. Failure preserves the exact prior state, history, cached canonical
+checkpoint, and observation. The Wasm boundary now exposes guarded flattened
+semantic projections and commit-derived `none`, `textContainers`,
+`rootSplice`, or conservative `root` invalidation without importing DOM APIs.
+
+The private `@breditor/browser` workspace package validates and consumes that
+view, then renders the closed base schema using only `<p>`, `<strong>`, `<br>`,
+and text nodes. Host, paragraph, and text nodes receive private snapshot-local
+AST mappings; wrapper and placeholder nodes do not impersonate AST nodes.
+Narrow updates are independently verified before identity reuse, affected text
+paragraphs retain their `<p>`, root-splice suffix paths are rebound, and DOM
+drift falls back to a complete safe render. This adds no persistent node IDs,
+selection mapping, event loop, contenteditable ownership, or extension renderer
+protocol. Effective command admission is currently linear in the complete
+session-checkpoint size and retains a transient candidate plus encoded bytes.
+
 ## Development
 
 ```sh
@@ -679,6 +705,10 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 cargo check --workspace --target wasm32-unknown-unknown
+npm ci
+npm run typecheck
+npm test
+npm run build
 WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen ./scripts/check-wasm-api.sh
 ```
 

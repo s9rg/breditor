@@ -1,2 +1,5 @@
 /target/
 *.profraw
+node_modules/
+/packages/*/dist/
+/coverage/

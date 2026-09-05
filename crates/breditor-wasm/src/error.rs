@@ -9,7 +9,7 @@ use breditor_core::{
         },
     },
     codec::CodecErrorCode,
-    engine::EditorEngineError,
+    engine::{CheckpointedEditorEngineError, EditorEngineError},
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -48,6 +48,16 @@ impl BreditorError {
             return Self::new(code, "the action input was rejected");
         }
         Self::new(error.code().as_str(), "the guarded editor command was rejected")
+    }
+
+    pub(crate) fn checkpointed_engine(error: &CheckpointedEditorEngineError) -> Self {
+        if let Some(error) = error.editor_engine_error() {
+            return Self::engine(error);
+        }
+        if let Some(code) = error.checkpoint_codec_code() {
+            return Self::codec(code, "the candidate session checkpoint could not be represented");
+        }
+        Self::new(error.code().as_str(), "the checkpoint-constrained editor command was rejected")
     }
 
     pub(crate) const fn codec(code: CodecErrorCode, message: &'static str) -> Self {

@@ -1,26 +1,30 @@
 # Breditor Wasm boundary
 
-Status: `0.0.50` boundary contract; intentionally narrow and unstable before
+Status: `0.0.51` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
 repository-internal review artifacts. There is no installable npm package, and
 the `publish = false` Wasm crate cannot complete an isolated Cargo package
 verification until its `breditor-core` dependency has a distribution source.
-Consumer packaging and clean-project installation are release gate `0.0.58`.
+The private `@breditor/browser` workspace package exercises the projection
+boundary but is not published. Consumer packaging and clean-project
+installation are release gate `0.0.58`.
 
 The `breditor-wasm` crate is the synchronous, no-DOM adapter around the Rust
-`EditorEngine`. Rust remains the sole owner of the document AST, editor state,
-action evaluation, transactions, linear history, and durable checkpoint
-validation. JavaScript receives observations and results; it cannot install a
-state or publish a prepared transaction directly.
+`CheckpointedEditorEngine`. Rust remains the sole owner of the document AST,
+editor state, action evaluation, transactions, linear history, and durable
+checkpoint validation. JavaScript receives observations and results; it cannot
+install a state or publish a prepared transaction directly. An effective
+mutation becomes visible only after its complete successor session checkpoint
+encodes.
 
 This is Breditor's own API. It does not implement a ProseMirror, Lexical,
 Tiptap, or CKEditor protocol.
 
 ## Boundary objects
 
-The generated TypeScript declaration exposes six opaque Wasm-owned classes:
+The generated TypeScript declaration exposes nine opaque Wasm-owned classes:
 
 - `BreditorEngine` owns one editor session and the compiled base action
   registry;
@@ -31,7 +35,11 @@ The generated TypeScript declaration exposes six opaque Wasm-owned classes:
   command outcome; and
 - `BreditorStringResult` is a successful string or a structured error from a
   fallible codec read; and
-- `BreditorError` contains a stable failure code and fixed redacted message.
+- `BreditorError` contains a stable failure code and fixed redacted message;
+- `BreditorProjectionResult` owns a guarded projection read or error;
+- `BreditorProjection` is one flattened snapshot-bound semantic AST view; and
+- `BreditorProjectionUpdate` owns a commit-derived invalidation description and
+  complete final projection.
 
 The boundary never forwards a core error's `Display` or `Debug` text. Domain
 rejection is returned as data instead of using JavaScript exceptions as normal
@@ -93,7 +101,7 @@ A successful admission check does not reserve the engine. If two queued
 commands share one observation, the first effective mutation wins and the
 second fails stale.
 
-The `0.0.50` action surface is deliberately limited to:
+The `0.0.51` action surface is deliberately limited to:
 
 - `executeNoInputAction`, for a compiled action whose registered descriptor
   declares no input; and
@@ -138,29 +146,44 @@ but the raw class does not correlate sibling optional getters into a
 discriminated union. The later framework-neutral TypeScript facade owns that
 stronger result shape.
 
-## Publication and serialization are separate
+## Publication, projection, and serialization
 
 A command result retains its sealed Rust `EditorEngineEvent`. `commitJson()` is
-a separate fallible read, and `stateJson()` and `sessionCheckpointJson()` are
-separate engine reads. This separation is required because a valid in-memory
-commit or state can exceed the configured JSON output budget.
+a separate fallible read, and `stateJson()` remains a separate engine read.
+`sessionCheckpointJson()` clones canonical bytes that were encoded before the
+current session became authoritative. It has no domain-error path for a live
+engine, although allocation failure can still trap.
+
+Every effective command executes on a private candidate with the exact same
+engine and history observation identities. Rust encodes the complete candidate
+Session Checkpoint V1 before replacing the authoritative owner or returning its
+event. A checkpoint representation error therefore means no mutation was
+published: state, history, cached bytes, and the supplied observation remain
+exact and reusable. Disabled actions and exact no-ops do not re-encode.
 
 An encoding failure after a successful mutation must never turn the command
-status into `error`: the mutation already published. The caller keeps the
-committed result and successor observation, may report the separate codec
-failure, and must not retry the original command as though it were rejected.
-History-only events and unchanged/disabled/error results have no commit; asking
-them for commit JSON returns an `absent` string result.
+status into `error`: the mutation already published. `commitJson()` can still
+fail because a complete before/after commit can exceed the output budget even
+when the smaller current-session checkpoint was admitted. The caller keeps the
+committed result and successor observation, renders through the semantic
+projection, may report the separate codec failure, and must not retry the
+original command. History-only events and unchanged/disabled/error results have
+no commit; asking them for commit JSON returns an `absent` string result.
 
-This truthful separation also exposes a current product limitation. Repeated
-valid edits can produce an in-memory document whose escaped JSON exceeds the
-codec output budget even though its raw text remains within the document
-limits. The crossing command commits, after which commit, state, and checkpoint
-JSON reads may all be unavailable; a zero-capacity history offers no rollback.
-The browser product must close this recovery gap before `0.1.0`, either by
-preflighting a boundary-representable successor or by providing a bounded
-non-JSON projection/checkpoint path. A renderer or autosave adapter must not
-assume that every successful command implies a successful JSON read.
+`engine.projection(expected)` checks the complete guarded observation and
+returns a one-shot `BreditorProjectionResult`. A projection exposes schema and
+snapshot identity plus a deterministic preorder array through bounded node,
+child, text, and format getters. Its indexes have meaning only within that one
+projection. A commit-bearing result can independently return
+`projectionUpdate()` with exact base/result snapshot correlation, conservative
+`none`, `textContainers`, `rootSplice`, or `root` impact, and a one-shot complete
+final projection. Repeated `projectionUpdate()` calls create independent owned
+views; callers should consume one and promptly free it.
+
+No projection method emits HTML, DOM nodes, persisted JSON, entity identity, or
+a generic extension-renderer instruction. The reviewed TypeScript adapter owns
+base-schema interpretation and safe DOM construction. See
+[`DOM_PROJECTION.md`](DOM_PROJECTION.md).
 
 Retained results are deliberately independent: an engine survives freeing the
 factory result after `takeEngine()`, a cloned observation survives freeing its
@@ -179,13 +202,25 @@ order.
 
 ## Representation and resource limits
 
-All durable state, checkpoint, and commit values cross as owned UTF-8 JSON
-strings and retain their existing versioned codec contracts. Revisions remain
-canonical decimal strings rather than lossy JavaScript numbers. History
+Durable state, checkpoint, and commit values cross as owned UTF-8 JSON strings
+and retain their existing versioned codec contracts. The semantic projection is
+an explicitly non-durable, non-JSON rendering view. Revisions remain canonical
+decimal strings rather than lossy JavaScript numbers. History
 capacity and depths are bounded `u32` values after checked admission. A
 successful `BreditorStringResult` supports `takeValue()` so a large encoded
 value can cross without first being cloned inside Wasm; its status then changes
 from `value` to `taken`.
+
+Effective checkpoint admission currently clones structurally shared session
+ownership and encodes the complete retained session synchronously. Time is
+linear in checkpoint size and transient memory includes the candidate and
+encoded bytes. This is the correctness-first implementation; later optimization
+must preserve the same failure-atomic publication invariant.
+
+Projection indexes cross raw glue as `u32`. JavaScript coercion can turn a
+fractional or wider raw value into another in-range integer before Rust sees it.
+The reviewed adapter therefore admits exact nonnegative integer indexes first.
+The raw projection getters are read-only and cannot mutate the engine.
 
 `wasm-bindgen` copies JavaScript strings into Wasm memory before Rust can apply
 its byte limits or stale-observation precedence. A hostile same-realm caller can
@@ -202,7 +237,7 @@ valid surrogate pairs and all Rust-representable Unicode are retained exactly.
 
 The crate imports no DOM, IndexedDB, timer, clipboard, console, allocator, or
 panic-hook API. Event ordering, reentrancy policy, selection mapping,
-composition ownership, DOM projection, persistence scheduling, and framework
+composition ownership, DOM construction, persistence scheduling, and framework
 integration remain TypeScript responsibilities in their later checkpoints.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and

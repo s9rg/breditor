@@ -11,7 +11,8 @@ use breditor_core::{
 };
 use breditor_wasm::{
     BreditorCommandResult, BreditorEngine, BreditorEngineResult, BreditorObservation,
-    BreditorStringResult, breditor_version, breditor_wasm_abi_version,
+    BreditorProjection, BreditorProjectionResult, BreditorStringResult, breditor_version,
+    breditor_wasm_abi_version,
 };
 use serde_json::Value;
 #[cfg(target_arch = "wasm32")]
@@ -33,6 +34,20 @@ const TEXT_DOCUMENT_JSON: &str = r#"{
   "root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},
     "children":[{"kind":"element","type":"breditor/paragraph","entityId":null,
       "properties":{},"children":[{"kind":"text","text":"a","formats":[]}]}]}
+}"#;
+
+const PROJECTION_DOCUMENT_JSON: &str = r#"{
+  "format":"breditor/document","formatVersion":1,
+  "schema":{"name":"breditor/base","version":1},
+  "root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},
+    "children":[
+      {"kind":"element","type":"breditor/paragraph","entityId":null,
+        "properties":{},"children":[]},
+      {"kind":"element","type":"breditor/paragraph","entityId":null,
+        "properties":{},"children":[{"kind":"text",
+          "text":"<img src=x onerror=alert(1)>&\"\n💣",
+          "formats":[{"type":"breditor/strong","properties":{}}]}]}
+    ]}
 }"#;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -67,6 +82,141 @@ fn factory_observation_and_json_reads_are_structured() -> TestResult {
     let checkpoint_json =
         checkpoint.take_value().ok_or_else(|| test_error("checkpoint JSON was absent"))?;
     assert!(checkpoint_json.contains("\"format\":\"breditor/session-checkpoint\""));
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn semantic_projection_is_deterministic_non_json_and_lifecycle_guarded() -> TestResult {
+    const HOSTILE_TEXT: &str = "<img src=x onerror=alert(1)>&\"\n💣";
+    let mut result =
+        BreditorEngine::from_document_json("wasm-projection", PROJECTION_DOCUMENT_JSON, 100.0);
+    let engine = require_engine(&mut result)?;
+    let observation = engine.observation();
+    let mut projected = engine.projection(&observation);
+
+    assert_eq!(projected.status(), "projection");
+    assert!(projected.error().is_none());
+    let projection = require_projection(&mut projected)?;
+    assert_eq!(projected.status(), "taken");
+    assert!(projected.take_projection().is_none());
+
+    assert_eq!(projection.schema_name(), "breditor/base");
+    assert_eq!(projection.schema_version(), 1);
+    assert_eq!(projection.snapshot_lineage(), "wasm-projection");
+    assert_eq!(projection.snapshot_revision(), "0");
+    assert_eq!(projection.root_index(), 0);
+    assert_eq!(projection.node_count(), 4);
+
+    assert_eq!(projection.node_kind(0).as_deref(), Some("element"));
+    assert_eq!(projection.element_type(0).as_deref(), Some("breditor/document"));
+    assert_eq!(projection.child_count(0), Some(2));
+    assert_eq!(projection.child_at(0, 0), Some(1));
+    assert_eq!(projection.child_at(0, 1), Some(2));
+    assert_eq!(projection.element_type(1).as_deref(), Some("breditor/paragraph"));
+    assert_eq!(projection.child_count(1), Some(0));
+    assert_eq!(projection.element_type(2).as_deref(), Some("breditor/paragraph"));
+    assert_eq!(projection.child_at(2, 0), Some(3));
+    assert_eq!(projection.node_kind(3).as_deref(), Some("text"));
+    assert_eq!(projection.text(3).as_deref(), Some(HOSTILE_TEXT));
+    assert_eq!(projection.format_count(3), Some(1));
+    assert_eq!(projection.format_type(3, 0).as_deref(), Some("breditor/strong"));
+    assert_eq!(projection.child_count(3), None);
+    assert_eq!(projection.element_type(3), None);
+    assert_eq!(projection.node_kind(99), None);
+    assert_eq!(projection.text(99), None);
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn projection_reads_reject_stale_observations_without_disclosing_content() -> TestResult {
+    let checkpoint = selected_checkpoint("wasm-projection-stale")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let stale_observation = engine.observation();
+    let committed =
+        engine.execute_string_action(&stale_observation, "breditor/insert-text", "private");
+    assert_eq!(committed.status(), "committed");
+
+    let stale = engine.projection(&stale_observation);
+    assert_eq!(stale.status(), "error");
+    assert!(stale.error().is_some_and(|error| {
+        error.code() == "editor_engine.stale_snapshot" && !error.message().contains("private")
+    }));
+    let mut stale = stale;
+    assert!(stale.take_projection().is_none());
+    assert_eq!(engine.observation().snapshot_revision(), "1");
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn commit_projection_updates_classify_text_and_structural_changes() -> TestResult {
+    let checkpoint = selected_checkpoint("wasm-projection-updates")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+
+    let inserted = engine.execute_string_action(&initial, "breditor/insert-text", "b");
+    let mut text_update = inserted
+        .projection_update()
+        .ok_or_else(|| test_error("text commit omitted its projection update"))?;
+    assert_eq!(text_update.base_lineage(), "wasm-projection-updates");
+    assert_eq!(text_update.base_revision(), "0");
+    assert_eq!(text_update.result_lineage(), "wasm-projection-updates");
+    assert_eq!(text_update.result_revision(), "1");
+    assert_eq!(text_update.impact(), "textContainers");
+    assert_eq!(text_update.affected_paragraph_count(), 1);
+    assert_eq!(text_update.affected_paragraph_index(0), Some(0));
+    assert_eq!(text_update.affected_paragraph_index(1), None);
+    assert_eq!(text_update.old_child_start(), None);
+    let text_projection = text_update
+        .take_projection()
+        .ok_or_else(|| test_error("text update omitted its final projection"))?;
+    assert!(text_update.take_projection().is_none());
+    assert_eq!(text_projection.text(2).as_deref(), Some("ab"));
+
+    let before_close = require_observation(&inserted)?;
+    let closed = engine.close_history_group(&before_close);
+    assert_eq!(closed.status(), "committed");
+    assert!(closed.projection_update().is_none());
+
+    let before_toggle = require_observation(&closed)?;
+    let pending_format = engine.execute_no_input_action(&before_toggle, "breditor/toggle-strong");
+    assert_eq!(pending_format.status(), "committed");
+    let mut none_update = pending_format
+        .projection_update()
+        .ok_or_else(|| test_error("state-only commit omitted its projection update"))?;
+    assert_eq!(none_update.impact(), "none");
+    assert_eq!(none_update.affected_paragraph_count(), 0);
+    assert_eq!(none_update.old_child_start(), None);
+    assert_eq!(none_update.result_revision(), "2");
+    assert!(none_update.take_projection().is_some());
+
+    let structural_checkpoint = selected_checkpoint("wasm-projection-structural")?;
+    let mut structural_result =
+        BreditorEngine::from_session_checkpoint_json(&structural_checkpoint);
+    let mut structural_engine = require_engine(&mut structural_result)?;
+    let structural_observation = structural_engine.observation();
+    let structural = structural_engine.execute_string_action(
+        &structural_observation,
+        "breditor/insert-plain-text",
+        "first\nsecond",
+    );
+    let mut root_update = structural
+        .projection_update()
+        .ok_or_else(|| test_error("structural commit omitted its projection update"))?;
+    assert_eq!(root_update.impact(), "rootSplice");
+    assert_eq!(root_update.affected_paragraph_count(), 0);
+    assert_eq!(root_update.old_child_start(), Some(0));
+    assert_eq!(root_update.old_child_end(), Some(1));
+    assert_eq!(root_update.new_child_start(), Some(0));
+    assert_eq!(root_update.new_child_end(), Some(2));
+    let root_projection = root_update
+        .take_projection()
+        .ok_or_else(|| test_error("root update omitted its final projection"))?;
+    assert_eq!(root_projection.child_count(0), Some(2));
     Ok(())
 }
 
@@ -115,6 +265,7 @@ fn disabled_and_unchanged_outcomes_carry_current_observations() -> TestResult {
     assert!(disabled.error().is_none());
     assert_eq!(disabled.event_kind(), None);
     assert_eq!(disabled.commit_json().status(), "absent");
+    assert!(disabled.projection_update().is_none());
     let after_disabled = require_observation(&disabled)?;
     assert_eq!(after_disabled.snapshot_revision(), "0");
 
@@ -124,6 +275,7 @@ fn disabled_and_unchanged_outcomes_carry_current_observations() -> TestResult {
     assert!(undo.error().is_none());
     assert!(undo.disabled_action_id().is_none());
     assert_eq!(undo.commit_json().status(), "absent");
+    assert!(undo.projection_update().is_none());
     let after_undo = require_observation(&undo)?;
     let clear = engine.clear_history(&after_undo);
     assert_eq!(clear.status(), "unchanged");
@@ -158,6 +310,15 @@ fn string_action_commit_replay_and_stale_guards_are_preserved() -> TestResult {
     let undo = engine.undo(&after_insert);
     assert_eq!(undo.status(), "committed");
     assert_eq!(undo.event_kind().as_deref(), Some("undo"));
+    let mut undo_update = undo
+        .projection_update()
+        .ok_or_else(|| test_error("undo omitted its inverse projection update"))?;
+    assert_eq!(undo_update.impact(), "textContainers");
+    assert_eq!(undo_update.affected_paragraph_index(0), Some(0));
+    let undo_projection = undo_update
+        .take_projection()
+        .ok_or_else(|| test_error("undo update omitted its final projection"))?;
+    assert_eq!(undo_projection.text(2).as_deref(), Some("a"));
     let after_undo = require_observation(&undo)?;
     assert_eq!(after_undo.snapshot_revision(), "2");
     assert_eq!(after_undo.redo_depth(), 1);
@@ -165,6 +326,14 @@ fn string_action_commit_replay_and_stale_guards_are_preserved() -> TestResult {
     let redo = engine.redo(&after_undo);
     assert_eq!(redo.status(), "committed");
     assert_eq!(redo.event_kind().as_deref(), Some("redo"));
+    let mut redo_update = redo
+        .projection_update()
+        .ok_or_else(|| test_error("redo omitted its forward projection update"))?;
+    assert_eq!(redo_update.impact(), "textContainers");
+    let redo_projection = redo_update
+        .take_projection()
+        .ok_or_else(|| test_error("redo update omitted its final projection"))?;
+    assert_eq!(redo_projection.text(2).as_deref(), Some("aprivate-wasm-action"));
     assert_eq!(redo.observation().map(|value| value.snapshot_revision()).as_deref(), Some("3"));
     Ok(())
 }
@@ -395,6 +564,10 @@ fn require_engine(result: &mut BreditorEngineResult) -> TestResult<BreditorEngin
 
 fn require_observation(result: &BreditorCommandResult) -> TestResult<BreditorObservation> {
     result.observation().ok_or_else(|| test_error("command result had no observation").into())
+}
+
+fn require_projection(result: &mut BreditorProjectionResult) -> TestResult<BreditorProjection> {
+    result.take_projection().ok_or_else(|| test_error("projection result had no projection").into())
 }
 
 fn require_string(mut result: BreditorStringResult) -> TestResult<String> {
