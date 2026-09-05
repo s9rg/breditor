@@ -32,7 +32,8 @@ export type EngineCommand =
       actionId: string;
       input: Readonly<{ kind: "string"; value: string }>;
     }>
-  | Readonly<{ kind: "history"; operation: "undo" | "redo" }>;
+  | Readonly<{ kind: "history"; operation: "undo" | "redo" }>
+  | Readonly<{ kind: "control"; operation: "closeHistoryGroup" }>;
 
 /**
  * A clipboard request, deliberately not an editor mutation.
@@ -335,6 +336,23 @@ export function historyRequest(
   );
 }
 
+/** Creates an explicit history-group boundary without a document action. */
+export function closeHistoryGroupRequest(
+  delivery: EditorDeliveryToken,
+  selection: EditorSelectionSync,
+  source: EditorCommandSource,
+): EngineCommandRequest {
+  const safeSource = requireSource(source);
+  const safeDelivery = requireDelivery(delivery);
+  return freezeRequest(
+    safeDelivery,
+    requireSelection(selection, safeDelivery),
+    safeSource,
+    "preserve",
+    Object.freeze({ kind: "control", operation: "closeHistoryGroup" }),
+  );
+}
+
 /** Creates an immutable staged clipboard request with no implicit mutation. */
 export function stagedClipboardRequest(
   delivery: EditorDeliveryToken,
@@ -426,6 +444,9 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
     const history = requirements["history"];
     if (command.kind === "history") {
       return historyRequest(delivery, selection, source, command.operation);
+    }
+    if (command.kind === "control") {
+      return closeHistoryGroupRequest(delivery, selection, source);
     }
     if (command.kind === "clipboard") {
       return stagedClipboardRequest(delivery, selection, source, command.operation);
@@ -528,6 +549,9 @@ function requirementsMatchCommand(
   if (command.kind === "history") {
     return history === "closeBefore";
   }
+  if (command.kind === "control") {
+    return history === "preserve";
+  }
   if (command.kind === "clipboard") {
     return history === (command.operation === "copy" ? "preserve" : "closeBefore");
   }
@@ -607,6 +631,13 @@ function snapshotEngineCommand(value: unknown): EngineCommand | null {
     (history["operation"] === "undo" || history["operation"] === "redo")
   ) {
     return Object.freeze({ kind: "history", operation: history["operation"] });
+  }
+  if (
+    history !== null &&
+    history["kind"] === "control" &&
+    history["operation"] === "closeHistoryGroup"
+  ) {
+    return Object.freeze({ kind: "control", operation: "closeHistoryGroup" });
   }
   const action = readExactDataRecord(value, ["kind", "actionId", "input"]);
   if (

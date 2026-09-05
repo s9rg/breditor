@@ -3,6 +3,7 @@ import { translateClipboardCommand, type ClipboardOperation } from "./clipboard_
 import { type CommandQueueSubmission, BreditorCommandQueue } from "./command_queue.js";
 import { mapDomTargetRange } from "./dom_target_range.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
   editorDeliveryAuthorityAccepts,
   editorDeliveryTokenMatchesRender,
@@ -148,19 +149,19 @@ export class BreditorBrowserEventController<TResult> {
     rendered: RenderedProjection,
     delivery: EditorDeliveryToken,
   ): BrowserEventDisposition<TResult> {
-    const admitted = this.admitEvent(event, rendered, delivery, "beforeinput");
+    const admitted = this.#admitEvent(event, rendered, delivery, "beforeinput");
     if (!admitted.ok) {
       if (!admitted.preserveReceipts) {
-        this.clearReceipts();
+        this.#clearReceipts();
       }
       return admitted.disposition;
     }
     const base = admitted.base;
     const input = readInputEventSnapshot(event);
-    const compositionActive = this.readCompositionPhase();
+    const compositionActive = this.#readCompositionPhase();
     if (input === null || compositionActive === null) {
-      this.clearReceipts();
-      return this.cancelBlocked(event, base, "invalidEvent");
+      this.#clearReceipts();
+      return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
     let translation = translateBeforeInput(
@@ -170,27 +171,27 @@ export class BreditorBrowserEventController<TResult> {
       noSelectionSync(),
     );
     if (translation.kind === "composition") {
-      this.clearReceipts();
+      this.#clearReceipts();
       return Object.freeze({
         kind: "compositionPending",
         defaultPrevented: false,
       });
     }
     if (!base.cancelable) {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("noncancelableMutation", false);
     }
     if (translation.kind === "invalid") {
-      this.clearReceipts();
-      return this.cancelBlocked(event, base, "invalidEvent");
+      this.#clearReceipts();
+      return this.#cancelBlocked(event, base, "invalidEvent");
     }
 
     let capturedSelection: EditorSelectionSync | undefined;
     if (translation.kind === "command") {
-      capturedSelection = this.captureRangeSelection(admitted.rendered);
+      capturedSelection = this.#captureRangeSelection(admitted.rendered);
       if (capturedSelection === undefined) {
-        this.clearReceipts();
-        return this.cancelBlocked(event, base, "selectionUnavailable");
+        this.#clearReceipts();
+        return this.#cancelBlocked(event, base, "selectionUnavailable");
       }
       translation = translateBeforeInput(
         input,
@@ -199,24 +200,24 @@ export class BreditorBrowserEventController<TResult> {
         capturedSelection,
       );
       if (translation.kind !== "command") {
-        this.clearReceipts();
-        return this.cancelBlocked(event, base, "invalidEvent");
+        this.#clearReceipts();
+        return this.#cancelBlocked(event, base, "invalidEvent");
       }
     }
 
     const targets = readTargetRanges(event);
     if (!targets.ok) {
-      this.clearReceipts();
-      return this.cancelBlocked(event, base, "targetRangeUnavailable");
+      this.#clearReceipts();
+      return this.#cancelBlocked(event, base, "targetRangeUnavailable");
     }
     if (targets.count === "multiple") {
-      this.clearReceipts();
-      return this.cancelBlocked(event, base, "targetRangeCount");
+      this.#clearReceipts();
+      return this.#cancelBlocked(event, base, "targetRangeCount");
     }
 
     if (translation.kind === "clipboardEcho") {
       this.#keyboardReceipt = undefined;
-      return this.handleClipboardBeforeInputEcho(
+      return this.#handleClipboardBeforeInputEcho(
         event,
         base,
         admitted.rendered,
@@ -233,7 +234,7 @@ export class BreditorBrowserEventController<TResult> {
     }
     if (translation.kind === "blocked") {
       this.#keyboardReceipt = undefined;
-      return this.cancelBlocked(event, base, translation.reason);
+      return this.#cancelBlocked(event, base, translation.reason);
     }
 
     const targetFailure = validateTargetRangeForTranslation(
@@ -244,7 +245,7 @@ export class BreditorBrowserEventController<TResult> {
     );
     if (targetFailure !== null) {
       this.#keyboardReceipt = undefined;
-      return this.cancelBlocked(event, base, targetFailure);
+      return this.#cancelBlocked(event, base, targetFailure);
     }
 
     const keyboardReceipt = this.#keyboardReceipt;
@@ -273,7 +274,7 @@ export class BreditorBrowserEventController<TResult> {
         inputType: input.inputType,
       });
     }
-    return this.cancelAndSubmit(event, base, translation.request);
+    return this.#cancelAndSubmit(event, base, translation.request);
   }
 
   /** Handles explicit shortcuts and the host-selected structural fallback only. */
@@ -282,18 +283,18 @@ export class BreditorBrowserEventController<TResult> {
     rendered: RenderedProjection,
     delivery: EditorDeliveryToken,
   ): BrowserEventDisposition<TResult> {
-    const admitted = this.admitEvent(event, rendered, delivery, "keydown");
+    const admitted = this.#admitEvent(event, rendered, delivery, "keydown");
     if (!admitted.ok) {
       if (!admitted.preserveReceipts) {
-        this.clearReceipts();
+        this.#clearReceipts();
       }
       return admitted.disposition;
     }
-    this.clearReceipts();
+    this.#clearReceipts();
     const snapshot = readKeyboardSnapshot(event);
-    const compositionActive = this.readCompositionPhase();
+    const compositionActive = this.#readCompositionPhase();
     if (snapshot === null || compositionActive === null) {
-      return this.cancelBlocked(event, admitted.base, "invalidEvent");
+      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
     }
     let translation = translateKeyDown(
       snapshot,
@@ -309,18 +310,18 @@ export class BreditorBrowserEventController<TResult> {
       });
     }
     if (translation.kind === "invalid") {
-      return this.cancelBlocked(event, admitted.base, "invalidEvent");
+      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
     }
     if (translation.kind === "native") {
       return ignored(translation.reason, admitted.base.defaultPrevented);
     }
     if (translation.kind === "blocked") {
-      return this.cancelBlocked(event, admitted.base, translation.reason);
+      return this.#cancelBlocked(event, admitted.base, translation.reason);
     }
 
-    const capturedSelection = this.captureRangeSelection(admitted.rendered);
+    const capturedSelection = this.#captureRangeSelection(admitted.rendered);
     if (capturedSelection === undefined) {
-      return this.cancelBlocked(event, admitted.base, "selectionUnavailable");
+      return this.#cancelBlocked(event, admitted.base, "selectionUnavailable");
     }
     translation = translateKeyDown(
       snapshot,
@@ -330,14 +331,14 @@ export class BreditorBrowserEventController<TResult> {
       capturedSelection,
     );
     if (translation.kind !== "command") {
-      return this.cancelBlocked(event, admitted.base, "invalidEvent");
+      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
     }
 
     const canceled = cancelOwnedEvent<TResult>(event, admitted.base);
     if (!canceled.ok) {
       return canceled.disposition;
     }
-    const submission = this.submit(translation.request);
+    const submission = this.#submit(translation.request);
     if (submission.status === "completed" || submission.status === "queued") {
       const inputTypes = keyboardEchoInputTypes(translation.request);
       if (inputTypes.length > 0) {
@@ -361,20 +362,20 @@ export class BreditorBrowserEventController<TResult> {
   ): BrowserEventDisposition<TResult> {
     const operation = readClipboardOperation(event);
     if (operation === null) {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("eventAccessFailed", false);
     }
-    const admitted = this.admitEvent(event, rendered, delivery, operation);
+    const admitted = this.#admitEvent(event, rendered, delivery, operation);
     if (!admitted.ok) {
       if (!admitted.preserveReceipts) {
-        this.clearReceipts();
+        this.#clearReceipts();
       }
       return admitted.disposition;
     }
-    this.clearReceipts();
-    const compositionActive = this.readCompositionPhase();
+    this.#clearReceipts();
+    const compositionActive = this.#readCompositionPhase();
     if (compositionActive === null) {
-      return this.cancelBlocked(event, admitted.base, "invalidEvent");
+      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
     }
     if (compositionActive) {
       return Object.freeze({
@@ -388,19 +389,19 @@ export class BreditorBrowserEventController<TResult> {
 
     let request: EditorCommandRequest;
     try {
-      const capturedSelection = this.captureRangeSelection(admitted.rendered);
+      const capturedSelection = this.#captureRangeSelection(admitted.rendered);
       if (capturedSelection === undefined) {
-        return this.cancelBlocked(event, admitted.base, "selectionUnavailable");
+        return this.#cancelBlocked(event, admitted.base, "selectionUnavailable");
       }
       request = translateClipboardCommand(operation, delivery, capturedSelection);
     } catch {
-      return this.cancelBlocked(event, admitted.base, "invalidEvent");
+      return this.#cancelBlocked(event, admitted.base, "invalidEvent");
     }
     const canceled = cancelOwnedEvent<TResult>(event, admitted.base);
     if (!canceled.ok) {
       return canceled.disposition;
     }
-    const submission = this.submit(request);
+    const submission = this.#submit(request);
     if (
       operation !== "copy" &&
       (submission.status === "completed" || submission.status === "queued")
@@ -424,35 +425,35 @@ export class BreditorBrowserEventController<TResult> {
   ): BrowserEventDisposition<TResult> {
     const base = readEventBase(event);
     if (base === null) {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("eventAccessFailed", false);
     }
     if (!isOwnedRenderedProjection(rendered)) {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("eventAccessFailed", base.defaultPrevented);
     }
-    const ownership = eventOwnership(rendered.host, base.target);
+    const ownership = classifyDomEventOwnership(rendered.host, base.target);
     if (ownership === "outsideHost" || ownership === "nestedControl") {
-      this.clearReceipts();
+      this.#clearReceipts();
       return ignored(ownership, base.defaultPrevented);
     }
     if (ownership === "invalid") {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("eventAccessFailed", base.defaultPrevented);
     }
     if (base.type !== "input") {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("eventAccessFailed", base.defaultPrevented);
     }
 
     const input = readInputEventSnapshot(event);
-    const compositionActive = this.readCompositionPhase();
+    const compositionActive = this.#readCompositionPhase();
     if (input === null || compositionActive === null) {
-      this.clearReceipts();
+      this.#clearReceipts();
       return reconcile("eventAccessFailed", base.defaultPrevented);
     }
     if (compositionActive || input.isComposing) {
-      this.clearReceipts();
+      this.#clearReceipts();
       return Object.freeze({
         kind: "compositionPending",
         defaultPrevented: false,
@@ -461,7 +462,7 @@ export class BreditorBrowserEventController<TResult> {
 
     const clipboardReceipt = this.#clipboardReceipt;
     const keyboardReceipt = this.#keyboardReceipt;
-    this.clearReceipts();
+    this.#clearReceipts();
     const canonical = rendered.current && rendered.validateCanonicalDom();
     if (!canonical) {
       return reconcile("domDrift", base.defaultPrevented);
@@ -502,10 +503,10 @@ export class BreditorBrowserEventController<TResult> {
 
   /** Clears one-use browser echo state, for lifecycle or composition boundaries. */
   forgetEchoReceipts(): void {
-    this.clearReceipts();
+    this.#clearReceipts();
   }
 
-  private handleClipboardBeforeInputEcho(
+  #handleClipboardBeforeInputEcho(
     event: InputEvent,
     base: EventBase,
     rendered: RenderedProjection,
@@ -522,10 +523,10 @@ export class BreditorBrowserEventController<TResult> {
       receipt.rendererGeneration !== rendered.rendererGeneration ||
       receipt.delivery !== delivery
     ) {
-      return this.cancelBlocked(event, base, "clipboardEchoWithoutReceipt");
+      return this.#cancelBlocked(event, base, "clipboardEchoWithoutReceipt");
     }
     if (targets.count === 1 && !mapDomTargetRange(rendered, targets.range).ok) {
-      return this.cancelBlocked(event, base, "targetRangeInvalid");
+      return this.#cancelBlocked(event, base, "targetRangeInvalid");
     }
     const canceled = cancelOwnedEvent<TResult>(event, base);
     if (!canceled.ok) {
@@ -539,7 +540,7 @@ export class BreditorBrowserEventController<TResult> {
     });
   }
 
-  private admitEvent(
+  #admitEvent(
     event: Event,
     rendered: RenderedProjection,
     delivery: EditorDeliveryToken,
@@ -567,7 +568,7 @@ export class BreditorBrowserEventController<TResult> {
         reconcile("eventAccessFailed", base.defaultPrevented),
       );
     }
-    const ownership = eventOwnership(rendered.host, base.target);
+    const ownership = classifyDomEventOwnership(rendered.host, base.target);
     if (ownership === "outsideHost" || ownership === "nestedControl") {
       return admissionFailure(
         false,
@@ -579,7 +580,7 @@ export class BreditorBrowserEventController<TResult> {
       return admissionFailure(
         true,
         false,
-        this.cancelBlocked(event, base, "invalidEvent"),
+        this.#cancelBlocked(event, base, "invalidEvent"),
       );
     }
     if (base.defaultPrevented) {
@@ -603,13 +604,13 @@ export class BreditorBrowserEventController<TResult> {
       return admissionFailure(
         true,
         false,
-        this.cancelBlocked(event, base, "invalidEvent"),
+        this.#cancelBlocked(event, base, "invalidEvent"),
       );
     }
     return Object.freeze({ ok: true, base, rendered });
   }
 
-  private readCompositionPhase(): boolean | null {
+  #readCompositionPhase(): boolean | null {
     try {
       const active = this.#compositionActive();
       return typeof active === "boolean" ? active : null;
@@ -618,7 +619,7 @@ export class BreditorBrowserEventController<TResult> {
     }
   }
 
-  private captureRangeSelection(
+  #captureRangeSelection(
     rendered: RenderedProjection,
   ): EditorSelectionSync | undefined {
     try {
@@ -632,7 +633,7 @@ export class BreditorBrowserEventController<TResult> {
     }
   }
 
-  private cancelAndSubmit(
+  #cancelAndSubmit(
     event: Event,
     base: EventBase,
     request: EditorCommandRequest,
@@ -641,10 +642,10 @@ export class BreditorBrowserEventController<TResult> {
     if (!canceled.ok) {
       return canceled.disposition;
     }
-    return submissionDisposition(this.submit(request));
+    return submissionDisposition(this.#submit(request));
   }
 
-  private cancelBlocked(
+  #cancelBlocked(
     event: Event,
     base: EventBase,
     reason: BrowserEventBlockReason,
@@ -655,7 +656,7 @@ export class BreditorBrowserEventController<TResult> {
       : canceled.disposition;
   }
 
-  private submit(request: EditorCommandRequest): CommandQueueSubmission<TResult> {
+  #submit(request: EditorCommandRequest): CommandQueueSubmission<TResult> {
     try {
       return this.#queue.submit(request);
     } catch {
@@ -669,7 +670,7 @@ export class BreditorBrowserEventController<TResult> {
     }
   }
 
-  private clearReceipts(): void {
+  #clearReceipts(): void {
     this.#clipboardReceipt = undefined;
     this.#keyboardReceipt = undefined;
   }
@@ -885,49 +886,6 @@ function cancelOwnedEvent<TResult>(
   }
 }
 
-function eventOwnership(
-  host: HTMLElement,
-  target: EventTarget | null,
-): "owned" | "outsideHost" | "nestedControl" | "invalid" {
-  try {
-    if (!host.isConnected) {
-      return "outsideHost";
-    }
-    if (typeof target !== "object" || target === null) {
-      return "outsideHost";
-    }
-    const node = target as Node;
-    if (
-      typeof node.nodeType !== "number" ||
-      node.ownerDocument !== host.ownerDocument ||
-      (node !== host && !host.contains(node))
-    ) {
-      return "outsideHost";
-    }
-    let current: Node | null = node;
-    while (current !== null && current !== host) {
-      if (current.nodeType === 1) {
-        const element = current as Element;
-        const tag = element.tagName;
-        if (
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT" ||
-          tag === "OPTION" ||
-          tag === "BUTTON" ||
-          element.hasAttribute("contenteditable")
-        ) {
-          return "nestedControl";
-        }
-      }
-      current = current.parentNode;
-    }
-    return current === host ? "owned" : "outsideHost";
-  } catch {
-    return "invalid";
-  }
-}
-
 function readClipboardOperation(event: unknown): ClipboardOperation | null {
   try {
     const type = (event as Event).type;
@@ -949,6 +907,9 @@ function keyboardEchoInputTypes(request: EditorCommandRequest): readonly string[
     return Object.freeze([
       command.operation === "undo" ? "historyUndo" : "historyRedo",
     ]);
+  }
+  if (command.kind === "control") {
+    return Object.freeze([]);
   }
   if (command.kind !== "action") {
     return Object.freeze([]);
@@ -974,6 +935,9 @@ function commandFingerprint(request: EditorCommandRequest): string {
   }
   if (command.kind === "clipboard") {
     return `clipboard:${command.operation}`;
+  }
+  if (command.kind === "control") {
+    return `control:${command.operation}`;
   }
   return command.input.kind === "none"
     ? `action:${command.actionId}:none`

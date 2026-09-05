@@ -1,9 +1,10 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.53` renders the validated base-schema AST into disposable DOM,
-maps one directional selection, and serializes non-composition browser intent
-into guarded semantic commands without making the DOM an editor model.
+Version `0.0.54` renders the validated base-schema AST into disposable DOM,
+maps one directional selection, serializes ordinary browser intent, and owns a
+strict paragraph-local composition lease without making the DOM an editor
+model.
 
 The package is private while the pre-`0.1` package boundary is still moving.
 Its public entry point is nevertheless compiled and declaration-checked so a
@@ -131,14 +132,17 @@ paragraph insertion, backward/forward/selection deletion, strong formatting,
 undo, and redo. Unknown edit intents are blocked instead of approximated.
 Keyboard input never supplies text; an explicit host policy selects
 `beforeinput`-primary behavior or the narrow Backspace/Delete/Enter fallback.
-AltGraph, dead keys, key code 229, and active composition remain native.
+AltGraph, dead keys, key code 229, and active composition are delegated to the
+separate composition controller.
 
 `BreditorCommandQueue` is a bounded synchronous, non-recursive FIFO. Reentrant
 delivery appends. An executor or observer throw permanently quarantines the
 queue because the head may already have published; no item is retried.
 Generation-bound one-use receipts suppress matching keydown and clipboard event
 echoes, while `input` is only a postcondition and never executes a second
-command.
+command. A composition can reserve a completely idle queue for one
+never-queued settlement. Ordinary event, toolbar, API, observer, and reentrant
+submissions reject while the exact lease remains active.
 
 `BreditorWasmCommandAdapter` owns the exact observation, browser projection,
 renderer handle, selection bridge, and private one-use delivery epoch. One
@@ -149,6 +153,49 @@ selection, and frees all generated handles before returning a handle-free
 outcome. A valid semantic successor whose DOM publication fails is retained for
 explicit full-render recovery; malformed or stale results fault the adapter.
 
+## Composition contract
+
+`BreditorCompositionController` owns one native IME interval independently of
+the ordinary event controller. It requires a queue constructed with the exact
+stable `adapter.commandExecutor`; a forwarding wrapper is rejected. At start it
+captures one canonical light-DOM range, reserves the idle queue, and moves the
+adapter into an exact session/selection/render-bound composition state. Normal
+delivery tokens and direct adapter execution are unavailable until settlement
+or recovery closes that state.
+
+The first composition `beforeinput` maps exactly one target range while the DOM
+is still canonical. It may refine the captured range once, requires both
+endpoints in one paragraph, and only then opens renderer-owned native DOM
+mutation. The old render becomes non-current and its mappings are unavailable,
+but the renderer retains the opaque ownership needed to restore it. Native
+events, target-range objects, DOM `Selection` objects, and event-derived DOM
+nodes do not enter the state machine or queue.
+
+The controller accepts explicit start, update-before-beforeinput, implicit
+start from composition `beforeinput`, reconversion deletion, and terminal
+composition event/input orders. Standard composition input types are joined by
+three bounded active-composition aliases: `insertText`,
+`deleteContentBackward`, and `deleteContentForward`. These aliases do not claim
+general mobile-browser support.
+
+Settlement is scheduled after the native event task. A custom scheduler must
+synchronously enqueue and return `void`, but must not invoke the callback
+inline; commands themselves remain synchronous. Reconciliation accepts one
+target paragraph which is empty, contains only text and property-free
+`<strong>` structure, or uses one sole empty `<br>` placeholder, while every
+other paragraph and all text outside the target must still match the Rust
+projection. This temporary DOM is evidence only and is never installed as AST
+state.
+
+The adapter full-renders the authoritative base and restores the captured
+selection before one leased Rust submission. Insert and delete use
+`closeBefore`; cancellation explicitly closes the history group too. Strict
+settlement requires the exact token and renderer lease. If that proof is lost,
+deferred exact-token recovery discards native DOM and restores the retained
+authoritative projection without calling Rust. Recovery failure keeps both the
+controller and queue quarantined. A successful settlement may suppress one
+exact late terminal `input` echo.
+
 Copy, cut, and paste are staged in this version. Cut contains no eager delete,
 and paste contains no payload until the actual clipboard capability is handled
 by the `0.0.55` integration. See
@@ -157,9 +204,8 @@ contract, exact-once laws, and recovery model.
 
 ## Current limitations
 
-- Composition settlement, clipboard serialization/parsing and final mutation,
-  toolbar delivery, persistence, and React integration belong to later
-  checkpoints.
+- Clipboard serialization/parsing and final mutation, toolbar delivery,
+  persistence, and React integration belong to later checkpoints.
 - No arbitrary elements, formats, properties, entity IDs, nested blocks, or
   extension DOM renderers are accepted yet.
 - DOM APIs do not provide an atomic transaction across several retained
@@ -177,6 +223,14 @@ contract, exact-once laws, and recovery model.
   cross-shadow-root, browser multi-range, and ambiguous internal host-boundary
   positions fail closed. DOM mapping and validation are currently linear in the
   bounded document.
+- Composition additionally supports only one target range and one paragraph;
+  cross-block, shadow/composed, multi-range, arbitrary-markup, and nested-editor
+  composition fail closed. The package does not yet provide one unified
+  end-user event router.
+- Composition order and all three bounded alias paths are unit-tested in a
+  deterministic DOM. The real Chromium, Firefox, and WebKit/Safari engine
+  matrix, including IME behavior, remains the `0.0.59` gate; this checkpoint
+  defines no separate mobile support matrix.
 - Command execution is synchronous. Selection synchronization or a history
   boundary can publish before a later command error; queue fail-stop and
   canonical reconciliation are provided, but cross-stage rollback is not.
@@ -198,4 +252,6 @@ rebinding, stale/foreign guards, DOM-drift fallback, broad-impact full renders,
 Wasm-view consumption/disposal, directional and Unicode selection mapping,
 focus separation, select-all, outside-host protection, exact target-range
 normalization, bounded command admission, non-recursive FIFO ordering,
-translation policy, and one-shot event-echo suppression.
+translation policy, one-shot event-echo suppression, exact composition/queue/
+renderer leases, alternate terminal event orders, strict temporary-DOM
+reconciliation, cancellation history boundaries, and fail-safe recovery.

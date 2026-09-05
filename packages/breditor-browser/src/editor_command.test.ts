@@ -7,7 +7,9 @@ import {
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   browserCommandTextIsAdmissible,
   canonicalEditorCommandRequest,
+  closeHistoryGroupRequest,
   isEditorCommandRequest,
+  isEngineCommand,
   issueEditorDeliveryToken,
   noInputActionRequest,
   rangeSelectionSync,
@@ -82,6 +84,32 @@ describe("editor command contract", () => {
     expect(Object.isFrozen(request.source)).toBe(true);
     expect(Object.isFrozen(request.requirements)).toBe(true);
     expect(Object.isFrozen(request.command)).toBe(true);
+  });
+
+  it("represents a history boundary as an explicit executable control command", () => {
+    const { token, selection } = delivery();
+    const request = closeHistoryGroupRequest(
+      token,
+      selection,
+      { kind: "api", detail: "composition-cancelled" },
+    );
+
+    expect(request.requirements).toEqual({
+      selection: "synchronize",
+      history: "preserve",
+    });
+    expect(request.command).toEqual({
+      kind: "control",
+      operation: "closeHistoryGroup",
+    });
+    expect(isEngineCommand(request.command)).toBe(true);
+    expect(canonicalEditorCommandRequest(request)).toEqual(request);
+    expect(
+      canonicalEditorCommandRequest({
+        ...request,
+        requirements: { selection: "synchronize", history: "closeBefore" },
+      }),
+    ).toBeNull();
   });
 
   it("makes public guards total and rejects accessors, proxies, and extra fields", () => {

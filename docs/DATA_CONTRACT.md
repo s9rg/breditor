@@ -197,7 +197,9 @@ The following remain deliberately unimplemented:
   preparation, the process-local bounded append FIFO, and its uncertain-head
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
-- Wasm bindings, TypeScript adapters, browser event handling, and the DOM bridge;
+- published consumer packaging, a unified end-user browser event router, final
+  clipboard mutation, toolbar delivery, persistence/React integration, and the
+  real-browser support matrix;
 - atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
   boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
   append coordination;
@@ -4540,10 +4542,11 @@ The correctness cost is deliberate: every effective browser command currently
 clones structurally shared candidate ownership and encodes the complete retained
 session before publication, so admission time is linear in checkpoint size and
 transient memory includes candidate plus encoded bytes. Semantic projection
-also copies strings through Wasm and is synchronous. There are no persistent
-node IDs, custom schema renderers, selection conversion, event adapter,
-composition owner, clipboard policy, toolbar delivery, IndexedDB I/O, or React
-runtime at this checkpoint. The full contract and limits are in
+also copies strings through Wasm and is synchronous. At the `0.0.51` checkpoint
+there were no persistent node IDs, custom schema renderers, selection conversion,
+event adapter, composition owner, clipboard policy, toolbar delivery, IndexedDB
+I/O, or React runtime. Later sections record the selection, event, and
+composition additions. The full projection contract and limits are in
 [`DOM_PROJECTION.md`](DOM_PROJECTION.md).
 
 ## Guarded browser selection mapping (`0.0.52`)
@@ -4615,9 +4618,11 @@ or a range wholly outside the host is not translated to semantic `None`, and an
 explicit clear never erases another editor's range. A cross-host or multi-range
 selection fails closed.
 
-The initial mapping is one-range and light-DOM only. Shadow/composed ranges,
-node/grid/table selections, remote selections, internal root-boundary bias,
-keyboard movement, composition, and input-event ordering are not implemented.
+The initial mapping is one-range and light-DOM only. At the `0.0.52` checkpoint,
+shadow/composed ranges, node/grid/table selections, remote selections, internal
+root-boundary bias, keyboard movement, composition, and input-event ordering
+were not implemented; `0.0.53` and `0.0.54` add only the closed event and
+paragraph-local composition slices described below.
 Preorder endpoint lookup and full synchronous DOM validation are O(document)
 within existing projection limits. The full contract and acceptance laws are in
 [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md).
@@ -4679,6 +4684,45 @@ This sequence is serialized but not rollback-atomic across prestages. A
 selection update, and then a requested history close, may publish before a later
 action error. DOM APIs also cannot participate in a Rust transaction. The queue
 therefore fail-stops rather than retrying or pretending those earlier effects
-were undone. Clipboard mutation remains staged, and IME composition requires a
-separate temporary-DOM lease. The complete contract is in
+were undone. Clipboard mutation remains staged. At `0.0.53`, IME composition
+still required the separate temporary-DOM lease implemented by `0.0.54`. The
+complete contract is in
 [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md).
+
+## Guarded browser composition delivery (`0.0.54`)
+
+Composition adds no new Rust wire format or Wasm method. The framework-neutral
+browser controller captures one exact semantic range from a canonical connected
+light-DOM render, acquires an otherwise idle queue built with the exact stable
+Wasm adapter executor, and binds the projection, render, selection object,
+snapshot, private authority, epoch, and nonzero session ID into an opaque lease.
+Ordinary event, toolbar, API, observer, and reentrant delivery is rejected while
+that lease remains active.
+
+Before native mutation, exactly one target range may refine the leased selection
+once and must remain in one paragraph. The renderer then temporarily makes its
+public handle non-current while retaining opaque host ownership. At settlement,
+all non-target paragraphs and unchanged text around the range must still match
+the authoritative projection; the target accepts only bounded Unicode text,
+property-free strong wrappers containing text, a bare empty paragraph, or one
+sole empty-paragraph placeholder. This is a strict replacement check, not a
+DOM-to-AST parser.
+
+The adapter spends the lease, full-renders the retained authoritative projection,
+and restores the captured selection before the controller submits one existing
+Rust command through the exact queue lease. Insert and selection-delete use a
+`closeBefore` history requirement; cancellation submits `closeHistoryGroup`, so
+each successful insert, delete, or cancellation settlement closes the preceding
+merge group. Abort recovery makes no Wasm call and does not close history. Native
+IME DOM never becomes a Breditor state. Strict-settlement failure enters
+quarantine; exact-token recovery discards native DOM and restores projection/
+selection without a Wasm call or semantic retry before releasing the queue.
+
+The current contract supports one light-DOM range and one paragraph only. It has
+no cross-block, shadow/composed-range, browser multi-range, arbitrary native
+markup, unified router, or general mobile-browser guarantee. The task-scheduling
+hook is synchronous and promise-free, but it must enqueue its callback for a
+future task; command delivery is synchronous too. Deterministic DOM tests cover
+the implemented event orders and all three bounded alias paths. The real
+Chromium, Firefox, and WebKit/Safari IME matrix remains the `0.0.59` gate; this
+checkpoint defines no separate mobile support matrix.

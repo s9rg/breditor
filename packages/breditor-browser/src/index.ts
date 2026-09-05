@@ -70,6 +70,7 @@ export {
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   MAX_BROWSER_COMMAND_TEXT_UTF8,
   browserCommandTextIsAdmissible,
+  closeHistoryGroupRequest,
   historyRequest,
   isEditorCommandRequest,
   isEngineCommand,
@@ -132,6 +133,24 @@ export {
   BreditorBrowserEventController,
   type BrowserEventControllerOptions,
 } from "./browser_event_controller.js";
+export {
+  BreditorCompositionController,
+  type CompositionCommandSubmission,
+  type CompositionControllerDisposition,
+  type CompositionControllerIgnoreReason,
+  type CompositionControllerNotification,
+  type CompositionControllerOptions,
+  type CompositionControllerRecovery,
+  type CompositionControllerResume,
+  type CompositionControllerTerminal,
+} from "./composition_controller.js";
+export type {
+  CompositionAbortReason,
+  CompositionError,
+  CompositionErrorCode,
+  CompositionSettlement,
+} from "./composition_result.js";
+export type { CompositionPhase } from "./composition_state.js";
 export {
   BreditorWasmCommandAdapter,
   isEngineCommandRequest,

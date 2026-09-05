@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { BreditorDomRenderer, type RenderedProjection } from "./dom_renderer.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
 import {
+  closeHistoryGroupRequest,
   editorDeliveryAuthorityAccepts,
   noSelectionSync,
   rangeSelectionSync,
@@ -48,6 +50,16 @@ beforeEach(() => {
 });
 
 describe("BreditorWasmCommandAdapter", () => {
+  it("does not expose invariant-critical implementation helpers at runtime", () => {
+    const surface = Object.getOwnPropertyNames(
+      BreditorWasmCommandAdapter.prototype,
+    );
+    expect(surface).not.toContain("finishCompositionLease");
+    expect(surface).not.toContain("consumeResult");
+    expect(surface).not.toContain("requireCompositionLease");
+    expect(surface).not.toContain("requireObservation");
+  });
+
   it("runs selection then command, renders the update, and returns no Wasm handles", () => {
     const base = projectionFixture(0, "a");
     const resultProjection = projection(1, "ax");
@@ -87,7 +99,9 @@ describe("BreditorWasmCommandAdapter", () => {
       "x",
     );
 
-    const outcome = adapter.execute(request);
+    const executor = adapter.commandExecutor;
+    expect(adapter.commandExecutor).toBe(executor);
+    const outcome = executor(request);
 
     expect(outcome.status).toBe("delivered");
     expect(outcome.selection.status).toBe("unchanged");
@@ -326,6 +340,53 @@ describe("BreditorWasmCommandAdapter", () => {
       render: undefined,
     });
     expect(outcome.command.status).toBe("disabled");
+    expect(adapter.snapshot.revision).toBe("0");
+    expect(base.host.textContent).toBe("a");
+    adapter.dispose();
+  });
+
+  it("executes an explicit history-group control without a document action", () => {
+    const base = projectionFixture(0, "a");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    bridge.write(base.rendered, selected);
+    const initial = observation(0);
+    const synchronized = observation(0);
+    const bounded = observation(0);
+    const syncResult = commandResult({ status: "unchanged", successor: synchronized });
+    const boundaryResult = commandResult({
+      status: "committed",
+      eventKind: "closeHistoryGroup",
+      successor: bounded,
+    });
+    const engine = engineQueues({
+      setSelection: [syncResult.view],
+      closeHistory: [boundaryResult.view],
+    });
+    const closeHistoryGroup = vi.spyOn(engine, "closeHistoryGroup");
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+
+    const outcome = adapter.execute(
+      closeHistoryGroupRequest(
+        adapter.deliveryToken(),
+        rangeSelectionSync(selected),
+        { kind: "api", detail: "composition-cancelled" },
+      ),
+    );
+
+    expect(closeHistoryGroup).toHaveBeenCalledOnce();
+    expect(closeHistoryGroup).toHaveBeenCalledWith(synchronized);
+    expect(outcome.boundary).toBeUndefined();
+    expect(outcome.command).toEqual({
+      status: "committed",
+      eventKind: "closeHistoryGroup",
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+      render: undefined,
+    });
     expect(adapter.snapshot.revision).toBe("0");
     expect(base.host.textContent).toBe("a");
     adapter.dispose();
@@ -924,6 +985,411 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
     expect(synchronized.free).toHaveBeenCalledOnce();
     expect(committed.free).toHaveBeenCalledOnce();
+  });
+
+  it("reserves adapter authority and restores the exact leased selection without core work", () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    const initial = observation(0);
+    const engine = engineQueues({});
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const normal = adapter.deliveryToken();
+    const request = stringActionRequest(
+      normal,
+      rangeSelectionSync(selected),
+      { kind: "api", detail: "stale-during-composition" },
+      "breditor/insert-text",
+      "x",
+    );
+
+    expect(() => adapter.beginCompositionLease(normal, selected, 0n)).toThrow(
+      /invalid or stale/u,
+    );
+    expect(() =>
+      adapter.beginCompositionLease(
+        normal,
+        selected,
+        18_446_744_073_709_551_616n,
+      )
+    ).toThrow(/invalid or stale/u);
+    expect(adapter.acceptsDeliveryToken(normal)).toBe(true);
+
+    const lease = adapter.beginCompositionLease(normal, selected, 7n);
+
+    expect(adapter.state).toBe("composition");
+    expect(lease.selection).toBe(selected);
+    expect(lease.sessionId).toBe(7n);
+    expect(lease.observationEpoch).toBe(1n);
+    expect(adapter.acceptsDeliveryToken(normal)).toBe(false);
+    expect(() => adapter.deliveryToken()).toThrow(/composition/u);
+    expect(() => adapter.execute(request)).toThrow(/composition/u);
+
+    const restored = adapter.restoreCompositionLease(lease);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) throw new Error(restored.reason);
+    expect(restored.selection).toBe(selected);
+    expect(restored.rendered).toBe(adapter.rendered);
+    expect(restored.rendered).not.toBe(base.rendered);
+    expect(restored.delivery.observationEpoch).toBe(2n);
+    expect(adapter.acceptsDeliveryToken(restored.delivery)).toBe(true);
+    expect(initial.free).not.toHaveBeenCalled();
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(/live/u);
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it("rotates one refined lease while foreign, old, and duplicate tokens stay inert", () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new BreditorDomSelectionBridge();
+    const initialSelection = selection(base.projection, 1);
+    const refinedSelection = selection(base.projection, 2);
+    const initial = observation(0);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const normal = adapter.deliveryToken();
+    const foreign = issueCompositionDeliveryToken(
+      base.projection,
+      base.rendered,
+      initialSelection,
+      1n,
+      11n,
+      Symbol("foreign-composition-adapter"),
+    );
+    const lease = adapter.beginCompositionLease(normal, initialSelection, 11n);
+
+    expect(() => adapter.refineCompositionLease(foreign, refinedSelection)).toThrow(
+      /stale or foreign/u,
+    );
+    expect(() => adapter.openCompositionDomLease(foreign)).toThrow(
+      /stale or foreign/u,
+    );
+    expect(adapter.state).toBe("composition");
+    const refined = adapter.refineCompositionLease(lease, refinedSelection);
+    expect(refined).not.toBe(lease);
+    expect(refined.selection).toBe(refinedSelection);
+    expect(refined.observationEpoch).toBe(lease.observationEpoch);
+    expect(refined.sessionId).toBe(lease.sessionId);
+    expect(() => adapter.openCompositionDomLease(lease)).toThrow(/stale or foreign/u);
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(/stale or foreign/u);
+    expect(adapter.openCompositionDomLease(refined)).toBe(true);
+    expect(() => adapter.openCompositionDomLease(refined)).toThrow(/cannot be opened/u);
+    expect(() => adapter.refineCompositionLease(refined, initialSelection)).toThrow(
+      /cannot be refined/u,
+    );
+
+    const restored = adapter.restoreCompositionLease(refined);
+    expect(restored.ok && restored.selection).toBe(refinedSelection);
+    expect(() => adapter.restoreCompositionLease(refined)).toThrow(/live/u);
+    adapter.dispose();
+  });
+
+  it("discards native DOM drift and returns a fresh canonical generation", async () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 2);
+    const initial = observation(0);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      1n,
+    );
+    expect(adapter.openCompositionDomLease(lease)).toBe(true);
+    expect(base.rendered.current).toBe(false);
+    const paragraph = base.host.firstChild;
+    if (!(paragraph instanceof HTMLParagraphElement)) {
+      throw new Error("composition fixture paragraph is missing");
+    }
+    paragraph.replaceChildren(document.createTextNode("native IME text"));
+    await Promise.resolve();
+    expect(base.rendered.current).toBe(false);
+
+    const restored = adapter.restoreCompositionLease(lease);
+
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) throw new Error(restored.reason);
+    expect(base.host.textContent).toBe("abc");
+    expect(restored.rendered.current).toBe(true);
+    expect(restored.rendered.rendererGeneration).toBeGreaterThan(
+      base.rendered.rendererGeneration,
+    );
+    const observed = bridge.read(restored.rendered);
+    expect(observed.ok && observed.value.kind === "range"
+      ? observed.value.selection
+      : undefined).toBe(selected);
+    adapter.dispose();
+  });
+
+  it("rejects native DOM drift unless the exact renderer lease was opened", () => {
+    const base = projectionFixture(0, "abc");
+    const selected = selection(base.projection, 1);
+    const initial = observation(0);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      5n,
+    );
+    const render = vi.spyOn(base.renderer, "render");
+    base.host.firstChild?.appendChild(document.createTextNode("unleased drift"));
+
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(/stale or foreign/u);
+    expect(adapter.state).toBe("composition");
+    expect(render).not.toHaveBeenCalled();
+    expect(() => adapter.dispose()).not.toThrow();
+    expect(adapter.state).toBe("disposed");
+    expect(base.host.textContent).toBe("abc");
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it.each(["superseded", "released"] as const)(
+    "recovers an exact lease after renderer ownership is %s without core work",
+    (loss) => {
+      const base = projectionFixture(0, "abc");
+      const bridge = new BreditorDomSelectionBridge();
+      const selected = selection(base.projection, 2);
+      const initial = observation(0);
+      // Every engine method rejects when its queue is empty. A successful
+      // recovery therefore also proves that recovery made no core call.
+      const adapter = new BreditorWasmCommandAdapter(
+        engineQueues({}),
+        initial,
+        {
+          renderer: base.renderer,
+          rendered: base.rendered,
+          selectionBridge: bridge,
+        },
+      );
+      const foreign = issueCompositionDeliveryToken(
+        base.projection,
+        base.rendered,
+        selected,
+        1n,
+        6n,
+        Symbol("foreign-recovery-authority"),
+      );
+      const lease = adapter.beginCompositionLease(
+        adapter.deliveryToken(),
+        selected,
+        6n,
+      );
+      expect(adapter.openCompositionDomLease(lease)).toBe(true);
+      if (loss === "superseded") {
+        const external = base.renderer.render(
+          base.host,
+          projection(99, "external"),
+        );
+        expect(external.ok).toBe(true);
+      } else {
+        expect(base.renderer.release(base.rendered)).toBe(true);
+      }
+
+      expect(() => adapter.restoreCompositionLease(lease)).toThrow(
+        /stale or foreign/u,
+      );
+      expect(() => adapter.recoverCompositionLease(foreign)).toThrow(
+        /stale or foreign/u,
+      );
+      expect(adapter.state).toBe("composition");
+
+      const recovered = adapter.recoverCompositionLease(lease);
+
+      expect(recovered.ok).toBe(true);
+      if (!recovered.ok) throw new Error(recovered.reason);
+      expect(recovered.selection).toBe(selected);
+      expect(recovered.rendered).toBe(adapter.rendered);
+      expect(base.host.textContent).toBe("abc");
+      expect(adapter.acceptsDeliveryToken(recovered.delivery)).toBe(true);
+      const observed = bridge.read(recovered.rendered);
+      expect(observed.ok && observed.value.kind === "range"
+        ? observed.value.selection
+        : undefined).toBe(selected);
+      expect(() => adapter.recoverCompositionLease(lease)).toThrow(/live/u);
+      adapter.dispose();
+      expect(initial.free).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("spends disconnected recovery before a redacted selection-write failure", () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new FailOnWriteBridge(1);
+    const selected = selection(base.projection, 1);
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({}),
+      observation(0),
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: bridge,
+      },
+    );
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      8n,
+    );
+    expect(adapter.openCompositionDomLease(lease)).toBe(true);
+    base.host.remove();
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(
+      /stale or foreign/u,
+    );
+    const render = vi.spyOn(base.renderer, "render");
+
+    expect(adapter.recoverCompositionLease(lease)).toEqual({
+      ok: false,
+      reason: "selectionWriteFailed",
+    });
+    expect(render).toHaveBeenCalledOnce();
+    expect(adapter.state).toBe("reconcile");
+    expect(() => adapter.recoverCompositionLease(lease)).toThrow(/reconcile/u);
+    adapter.dispose();
+  });
+
+  it("spends recovery before a redacted full-render failure", () => {
+    const base = projectionFixture(0, "abc");
+    const selected = selection(base.projection, 1);
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({}),
+      observation(0),
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      9n,
+    );
+    expect(adapter.openCompositionDomLease(lease)).toBe(true);
+    expect(base.renderer.release(base.rendered)).toBe(true);
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(
+      /stale or foreign/u,
+    );
+    vi.spyOn(base.renderer, "render").mockReturnValueOnce({
+      ok: false,
+      error: {
+        code: "renderer.dom_write_failed",
+        message: "private recovery detail",
+      },
+    });
+
+    expect(adapter.recoverCompositionLease(lease)).toEqual({
+      ok: false,
+      reason: "renderFailed",
+    });
+    expect(adapter.state).toBe("reconcile");
+    expect(() => adapter.recoverCompositionLease(lease)).toThrow(/reconcile/u);
+    adapter.dispose();
+  });
+
+  it("spends a lease before a redacted renderer restoration failure", () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), observation(0), {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      2n,
+    );
+    expect(adapter.openCompositionDomLease(lease)).toBe(true);
+    const discard = vi.spyOn(base.renderer, "discardCompositionDomLease");
+    vi.spyOn(base.renderer, "restoreCompositionDomLease").mockReturnValueOnce({
+      ok: false,
+      error: {
+        code: "renderer.dom_write_failed",
+        message: "private renderer detail",
+      },
+    });
+
+    expect(adapter.restoreCompositionLease(lease)).toEqual({
+      ok: false,
+      reason: "renderFailed",
+    });
+    expect(adapter.state).toBe("reconcile");
+    expect(discard).toHaveBeenCalledOnce();
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(/reconcile/u);
+    adapter.dispose();
+  });
+
+  it("retains the restored render but requires reconciliation when selection write fails", () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new FailOnWriteBridge(1);
+    const selected = selection(base.projection, 1);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), observation(0), {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      3n,
+    );
+    expect(adapter.openCompositionDomLease(lease)).toBe(true);
+
+    expect(adapter.restoreCompositionLease(lease)).toEqual({
+      ok: false,
+      reason: "selectionWriteFailed",
+    });
+    expect(adapter.state).toBe("reconcile");
+    expect(adapter.rendered).not.toBe(base.rendered);
+    expect(adapter.rendered.current).toBe(true);
+    expect(() => adapter.restoreCompositionLease(lease)).toThrow(/reconcile/u);
+    adapter.dispose();
+  });
+
+  it("disposes an active lease by restoring and discarding its native DOM", async () => {
+    const base = projectionFixture(0, "abc");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    const initial = observation(0);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const lease = adapter.beginCompositionLease(
+      adapter.deliveryToken(),
+      selected,
+      4n,
+    );
+    expect(adapter.openCompositionDomLease(lease)).toBe(true);
+    const paragraph = base.host.firstChild;
+    if (!(paragraph instanceof HTMLParagraphElement)) {
+      throw new Error("composition fixture paragraph is missing");
+    }
+    paragraph.textContent = "uncommitted private composition";
+    await Promise.resolve();
+
+    adapter.dispose();
+
+    expect(adapter.state).toBe("disposed");
+    expect(base.host.textContent).toBe("abc");
+    expect(adapter.rendered.current).toBe(false);
+    expect(initial.free).toHaveBeenCalledOnce();
   });
 });
 

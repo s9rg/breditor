@@ -12,14 +12,28 @@ import {
   type EngineCommandRequest,
 } from "./editor_command.js";
 import {
+  compositionDeliveryTokenMatchesOpeningBase,
+  compositionDeliveryTokenMatchesSettlement,
+  issueCompositionDeliveryToken,
+  type CompositionDeliveryToken,
+} from "./composition_delivery_token.js";
+import {
   BreditorDomRenderer,
+  type DomCompositionLease,
   type ProjectionFallbackReason,
   type ProjectionRenderOutcome,
   type RenderedProjection,
 } from "./dom_renderer.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
-import type { BaseDocumentProjection } from "./projection.js";
-import type { BaseEditorSelection } from "./selection.js";
+import {
+  isOwnedProjection,
+  type BaseDocumentProjection,
+} from "./projection.js";
+import {
+  isOwnedBaseRangeSelection,
+  type BaseEditorSelection,
+  type BaseRangeSelection,
+} from "./selection.js";
 import {
   consumeSemanticProjectionUpdate,
   type SemanticProjectionUpdateView,
@@ -157,6 +171,25 @@ export type WasmRenderReconciliationOutcome =
       reason: "adapterUnavailable" | "renderFailed" | "selectionWriteFailed";
     }>;
 
+/**
+ * Canonical browser base restored after one composition lease is discarded.
+ *
+ * No generated Wasm handle escapes this result and no core mutation occurs.
+ *
+ * @internal
+ */
+export type WasmCompositionLeaseRestoreOutcome =
+  | Readonly<{
+      ok: true;
+      rendered: RenderedProjection;
+      delivery: EditorDeliveryToken;
+      selection: BaseRangeSelection;
+    }>
+  | Readonly<{
+      ok: false;
+      reason: "renderFailed" | "selectionWriteFailed";
+    }>;
+
 /** Constructor dependencies which must be shared with browser event admission. */
 export interface BreditorWasmCommandAdapterOptions {
   readonly renderer: BreditorDomRenderer;
@@ -164,7 +197,13 @@ export interface BreditorWasmCommandAdapterOptions {
   readonly selectionBridge: BreditorDomSelectionBridge;
 }
 
-type AdapterState = "live" | "executing" | "reconcile" | "faulted" | "disposed";
+type AdapterState =
+  | "live"
+  | "composition"
+  | "executing"
+  | "reconcile"
+  | "faulted"
+  | "disposed";
 type ExpectedEventKind = "selection" | "action" | "undo" | "redo" | "closeHistoryGroup";
 
 interface PreparedSelection {
@@ -177,6 +216,14 @@ interface AppliedTransition {
   readonly rendered: RenderedProjection;
   readonly metadata: WasmCommandRenderMetadata | undefined;
   readonly domFailure: boolean;
+}
+
+interface ActiveCompositionLease {
+  readonly token: CompositionDeliveryToken;
+  readonly selection: BaseRangeSelection;
+  readonly sessionId: bigint;
+  readonly refined: boolean;
+  readonly domLease?: DomCompositionLease;
 }
 
 /**
@@ -196,12 +243,15 @@ export class BreditorWasmCommandAdapter {
   readonly #host: HTMLElement;
   readonly #authority = Symbol("breditor-command-adapter");
   readonly #deliveryAuthority: EditorDeliveryAuthority;
+  readonly #commandExecutor = (request: EditorCommandRequest) =>
+    this.execute(request);
   #observation: WasmCommandObservationView | undefined;
   #snapshot: WasmCommandSnapshot;
   #projection: BaseDocumentProjection;
   #rendered: RenderedProjection;
   #deliveryEpoch = 0n;
   #state: AdapterState = "live";
+  #compositionLease: ActiveCompositionLease | undefined;
 
   constructor(
     engine: WasmCommandEngineView,
@@ -247,6 +297,13 @@ export class BreditorWasmCommandAdapter {
     return this.#deliveryAuthority;
   }
 
+  /** Stable adapter-bound executor for a shared browser command queue. */
+  get commandExecutor(): (
+    request: EditorCommandRequest,
+  ) => WasmCommandSequenceOutcome {
+    return this.#commandExecutor;
+  }
+
   /** Current semantic snapshot, including while DOM reconciliation is required. */
   get snapshot(): WasmCommandSnapshot {
     return this.#snapshot;
@@ -264,8 +321,8 @@ export class BreditorWasmCommandAdapter {
 
   /** Issues one opaque, one-use token for the exact current canonical render. */
   deliveryToken(): EditorDeliveryToken {
-    this.requireState("live");
-    this.requireObservation();
+    this.#requireState("live");
+    this.#requireObservation();
     if (
       !this.#renderer.owns(this.#rendered) ||
       this.#rendered.projection !== this.#projection ||
@@ -301,13 +358,299 @@ export class BreditorWasmCommandAdapter {
   }
 
   /**
+   * Suspends ordinary delivery and opens one exact browser composition lease.
+   *
+   * The caller must invoke this synchronously while the supplied normal token,
+   * render, host, and semantic selection still describe the canonical DOM.
+   * No generated Wasm call or core mutation occurs.
+   *
+   * @internal
+   */
+  beginCompositionLease(
+    delivery: EditorDeliveryToken,
+    selection: BaseRangeSelection,
+    sessionId: bigint,
+  ): CompositionDeliveryToken {
+    this.#requireState("live");
+    this.#requireObservation();
+    if (
+      !isOwnedBaseRangeSelection(selection) ||
+      selection.projection !== this.#projection ||
+      !isNonzeroU64(sessionId) ||
+      !hostIsConnected(this.#host) ||
+      !this.acceptsDeliveryToken(delivery)
+    ) {
+      throw new TypeError("composition lease base is invalid or stale");
+    }
+
+    const leaseEpoch = this.#deliveryEpoch + 1n;
+    const token = issueCompositionDeliveryToken(
+      this.#projection,
+      this.#rendered,
+      selection,
+      leaseEpoch,
+      sessionId,
+      this.#authority,
+    );
+    this.#deliveryEpoch = leaseEpoch;
+    this.#compositionLease = Object.freeze({
+      token,
+      selection,
+      sessionId,
+      refined: false,
+    });
+    this.#state = "composition";
+    return token;
+  }
+
+  /**
+   * Replaces the lease's start range once, before native DOM mutation begins.
+   *
+   * The old token becomes stale by adapter-owned identity even though its
+   * immutable diagnostic fields remain readable.
+   *
+   * @internal
+   */
+  refineCompositionLease(
+    token: CompositionDeliveryToken,
+    selection: BaseRangeSelection,
+  ): CompositionDeliveryToken {
+    this.#requireState("composition");
+    const lease = this.#requireCompositionLease(token);
+    if (
+      lease.refined ||
+      !isOwnedBaseRangeSelection(selection) ||
+      selection.projection !== this.#projection ||
+      !compositionDeliveryTokenMatchesOpeningBase(
+        token,
+        this.#projection,
+        this.#rendered,
+        lease.selection,
+        this.#deliveryEpoch,
+        lease.sessionId,
+        this.#authority,
+      )
+    ) {
+      throw new TypeError("composition lease cannot be refined");
+    }
+
+    const replacement = issueCompositionDeliveryToken(
+      this.#projection,
+      this.#rendered,
+      selection,
+      this.#deliveryEpoch,
+      lease.sessionId,
+      this.#authority,
+    );
+    this.#compositionLease = Object.freeze({
+      token: replacement,
+      selection,
+      sessionId: lease.sessionId,
+      refined: true,
+    });
+    return replacement;
+  }
+
+  /**
+   * Yields the exact canonical render to native IME mutation.
+   *
+   * The renderer capability stays private inside this adapter. A successful
+   * call deliberately makes the public render non-current until settlement.
+   * A renderer refusal spends the lease and enters reconciliation.
+   *
+   * @internal
+   */
+  openCompositionDomLease(token: CompositionDeliveryToken): boolean {
+    this.#requireState("composition");
+    const lease = this.#requireCompositionLease(token);
+    if (
+      lease.domLease !== undefined ||
+      !compositionDeliveryTokenMatchesOpeningBase(
+        token,
+        this.#projection,
+        this.#rendered,
+        lease.selection,
+        this.#deliveryEpoch,
+        lease.sessionId,
+        this.#authority,
+      )
+    ) {
+      throw new TypeError("composition DOM lease cannot be opened");
+    }
+
+    let domLease: DomCompositionLease | null = null;
+    let ownsDomLease = false;
+    try {
+      domLease = this.#renderer.beginCompositionDomLease(this.#rendered);
+      ownsDomLease =
+        domLease !== null &&
+        this.#renderer.ownsCompositionDomLease(domLease, this.#rendered);
+    } catch {
+      ownsDomLease = false;
+    }
+    if (domLease === null || !ownsDomLease) {
+      if (domLease !== null) {
+        try {
+          this.#renderer.discardCompositionDomLease(domLease);
+        } catch {
+          // The renderer refused ownership; adapter recovery remains explicit.
+        }
+      }
+      this.#compositionLease = undefined;
+      this.#deliveryEpoch += 1n;
+      this.#state = "reconcile";
+      return false;
+    }
+
+    this.#compositionLease = Object.freeze({ ...lease, domLease });
+    return true;
+  }
+
+  /**
+   * Spends one composition lease and restores its authoritative browser base.
+   *
+   * Native DOM drift is discarded by a full render. The captured semantic
+   * selection is restored directly; this method deliberately makes no Wasm
+   * call and does not synchronize or otherwise mutate the Rust core.
+   *
+   * @internal
+   */
+  restoreCompositionLease(
+    token: CompositionDeliveryToken,
+  ): WasmCompositionLeaseRestoreOutcome {
+    this.#requireState("composition");
+    const lease = this.#requireCompositionLease(token);
+    if (
+      !compositionDeliveryTokenMatchesSettlement(
+        token,
+        this.#projection,
+        this.#rendered,
+        lease.selection,
+        this.#deliveryEpoch,
+        lease.sessionId,
+        this.#authority,
+      ) ||
+      (lease.domLease === undefined
+        ? !compositionDeliveryTokenMatchesOpeningBase(
+            token,
+            this.#projection,
+            this.#rendered,
+            lease.selection,
+            this.#deliveryEpoch,
+            lease.sessionId,
+            this.#authority,
+          )
+        : !this.#ownsCompositionDomLease(lease.domLease))
+    ) {
+      throw new TypeError("composition lease token is stale or foreign");
+    }
+
+    return this.#finishCompositionLease(
+      lease,
+      lease.domLease === undefined ? "canonicalFull" : "rendererLease",
+    );
+  }
+
+  /**
+   * Recovers an exact active composition after strict renderer proof is lost.
+   *
+   * This is a fail-safe path for superseded or released render ownership. It
+   * trusts only the adapter's current token identity and its retained owned
+   * semantic base. Callers must try strict restoration first.
+   *
+   * @internal
+   */
+  recoverCompositionLease(
+    token: CompositionDeliveryToken,
+  ): WasmCompositionLeaseRestoreOutcome {
+    this.#requireState("composition");
+    const lease = this.#requireCompositionLease(token);
+    if (
+      !isNonzeroU64(lease.sessionId) ||
+      token.sessionId !== lease.sessionId ||
+      !isOwnedProjection(this.#projection) ||
+      token.projection !== this.#projection ||
+      !isOwnedBaseRangeSelection(lease.selection) ||
+      lease.selection.projection !== this.#projection ||
+      token.selection !== lease.selection
+    ) {
+      throw new TypeError("composition recovery base is invalid");
+    }
+
+    return this.#finishCompositionLease(lease, "recoveryFull");
+  }
+
+  #finishCompositionLease(
+    lease: ActiveCompositionLease,
+    strategy: "canonicalFull" | "rendererLease" | "recoveryFull",
+  ): WasmCompositionLeaseRestoreOutcome {
+    // Spend identity and epoch before the first DOM effect. A failed restore is
+    // recovered through the ordinary reconciliation path, never token replay.
+    this.#compositionLease = undefined;
+    this.#deliveryEpoch += 1n;
+    this.#state = "executing";
+
+    let rendered: ReturnType<BreditorDomRenderer["render"]>;
+    try {
+      if (strategy === "recoveryFull") {
+        this.#discardCompositionDomLease(lease);
+      }
+      rendered = strategy === "rendererLease" && lease.domLease !== undefined
+        ? this.#renderer.restoreCompositionDomLease(
+            lease.domLease,
+            this.#projection,
+          )
+        : this.#renderer.render(this.#host, this.#projection);
+    } catch {
+      this.#discardCompositionDomLease(lease);
+      this.#state = "reconcile";
+      return compositionRestoreFailure("renderFailed");
+    }
+    if (!rendered.ok) {
+      this.#discardCompositionDomLease(lease);
+      this.#state = "reconcile";
+      return compositionRestoreFailure("renderFailed");
+    }
+    this.#rendered = rendered.value.rendered;
+
+    let selectionWritten = false;
+    try {
+      selectionWritten = this.#selectionBridge.write(
+        this.#rendered,
+        lease.selection,
+      ).ok;
+    } catch {
+      selectionWritten = false;
+    }
+    if (!selectionWritten) {
+      this.#state = "reconcile";
+      return compositionRestoreFailure("selectionWriteFailed");
+    }
+
+    this.#state = "live";
+    let delivery: EditorDeliveryToken;
+    try {
+      delivery = this.deliveryToken();
+    } catch {
+      this.#state = "reconcile";
+      return compositionRestoreFailure("renderFailed");
+    }
+    return Object.freeze({
+      ok: true,
+      rendered: this.#rendered,
+      delivery,
+      selection: lease.selection,
+    });
+  }
+
+  /**
    * Atomically serializes selection sync, history boundary, command, and render.
    *
    * "Atomic" here means non-interleaved delivery, not rollback: a selection or
    * history prestage can remain effective if a later structured command fails.
    */
-  execute(request: EngineCommandRequest): WasmCommandSequenceOutcome {
-    this.requireState("live");
+  execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
+    this.#requireState("live");
     const canonical = canonicalEditorCommandRequest(request);
     if (canonical === null || !isEngineCommand(canonical.command)) {
       throw new TypeError("request is not an exact executable engine command");
@@ -326,14 +669,14 @@ export class BreditorWasmCommandAdapter {
     this.#deliveryEpoch += 1n;
     this.#state = "executing";
     try {
-      const selectionOutcome = this.executeSelection(selection);
+      const selectionOutcome = this.#executeSelection(selection);
       if (selectionOutcome.status === "unchanged") {
-        this.installRequestedSelection(engineRequest.selection);
+        this.#installRequestedSelection(engineRequest.selection);
       }
 
       let boundary: WasmCommandOutcome | undefined;
       if (engineRequest.requirements.history === "closeBefore") {
-        boundary = this.executeOne(
+        boundary = this.#executeOne(
           (expected) => this.#engine.closeHistoryGroup(expected),
           "closeHistoryGroup",
         );
@@ -342,8 +685,10 @@ export class BreditorWasmCommandAdapter {
       const expectedKind =
         engineRequest.command.kind === "action"
           ? "action"
-          : engineRequest.command.operation;
-      const command = this.executeOne(
+          : engineRequest.command.kind === "history"
+            ? engineRequest.command.operation
+            : "closeHistoryGroup";
+      const command = this.#executeOne(
         (expected) => invokeEngineCommand(this.#engine, expected, engineRequest.command),
         expectedKind,
         engineRequest.command.kind === "action"
@@ -379,7 +724,7 @@ export class BreditorWasmCommandAdapter {
     if (this.#state !== "live" && this.#state !== "reconcile") {
       return Object.freeze({ ok: false, reason: "adapterUnavailable" });
     }
-    const observation = this.requireObservation();
+    const observation = this.#requireObservation();
     this.#state = "executing";
     try {
       const rendered = this.#renderer.render(this.#host, this.#projection);
@@ -388,7 +733,7 @@ export class BreditorWasmCommandAdapter {
         return Object.freeze({ ok: false, reason: "renderFailed" });
       }
       this.#rendered = rendered.value.rendered;
-      if (!this.readAndWriteCurrentSelection(observation, this.#rendered)) {
+      if (!this.#readAndWriteCurrentSelection(observation, this.#rendered)) {
         this.#state = "reconcile";
         return Object.freeze({ ok: false, reason: "selectionWriteFailed" });
       }
@@ -408,16 +753,40 @@ export class BreditorWasmCommandAdapter {
     if (this.#state === "disposed") {
       return;
     }
+    let firstFailure: unknown;
+    if (this.#state === "composition") {
+      const lease = this.#compositionLease;
+      const token = this.#compositionLease?.token;
+      try {
+        if (token === undefined) {
+          throw new TypeError("composition lease ownership is unavailable");
+        }
+        let restored: WasmCompositionLeaseRestoreOutcome;
+        try {
+          restored = this.restoreCompositionLease(token);
+        } catch {
+          restored = this.recoverCompositionLease(token);
+        }
+        if (!restored.ok) {
+          throw new TypeError(`composition disposal ${restored.reason}`);
+        }
+      } catch (error) {
+        firstFailure = error;
+        if (lease !== undefined) {
+          this.#discardCompositionDomLease(lease);
+        }
+      }
+    }
     const observation = this.#observation;
     this.#observation = undefined;
+    this.#compositionLease = undefined;
     this.#state = "disposed";
-    let firstFailure: unknown;
     try {
       if (this.#renderer.owns(this.#rendered)) {
         this.#renderer.release(this.#rendered);
       }
     } catch (error) {
-      firstFailure = error;
+      firstFailure ??= error;
     }
     try {
       observation?.free();
@@ -429,8 +798,8 @@ export class BreditorWasmCommandAdapter {
     }
   }
 
-  private executeSelection(selection: PreparedSelection): WasmCommandOutcome {
-    return this.executeOne(
+  #executeSelection(selection: PreparedSelection): WasmCommandOutcome {
+    return this.#executeOne(
       (expected) =>
         selection.kind === "none"
           ? this.#engine.clearSelection(expected)
@@ -443,22 +812,22 @@ export class BreditorWasmCommandAdapter {
     );
   }
 
-  private executeOne(
+  #executeOne(
     invoke: (expected: WasmCommandObservationView) => WasmCommandResultView,
     expectedKind: ExpectedEventKind,
     expectedActionId?: string,
   ): WasmCommandOutcome {
-    const observation = this.requireObservation();
+    const observation = this.#requireObservation();
     const result = invoke(observation);
-    return this.consumeResult(result, expectedKind, expectedActionId);
+    return this.#consumeResult(result, expectedKind, expectedActionId);
   }
 
-  private consumeResult(
+  #consumeResult(
     result: WasmCommandResultView,
     expectedKind: ExpectedEventKind,
     expectedActionId: string | undefined,
   ): WasmCommandOutcome {
-    const previous = this.requireObservation();
+    const previous = this.#requireObservation();
     if ((result as unknown) === previous) {
       throw new TypeError("Wasm command result handle is invalid or aliased");
     }
@@ -553,7 +922,7 @@ export class BreditorWasmCommandAdapter {
           }
           const ownedUpdate = updateView;
           updateView = undefined;
-          transition = this.consumeAndRenderUpdate(
+          transition = this.#consumeAndRenderUpdate(
             ownedUpdate,
             successor,
             nextSnapshot,
@@ -633,7 +1002,7 @@ export class BreditorWasmCommandAdapter {
     }
   }
 
-  private consumeAndRenderUpdate(
+  #consumeAndRenderUpdate(
     updateView: SemanticProjectionUpdateView,
     successor: WasmCommandObservationView,
     nextSnapshot: WasmCommandSnapshot,
@@ -665,7 +1034,7 @@ export class BreditorWasmCommandAdapter {
     }
     let selectionWritten: boolean;
     try {
-      selectionWritten = this.readAndWriteCurrentSelection(
+      selectionWritten = this.#readAndWriteCurrentSelection(
         successor,
         rendered.value.rendered,
         [...protectedHandles, updateView],
@@ -686,12 +1055,12 @@ export class BreditorWasmCommandAdapter {
     return Object.freeze(snapshot);
   }
 
-  private readAndWriteCurrentSelection(
+  #readAndWriteCurrentSelection(
     observation: WasmCommandObservationView,
     rendered: RenderedProjection,
     protectedHandles: readonly unknown[] = [],
   ): boolean {
-    const selection = this.readCurrentSelection(
+    const selection = this.#readCurrentSelection(
       observation,
       rendered.projection,
       protectedHandles,
@@ -703,7 +1072,7 @@ export class BreditorWasmCommandAdapter {
     }
   }
 
-  private readCurrentSelection(
+  #readCurrentSelection(
     observation: WasmCommandObservationView,
     projection: BaseDocumentProjection,
     protectedHandles: readonly unknown[] = [],
@@ -752,7 +1121,7 @@ export class BreditorWasmCommandAdapter {
     }
   }
 
-  private installRequestedSelection(selection: EditorSelectionSync): void {
+  #installRequestedSelection(selection: EditorSelectionSync): void {
     const value = selection.kind === "range" ? selection.selection : null;
     if (!this.#selectionBridge.write(this.#rendered, value).ok) {
       this.#state = "reconcile";
@@ -760,14 +1129,43 @@ export class BreditorWasmCommandAdapter {
     }
   }
 
-  private requireObservation(): WasmCommandObservationView {
+  #requireObservation(): WasmCommandObservationView {
     if (this.#observation === undefined) {
       throw new TypeError("Wasm command adapter has no live observation");
     }
     return this.#observation;
   }
 
-  private requireState(expected: AdapterState): void {
+  #requireCompositionLease(
+    token: unknown,
+  ): ActiveCompositionLease {
+    const lease = this.#compositionLease;
+    if (lease === undefined || token !== lease.token) {
+      throw new TypeError("composition lease token is stale or foreign");
+    }
+    return lease;
+  }
+
+  #discardCompositionDomLease(lease: ActiveCompositionLease): void {
+    if (lease.domLease === undefined) {
+      return;
+    }
+    try {
+      this.#renderer.discardCompositionDomLease(lease.domLease);
+    } catch {
+      // Best-effort cleanup only; callers preserve their primary failure.
+    }
+  }
+
+  #ownsCompositionDomLease(lease: DomCompositionLease): boolean {
+    try {
+      return this.#renderer.ownsCompositionDomLease(lease, this.#rendered);
+    } catch {
+      return false;
+    }
+  }
+
+  #requireState(expected: AdapterState): void {
     if (this.#state !== expected) {
       throw new TypeError(`Wasm command adapter is ${this.#state}`);
     }
@@ -823,6 +1221,9 @@ function invokeEngineCommand(
     return command.operation === "undo"
       ? engine.undo(expected)
       : engine.redo(expected);
+  }
+  if (command.kind === "control") {
+    return engine.closeHistoryGroup(expected);
   }
   return command.input.kind === "none"
     ? engine.executeNoInputAction(expected, command.actionId)
@@ -1095,6 +1496,26 @@ function isActivation(
 
 function isQualifiedName(value: string): boolean {
   return value.length <= 128 && /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+}
+
+const MAX_U64 = 18_446_744_073_709_551_615n;
+
+function isNonzeroU64(value: unknown): value is bigint {
+  return typeof value === "bigint" && value > 0n && value <= MAX_U64;
+}
+
+function hostIsConnected(host: HTMLElement): boolean {
+  try {
+    return host.isConnected && host.ownerDocument.defaultView !== null;
+  } catch {
+    return false;
+  }
+}
+
+function compositionRestoreFailure(
+  reason: "renderFailed" | "selectionWriteFailed",
+): WasmCompositionLeaseRestoreOutcome {
+  return Object.freeze({ ok: false, reason });
 }
 
 function isStableCode(value: string): boolean {

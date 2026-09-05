@@ -5,8 +5,8 @@ the HTML `<br>` element with “editor.” Other editors are research examples o
 Breditor does not implement their document model, operation format, or plugin
 protocol.
 
-This repository currently contains the deterministic Rust core and its first
-narrow WebAssembly boundary:
+This repository currently contains the deterministic Rust core, its first
+narrow WebAssembly boundary, and a framework-neutral browser layer:
 
 - immutable, structurally shared document values;
 - proof-derived cached document measurements for node count, maximum depth,
@@ -102,7 +102,8 @@ narrow WebAssembly boundary:
   conservatively on broad impact or DOM drift, plus exact range/target mapping,
   a bounded non-recursive command FIFO, deliberate `beforeinput` and keyboard
   translation, event-echo suppression, and an observation/render-owning Wasm
-  command adapter;
+  command adapter, plus an exact queue/renderer composition lease that
+  reconciles one paragraph-local native IME replacement back through Rust;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -120,7 +121,7 @@ scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
-composition settlement and final clipboard mutation adapters,
+a unified end-user browser router and final clipboard mutation adapters,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
@@ -673,9 +674,9 @@ Commit/state/checkpoint encoding remains separate from mutation publication so
 an output-limit failure cannot make a published edit look rejected. A checked
 finite integer history capacity is capped at the checkpoint profile's `100`
 entries. The exact `wasm-bindgen`-generated TypeScript declaration is reviewed
-and reproducibly compared by `scripts/check-wasm-api.sh`. DOM projection,
-selection mapping, event timing, composition, clipboard, and persistence I/O
-remain later browser-layer checkpoints.
+and reproducibly compared by `scripts/check-wasm-api.sh`. At that checkpoint,
+DOM projection, selection mapping, event timing, composition, clipboard, and
+persistence I/O remained later browser-layer work.
 
 The `0.0.50` Wasm crate and declaration are repository-internal review
 artifacts, not an installable npm or crates.io package. Consumer packaging and
@@ -727,8 +728,8 @@ layer reduces owned `beforeinput`, keyboard, `input`, and clipboard signals to
 bounded immutable command requests carrying an exact captured semantic
 selection and a private one-use delivery token. It recognizes only the base
 text, paragraph, deletion, strong, and history intents; unsupported edits fail
-closed, keyboard events never supply text, and composition is delegated to the
-next checkpoint.
+closed, keyboard events never supply text, and composition was delegated at
+that checkpoint.
 
 A synchronous bounded FIFO serializes requests without recursive execution and
 permanently quarantines later work after executor or observer uncertainty.
@@ -747,6 +748,34 @@ full-render recovery; malformed, stale, aliased, or uncertain results fault the
 adapter. Clipboard mutations remain staged until `0.0.55`, and the multi-stage
 sequence is serialized but cannot roll back a selection/history prestage when a
 later action fails.
+
+Version `0.0.54` adds strict composition/IME ownership to the same
+[browser event pipeline contract](docs/BROWSER_EVENT_PIPELINE.md). A dedicated
+composition controller requires a queue built from the exact stable Wasm
+adapter executor, captures one canonical light-DOM range, and reserves both the
+queue and adapter before yielding one paragraph to native mutation. Ordinary
+event, toolbar, API, observer, and reentrant commands remain blocked for the
+whole lease.
+
+Composition events are reduced to bounded text evidence across explicit,
+implicit, reconversion, and a narrow set of active mobile-shaped alias orders.
+At a later task boundary, strict reconciliation accepts only text and
+property-free strong structure in the target paragraph and exact unchanged
+surrounding content. The temporary DOM is never authoritative: the adapter
+first full-renders its retained Rust projection and restores the captured
+selection, then uses the exact queue lease for one plain-text insertion,
+selection deletion, or cancellation history-close command. Each committed or
+cancelled settlement closes the prior merge group; abort recovery does not call
+Rust or alter history.
+
+Foreign, stale, refined-away, and replayed capabilities cannot settle or release
+ownership. A lost renderer lease, disconnection, or failed strict restore enters
+quarantine; exact-token recovery discards temporary DOM and restores the
+authoritative projection without calling Rust before ordinary work can resume.
+The current implementation is limited to one range and one paragraph in a
+connected light-DOM host. It has no cross-block, shadow/composed-range,
+multi-range, arbitrary-IME-markup, or general mobile support claim; the real
+Chromium, Firefox, and WebKit/Safari matrix remains checkpoint `0.0.59`.
 
 ## Development
 

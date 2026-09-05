@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.53`
+Status: frozen product target; implementation completed through `0.0.54`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -127,7 +127,15 @@ a smaller safe boundary, but a later gate must not be claimed first.
    bounded FIFO ordering, key/clipboard echo receipts, `input`-as-postcondition,
    and handle-owning Wasm execution/reconciliation are explicit; clipboard
    mutation remains deliberately staged for `0.0.55`.
-7. `0.0.54`: composition/IME ownership, cancellation, and browser reconciliation.
+7. `0.0.54`: composition/IME ownership, cancellation, and browser
+   reconciliation. Complete: an exact adapter-bound queue lease excludes
+   ordinary work; one light-DOM range can temporarily yield one paragraph to
+   native IME mutation; strict text/strong reconciliation restores the
+   authoritative projection before one guarded Rust insert, delete, or
+   cancellation history boundary; and stale settlement falls back to
+   canonical recovery without a Wasm call or treating native DOM as the model.
+   The integration is controller-only; the real-browser matrix remains
+   checkpoint `0.0.59`, and this checkpoint makes no broader device claim.
 8. `0.0.55`: sanitized supported-subset HTML copy/paste plus atomic multiline
    paste integration.
 9. `0.0.56`: extensible accessible toolbar and action-state refresh/delivery

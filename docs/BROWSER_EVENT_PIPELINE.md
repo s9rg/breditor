@@ -1,6 +1,6 @@
 # Breditor browser event pipeline
 
-Status: implemented for the closed base schema in `0.0.53`; pre-`0.1` API
+Status: implemented for the closed base schema through `0.0.54`; pre-`0.1` API
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -8,8 +8,10 @@ selection, plugin, and DOM-reconciliation protocols are not adopted.
 
 The Rust AST remains authoritative. Outside an explicitly leased composition
 session, an owned browser mutation is either canceled before the DOM changes or
-reported as requiring canonical reconciliation. Native `input` is a
-postcondition signal and never causes a second semantic command.
+reported as requiring canonical reconciliation. During composition, temporary
+native DOM is evidence only; it is never adopted as an AST or authoritative
+state. Native `input` is either a postcondition or terminal composition evidence
+and never causes a second semantic command for the same physical edit.
 
 ## Delivery sequence
 
@@ -138,6 +140,135 @@ Receipts contain bounded command identity and exact render correlation. They do
 not retain events or clipboard payloads. Two independent `beforeinput` events
 remain two commands even when their payloads happen to be equal.
 
+## Composition and IME ownership (`0.0.54`)
+
+`BreditorCompositionController` is the explicit owner of one admitted native
+composition interval. It is separate from `BreditorBrowserEventController`;
+`0.0.54` does not provide a unified end-user event router. An integration must
+front-route owned `compositionstart`, `compositionupdate`, `compositionend`,
+composition-related `beforeinput`/`input`, `keydown`, and `blur` signals to the
+composition controller and must not send the same active-composition signal
+through the ordinary command path.
+
+Admission requires a connected, canonical light-DOM render and exactly one
+mapped DOM range selection. The controller synchronously captures that semantic
+range, acquires an idle queue lease, and asks the adapter for a private,
+nonzero-session composition token bound to the exact projection, rendered
+handle, selection object, snapshot, adapter authority, and observation epoch.
+The adapter then enters `composition`: ordinary delivery tokens, direct
+`execute` calls, and ordinary queue submissions cannot authorize work.
+The closed happy-path phases advance from `idle` through `armed`, `leased`,
+`mutating`, `ending`, and `settling`, then return to `idle`. Any unprovable
+active transition goes to `quarantined` until canonical recovery succeeds.
+
+The first accepted composition `beforeinput` must expose exactly one target
+range. While the DOM is still canonical, the controller maps it, requires both
+endpoints to stay in one paragraph, replaces the captured lease range exactly
+once, and opens an opaque renderer-owned DOM lease. Opening disconnects the
+renderer mutation observer and makes the public render non-current and its AST
+mappings unavailable, while retaining exact ownership of the host for later
+restoration. Only then may the browser mutate the temporary composition DOM.
+No native event, target-range object, DOM `Selection`, or event-derived DOM node
+is retained as composition evidence.
+
+### Event order and bounded mobile aliases
+
+The state machine does not assume one disputed browser ordering. It accepts an
+explicit `compositionstart`, including `compositionupdate` before the first
+composition `beforeinput`; it can also start implicitly from a composition
+`beforeinput` and coalesce a later `compositionstart`. The standard admitted
+input types are `insertCompositionText`, `deleteCompositionText`,
+`insertFromComposition`, and `deleteByComposition`, including reconversion
+deletion before `compositionstart`.
+
+Within an admitted composition, the controller also recognizes the bounded
+mobile-shaped aliases `insertText`, `deleteContentBackward`, and
+`deleteContentForward`. Such a `beforeinput` can establish an implicit session
+only when its native `isComposing` flag is true; an `input` alias with
+`isComposing === false` is terminal evidence. These aliases are compatibility
+rules for those exact signals, not a claim of general Android, iOS, virtual-
+keyboard, or handwriting support.
+
+`compositionupdate` and composing input are provisional evidence.
+`compositionend`, `insertFromComposition`, and the admitted non-composing final
+input forms can end the interval. Duplicate terminal signals are idempotent;
+conflicting final text is not guessed. One owned keydown immediately after
+terminal evidence may force the pending settlement before the scheduled
+callback. After success, one exact matching late terminal `input` echo can be
+consumed; a different payload, render generation, delivery epoch, new
+composition, or next scheduled task invalidates that receipt.
+
+Blur schedules closure but is not final text evidence: unchanged DOM may cancel,
+while changed provisional DOM is discarded through recovery rather than
+committed.
+
+### Settlement, cancellation, and recovery
+
+Normal settlement occurs at a later task boundary so the browser can finish its
+native DOM work. The scheduling hook itself is synchronous and returns `void`,
+but it must enqueue the callback for a future task; invoking it inline is
+rejected. The default uses a 20 ms timer. Command execution and leased queue
+delivery remain synchronous and promise-free.
+
+At settlement every paragraph element must still be a property-free `<p>`, and
+every non-target paragraph must remain canonical. The one target paragraph may
+be empty, contain only text nodes and property-free `<strong>` wrappers whose
+children are text, or use one sole property-free `<br>` to represent empty text.
+Text outside the captured replacement range must match the authoritative
+projection exactly. The extracted replacement is bounded valid Unicode.
+Composition event text and the extracted candidate each fit both the 65,536
+UTF-16-code-unit and 65,536 UTF-8-byte ceilings.
+Cross-paragraph replacement, changed surrounding text, attributes, comments,
+spans, nested markup, unrelated host changes, or conflicting event evidence
+fail closed. This is strict reconciliation of one known replacement, not a
+generic DOM-to-AST or HTML parser.
+
+Before any semantic command is delivered, the adapter spends the composition
+token, discards the temporary DOM through a full render of the authoritative
+projection, and restores the exact captured semantic selection. That restoration
+makes no Wasm call and cannot mutate Rust. The controller then spends the exact
+queue lease on one request:
+
+- committed replacement text uses `breditor/insert-plain-text` with
+  `closeBefore`;
+- an observed empty replacement of a non-empty range uses
+  `breditor/delete-selection` with `closeBefore`; and
+- cancellation submits an explicit `closeHistoryGroup` control, including when
+  the visible document was unchanged.
+
+Every successful insert, delete, or cancellation settlement therefore closes
+the prior typing history group; cancellation is a history boundary too. Abort
+recovery makes no Rust call and does not close history. As with ordinary command
+delivery, a history close may publish before a later action error and is not
+rolled back. The native IME DOM is never the committed value: only the resulting
+guarded Rust action can publish the candidate.
+
+Strict restoration requires the exact live composition token and, once native
+mutation opened, the exact renderer DOM lease. A stale, foreign, refined-away,
+or replayed token is inert. If render ownership was externally superseded,
+released, disconnected, or otherwise cannot prove strict settlement, the
+controller quarantines first and defers recovery. The adapter's exact-token
+recovery path spends the lease before effects, best-effort discards any renderer
+lease, full-renders its retained authoritative projection, and rewrites the
+captured selection without calling Rust. If that also fails, the controller
+stays quarantined and the queue remains leased; it neither retries a command nor
+releases ordinary work onto uncertain DOM. Disposal follows the same restore-
+before-release rule. Exposed failures use stable payload-redacted reasons.
+
+### Composition limits
+
+The `0.0.54` composition slice deliberately supports one connected light-DOM
+host, one browser range, one target range, and one paragraph-local replacement.
+It does not support cross-block composition, shadow/composed ranges, browser
+multi-range selection, nested editable controls, arbitrary native IME markup,
+or an asynchronous executor. The temporary target DOM vocabulary is limited to
+text and property-free strong structure plus the empty-paragraph placeholder.
+
+The scheduler and controller are covered by deterministic DOM unit tests, not a
+shipping browser-support claim. The current Chromium, Firefox, and WebKit/Safari
+engine matrix, including real IME behavior, remains the `0.0.59` release gate;
+this checkpoint defines no separate mobile support matrix.
+
 ## Queue contract
 
 `BreditorCommandQueue` is a bounded synchronous FIFO. The default capacity is
@@ -154,6 +285,14 @@ new integration may start only after reconciling from authoritative engine
 state. The observer is notification-only: raw Wasm projection updates and
 generated handles never reach it.
 
+Composition reserves a queue only when it is completely idle. The queue must
+have been constructed with the exact stable `adapter.commandExecutor` function;
+a wrapper which merely calls that function is not equivalent. While reserved,
+ordinary toolbar, API, event, observer, and reentrant submissions reject as
+`leased` before request inspection. The exact lease permits one synchronous,
+never-queued settlement submission and remains held until canonical restoration
+and settlement or explicit recovery have completed.
+
 ## Wasm adapter ownership
 
 `BreditorWasmCommandAdapter` exclusively owns:
@@ -163,8 +302,8 @@ generated handles never reach it.
 - the matching browser projection and renderer handle;
 - the renderer and selection bridge which produced that handle;
 - private token authority and delivery epoch; and
-- a closed lifecycle: `live`, `executing`, `reconcile`, `faulted`, or
-  `disposed`.
+- a closed lifecycle: `live`, `composition`, `executing`, `reconcile`,
+  `faulted`, or `disposed`.
 
 For each sequence the adapter validates the request and selection scalars, spends
 the token, synchronizes selection, optionally closes the history group, and
@@ -216,17 +355,16 @@ later action returns an error. DOM APIs cannot participate in a Rust transaction
 Consequently an uncertain later failure quarantines the queue and requires
 reconciliation; it does not roll back or retry already published prestages.
 
-Other intentional limits in `0.0.53`:
+Other intentional limits through `0.0.54`:
 
 - one connected light-DOM host and one range selection;
 - no shadow-DOM composed-path ownership;
 - no asynchronous command executor;
 - no generic browser DOM-to-AST parser;
 - no direct persistence append in the event callback;
-- full DOM validation and projection/selection conversion remain linear in the
-  bounded document; and
-- composition events are only classified and delegated. The temporary DOM
-  lease, settlement, cancellation, and IME reconciliation arrive in `0.0.54`.
+- full DOM validation, projection/selection conversion, and composition
+  reconciliation remain linear in the bounded document; and
+- there is no unified end-user router or real-browser support matrix yet.
 
 ## Acceptance laws
 
@@ -237,7 +375,8 @@ The release tests establish at least:
 3. cut and paste echoes require an exact one-use receipt;
 4. text, paragraph, grapheme deletion, selection deletion, bold, undo, and redo
    translate only to their declared semantic commands;
-5. composition evidence never becomes an ordinary command;
+5. ordinary delivery never treats composition evidence as a normal typing
+   command;
 6. selection and target ranges are captured against the same exact render;
 7. unsupported, noncancelable, hostile, foreign, stale, and DOM-drifted events
    fail with controlled dispositions;
@@ -246,4 +385,14 @@ The release tests establish at least:
 9. queue reentrancy preserves FIFO order without recursive execution;
 10. executor/observer uncertainty fail-stops the queue without replay; and
 11. generated result/update/selection ownership is consumed exactly once and
-    only exact correlated successors become adapter state.
+    only exact correlated successors become adapter state;
+12. a composition reserves only its exact adapter-bound idle queue and excludes
+    ordinary, toolbar, API, observer, and reentrant work;
+13. native composition DOM is reconciled only as one strict paragraph-local
+    replacement and is replaced by the authoritative render before delivery;
+14. insert, delete, and cancellation settlements all close the prior history
+    group, while recovery alone makes no Rust call;
+15. stale, foreign, refined-away, and replayed composition capabilities cannot
+    settle or release a lease; and
+16. settlement and recovery failures quarantine without retrying a semantic
+    command or exposing native composition payloads.

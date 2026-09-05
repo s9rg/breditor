@@ -41,14 +41,69 @@ export type CommandQueueSubmission<TResult> =
   | Readonly<{ status: "queued"; sequence: bigint }>
   | Readonly<{
       status: "rejected";
-      reason: "invalidRequest" | "capacity" | "failed" | "disposed";
+      reason: "invalidRequest" | "capacity" | "failed" | "disposed" | "leased";
     }>
   | Readonly<{ status: "failed"; failure: CommandQueueFailure }>;
+
+declare const COMMAND_QUEUE_LEASE_BRAND: unique symbol;
+
+/**
+ * Opaque one-item reservation used by package-owned composition coordination.
+ *
+ * @internal
+ */
+export interface CommandQueueLease {
+  /** Prevents structural construction outside this module. */
+  readonly [COMMAND_QUEUE_LEASE_BRAND]: true;
+}
+
+/** A leased delivery can complete, reject, or fail, but can never queue. @internal */
+export type CommandQueueLeasedSubmission<TResult> = Exclude<
+  CommandQueueSubmission<TResult>,
+  Readonly<{ status: "queued"; sequence: bigint }>
+>;
+
+/**
+ * Non-overridable access to one queue's composition reservation machinery.
+ *
+ * The port is created only after checking the constructor-captured executor
+ * through the queue's private state. Its closures bypass public instance
+ * dispatch, so an own property or subclass override cannot impersonate queue
+ * ownership or fabricate a leased delivery.
+ *
+ * @internal
+ */
+export interface CommandQueueLeasePort<TResult> {
+  readonly failure: () => CommandQueueFailure | undefined;
+  readonly acquireLease: () => CommandQueueLease | undefined;
+  readonly submitLeased: (
+    lease: CommandQueueLease,
+    request: EditorCommandRequest,
+  ) => CommandQueueLeasedSubmission<TResult>;
+  readonly releaseLease: (lease: CommandQueueLease) => boolean;
+}
+
+type OpenCommandQueueLeasePort = <TResult>(
+  queue: BreditorCommandQueue<TResult>,
+  executor: unknown,
+) => CommandQueueLeasePort<TResult> | undefined;
+
+let openCommandQueueLeasePortIntrinsic: OpenCommandQueueLeasePort = () => undefined;
 
 interface PendingCommand {
   readonly sequence: bigint;
   readonly request: EditorCommandRequest;
 }
+
+class OwnedCommandQueueLease implements CommandQueueLease {
+  declare readonly [COMMAND_QUEUE_LEASE_BRAND]: true;
+
+  constructor() {
+    Object.freeze(this);
+  }
+}
+
+Object.freeze(OwnedCommandQueueLease.prototype);
 
 /**
  * Bounded synchronous FIFO with explicit reentrancy and uncertainty semantics.
@@ -67,6 +122,31 @@ export class BreditorCommandQueue<TResult> {
   #disposed = false;
   #failure: CommandQueueFailure | undefined;
   #nextSequence = 1n;
+  #lease: CommandQueueLease | undefined;
+  #leaseUsed = false;
+  #leaseSubmitting = false;
+
+  static {
+    openCommandQueueLeasePortIntrinsic = <TResult>(
+      queue: BreditorCommandQueue<TResult>,
+      executor: unknown,
+    ): CommandQueueLeasePort<TResult> | undefined => {
+      try {
+        if (queue.#executor !== executor) return undefined;
+        return Object.freeze({
+          failure: () => queue.#failure,
+          acquireLease: () => queue.#acquireLease(),
+          submitLeased: (
+            lease: CommandQueueLease,
+            request: EditorCommandRequest,
+          ) => queue.#submitLeased(lease, request),
+          releaseLease: (lease: CommandQueueLease) => queue.#releaseLease(lease),
+        });
+      } catch {
+        return undefined;
+      }
+    };
+  }
 
   constructor(
     executor: EditorCommandExecutor<TResult>,
@@ -124,6 +204,12 @@ export class BreditorCommandQueue<TResult> {
     if (this.#disposed) {
       return rejected("disposed");
     }
+    // A composition lease reserves the executor before touching an untrusted
+    // request. Toolbar, API, and reentrant observer work therefore cannot
+    // reach a temporarily leased adapter.
+    if (this.#lease !== undefined) {
+      return rejected("leased");
+    }
     if (this.#failure !== undefined) {
       return rejected("failed");
     }
@@ -147,7 +233,115 @@ export class BreditorCommandQueue<TResult> {
     if (this.#draining) {
       return Object.freeze({ status: "queued", sequence });
     }
-    return this.drainFor(sequence);
+    return this.#drainFor(sequence);
+  }
+
+  #acquireLease(): CommandQueueLease | undefined {
+    if (
+      this.#disposed ||
+      this.#failure !== undefined ||
+      this.#draining ||
+      this.#pending.length !== 0 ||
+      this.#lease !== undefined
+    ) {
+      return undefined;
+    }
+    const lease = new OwnedCommandQueueLease();
+    this.#lease = lease;
+    this.#leaseUsed = false;
+    return lease;
+  }
+
+  #submitLeased(
+    lease: CommandQueueLease,
+    request: EditorCommandRequest,
+  ): CommandQueueLeasedSubmission<TResult> {
+    if (this.#disposed) {
+      return leasedRejected("disposed");
+    }
+    if (
+      this.#lease !== lease ||
+      this.#leaseUsed ||
+      this.#draining ||
+      this.#pending.length !== 0
+    ) {
+      return leasedRejected("leased");
+    }
+    if (this.#failure !== undefined) {
+      return leasedRejected("failed");
+    }
+
+    // Spend before inspecting caller-controlled request structure. A malformed
+    // request cannot make the same composition settlement retryable.
+    this.#leaseUsed = true;
+    this.#leaseSubmitting = true;
+    try {
+      let canonical: EditorCommandRequest | null;
+      try {
+        canonical = canonicalEditorCommandRequest(request);
+      } catch {
+        canonical = null;
+      }
+      if (canonical === null) {
+        return leasedRejected("invalidRequest");
+      }
+      // Disposal is allowed from arbitrary application callbacks and
+      // invalidates the lease. Never publish work admitted after such a trap.
+      if (this.#disposed || this.#lease !== lease) {
+        return leasedRejected(this.#disposed ? "disposed" : "leased");
+      }
+
+      const sequence = this.#nextSequence;
+      this.#nextSequence += 1n;
+      this.#draining = true;
+      let result: TResult;
+      try {
+        result = this.#executor(canonical);
+        if (isPromiseLike(result)) {
+          throw new TypeError("command queue executors must be synchronous");
+        }
+      } catch {
+        const failure = this.#fail("command_queue.executor_threw", sequence);
+        return Object.freeze({ status: "failed", failure });
+      } finally {
+        this.#draining = false;
+      }
+
+      if (this.#observer !== undefined) {
+        this.#draining = true;
+        try {
+          const observed = this.#observer(
+            Object.freeze({ sequence, request: canonical, result }),
+          );
+          if (isPromiseLike(observed)) {
+            throw new TypeError("command queue observers must be synchronous");
+          }
+        } catch {
+          const failure = this.#fail("command_queue.observer_threw", sequence);
+          return Object.freeze({ status: "failed", failure });
+        } finally {
+          this.#draining = false;
+        }
+      }
+      return Object.freeze({ status: "completed", sequence, result });
+    } finally {
+      this.#leaseSubmitting = false;
+    }
+  }
+
+  #releaseLease(lease: CommandQueueLease): boolean {
+    if (
+      this.#disposed ||
+      this.#draining ||
+      this.#leaseSubmitting ||
+      this.#lease !== lease
+    ) {
+      return false;
+    }
+    this.#lease = undefined;
+    this.#leaseUsed = false;
+    this.#leaseSubmitting = false;
+    return true;
   }
 
   /**
@@ -159,9 +353,12 @@ export class BreditorCommandQueue<TResult> {
   dispose(): void {
     this.#disposed = true;
     this.#pending.splice(0, this.#pending.length);
+    this.#lease = undefined;
+    this.#leaseUsed = false;
+    this.#leaseSubmitting = false;
   }
 
-  private drainFor(primarySequence: bigint): CommandQueueSubmission<TResult> {
+  #drainFor(primarySequence: bigint): CommandQueueSubmission<TResult> {
     this.#draining = true;
     let primaryResult: TResult | undefined;
     let primaryCompleted = false;
@@ -178,7 +375,7 @@ export class BreditorCommandQueue<TResult> {
             throw new TypeError("command queue executors must be synchronous");
           }
         } catch {
-          this.fail("command_queue.executor_threw", pending.sequence);
+          this.#fail("command_queue.executor_threw", pending.sequence);
           break;
         }
         if (pending.sequence === primarySequence) {
@@ -187,15 +384,18 @@ export class BreditorCommandQueue<TResult> {
         }
         if (this.#observer !== undefined) {
           try {
-            this.#observer(
+            const observed = this.#observer(
               Object.freeze({
                 sequence: pending.sequence,
                 request: pending.request,
                 result,
               }),
             );
+            if (isPromiseLike(observed)) {
+              throw new TypeError("command queue observers must be synchronous");
+            }
           } catch {
-            this.fail("command_queue.observer_threw", pending.sequence);
+            this.#fail("command_queue.observer_threw", pending.sequence);
           }
         }
       }
@@ -215,14 +415,37 @@ export class BreditorCommandQueue<TResult> {
     });
   }
 
-  private fail(code: CommandQueueFailureCode, sequence: bigint): void {
-    this.#failure = Object.freeze({ code, sequence });
+  #fail(code: CommandQueueFailureCode, sequence: bigint): CommandQueueFailure {
+    const failure = Object.freeze({ code, sequence });
+    this.#failure = failure;
+    return failure;
   }
 }
 
+/**
+ * Opens the package-owned lease port only for the exact constructor executor.
+ *
+ * This is total for foreign objects and hostile proxies and never consults a
+ * dynamically dispatched queue property.
+ *
+ * @internal
+ */
+export function openCommandQueueLeasePort<TResult>(
+  queue: BreditorCommandQueue<TResult>,
+  executor: unknown,
+): CommandQueueLeasePort<TResult> | undefined {
+  return openCommandQueueLeasePortIntrinsic(queue, executor);
+}
+
 function rejected<TResult>(
-  reason: "invalidRequest" | "capacity" | "failed" | "disposed",
+  reason: "invalidRequest" | "capacity" | "failed" | "disposed" | "leased",
 ): CommandQueueSubmission<TResult> {
+  return Object.freeze({ status: "rejected", reason });
+}
+
+function leasedRejected<TResult>(
+  reason: "invalidRequest" | "capacity" | "failed" | "disposed" | "leased",
+): CommandQueueLeasedSubmission<TResult> {
   return Object.freeze({ status: "rejected", reason });
 }
 

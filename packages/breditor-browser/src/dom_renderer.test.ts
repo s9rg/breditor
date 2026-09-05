@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   BaseDocumentProjection,
@@ -37,6 +37,13 @@ function render(
 }
 
 describe("BreditorDomRenderer", () => {
+  it("does not expose invariant-critical implementation helpers at runtime", () => {
+    const surface = Object.getOwnPropertyNames(BreditorDomRenderer.prototype);
+    expect(surface).not.toContain("liveCompositionLeaseRecord");
+    expect(surface).not.toContain("invalidateCompositionLeaseRecord");
+    expect(surface).not.toContain("install");
+  });
+
   it("creates only the closed base DOM vocabulary and treats hostile text as text", () => {
     const host = document.createElement("div");
     const renderer = new BreditorDomRenderer();
@@ -359,6 +366,178 @@ describe("BreditorDomRenderer", () => {
 
     expect(outcome.rendered.current).toBe(false);
     expect(outcome.rendered.nodeForAstPath([0])).toBeNull();
+  });
+
+  it("leases exact renderer ownership across expected native composition DOM drift", async () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "base", strong: false }]]);
+    const outcome = valueOf(renderer.render(host, base));
+
+    const lease = renderer.beginCompositionDomLease(outcome.rendered);
+    expect(lease).not.toBeNull();
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+    expect(outcome.rendered.current).toBe(false);
+    expect(outcome.rendered.validateCanonicalDom()).toBe(false);
+    expect(outcome.rendered.nodeForAstPath([0, 0])).toBeNull();
+    expect(renderer.ownsCompositionDomLease(lease, outcome.rendered)).toBe(true);
+
+    (host.firstChild as Element | null)?.replaceChildren(
+      document.createTextNode("provisional"),
+    );
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    expect(renderer.ownsCompositionDomLease(lease, outcome.rendered)).toBe(true);
+    expect(renderer.owns(outcome.rendered)).toBe(false);
+  });
+
+  it("restores a composition lease once and rejects forged or foreign capabilities", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const foreignRenderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "base", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const lease = renderer.beginCompositionDomLease(initial.rendered);
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+    (host.firstChild as Element | null)?.replaceChildren(document.createTextNode("native"));
+
+    expect(renderer.beginCompositionDomLease(initial.rendered)).toBeNull();
+    expect(foreignRenderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(false);
+    expect(
+      renderer.ownsCompositionDomLease(Object.freeze({}), initial.rendered),
+    ).toBe(false);
+
+    const result = projection(1, [[{ text: "committed", strong: false }]]);
+    const restored = valueOf(renderer.restoreCompositionDomLease(lease, result));
+    expect(restored.mode).toBe("full");
+    expect(host.textContent).toBe("committed");
+    expect(restored.rendered.current).toBe(true);
+    expect(initial.rendered.current).toBe(false);
+    expect(renderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(false);
+
+    const repeated = renderer.restoreCompositionDomLease(lease, base);
+    expect(repeated.ok).toBe(false);
+    expect(host.textContent).toBe("committed");
+  });
+
+  it("keeps a composition lease recoverable across invalid input and detached build failure", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "base", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const lease = renderer.beginCompositionDomLease(initial.rendered);
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+    host.textContent = "native";
+
+    expect(renderer.restoreCompositionDomLease(lease, {} as never)).toMatchObject({
+      ok: false,
+      error: { code: "projection.invalid_shape" },
+    });
+    expect(renderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(true);
+
+    const constructor = vi.spyOn(host.ownerDocument, "createElementNS")
+      .mockImplementation(() => {
+        throw new Error("hostile detached DOM constructor");
+      });
+    try {
+      expect(renderer.restoreCompositionDomLease(lease, base)).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+    } finally {
+      constructor.mockRestore();
+    }
+
+    expect(renderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(true);
+    expect(renderer.discardCompositionDomLease(lease)).toBe(true);
+    expect(initial.rendered.current).toBe(false);
+
+    const recovered = valueOf(renderer.render(host, base));
+    expect(recovered.rendered.current).toBe(true);
+    expect(host.textContent).toBe("base");
+    const reacquired = renderer.beginCompositionDomLease(recovered.rendered);
+    expect(reacquired).not.toBeNull();
+    if (reacquired !== null) {
+      expect(renderer.discardCompositionDomLease(reacquired)).toBe(true);
+    }
+  });
+
+  it("invalidates host ownership when installation fails after spending a lease", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "base", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const lease = renderer.beginCompositionDomLease(initial.rendered);
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+    host.textContent = "native";
+
+    const replace = vi.spyOn(host, "replaceChildren").mockImplementation(() => {
+      throw new Error("hostile host write");
+    });
+    try {
+      expect(renderer.restoreCompositionDomLease(lease, base)).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+    } finally {
+      replace.mockRestore();
+    }
+
+    expect(renderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(false);
+    expect(renderer.discardCompositionDomLease(lease)).toBe(false);
+    expect(initial.rendered.current).toBe(false);
+    expect(renderer.release(initial.rendered)).toBe(false);
+
+    const recovered = valueOf(renderer.render(host, base));
+    expect(recovered.rendered.current).toBe(true);
+    expect(host.textContent).toBe("base");
+    const reacquired = renderer.beginCompositionDomLease(recovered.rendered);
+    expect(reacquired).not.toBeNull();
+    if (reacquired !== null) {
+      expect(renderer.discardCompositionDomLease(reacquired)).toBe(true);
+    }
+  });
+
+  it("invalidates an explicitly discarded composition lease without changing DOM", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const initial = render(renderer, host, 0, [[{ text: "base", strong: false }]]);
+    const lease = renderer.beginCompositionDomLease(initial.rendered);
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+    host.textContent = "native";
+
+    expect(renderer.discardCompositionDomLease(lease)).toBe(true);
+    expect(renderer.discardCompositionDomLease(lease)).toBe(false);
+    expect(initial.rendered.current).toBe(false);
+    expect(host.textContent).toBe("native");
+  });
+
+  it("invalidates a lease when another render supersedes its host ownership", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const initial = render(renderer, host, 0, [[{ text: "base", strong: false }]]);
+    const lease = renderer.beginCompositionDomLease(initial.rendered);
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+
+    render(renderer, host, 1, [[{ text: "replacement", strong: false }]]);
+
+    expect(renderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(false);
+    expect(renderer.restoreCompositionDomLease(lease, initial.rendered.projection).ok).toBe(
+      false,
+    );
+    expect(host.textContent).toBe("replacement");
   });
 
   it("releases a current mapping without removing DOM", () => {

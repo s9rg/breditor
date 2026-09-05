@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.53` boundary contract; intentionally narrow and unstable before
+Status: `0.0.54` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
@@ -276,16 +276,17 @@ valid surrogate pairs and all Rust-representable Unicode are retained exactly.
 
 The crate imports no DOM, IndexedDB, timer, clipboard, console, allocator, or
 panic-hook API. DOM selection conversion, focus, non-composition event ordering,
-bounded reentrancy, and guarded command/result ownership are implemented by the
-framework-neutral browser package. Composition ownership, final clipboard data
-handling, editable-host lifecycle, persistence scheduling, and framework
-integration remain TypeScript responsibilities in later checkpoints.
+bounded reentrancy, guarded command/result ownership, and the paragraph-local
+composition lease are implemented by the framework-neutral browser package.
+Final clipboard data handling, a unified editable-host router, persistence
+scheduling, and framework integration remain TypeScript responsibilities in
+later checkpoints.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
 numeric/string coercions can execute before Rust entry; the host queue must not
 treat argument evaluation as part of the guarded mutation.
 
-## Browser command owner (`0.0.53`)
+## Browser command and composition owner (`0.0.54`)
 
 `BreditorWasmCommandAdapter` owns exactly one generated observation together
 with the matching consumed browser projection, current renderer handle, and DOM
@@ -317,6 +318,24 @@ Selection synchronization and a history close are separate core publications,
 so they can remain effective if the later command fails; the browser sequence
 is non-interleaved but is not a rollback transaction.
 
+Version `0.0.54` adds no composition class, DOM handle, event object, or host
+callback to the Rust ABI. The TypeScript adapter instead reserves its exact
+existing observation, projection, render, semantic selection, private epoch,
+and an adapter-bound synchronous command queue under one opaque composition
+token. Ordinary delivery is blocked while that lease is live. The renderer can
+temporarily yield one paragraph-local light-DOM range to native IME mutation,
+but no temporary DOM value crosses Wasm or becomes an engine observation.
+
+At settlement, strict browser reconciliation derives at most one bounded plain-
+text replacement from text/property-free-strong temporary DOM. The adapter
+first restores the authoritative base projection and captured selection without
+calling Wasm, then the exact queue lease submits one existing ABI command:
+`insert-plain-text`, `delete-selection`, or `closeHistoryGroup` for cancellation.
+Insert and delete request `closeBefore`, so every successful insert, delete, or
+cancellation settlement is a history boundary. Abort recovery only restores the
+retained projection and selection; it neither closes history nor retries or
+synthesizes a Rust mutation.
+
 The complete event, target-range, exact-once, FIFO, and recovery rules are in
 [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md).
 
@@ -336,8 +355,9 @@ does not replace the JSON codec contracts documented here and in
 `DATA_CONTRACT.md`. The same gate runs a dependency-free Node.js probe against
 the generated web glue to cover ownership transfer, explicit disposal, numeric
 admission, redaction, wrong-class rejection, and inert/freed-handle behavior
-that direct Rust `wasm-bindgen-test` calls cannot exercise. Version `0.0.53`
+that direct Rust `wasm-bindgen-test` calls cannot exercise. Version `0.0.54`
 also type-checks the generated command/observation/selection result classes
-against the structural browser adapter, while the glue probe exercises real
-selection-view lifecycles and proves that coercible number/string objects cannot
-publish a selection mutation.
+against the structural browser adapter and its composition owner, while the
+glue probe exercises real selection-view lifecycles and proves that coercible
+number/string objects cannot publish a selection mutation. Real browser IME
+coverage remains the `0.0.59` matrix gate rather than a Wasm ABI claim.

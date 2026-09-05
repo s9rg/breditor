@@ -142,7 +142,7 @@ export class BreditorDomSelectionBridge {
           this.#receipt = undefined;
           return selectionFailure("selection.dom_drift");
         }
-        const origin = this.matchesReceipt(rendered, "none", null)
+        const origin = this.#matchesReceipt(rendered, "none", null)
           ? "programmaticEcho"
           : "dom";
         this.#receipt = undefined;
@@ -208,7 +208,7 @@ export class BreditorDomSelectionBridge {
         this.#receipt = undefined;
         return selectionFailure("selection.dom_drift");
       }
-      const exact = this.matchingReceiptSelection(rendered, signature);
+      const exact = this.#matchingReceiptSelection(rendered, signature);
       if (exact !== null) {
         this.#receipt = undefined;
         return selectionSuccess(
@@ -425,7 +425,7 @@ export class BreditorDomSelectionBridge {
     this.#receipt = undefined;
   }
 
-  private matchesReceipt(
+  #matchesReceipt(
     rendered: RenderedProjection,
     signature: string,
     selection: BaseRangeSelection | null,
@@ -440,7 +440,7 @@ export class BreditorDomSelectionBridge {
     );
   }
 
-  private matchingReceiptSelection(
+  #matchingReceiptSelection(
     rendered: RenderedProjection,
     signature: string,
   ): BaseRangeSelection | null {

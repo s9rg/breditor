@@ -63,6 +63,16 @@ export interface ProjectionRenderOutcome {
   readonly fallbackReason?: ProjectionFallbackReason;
 }
 
+/**
+ * Opaque proof that one renderer intentionally yielded its canonical DOM to
+ * the browser for an active native composition.
+ *
+ * @internal
+ */
+export interface DomCompositionLease {
+  readonly __domCompositionLeaseBrand: never;
+}
+
 interface ProjectionMaps {
   readonly astToDom: Map<string, Node>;
   readonly domToAst: WeakMap<Node, AstPath>;
@@ -83,9 +93,18 @@ interface HostOwnership {
   readonly handle: RenderedProjectionHandle;
 }
 
+interface DomCompositionLeaseRecord {
+  readonly rendererToken: symbol;
+  readonly handle: RenderedProjectionHandle;
+  active: boolean;
+}
+
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const RENDERED_HANDLES = new WeakSet<RenderedProjectionHandle>();
 const HOST_OWNERS = new WeakMap<HTMLElement, HostOwnership>();
+const DOM_COMPOSITION_LEASES = new WeakMap<object, DomCompositionLeaseRecord>();
+
+type RenderedProjectionState = "canonical" | "composition" | "inactive";
 
 class RenderedProjectionHandle implements RenderedProjection {
   readonly projection: BaseDocumentProjection;
@@ -93,7 +112,7 @@ class RenderedProjectionHandle implements RenderedProjection {
   readonly host: HTMLElement;
   readonly #astToDom: Map<string, Node>;
   readonly #domToAst: WeakMap<Node, AstPath>;
-  #active = true;
+  #state: RenderedProjectionState = "canonical";
   #observer: MutationObserver | undefined;
 
   constructor(
@@ -112,16 +131,24 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   get current(): boolean {
-    return this.#active;
+    return this.#state === "canonical";
+  }
+
+  get active(): boolean {
+    return this.#state !== "inactive";
+  }
+
+  get compositionLeased(): boolean {
+    return this.#state === "composition";
   }
 
   validateCanonicalDom(): boolean {
-    if (!this.#active) {
+    if (this.#state !== "canonical") {
       return false;
     }
     try {
       const ownership = HOST_OWNERS.get(this.host);
-      if (ownership?.handle !== this || !this.canonicalDomAndMapsMatch()) {
+      if (ownership?.handle !== this || !this.#canonicalDomAndMapsMatch()) {
         if (ownership?.handle === this) {
           HOST_OWNERS.delete(this.host);
         }
@@ -140,7 +167,7 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   nodeForAstPath(path: AstPath): Node | null {
-    if (!this.#active) {
+    if (this.#state !== "canonical") {
       return null;
     }
     try {
@@ -152,7 +179,7 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   astPathForDomNode(node: Node): AstPath | null {
-    if (!this.#active || typeof node !== "object" || node === null) {
+    if (this.#state !== "canonical" || typeof node !== "object" || node === null) {
       return null;
     }
     try {
@@ -163,10 +190,33 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   rawNodeForParagraph(paragraphIndex: number): Node | undefined {
+    if (this.#state !== "canonical") {
+      return undefined;
+    }
     return this.#astToDom.get(`root/${paragraphIndex}`);
   }
 
-  private canonicalDomAndMapsMatch(): boolean {
+  beginCompositionLease(): boolean {
+    if (this.#state !== "canonical") {
+      return false;
+    }
+    try {
+      this.#observer?.takeRecords();
+      this.#observer?.disconnect();
+      this.#observer = undefined;
+      if (!this.#canonicalDomAndMapsMatch()) {
+        this.invalidate();
+        return false;
+      }
+      this.#state = "composition";
+      return true;
+    } catch {
+      this.invalidate();
+      return false;
+    }
+  }
+
+  #canonicalDomAndMapsMatch(): boolean {
     if (
       this.#astToDom.size !==
         1 +
@@ -231,6 +281,9 @@ class RenderedProjectionHandle implements RenderedProjection {
         return;
       }
       observer = new Observer((records) => {
+        if (this.#state !== "canonical") {
+          return;
+        }
         const projectionChanged = records.some(
           (record) => record.type !== "attributes" || record.target !== this.host,
         );
@@ -261,10 +314,10 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   invalidate(): void {
-    if (!this.#active) {
+    if (this.#state === "inactive") {
       return;
     }
-    this.#active = false;
+    this.#state = "inactive";
     try {
       this.#observer?.disconnect();
     } catch {
@@ -304,6 +357,125 @@ export class BreditorDomRenderer {
   }
 
   /**
+   * Suspends canonical-DOM observation for one exact native composition.
+   *
+   * The returned capability is opaque, renderer-local, and single-use. While
+   * it is live the public render handle is deliberately non-current and its
+   * AST/DOM mapping cannot be read.
+   *
+   * @internal
+   */
+  beginCompositionDomLease(rendered: RenderedProjection): DomCompositionLease | null {
+    if (!this.owns(rendered) || !isOwnedRenderedProjection(rendered)) {
+      return null;
+    }
+    const ownership = HOST_OWNERS.get(rendered.host);
+    if (
+      ownership?.rendererToken !== this.#rendererToken ||
+      ownership.handle !== rendered ||
+      !rendered.beginCompositionLease()
+    ) {
+      if (!rendered.active && HOST_OWNERS.get(rendered.host)?.handle === rendered) {
+        HOST_OWNERS.delete(rendered.host);
+      }
+      return null;
+    }
+    const lease = Object.freeze({}) as DomCompositionLease;
+    DOM_COMPOSITION_LEASES.set(lease, {
+      rendererToken: this.#rendererToken,
+      handle: rendered,
+      active: true,
+    });
+    return lease;
+  }
+
+  /** Proves exact, uninterrupted ownership of a live composition lease. @internal */
+  ownsCompositionDomLease(
+    lease: unknown,
+    rendered: RenderedProjection,
+  ): lease is DomCompositionLease {
+    if (
+      typeof lease !== "object" ||
+      lease === null ||
+      !isOwnedRenderedProjection(rendered)
+    ) {
+      return false;
+    }
+    try {
+      const record = DOM_COMPOSITION_LEASES.get(lease);
+      const ownership = HOST_OWNERS.get(rendered.host);
+      return (
+        record?.active === true &&
+        record.rendererToken === this.#rendererToken &&
+        record.handle === rendered &&
+        rendered.compositionLeased &&
+        ownership?.rendererToken === this.#rendererToken &&
+        ownership.handle === rendered
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Consumes a composition lease and replaces provisional native DOM with a
+   * complete canonical projection generation.
+   *
+   * @internal
+   */
+  restoreCompositionDomLease(
+    lease: DomCompositionLease,
+    projection: BaseDocumentProjection,
+  ): BrowserProjectionResult<ProjectionRenderOutcome> {
+    const record = this.#liveCompositionLeaseRecord(lease);
+    if (record === null) {
+      return projectionFailure("renderer.foreign_or_stale_render");
+    }
+    if (!isOwnedProjection(projection)) {
+      return projectionFailure("projection.invalid_shape");
+    }
+
+    // Build the replacement tree while the lease is still recoverable. This
+    // work is detached from the host, so constructor failures must not strand
+    // the yielded handle in an unowned composition state.
+    let prepared: PreparedDom;
+    try {
+      prepared = buildFullProjection(record.handle.host, projection);
+    } catch {
+      return projectionFailure("renderer.dom_write_failed");
+    }
+
+    // Detached DOM constructors are application-replaceable and may reenter.
+    // Re-prove the exact lease immediately before spending it.
+    if (this.#liveCompositionLeaseRecord(lease) !== record) {
+      return projectionFailure("renderer.foreign_or_stale_render");
+    }
+    record.active = false;
+
+    let installed: BrowserProjectionResult<ProjectionRenderOutcome>;
+    try {
+      installed = this.#install(record.handle.host, projection, prepared, "full");
+    } catch {
+      this.#invalidateCompositionLeaseRecord(record);
+      return projectionFailure("renderer.dom_write_failed");
+    }
+    if (!installed.ok) {
+      this.#invalidateCompositionLeaseRecord(record);
+    }
+    return installed;
+  }
+
+  /** Invalidates and releases one exact composition lease. @internal */
+  discardCompositionDomLease(lease: DomCompositionLease): boolean {
+    const record = this.#liveCompositionLeaseRecord(lease);
+    if (record === null) {
+      return false;
+    }
+    this.#invalidateCompositionLeaseRecord(record);
+    return true;
+  }
+
+  /**
    * Replaces a host's children with a complete safe DOM projection.
    *
    * The renderer creates only paragraphs, property-free `strong` wrappers,
@@ -326,7 +498,7 @@ export class BreditorDomRenderer {
     } catch {
       return projectionFailure("renderer.dom_write_failed");
     }
-    return this.install(host, projection, prepared, "full");
+    return this.#install(host, projection, prepared, "full");
   }
 
   /**
@@ -367,7 +539,7 @@ export class BreditorDomRenderer {
       } catch {
         return projectionFailure("renderer.dom_write_failed");
       }
-      return this.install(
+      return this.#install(
         rendered.host,
         update.result,
         prepared,
@@ -389,9 +561,9 @@ export class BreditorDomRenderer {
       } catch {
         return projectionFailure("renderer.dom_write_failed");
       }
-      return this.install(rendered.host, update.result, fallback, "full", "domDrift");
+      return this.#install(rendered.host, update.result, fallback, "full", "domDrift");
     }
-    return this.install(rendered.host, update.result, prepared, "incremental");
+    return this.#install(rendered.host, update.result, prepared, "incremental");
   }
 
   /** Invalidates a current handle without changing its host DOM. */
@@ -403,7 +575,7 @@ export class BreditorDomRenderer {
     if (
       ownership?.rendererToken !== this.#rendererToken ||
       ownership.handle !== rendered ||
-      !rendered.current
+      !rendered.active
     ) {
       return false;
     }
@@ -412,7 +584,32 @@ export class BreditorDomRenderer {
     return true;
   }
 
-  private install(
+  #liveCompositionLeaseRecord(
+    lease: unknown,
+  ): DomCompositionLeaseRecord | null {
+    if (typeof lease !== "object" || lease === null) {
+      return null;
+    }
+    const record = DOM_COMPOSITION_LEASES.get(lease);
+    if (record === undefined || !this.ownsCompositionDomLease(lease, record.handle)) {
+      return null;
+    }
+    return record;
+  }
+
+  #invalidateCompositionLeaseRecord(record: DomCompositionLeaseRecord): void {
+    record.active = false;
+    const ownership = HOST_OWNERS.get(record.handle.host);
+    if (
+      ownership?.rendererToken === this.#rendererToken &&
+      ownership.handle === record.handle
+    ) {
+      HOST_OWNERS.delete(record.handle.host);
+    }
+    record.handle.invalidate();
+  }
+
+  #install(
     host: HTMLElement,
     projection: BaseDocumentProjection,
     prepared: PreparedDom,
