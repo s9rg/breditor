@@ -25,6 +25,13 @@ pub(crate) const UNSUPPORTED_ACTION_INPUT_CODE: &str =
     "breditor_wasm.unsupported_action_input_shape";
 pub(crate) const STRING_INPUT_LIMIT_CODE: &str = "breditor_wasm.string_input_limit";
 pub(crate) const ACTION_VALUE_ENCODING_CODE: &str = "breditor_wasm.action_value_encoding";
+pub(crate) const INVALID_SELECTION_POINT_KIND_CODE: &str =
+    "breditor_wasm.invalid_selection_point_kind";
+pub(crate) const INVALID_SELECTION_COORDINATE_CODE: &str =
+    "breditor_wasm.invalid_selection_coordinate";
+pub(crate) const INVALID_SELECTION_AFFINITY_CODE: &str = "breditor_wasm.invalid_selection_affinity";
+pub(crate) const INVALID_SELECTION_NODE_CODE: &str = "breditor_wasm.invalid_selection_node";
+pub(crate) const SELECTION_READ_CODE: &str = "breditor_wasm.selection_read";
 
 /// Structured, stable, payload-redacting error returned by the Wasm boundary.
 ///

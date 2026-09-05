@@ -1,8 +1,8 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser projection layer.
-Version `0.0.51` renders the validated base-schema AST into disposable DOM; it
-does not make the DOM an editor model.
+Version `0.0.52` renders the validated base-schema AST into disposable DOM and
+maps one directional selection without making the DOM an editor model.
 
 The package is private while the pre-`0.1` package boundary is still moving.
 Its public entry point is nevertheless compiled and declaration-checked so a
@@ -83,11 +83,39 @@ must request the result's typed semantic projection directly. If an incremental
 update is missing, consumed, malformed, or conservatively classified, the host
 can obtain a complete typed projection and call `render`.
 
+## Selection contract
+
+`BaseRangeSelection` owns a deeply frozen anchor/focus pair tied to one exact
+`BaseDocumentProjection`. Text offsets are UTF-16 code units shared with DOM
+Range and Rust points, but a boundary inside a surrogate pair is rejected.
+Children points address only paragraph boundaries. Direction is derived without
+sorting the stored endpoints, and before/after affinity remains explicit even
+though DOM has no native affinity field.
+
+`consumeSemanticSelection` consumes and frees the one-shot Wasm view, verifies
+its snapshot, preorder node kinds/indexes, offsets, affinities, and duplicated
+range order, then produces a branded browser selection or explicit semantic
+absence. `semanticRangeSelectionScalars` performs the inverse path-to-preorder
+conversion for the guarded Wasm set command. The adapter has no import-time
+dependency on generated Wasm classes.
+
+`BreditorDomSelectionBridge` synchronously validates the complete canonical DOM
+before every read and write. It maps exact text and paragraph nodes, normalizes
+the fixed `<strong>` and empty `<br>` artifacts, and maps only the host's two
+exterior select-all boundaries. It preserves anchor/focus direction, refuses to
+silently reverse a backward range, and assigns the fixed boundary-derived
+affinity policy to genuinely new DOM input.
+
+A programmatic write records one renderer-generation-bound spatial signature;
+exactly one matching `selectionchange` echo can reuse the original semantic
+affinities. Focus is observed separately. The bridge never calls `focus()` or
+`blur()`, and clearing semantic selection does not erase a DOM selection wholly
+outside this host.
+
 ## Current limitations
 
-- Selection mapping, input translation, composition, clipboard handling,
-  toolbar delivery, persistence, and React integration belong to later
-  checkpoints.
+- Input translation, composition, clipboard handling, toolbar delivery,
+  persistence, and React integration belong to later checkpoints.
 - No arbitrary elements, formats, properties, entity IDs, nested blocks, or
   extension DOM renderers are accepted yet.
 - DOM APIs do not provide an atomic transaction across several retained
@@ -101,6 +129,10 @@ can obtain a complete typed projection and call `render`.
   update fast path is used.
 - The renderer does not set `contenteditable`, focus, ARIA, or presentation
   styles on the application-owned host.
+- Selection mapping supports one light-DOM range only. Cross-host,
+  cross-shadow-root, browser multi-range, and ambiguous internal host-boundary
+  positions fail closed. DOM mapping and validation are currently linear in the
+  bounded document.
 
 ## Development
 
@@ -116,4 +148,6 @@ The workspace pins TypeScript, Vitest, and jsdom exactly in
 `package-lock.json`. Tests cover strict projection admission, hostile text,
 mapping lifetime, text-container identity retention, shifted root-splice
 rebinding, stale/foreign guards, DOM-drift fallback, broad-impact full renders,
-and Wasm-view consumption and disposal.
+Wasm-view consumption/disposal, directional and Unicode selection mapping,
+focus separation, select-all, outside-host protection, and one-shot echo
+suppression.

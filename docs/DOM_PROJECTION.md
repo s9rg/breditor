@@ -124,8 +124,10 @@ optimizations; they may not weaken failure atomicity.
 - Projection getters copy strings across the Wasm boundary. Projection and
   checkpoint work is synchronous and can block the main thread near configured
   limits.
-- Selection mapping, input events, composition, clipboard, toolbar delivery,
-  persistence I/O, and framework integration are separate checkpoints.
+- Selection mapping is the separate snapshot/generation-bound contract added in
+  `0.0.52`; see [`SELECTION_MAPPING.md`](SELECTION_MAPPING.md). Input events,
+  composition, clipboard, toolbar delivery, persistence I/O, and framework
+  integration remain separate checkpoints.
 
 The package-level API and development commands are documented in
 `packages/breditor-browser/README.md`.

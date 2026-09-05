@@ -22,6 +22,30 @@ export {
   type ProjectionRenderOutcome,
   type RenderedProjection,
 } from "./dom_renderer.js";
+export {
+  BreditorDomSelectionBridge,
+  type DomFocusObservation,
+  type DomSelectionAffinityPolicy,
+  type DomSelectionObservation,
+  type DomSelectionOrigin,
+  type DomSelectionUnavailableReason,
+  type DomSelectionWriteOutcome,
+} from "./dom_selection.js";
+export {
+  BaseRangeSelection,
+  type BaseChildrenSelectionPoint,
+  type BaseEditorSelection,
+  type BaseRangeOrder,
+  type BaseRangeSelectionInput,
+  type BaseSelectionPoint,
+  type BaseTextSelectionPoint,
+  type SelectionAffinity,
+} from "./selection.js";
+export type {
+  BrowserSelectionError,
+  BrowserSelectionErrorCode,
+  BrowserSelectionResult,
+} from "./selection_result.js";
 export type {
   BrowserProjectionError,
   BrowserProjectionErrorCode,
@@ -34,3 +58,10 @@ export {
   type SemanticProjectionUpdateView,
   type SemanticProjectionView,
 } from "./wasm_projection_adapter.js";
+export {
+  consumeSemanticSelection,
+  semanticRangeSelectionScalars,
+  type SemanticRangeSelectionScalars,
+  type SemanticSelectionPointKind,
+  type SemanticSelectionView,
+} from "./wasm_selection_adapter.js";

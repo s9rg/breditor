@@ -697,6 +697,27 @@ selection mapping, event loop, contenteditable ownership, or extension renderer
 protocol. Effective command admission is currently linear in the complete
 session-checkpoint size and retains a transient candidate plus encoded bytes.
 
+Version `0.0.52` adds the [selection mapping contract](docs/SELECTION_MAPPING.md).
+Rust exposes one guarded, one-shot semantic selection view and separate
+checkpoint-admitted range-set and clear commands. Endpoint node indexes are the
+matching projection's ephemeral preorder coordinates; anchor/focus direction,
+UTF-16 scalar boundaries, affinities, and derived range order cross without
+selection JSON. All mutating scalar fields reach Rust as opaque JavaScript
+values, preventing raw-glue numeric and string wrapper coercion before exact
+primitive admission.
+
+The browser package adds immutable projection-bound ranges plus an exact
+light-DOM bridge. It synchronously revalidates the full rendered DOM, maps
+strong wrappers and empty-paragraph placeholders without pretending they are
+AST nodes, supports only exterior host boundaries for select-all, preserves
+backward direction, and consumes a generation-bound spatial echo receipt only
+once. Focus and blur remain separate browser state: mapping never steals focus,
+blur does not clear the Rust selection, and clearing this editor never erases a
+selection wholly outside its host. Cross-host, shadow-root, multi-range, and
+noncanonical cases fail closed. Selection reads and DOM validation remain
+linear in the bounded document; input events and composition still belong to
+later checkpoints.
+
 ## Development
 
 ```sh

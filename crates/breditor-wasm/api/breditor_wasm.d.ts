@@ -28,6 +28,21 @@ export type BreditorProjectionNodeKind = "element" | "text";
 /** Conservative DOM invalidation derived from one proved commit. */
 export type BreditorProjectionImpact = "none" | "textContainers" | "rootSplice" | "root";
 
+/** Lifecycle state of a guarded semantic-selection read. */
+export type BreditorSelectionResultStatus = "selection" | "taken" | "error";
+
+/** Selection kind supported by the first browser boundary. */
+export type BreditorSelectionKind = "none" | "range";
+
+/** Structural point kind used by a range-selection endpoint. */
+export type BreditorSelectionPointKind = "text" | "children";
+
+/** Ownership side of content inserted at an exact point boundary. */
+export type BreditorSelectionAffinity = "before" | "after";
+
+/** Spatial order of a directional range selection. */
+export type BreditorSelectionRangeOrder = "collapsed" | "forward" | "backward";
+
 
 
 /**
@@ -133,6 +148,10 @@ export class BreditorEngine {
      */
     clearHistory(expected: BreditorObservation): BreditorCommandResult;
     /**
+     * Clears the semantic selection at one exact guarded observation.
+     */
+    clearSelection(expected: BreditorObservation): BreditorCommandResult;
+    /**
      * Closes an open history merge group after exact observation checks.
      *
      * A repeated close is an `unchanged` outcome. Domain rejection is returned
@@ -197,6 +216,10 @@ export class BreditorEngine {
      */
     redo(expected: BreditorObservation): BreditorCommandResult;
     /**
+     * Reads the semantic selection at one exact guarded engine observation.
+     */
+    selection(expected: BreditorObservation): BreditorSelectionResult;
+    /**
      * Encodes current state and retained linear history as Session Checkpoint
      * V1 JSON.
      *
@@ -206,6 +229,17 @@ export class BreditorEngine {
      * structured domain error.
      */
     sessionCheckpointJson(): BreditorStringResult;
+    /**
+     * Publishes one directional range selection from exact scalar coordinates.
+     *
+     * The complete observation is checked before untrusted scalar admission and
+     * checked again by the checkpoint-constrained authoritative mutation. Node
+     * indexes address the current document's deterministic preorder projection.
+     * Raw [`JsValue`] inputs are intentional: generated TypeScript still exposes
+     * closed string literals and numbers, while Rust rejects JavaScript wrapper
+     * objects and other values that `f64` or `&str` glue would coerce first.
+     */
+    setRangeSelection(expected: BreditorObservation, anchor_kind: BreditorSelectionPointKind, anchor_node_index: number, anchor_offset: number, anchor_affinity: BreditorSelectionAffinity, focus_kind: BreditorSelectionPointKind, focus_node_index: number, focus_offset: number, focus_affinity: BreditorSelectionAffinity): BreditorCommandResult;
     /**
      * Encodes the current immutable editor state as Editor State V1 JSON.
      *
@@ -471,6 +505,90 @@ export class BreditorProjectionUpdate {
 }
 
 /**
+ * Snapshot-bound, non-JSON view of the canonical semantic selection.
+ *
+ * Endpoint node indexes use the same deterministic preorder coordinates as
+ * [`crate::BreditorProjection`]. They are meaningful only at this exact
+ * snapshot and must be paired with its guarded observation.
+ */
+export class BreditorSelection {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Returns the anchor insertion-boundary affinity.
+     */
+    readonly anchorAffinity: BreditorSelectionAffinity | undefined;
+    /**
+     * Returns the anchor target's flattened semantic node index.
+     */
+    readonly anchorNodeIndex: number | undefined;
+    /**
+     * Returns the anchor UTF-16 or child-boundary offset.
+     */
+    readonly anchorOffset: number | undefined;
+    /**
+     * Returns the anchor point kind for a range selection.
+     */
+    readonly anchorPointKind: BreditorSelectionPointKind | undefined;
+    /**
+     * Returns the focus insertion-boundary affinity.
+     */
+    readonly focusAffinity: BreditorSelectionAffinity | undefined;
+    /**
+     * Returns the focus target's flattened semantic node index.
+     */
+    readonly focusNodeIndex: number | undefined;
+    /**
+     * Returns the focus UTF-16 or child-boundary offset.
+     */
+    readonly focusOffset: number | undefined;
+    /**
+     * Returns the focus point kind for a range selection.
+     */
+    readonly focusPointKind: BreditorSelectionPointKind | undefined;
+    /**
+     * Returns `none` or `range`.
+     */
+    readonly kind: BreditorSelectionKind;
+    /**
+     * Returns `collapsed`, `forward`, or `backward` for a range selection.
+     */
+    readonly rangeOrder: BreditorSelectionRangeOrder | undefined;
+    /**
+     * Returns the lineage of the exact editor snapshot represented here.
+     */
+    readonly snapshotLineage: string;
+    /**
+     * Returns the full-width snapshot revision as canonical decimal text.
+     */
+    readonly snapshotRevision: string;
+}
+
+/**
+ * Structured result of one guarded non-JSON selection read.
+ *
+ * A successful selection can be taken exactly once.
+ */
+export class BreditorSelectionResult {
+    private constructor();
+    free(): void;
+    [Symbol.dispose](): void;
+    /**
+     * Removes and returns the semantic selection exactly once.
+     */
+    takeSelection(): BreditorSelection | undefined;
+    /**
+     * Returns the structured selection-read error, when present.
+     */
+    readonly error: BreditorError | undefined;
+    /**
+     * Returns `selection`, `taken`, or `error`.
+     */
+    readonly status: BreditorSelectionResultStatus;
+}
+
+/**
  * Structured result of a fallible string-producing boundary operation.
  *
  * `status` is exactly `value`, `taken`, `absent`, or `error`. `absent` is used by
@@ -516,54 +634,6 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
-    readonly __wbg_breditorprojectionupdate_free: (a: number, b: number) => void;
-    readonly breditorengine_closeHistoryGroup: (a: number, b: number) => number;
-    readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly breditorengine_redo: (a: number, b: number) => number;
-    readonly breditorengine_stateJson: (a: number) => number;
-    readonly breditorprojectionupdate_affectedParagraphCount: (a: number) => number;
-    readonly breditorprojectionupdate_affectedParagraphIndex: (a: number, b: number) => number;
-    readonly breditorprojectionupdate_baseLineage: (a: number) => [number, number];
-    readonly breditorprojectionupdate_baseRevision: (a: number) => [number, number];
-    readonly breditorprojectionupdate_impact: (a: number) => [number, number];
-    readonly breditorprojectionupdate_newChildEnd: (a: number) => number;
-    readonly breditorprojectionupdate_newChildStart: (a: number) => number;
-    readonly breditorprojectionupdate_oldChildEnd: (a: number) => number;
-    readonly breditorprojectionupdate_oldChildStart: (a: number) => number;
-    readonly breditorprojectionupdate_resultLineage: (a: number) => [number, number];
-    readonly breditorprojectionupdate_resultRevision: (a: number) => [number, number];
-    readonly breditorprojectionupdate_takeProjection: (a: number) => number;
-    readonly __wbg_breditorcommandresult_free: (a: number, b: number) => void;
-    readonly breditorcommandresult_activation: (a: number) => [number, number];
-    readonly breditorcommandresult_commitJson: (a: number) => number;
-    readonly breditorcommandresult_disabledActionId: (a: number) => [number, number];
-    readonly breditorcommandresult_disabledReasonCode: (a: number) => [number, number];
-    readonly breditorcommandresult_disabledReasonDetailJson: (a: number) => number;
-    readonly breditorcommandresult_error: (a: number) => number;
-    readonly breditorcommandresult_eventKind: (a: number) => [number, number];
-    readonly breditorcommandresult_indicatorValueContractName: (a: number) => [number, number];
-    readonly breditorcommandresult_indicatorValueContractVersion: (a: number) => number;
-    readonly breditorcommandresult_indicatorValueJson: (a: number) => number;
-    readonly breditorcommandresult_indicatorValueStatus: (a: number) => [number, number];
-    readonly breditorcommandresult_observation: (a: number) => number;
-    readonly breditorcommandresult_projectionUpdate: (a: number) => number;
-    readonly breditorcommandresult_status: (a: number) => [number, number];
-    readonly __wbg_breditorengine_free: (a: number, b: number) => void;
-    readonly __wbg_breditorobservation_free: (a: number, b: number) => void;
-    readonly __wbg_breditorstringresult_free: (a: number, b: number) => void;
-    readonly breditorengine_clearHistory: (a: number, b: number) => number;
-    readonly breditorengine_projection: (a: number, b: number) => number;
-    readonly breditorobservation_canRedo: (a: number) => number;
-    readonly breditorobservation_canUndo: (a: number) => number;
-    readonly breditorobservation_historyCapacity: (a: number) => number;
-    readonly breditorobservation_redoDepth: (a: number) => number;
-    readonly breditorobservation_snapshotLineage: (a: number) => [number, number];
-    readonly breditorobservation_snapshotRevision: (a: number) => [number, number];
-    readonly breditorobservation_undoDepth: (a: number) => number;
-    readonly breditorstringresult_error: (a: number) => number;
-    readonly breditorstringresult_status: (a: number) => [number, number];
-    readonly breditorstringresult_takeValue: (a: number) => [number, number];
-    readonly breditorstringresult_value: (a: number) => [number, number];
     readonly __wbg_breditorprojection_free: (a: number, b: number) => void;
     readonly breditorprojection_childAt: (a: number, b: number, c: number) => number;
     readonly breditorprojection_childCount: (a: number, b: number) => number;
@@ -578,25 +648,93 @@ export interface InitOutput {
     readonly breditorprojection_snapshotLineage: (a: number) => [number, number];
     readonly breditorprojection_snapshotRevision: (a: number) => [number, number];
     readonly breditorprojection_text: (a: number, b: number) => [number, number];
+    readonly __wbg_breditorerror_free: (a: number, b: number) => void;
+    readonly __wbg_breditorobservation_free: (a: number, b: number) => void;
+    readonly breditorerror_code: (a: number) => [number, number];
+    readonly breditorerror_message: (a: number) => [number, number];
+    readonly breditorobservation_canRedo: (a: number) => number;
+    readonly breditorobservation_canUndo: (a: number) => number;
+    readonly breditorobservation_historyCapacity: (a: number) => number;
+    readonly breditorobservation_redoDepth: (a: number) => number;
+    readonly breditorobservation_snapshotLineage: (a: number) => [number, number];
+    readonly breditorobservation_snapshotRevision: (a: number) => [number, number];
+    readonly breditorobservation_undoDepth: (a: number) => number;
+    readonly __wbg_breditorcommandresult_free: (a: number, b: number) => void;
     readonly breditorVersion: () => [number, number];
     readonly breditorWasmAbiVersion: () => [number, number];
-    readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number) => number;
-    readonly breditorengine_fromDocumentJson: (a: number, b: number, c: number, d: number, e: number) => number;
-    readonly breditorengine_fromSessionCheckpointJson: (a: number, b: number) => number;
+    readonly breditorcommandresult_activation: (a: number) => [number, number];
+    readonly breditorcommandresult_commitJson: (a: number) => number;
+    readonly breditorcommandresult_disabledActionId: (a: number) => [number, number];
+    readonly breditorcommandresult_disabledReasonCode: (a: number) => [number, number];
+    readonly breditorcommandresult_disabledReasonDetailJson: (a: number) => number;
+    readonly breditorcommandresult_error: (a: number) => number;
+    readonly breditorcommandresult_eventKind: (a: number) => [number, number];
+    readonly breditorcommandresult_indicatorValueContractName: (a: number) => [number, number];
+    readonly breditorcommandresult_indicatorValueContractVersion: (a: number) => number;
+    readonly breditorcommandresult_indicatorValueJson: (a: number) => number;
+    readonly breditorcommandresult_indicatorValueStatus: (a: number) => [number, number];
+    readonly breditorcommandresult_observation: (a: number) => number;
+    readonly breditorcommandresult_projectionUpdate: (a: number) => number;
+    readonly breditorcommandresult_status: (a: number) => [number, number];
     readonly __wbg_breditorengineresult_free: (a: number, b: number) => void;
-    readonly __wbg_breditorerror_free: (a: number, b: number) => void;
     readonly __wbg_breditorprojectionresult_free: (a: number, b: number) => void;
-    readonly breditorengine_observation: (a: number) => number;
-    readonly breditorengine_sessionCheckpointJson: (a: number) => number;
-    readonly breditorengine_undo: (a: number, b: number) => number;
     readonly breditorengineresult_error: (a: number) => number;
     readonly breditorengineresult_status: (a: number) => [number, number];
     readonly breditorengineresult_takeEngine: (a: number) => number;
-    readonly breditorerror_code: (a: number) => [number, number];
-    readonly breditorerror_message: (a: number) => [number, number];
     readonly breditorprojectionresult_error: (a: number) => number;
     readonly breditorprojectionresult_status: (a: number) => [number, number];
     readonly breditorprojectionresult_takeProjection: (a: number) => number;
+    readonly __wbg_breditorengine_free: (a: number, b: number) => void;
+    readonly breditorengine_clearHistory: (a: number, b: number) => number;
+    readonly breditorengine_clearSelection: (a: number, b: number) => number;
+    readonly breditorengine_closeHistoryGroup: (a: number, b: number) => number;
+    readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number) => number;
+    readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly breditorengine_observation: (a: number) => number;
+    readonly breditorengine_projection: (a: number, b: number) => number;
+    readonly breditorengine_redo: (a: number, b: number) => number;
+    readonly breditorengine_selection: (a: number, b: number) => number;
+    readonly breditorengine_sessionCheckpointJson: (a: number) => number;
+    readonly breditorengine_setRangeSelection: (a: number, b: number, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any) => number;
+    readonly breditorengine_stateJson: (a: number) => number;
+    readonly breditorengine_undo: (a: number, b: number) => number;
+    readonly __wbg_breditorstringresult_free: (a: number, b: number) => void;
+    readonly breditorstringresult_error: (a: number) => number;
+    readonly breditorstringresult_status: (a: number) => [number, number];
+    readonly breditorstringresult_takeValue: (a: number) => [number, number];
+    readonly breditorstringresult_value: (a: number) => [number, number];
+    readonly breditorengine_fromDocumentJson: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly breditorengine_fromSessionCheckpointJson: (a: number, b: number) => number;
+    readonly __wbg_breditorselection_free: (a: number, b: number) => void;
+    readonly breditorselection_anchorAffinity: (a: number) => [number, number];
+    readonly breditorselection_anchorNodeIndex: (a: number) => number;
+    readonly breditorselection_anchorOffset: (a: number) => number;
+    readonly breditorselection_anchorPointKind: (a: number) => [number, number];
+    readonly breditorselection_focusAffinity: (a: number) => [number, number];
+    readonly breditorselection_focusNodeIndex: (a: number) => number;
+    readonly breditorselection_focusOffset: (a: number) => number;
+    readonly breditorselection_focusPointKind: (a: number) => [number, number];
+    readonly breditorselection_kind: (a: number) => [number, number];
+    readonly breditorselection_rangeOrder: (a: number) => [number, number];
+    readonly breditorselection_snapshotLineage: (a: number) => [number, number];
+    readonly breditorselection_snapshotRevision: (a: number) => [number, number];
+    readonly __wbg_breditorprojectionupdate_free: (a: number, b: number) => void;
+    readonly __wbg_breditorselectionresult_free: (a: number, b: number) => void;
+    readonly breditorprojectionupdate_affectedParagraphCount: (a: number) => number;
+    readonly breditorprojectionupdate_affectedParagraphIndex: (a: number, b: number) => number;
+    readonly breditorprojectionupdate_baseLineage: (a: number) => [number, number];
+    readonly breditorprojectionupdate_baseRevision: (a: number) => [number, number];
+    readonly breditorprojectionupdate_impact: (a: number) => [number, number];
+    readonly breditorprojectionupdate_newChildEnd: (a: number) => number;
+    readonly breditorprojectionupdate_newChildStart: (a: number) => number;
+    readonly breditorprojectionupdate_oldChildEnd: (a: number) => number;
+    readonly breditorprojectionupdate_oldChildStart: (a: number) => number;
+    readonly breditorprojectionupdate_resultLineage: (a: number) => [number, number];
+    readonly breditorprojectionupdate_resultRevision: (a: number) => [number, number];
+    readonly breditorprojectionupdate_takeProjection: (a: number) => number;
+    readonly breditorselectionresult_error: (a: number) => number;
+    readonly breditorselectionresult_status: (a: number) => [number, number];
+    readonly breditorselectionresult_takeSelection: (a: number) => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

@@ -4545,3 +4545,79 @@ node IDs, custom schema renderers, selection conversion, event adapter,
 composition owner, clipboard policy, toolbar delivery, IndexedDB I/O, or React
 runtime at this checkpoint. The full contract and limits are in
 [`DOM_PROJECTION.md`](DOM_PROJECTION.md).
+
+## Guarded browser selection mapping (`0.0.52`)
+
+The Wasm boundary now reads semantic selection through a separate observation-
+guarded `BreditorSelectionResult`. A successful one-shot `BreditorSelection`
+carries exact snapshot lineage/revision and either `none` or one directional
+range. Range endpoints expose text/children kind, the target node's matching
+projection preorder index, UTF-16 or child-boundary offset, affinity, and the
+core-derived collapsed/forward/backward order. These values are a typed
+rendering view, not selection JSON or a persistent position protocol.
+
+`setRangeSelection` first checks the complete engine observation, then admits
+two endpoints against the current document. All eight raw fields cross into
+Rust as `JsValue`; point kind and affinity use strict equality against four
+fixed JavaScript literals without copying untrusted strings into Wasm, while
+node index and offset require actual finite integral number
+primitives in `0..=u32::MAX`. Coercible arrays, booleans, numeric strings,
+boxed primitives, `BigInt`, symbols, and caller conversion hooks are rejected
+without invocation. Negative zero intentionally aliases zero. Core resolution
+then rejects wrong targets, bounds, surrogate-pair midpoints, root boundaries,
+and points outside base-schema text containers.
+
+The guarded engine repeats the observation check and admits an effective
+selection candidate only after complete checkpoint encoding. Consequently a
+stale observation wins before scalar inspection, and every scalar, semantic,
+or representation failure preserves exact state, history, pending formats,
+checkpoint bytes, and observation. `clearSelection` uses the same publication
+path. An exact range echo or repeated clear is unchanged; a real change clears
+pending typing formats, closes an open merge group, advances the state revision,
+creates no content-history entry, and produces a selection event whose document
+impact is `none`.
+
+The framework-neutral browser layer owns a deeply frozen `BaseRangeSelection`
+bound by object identity to one `BaseDocumentProjection`. It independently
+reconstructs preorder paths, validates endpoint shape and Unicode-scalar UTF-16
+boundaries, recomputes spatial order, and rejects any mismatch with the Rust
+view. The inverse adapter converts an owned browser range back to scalar command
+fields but grants no observation authority and never invokes the engine itself.
+
+`BreditorDomSelectionBridge` requires an owned current renderer handle and calls
+its full synchronous canonical-DOM validator before every read or write. Exact
+text nodes map at the same UTF-16 offset. Paragraph element offsets map to child
+boundaries. The fixed `<strong>` edges normalize to their sole semantic text
+leaf, and every canonical empty-paragraph `<br>` position normalizes to its sole
+children boundary without assigning the placeholder an AST path. Only host
+offset zero and the final host offset normalize to the first-start and last-end
+paragraph positions for select-all; internal root boundaries remain ambiguous
+and reject.
+
+Anchor and focus are never sorted. Programmatic writes use
+`Selection.setBaseAndExtent` when available and verify the installed nodes and
+offsets; a Range fallback is allowed for forward/collapsed selections only. A
+backward write fails before mutation when direction cannot be preserved. DOM
+has no affinity field, so new DOM input uses the frozen boundary-derived rule:
+start and empty boundaries are `after`, a non-empty end boundary is `before`,
+and an interior boundary is `after`.
+
+One successful programmatic write records the renderer handle, generation, and
+complete directional spatial signature. Exactly one matching read is labeled a
+programmatic echo and reuses the original semantic range, preserving its point
+aliases and affinities. The receipt is then consumed. Mismatch, drift, generation
+change, outside-host selection, or failure clears it; a boolean suppression flag
+is never sufficient.
+
+Focus remains browser UI state. The bridge can report whether `activeElement`
+is within or outside the host, but never calls `focus` or `blur`. No DOM range
+or a range wholly outside the host is not translated to semantic `None`, and an
+explicit clear never erases another editor's range. A cross-host or multi-range
+selection fails closed.
+
+The initial mapping is one-range and light-DOM only. Shadow/composed ranges,
+node/grid/table selections, remote selections, internal root-boundary bias,
+keyboard movement, composition, and input-event ordering are not implemented.
+Preorder endpoint lookup and full synchronous DOM validation are O(document)
+within existing projection limits. The full contract and acceptance laws are in
+[`SELECTION_MAPPING.md`](SELECTION_MAPPING.md).

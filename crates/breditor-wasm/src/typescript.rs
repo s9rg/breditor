@@ -28,4 +28,19 @@ export type BreditorProjectionNodeKind = "element" | "text";
 
 /** Conservative DOM invalidation derived from one proved commit. */
 export type BreditorProjectionImpact = "none" | "textContainers" | "rootSplice" | "root";
+
+/** Lifecycle state of a guarded semantic-selection read. */
+export type BreditorSelectionResultStatus = "selection" | "taken" | "error";
+
+/** Selection kind supported by the first browser boundary. */
+export type BreditorSelectionKind = "none" | "range";
+
+/** Structural point kind used by a range-selection endpoint. */
+export type BreditorSelectionPointKind = "text" | "children";
+
+/** Ownership side of content inserted at an exact point boundary. */
+export type BreditorSelectionAffinity = "before" | "after";
+
+/** Spatial order of a directional range selection. */
+export type BreditorSelectionRangeOrder = "collapsed" | "forward" | "backward";
 "#;

@@ -1,6 +1,6 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.51`
+Status: frozen product target; implementation completed through `0.0.52`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -117,7 +117,10 @@ a smaller safe boundary, but a later gate must not be claimed first.
    is exact and snapshot-local rather than a persistent node-ID promise; every
    effective Wasm mutation is checkpoint-admitted before publication.
 5. `0.0.52`: guarded bidirectional DOM/Rust selection mapping, focus handling,
-   and selection-loop suppression.
+   and selection-loop suppression. Complete: semantic range reads and writes
+   are observation-guarded and checkpoint-admitted; the browser mapping is
+   snapshot/generation-bound, direction-preserving, drift-checked, and keeps
+   focus separate from semantic absence.
 6. `0.0.53`: `beforeinput`, keyboard fallback, and supported clipboard command
    translation outside composition.
 7. `0.0.54`: composition/IME ownership, cancellation, and browser reconciliation.

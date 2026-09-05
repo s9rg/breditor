@@ -65,6 +65,18 @@ function takeString(result) {
   return value;
 }
 
+function assertCommandError(result, expectedCode) {
+  assert.equal(result.status, "error");
+  assert.equal(result.observation(), undefined);
+  assert.equal(result.eventKind, undefined);
+  assert.equal(result.projectionUpdate(), undefined);
+  const error = result.error;
+  assert.ok(error instanceof api.BreditorError);
+  result.free();
+  assert.equal(error.code, expectedCode);
+  error.free();
+}
+
 assert.equal(api.breditorWasmAbiVersion(), "1");
 assert.match(api.breditorVersion(), /^0\.0\.\d+$/);
 
@@ -168,6 +180,198 @@ afterUnchanged.free();
 engine.free();
 otherEngine.free();
 
+const selectionFactory = api.BreditorEngine.fromSessionCheckpointJson(
+  SELECTED_CHECKPOINT_JSON,
+);
+assert.equal(selectionFactory.status, "engine");
+const selectionEngine = selectionFactory.takeEngine();
+selectionFactory.free();
+const selectionObservation = selectionEngine.observation();
+
+const selectedResult = selectionEngine.selection(selectionObservation);
+assert.equal(selectedResult.status, "selection");
+assert.equal(selectedResult.error, undefined);
+const selected = selectedResult.takeSelection();
+assert.ok(selected instanceof api.BreditorSelection);
+assert.equal(selectedResult.status, "taken");
+assert.equal(selectedResult.takeSelection(), undefined);
+selectedResult.free();
+assert.equal(selected.snapshotLineage, "web-glue-projection-update");
+assert.equal(selected.snapshotRevision, "0");
+assert.equal(selected.kind, "range");
+assert.equal(selected.anchorPointKind, "text");
+assert.equal(selected.anchorNodeIndex, 2);
+assert.equal(selected.anchorOffset, 1);
+assert.equal(selected.anchorAffinity, "after");
+assert.equal(selected.focusPointKind, "text");
+assert.equal(selected.focusNodeIndex, 2);
+assert.equal(selected.focusOffset, 1);
+assert.equal(selected.focusAffinity, "after");
+assert.equal(selected.rangeOrder, "collapsed");
+selected.free();
+
+const selectionCheckpointBefore = takeString(
+  selectionEngine.sessionCheckpointJson(),
+);
+for (const coercibleNumber of [
+  null,
+  false,
+  "2",
+  [],
+  2n,
+  Symbol("2"),
+  new Number(2),
+  { valueOf: () => 2 },
+  {
+    valueOf() {
+      throw new Error("numeric coercion must not run");
+    },
+  },
+]) {
+  const rejected = selectionEngine.setRangeSelection(
+    selectionObservation,
+    "text",
+    coercibleNumber,
+    1,
+    "after",
+    "text",
+    2,
+    1,
+    "after",
+  );
+  assertCommandError(rejected, "breditor_wasm.invalid_selection_coordinate");
+  assert.equal(
+    takeString(selectionEngine.sessionCheckpointJson()),
+    selectionCheckpointBefore,
+  );
+}
+
+for (const coercibleString of [
+  "x".repeat(1_048_576),
+  new String("text"),
+  { toString: () => "text" },
+  {
+    toString() {
+      throw new Error("string coercion must not run");
+    },
+  },
+]) {
+  const rejectedKind = selectionEngine.setRangeSelection(
+    selectionObservation,
+    coercibleString,
+    2,
+    1,
+    "after",
+    "text",
+    2,
+    1,
+    "after",
+  );
+  assertCommandError(
+    rejectedKind,
+    "breditor_wasm.invalid_selection_point_kind",
+  );
+
+  const rejectedAffinity = selectionEngine.setRangeSelection(
+    selectionObservation,
+    "text",
+    2,
+    1,
+    coercibleString,
+    "text",
+    2,
+    1,
+    "after",
+  );
+  assertCommandError(
+    rejectedAffinity,
+    "breditor_wasm.invalid_selection_affinity",
+  );
+  assert.equal(
+    takeString(selectionEngine.sessionCheckpointJson()),
+    selectionCheckpointBefore,
+  );
+}
+
+const movedSelection = selectionEngine.setRangeSelection(
+  selectionObservation,
+  "text",
+  2,
+  0,
+  "before",
+  "text",
+  2,
+  0,
+  "after",
+);
+assert.equal(movedSelection.status, "committed");
+assert.equal(movedSelection.eventKind, "selection");
+const movedUpdate = movedSelection.projectionUpdate();
+assert.equal(movedUpdate.impact, "none");
+const movedProjection = movedUpdate.takeProjection();
+movedProjection.free();
+movedUpdate.free();
+const movedObservation = movedSelection.observation();
+movedSelection.free();
+
+const staleBeforeAdmission = selectionEngine.setRangeSelection(
+  selectionObservation,
+  { toString: () => "text" },
+  { valueOf: () => 2 },
+  Number.NaN,
+  new String("after"),
+  null,
+  false,
+  Number.POSITIVE_INFINITY,
+  Symbol("after"),
+);
+assertCommandError(staleBeforeAdmission, "editor_engine.stale_snapshot");
+const staleSelectionRead = selectionEngine.selection(selectionObservation);
+assert.equal(staleSelectionRead.status, "error");
+assert.equal(staleSelectionRead.takeSelection(), undefined);
+const staleSelectionError = staleSelectionRead.error;
+staleSelectionRead.free();
+assert.equal(staleSelectionError.code, "editor_engine.stale_snapshot");
+staleSelectionError.free();
+
+const echoSelection = selectionEngine.setRangeSelection(
+  movedObservation,
+  "text",
+  2,
+  0,
+  "before",
+  "text",
+  2,
+  0,
+  "after",
+);
+assert.equal(echoSelection.status, "unchanged");
+assert.equal(echoSelection.projectionUpdate(), undefined);
+const echoObservation = echoSelection.observation();
+echoSelection.free();
+
+const clearSelection = selectionEngine.clearSelection(echoObservation);
+assert.equal(clearSelection.status, "committed");
+assert.equal(clearSelection.eventKind, "selection");
+const clearObservation = clearSelection.observation();
+clearSelection.free();
+const clearedResult = selectionEngine.selection(clearObservation);
+const cleared = clearedResult.takeSelection();
+clearedResult.free();
+assert.equal(cleared.kind, "none");
+assert.equal(cleared.anchorPointKind, undefined);
+assert.equal(cleared.rangeOrder, undefined);
+cleared.free();
+
+const clearEcho = selectionEngine.clearSelection(clearObservation);
+assert.equal(clearEcho.status, "unchanged");
+clearEcho.free();
+selectionObservation.free();
+movedObservation.free();
+echoObservation.free();
+clearObservation.free();
+selectionEngine.free();
+
 const projectionFactory = api.BreditorEngine.fromSessionCheckpointJson(
   SELECTED_CHECKPOINT_JSON,
 );
@@ -210,6 +414,43 @@ assert.deepEqual(browserBase.snapshot, {
 assert.deepEqual(browserBase.paragraphs, [
   { runs: [{ text: "a", strong: false }] },
 ]);
+
+// Exercise the real generated selection view through the dependency-free
+// browser adapter, not only through hand-written structural fixtures.
+const adapterSelectionResult = projectionEngine.selection(projectionObservation);
+assert.equal(adapterSelectionResult.status, "selection");
+const adapterSelection = adapterSelectionResult.takeSelection();
+adapterSelectionResult.free();
+const browserSelectionResult = browser.consumeSemanticSelection(
+  browserBase,
+  adapterSelection,
+);
+assert.equal(browserSelectionResult.ok, true);
+const browserSelection = browserSelectionResult.value;
+assert.notEqual(browserSelection, null);
+assert.equal(browserSelection.order, "collapsed");
+assert.deepEqual(browserSelection.anchor, {
+  kind: "text",
+  textPath: [0, 0],
+  utf16Offset: 1,
+  affinity: "after",
+});
+assert.deepEqual(browserSelection.focus, browserSelection.anchor);
+assert.throws(() => adapterSelection.kind);
+
+const browserSelectionScalars =
+  browser.semanticRangeSelectionScalars(browserSelection);
+assert.equal(browserSelectionScalars.ok, true);
+assert.deepEqual(browserSelectionScalars.value, {
+  anchorPointKind: "text",
+  anchorNodeIndex: 2,
+  anchorOffset: 1,
+  anchorAffinity: "after",
+  focusPointKind: "text",
+  focusNodeIndex: 2,
+  focusOffset: 1,
+  focusAffinity: "after",
+});
 
 const projectionCommand = projectionEngine.executeStringAction(
   projectionObservation,

@@ -36,8 +36,17 @@ export interface RenderedProjection {
   readonly projection: BaseDocumentProjection;
   /** Monotonic generation within the owning renderer. */
   readonly rendererGeneration: bigint;
+  /** Exact light-DOM host represented by this handle. */
+  readonly host: HTMLElement;
   /** Whether this handle still owns an unchanged projection of its host. */
   readonly current: boolean;
+  /**
+   * Synchronously proves that the complete canonical DOM and private maps agree.
+   *
+   * Failure invalidates this handle. Selection mapping calls this immediately
+   * before every read or write rather than waiting for `MutationObserver`.
+   */
+  validateCanonicalDom(): boolean;
   /** Returns the canonical DOM node for an AST path, or `null` when unavailable. */
   nodeForAstPath(path: AstPath): Node | null;
   /** Returns the snapshot-local AST path associated with an exact DOM node. */
@@ -106,6 +115,30 @@ class RenderedProjectionHandle implements RenderedProjection {
     return this.#active;
   }
 
+  validateCanonicalDom(): boolean {
+    if (!this.#active) {
+      return false;
+    }
+    try {
+      const ownership = HOST_OWNERS.get(this.host);
+      if (ownership?.handle !== this || !this.canonicalDomAndMapsMatch()) {
+        if (ownership?.handle === this) {
+          HOST_OWNERS.delete(this.host);
+        }
+        this.invalidate();
+        return false;
+      }
+      return true;
+    } catch {
+      const ownership = HOST_OWNERS.get(this.host);
+      if (ownership?.handle === this) {
+        HOST_OWNERS.delete(this.host);
+      }
+      this.invalidate();
+      return false;
+    }
+  }
+
   nodeForAstPath(path: AstPath): Node | null {
     if (!this.#active) {
       return null;
@@ -131,6 +164,63 @@ class RenderedProjectionHandle implements RenderedProjection {
 
   rawNodeForParagraph(paragraphIndex: number): Node | undefined {
     return this.#astToDom.get(`root/${paragraphIndex}`);
+  }
+
+  private canonicalDomAndMapsMatch(): boolean {
+    if (
+      this.#astToDom.size !==
+        1 +
+          this.projection.paragraphs.length +
+          this.projection.paragraphs.reduce((count, paragraph) => count + paragraph.runs.length, 0) ||
+      this.#astToDom.get("root") !== this.host ||
+      astPathKey(this.#domToAst.get(this.host) ?? Object.freeze([-1])) !== "root" ||
+      this.host.childNodes.length !== this.projection.paragraphs.length
+    ) {
+      return false;
+    }
+    for (
+      let paragraphIndex = 0;
+      paragraphIndex < this.projection.paragraphs.length;
+      paragraphIndex += 1
+    ) {
+      const projection = this.projection.paragraphs[paragraphIndex];
+      const paragraph = this.host.childNodes[paragraphIndex];
+      const paragraphKey = `root/${paragraphIndex}`;
+      if (
+        projection === undefined ||
+        !isHtmlParagraph(paragraph) ||
+        !paragraphDomMatches(paragraph, projection) ||
+        this.#astToDom.get(paragraphKey) !== paragraph ||
+        astPathKey(this.#domToAst.get(paragraph) ?? Object.freeze([-1])) !== paragraphKey
+      ) {
+        return false;
+      }
+      if (projection.runs.length === 0) {
+        const placeholder = paragraph.childNodes[0];
+        if (placeholder === undefined || this.#domToAst.get(placeholder) !== undefined) {
+          return false;
+        }
+        continue;
+      }
+      for (let runIndex = 0; runIndex < projection.runs.length; runIndex += 1) {
+        const run = projection.runs[runIndex];
+        const child = paragraph.childNodes[runIndex];
+        if (run === undefined || child === undefined) {
+          return false;
+        }
+        const text = run.strong ? child.childNodes[0] : child;
+        const textKey = `root/${paragraphIndex}/${runIndex}`;
+        if (
+          text === undefined ||
+          this.#astToDom.get(textKey) !== text ||
+          astPathKey(this.#domToAst.get(text) ?? Object.freeze([-1])) !== textKey ||
+          (run.strong && this.#domToAst.get(child) !== undefined)
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   observe(rendererToken: symbol): void {
@@ -184,6 +274,11 @@ class RenderedProjectionHandle implements RenderedProjection {
     this.#astToDom.clear();
   }
 }
+
+// A branded handle's methods participate in selection authority. Prevent
+// application code from replacing their prototype implementations after a
+// handle has entered the private ownership registries.
+Object.freeze(RenderedProjectionHandle.prototype);
 
 /** Deterministic renderer for the Breditor base-schema semantic projection. */
 export class BreditorDomRenderer {
@@ -352,7 +447,8 @@ export class BreditorDomRenderer {
   }
 }
 
-function isOwnedRenderedProjection(
+/** @internal */
+export function isOwnedRenderedProjection(
   rendered: RenderedProjection,
 ): rendered is RenderedProjectionHandle {
   return (

@@ -14,7 +14,11 @@ use breditor_wasm::{
     BreditorProjection, BreditorProjectionResult, BreditorStringResult, breditor_version,
     breditor_wasm_abi_version,
 };
+#[cfg(target_arch = "wasm32")]
+use breditor_wasm::{BreditorSelection, BreditorSelectionResult};
 use serde_json::Value;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::{JsValue, wasm_bindgen};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -49,6 +53,33 @@ const PROJECTION_DOCUMENT_JSON: &str = r#"{
           "formats":[{"type":"breditor/strong","properties":{}}]}]}
     ]}
 }"#;
+
+#[cfg(target_arch = "wasm32")]
+const EMOJI_DOCUMENT_JSON: &str = r#"{
+  "format":"breditor/document","formatVersion":1,
+  "schema":{"name":"breditor/base","version":1},
+  "root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},
+    "children":[{"kind":"element","type":"breditor/paragraph","entityId":null,
+      "properties":{},"children":[{"kind":"text","text":"a😀b","formats":[]}]}]}
+}"#;
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen(inline_js = r#"
+export function breditorBoxedNumber(value) { return new Number(value); }
+export function breditorNumberLike(value) { return { valueOf() { return value; } }; }
+export function breditorBoxedString(value) { return new String(value); }
+export function breditorStringLike(value) { return { toString() { return value; } }; }
+"#)]
+extern "C" {
+    #[wasm_bindgen(js_name = breditorBoxedNumber)]
+    fn boxed_number(value: f64) -> JsValue;
+    #[wasm_bindgen(js_name = breditorNumberLike)]
+    fn number_like(value: f64) -> JsValue;
+    #[wasm_bindgen(js_name = breditorBoxedString)]
+    fn boxed_string(value: &str) -> JsValue;
+    #[wasm_bindgen(js_name = breditorStringLike)]
+    fn string_like(value: &str) -> JsValue;
+}
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
@@ -217,6 +248,370 @@ fn commit_projection_updates_classify_text_and_structural_changes() -> TestResul
         .take_projection()
         .ok_or_else(|| test_error("root update omitted its final projection"))?;
     assert_eq!(root_projection.child_count(0), Some(2));
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen_test]
+#[allow(clippy::too_many_lines)]
+fn semantic_selection_round_trips_direction_affinity_empty_and_strong_points() -> TestResult {
+    const HOSTILE_TEXT: &str = "<img src=x onerror=alert(1)>&\"\n💣";
+    let text_end = u32::try_from(HOSTILE_TEXT.encode_utf16().count())?;
+    let mut result = BreditorEngine::from_document_json(
+        "wasm-selection-round-trip",
+        PROJECTION_DOCUMENT_JSON,
+        100.0,
+    );
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+
+    let mut initial_read = engine.selection(&initial);
+    assert_eq!(initial_read.status(), "selection");
+    assert!(initial_read.error().is_none());
+    let initial_selection = require_selection(&mut initial_read)?;
+    assert_eq!(initial_read.status(), "taken");
+    assert!(initial_read.take_selection().is_none());
+    assert_eq!(initial_selection.snapshot_lineage(), "wasm-selection-round-trip");
+    assert_eq!(initial_selection.snapshot_revision(), "0");
+    assert_eq!(initial_selection.kind(), "none");
+    assert_eq!(initial_selection.anchor_point_kind(), None);
+    assert_eq!(initial_selection.anchor_node_index(), None);
+    assert_eq!(initial_selection.anchor_offset(), None);
+    assert_eq!(initial_selection.anchor_affinity(), None);
+    assert_eq!(initial_selection.focus_point_kind(), None);
+    assert_eq!(initial_selection.focus_node_index(), None);
+    assert_eq!(initial_selection.focus_offset(), None);
+    assert_eq!(initial_selection.focus_affinity(), None);
+    assert_eq!(initial_selection.range_order(), None);
+
+    let forward = set_range_selection(
+        &mut engine,
+        &initial,
+        "children",
+        1.0,
+        0.0,
+        "after",
+        "text",
+        3.0,
+        f64::from(text_end),
+        "before",
+    );
+    assert_eq!(forward.status(), "committed");
+    assert_eq!(forward.event_kind().as_deref(), Some("selection"));
+    let mut forward_update = forward
+        .projection_update()
+        .ok_or_else(|| test_error("selection commit omitted its projection update"))?;
+    assert_eq!(forward_update.impact(), "none");
+    assert_eq!(forward_update.base_revision(), "0");
+    assert_eq!(forward_update.result_revision(), "1");
+    assert!(forward_update.take_projection().is_some());
+    let after_forward = require_observation(&forward)?;
+
+    let mut forward_read = engine.selection(&after_forward);
+    let forward_selection = require_selection(&mut forward_read)?;
+    assert_eq!(forward_selection.snapshot_revision(), "1");
+    assert_eq!(forward_selection.kind(), "range");
+    assert_eq!(forward_selection.anchor_point_kind().as_deref(), Some("children"));
+    assert_eq!(forward_selection.anchor_node_index(), Some(1));
+    assert_eq!(forward_selection.anchor_offset(), Some(0));
+    assert_eq!(forward_selection.anchor_affinity().as_deref(), Some("after"));
+    assert_eq!(forward_selection.focus_point_kind().as_deref(), Some("text"));
+    assert_eq!(forward_selection.focus_node_index(), Some(3));
+    assert_eq!(forward_selection.focus_offset(), Some(text_end));
+    assert_eq!(forward_selection.focus_affinity().as_deref(), Some("before"));
+    assert_eq!(forward_selection.range_order().as_deref(), Some("forward"));
+
+    let echo = set_range_selection(
+        &mut engine,
+        &after_forward,
+        "children",
+        1.0,
+        0.0,
+        "after",
+        "text",
+        3.0,
+        f64::from(text_end),
+        "before",
+    );
+    assert_eq!(echo.status(), "unchanged");
+    assert!(echo.projection_update().is_none());
+    let after_echo = require_observation(&echo)?;
+    assert_eq!(after_echo.snapshot_revision(), "1");
+
+    let backward = set_range_selection(
+        &mut engine,
+        &after_echo,
+        "text",
+        3.0,
+        f64::from(text_end),
+        "before",
+        "children",
+        1.0,
+        0.0,
+        "after",
+    );
+    assert_eq!(backward.status(), "committed");
+    let after_backward = require_observation(&backward)?;
+    let mut backward_read = engine.selection(&after_backward);
+    let backward_selection = require_selection(&mut backward_read)?;
+    assert_eq!(backward_selection.anchor_point_kind().as_deref(), Some("text"));
+    assert_eq!(backward_selection.anchor_node_index(), Some(3));
+    assert_eq!(backward_selection.focus_point_kind().as_deref(), Some("children"));
+    assert_eq!(backward_selection.focus_node_index(), Some(1));
+    assert_eq!(backward_selection.range_order().as_deref(), Some("backward"));
+
+    let cleared = engine.clear_selection(&after_backward);
+    assert_eq!(cleared.status(), "committed");
+    assert_eq!(cleared.event_kind().as_deref(), Some("selection"));
+    let after_clear = require_observation(&cleared)?;
+    assert_eq!(after_clear.snapshot_revision(), "3");
+    let mut cleared_read = engine.selection(&after_clear);
+    assert_eq!(require_selection(&mut cleared_read)?.kind(), "none");
+
+    let clear_echo = engine.clear_selection(&after_clear);
+    assert_eq!(clear_echo.status(), "unchanged");
+    assert_eq!(require_observation(&clear_echo)?.snapshot_revision(), "3");
+    assert!(clear_echo.projection_update().is_none());
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen_test]
+fn selection_scalar_admission_is_exact_redacted_and_stale_first() -> TestResult {
+    const PRIVATE: &str = "private-selection-coordinate";
+    let mut result = BreditorEngine::from_document_json(
+        "wasm-selection-admission",
+        PROJECTION_DOCUMENT_JSON,
+        100.0,
+    );
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+    let checkpoint_before = require_string(engine.session_checkpoint_json())?;
+
+    let invalid_kind = set_range_selection(
+        &mut engine,
+        &initial,
+        PRIVATE,
+        1.0,
+        0.0,
+        "after",
+        "children",
+        1.0,
+        0.0,
+        "after",
+    );
+    assert_command_error(&invalid_kind, "breditor_wasm.invalid_selection_point_kind", PRIVATE)?;
+
+    for invalid in [-1.0, 0.5, f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 4_294_967_296.0] {
+        let rejected = set_range_selection(
+            &mut engine,
+            &initial,
+            "children",
+            invalid,
+            0.0,
+            "after",
+            "children",
+            1.0,
+            0.0,
+            "after",
+        );
+        assert_command_error(&rejected, "breditor_wasm.invalid_selection_coordinate", PRIVATE)?;
+    }
+
+    let invalid_affinity = set_range_selection(
+        &mut engine,
+        &initial,
+        "children",
+        1.0,
+        0.0,
+        PRIVATE,
+        "children",
+        1.0,
+        0.0,
+        "after",
+    );
+    assert_command_error(&invalid_affinity, "breditor_wasm.invalid_selection_affinity", PRIVATE)?;
+
+    for (kind, node_index) in [("text", 1.0), ("children", 99.0)] {
+        let rejected = set_range_selection(
+            &mut engine,
+            &initial,
+            kind,
+            node_index,
+            0.0,
+            "after",
+            "children",
+            1.0,
+            0.0,
+            "after",
+        );
+        assert_command_error(&rejected, "breditor_wasm.invalid_selection_node", PRIVATE)?;
+    }
+
+    assert_eq!(engine.observation().snapshot_revision(), "0");
+    assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
+
+    let valid = set_range_selection(
+        &mut engine,
+        &initial,
+        "children",
+        1.0,
+        -0.0,
+        "after",
+        "children",
+        1.0,
+        0.0,
+        "before",
+    );
+    assert_eq!(valid.status(), "committed");
+    let after_valid = require_observation(&valid)?;
+
+    let stale_before_scalar_admission = set_range_selection(
+        &mut engine,
+        &initial,
+        PRIVATE,
+        f64::NAN,
+        f64::INFINITY,
+        PRIVATE,
+        PRIVATE,
+        -1.0,
+        0.5,
+        PRIVATE,
+    );
+    assert_command_error(&stale_before_scalar_admission, "editor_engine.stale_snapshot", PRIVATE)?;
+
+    let mut stale_read = engine.selection(&initial);
+    assert_eq!(stale_read.status(), "error");
+    assert!(stale_read.take_selection().is_none());
+    let stale_error =
+        stale_read.error().ok_or_else(|| test_error("stale selection read omitted its error"))?;
+    assert_eq!(stale_error.code(), "editor_engine.stale_snapshot");
+    assert!(!stale_error.message().contains(PRIVATE));
+    assert_eq!(after_valid.snapshot_revision(), "1");
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen_test]
+fn selection_semantics_reject_root_surrogate_and_bounds_atomically() -> TestResult {
+    let mut result =
+        BreditorEngine::from_document_json("wasm-selection-utf16", EMOJI_DOCUMENT_JSON, 100.0);
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+    let checkpoint_before = require_string(engine.session_checkpoint_json())?;
+
+    for (kind, node_index, offset) in
+        [("text", 2.0, 2.0), ("text", 2.0, 5.0), ("children", 0.0, 0.0)]
+    {
+        let rejected = set_range_selection(
+            &mut engine,
+            &initial,
+            kind,
+            node_index,
+            offset,
+            "after",
+            kind,
+            node_index,
+            offset,
+            "after",
+        );
+        assert_command_error(&rejected, "editor_engine.selection_update", "a😀b")?;
+        assert_eq!(engine.observation().snapshot_revision(), "0");
+        assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
+    }
+
+    let valid = set_range_selection(
+        &mut engine,
+        &initial,
+        "text",
+        2.0,
+        3.0,
+        "after",
+        "text",
+        2.0,
+        3.0,
+        "before",
+    );
+    assert_eq!(valid.status(), "committed");
+    let after_valid = require_observation(&valid)?;
+    let mut selected = engine.selection(&after_valid);
+    let selection = require_selection(&mut selected)?;
+    assert_eq!(selection.anchor_offset(), Some(3));
+    assert_eq!(selection.focus_offset(), Some(3));
+    assert_eq!(selection.anchor_affinity().as_deref(), Some("after"));
+    assert_eq!(selection.focus_affinity().as_deref(), Some("before"));
+    assert_eq!(selection.range_order().as_deref(), Some("collapsed"));
+    Ok(())
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen_test]
+fn selection_jsvalue_admission_rejects_coercible_non_primitives_atomically() -> TestResult {
+    const PRIVATE: &str = "private-coercible-selection-value";
+    let mut result = BreditorEngine::from_document_json(
+        "wasm-selection-js-values",
+        PROJECTION_DOCUMENT_JSON,
+        100.0,
+    );
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+    let checkpoint_before = require_string(engine.session_checkpoint_json())?;
+
+    for value in
+        [JsValue::NULL, JsValue::FALSE, JsValue::from_str("1"), boxed_number(1.0), number_like(1.0)]
+    {
+        let rejected = set_anchor_fields(
+            &mut engine,
+            &initial,
+            JsValue::from_str("children"),
+            value,
+            JsValue::from_f64(0.0),
+            JsValue::from_str("after"),
+        );
+        assert_command_error(&rejected, "breditor_wasm.invalid_selection_coordinate", PRIVATE)?;
+        assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
+    }
+
+    for value in [boxed_string("children"), string_like("children")] {
+        let rejected = set_anchor_fields(
+            &mut engine,
+            &initial,
+            value,
+            JsValue::from_f64(1.0),
+            JsValue::from_f64(0.0),
+            JsValue::from_str("after"),
+        );
+        assert_command_error(&rejected, "breditor_wasm.invalid_selection_point_kind", PRIVATE)?;
+        assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
+    }
+
+    for value in [boxed_string("after"), string_like("after")] {
+        let rejected = set_anchor_fields(
+            &mut engine,
+            &initial,
+            JsValue::from_str("children"),
+            JsValue::from_f64(1.0),
+            JsValue::from_f64(0.0),
+            value,
+        );
+        assert_command_error(&rejected, "breditor_wasm.invalid_selection_affinity", PRIVATE)?;
+        assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
+    }
+
+    assert_eq!(engine.observation().snapshot_revision(), "0");
+    let valid = set_range_selection(
+        &mut engine,
+        &initial,
+        "children",
+        1.0,
+        0.0,
+        "after",
+        "children",
+        1.0,
+        0.0,
+        "after",
+    );
+    assert_eq!(valid.status(), "committed");
     Ok(())
 }
 
@@ -568,6 +963,60 @@ fn require_observation(result: &BreditorCommandResult) -> TestResult<BreditorObs
 
 fn require_projection(result: &mut BreditorProjectionResult) -> TestResult<BreditorProjection> {
     result.take_projection().ok_or_else(|| test_error("projection result had no projection").into())
+}
+
+#[cfg(target_arch = "wasm32")]
+#[allow(clippy::too_many_arguments)]
+fn set_range_selection(
+    engine: &mut BreditorEngine,
+    expected: &BreditorObservation,
+    anchor_kind: &str,
+    anchor_node_index: f64,
+    anchor_offset: f64,
+    anchor_affinity: &str,
+    focus_kind: &str,
+    focus_node_index: f64,
+    focus_offset: f64,
+    focus_affinity: &str,
+) -> BreditorCommandResult {
+    engine.set_range_selection(
+        expected,
+        &JsValue::from_str(anchor_kind),
+        &JsValue::from_f64(anchor_node_index),
+        &JsValue::from_f64(anchor_offset),
+        &JsValue::from_str(anchor_affinity),
+        &JsValue::from_str(focus_kind),
+        &JsValue::from_f64(focus_node_index),
+        &JsValue::from_f64(focus_offset),
+        &JsValue::from_str(focus_affinity),
+    )
+}
+
+#[cfg(target_arch = "wasm32")]
+fn set_anchor_fields(
+    engine: &mut BreditorEngine,
+    expected: &BreditorObservation,
+    anchor_kind: JsValue,
+    anchor_node_index: JsValue,
+    anchor_offset: JsValue,
+    anchor_affinity: JsValue,
+) -> BreditorCommandResult {
+    engine.set_range_selection(
+        expected,
+        &anchor_kind,
+        &anchor_node_index,
+        &anchor_offset,
+        &anchor_affinity,
+        &JsValue::from_str("children"),
+        &JsValue::from_f64(1.0),
+        &JsValue::from_f64(0.0),
+        &JsValue::from_str("after"),
+    )
+}
+
+#[cfg(target_arch = "wasm32")]
+fn require_selection(result: &mut BreditorSelectionResult) -> TestResult<BreditorSelection> {
+    result.take_selection().ok_or_else(|| test_error("selection result had no selection").into())
 }
 
 fn require_string(mut result: BreditorStringResult) -> TestResult<String> {

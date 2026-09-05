@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.51` boundary contract; intentionally narrow and unstable before
+Status: `0.0.52` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
@@ -24,7 +24,7 @@ Tiptap, or CKEditor protocol.
 
 ## Boundary objects
 
-The generated TypeScript declaration exposes nine opaque Wasm-owned classes:
+The generated TypeScript declaration exposes eleven opaque Wasm-owned classes:
 
 - `BreditorEngine` owns one editor session and the compiled base action
   registry;
@@ -34,12 +34,15 @@ The generated TypeScript declaration exposes nine opaque Wasm-owned classes:
 - `BreditorCommandResult` is a committed, disabled, unchanged, or error
   command outcome; and
 - `BreditorStringResult` is a successful string or a structured error from a
-  fallible codec read; and
+  fallible codec read;
 - `BreditorError` contains a stable failure code and fixed redacted message;
 - `BreditorProjectionResult` owns a guarded projection read or error;
 - `BreditorProjection` is one flattened snapshot-bound semantic AST view; and
 - `BreditorProjectionUpdate` owns a commit-derived invalidation description and
-  complete final projection.
+  complete final projection;
+- `BreditorSelectionResult` owns a guarded one-shot semantic-selection read or
+  error; and
+- `BreditorSelection` is one snapshot-bound optional directional range view.
 
 The boundary never forwards a core error's `Display` or `Debug` text. Domain
 rejection is returned as data instead of using JavaScript exceptions as normal
@@ -49,6 +52,10 @@ coerce values, execute caller code, or throw in `wasm-bindgen`'s generated glue
 before Rust receives the call. Allocation failure or a Rust panic traps; using
 an inert or explicitly freed Wasm object throws or traps. WebAssembly is not a
 process-isolation boundary.
+
+The new selection-set fields are a deliberate exception to primitive
+coercion: their generated declaration is precise, but their Rust ABI receives
+opaque `JsValue` references and admits only actual number or string primitives.
 
 No exported class exposes a mutable Rust reference. Wasm-generated `free()`
 methods release handles and must not be called while the handle may still be
@@ -101,7 +108,7 @@ A successful admission check does not reserve the engine. If two queued
 commands share one observation, the first effective mutation wins and the
 second fails stale.
 
-The `0.0.51` action surface is deliberately limited to:
+The `0.0.52` action surface is deliberately limited to:
 
 - `executeNoInputAction`, for a compiled action whose registered descriptor
   declares no input; and
@@ -114,8 +121,24 @@ allowlist of the action ID and registered contract/version for
 action fails closed until this ABI deliberately adds its input shape. This
 covers the complete base action set planned for `0.1.0`; it is not a generic
 third-party Wasm plugin ABI. Undo, redo, close-history-group, and clear-history
-are separate guarded commands. Browser selection conversion and `setSelection`
-intentionally arrive with the guarded DOM selection mapper in `0.0.52`.
+are separate guarded commands.
+
+`engine.selection(expected)` returns a guarded, one-shot semantic selection
+view correlated to the exact snapshot. `none` has no endpoint fields. `range`
+preserves directional anchor and focus through point kind, target preorder node
+index, UTF-16 or child-boundary offset, before/after affinity, and derived
+collapsed/forward/backward order. The node indexes have exactly the same
+snapshot-local meaning as the matching projection's flattened preorder values.
+
+`setRangeSelection` and `clearSelection` are separate guarded mutations. The set
+command accepts two scalar endpoint descriptions, validates the observation
+before inspecting them, constructs core points against the current document,
+and lets `CheckpointedEditorEngine` repeat the observation check and checkpoint
+admission. All eight endpoint fields enter Rust as `JsValue`; exact primitive
+string/number inspection rejects JavaScript wrapper objects and coercible values
+while per-parameter generated TypeScript annotations retain literal unions and
+`number`. A real change returns a selection event, clears pending formats, and
+creates no content-history entry. An exact echo or repeated clear is unchanged.
 
 Known invalid values for those two built-ins retain their finite, stable input
 rule code (for example `breditor/insert-text-input-empty` or
@@ -160,6 +183,11 @@ Session Checkpoint V1 before replacing the authoritative owner or returning its
 event. A checkpoint representation error therefore means no mutation was
 published: state, history, cached bytes, and the supplied observation remain
 exact and reusable. Disabled actions and exact no-ops do not re-encode.
+
+Selection-only commits have equal before/after documents, so their projection
+update impact is `none` even though the result snapshot revision advances. The
+complete result projection remains available for the same recovery path as any
+other commit-bearing event.
 
 An encoding failure after a successful mutation must never turn the command
 status into `error`: the mutation already published. `commitJson()` can still
@@ -222,12 +250,22 @@ fractional or wider raw value into another in-range integer before Rust sees it.
 The reviewed adapter therefore admits exact nonnegative integer indexes first.
 The raw projection getters are read-only and cannot mutate the engine.
 
-`wasm-bindgen` copies JavaScript strings into Wasm memory before Rust can apply
-its byte limits or stale-observation precedence. A hostile same-realm caller can
-therefore cause allocation pressure before the core rejects an oversized or
-stale value. Session-checkpoint restore is synchronous and its bounded replay
-work can still block the browser main thread; the TypeScript layer must schedule
-large loads deliberately.
+Selection mutation coordinates deliberately do not cross as raw Wasm numeric
+parameters. Rust receives `JsValue`, accepts only an actual finite integral
+number primitive in `0..=u32::MAX`, then validates the resulting point against
+the core. Point-kind and affinity fields use strict equality against four fixed
+JavaScript literals without copying an untrusted string into Wasm. Negative
+zero is the one intentional numeric alias for zero.
+
+Parameters exported as Rust `&str`—including lineage, JSON, action identity,
+and action text—are copied by `wasm-bindgen` into Wasm memory before Rust can
+apply its byte limits or stale-observation precedence. A hostile same-realm
+caller can therefore cause allocation pressure before the core rejects an
+oversized or stale value. Selection kind and affinity are the deliberate
+exception: their `JsValue` path uses fixed strict-equality comparisons and does
+not copy caller strings. Session-checkpoint restore is synchronous and its
+bounded replay work can still block the browser main thread; the TypeScript
+layer must schedule large loads deliberately.
 
 JavaScript strings may contain unpaired UTF-16 surrogates, while Rust strings
 contain Unicode scalar values. The generated glue can replacement-normalize an
@@ -236,9 +274,10 @@ distinguish this malformed input must reject it before crossing the boundary;
 valid surrogate pairs and all Rust-representable Unicode are retained exactly.
 
 The crate imports no DOM, IndexedDB, timer, clipboard, console, allocator, or
-panic-hook API. Event ordering, reentrancy policy, selection mapping,
-composition ownership, DOM construction, persistence scheduling, and framework
-integration remain TypeScript responsibilities in their later checkpoints.
+panic-hook API. DOM selection conversion and focus are implemented by the
+framework-neutral browser package; event ordering, reentrancy policy,
+composition ownership, editable-host behavior, persistence scheduling, and
+framework integration remain TypeScript responsibilities in later checkpoints.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
 numeric/string coercions can execute before Rust entry; the host queue must not
@@ -260,4 +299,6 @@ does not replace the JSON codec contracts documented here and in
 `DATA_CONTRACT.md`. The same gate runs a dependency-free Node.js probe against
 the generated web glue to cover ownership transfer, explicit disposal, numeric
 admission, redaction, wrong-class rejection, and inert/freed-handle behavior
-that direct Rust `wasm-bindgen-test` calls cannot exercise.
+that direct Rust `wasm-bindgen-test` calls cannot exercise. Version `0.0.52`
+also probes real selection-view lifecycles and proves that coercible
+number/string objects cannot publish a selection mutation.
