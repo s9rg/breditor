@@ -7,7 +7,7 @@ import {
   type SemanticProjectionView,
   consumeSemanticProjection,
   consumeSemanticProjectionUpdate,
-} from "./index.js";
+} from "./advanced.js";
 
 type FlatNode =
   | { readonly kind: "element"; readonly elementType: string; readonly children: readonly number[] }

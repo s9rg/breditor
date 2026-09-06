@@ -1,6 +1,6 @@
 # Breditor browser event pipeline
 
-Status: implemented for the closed base schema through `0.0.57`; pre-`0.1` API
+Status: implemented for the closed base schema through `0.0.58`; pre-`0.1` API
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -389,7 +389,7 @@ validated declarative control into an ordinary queue request, and Rust still
 revalidates availability at execution time. Action-state display and toolbar
 interaction details are specified in [the toolbar contract](TOOLBAR.md).
 
-Other intentional limits through `0.0.57`:
+Other intentional limits carried through `0.0.58`:
 
 - one connected light-DOM host and one range selection;
 - no shadow-DOM composed-path ownership;
@@ -401,7 +401,8 @@ Other intentional limits through `0.0.57`:
   advances the autosave dirty epoch;
 - full DOM validation, projection/selection conversion, and composition
   reconciliation remain linear in the bounded document; and
-- there is no unified end-user router or real-browser support matrix yet.
+- the `0.0.58` high-level owner now installs the unified event router, but the
+  real-browser support matrix remains the `0.0.59` gate.
 
 ## Acceptance laws
 

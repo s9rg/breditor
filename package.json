@@ -1,15 +1,20 @@
 {
   "name": "breditor-workspace",
   "private": true,
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/*"
   ],
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
+    "clean": "npm run clean --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "check:wasm-package": "npm run check --workspace @breditor/wasm",
+    "smoke:packages": "./scripts/smoke-npm-packages.sh",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

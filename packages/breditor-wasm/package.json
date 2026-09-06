@@ -1,0 +1,35 @@
+{
+  "name": "@breditor/wasm",
+  "version": "0.0.58",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/breditor_wasm.js",
+  "types": "./index.d.ts",
+  "files": [
+    "dist",
+    "index.d.ts",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./dist/breditor_wasm.js",
+      "default": "./dist/breditor_wasm.js"
+    },
+    "./wasm": "./dist/breditor_wasm_bg.wasm",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "node ../../scripts/clean-package.mjs",
+    "build": "../../scripts/build-wasm-package.sh",
+    "check": "../../scripts/check-wasm-package.sh",
+    "prepack": "npm run check"
+  }
+}

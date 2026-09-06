@@ -6,7 +6,7 @@ import {
   BreditorDomRenderer,
   type BrowserProjectionResult,
   type ProjectionRenderOutcome,
-} from "./index.js";
+} from "./advanced.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 

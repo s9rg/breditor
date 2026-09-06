@@ -7,7 +7,7 @@ import {
   consumeSemanticSelection,
   semanticRangeSelectionScalars,
   type SemanticSelectionView,
-} from "./index.js";
+} from "./advanced.js";
 
 function projection() {
   return projectionValue(

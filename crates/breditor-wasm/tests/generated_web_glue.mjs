@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { IDBFactory } from "fake-indexeddb";
+import { JSDOM } from "jsdom";
 
 const [modulePath, wasmPath, browserModulePath] = process.argv.slice(2);
 if (modulePath === undefined || wasmPath === undefined || browserModulePath === undefined) {
@@ -684,3 +685,150 @@ const freedObservation = freedVictim.observation();
 freedObservation.free();
 assert.throws(() => freedVictim.undo(freedObservation));
 assert.throws(() => freedVictim.free());
+
+// Exercise the complete public owner with real generated Wasm. The DOM is a
+// disposable projection: selection, insertion, undo, redo, persistence, and
+// reload all cross the same high-level listener/router boundary an app uses.
+const runtimeDom = new JSDOM("<!doctype html><body></body>", {
+  pretendToBeVisual: true,
+});
+for (const name of [
+  "window",
+  "document",
+  "Node",
+  "Element",
+  "HTMLElement",
+  "HTMLParagraphElement",
+  "Text",
+  "Range",
+  "Selection",
+  "Event",
+  "EventTarget",
+  "InputEvent",
+  "KeyboardEvent",
+  "MouseEvent",
+  "MutationObserver",
+]) {
+  Object.defineProperty(globalThis, name, {
+    configurable: true,
+    value: runtimeDom.window[name],
+  });
+}
+
+const runtimeDatabase = new IDBFactory();
+const runtimeHost = document.createElement("div");
+const runtimeToolbarHost = document.createElement("div");
+document.body.append(runtimeToolbarHost, runtimeHost);
+const openedRuntime = await browser.openBreditorBrowserEditor({
+  host: runtimeHost,
+  label: "Generated glue editor",
+  wasm: api,
+  initialDocument: {
+    lineageId: "web-glue-public-runtime",
+    documentJson: EMPTY_DOCUMENT_JSON,
+    historyCapacity: 100,
+  },
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+  toolbar: { host: runtimeToolbarHost },
+  persistence: {
+    indexedDB: runtimeDatabase,
+    crypto: globalThis.crypto.subtle,
+    autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
+  },
+});
+assert.equal(openedRuntime.ok, true);
+const runtime = openedRuntime.editor;
+assert.equal(runtime.getStatus().phase, "live");
+assert.equal(runtime.getSnapshot().document.revision, "0");
+assert.equal(runtimeHost.getAttribute("contenteditable"), "true");
+assert.equal(runtimeHost.getAttribute("role"), "textbox");
+assert.equal(runtimeHost.getAttribute("aria-label"), "Generated glue editor");
+assert.equal(runtimeToolbarHost.querySelectorAll("button").length, 3);
+
+const emptyParagraph = runtimeHost.querySelector("p");
+assert.ok(emptyParagraph);
+runtimeDom.window.getSelection().setBaseAndExtent(
+  emptyParagraph,
+  0,
+  emptyParagraph,
+  0,
+);
+document.dispatchEvent(new runtimeDom.window.Event("selectionchange"));
+assert.equal(runtime.getSnapshot().document.revision, "1");
+
+const insertEvent = new runtimeDom.window.InputEvent("beforeinput", {
+  bubbles: true,
+  cancelable: true,
+  data: "runtime reload",
+  inputType: "insertText",
+});
+Object.defineProperty(insertEvent, "getTargetRanges", {
+  value: () => [],
+});
+assert.equal(runtimeHost.dispatchEvent(insertEvent), false);
+assert.equal(insertEvent.defaultPrevented, true);
+assert.equal(runtimeHost.textContent, "runtime reload");
+assert.equal(runtime.getSnapshot().document.revision, "2");
+
+const undoEvent = new runtimeDom.window.KeyboardEvent("keydown", {
+  bubbles: true,
+  cancelable: true,
+  code: "KeyZ",
+  ctrlKey: true,
+  key: "z",
+});
+assert.equal(runtimeHost.dispatchEvent(undoEvent), false);
+assert.equal(runtimeHost.textContent, "");
+assert.equal(runtime.getSnapshot().document.revision, "3");
+
+const redoEvent = new runtimeDom.window.KeyboardEvent("keydown", {
+  bubbles: true,
+  cancelable: true,
+  code: "KeyY",
+  ctrlKey: true,
+  key: "y",
+});
+assert.equal(runtimeHost.dispatchEvent(redoEvent), false);
+assert.equal(runtimeHost.textContent, "runtime reload");
+assert.equal(runtime.getSnapshot().document.revision, "4");
+assert.deepEqual(await runtime.flushPersistence(), { status: "committed" });
+runtime.dispose();
+assert.equal(runtime.getStatus().phase, "disposed");
+assert.equal(runtime.getSnapshot().persistence.phase, "disposed");
+assert.equal(runtimeHost.childNodes.length, 0);
+assert.equal(runtimeHost.hasAttribute("contenteditable"), false);
+assert.equal(runtimeToolbarHost.childNodes.length, 0);
+
+const reloadedHost = document.createElement("div");
+document.body.append(reloadedHost);
+const reloadedRuntimeResult = await browser.openBreditorBrowserEditor({
+  host: reloadedHost,
+  label: "Reloaded generated glue editor",
+  wasm: api,
+  initialDocument: {
+    lineageId: "must-not-replace-checkpoint",
+    documentJson: EMPTY_DOCUMENT_JSON,
+    historyCapacity: 1,
+  },
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+  persistence: {
+    indexedDB: runtimeDatabase,
+    crypto: globalThis.crypto.subtle,
+  },
+});
+assert.equal(reloadedRuntimeResult.ok, true);
+const reloadedRuntime = reloadedRuntimeResult.editor;
+assert.deepEqual(reloadedRuntime.getSnapshot().document, {
+  lineage: "web-glue-public-runtime",
+  revision: "4",
+});
+assert.equal(reloadedHost.textContent, "runtime reload");
+reloadedRuntime.dispose();

@@ -2,4 +2,5 @@
 *.profraw
 node_modules/
 /packages/*/dist/
+/examples/*/dist/
 /coverage/

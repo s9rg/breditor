@@ -1,7 +1,9 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.57` renders the validated base-schema AST into disposable DOM,
+Version `0.0.58` adds the public `BreditorBrowserEditor` owner around the
+lower-level behavior implemented through `0.0.57`: it boots the generated
+Rust/Wasm engine, renders the validated base-schema AST into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
 strict paragraph-local composition lease plus guarded copy/cut/paste without
 making the DOM or clipboard HTML an editor model. It also consumes guarded
@@ -10,9 +12,63 @@ renders an extensible accessible toolbar without making display state an
 execution capability. It also restores and atomically autosaves complete Rust
 session checkpoints through a strict single-slot IndexedDB profile.
 
-The package is private while the pre-`0.1` package boundary is still moving.
-Its public entry point is nevertheless compiled and declaration-checked so a
-later publish step does not have to invent the renderer contract.
+The owner installs the unified native-event router, action-state refresh,
+optional declarative toolbar, and optional atomic IndexedDB autosave as one
+all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
+`examples/react` workspace, but the product API remains framework-neutral.
+
+The package has a public ESM entry point. Its pre-`0.1` contract remains
+unstable, but a clean npm tarball is install-, import-, and type-check tested
+without workspace links. Declaration maps are intentionally omitted because
+the corresponding TypeScript sources are not part of the published package.
+
+The package root is the narrow high-level editor API. Lower-level renderer,
+queue, adapter, selection, clipboard, toolbar, and persistence contracts are
+available from the explicit `@breditor/browser/advanced` entry point.
+
+## Public runtime
+
+Initialize the matching `@breditor/wasm` package once, then pass connected,
+empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
+
+```ts
+import { openBreditorBrowserEditor } from "@breditor/browser";
+import initializeWasm, * as breditorWasm from "@breditor/wasm";
+
+await initializeWasm();
+
+const result = await openBreditorBrowserEditor({
+  host: document.querySelector("#editor") as HTMLElement,
+  label: "Notes",
+  wasm: breditorWasm,
+  initialDocument: {
+    lineageId: "notes-main",
+    documentJson: EMPTY_DOCUMENT_JSON,
+    historyCapacity: 100,
+  },
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+  toolbar: { host: document.querySelector("#toolbar") as HTMLElement },
+  persistence: {
+    indexedDB: window.indexedDB,
+    crypto: window.crypto.subtle,
+  },
+});
+
+if (!result.ok) throw new Error(result.error.message);
+const editor = result.editor;
+```
+
+The Rust AST, selection, action state, history, and checkpoint remain
+authoritative. The editor exposes immutable status snapshots, bounded
+subscription, focus, persistence flush/retry, and idempotent disposal; it does
+not expose its engine, queue, observation, renderer, or delivery tokens.
+`initialDocument` is ignored when a valid stored session checkpoint exists.
+Call and await `flushPersistence()` before controlled navigation when saving
+matters, then call `dispose()`; disposal itself does not promise a save.
 
 ## Boundary
 
@@ -219,20 +275,22 @@ plain-text insertion.
 
 The controller never retains an event, `DataTransfer`, clipboard payload, or
 generated handle. A command failure is never retried, and clipboard/core work
-cannot be rolled back as one transaction. Until the later unified router,
-integrations must front-route actual clipboard events and clipboard-shaped
-`beforeinput`/`input` to this controller; the ordinary controller reports
-`clipboardOwns` for those input types. See
-[`CLIPBOARD.md`](../../docs/CLIPBOARD.md) for exact formats, limits, ordering,
-echoes, and failure semantics.
+cannot be rolled back as one transaction. `BreditorBrowserEditor` installs the
+unified router which gives composition first refusal, then clipboard, then
+ordinary input. Advanced integrations assembling the lower-level controllers
+must preserve that exact precedence and route clipboard-shaped
+`beforeinput`/`input` only to the clipboard controller; the ordinary controller
+reports `clipboardOwns` for those input types. Clipboard limits and failure
+semantics are summarized here so the published package does not depend on a
+repository-only documentation link.
 
 This low-level wiring is host-trusted: the controller structurally snapshots an
 adapter-compatible JavaScript surface, and its lease excludes only submissions
 through the shared queue. Forging or mutating that surface, or calling the
 adapter directly during a clipboard callback, violates the integration
 contract. A direct state change is detected at the next guarded base check but
-cannot undo an already completed clipboard side effect. The later high-level
-runtime encapsulates these pieces for ordinary consumers.
+cannot undo an already completed clipboard side effect. The package-root
+high-level runtime encapsulates these pieces for ordinary consumers.
 
 ## Action state and toolbar
 
@@ -259,8 +317,8 @@ implement roving focus, restore the exact keyboard button after synchronous
 delivery, and submit declarative `selection: "preserve"` invocations. Dispatch
 accepts only a minted synchronous outcome. The runtime converts invocations
 with `toolbarCommandRequest` and sends them through the same queue; Rust
-revalidates every command against the current observation.
-See [`TOOLBAR.md`](../../docs/TOOLBAR.md).
+revalidates every command against the current observation. The complete
+manifest contract is documented in `docs/TOOLBAR.md` in the repository.
 
 ## Session checkpoint persistence
 
@@ -296,16 +354,18 @@ const autosave = new BreditorSessionCheckpointAutosave(
 const stopObserving = adapter.observeCoreCommits(autosave.commitObserver);
 ```
 
-The feed fires once whenever a validated Rust successor is adopted, even when
+The high-level runtime installs this wiring automatically. Advanced integrations
+must wire the feed exactly once. It fires whenever a validated Rust successor is adopted, even when
 a later DOM reconciliation or multi-stage command failure prevents the queue
 from reporting completion. Temporary composition/execution returns capture
 backpressure; terminal adapter loss pauses autosave. See
-[`SESSION_CHECKPOINT_STORAGE.md`](../../docs/SESSION_CHECKPOINT_STORAGE.md).
+`docs/SESSION_CHECKPOINT_STORAGE.md` in the repository.
 
 ## Current limitations
 
-- The bundled toolbar catalog contains Bold, Undo, and Redo. Dynamic action or
-  catalog registration and React integration belong to later checkpoints.
+- The bundled toolbar catalog contains Bold, Undo, and Redo. A custom manifest
+  can reorder or relabel controls, but dynamic JavaScript action/catalog
+  registration and a packaged React wrapper are not included.
 - Checkpoint persistence is one best-effort local slot, not an append log,
   multi-document registry, merge protocol, authenticated store, rollback
   defense, or cross-device synchronization.
@@ -323,16 +383,17 @@ backpressure; terminal adapter loss pauses autosave. See
 - Mutation observers deliver asynchronously. A synchronous consumer should not
   treat the DOM as authoritative; retained subtrees are checked again before an
   update fast path is used.
-- The renderer does not set `contenteditable`, focus, ARIA, or presentation
-  styles on the application-owned host.
+- The low-level renderer does not set host attributes. The public runtime sets
+  and later restores `contenteditable`, textbox/multiline ARIA semantics,
+  accessible label, and spellcheck; presentation styles remain application-owned.
 - Selection mapping supports one light-DOM range only. Cross-host,
   cross-shadow-root, browser multi-range, and ambiguous internal host-boundary
   positions fail closed. DOM mapping and validation are currently linear in the
   bounded document.
 - Composition additionally supports only one target range and one paragraph;
   cross-block, shadow/composed, multi-range, arbitrary-markup, and nested-editor
-  composition fail closed. The package does not yet provide one unified
-  end-user event router.
+  composition fail closed. The public runtime front-routes composition,
+  clipboard, ordinary input, blur, and document selection through one owner.
 - Composition order and all three bounded alias paths are unit-tested in a
   deterministic DOM. The real Chromium, Firefox, and WebKit/Safari engine
   matrix, including IME behavior, remains the `0.0.59` gate; this checkpoint
@@ -349,6 +410,7 @@ From the repository root:
 npm run typecheck
 npm test
 npm run build
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
 ```
 
 The workspace pins TypeScript, Vitest, and jsdom exactly in
@@ -366,4 +428,9 @@ manifest and keyboard/ARIA behavior, exact composition/queue/
 renderer leases, alternate terminal event orders, strict temporary-DOM
 reconciliation, cancellation history boundaries, fail-safe recovery, strict
 checkpoint ownership/restore, IndexedDB schema/CAS/corruption paths, adopted-
-commit notification, and reentrancy-safe autosave scheduling.
+commit notification, reentrancy-safe autosave scheduling, Wasm bootstrap,
+unified router ownership, public-runtime rollback/disposal, generated-Wasm
+edit/undo/redo/reload, and isolated package installation.
+
+The package is licensed under either MIT or Apache-2.0, at your option. Both
+license texts are included in its npm tarball.

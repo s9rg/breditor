@@ -4,6 +4,8 @@ description = "Deterministic content kernel for the Breditor rich-text editor"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 publish = false
 
 [dependencies]

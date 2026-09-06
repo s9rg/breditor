@@ -1,6 +1,6 @@
 # Breditor toolbar and action-state contract
 
-Status: implemented by checkpoint `0.0.56`.
+Status: implemented through checkpoint `0.0.58`.
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -130,9 +130,10 @@ revalidated after DOM access, and queued. No DOM range or an outside-host range
 is a focus transition and preserves semantic selection. Active composition,
 stale delivery, DOM drift, and queue uncertainty fail closed.
 
-The unified event router in `0.0.58` owns listener ordering. Until then, hosts
-must route document `selectionchange` to the ordinary browser controller and
-use the same queue observer for action-state refresh.
+The unified event router in `0.0.58` owns listener ordering and routes document
+`selectionchange` through the ordinary browser controller. Advanced hosts that
+assemble lower-level components must preserve that route and use the same queue
+observer for action-state refresh.
 
 ## Presentation manifest
 
@@ -187,8 +188,9 @@ before dispatch, but the queue and Rust remain authoritative.
 Dispatch must return an outcome minted by `toolbarCommandDispatchResult`:
 `completed` means synchronous completion, `rejected` means no command ran, and
 `failed` means the runtime cannot prove a safe outcome. Thrown, asynchronous,
-forged, malformed, and failed outcomes fault the toolbar closed. This low-level
-dispatcher remains host-supplied until the unified runtime owns it in `0.0.58`.
+forged, malformed, and failed outcomes fault the toolbar closed. The `0.0.58`
+high-level runtime owns this dispatcher; advanced low-level construction still
+requires a host-supplied implementation.
 
 Disposal removes the owned inner root, generated buttons, listeners, and
 subscriptions without modifying the mount. Callback contract violations fault
@@ -196,7 +198,14 @@ the toolbar closed and disable every control. A failed constructor enters a
 terminal state before rollback, so even a callback retained by a broken
 subscriber becomes inert.
 
-## Explicit limits at `0.0.56`
+Through `0.0.58`, `subscribe` exposes the toolbar's one terminal `faulted` or
+`disposed` transition to at most 64 distinct lifecycle listeners. Duplicate
+functions share one delivery slot with independent unsubscribe closures;
+throws and rejected promises are listener-local. The high-level browser owner
+uses this signal to turn presentation failure into a payload-redacted editor
+fault rather than continuing to report a false-live toolbar.
+
+## Explicit limits through `0.0.58`
 
 - The distributed catalog contains Bold, Undo, and Redo only.
 - One browser action-state snapshot admits at most 512 entries. One uniform
@@ -213,8 +222,8 @@ subscriber becomes inert.
 - `unhandled` and `faulted` expose their category across Wasm, but not the
   routed fallthrough trace, fault code, or fault detail. Disabled reason detail
   likewise remains core-only; the browser receives only its stable reason code.
-- Toolbar state and dispatch are synchronous; framework scheduling arrives with
-  the high-level runtime in `0.0.58`.
+- Toolbar state and dispatch remain synchronous; the `0.0.58` high-level runtime
+  bridges status into a bounded, immutable external-store subscription.
 - A host can inject a custom manifest, but this checkpoint does not dynamically
   register Rust actions or catalog entries from JavaScript.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,

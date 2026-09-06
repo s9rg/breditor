@@ -96,7 +96,7 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
 - a checkpoint-constrained engine owner that admits every effective mutation
   only after its complete canonical session checkpoint encodes, plus a generic
   no-DOM semantic Wasm projection with conservative commit invalidation; and
-- a private framework-neutral `@breditor/browser` package that consumes that
+- a publishable framework-neutral `@breditor/browser` package that consumes that
   projection without JSON, creates a closed safe DOM vocabulary, maintains
   snapshot-local AST/DOM maps, retains proved paragraph identity, and rebuilds
   conservatively on broad impact or DOM drift, plus exact range/target mapping,
@@ -126,7 +126,7 @@ scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
 crash-tail recovery,
-  a unified end-user browser router and asynchronous/programmatic clipboard,
+  asynchronous/programmatic clipboard,
 collaboration-aware or selective undo, and generic incremental validation for
 structural or custom-schema edits are not implemented. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
@@ -683,9 +683,9 @@ and reproducibly compared by `scripts/check-wasm-api.sh`. At that checkpoint,
 DOM projection, selection mapping, event timing, composition, clipboard, and
 persistence I/O remained later browser-layer work.
 
-The `0.0.50` Wasm crate and declaration are repository-internal review
-artifacts, not an installable npm or crates.io package. Consumer packaging and
-isolated-install verification are deliberately deferred to `0.0.58`.
+The Rust crate remains a repository-internal implementation package rather than
+a crates.io release. Version `0.0.58` packages its reviewed generated boundary
+as an independently installable `@breditor/wasm` npm tarball.
 
 Version `0.0.51` adds the [DOM projection contract](docs/DOM_PROJECTION.md).
 `CheckpointedEditorEngine` runs every effective mutation against a private
@@ -799,9 +799,11 @@ visible to the synchronous queue executor and any application queue observer.
 A committed cut or paste can suppress one exact optional `beforeinput`/`input`
 echo without executing twice. Clipboard and Rust state do not share rollback,
 so known failures choose no-delete/no-insert behavior and uncertain post-command
-failures require canonical reconciliation. Async clipboard access, arbitrary
-rich content, a unified event router, and real browser interoperability remain
-later work.
+failures require canonical reconciliation. At this checkpoint, async clipboard
+access, arbitrary rich content, a unified event router, and real browser
+interoperability remained later work. Version `0.0.58` now supplies the unified
+router; the async Clipboard API and broader rich-content formats remain outside
+the first release, while the real-browser matrix is the `0.0.59` gate.
 
 Version `0.0.56` adds the [toolbar and action-state contract](docs/TOOLBAR.md).
 The Wasm engine owns one frozen base catalog and synchronous cache for Bold,
@@ -852,6 +854,28 @@ instead of polling. The first persistence product remains one best-effort local
 checkpoint, not the proof kernel's ordered local log, merge, authenticated
 storage, rollback defense, or cross-device sync.
 
+Version `0.0.58` establishes the public framework-neutral browser owner, React
+reference integration, and publishable distribution foundation. The owner
+boots the reviewed Wasm engine, restores or creates one session, installs the
+renderer, selection bridge, FIFO, unified composition/clipboard/ordinary event
+router, guarded action-state store, optional toolbar, and optional autosave as
+one all-or-nothing lifetime. Runtime status is immutable and observable;
+native-router, queue, reconciliation, toolbar-dispatch, and toolbar-presentation
+uncertainty fault editing closed without discarding a validated Rust commit.
+
+Breditor is dual-licensed under `MIT OR Apache-2.0`; the Rust manifests and both npm
+packages carry the same SPDX expression and every package tarball contains both
+license texts. `@breditor/wasm` is generated from the locked release build with
+exactly `wasm-bindgen 0.2.127`, exposes the reviewed ESM declaration and adjacent
+Wasm module, and is checked by real initialization. Both workspace packages
+clean their output before building. The browser build deliberately omits
+declaration maps because its TypeScript sources are not shipped, avoiding dead
+`../src` links in the public tarball, and retains supporting declarations that
+occur in exported public method contracts. An isolated smoke test packs and
+installs both tarballs, imports and initializes them outside the workspace, and
+type-checks a consumer program. No npm publication is performed by these
+commands.
+
 ## Development
 
 ```sh
@@ -864,8 +888,10 @@ npm ci
 npm run typecheck
 npm test
 npm run build
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run check:wasm-package
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
 WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen ./scripts/check-wasm-api.sh
 ```
 
-The open-source license is intentionally not selected yet; MIT versus Apache-2.0
-remains an owner decision.
+Breditor is available under either the MIT License or Apache License, Version
+2.0, at your option. See `LICENSE-MIT` and `LICENSE-APACHE`.

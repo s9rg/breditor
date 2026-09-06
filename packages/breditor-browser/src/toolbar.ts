@@ -17,6 +17,9 @@ import {
 /** Maximum entries inspected from one browser action-state snapshot. */
 export const MAX_TOOLBAR_STATE_ENTRIES = 512;
 
+/** Maximum distinct lifecycle listeners retained by one mounted toolbar. */
+export const MAX_TOOLBAR_LIFECYCLE_SUBSCRIBERS = 64;
+
 /** Action-state fields consumed by the presentation layer. */
 export interface ToolbarActionStateEntry {
   readonly id: string;
@@ -144,6 +147,9 @@ export function toolbarCommandRequest(
 /** Observable lifecycle of one mounted toolbar. */
 export type BreditorToolbarState = "live" | "faulted" | "disposed";
 
+/** One synchronous notification for the toolbar's terminal transition. */
+export type BreditorToolbarSubscriber = (state: BreditorToolbarState) => unknown;
+
 interface ButtonRecord {
   readonly declaration: ToolbarControlDeclaration;
   readonly button: HTMLButtonElement;
@@ -161,7 +167,13 @@ interface NormalizedActionState {
   readonly activation: ToolbarActionStateEntry["activation"];
 }
 
+interface ToolbarSubscriberSlot {
+  readonly listener: BreditorToolbarSubscriber;
+  references: number;
+}
+
 const TOOLBAR_HOSTS = new WeakMap<HTMLElement, BreditorToolbar>();
+const NOOP_UNSUBSCRIBE = Object.freeze((): void => {});
 
 /**
  * Accessible native-button toolbar driven only by a frozen manifest and store.
@@ -181,6 +193,7 @@ export class BreditorToolbar {
   readonly #readStoreStatus!: () => unknown;
   readonly #dispatch!: (invocation: ToolbarCommandInvocation) => unknown;
   readonly #buttons: ButtonRecord[] = [];
+  readonly #subscribers: ToolbarSubscriberSlot[] = [];
   #unsubscribe: (() => void) | undefined;
   #activeIndex = 0;
   #state: BreditorToolbarState = "live";
@@ -284,6 +297,39 @@ export class BreditorToolbar {
     return this.#state;
   }
 
+  /**
+   * Subscribes to the single terminal lifecycle transition.
+   *
+   * Duplicate functions share one delivery while retaining independent,
+   * idempotent unsubscribe closures. Subscriber failures are listener-local.
+   */
+  subscribe(listener: BreditorToolbarSubscriber): () => void {
+    if (typeof listener !== "function") {
+      throw new TypeError("toolbar subscriber must be callable");
+    }
+    if (this.#state !== "live") return NOOP_UNSUBSCRIBE;
+    let slot = this.#subscribers.find(
+      (candidate) => candidate.listener === listener,
+    );
+    if (slot === undefined) {
+      if (this.#subscribers.length >= MAX_TOOLBAR_LIFECYCLE_SUBSCRIBERS) {
+        throw new RangeError("toolbar subscriber capacity is exhausted");
+      }
+      slot = { listener, references: 0 };
+      this.#subscribers.push(slot);
+    }
+    slot.references += 1;
+    let active = true;
+    return Object.freeze((): void => {
+      if (!active) return;
+      active = false;
+      slot.references -= 1;
+      if (slot.references !== 0) return;
+      const index = this.#subscribers.indexOf(slot);
+      if (index !== -1) this.#subscribers.splice(index, 1);
+    });
+  }
+
   /** Re-reads the latest published action-state snapshot and updates ARIA state. */
   refresh(): void {
     this.#refreshFromStore();
@@ -298,6 +344,7 @@ export class BreditorToolbar {
     if (TOOLBAR_HOSTS.get(this.#host) === this) {
       TOOLBAR_HOSTS.delete(this.#host);
     }
+    this.#notifyTerminal("disposed");
   }
 
   #installButtons(): void {
@@ -326,19 +373,19 @@ export class BreditorToolbar {
       });
       const record = {} as ButtonRecord;
       const onPointerDown = (event: PointerEvent) => {
-        this.#handlePointerDown(index, event);
+        this.#guardEvent(() => this.#handlePointerDown(index, event));
       };
       const onMouseDown = (event: MouseEvent) => {
-        this.#handleMouseDown(index, event);
+        this.#guardEvent(() => this.#handleMouseDown(index, event));
       };
       const onFocus = () => {
-        this.#handleFocus(index);
+        this.#guardEvent(() => this.#handleFocus(index));
       };
       const onKeyDown = (event: KeyboardEvent) => {
-        this.#handleKeyDown(index, event);
+        this.#guardEvent(() => this.#handleKeyDown(index, event));
       };
       const onClick = (event: MouseEvent) => {
-        this.#handleClick(record, event);
+        this.#guardEvent(() => this.#handleClick(record, event));
       };
       Object.assign(record, {
         declaration,
@@ -383,9 +430,13 @@ export class BreditorToolbar {
     } catch {
       states = null;
     }
-    for (const record of this.#buttons) {
-      const entry = states?.get(record.declaration.stateId);
-      this.#renderButtonState(record, entry);
+    try {
+      for (const record of this.#buttons) {
+        const entry = states?.get(record.declaration.stateId);
+        this.#renderButtonState(record, entry);
+      }
+    } catch {
+      this.#fault();
     }
   };
 
@@ -474,7 +525,19 @@ export class BreditorToolbar {
       );
     }
     if (focus && this.#state === "live") {
-      this.#buttons[index]?.button.focus();
+      const button = this.#buttons[index]?.button;
+      if (button === undefined) return;
+      button.focus();
+      if (button.ownerDocument.activeElement !== button) this.#fault();
+    }
+  }
+
+  #guardEvent(callback: () => void): void {
+    if (this.#state !== "live") return;
+    try {
+      callback();
+    } catch {
+      this.#fault();
     }
   }
 
@@ -518,8 +581,13 @@ export class BreditorToolbar {
     this.#releaseSubscription();
     for (const record of this.#buttons) {
       record.enabled = false;
-      record.button.setAttribute("aria-disabled", "true");
+      try {
+        record.button.setAttribute("aria-disabled", "true");
+      } catch {
+        // The logical terminal state does not depend on damaged application DOM.
+      }
     }
+    this.#notifyTerminal("faulted");
   }
 
   #releaseSubscription(): void {
@@ -536,15 +604,33 @@ export class BreditorToolbar {
 
   #disposeInstalledDom(): void {
     for (const record of this.#buttons) {
-      record.button.removeEventListener("pointerdown", record.onPointerDown);
-      record.button.removeEventListener("mousedown", record.onMouseDown);
-      record.button.removeEventListener("focus", record.onFocus);
-      record.button.removeEventListener("keydown", record.onKeyDown);
-      record.button.removeEventListener("click", record.onClick);
-      record.button.remove();
+      bestEffort(() =>
+        record.button.removeEventListener("pointerdown", record.onPointerDown),
+      );
+      bestEffort(() =>
+        record.button.removeEventListener("mousedown", record.onMouseDown),
+      );
+      bestEffort(() => record.button.removeEventListener("focus", record.onFocus));
+      bestEffort(() =>
+        record.button.removeEventListener("keydown", record.onKeyDown),
+      );
+      bestEffort(() => record.button.removeEventListener("click", record.onClick));
+      bestEffort(() => record.button.remove());
     }
     this.#buttons.splice(0, this.#buttons.length);
-    this.#element.remove();
+    bestEffort(() => this.#element.remove());
+  }
+
+  #notifyTerminal(state: Exclude<BreditorToolbarState, "live">): void {
+    const subscribers = this.#subscribers.slice();
+    this.#subscribers.length = 0;
+    for (const slot of subscribers) {
+      try {
+        containAsyncRejection(Reflect.apply(slot.listener, undefined, [state]));
+      } catch {
+        // Subscriber-local failure cannot affect sibling delivery or lifecycle.
+      }
+    }
   }
 }
 
@@ -725,5 +811,27 @@ function isOwnedToolbarDispatchResult(
     );
   } catch {
     return false;
+  }
+}
+
+function containAsyncRejection(value: unknown): void {
+  if (
+    !((typeof value === "object" && value !== null) || typeof value === "function")
+  ) {
+    return;
+  }
+  try {
+    const then = (value as Readonly<{ then?: unknown }>).then;
+    if (typeof then === "function") void Promise.resolve(value).catch(() => undefined);
+  } catch {
+    // A hostile thenable is subscriber-local failure too.
+  }
+}
+
+function bestEffort(callback: () => void): void {
+  try {
+    callback();
+  } catch {
+    // Logical toolbar ownership does not depend on damaged application DOM.
   }
 }

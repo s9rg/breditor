@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   BreditorToolbar,
@@ -477,6 +477,32 @@ describe("BreditorToolbar", () => {
     expect(() => toolbarCommandDispatchResult("unknown" as never)).toThrow(
       /status/u,
     );
+  });
+
+  it("publishes one contained terminal lifecycle transition", async () => {
+    const host = mountHost();
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch: () => toolbarCommandDispatchResult("failed") },
+    );
+    const observed = vi.fn();
+    const rejected = vi.fn(() => Promise.reject(new Error("listener-local")));
+    const releaseFirst = toolbar.subscribe(observed);
+    const releaseSecond = toolbar.subscribe(observed);
+    toolbar.subscribe(rejected);
+
+    releaseFirst();
+    toolbarButtons(host)[0]?.click();
+    await Promise.resolve();
+
+    expect(toolbar.state).toBe("faulted");
+    expect(observed).toHaveBeenCalledExactlyOnceWith("faulted");
+    expect(rejected).toHaveBeenCalledExactlyOnceWith("faulted");
+    releaseSecond();
+    toolbar.dispose();
+    expect(observed).toHaveBeenCalledOnce();
   });
 
   it("faults and releases a subscription when the state-store callback throws", () => {

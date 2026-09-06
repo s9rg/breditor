@@ -4,13 +4,15 @@ description = "Narrow WebAssembly boundary for the Breditor editor engine"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 publish = false
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-breditor-core = { path = "../breditor-core", version = "=0.0.57" }
+breditor-core = { path = "../breditor-core", version = "=0.0.58" }
 serde_json.workspace = true
 wasm-bindgen.workspace = true
 

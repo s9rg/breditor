@@ -200,8 +200,8 @@ The following remain deliberately unimplemented:
   preparation, the process-local bounded append FIFO, and its uncertain-head
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
-- published consumer packaging, a unified end-user browser event router,
-  React integration, and the real-browser support matrix (guarded
+- the real-browser support matrix (published consumer packaging, a unified
+  end-user browser event router, and React integration exist at `0.0.58`; guarded
   base-subset clipboard mutation exists at `0.0.55`; guarded action-state and
   toolbar delivery exist at `0.0.56`; atomic single-slot session-checkpoint
   persistence exists at `0.0.57`);

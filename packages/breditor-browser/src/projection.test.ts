@@ -4,7 +4,7 @@ import {
   BaseDocumentProjection,
   BaseProjectionUpdate,
   type BrowserProjectionResult,
-} from "./index.js";
+} from "./advanced.js";
 
 function valueOf<T>(result: BrowserProjectionResult<T>): T {
   if (!result.ok) {

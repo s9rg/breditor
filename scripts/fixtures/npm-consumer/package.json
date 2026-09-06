@@ -1,0 +1,5 @@
+{
+  "name": "breditor-package-smoke",
+  "private": true,
+  "type": "module"
+}

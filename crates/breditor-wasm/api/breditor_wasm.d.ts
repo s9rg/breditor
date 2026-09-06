@@ -780,10 +780,10 @@ export interface InitOutput {
     readonly breditorWasmAbiVersion: () => [number, number];
     readonly breditorengine_setRangeSelection: (a: number, b: number, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any) => number;
     readonly __wbg_breditorengine_free: (a: number, b: number) => void;
+    readonly breditorengine_actionStates: (a: number, b: number) => number;
     readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number) => number;
     readonly breditorengine_fromDocumentJson: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly breditorengine_fromSessionCheckpointJson: (a: number, b: number) => number;
-    readonly breditorengine_redo: (a: number, b: number) => number;
     readonly breditorengine_selection: (a: number, b: number) => number;
     readonly __wbg_breditoractionstatesresult_free: (a: number, b: number) => void;
     readonly __wbg_breditorerror_free: (a: number, b: number) => void;
@@ -816,7 +816,7 @@ export interface InitOutput {
     readonly breditorselectionresult_takeSelection: (a: number) => number;
     readonly __wbg_breditorengineresult_free: (a: number, b: number) => void;
     readonly __wbg_breditorobservation_free: (a: number, b: number) => void;
-    readonly breditorengine_actionStates: (a: number, b: number) => number;
+    readonly breditorengine_clearSelection: (a: number, b: number) => number;
     readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly breditorengine_projection: (a: number, b: number) => number;
     readonly breditorengineresult_error: (a: number) => number;
@@ -850,8 +850,8 @@ export interface InitOutput {
     readonly breditorprojectionupdate_takeProjection: (a: number) => number;
     readonly __wbg_breditorprojection_free: (a: number, b: number) => void;
     readonly breditorengine_clearHistory: (a: number, b: number) => number;
-    readonly breditorengine_clearSelection: (a: number, b: number) => number;
     readonly breditorengine_closeHistoryGroup: (a: number, b: number) => number;
+    readonly breditorengine_redo: (a: number, b: number) => number;
     readonly breditorengine_sessionCheckpointJson: (a: number) => number;
     readonly breditorengine_stateJson: (a: number) => number;
     readonly breditorprojection_childAt: (a: number, b: number, c: number) => number;

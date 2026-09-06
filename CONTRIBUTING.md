@@ -48,6 +48,8 @@ the repository root with:
 ```sh
 npm ci
 npm run build
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run check:wasm-package
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
 ./scripts/check-wasm-api.sh
 ```
 
@@ -70,3 +72,20 @@ generated web glue in Node.js, including lifecycle and raw-JavaScript misuse
 cases that Rust-side Wasm tests cannot reach. The same probe consumes real
 generated projections and updates through the framework-neutral browser
 adapter, catching ABI/duck-type drift between the two packages.
+
+## Package boundary
+
+Both public npm packages are dual-licensed under `MIT OR Apache-2.0`. Their
+builds start from clean `dist` directories and include byte-checked copies of
+both complete license texts in the published artifact. The browser package
+intentionally disables declaration maps because its source files are not
+published, and it does not strip supporting declarations that are reachable
+from the public entry point.
+
+`@breditor/wasm` is never hand-authored in `dist`. Its build uses a locked
+release build of `breditor-wasm` and exactly `wasm-bindgen 0.2.127`, then checks
+the generated declaration against the reviewed ABI and compares two clean
+builds byte-for-byte. `npm run smoke:packages` packs both workspaces through
+their normal `prepack` gates, installs the resulting tarballs into a temporary
+standalone consumer, initializes the Wasm module, and performs a strict
+TypeScript consumer check. The smoke test does not publish either package.

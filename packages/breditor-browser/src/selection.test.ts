@@ -5,7 +5,7 @@ import {
   BaseRangeSelection,
   type BrowserProjectionResult,
   type BrowserSelectionResult,
-} from "./index.js";
+} from "./advanced.js";
 
 function projection() {
   return projectionValue(

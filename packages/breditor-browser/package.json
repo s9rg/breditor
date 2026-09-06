@@ -1,24 +1,40 @@
 {
   "name": "@breditor/browser",
-  "version": "0.0.57",
-  "private": true,
+  "version": "0.0.58",
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
     "README.md"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./advanced": {
+      "types": "./dist/advanced.d.ts",
+      "import": "./dist/advanced.js",
+      "default": "./dist/advanced.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "parse5": "8.0.1"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "node ../../scripts/clean-package.mjs",
+    "build": "node ../../scripts/check-package-licenses.mjs && npm run clean && tsc -p tsconfig.json",
+    "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json"
   }

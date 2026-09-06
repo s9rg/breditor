@@ -158,13 +158,14 @@ composition evidence, render/delivery change, any newly attempted clipboard oper
 explicit `forgetEchoReceipt()`, or disposal invalidates the receipt. No echo
 executes a second Rust command.
 
-Version `0.0.55` intentionally has separate ordinary, composition, and
-clipboard controllers. Until the unified router in `0.0.58`, an integration
-must front-route actual clipboard events and clipboard-shaped
+Version `0.0.55` intentionally introduced separate ordinary, composition, and
+clipboard controllers. The unified router added in `0.0.58` now front-routes
+actual clipboard events and clipboard-shaped
 `beforeinput`/`input` (`deleteByCut`, `insertFromPaste`, and
 `insertFromPasteAsQuotation`) to the clipboard controller. The ordinary event
-controller returns `clipboardOwns` for those input types and must not also see
-them as executable edits.
+controller returns `clipboardOwns` for those input types and does not also see
+them as executable edits. Advanced integrations assembling the controllers
+themselves must preserve the same precedence.
 
 ## Atomicity and failure states
 

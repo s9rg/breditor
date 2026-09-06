@@ -1,15 +1,24 @@
 # Breditor Wasm boundary
 
-Status: `0.0.57` boundary contract; intentionally narrow and unstable before
+Status: `0.0.58` packaged boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
-At this checkpoint the Rust crate and generated declaration are
-repository-internal review artifacts. There is no installable npm package, and
-the `publish = false` Wasm crate cannot complete an isolated Cargo package
-verification until its `breditor-core` dependency has a distribution source.
-The private `@breditor/browser` workspace package exercises the projection
-boundary but is not published. Consumer packaging and clean-project
-installation are release gate `0.0.58`.
+The `publish = false` Rust crate remains a repository implementation artifact;
+it is not a crates.io release because its `breditor-core` dependency has no
+distribution source. Its reviewed `wasm-bindgen` output is now the publishable
+`@breditor/wasm` ESM workspace package. `@breditor/browser` is separately
+packaged and continues to consume structural generated views without an
+import-time dependency on their concrete classes. A clean temporary consumer
+installs both npm tarballs, initializes the real Wasm module, imports the
+browser entry point, and type-checks without workspace paths.
+
+Generation requires the locked Cargo graph, the pinned Rust toolchain and Wasm
+target, and exactly `wasm-bindgen 0.2.127`. The build first writes an isolated
+directory, compares its declaration byte-for-byte with the reviewed ABI, and
+only then replaces `packages/breditor-wasm/dist`. The package check compares
+the complete content hashes from two such clean builds. `@breditor/wasm/wasm`
+exposes the adjacent module for hosts that use `initSync`; the package's
+generated default initializer remains the normal bundler entry point.
 
 The `breditor-wasm` crate is the synchronous, no-DOM adapter around the Rust
 `CheckpointedEditorEngine`. Rust remains the sole owner of the document AST,

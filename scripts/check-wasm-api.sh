@@ -15,7 +15,7 @@ readonly cargo_target_directory="${repository_root}/target"
 readonly wasm_manifest="${repository_root}/crates/breditor-wasm/Cargo.toml"
 readonly checked_in_declaration="${repository_root}/crates/breditor-wasm/api/breditor_wasm.d.ts"
 readonly generated_glue_test="${repository_root}/crates/breditor-wasm/tests/generated_web_glue.mjs"
-readonly browser_projection_module="${repository_root}/packages/breditor-browser/dist/index.js"
+readonly browser_projection_module="${repository_root}/packages/breditor-browser/dist/advanced.js"
 
 fail() {
   printf 'check-wasm-api: %s\n' "$*" >&2
@@ -60,7 +60,7 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
 [[ -f "${generated_glue_test}" ]] ||
   fail "missing generated-glue test: ${generated_glue_test}"
 [[ -f "${browser_projection_module}" ]] ||
-  fail "missing built browser projection module; run 'npm run build' first."
+  fail "missing built browser advanced module; run 'npm run build' first."
 
 mkdir -p -- "${cargo_target_directory}"
 generated_directory="$(mktemp -d "${cargo_target_directory}/wasm-api-check.XXXXXX")" ||

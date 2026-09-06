@@ -32,7 +32,10 @@ export type ActionStateStoreError =
   | BrowserActionStateReadError
   | Readonly<{
       kind: "store";
-      code: "action_state.read_unavailable" | "action_state.invalid_transition";
+      code:
+        | "action_state.read_unavailable"
+        | "action_state.invalid_transition"
+        | "action_state.snapshot_mismatch";
       message: string;
     }>;
 
@@ -44,7 +47,10 @@ export type ActionStateStoreError =
  * retains both the last-good snapshot and most recent error, when present.
  */
 export type ActionStateStoreStatus =
-  | Readonly<{ status: "unavailable"; lastError: ActionStateStoreError | undefined }>
+  | Readonly<{
+      status: "unavailable";
+      lastError: ActionStateStoreError | undefined;
+    }>
   | Readonly<{ status: "fresh"; lastError: undefined }>
   | Readonly<{ status: "stale"; lastError: ActionStateStoreError }>
   | Readonly<{
@@ -189,7 +195,9 @@ export class BreditorActionStateStore {
     }
     if (this.#disposed) return NOOP_UNSUBSCRIBE;
 
-    let slot = this.#listeners.find((candidate) => candidate.listener === listener);
+    let slot = this.#listeners.find(
+      (candidate) => candidate.listener === listener,
+    );
     if (slot === undefined) {
       if (this.#listeners.length >= MAX_ACTION_STATE_STORE_LISTENERS) {
         throw new RangeError("action-state listener capacity is exhausted");
@@ -215,7 +223,8 @@ export class BreditorActionStateStore {
   }
 
   #refresh(): ActionStateStoreRefreshResult {
-    if (this.#disposed) return Object.freeze({ status: "rejected", reason: "disposed" });
+    if (this.#disposed)
+      return Object.freeze({ status: "rejected", reason: "disposed" });
     if (this.#refreshing) {
       return Object.freeze({ status: "rejected", reason: "refreshing" });
     }
@@ -318,7 +327,11 @@ export class BreditorActionStateStore {
         const listeners = this.#listeners.slice();
         for (const slot of listeners) {
           try {
-            const returned = Reflect.apply(slot.listener, undefined, []) as unknown;
+            const returned = Reflect.apply(
+              slot.listener,
+              undefined,
+              [],
+            ) as unknown;
             containAsyncRejection(returned);
           } catch {
             // Listener-local failure never changes publication or sibling delivery.
@@ -341,7 +354,9 @@ function statusesEqual(
   left: ActionStateStoreStatus,
   right: ActionStateStoreStatus,
 ): boolean {
-  return left.status === right.status && errorsEqual(left.lastError, right.lastError);
+  return (
+    left.status === right.status && errorsEqual(left.lastError, right.lastError)
+  );
 }
 
 function errorsEqual(
@@ -433,7 +448,8 @@ function stateValuesEqual(
   right: BrowserActionStateEntry["value"],
 ): boolean {
   if (left === right) return true;
-  if (left === undefined || right === undefined || left.status !== right.status) return false;
+  if (left === undefined || right === undefined || left.status !== right.status)
+    return false;
   if (left.status === "unsupported" || right.status === "unsupported") {
     return left.status === "unsupported" && right.status === "unsupported";
   }
@@ -449,7 +465,10 @@ function contractsEqual(
   return left.name === right.name && left.version === right.version;
 }
 
-function actionValuesEqual(left: BrowserActionValue, right: BrowserActionValue): boolean {
+function actionValuesEqual(
+  left: BrowserActionValue,
+  right: BrowserActionValue,
+): boolean {
   if (Object.is(left, right)) return true;
   if (Array.isArray(left)) {
     return (
@@ -461,7 +480,8 @@ function actionValuesEqual(left: BrowserActionValue, right: BrowserActionValue):
       })
     );
   }
-  if (Array.isArray(right) || !objectLike(left) || !objectLike(right)) return false;
+  if (Array.isArray(right) || !objectLike(left) || !objectLike(right))
+    return false;
   const leftKeys = Object.keys(left);
   const rightKeys = Object.keys(right);
   return (
@@ -471,8 +491,12 @@ function actionValuesEqual(left: BrowserActionValue, right: BrowserActionValue):
       return (
         key === rightKey &&
         actionValuesEqual(
-          (left as Readonly<Record<string, BrowserActionValue>>)[key] as BrowserActionValue,
-          (right as Readonly<Record<string, BrowserActionValue>>)[key] as BrowserActionValue,
+          (left as Readonly<Record<string, BrowserActionValue>>)[
+            key
+          ] as BrowserActionValue,
+          (right as Readonly<Record<string, BrowserActionValue>>)[
+            key
+          ] as BrowserActionValue,
         )
       );
     })
@@ -496,5 +520,7 @@ function storeReadFailure(): StoreReadResult {
 }
 
 function objectLike(value: unknown): value is object {
-  return (typeof value === "object" && value !== null) || typeof value === "function";
+  return (
+    (typeof value === "object" && value !== null) || typeof value === "function"
+  );
 }

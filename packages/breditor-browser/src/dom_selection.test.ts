@@ -9,7 +9,7 @@ import {
   type BrowserProjectionResult,
   type BrowserSelectionResult,
   type ProjectionRenderOutcome,
-} from "./index.js";
+} from "./advanced.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 

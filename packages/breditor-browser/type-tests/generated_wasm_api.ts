@@ -6,11 +6,19 @@ import type {
   BreditorEngineResult,
   BreditorObservation,
   BreditorProjection,
+  BreditorProjectionResult,
   BreditorProjectionUpdate,
   BreditorSelection,
   BreditorSelectionResult,
   BreditorStringResult,
 } from "../../../crates/breditor-wasm/api/breditor_wasm.js";
+
+import type {
+  WasmBootstrappedEngineView,
+  WasmEngineBootstrapFactoryView,
+  WasmEngineBootstrapResultView,
+  WasmProjectionReadResultView,
+} from "../src/wasm_engine_bootstrap.js";
 
 import type {
   WasmEngineRestoreFactoryView,
@@ -38,6 +46,7 @@ import type {
 } from "../src/wasm_selection_adapter.js";
 
 declare const generatedProjection: BreditorProjection;
+declare const generatedProjectionResult: BreditorProjectionResult;
 declare const generatedUpdate: BreditorProjectionUpdate;
 declare const generatedSelection: BreditorSelection;
 declare const generatedEngine: BreditorEngine;
@@ -56,6 +65,10 @@ const semanticUpdate: SemanticProjectionUpdateView = generatedUpdate;
 const semanticSelection: SemanticSelectionView = generatedSelection;
 const commandEngine: WasmCommandEngineView = generatedEngine;
 const restoredEngine: WasmRestoredEngineView = generatedEngine;
+const bootstrappedEngine: WasmBootstrappedEngineView = generatedEngine;
+const bootstrapFactory: WasmEngineBootstrapFactoryView = generatedEngineFactory;
+const bootstrapResult: WasmEngineBootstrapResultView = generatedEngineResult;
+const projectionReadResult: WasmProjectionReadResultView = generatedProjectionResult;
 const restoreFactory: WasmEngineRestoreFactoryView = generatedEngineFactory;
 const restoreResult: WasmEngineRestoreResultView = generatedEngineResult;
 const commandObservation: WasmCommandObservationView = generatedObservation;
@@ -82,6 +95,10 @@ void semanticUpdate;
 void semanticSelection;
 void commandEngine;
 void restoredEngine;
+void bootstrappedEngine;
+void bootstrapFactory;
+void bootstrapResult;
+void projectionReadResult;
 void restoreFactory;
 void restoreResult;
 void commandObservation;

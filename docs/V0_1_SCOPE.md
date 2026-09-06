@@ -1,7 +1,7 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; checkpoint `0.0.57` complete, with implementation
-proceeding to `0.0.58`
+Status: frozen product target; checkpoint `0.0.58` complete, with implementation
+proceeding to `0.0.59`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -93,9 +93,9 @@ identities and close conversion before mutation; inventing them in a UI facade
 would be untrustworthy and would couple every command to one storage policy.
 
 This is a deliberate pre-`0.1` limitation, not permission to reinterpret an
-engine event as an append-ready log entry. The `0.1.0` persistence promise uses an atomic
-`SessionCheckpoint` save/restore path. Executable Local Log Frame V1 append,
-rotation, and restart reconstruction remain later work.
+engine event as an append-ready log entry. The `0.1.0` persistence promise uses
+an atomic `SessionCheckpoint` save/restore path. Executable Local Log Frame V1
+append, rotation, and restart reconstruction remain later work.
 
 ## Checkpoint sequence
 
@@ -162,6 +162,13 @@ a smaller safe boundary, but a later gate must not be claimed first.
     edited document state, selection, undo, and redo pass one cross-layer reload
     contract.
 11. `0.0.58`: framework-neutral package hardening and React reference editor.
+    Complete: the public browser owner assembles Wasm bootstrap, canonical DOM,
+    selection, one FIFO, one event router, toolbar, action-state correlation,
+    and optional autosave behind an all-or-nothing factory; root and advanced
+    package entry points install with complete licenses and generated Wasm; and
+    the React reference serializes bounded flush-before-dispose retirement,
+    handles stale startup, and exposes controlled-navigation flushing without
+    treating React or DOM state as the editor model.
 12. `0.0.59`: browser matrix, accessibility, packaging, size, documentation,
     and release-candidate audit.
 13. `0.1.0`: no new feature; only the final shippability gates and honest

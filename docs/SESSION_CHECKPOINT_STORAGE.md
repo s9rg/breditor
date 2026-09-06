@@ -251,6 +251,11 @@ not treated as reliable storage completion.
   issued to the platform.
 - SHA-256 detects accidental mismatch only. This profile provides neither
   confidentiality nor protection from malicious same-origin code.
+- A complete checkpoint includes undo and redo history. Text removed from the
+  visible document can therefore remain recoverable in IndexedDB until the
+  relevant history boundary is evicted or the slot is explicitly cleared.
+  Visible deletion is not secure erasure, and products handling sensitive text
+  need an explicit retention and site-data deletion policy.
 - The storage adapter validates its closed outer record, byte count, and digest;
   it deliberately does not parse the inner Rust checkpoint. Strict inner decode
   happens only during engine restore.
