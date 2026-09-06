@@ -4,6 +4,57 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.1.1 - 2026-09-06
+
+This is the first additive foundation checkpoint toward `0.2.0`. It introduces
+no new editor behavior, document/schema meaning, durable wire format, Wasm ABI,
+browser command, or toolbar union. The npm packages remain un-published; their
+versions are aligned only so repository builds and tarball smoke tests continue
+to use an exact browser/Wasm pair.
+
+### Extension-set foundation
+
+- Added private-field, checked-constructor Rust values for extension semantic
+  revisions, exact extension identities, behavior-free manifests, configurable
+  resource limits under fixed ceilings, and immutable resolved extension sets.
+- Added exact-version required dependencies, explicit exact-version conflicts,
+  rejection of duplicate identities and multiple installed revisions of one
+  qualified name, missing/wrong dependency diagnostics, and cycle rejection.
+- Frozen canonical identity order as qualified-name ASCII bytes followed by a
+  numeric semantic revision. Dependency-first topological resolution chooses
+  the smallest currently-ready identity under that order, never caller or
+  package installation order.
+- Added 30 focused tests for canonicalization, registration permutations,
+  deterministic diagnostics, numeric revision order, exact hard limits, and
+  limit-plus-one failures. Public error enums are non-exhaustive so later
+  compiler phases can add failures without forcing downstream exhaustive
+  matches.
+
+### Architecture decisions
+
+- Defined the narrow `0.2.0` product goal: frozen declarative profiles and one
+  end-to-end property-free inline-format extension path over the existing base
+  text structure.
+- Separated durable schema fingerprints, process-local compiled-profile
+  generations, and browser presentation identities. Legacy V1 durable records
+  remain bound to the exact built-in base schema; non-base profiles require new
+  fingerprint-bearing record generations.
+- Kept the primitive operation/replay language closed, rendering declarative
+  and callback-free, portable extension actions Rust-owned, semantic intents
+  distinct from toolbar presentation, and clipboard paste intentionally
+  formatting-stripping until a complete semantic-fragment ingress exists.
+- Recorded the deliberate exclusions: arbitrary nodes and properties, links,
+  headings, hot semantic loading, JavaScript planners, custom operation codecs,
+  dynamic Rust/Wasm linking, migrations, and collaboration.
+
+### Deliberate checkpoint limitation
+
+`ExtensionSet` proves only that bounded relationship metadata is internally
+consistent. It does not register a schema, format, action, intent, renderer, or
+toolbar item; execute code; mint a fingerprint; or prove that any document,
+checkpoint, or replay log is compatible. Those capabilities remain gated by
+the `0.2.0` prerelease sequence.
+
 ## 0.1.0 - 2026-09-06
 
 The first shippable repository checkpoint is a deliberately small, local-first

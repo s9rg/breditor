@@ -1,6 +1,6 @@
 {
   "name": "@breditor/wasm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Generated WebAssembly engine package for the Breditor rich-text editor",
   "keywords": [
     "rich-text-editor",

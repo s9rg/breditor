@@ -35,7 +35,7 @@ Initialize the matching `@breditor/wasm` package once, then pass connected,
 empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
 
 ```sh
-npm install @breditor/browser@0.1.0 @breditor/wasm@0.1.0
+npm install @breditor/browser@0.1.1 @breditor/wasm@0.1.1
 ```
 
 ```ts

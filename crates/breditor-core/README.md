@@ -4,6 +4,14 @@
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or
 Wasm binding dependencies.
 
+Version `0.1.1` adds the first behavior-free extension composition values:
+exact identities and semantic revisions, bounded manifests, configurable
+resolution limits, exact dependencies and conflicts, and deterministic
+dependency-first ordering. A resolved set does not change the current fixed
+schema, register actions, execute code, or prove persistence compatibility. See
+the [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md) and
+[`0.2.0` scope](../../docs/V0_2_SCOPE.md) for the staged semantic path.
+
 The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, strict versioned
 document, singular guarded-operation, exact-base transaction-request,

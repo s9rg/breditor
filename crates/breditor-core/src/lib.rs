@@ -26,7 +26,9 @@
 //! engine-instance/state/history-observation-guarded product-level engine that closes action
 //! preparation,
 //! selection observation, undo/redo, and history controls behind one exclusive
-//! owner. It
+//! owner. It also owns bounded behavior-free extension manifests and canonical
+//! dependency/conflict resolution; that metadata registers no behavior and is
+//! not a schema or persistence proof. It
 //! deliberately contains no browser, framework, asynchronous scheduler, clock,
 //! random-number, collaboration, or Wasm binding code.
 //!
@@ -648,6 +650,7 @@ pub mod action;
 pub mod codec;
 pub mod document;
 pub mod engine;
+pub mod extension;
 pub mod identity;
 pub mod local_log;
 pub mod operation;
