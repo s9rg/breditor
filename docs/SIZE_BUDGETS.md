@@ -31,6 +31,12 @@ explicit browser build and two-build Wasm package check and before isolated
 installation. Packing disables lifecycle hooks so ambient npm configuration
 cannot turn those prerequisites into a stale-artifact pass.
 
+The workspace release profile keeps optimization level 3 and uses one
+code-generation unit without LTO. That reviewed recipe lets the compiler
+deduplicate generic machinery within each crate while retaining byte-identical
+clean Wasm builds, instead of hiding growth by relaxing a raw, gzip, or tarball
+ceiling.
+
 The current React example deliberately initializes the editor eagerly, so its
 single JavaScript chunk can exceed Vite's generic 500 kB raw warning while still
 passing the explicit 200 kB gzip product budget. Code splitting is a future

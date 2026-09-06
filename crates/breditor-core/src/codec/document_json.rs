@@ -99,6 +99,7 @@ impl DocumentJsonCodec {
                 supported: DOCUMENT_FORMAT_VERSION,
             });
         }
+        self.ensure_v1_schema()?;
 
         let envelope: BorrowedDocumentEnvelopeV1<'_> = serde_json::from_str(json)
             .map_err(|error| JsonFailure::from_serde(&error))
@@ -130,16 +131,33 @@ impl DocumentJsonCodec {
     /// # Errors
     ///
     /// Returns [`DocumentCodecError::SchemaMismatch`] if the document belongs to
-    /// another schema, [`DocumentCodecError::OutputTooLarge`] when its encoding
-    /// exceeds the decode byte budget, or [`DocumentCodecError::Encoding`] on
-    /// serialization failure.
+    /// another schema definition, [`DocumentCodecError::OutputTooLarge`] when
+    /// its encoding exceeds the decode byte budget, or
+    /// [`DocumentCodecError::Encoding`] on serialization failure. A document
+    /// carrying the same durable fingerprint under another process-local proof
+    /// is completely revalidated before it is encoded.
     pub fn encode(&self, document: &Document) -> Result<String, DocumentCodecError> {
+        self.ensure_v1_schema()?;
         if document.schema() != self.schema.id() {
             return Err(DocumentCodecError::SchemaMismatch {
                 expected: self.schema.id().clone(),
                 found: document.schema().clone(),
             });
         }
+        if document.schema_fingerprint() != self.schema.fingerprint() {
+            return Err(DocumentCodecError::SchemaMismatch {
+                expected: self.schema.id().clone(),
+                found: document.schema().clone(),
+            });
+        }
+
+        let revalidated;
+        let document = if document.is_proven_for(&self.schema, &self.limits) {
+            document
+        } else {
+            revalidated = Document::try_new(&self.schema, document.root().clone(), &self.limits)?;
+            &revalidated
+        };
         let encoding = DocumentEncoding::new(document);
         let maximum = self.limits.max_json_bytes();
         let mut byte_counter = JsonByteCounter::new(maximum);
@@ -156,6 +174,16 @@ impl DocumentJsonCodec {
         serde_json::to_string(&encoding)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(DocumentCodecError::Encoding)
+    }
+
+    fn ensure_v1_schema(&self) -> Result<(), DocumentCodecError> {
+        if self.schema.is_exact_breditor_base() {
+            return Ok(());
+        }
+        Err(DocumentCodecError::SchemaMismatch {
+            expected: CompiledSchema::breditor_base().id().clone(),
+            found: self.schema.id().clone(),
+        })
     }
 }
 
@@ -621,5 +649,78 @@ fn property_subject(
         PropertyOwner::Format(format_index) => {
             ValidationSubject::FormatProperty { format_index, name, value_path }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use crate::{
+        codec::{DocumentCodecError, DocumentJsonCodec},
+        document::DocumentProofMismatch,
+        schema::{CompiledSchema, DocumentLimits},
+    };
+
+    const MINIMAL_DOCUMENT: &str = concat!(
+        r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":["#,
+        r#"{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}"#,
+        r#"]}}"#,
+    );
+
+    #[test]
+    fn encode_revalidates_same_fingerprint_from_an_independent_proof() -> Result<(), Box<dyn Error>>
+    {
+        let source = DocumentJsonCodec::new(CompiledSchema::breditor_base());
+        let document = source.decode(MINIMAL_DOCUMENT)?;
+        let target = DocumentJsonCodec::new(CompiledSchema::breditor_base());
+
+        assert_eq!(
+            document.proof_mismatch(target.schema(), target.limits()),
+            Some(DocumentProofMismatch::CompiledProof)
+        );
+        assert_eq!(target.encode(&document)?, MINIMAL_DOCUMENT);
+        Ok(())
+    }
+
+    #[test]
+    fn encode_revalidates_under_a_different_runtime_policy() -> Result<(), Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let source = DocumentJsonCodec::new(schema.clone());
+        let document = source.decode(MINIMAL_DOCUMENT)?;
+        let target =
+            DocumentJsonCodec::new(schema).with_limits(DocumentLimits::default().with_max_nodes(2));
+
+        assert_eq!(
+            document.proof_mismatch(target.schema(), target.limits()),
+            Some(DocumentProofMismatch::ValidationPolicy)
+        );
+        assert_eq!(target.encode(&document)?, MINIMAL_DOCUMENT);
+        Ok(())
+    }
+
+    #[test]
+    fn encode_rejects_a_same_id_document_with_another_fingerprint() -> Result<(), Box<dyn Error>> {
+        let source = DocumentJsonCodec::new(CompiledSchema::breditor_base());
+        let document = source.decode(MINIMAL_DOCUMENT)?;
+        let variant = DocumentJsonCodec::new(CompiledSchema::test_semantic_variant_same_id());
+
+        assert_eq!(document.schema(), variant.schema().id());
+        assert_ne!(document.schema_fingerprint(), variant.schema().fingerprint());
+        assert!(matches!(
+            variant.encode(&document),
+            Err(DocumentCodecError::SchemaMismatch { .. })
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn document_v1_decode_remains_closed_to_non_base_definitions() {
+        let variant = DocumentJsonCodec::new(CompiledSchema::test_semantic_variant_same_id());
+
+        assert!(matches!(
+            variant.decode(MINIMAL_DOCUMENT),
+            Err(DocumentCodecError::SchemaMismatch { .. })
+        ));
     }
 }

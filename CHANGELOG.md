@@ -4,6 +4,58 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.1 - 2026-09-06
+
+This prerelease replaces the fixed base-schema implementation with a private,
+parity-first declarative compiler and adds the proof identities required before
+Breditor can safely admit extension-defined content. It intentionally exposes
+no general schema compiler, extension format, new document wire generation,
+browser command, or toolbar behavior yet.
+
+### Declarative base compiler
+
+- The public `CompiledSchema::breditor_base()` factory now compiles a canonical
+  data-only declaration for `breditor/base@1`. The compiled tables express the
+  document root, direct paragraphs, text leaves, property/entity prohibitions,
+  property-free strong format, and existing canonicality laws.
+- Added independent checked persisted type revisions, deterministic compiler
+  phases, fixed schema-registration limits, duplicate/reference validation, and
+  complete per-namespace reservation of `breditor/*` identities.
+- Added a domain-separated, versioned canonical binary encoding and SHA-256
+  `SchemaFingerprint`. Fingerprints include compiled content meaning and exclude
+  extension package identity, actions, presentation, process data, and host-only
+  memory/work budgets.
+
+### Runtime proof safety
+
+- Every independently created compiled-schema instance now owns a
+  collision-free private allocation identity. Clones share that proof;
+  separately created but semantically equal schemas share a fingerprint without
+  sharing process-local proof authority.
+- Documents carry both durable fingerprint and private proof identity. Exact
+  proof and host-policy matches retain validated fast paths; explicit state
+  construction can completely revalidate and rebind a same-fingerprint
+  document, while different fingerprints fail without publishing state.
+- Selection, operation, transaction, relocation, history, replay, and document
+  encoding boundaries now reject or revalidate proof mismatches according to
+  their ownership contract instead of treating a matching `SchemaId` as proof.
+
+### Compatibility and limitations
+
+- Existing Document V1 and every other durable V1 byte remain unchanged and
+  bound to the built-in base definition. General schema construction remains
+  private until fingerprint-bearing durable generations are implemented in
+  `0.2.0-alpha.2`.
+- Wasm transport ABI generation remains `2`; the exact npm pair is versioned
+  together for clean prerelease consumer checks and remains unpublished.
+- Added the locked RustCrypto SHA-256 dependency and updated the exact Wasm
+  dependency/license inventory. Schema compilation is a cold-path operation;
+  document editing does not hash on each transaction.
+- Set the optimized release build to one code-generation unit so the
+  fingerprint implementation and its dependencies remain inside the existing
+  Wasm and npm-tarball size budgets without sacrificing clean-build byte
+  reproducibility.
+
 ## 0.1.1 - 2026-09-06
 
 This is the first additive foundation checkpoint toward `0.2.0`. It introduces

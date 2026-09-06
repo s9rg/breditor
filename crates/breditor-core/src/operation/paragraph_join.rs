@@ -2,7 +2,8 @@ use thiserror::Error;
 
 use crate::{
     document::{
-        Document, LocalParagraphStructureError, NodeLookupError, TextFragment, TextFragmentError,
+        Document, DocumentProofMismatch, LocalParagraphStructureError, NodeLookupError,
+        TextFragment, TextFragmentError,
     },
     operation::{
         AppliedChange, AppliedOperation, ChildRange, ChildrenChange, Operation, ParagraphJoinMap,
@@ -208,6 +209,9 @@ fn map_resolve_error(error: ResolveParagraphError) -> ParagraphJoinApplyError {
         ResolveParagraphError::SchemaMismatch { document_schema, context_schema } => {
             ParagraphJoinApplyError::SchemaMismatch { document_schema, context_schema }
         }
+        ResolveParagraphError::DocumentProofMismatch(error) => {
+            ParagraphJoinApplyError::DocumentProofMismatch(error)
+        }
         ResolveParagraphError::UnsupportedSchema { schema } => {
             ParagraphJoinApplyError::UnsupportedSchema { schema }
         }
@@ -237,6 +241,9 @@ fn map_publication_error(error: LocalParagraphStructureError) -> ParagraphJoinAp
                 document_schema,
                 context_schema: active_schema,
             }
+        }
+        LocalParagraphStructureError::DocumentProofMismatch(error) => {
+            ParagraphJoinApplyError::DocumentProofMismatch(error)
         }
         LocalParagraphStructureError::UnsupportedSchema { active_schema } => {
             ParagraphJoinApplyError::UnsupportedSchema { schema: active_schema }
@@ -305,6 +312,10 @@ pub enum ParagraphJoinApplyError {
         /// Schema owned by the context.
         context_schema: SchemaId,
     },
+    /// The document lacks the exact compiled proof or validation policy owned
+    /// by the active editor context.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// Structural metadata semantics are not defined outside the exact base schema.
     #[error("paragraph join does not support schema {schema}")]
     UnsupportedSchema {

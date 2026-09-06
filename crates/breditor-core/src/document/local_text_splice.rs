@@ -1,11 +1,13 @@
 use thiserror::Error;
 
 use crate::{
-    document::{Document, DocumentSummary, ElementNode, LocalInvariantError, NodeRef},
+    document::{
+        Document, DocumentProofMismatch, DocumentSummary, ElementNode, LocalInvariantError, NodeRef,
+    },
     position::{NodePath, TextOffset},
     schema::{
-        CompiledSchema, DocumentLimits, RuntimeValidationProfile, SchemaId, ValidationReport,
-        child_count_fits_point_protocol,
+        CompiledSchema, CompiledSchemaProof, DocumentLimits, RuntimeValidationProfile,
+        SchemaFingerprint, SchemaId, ValidationReport, child_count_fits_point_protocol,
     },
 };
 
@@ -64,6 +66,10 @@ pub(crate) enum LocalTextPublicationError {
         /// Schema requested by the caller.
         active_schema: SchemaId,
     },
+    /// The source document lacks the exact active schema or validation-policy
+    /// proof required by this local publication boundary.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// One path component expected an element.
     #[error("the locally replaced path traversed a non-element node")]
     ExpectedElementOnPath,
@@ -88,11 +94,8 @@ impl Document {
         path: &NodePath,
         children: Vec<NodeRef>,
     ) -> Result<LocalTextPublication, LocalTextPublicationError> {
-        if self.schema() != schema.id() {
-            return Err(LocalTextPublicationError::SchemaMismatch {
-                document_schema: self.schema().clone(),
-                active_schema: schema.id().clone(),
-            });
+        if let Some(mismatch) = self.proof_mismatch(schema, limits) {
+            return Err(local_proof_mismatch(mismatch));
         }
         let candidate_root = replace_element_children(self.root(), path.as_slice(), 0, children)?;
         match LocalTextSpliceProof::try_new(self, schema, limits, path, candidate_root) {
@@ -109,6 +112,8 @@ impl Document {
 /// Opaque evidence binding one exact rebuilt root to its derived measurements.
 pub(super) struct LocalTextSpliceProof {
     schema: crate::schema::SchemaId,
+    schema_fingerprint: SchemaFingerprint,
+    compiled_proof: CompiledSchemaProof,
     root: NodeRef,
     summary: DocumentSummary,
     validation_profile: RuntimeValidationProfile,
@@ -127,6 +132,8 @@ impl LocalTextSpliceProof {
         };
         Ok(Self {
             schema: schema.id().clone(),
+            schema_fingerprint: schema.fingerprint(),
+            compiled_proof: schema.proof().clone(),
             root: candidate_root,
             summary,
             validation_profile: limits.runtime_validation_profile(),
@@ -135,8 +142,31 @@ impl LocalTextSpliceProof {
 
     pub(super) fn into_parts(
         self,
-    ) -> (crate::schema::SchemaId, NodeRef, DocumentSummary, RuntimeValidationProfile) {
-        (self.schema, self.root, self.summary, self.validation_profile)
+    ) -> (
+        crate::schema::SchemaId,
+        SchemaFingerprint,
+        CompiledSchemaProof,
+        NodeRef,
+        DocumentSummary,
+        RuntimeValidationProfile,
+    ) {
+        (
+            self.schema,
+            self.schema_fingerprint,
+            self.compiled_proof,
+            self.root,
+            self.summary,
+            self.validation_profile,
+        )
+    }
+}
+
+fn local_proof_mismatch(mismatch: DocumentProofMismatch) -> LocalTextPublicationError {
+    match mismatch {
+        DocumentProofMismatch::SchemaId { document_schema, active_schema } => {
+            LocalTextPublicationError::SchemaMismatch { document_schema, active_schema }
+        }
+        mismatch => LocalTextPublicationError::DocumentProofMismatch(mismatch),
     }
 }
 
@@ -320,12 +350,12 @@ fn replace_element_children(
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
+    use std::{error::Error, io};
 
     use crate::{
         document::{
             Document, ElementNode, FormatSet, NodeRef, PropertyMap, TextNode,
-            local_text_splice::LocalTextPublicationKind,
+            local_text_splice::{LocalTextPublicationError, LocalTextPublicationKind},
         },
         identity::QualifiedName,
         position::NodePath,
@@ -365,25 +395,65 @@ mod tests {
         let publication =
             source.try_replace_base_paragraph_children(&schema, &limits, &path, replacement()?)?;
         assert_eq!(publication.kind(), LocalTextPublicationKind::IncrementalProof);
-        assert_eq!(publication.into_document().summary().total_text_bytes(), 2);
+        let document = publication.into_document();
+        assert_eq!(document.summary().total_text_bytes(), 2);
+        assert!(document.is_proven_for(&schema, &limits));
         Ok(())
     }
 
     #[test]
-    fn mismatched_profile_uses_complete_validation() -> Result<(), Box<dyn Error>> {
+    fn mismatched_profile_is_rejected_before_local_publication() -> Result<(), Box<dyn Error>> {
         let schema = CompiledSchema::breditor_base();
         let source_limits = DocumentLimits::default();
         let active_limits = source_limits.clone().with_max_text_bytes(10);
         let source = source_document(&schema, &source_limits)?;
         let path = NodePath::try_from_indices(vec![0])?;
-        let publication = source.try_replace_base_paragraph_children(
+        let Err(error) = source.try_replace_base_paragraph_children(
             &schema,
             &active_limits,
             &path,
             replacement()?,
-        )?;
-        assert_eq!(publication.kind(), LocalTextPublicationKind::CompleteValidation);
-        assert_eq!(publication.into_document().summary().total_text_bytes(), 2);
+        ) else {
+            return Err(io::Error::other(
+                "different validation policy unexpectedly reached local publication",
+            )
+            .into());
+        };
+        assert_eq!(
+            error,
+            LocalTextPublicationError::DocumentProofMismatch(
+                crate::document::DocumentProofMismatch::ValidationPolicy,
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn independently_compiled_schema_is_rejected_before_local_publication()
+    -> Result<(), Box<dyn Error>> {
+        let source_schema = CompiledSchema::breditor_base();
+        let active_schema = CompiledSchema::breditor_base();
+        let limits = DocumentLimits::default();
+        let source = source_document(&source_schema, &limits)?;
+        let path = NodePath::try_from_indices(vec![0])?;
+
+        let Err(error) = source.try_replace_base_paragraph_children(
+            &active_schema,
+            &limits,
+            &path,
+            replacement()?,
+        ) else {
+            return Err(io::Error::other(
+                "independent compiled proof unexpectedly reached local publication",
+            )
+            .into());
+        };
+        assert_eq!(
+            error,
+            LocalTextPublicationError::DocumentProofMismatch(
+                crate::document::DocumentProofMismatch::CompiledProof,
+            )
+        );
         Ok(())
     }
 

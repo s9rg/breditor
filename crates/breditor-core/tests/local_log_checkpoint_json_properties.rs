@@ -336,10 +336,10 @@ fn same_binding_session_splice_is_structurally_valid_but_not_a_causal_proof()
     let second_ids = vec![String::from("request:second-history")];
     let (codec, first_anchor) =
         checkpoint_fixture(&first_ids, 11).map_err(|error| error.to_string())?;
-    let (_, second_anchor) =
+    let (second_codec, second_anchor) =
         checkpoint_fixture(&second_ids, 12).map_err(|error| error.to_string())?;
     let mut first_record: Value = serde_json::from_str(&codec.encode(&first_anchor)?)?;
-    let second_record: Value = serde_json::from_str(&codec.encode(&second_anchor)?)?;
+    let second_record: Value = serde_json::from_str(&second_codec.encode(&second_anchor)?)?;
     first_record["sessionCheckpoint"] = second_record["sessionCheckpoint"].clone();
 
     let spliced = codec.decode(&serde_json::to_string(&first_record)?)?;
@@ -347,7 +347,14 @@ fn same_binding_session_splice_is_structurally_valid_but_not_a_causal_proof()
         spliced.compacted_sequence_for_replay_id(&ReplayId::try_new(&first_ids[0])?),
         Some(LocalLogSequence::FIRST)
     );
-    assert_eq!(spliced.session().state(), second_anchor.session().state());
+    assert_eq!(spliced.session().state().snapshot(), second_anchor.session().state().snapshot());
+    assert_eq!(spliced.session().state().document(), second_anchor.session().state().document());
+    assert_eq!(spliced.session().state().selection(), second_anchor.session().state().selection());
+    assert_eq!(
+        spliced.session().state().pending_formats(),
+        second_anchor.session().state().pending_formats()
+    );
+    assert_ne!(spliced.session().state().context(), second_anchor.session().state().context());
     assert_ne!(spliced.session().state(), first_anchor.session().state());
 
     // Extending and compacting a structurally decoded anchor must preserve,
@@ -384,7 +391,7 @@ fn same_binding_session_splice_is_structurally_valid_but_not_a_causal_proof()
     )?;
     let rotated = continued.try_into_checkpoint_anchor(second_log.clone())?;
     let rotated_codec = LocalLogCheckpointJsonCodec::new(
-        EditorContext::default(),
+        codec.context().clone(),
         LocalLogCheckpointBinding::try_new(session_id.clone(), first_log, second_log.clone())?,
     );
     let rotated_json = rotated_codec.encode(&rotated)?;

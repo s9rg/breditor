@@ -4,13 +4,14 @@
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or
 Wasm binding dependencies.
 
-Version `0.1.1` adds the first behavior-free extension composition values:
-exact identities and semantic revisions, bounded manifests, configurable
-resolution limits, exact dependencies and conflicts, and deterministic
-dependency-first ordering. A resolved set does not change the current fixed
-schema, register actions, execute code, or prove persistence compatibility. See
-the [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md) and
-[`0.2.0` scope](../../docs/V0_2_SCOPE.md) for the staged semantic path.
+Version `0.2.0-alpha.1` compiles the built-in base schema from a private,
+declarative definition and introduces durable `SchemaFingerprint` plus
+collision-free process-local proof identity. General schema construction and
+fingerprint-bearing wire formats remain staged for later prereleases. The
+earlier `0.1.1` extension values remain behavior-free. See the
+[extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
+[`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
+[schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md).
 
 The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, strict versioned

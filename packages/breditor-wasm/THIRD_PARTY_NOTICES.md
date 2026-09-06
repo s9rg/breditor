@@ -11,8 +11,12 @@ required notice bytes before replacing `dist`.
 The workspace crates `breditor-wasm` and `breditor-core` are first-party.
 The locked third-party package inventory is:
 
+- `block-buffer 0.12.1` — Cargo license expression: `MIT OR Apache-2.0`
 - `bumpalo 3.20.3` — Cargo license expression: `MIT OR Apache-2.0`
 - `cfg-if 1.0.4` — Cargo license expression: `MIT OR Apache-2.0`
+- `crypto-common 0.2.2` — Cargo license expression: `MIT OR Apache-2.0`
+- `digest 0.11.3` — Cargo license expression: `MIT OR Apache-2.0`
+- `hybrid-array 0.4.14` — Cargo license expression: `MIT OR Apache-2.0`
 - `itoa 1.0.18` — Cargo license expression: `MIT OR Apache-2.0`
 - `memchr 2.8.3` — Cargo license expression: `Unlicense OR MIT`
 - `once_cell 1.21.4` — Cargo license expression: `MIT OR Apache-2.0`
@@ -23,10 +27,12 @@ The locked third-party package inventory is:
 - `serde_core 1.0.229` — Cargo license expression: `MIT OR Apache-2.0`
 - `serde_derive 1.0.229` — Cargo license expression: `MIT OR Apache-2.0`
 - `serde_json 1.0.151` — Cargo license expression: `MIT OR Apache-2.0`
+- `sha2 0.11.0` — Cargo license expression: `MIT OR Apache-2.0`
 - `syn 2.0.119` — Cargo license expression: `MIT OR Apache-2.0`
 - `syn 3.0.4` — Cargo license expression: `MIT OR Apache-2.0`
 - `thiserror 2.0.20` — Cargo license expression: `MIT OR Apache-2.0`
 - `thiserror-impl 2.0.20` — Cargo license expression: `MIT OR Apache-2.0`
+- `typenum 1.20.1` — Cargo license expression: `MIT OR Apache-2.0`
 - `unicode-ident 1.0.24` — Cargo license expression: `(MIT OR Apache-2.0) AND Unicode-3.0`
 - `unicode-segmentation 1.13.3` — Cargo license expression: `MIT OR Apache-2.0`
 - `wasm-bindgen 0.2.127` — Cargo license expression: `MIT OR Apache-2.0`
@@ -51,13 +57,19 @@ build and is byte-locked by the release check.
 
 ## Locked normal/build dependency edges
 
+- `block-buffer@0.12.1 -> hybrid-array@0.4.14 [normal]`
 - `breditor-core@workspace -> serde@1.0.229 [normal]`
 - `breditor-core@workspace -> serde_json@1.0.151 [normal]`
+- `breditor-core@workspace -> sha2@0.11.0 [normal]`
 - `breditor-core@workspace -> thiserror@2.0.20 [normal]`
 - `breditor-core@workspace -> unicode-segmentation@1.13.3 [normal]`
 - `breditor-wasm@workspace -> breditor-core@workspace [normal]`
 - `breditor-wasm@workspace -> serde_json@1.0.151 [normal]`
 - `breditor-wasm@workspace -> wasm-bindgen@0.2.127 [normal]`
+- `crypto-common@0.2.2 -> hybrid-array@0.4.14 [normal]`
+- `digest@0.11.3 -> block-buffer@0.12.1 [normal]`
+- `digest@0.11.3 -> crypto-common@0.2.2 [normal]`
+- `hybrid-array@0.4.14 -> typenum@1.20.1 [normal]`
 - `proc-macro2@1.0.107 -> unicode-ident@1.0.24 [normal]`
 - `quote@1.0.47 -> proc-macro2@1.0.107 [normal]`
 - `serde@1.0.229 -> serde_core@1.0.229 [normal]`
@@ -69,6 +81,8 @@ build and is byte-locked by the release check.
 - `serde_json@1.0.151 -> memchr@2.8.3 [normal]`
 - `serde_json@1.0.151 -> serde_core@1.0.229 [normal]`
 - `serde_json@1.0.151 -> zmij@1.0.23 [normal]`
+- `sha2@0.11.0 -> cfg-if@1.0.4 [normal]`
+- `sha2@0.11.0 -> digest@0.11.3 [normal]`
 - `syn@2.0.119 -> proc-macro2@1.0.107 [normal]`
 - `syn@2.0.119 -> quote@1.0.47 [normal]`
 - `syn@2.0.119 -> unicode-ident@1.0.24 [normal]`

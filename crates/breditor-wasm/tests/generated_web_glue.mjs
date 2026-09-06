@@ -82,7 +82,7 @@ function assertCommandError(result, expectedCode) {
 assert.equal(api.breditorWasmAbiVersion(), "2");
 assert.match(
   api.breditorVersion(),
-  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/,
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
 );
 
 const invalidFactory = api.BreditorEngine.fromDocumentJson(

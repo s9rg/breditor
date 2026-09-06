@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.1.1` packaged boundary contract; ABI generation `2` is authoritative
+Status: `0.2.0-alpha.1` packaged boundary contract; ABI generation `2` is authoritative
 for the matching official browser/Wasm packages, while direct raw-handle use is
 an intentionally narrow, advanced, and experimental integration surface
 
@@ -13,7 +13,7 @@ import-time dependency on their concrete classes. A clean temporary consumer
 installs both npm tarballs, initializes the real Wasm module, imports the
 browser entry point, and type-checks without workspace paths.
 
-`@breditor/browser@0.1.1` and `@breditor/wasm@0.1.1` are supported as an
+`@breditor/browser@0.2.0-alpha.1` and `@breditor/wasm@0.2.0-alpha.1` are supported as an
 exact-version pair. The generated raw classes and ownership handles documented
 below remain available for advanced integrations, but they are not the
 high-level browser compatibility surface.

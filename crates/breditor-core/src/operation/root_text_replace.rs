@@ -4,8 +4,8 @@ use thiserror::Error;
 
 use crate::{
     document::{
-        Document, ElementNode, LocalParagraphStructureError, NodeLookupError, TextFragment,
-        TextFragmentError, TextFragmentSplitError,
+        Document, DocumentProofMismatch, ElementNode, LocalParagraphStructureError,
+        NodeLookupError, TextFragment, TextFragmentError, TextFragmentSplitError,
     },
     identity::QualifiedName,
     operation::{
@@ -21,8 +21,8 @@ use crate::{
 use super::{
     RootTextReplaceMap,
     paragraph_support::{
-        ParagraphContentError, ResolveParagraphError, fragment_from_paragraph,
-        paragraph_from_fragment, resolve_base_paragraph,
+        ParagraphContentError, ResolveParagraphError, ensure_base_document,
+        fragment_from_paragraph, paragraph_from_fragment, resolve_base_paragraph,
     },
 };
 
@@ -83,6 +83,7 @@ impl RootTextReplace {
         range: RootTextRange,
         replacement_paragraphs: Vec<TextFragment>,
     ) -> Result<Self, RootTextReplaceApplyError> {
+        ensure_base_document(context, document).map_err(map_resolve_error)?;
         validate_replacement_shape(&range, &replacement_paragraphs)?;
         validate_fragments(context, RootTextFragmentRole::Replacement, &replacement_paragraphs)?;
         let expected_paragraphs = capture_expected(context, document, &range)?;
@@ -117,6 +118,7 @@ impl RootTextReplace {
         context: &EditorContext,
         document: &Document,
     ) -> Result<AppliedOperation, RootTextReplaceApplyError> {
+        ensure_base_document(context, document).map_err(map_resolve_error)?;
         validate_fragments(context, RootTextFragmentRole::Expected, &self.expected_paragraphs)?;
         validate_fragments(
             context,
@@ -487,6 +489,9 @@ fn map_resolve_error(error: ResolveParagraphError) -> RootTextReplaceApplyError 
         ResolveParagraphError::SchemaMismatch { document_schema, context_schema } => {
             RootTextReplaceApplyError::SchemaMismatch { document_schema, context_schema }
         }
+        ResolveParagraphError::DocumentProofMismatch(error) => {
+            RootTextReplaceApplyError::DocumentProofMismatch(error)
+        }
         ResolveParagraphError::UnsupportedSchema { schema } => {
             RootTextReplaceApplyError::UnsupportedSchema { schema }
         }
@@ -516,6 +521,9 @@ fn map_publication_error(error: LocalParagraphStructureError) -> RootTextReplace
                 document_schema,
                 context_schema: active_schema,
             }
+        }
+        LocalParagraphStructureError::DocumentProofMismatch(error) => {
+            RootTextReplaceApplyError::DocumentProofMismatch(error)
         }
         LocalParagraphStructureError::UnsupportedSchema { active_schema } => {
             RootTextReplaceApplyError::UnsupportedSchema { schema: active_schema }
@@ -646,6 +654,10 @@ pub enum RootTextReplaceApplyError {
         /// Schema owned by the context.
         context_schema: SchemaId,
     },
+    /// The document lacks the exact compiled proof or validation policy owned
+    /// by the active editor context.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// Structural paragraph metadata is not yet defined outside the exact base schema.
     #[error("root-text replacement does not support schema {schema}")]
     UnsupportedSchema {

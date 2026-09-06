@@ -3,7 +3,7 @@ use std::ops::Range;
 use thiserror::Error;
 
 use crate::{
-    document::{Document, LocalInvariantError, NodeRef},
+    document::{Document, DocumentProofMismatch, LocalInvariantError, NodeRef},
     schema::{CompiledSchema, DocumentLimits, SchemaId, ValidationReport},
 };
 
@@ -18,6 +18,10 @@ pub(crate) enum LocalParagraphStructureError {
         /// Schema requested by the caller.
         active_schema: SchemaId,
     },
+    /// The source document lacks the exact active schema or validation-policy
+    /// proof required by this local publication boundary.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// This deliberately narrow boundary only supports the exact base schema.
     #[error("paragraph structure publication does not support schema {active_schema}")]
     UnsupportedSchema {
@@ -69,7 +73,7 @@ impl Document {
         old_range: Range<usize>,
         replacements: Vec<NodeRef>,
     ) -> Result<Self, LocalParagraphStructureError> {
-        ensure_supported_schema(self.schema(), schema)?;
+        ensure_supported_schema(self, schema, limits)?;
 
         let root =
             self.root().as_element().ok_or(LocalParagraphStructureError::ExpectedRootElement)?;
@@ -94,14 +98,12 @@ impl Document {
 }
 
 fn ensure_supported_schema(
-    document_schema: &SchemaId,
+    document: &Document,
     active_schema: &CompiledSchema,
+    limits: &DocumentLimits,
 ) -> Result<(), LocalParagraphStructureError> {
-    if document_schema != active_schema.id() {
-        return Err(LocalParagraphStructureError::SchemaMismatch {
-            document_schema: document_schema.clone(),
-            active_schema: active_schema.id().clone(),
-        });
+    if let Some(mismatch) = document.proof_mismatch(active_schema, limits) {
+        return Err(local_proof_mismatch(mismatch));
     }
     if !active_schema.is_exact_breditor_base() {
         return Err(LocalParagraphStructureError::UnsupportedSchema {
@@ -109,6 +111,15 @@ fn ensure_supported_schema(
         });
     }
     Ok(())
+}
+
+fn local_proof_mismatch(mismatch: DocumentProofMismatch) -> LocalParagraphStructureError {
+    match mismatch {
+        DocumentProofMismatch::SchemaId { document_schema, active_schema } => {
+            LocalParagraphStructureError::SchemaMismatch { document_schema, active_schema }
+        }
+        mismatch => LocalParagraphStructureError::DocumentProofMismatch(mismatch),
+    }
 }
 
 #[cfg(test)]
@@ -121,7 +132,7 @@ mod tests {
             local_paragraph_structure::{LocalParagraphStructureError, ensure_supported_schema},
         },
         identity::QualifiedName,
-        schema::{CompiledSchema, DocumentLimits, SchemaId, SchemaVersion, ValidationCode},
+        schema::{CompiledSchema, DocumentLimits, ValidationCode},
     };
 
     fn paragraph(text: &str) -> Result<NodeRef, Box<dyn Error>> {
@@ -190,6 +201,7 @@ mod tests {
         assert!(result_replacement.shares_allocation_with(&replacement));
         assert!(result_right.shares_allocation_with(&right));
         assert_eq!(result.summary().node_count(), source.summary().node_count());
+        assert!(result.is_proven_for(&schema, &limits));
         Ok(())
     }
 
@@ -222,16 +234,31 @@ mod tests {
     }
 
     #[test]
-    fn schema_identity_guard_rejects_a_foreign_document_identity() -> Result<(), Box<dyn Error>> {
-        let active = CompiledSchema::breditor_base();
-        let foreign =
-            SchemaId::new(QualifiedName::try_new("example/schema")?, SchemaVersion::try_new(1)?);
+    fn compiled_proof_guard_rejects_independent_compilation() -> Result<(), Box<dyn Error>> {
+        let source_schema = CompiledSchema::breditor_base();
+        let active_schema = CompiledSchema::breditor_base();
+        let limits = DocumentLimits::default();
+        let source = source_document(&source_schema, &limits, vec![paragraph("a")?])?;
         assert_eq!(
-            ensure_supported_schema(&foreign, &active),
-            Err(LocalParagraphStructureError::SchemaMismatch {
-                document_schema: foreign,
-                active_schema: active.id().clone(),
-            })
+            ensure_supported_schema(&source, &active_schema, &limits),
+            Err(LocalParagraphStructureError::DocumentProofMismatch(
+                crate::document::DocumentProofMismatch::CompiledProof,
+            ))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn validation_policy_guard_rejects_different_runtime_limits() -> Result<(), Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let source_limits = DocumentLimits::default();
+        let active_limits = source_limits.clone().with_max_nodes(10);
+        let source = source_document(&schema, &source_limits, vec![paragraph("a")?])?;
+        assert_eq!(
+            ensure_supported_schema(&source, &schema, &active_limits),
+            Err(LocalParagraphStructureError::DocumentProofMismatch(
+                crate::document::DocumentProofMismatch::ValidationPolicy,
+            ))
         );
         Ok(())
     }

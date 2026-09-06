@@ -143,6 +143,7 @@ impl HistoryEntry {
 
 fn same_replay_boundary(current: &EditorState, expected: &EditorState) -> bool {
     current.snapshot().lineage() == expected.snapshot().lineage()
+        && current.context() == expected.context()
         && current.document() == expected.document()
 }
 
@@ -161,7 +162,7 @@ fn validate_replay_boundary(
     if current.snapshot().lineage() != expected.snapshot().lineage() {
         return Err(CommitReplayError::LineageMismatch { direction });
     }
-    if current.document() != expected.document() {
+    if current.context() != expected.context() || current.document() != expected.document() {
         return Err(CommitReplayError::DocumentMismatch { direction });
     }
     Ok(())

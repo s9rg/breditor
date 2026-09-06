@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::{
-    document::{Document, FormatSet},
+    document::{Document, DocumentProofMismatch, FormatSet},
     identity::QualifiedName,
     schema::{SchemaId, ValidationReport},
     selection::{ResolvedSelection, Selection, SelectionError},
@@ -118,13 +118,7 @@ impl EditorState {
         pending_formats: Option<FormatSet>,
     ) -> Result<Self, EditorStateError> {
         let snapshot = SnapshotId::new(lineage, crate::state::Revision::ZERO);
-        if document.schema() != context.schema().id() {
-            return Err(EditorStateError::SchemaMismatch {
-                document_schema: document.schema().clone(),
-                context_schema: context.schema().id().clone(),
-            });
-        }
-        let document = document.try_revalidate(context.schema(), context.limits())?;
+        let document = admit_document(context, document)?;
         validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref())?;
         Ok(Self { context: context.clone(), snapshot, document, selection, pending_formats })
     }
@@ -166,19 +160,29 @@ impl EditorState {
         selection: Option<Selection>,
         pending_formats: Option<FormatSet>,
     ) -> Result<Self, EditorStateError> {
-        if document.schema() != context.schema().id() {
-            return Err(EditorStateError::SchemaMismatch {
-                document_schema: document.schema().clone(),
-                context_schema: context.schema().id().clone(),
-            });
-        }
-        let document = if document.is_proven_for(context.schema(), context.limits()) {
-            document
-        } else {
-            document.try_revalidate(context.schema(), context.limits())?
-        };
+        let document = admit_document(context, document)?;
         validate_parts(context, &document, selection.as_ref(), pending_formats.as_ref())?;
         Ok(Self { context: context.clone(), snapshot, document, selection, pending_formats })
+    }
+}
+
+fn admit_document(
+    context: &EditorContext,
+    document: Document,
+) -> Result<Document, EditorStateError> {
+    let Some(mismatch) = document.proof_mismatch(context.schema(), context.limits()) else {
+        return Ok(document);
+    };
+    match mismatch {
+        DocumentProofMismatch::SchemaId { document_schema, active_schema } => {
+            Err(EditorStateError::SchemaMismatch { document_schema, context_schema: active_schema })
+        }
+        mismatch @ DocumentProofMismatch::SchemaFingerprint { .. } => {
+            Err(EditorStateError::DocumentProofMismatch(mismatch))
+        }
+        DocumentProofMismatch::CompiledProof | DocumentProofMismatch::ValidationPolicy => {
+            document.try_revalidate(context.schema(), context.limits()).map_err(Into::into)
+        }
     }
 }
 
@@ -188,10 +192,12 @@ fn validate_parts(
     selection: Option<&Selection>,
     pending_formats: Option<&FormatSet>,
 ) -> Result<(), EditorStateError> {
-    if document.schema() != context.schema().id() {
-        return Err(EditorStateError::SchemaMismatch {
-            document_schema: document.schema().clone(),
-            context_schema: context.schema().id().clone(),
+    if let Some(mismatch) = document.proof_mismatch(context.schema(), context.limits()) {
+        return Err(match mismatch {
+            DocumentProofMismatch::SchemaId { document_schema, active_schema } => {
+                EditorStateError::SchemaMismatch { document_schema, context_schema: active_schema }
+            }
+            mismatch => EditorStateError::DocumentProofMismatch(mismatch),
         });
     }
     let resolved =
@@ -240,6 +246,10 @@ pub enum EditorStateError {
         /// Schema owned by the execution context.
         context_schema: SchemaId,
     },
+    /// The document does not carry the exact durable or process-local proof
+    /// required by the context.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// Content failed complete schema or resource validation.
     #[error(transparent)]
     InvalidDocument(#[from] ValidationReport),
@@ -277,4 +287,133 @@ pub enum PendingFormatError {
         /// Rejected format kind.
         kind: QualifiedName,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{error::Error, io};
+
+    use crate::{
+        document::{Document, DocumentProofMismatch, ElementNode, NodeRef, PropertyMap},
+        identity::QualifiedName,
+        schema::{CompiledSchema, DocumentLimits},
+        state::{EditorContext, EditorState, EditorStateError, LineageId},
+    };
+
+    fn document(
+        schema: &CompiledSchema,
+        limits: &DocumentLimits,
+    ) -> Result<Document, Box<dyn Error>> {
+        let paragraph = ElementNode::try_new(
+            QualifiedName::from_known_static("breditor/paragraph"),
+            None,
+            PropertyMap::default(),
+            Vec::new(),
+        )
+        .map(NodeRef::element)?;
+        let root = ElementNode::try_new(
+            QualifiedName::from_known_static("breditor/document"),
+            None,
+            PropertyMap::default(),
+            vec![paragraph],
+        )
+        .map(NodeRef::element)?;
+        Document::try_new(schema, root, limits).map_err(Into::into)
+    }
+
+    #[test]
+    fn construction_revalidates_and_rebinds_same_fingerprint_different_proof()
+    -> Result<(), Box<dyn Error>> {
+        let source_schema = CompiledSchema::breditor_base();
+        let active_schema = CompiledSchema::breditor_base();
+        let limits = DocumentLimits::default();
+        let source = document(&source_schema, &limits)?;
+        let source_root = source.root().clone();
+        assert_eq!(
+            source.schema_proof_mismatch(&active_schema),
+            Some(DocumentProofMismatch::CompiledProof)
+        );
+
+        let context = EditorContext::new(active_schema, limits);
+        let state = EditorState::try_new(
+            &context,
+            LineageId::try_new("proof-rebind")?,
+            source.clone(),
+            None,
+            None,
+        )?;
+
+        assert_eq!(state.document(), &source);
+        assert!(state.document().root().shares_allocation_with(&source_root));
+        assert!(state.document().is_proven_for(context.schema(), context.limits()));
+        Ok(())
+    }
+
+    #[test]
+    fn construction_rejects_a_different_fingerprint_without_changing_the_source()
+    -> Result<(), Box<dyn Error>> {
+        let source_schema = CompiledSchema::breditor_base();
+        let source_limits = DocumentLimits::default();
+        let source = document(&source_schema, &source_limits)?;
+        let source_before = source.clone();
+        let active_schema = CompiledSchema::test_semantic_variant_same_id();
+        let context = EditorContext::new(active_schema, source_limits.clone());
+
+        let error = EditorState::try_new(
+            &context,
+            LineageId::try_new("fingerprint-rejection")?,
+            source.clone(),
+            None,
+            None,
+        )
+        .err()
+        .ok_or_else(|| io::Error::other("different fingerprint unexpectedly published"))?;
+        assert!(matches!(
+            error,
+            EditorStateError::DocumentProofMismatch(
+                DocumentProofMismatch::SchemaFingerprint { .. }
+            )
+        ));
+        assert_eq!(source, source_before);
+        assert!(source.is_proven_for(&source_schema, &source_limits));
+        Ok(())
+    }
+
+    #[test]
+    fn construction_revalidates_changed_policy_and_failure_is_non_destructive()
+    -> Result<(), Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let source_limits = DocumentLimits::default();
+        let source = document(&schema, &source_limits)?;
+
+        let accepted_limits = source_limits.clone().with_max_nodes(2);
+        let accepted_context = EditorContext::new(schema.clone(), accepted_limits);
+        let accepted = EditorState::try_new(
+            &accepted_context,
+            LineageId::try_new("policy-rebind")?,
+            source.clone(),
+            None,
+            None,
+        )?;
+        assert!(
+            accepted.document().is_proven_for(accepted_context.schema(), accepted_context.limits())
+        );
+
+        let source_before = source.clone();
+        let rejected_context =
+            EditorContext::new(schema.clone(), source_limits.clone().with_max_nodes(1));
+        let error = EditorState::try_new(
+            &rejected_context,
+            LineageId::try_new("policy-rejection")?,
+            source.clone(),
+            None,
+            None,
+        )
+        .err()
+        .ok_or_else(|| io::Error::other("invalid tighter policy unexpectedly published"))?;
+        assert!(matches!(error, EditorStateError::InvalidDocument(_)));
+        assert_eq!(source, source_before);
+        assert!(source.is_proven_for(&schema, &source_limits));
+        Ok(())
+    }
 }

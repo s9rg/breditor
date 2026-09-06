@@ -12,7 +12,7 @@ to add that library solely to type-check Breditor.
 The package is ESM. Initialize it before calling any exported Rust function:
 
 ```sh
-npm install @breditor/wasm@0.1.1
+npm install @breditor/wasm@0.2.0-alpha.1
 ```
 
 ```ts

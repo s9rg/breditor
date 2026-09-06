@@ -11,13 +11,16 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.1.1` checkpoint adds only the behavior-free Rust extension-set
-foundation. Development toward `0.2.0` is scoped to one complete, frozen
+The current `0.2.0-alpha.1` checkpoint builds the parity-first schema compiler
+and proof foundation over the behavior-free `0.1.1` extension set. Development
+toward `0.2.0` is scoped to one complete, frozen
 semantic extension path for property-free inline formats. The decisions and
 checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
-[`0.2.0` scope](docs/V0_2_SCOPE.md). This work does not reinterpret the released
-`breditor/base@1` document contract or adopt another editor's plugin protocol.
+[`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
+are specified by the [schema fingerprint contract](docs/SCHEMA_FINGERPRINT.md).
+This work does not reinterpret the released `breditor/base@1` document contract
+or adopt another editor's plugin protocol.
 
 The implementation includes:
 

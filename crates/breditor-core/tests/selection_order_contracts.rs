@@ -5,6 +5,7 @@ mod support;
 use std::cmp::Ordering;
 
 use breditor_core::{
+    codec::DocumentJsonCodec,
     document::Document,
     position::{
         Affinity, NodePath, Point, PointComparisonError, PointError, PointOperand, ResolvedPoint,
@@ -100,8 +101,8 @@ fn paragraph_exit_precedes_root_boundary_and_next_paragraph_entry() -> TestResul
 
 #[test]
 fn range_direction_preserves_anchor_and_focus_and_uses_spatial_order() -> TestResult {
-    let document = codec().decode(&fixture_document_json())?;
     let schema = CompiledSchema::breditor_base();
+    let document = DocumentJsonCodec::new(schema.clone()).decode(&fixture_document_json())?;
     let earlier = text_point(&[0, 0], 1, Affinity::After)?;
     let later = text_point(&[0, 0], 3, Affinity::Before)?;
 
@@ -144,8 +145,8 @@ fn range_direction_preserves_anchor_and_focus_and_uses_spatial_order() -> TestRe
 
 #[test]
 fn range_selection_rejects_a_root_boundary_at_the_correct_endpoint() -> TestResult {
-    let document = codec().decode(&fixture_document_json())?;
     let schema = CompiledSchema::breditor_base();
+    let document = DocumentJsonCodec::new(schema.clone()).decode(&fixture_document_json())?;
     let root_boundary = Point::Children {
         parent_path: NodePath::root(),
         child_index: 1,
@@ -178,7 +179,8 @@ fn range_selection_rejects_a_root_boundary_at_the_correct_endpoint() -> TestResu
 
 #[test]
 fn utf16_order_skips_surrogate_interiors_and_reports_the_failing_operand() -> TestResult {
-    let document = codec().decode(&fixture_document_json())?;
+    let schema = CompiledSchema::breditor_base();
+    let document = DocumentJsonCodec::new(schema.clone()).decode(&fixture_document_json())?;
     let before_emoji = text_point(&[0, 0], 1, Affinity::Before)?;
     let after_emoji = text_point(&[0, 0], 3, Affinity::After)?;
     let split_emoji = text_point(&[0, 0], 2, Affinity::Before)?;
@@ -200,7 +202,6 @@ fn utf16_order_skips_surrogate_interiors_and_reports_the_failing_operand() -> Te
         })
     );
 
-    let schema = CompiledSchema::breditor_base();
     assert_eq!(
         selection_error(&RangeSelection::new(before_emoji, split_emoji), &schema, &document,)?,
         SelectionError::InvalidPoint { endpoint: RangeEndpoint::Focus, source: split_error }

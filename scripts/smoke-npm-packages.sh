@@ -72,8 +72,8 @@ printf 'smoke-npm-packages: packing explicitly verified artifacts with lifecycle
     --pack-destination "${tarball_directory}" >/dev/null
 )
 
-readonly browser_tarball="${tarball_directory}/breditor-browser-0.1.1.tgz"
-readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.1.1.tgz"
+readonly browser_tarball="${tarball_directory}/breditor-browser-0.2.0-alpha.1.tgz"
+readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.2.0-alpha.1.tgz"
 [[ -f "${browser_tarball}" ]] || fail "missing @breditor/browser tarball"
 [[ -f "${wasm_tarball}" ]] || fail "missing @breditor/wasm tarball"
 
@@ -128,7 +128,7 @@ assert_archive_member_sha256() {
 
 assert_archive_member_sha256 "${wasm_tarball}" \
   package/THIRD_PARTY_NOTICES.md \
-  c9a244517db5e3b31fc1ebe436f4e4506045e408497f9d7b6626562a26fcd8b5
+  984672d7016e385af3a0825d5a32a0fa2dde9ce90faa3f80dd59496bd3284b07
 assert_archive_member_sha256 "${wasm_tarball}" \
   package/third-party/memchr-2.8.3/UNLICENSE \
   7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c

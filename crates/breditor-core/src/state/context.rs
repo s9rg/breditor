@@ -7,7 +7,7 @@ use crate::schema::{CompiledSchema, DocumentLimits};
 /// Keeping this context outside [`crate::document::Document`] lets many
 /// snapshots share one compiled schema while ensuring operations never borrow
 /// configuration from a JSON codec.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct EditorContext {
     schema: Arc<CompiledSchema>,
     limits: DocumentLimits,
@@ -45,7 +45,23 @@ impl EditorContext {
         self.max_operations_per_transaction = maximum;
         self
     }
+
+    /// Returns whether both contexts carry the same process-local compiled
+    /// schema proof, without comparing limits or transaction policy.
+    pub(crate) fn shares_schema_proof(&self, other: &Self) -> bool {
+        self.schema.shares_proof(other.schema.proof())
+    }
 }
+
+impl PartialEq for EditorContext {
+    fn eq(&self, other: &Self) -> bool {
+        self.shares_schema_proof(other)
+            && self.limits == other.limits
+            && self.max_operations_per_transaction == other.max_operations_per_transaction
+    }
+}
+
+impl Eq for EditorContext {}
 
 impl Default for EditorContext {
     fn default() -> Self {
@@ -56,9 +72,29 @@ impl Default for EditorContext {
 #[cfg(test)]
 mod tests {
     use super::EditorContext;
+    use crate::schema::{CompiledSchema, DocumentLimits};
 
     #[test]
     fn default_pins_the_official_v0_1_transaction_acceptance_floor() {
         assert_eq!(EditorContext::default().max_operations_per_transaction(), 1_024);
+    }
+
+    #[test]
+    fn equality_requires_the_same_compiled_proof_and_exact_policy() {
+        let schema = CompiledSchema::breditor_base();
+        let context = EditorContext::new(schema.clone(), DocumentLimits::default());
+        let clone = context.clone();
+        let independently_compiled =
+            EditorContext::new(CompiledSchema::breditor_base(), DocumentLimits::default());
+        let different_json_budget =
+            EditorContext::new(schema.clone(), DocumentLimits::default().with_max_json_bytes(1));
+        let different_operation_limit = EditorContext::new(schema, DocumentLimits::default())
+            .with_max_operations_per_transaction(1);
+
+        assert_eq!(context.schema(), independently_compiled.schema());
+        assert_eq!(context, clone);
+        assert_ne!(context, independently_compiled);
+        assert_ne!(context, different_json_budget);
+        assert_ne!(context, different_operation_limit);
     }
 }

@@ -33,4 +33,4 @@ pub use text_fragment::{
     TextFragment, TextFragmentError, TextFragmentIter, TextFragmentSplitError,
 };
 pub use text_run::{TextRun, TextRunError};
-pub use validated_document::{Document, NodeLookupError};
+pub use validated_document::{Document, DocumentProofMismatch, NodeLookupError};

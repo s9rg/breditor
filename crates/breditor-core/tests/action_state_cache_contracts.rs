@@ -561,8 +561,9 @@ fn duplicate_direct_sources_coalesce_but_inputs_and_routing_remain_separate() ->
 
 #[test]
 fn equal_snapshot_ids_do_not_hide_unequal_complete_editor_states() -> TestResult {
-    let first_state = editor_state("cache-reused-snapshot", "first")?;
-    let second_state = editor_state("cache-reused-snapshot", "second")?;
+    let context = EditorContext::default();
+    let first_state = editor_state_with_context(&context, "cache-reused-snapshot", "first")?;
+    let second_state = editor_state_with_context(&context, "cache-reused-snapshot", "second")?;
     assert_eq!(first_state.snapshot(), second_state.snapshot());
     assert_ne!(first_state, second_state);
 
@@ -658,7 +659,8 @@ fn pending_format_changes_invalidate_their_precise_readers() -> TestResult {
 #[test]
 fn context_changes_are_classified_even_when_content_and_snapshot_match() -> TestResult {
     let first_context = EditorContext::default();
-    let second_context = EditorContext::default().with_max_operations_per_transaction(2_048);
+    let second_context = EditorContext::default();
+    assert_eq!(first_context.schema(), second_context.schema());
     let first_state = editor_state_with_context(&first_context, "cache-context-change", "abc")?;
     let second_state = editor_state_with_context(&second_context, "cache-context-change", "abc")?;
     assert_eq!(first_state.snapshot(), second_state.snapshot());

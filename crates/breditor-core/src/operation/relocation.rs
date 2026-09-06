@@ -7,7 +7,7 @@ use crate::{
     operation::{RootTextRange, TextRange},
     position::{Affinity, NodePath, Point, PointError, TextOffset, TextOffsetError},
     selection::{RangeEndpoint, RangeSelection, Selection},
-    state::{EditorState, SnapshotId},
+    state::{EditorContext, EditorState, SnapshotId},
 };
 
 /// Explicit result of moving one point through committed content changes.
@@ -76,6 +76,7 @@ impl SelectionRelocationPolicy {
 pub struct RelocationMap {
     base: SnapshotId,
     result: SnapshotId,
+    context: EditorContext,
     base_document: Document,
     result_document: Document,
     steps: Arc<[RelocationStep]>,
@@ -117,7 +118,8 @@ impl RelocationMap {
                 actual: source_state.snapshot().clone(),
             });
         }
-        if source_state.document() != &self.base_document {
+        if source_state.context() != &self.context || source_state.document() != &self.base_document
+        {
             return Err(RelocationError::SourceDocumentMismatch);
         }
         point.resolve(&self.base_document).map_err(RelocationError::InvalidSourcePoint)?;
@@ -180,11 +182,12 @@ impl RelocationMap {
     pub(crate) fn from_steps(
         base: SnapshotId,
         result: SnapshotId,
+        context: EditorContext,
         base_document: Document,
         result_document: Document,
         steps: Vec<RelocationStep>,
     ) -> Self {
-        Self { base, result, base_document, result_document, steps: Arc::from(steps) }
+        Self { base, result, context, base_document, result_document, steps: Arc::from(steps) }
     }
 }
 
@@ -1010,8 +1013,9 @@ pub enum RelocationError {
     /// An unchanged point unexpectedly became invalid in the result snapshot.
     #[error("result point is invalid: {0}")]
     InvalidResultPoint(PointError),
-    /// The source state reused the expected snapshot identity for other content.
-    #[error("relocation source document does not match the map's base document")]
+    /// The source state reused the expected snapshot identity under another
+    /// runtime proof or with other content.
+    #[error("relocation source state does not match the map's exact base proof and document")]
     SourceDocumentMismatch,
     /// A path needed for relocation did not resolve.
     #[error(transparent)]

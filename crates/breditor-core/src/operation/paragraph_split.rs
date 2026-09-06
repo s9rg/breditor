@@ -2,8 +2,8 @@ use thiserror::Error;
 
 use crate::{
     document::{
-        Document, LocalParagraphStructureError, NodeLookupError, TextFragment, TextFragmentError,
-        TextFragmentSplitError,
+        Document, DocumentProofMismatch, LocalParagraphStructureError, NodeLookupError,
+        TextFragment, TextFragmentError, TextFragmentSplitError,
     },
     operation::{
         AppliedChange, AppliedOperation, ChildRange, ChildrenChange, Operation, ParagraphJoin,
@@ -158,6 +158,9 @@ fn map_resolve_error(error: ResolveParagraphError) -> ParagraphSplitApplyError {
         ResolveParagraphError::SchemaMismatch { document_schema, context_schema } => {
             ParagraphSplitApplyError::SchemaMismatch { document_schema, context_schema }
         }
+        ResolveParagraphError::DocumentProofMismatch(error) => {
+            ParagraphSplitApplyError::DocumentProofMismatch(error)
+        }
         ResolveParagraphError::UnsupportedSchema { schema } => {
             ParagraphSplitApplyError::UnsupportedSchema { schema }
         }
@@ -187,6 +190,9 @@ fn map_publication_error(error: LocalParagraphStructureError) -> ParagraphSplitA
                 document_schema,
                 context_schema: active_schema,
             }
+        }
+        LocalParagraphStructureError::DocumentProofMismatch(error) => {
+            ParagraphSplitApplyError::DocumentProofMismatch(error)
         }
         LocalParagraphStructureError::UnsupportedSchema { active_schema } => {
             ParagraphSplitApplyError::UnsupportedSchema { schema: active_schema }
@@ -245,6 +251,10 @@ pub enum ParagraphSplitApplyError {
         /// Schema owned by the context.
         context_schema: SchemaId,
     },
+    /// The document lacks the exact compiled proof or validation policy owned
+    /// by the active editor context.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// Structural metadata semantics are not defined outside the exact base schema.
     #[error("paragraph split does not support schema {schema}")]
     UnsupportedSchema {

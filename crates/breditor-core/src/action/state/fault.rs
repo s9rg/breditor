@@ -664,7 +664,8 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
     match error {
         OperationApplyError::TextSplice(source) => match source {
             TextSpliceApplyError::Contract(_) => ActionStateOperationFault::TextSpliceContract,
-            TextSpliceApplyError::SchemaMismatch { .. } => {
+            TextSpliceApplyError::SchemaMismatch { .. }
+            | TextSpliceApplyError::DocumentProofMismatch(_) => {
                 ActionStateOperationFault::TextSpliceSchemaMismatch
             }
             TextSpliceApplyError::NodeLookup(_) => ActionStateOperationFault::TextSpliceNodeLookup,
@@ -715,7 +716,8 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             ParagraphSplitApplyError::Contract(_) => {
                 ActionStateOperationFault::ParagraphSplitContract
             }
-            ParagraphSplitApplyError::SchemaMismatch { .. } => {
+            ParagraphSplitApplyError::SchemaMismatch { .. }
+            | ParagraphSplitApplyError::DocumentProofMismatch(_) => {
                 ActionStateOperationFault::ParagraphSplitSchemaMismatch
             }
             ParagraphSplitApplyError::UnsupportedSchema { .. } => {
@@ -753,7 +755,8 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             ParagraphJoinApplyError::Contract(_) => {
                 ActionStateOperationFault::ParagraphJoinContract
             }
-            ParagraphJoinApplyError::SchemaMismatch { .. } => {
+            ParagraphJoinApplyError::SchemaMismatch { .. }
+            | ParagraphJoinApplyError::DocumentProofMismatch(_) => {
                 ActionStateOperationFault::ParagraphJoinSchemaMismatch
             }
             ParagraphJoinApplyError::UnsupportedSchema { .. } => {
@@ -789,7 +792,8 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             RootTextReplaceApplyError::Contract(_) => {
                 ActionStateOperationFault::RootTextReplaceContract
             }
-            RootTextReplaceApplyError::SchemaMismatch { .. } => {
+            RootTextReplaceApplyError::SchemaMismatch { .. }
+            | RootTextReplaceApplyError::DocumentProofMismatch(_) => {
                 ActionStateOperationFault::RootTextReplaceSchemaMismatch
             }
             RootTextReplaceApplyError::UnsupportedSchema { .. } => {
@@ -882,9 +886,12 @@ fn project_relocation_error(error: &RelocationError) -> ActionStateRelocationFau
 
 fn project_result_error(error: EditorStateError) -> ActionStateResultFault {
     match error {
-        EditorStateError::SchemaMismatch { .. } => ActionStateResultFault::SchemaMismatch,
+        EditorStateError::SchemaMismatch { .. } | EditorStateError::DocumentProofMismatch(_) => {
+            ActionStateResultFault::SchemaMismatch
+        }
         EditorStateError::InvalidDocument(_) => ActionStateResultFault::InvalidDocument,
         EditorStateError::InvalidSelection(source) => match source {
+            SelectionError::DocumentProofMismatch(_) => ActionStateResultFault::SchemaMismatch,
             SelectionError::InvalidPoint { endpoint, .. } => {
                 ActionStateResultFault::InvalidSelectionPoint { endpoint }
             }

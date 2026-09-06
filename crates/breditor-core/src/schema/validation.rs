@@ -15,6 +15,8 @@ use crate::{
     },
 };
 
+use super::compiler::ChildKind;
+
 /// Stable machine-readable reason for document rejection.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ValidationCode {
@@ -473,7 +475,9 @@ impl<'a> ValidationState<'a> {
         }
         self.visit_entity_id(element, path);
         self.visit_properties(element.properties(), path, None);
-        if !element.properties().is_empty() {
+        if !element.properties().is_empty()
+            && !self.schema.element_allows_properties(element.kind())
+        {
             self.issue(
                 ValidationCode::PropertiesNotAllowed,
                 path,
@@ -522,74 +526,108 @@ impl<'a> ValidationState<'a> {
         let Some(identity) = element.entity_id() else {
             return;
         };
-        match self.entity_ids.entry(identity.clone()) {
-            Entry::Vacant(entry) => {
-                entry.insert(path.clone());
-            }
-            Entry::Occupied(entry) => {
-                let first_path = entry.get().clone();
-                self.issue(
-                    ValidationCode::DuplicateEntityId,
-                    path,
-                    ValidationSubject::EntityId,
-                    ValidationDetail::DuplicateEntityId { first_path: first_path.clone() },
-                    format!("entity ID `{identity}` is already used at {first_path:?}"),
-                );
+        if self.schema.global_constraints().requires_globally_unique_entity_ids() {
+            match self.entity_ids.entry(identity.clone()) {
+                Entry::Vacant(entry) => {
+                    entry.insert(path.clone());
+                }
+                Entry::Occupied(entry) => {
+                    let first_path = entry.get().clone();
+                    self.issue(
+                        ValidationCode::DuplicateEntityId,
+                        path,
+                        ValidationSubject::EntityId,
+                        ValidationDetail::DuplicateEntityId { first_path: first_path.clone() },
+                        format!("entity ID `{identity}` is already used at {first_path:?}"),
+                    );
+                }
             }
         }
-        self.issue(
-            ValidationCode::EntityIdForbidden,
-            path,
-            ValidationSubject::EntityId,
-            ValidationDetail::None,
-            format!("base-schema element `{}` does not allow an entity ID", element.kind()),
-        );
+        if !self.schema.element_allows_entity_id(element.kind()) {
+            self.issue(
+                ValidationCode::EntityIdForbidden,
+                path,
+                ValidationSubject::EntityId,
+                ValidationDetail::None,
+                format!("base-schema element `{}` does not allow an entity ID", element.kind()),
+            );
+        }
     }
 
     fn validate_child_shape(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
-        if element.kind() == self.schema.root_kind() {
-            if element.children().is_empty() {
-                self.issue(
-                    ValidationCode::MissingRequiredChild,
-                    path,
-                    ValidationSubject::Node,
-                    ValidationDetail::None,
-                    "a document must contain at least one paragraph".to_owned(),
-                );
-            }
-            for (index, child) in element.children().iter().enumerate() {
-                let valid = child.as_element().is_some_and(|child_element| {
-                    child_element.kind() == self.schema.paragraph_kind()
-                });
-                if !valid {
-                    self.issue(
-                        ValidationCode::InvalidChild,
-                        path,
-                        ValidationSubject::Child { index },
-                        ValidationDetail::None,
-                        format!(
-                            "document child {index} must be `{}`",
-                            self.schema.paragraph_kind()
-                        ),
-                    );
+        let Some(constraint) = self.schema.element_child_constraint(element.kind()) else {
+            return;
+        };
+        let child_count = u32::try_from(element.children().len()).unwrap_or(u32::MAX);
+        if child_count < constraint.minimum() {
+            let message = if element.kind() == self.schema.root_kind()
+                && constraint.minimum() == 1
+                && matches!(constraint.kind(), ChildKind::Element(kind) if kind == self.schema.paragraph_kind())
+            {
+                "a document must contain at least one paragraph".to_owned()
+            } else {
+                format!(
+                    "element `{}` requires at least {} children",
+                    element.kind(),
+                    constraint.minimum()
+                )
+            };
+            self.issue(
+                ValidationCode::MissingRequiredChild,
+                path,
+                ValidationSubject::Node,
+                ValidationDetail::None,
+                message,
+            );
+        }
+
+        for (index, child) in element.children().iter().enumerate() {
+            let within_maximum = constraint
+                .maximum()
+                .is_none_or(|maximum| u32::try_from(index).is_ok_and(|index| index < maximum));
+            let valid_kind = match constraint.kind() {
+                ChildKind::Text => child.as_text().is_some(),
+                ChildKind::Element(required) => {
+                    child.as_element().is_some_and(|child_element| child_element.kind() == required)
                 }
+            };
+            if within_maximum && valid_kind {
+                continue;
             }
-        } else if element.kind() == self.schema.paragraph_kind() {
-            for (index, child) in element.children().iter().enumerate() {
-                if child.as_text().is_none() {
-                    self.issue(
-                        ValidationCode::InvalidChild,
-                        path,
-                        ValidationSubject::Child { index },
-                        ValidationDetail::None,
-                        format!("paragraph child {index} must be text"),
-                    );
+            let message = if element.kind() == self.schema.root_kind()
+                && matches!(constraint.kind(), ChildKind::Element(kind) if kind == self.schema.paragraph_kind())
+            {
+                format!("document child {index} must be `{}`", self.schema.paragraph_kind())
+            } else if element.kind() == self.schema.paragraph_kind()
+                && matches!(constraint.kind(), ChildKind::Text)
+            {
+                format!("paragraph child {index} must be text")
+            } else if !within_maximum {
+                format!("element `{}` has too many children", element.kind())
+            } else {
+                match constraint.kind() {
+                    ChildKind::Text => {
+                        format!("element `{}` child {index} must be text", element.kind())
+                    }
+                    ChildKind::Element(required) => {
+                        format!("element `{}` child {index} must be `{required}`", element.kind())
+                    }
                 }
-            }
+            };
+            self.issue(
+                ValidationCode::InvalidChild,
+                path,
+                ValidationSubject::Child { index },
+                ValidationDetail::None,
+                message,
+            );
         }
     }
 
     fn validate_adjacent_text(&mut self, element: &crate::document::ElementNode, path: &NodePath) {
+        if !self.schema.global_constraints().requires_merged_adjacent_equal_text() {
+            return;
+        }
         for (left_index, pair) in
             element.children().iter().collect::<Vec<_>>().windows(2).enumerate()
         {
@@ -611,7 +649,7 @@ impl<'a> ValidationState<'a> {
     }
 
     fn visit_text(&mut self, text: &crate::document::TextNode, path: &NodePath) {
-        if text.text().is_empty() {
+        if text.text().is_empty() && self.schema.global_constraints().requires_non_empty_text() {
             self.issue(
                 ValidationCode::EmptyText,
                 path,
@@ -655,7 +693,9 @@ impl<'a> ValidationState<'a> {
         let mut previous: Option<&QualifiedName> = None;
         for (index, format) in text.formats().iter().enumerate() {
             if let Some(previous_kind) = previous {
-                if previous_kind == format.kind() {
+                if previous_kind == format.kind()
+                    && self.schema.global_constraints().requires_unique_format_kinds()
+                {
                     self.issue(
                         ValidationCode::DuplicateFormat,
                         path,
@@ -663,7 +703,9 @@ impl<'a> ValidationState<'a> {
                         ValidationDetail::None,
                         format!("format `{}` occurs more than once", format.kind()),
                     );
-                } else if previous_kind > format.kind() {
+                } else if previous_kind > format.kind()
+                    && self.schema.global_constraints().requires_canonical_format_order()
+                {
                     self.issue(
                         ValidationCode::NonCanonicalFormatOrder,
                         path,
@@ -674,7 +716,7 @@ impl<'a> ValidationState<'a> {
                 }
             }
             previous = Some(format.kind());
-            if format.kind() != self.schema.strong_kind() {
+            if !self.schema.allows_text_format(format.kind()) {
                 self.issue(
                     ValidationCode::UnknownFormat,
                     path,
@@ -688,7 +730,9 @@ impl<'a> ValidationState<'a> {
                 );
             }
             self.visit_properties(format.properties(), path, Some(index));
-            if !format.properties().is_empty() {
+            if !format.properties().is_empty()
+                && !self.schema.format_allows_properties(format.kind())
+            {
                 self.issue(
                     ValidationCode::PropertiesNotAllowed,
                     path,

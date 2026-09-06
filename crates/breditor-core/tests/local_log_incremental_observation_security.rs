@@ -254,8 +254,7 @@ fn duplicates_keep_exact_first_physical_index_and_charge_only_observation_budget
 
 #[test]
 fn observation_operation_and_application_failures_are_atomic_and_redacted() -> TestResult {
-    let PrefixFixture { context, g0, anchor, .. } = fixture(3)?;
-    let session_codec = SessionCheckpointJsonCodec::new(context.clone());
+    let PrefixFixture { g0, anchor, .. } = fixture(3)?;
 
     let foreign = entry(
         &LocalSessionId::try_new("session:foreign-observation-limit")?,
@@ -273,6 +272,7 @@ fn observation_operation_and_application_failures_are_atomic_and_redacted() -> T
 
     // A fresh owner reaches operation admission only after all earlier checks.
     let PrefixFixture {
+        context: operation_context,
         session_id: operation_session_id,
         g1: operation_log,
         anchor,
@@ -284,10 +284,15 @@ fn observation_operation_and_application_failures_are_atomic_and_redacted() -> T
         &operation_log,
         2,
         "request:operation-limited",
-        LocalLogEvent::commit(commit_from(&context, operation_producer.state(), PRIVATE_TEXT)?),
+        LocalLogEvent::commit(commit_from(
+            &operation_context,
+            operation_producer.state(),
+            PRIVATE_TEXT,
+        )?),
     )?;
     let owner = anchor.begin_successor(LocalLogRecoveryLimits::new(1, 1, 0));
-    let before = session_codec.encode(owner.session())?;
+    let operation_session_codec = SessionCheckpointJsonCodec::new(operation_context.clone());
+    let before = operation_session_codec.encode(owner.session())?;
     let failure = owner
         .try_observe(operation_limited)
         .err()
@@ -300,31 +305,38 @@ fn observation_operation_and_application_failures_are_atomic_and_redacted() -> T
     let (owner, rejected, error) = failure.into_parts();
     assert_eq!(rejected.replay_id().as_str(), "request:operation-limited");
     assert_eq!(error.delivery_index(), Some(0));
-    assert_eq!(session_codec.encode(owner.session())?, before);
+    assert_eq!(operation_session_codec.encode(owner.session())?, before);
     assert_eq!(owner.observation_count(), 0);
 
     // A stale commit under a fresh sufficient policy passes resource checks but
     // application still returns the exact owner and proof without mutation.
-    let PrefixFixture { session_id: stale_session_id, g1: stale_log, anchor: stale_anchor, .. } =
-        fixture(3)?;
+    let PrefixFixture {
+        context: stale_context,
+        session_id: stale_session_id,
+        g1: stale_log,
+        anchor: stale_anchor,
+        ..
+    } = fixture(3)?;
     let stale_owner = stale_anchor.begin_successor(LocalLogRecoveryLimits::new(1, 1, 1));
-    let stale_before = session_codec.encode(stale_owner.session())?;
+    let stale_session_codec = SessionCheckpointJsonCodec::new(stale_context.clone());
+    let stale_before = stale_session_codec.encode(stale_owner.session())?;
     let stale_history_status = stale_owner.session().history_status();
-    let stale_state = state(&context, "stale", "incremental-stale")?;
+    let stale_state = state(&stale_context, "stale", "incremental-stale")?;
     let stale = entry(
         &stale_session_id,
         &stale_log,
         2,
         "request:stale",
-        LocalLogEvent::commit(commit_from(&context, &stale_state, "X")?),
+        LocalLogEvent::commit(commit_from(&stale_context, &stale_state, "X")?),
     )?;
-    let stale_json = LocalLogEntryJsonCodec::new(context.clone()).encode(&stale)?;
+    let stale_entry_codec = LocalLogEntryJsonCodec::new(stale_context.clone());
+    let stale_json = stale_entry_codec.encode(&stale)?;
     let (stale_owner, rejected, error) =
         reject(stale_owner, stale, LocalLogRecoveryErrorCode::EventApplication)?;
     assert_eq!(rejected.replay_id().as_str(), "request:stale");
-    assert_eq!(LocalLogEntryJsonCodec::new(context.clone()).encode(&rejected)?, stale_json);
+    assert_eq!(stale_entry_codec.encode(&rejected)?, stale_json);
     assert_eq!(error.delivery_index(), Some(0));
-    assert_eq!(session_codec.encode(stale_owner.session())?, stale_before);
+    assert_eq!(stale_session_codec.encode(stale_owner.session())?, stale_before);
     assert_eq!(stale_owner.session().history_status(), stale_history_status);
     assert_eq!(stale_owner.observation_count(), 0);
 
@@ -333,7 +345,7 @@ fn observation_operation_and_application_failures_are_atomic_and_redacted() -> T
         &stale_log,
         2,
         "request:stale",
-        LocalLogEvent::commit(commit_from(&context, stale_owner.session().state(), "X")?),
+        LocalLogEvent::commit(commit_from(&stale_context, stale_owner.session().state(), "X")?),
     )?;
     let (stale_owner, outcome) = stale_owner.try_observe(corrected)?;
     assert!(outcome.was_applied());
@@ -411,6 +423,7 @@ fn cumulative_observation_and_operation_limits_win_without_consuming_the_next_sl
     assert_eq!((owner.observation_count(), owner.exact_duplicate_count()), (1, 0));
 
     let PrefixFixture {
+        context: operation_context,
         session_id: operation_session_id,
         g1: operation_log,
         anchor: operation_anchor,
@@ -435,7 +448,8 @@ fn cumulative_observation_and_operation_limits_win_without_consuming_the_next_sl
         "request:operation-cap-second",
         LocalLogEvent::commit(second),
     )?;
-    let second_json = LocalLogEntryJsonCodec::new(context.clone()).encode(&second_entry)?;
+    let operation_codec = LocalLogEntryJsonCodec::new(operation_context);
+    let second_json = operation_codec.encode(&second_entry)?;
     let (owner, _) = operation_anchor
         .begin_successor(LocalLogRecoveryLimits::new(2, 2, 1))
         .try_observe(first_entry)?;
@@ -450,7 +464,7 @@ fn cumulative_observation_and_operation_limits_win_without_consuming_the_next_sl
             maximum: 1,
         }
     ));
-    assert_eq!(LocalLogEntryJsonCodec::new(context).encode(&returned_second)?, second_json);
+    assert_eq!(operation_codec.encode(&returned_second)?, second_json);
     assert_eq!(owner.session().history_status(), history_at_operation_cap);
     assert_eq!(
         (

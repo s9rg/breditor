@@ -432,12 +432,13 @@ mod tests {
         codec::DocumentJsonCodec,
         document::{FormatSet, TextFragment, TextRun},
         identity::QualifiedName,
-        operation::{TextRange, TextSplice},
-        position::{NodePath, TextOffset},
-        session::{EditorSession, HistoryReplayError},
+        operation::{RelocationError, TextRange, TextSplice},
+        position::{Affinity, NodePath, Point, TextOffset},
+        session::{EditorSession, HistoryReplayError, SessionCommitError},
         state::{EditorContext, EditorState, LineageId, Revision, RevisionError, SnapshotId},
         transaction::{
-            HistoryIntent, ReplayDirection, Transaction, TransactionApplyError, TransactionMetadata,
+            CommitReplayError, HistoryIntent, ReplayDirection, Transaction, TransactionApplyError,
+            TransactionMetadata,
         },
     };
 
@@ -497,6 +498,77 @@ mod tests {
             return Err(io::Error::other("setup transaction was unexpectedly unchanged").into());
         }
         Ok(session)
+    }
+
+    #[test]
+    fn transactions_commits_relocation_and_history_reject_equal_content_from_another_proof()
+    -> Result<(), Box<dyn Error>> {
+        let source_context = EditorContext::default();
+        let foreign_context = EditorContext::default();
+        let source = state_with_text(&source_context, "mixed-proof-runtime", "base")?;
+        let foreign = state_with_text(&foreign_context, "mixed-proof-runtime", "base")?;
+        assert_eq!(source.document(), foreign.document());
+        assert_ne!(source.context(), foreign.context());
+
+        let empty_transaction = Transaction::new(&source, Vec::new());
+        assert_eq!(
+            empty_transaction.apply(&foreign_context, &foreign),
+            Err(TransactionApplyError::ContextConfigurationMismatch)
+        );
+
+        let source_transaction = insert_at_start(&source, "x", HistoryIntent::Record)?;
+        let source_commit = source_transaction
+            .apply(&source_context, &source)?
+            .into_commit()
+            .ok_or_else(|| io::Error::other("source transaction was unexpectedly unchanged"))?;
+        let foreign_transaction = insert_at_start(&foreign, "x", HistoryIntent::Record)?;
+        let foreign_commit =
+            foreign_transaction.apply(&foreign_context, &foreign)?.into_commit().ok_or_else(
+                || io::Error::other("foreign transaction was unexpectedly unchanged"),
+            )?;
+        assert_eq!(source_commit.after().document(), foreign_commit.after().document());
+        assert!(!source_commit.same_checkpoint_proof(&foreign_commit));
+
+        assert_eq!(
+            source_commit.undo_transaction(foreign_commit.after()),
+            Err(CommitReplayError::DocumentMismatch { direction: ReplayDirection::Undo })
+        );
+        assert_eq!(
+            source_commit.redo_transaction(&foreign),
+            Err(CommitReplayError::DocumentMismatch { direction: ReplayDirection::Redo })
+        );
+
+        let point = Point::Children {
+            parent_path: NodePath::root(),
+            child_index: 0,
+            affinity: Affinity::Before,
+        };
+        assert_eq!(
+            source_commit.relocation().relocate_point(&foreign, &point),
+            Err(RelocationError::SourceDocumentMismatch)
+        );
+
+        let mut foreign_session = EditorSession::new(foreign.clone());
+        assert_eq!(
+            foreign_session.accept_commit(&source_commit),
+            Err(SessionCommitError::BaseStateMismatch { snapshot: foreign.snapshot().clone() })
+        );
+        assert_eq!(foreign_session.state(), &foreign);
+
+        let mut source_session = EditorSession::new(source);
+        source_session.accept_commit(&source_commit)?;
+        source_session.state = foreign_commit.after().clone();
+        let foreign_after = source_session.state.clone();
+        let history_before = source_session.history.clone();
+        assert_eq!(
+            source_session.undo(),
+            Err(HistoryReplayError::Boundary(CommitReplayError::DocumentMismatch {
+                direction: ReplayDirection::Undo,
+            }))
+        );
+        assert_eq!(source_session.state, foreign_after);
+        assert_eq!(source_session.history, history_before);
+        Ok(())
     }
 
     #[test]

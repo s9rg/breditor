@@ -236,6 +236,7 @@ impl Transaction {
         let relocation = RelocationMap::from_steps(
             state.snapshot().clone(),
             result_snapshot.clone(),
+            context.clone(),
             state.document().clone(),
             current.clone(),
             steps,
@@ -287,7 +288,7 @@ pub enum TransactionApplyError {
         /// Schema owned by the execution context.
         context_schema: SchemaId,
     },
-    /// Schema identity matches, but operation limits/configuration differ.
+    /// Schema selector matches, but the compiled proof or execution policy differs.
     #[error("transaction execution context differs from the context that proved its base state")]
     ContextConfigurationMismatch,
     /// The transaction was authored against a different snapshot.

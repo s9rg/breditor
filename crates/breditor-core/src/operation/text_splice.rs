@@ -2,8 +2,9 @@ use thiserror::Error;
 
 use crate::{
     document::{
-        Document, ElementNode, LocalInvariantError, LocalTextPublicationError, NodeLookupError,
-        NodeRef, TextFragment, TextFragmentError, TextRun, Utf16BoundaryError,
+        Document, DocumentProofMismatch, ElementNode, LocalInvariantError,
+        LocalTextPublicationError, NodeLookupError, NodeRef, TextFragment, TextFragmentError,
+        TextRun, Utf16BoundaryError,
     },
     identity::QualifiedName,
     operation::{
@@ -64,6 +65,7 @@ impl TextSplice {
         range: TextRange,
         replacement: TextFragment,
     ) -> Result<Self, TextSpliceApplyError> {
+        ensure_document_proof(context, document)?;
         validate_fragment(context, FragmentRole::Replacement, &replacement)?;
         let element = resolve_text_container(context, document, range.container_path())?;
         let length = container_length(element, range.container_path())?;
@@ -96,6 +98,7 @@ impl TextSplice {
         context: &EditorContext,
         document: &Document,
     ) -> Result<AppliedOperation, TextSpliceApplyError> {
+        ensure_document_proof(context, document)?;
         validate_fragment(context, FragmentRole::ExpectedRemoved, &self.expected_removed)?;
         validate_fragment(context, FragmentRole::Replacement, &self.replacement)?;
 
@@ -179,12 +182,6 @@ fn resolve_text_container<'a>(
     document: &'a Document,
     path: &NodePath,
 ) -> Result<&'a ElementNode, TextSpliceApplyError> {
-    if document.schema() != context.schema().id() {
-        return Err(TextSpliceApplyError::SchemaMismatch {
-            document_schema: document.schema().clone(),
-            context_schema: context.schema().id().clone(),
-        });
-    }
     let target = document.node_at(path)?;
     let element = target.as_element().ok_or_else(|| TextSpliceApplyError::InvalidTarget {
         path: path.clone(),
@@ -204,6 +201,21 @@ fn resolve_text_container<'a>(
     }
     ensure_text_children(element, path)?;
     Ok(element)
+}
+
+fn ensure_document_proof(
+    context: &EditorContext,
+    document: &Document,
+) -> Result<(), TextSpliceApplyError> {
+    let Some(mismatch) = document.proof_mismatch(context.schema(), context.limits()) else {
+        return Ok(());
+    };
+    Err(match mismatch {
+        DocumentProofMismatch::SchemaId { document_schema, active_schema } => {
+            TextSpliceApplyError::SchemaMismatch { document_schema, context_schema: active_schema }
+        }
+        mismatch => TextSpliceApplyError::DocumentProofMismatch(mismatch),
+    })
 }
 
 fn validate_fragment(
@@ -460,6 +472,9 @@ fn map_local_text_publication(error: LocalTextPublicationError) -> TextSpliceApp
         LocalTextPublicationError::SchemaMismatch { document_schema, active_schema } => {
             TextSpliceApplyError::SchemaMismatch { document_schema, context_schema: active_schema }
         }
+        LocalTextPublicationError::DocumentProofMismatch(error) => {
+            TextSpliceApplyError::DocumentProofMismatch(error)
+        }
         LocalTextPublicationError::ExpectedElementOnPath => {
             TextSpliceApplyError::TreeInvariant { rule: TreeInvariantRule::ExpectedElementOnPath }
         }
@@ -550,6 +565,10 @@ pub enum TextSpliceApplyError {
         /// Schema owned by the execution context.
         context_schema: SchemaId,
     },
+    /// The document lacks the exact compiled proof or validation policy owned
+    /// by the active editor context.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// The target path did not resolve in the source snapshot.
     #[error(transparent)]
     NodeLookup(#[from] NodeLookupError),
@@ -686,13 +705,56 @@ mod tests {
 
     use crate::{
         document::{
-            ElementNode, Format, FormatSet, NodeRef, PropertyMap, TextFragment, TextNode, TextRun,
+            Document, DocumentProofMismatch, ElementNode, Format, FormatSet, NodeRef, PropertyMap,
+            TextFragment, TextNode, TextRun,
         },
         identity::QualifiedName,
-        position::TextOffset,
+        position::{NodePath, TextOffset},
+        schema::{CompiledSchema, DocumentLimits},
+        state::EditorContext,
     };
 
-    use super::build_result_children;
+    use super::{TextRange, TextSplice, TextSpliceApplyError, build_result_children};
+
+    fn empty_document(
+        schema: &CompiledSchema,
+        limits: &DocumentLimits,
+    ) -> Result<Document, Box<dyn Error>> {
+        let paragraph = ElementNode::try_new(
+            QualifiedName::from_known_static("breditor/paragraph"),
+            None,
+            PropertyMap::default(),
+            Vec::new(),
+        )?;
+        let root = ElementNode::try_new(
+            QualifiedName::from_known_static("breditor/document"),
+            None,
+            PropertyMap::default(),
+            vec![NodeRef::element(paragraph)],
+        )?;
+        Document::try_new(schema, NodeRef::element(root), limits).map_err(Into::into)
+    }
+
+    #[test]
+    fn capture_and_apply_reject_an_independently_compiled_document_proof_first()
+    -> Result<(), Box<dyn Error>> {
+        let limits = DocumentLimits::default();
+        let document = empty_document(&CompiledSchema::breditor_base(), &limits)?;
+        let context = EditorContext::new(CompiledSchema::breditor_base(), limits);
+        let range = TextRange::try_new(NodePath::root(), TextOffset::ZERO, TextOffset::ZERO)?;
+        let operation =
+            TextSplice::try_new(range.clone(), TextFragment::empty(), TextFragment::empty())?;
+
+        assert!(matches!(
+            TextSplice::capture(&context, &document, range, TextFragment::empty()),
+            Err(TextSpliceApplyError::DocumentProofMismatch(DocumentProofMismatch::CompiledProof))
+        ));
+        assert!(matches!(
+            operation.apply(&context, &document),
+            Err(TextSpliceApplyError::DocumentProofMismatch(DocumentProofMismatch::CompiledProof))
+        ));
+        Ok(())
+    }
 
     #[test]
     fn splice_reuses_whole_untouched_text_nodes_inside_the_container() -> Result<(), Box<dyn Error>>

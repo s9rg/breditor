@@ -1,6 +1,9 @@
 use thiserror::Error;
 
-use crate::position::{NodePath, PointComparisonError, PointError};
+use crate::{
+    document::DocumentProofMismatch,
+    position::{NodePath, PointComparisonError, PointError},
+};
 
 /// One directional endpoint of a range selection.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -23,6 +26,9 @@ pub enum SelectionEndpointRule {
 /// Why a range selection is invalid in one editor snapshot.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum SelectionError {
+    /// The document was not validated by this exact compiled schema proof.
+    #[error(transparent)]
+    DocumentProofMismatch(#[from] DocumentProofMismatch),
     /// One endpoint is not a structurally valid point.
     #[error("{endpoint:?} is not a structurally valid point: {source}")]
     InvalidPoint {

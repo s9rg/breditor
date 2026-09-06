@@ -1,6 +1,6 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` extension-set foundation is complete
+Status: in progress; the `0.1.1` extension set and `0.2.0-alpha.1` schema-proof foundation are complete
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -150,7 +150,7 @@ when review finds a correctness boundary; later features are not claimed early.
 2. `0.2.0-alpha.1`: parity-first declarative schema specification and compiler,
    collision-free runtime proof identity, reserved built-in identities,
    canonical schema-fingerprint definition, and complete equivalence tests for
-   `breditor/base@1`.
+   `breditor/base@1`. Complete.
 3. `0.2.0-alpha.2`: fingerprint-bearing durable record generations and
    schema-fingerprint admission for document, operation, transaction, editor-state, commit,
    checkpoint, and local-log families. Legacy V1 records remain exact-base-only;
@@ -195,8 +195,13 @@ when review finds a correctness boundary; later features are not claimed early.
   schema fingerprint, diagnostics, renderer order, and encoded bytes;
 - changing only extension identity or version, action, state, intent, or
   presentation declarations preserves the schema fingerprint when the admitted
-  schema projection, compiler contract, and admission limits are unchanged,
-  while a new engine still receives a fresh process-local profile generation;
+  schema projection, compiler contract, and compiled semantic admission
+  constraints are unchanged. Tightening host-only `DocumentLimits`, JSON byte
+  budgets, or transaction-operation limits also preserves that durable
+  fingerprint. Document fast-path proof reuse still requires the exact relevant
+  tree-validation policy, full `EditorContext` equality also requires exact JSON
+  and transaction policy, and a new engine still receives a fresh process-local
+  profile generation;
 - exact-limit and limit-plus-one tests cover extension counts, graph edges,
   schema registrations, and all new wire envelopes;
 - two different compiled definitions cannot share a validation proof merely by

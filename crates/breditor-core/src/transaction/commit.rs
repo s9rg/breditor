@@ -248,7 +248,7 @@ fn validate_replay_base(
     if current.snapshot().lineage() != expected.snapshot().lineage() {
         return Err(CommitReplayError::LineageMismatch { direction });
     }
-    if current.document() != expected.document() {
+    if current.context() != expected.context() || current.document() != expected.document() {
         return Err(CommitReplayError::DocumentMismatch { direction });
     }
     Ok(())
@@ -272,7 +272,7 @@ pub enum CommitReplayError {
         /// Requested history direction.
         direction: ReplayDirection,
     },
-    /// Current content no longer matches the expected side of the commit.
+    /// Current runtime proof or content no longer matches the expected side of the commit.
     #[error("{direction:?} state document no longer matches the commit")]
     DocumentMismatch {
         /// Requested history direction.

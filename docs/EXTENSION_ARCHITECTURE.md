@@ -1,6 +1,6 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` foundation is implemented and later stages remain planned
+Status: decision freeze; the `0.1.1` and `0.2.0-alpha.1` foundations are implemented and later stages remain planned
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -178,9 +178,10 @@ manifests and duplicate ownership claims are errors, including byte-identical
 duplicates. A host may deduplicate before compilation, but Rust never guesses
 whether duplicates were accidental or which one should win.
 
-Built-in identities are reserved. In particular, an extension cannot
-impersonate `breditor/base`, `breditor/document`, `breditor/paragraph`,
-`breditor/strong`, or a built-in action or intent. Renaming a persisted schema,
+The complete `breditor/*` namespace is reserved independently in every typed
+identity namespace. In particular, an extension cannot impersonate
+`breditor/base`, `breditor/document`, `breditor/paragraph`, `breditor/strong`,
+or a built-in action or intent. Renaming a persisted schema,
 node, or format identity changes canonical content meaning and requires explicit
 admission or migration. Renaming an extension, action, intent, or state identity
 instead requires a new compiled profile and engine plus the corresponding
@@ -224,7 +225,8 @@ every input that can change canonical content meaning, including:
 - the exact admitted semantic schema projection, including qualified node and
   format identities, persisted type revisions, and every compiled content,
   property, and context constraint; and
-- semantic resource limits when they change document admission.
+- compiled semantic admission constraints, including any semantic minimum or
+  maximum encoded by a type rule.
 
 Whole extension identities, `ExtensionVersion` values, and manifest versions are
 not fingerprint inputs merely because their manifest also contributes schema;
@@ -235,8 +237,19 @@ timestamps, localized labels, icons, CSS, toolbar placement, and browser
 rendering. Consequently an extension-identity, extension-version, action-,
 state-, or intent-only change preserves the schema fingerprint even when the
 extension also contributes schema, provided the compiled schema projection,
-compiler contract, and admission limits are unchanged. A fingerprint is an
-exact content-meaning key, not a hash of the whole executable.
+compiler contract, and semantic admission constraints are unchanged. Host
+resource policy is deliberately separate: `DocumentLimits`, JSON byte budgets,
+transaction-operation limits, and similar memory or work ceilings are not
+fingerprint inputs. They can reject otherwise valid content on one host and
+remain enforced at their relevant runtime boundaries: document fast-path proof
+reuse compares the exact tree-validation profile, while full `EditorContext`
+equality also compares JSON and transaction policy. Tightening those policies
+does not claim a new content language. A fingerprint is an exact
+content-meaning key, not a hash of the whole executable or its deployment
+policy.
+
+The implemented byte-level encoding, field tags, and locked base vector are
+specified in [Schema fingerprint contract](SCHEMA_FINGERPRINT.md).
 
 Rust issues a private `CompiledSchemaProof` tied to the compiled schema and its
 fingerprint. Documents and candidate results must be validated with that proof.
@@ -512,7 +525,8 @@ A product needing custom native semantic code must build and distribute a
 different executable Breditor core. Every engine created from it receives a
 fresh process-local `CompiledProfileGeneration`; its durable
 `SchemaFingerprint` changes only when the canonical compiled schema meaning,
-schema-compiler contract, or admission limits change. A future sandboxed
+schema-compiler contract, or compiled semantic admission constraints change.
+A future sandboxed
 component-plugin ABI is a separate design and does not hide behind the portable
 manifest value model.
 
@@ -585,30 +599,33 @@ These are product constraints, not implementation details to conceal:
 - Resource limits can reject a very large manifest set, document, plan, or
   checkpoint even when the abstract content would otherwise be meaningful.
 
-## Open questions for staged implementation
+## Staged implementation decisions and remaining questions
 
-These choices may be settled during the checkpoints without weakening the
-decisions above:
+`0.2.0-alpha.1` settles the canonical fingerprint bytes and SHA-256 hash, plus
+the bounded public `sha256:` lowercase-hex representation. The exact contract
+and cross-implementation base vector are frozen in
+[Schema fingerprint contract](SCHEMA_FINGERPRINT.md).
 
-1. **Canonical fingerprint bytes and hash.** Choose a versioned,
-   domain-separated canonical encoding and collision-resistant digest with
-   cross-language golden vectors.
-2. **Fingerprint representation.** Choose the bounded text/binary
-   representation carried by every new durable generation and exposed in
-   diagnostics. It remains a required field distinct from `SchemaId`.
-3. **Future manifest wire shape.** A public durable JSON or binary codec is not required
+The following choices remain for later checkpoints and may be settled without
+weakening the decisions above:
+
+1. **Durable fingerprint field shape.** Choose whether each new JSON/binary
+   generation carries the frozen 32-byte digest as its canonical lowercase
+   text form or a separately specified fixed binary field. It remains a
+   required field distinct from `SchemaId`.
+2. **Future manifest wire shape.** A public durable JSON or binary codec is not required
    at `0.1.1`. If later exposed, freeze exact field names only after malformed,
    unknown, duplicate, missing, and over-limit fixtures pass.
-4. **Inline renderer order syntax.** Choose the smallest explicit
+3. **Inline renderer order syntax.** Choose the smallest explicit
    `before`/`after` declaration and stable fallback needed for deterministic DOM
    nesting; it remains separate from semantic format-set order.
-5. **Generic action declaration.** Finalize the closed fields required to
+4. **Generic action declaration.** Finalize the closed fields required to
    instantiate toggle-format action state, effects, selection policy, and
    history intent without an executable extension callback.
-6. **Admission API placement.** Decide whether schema-fingerprint admission is
+5. **Admission API placement.** Decide whether schema-fingerprint admission is
    an engine constructor variant or a separate owned-result call. Either form
    validates source and target proofs atomically and resets history.
-7. **Safe render vocabulary.** Finalize the allowed element tokens, attribute
+6. **Safe render vocabulary.** Finalize the allowed element tokens, attribute
    tokens, nesting edges, and CSS-class policy. Recipes remain bounded data and
    never become executable callbacks.
 
@@ -636,7 +653,12 @@ earlier or skip a gate.
   proof identity, reserved built-in identities, collision-resistant canonical
   `SchemaFingerprint` definition, and complete `breditor/base@1` equivalence
   tests.
-- Reject mixed schema proofs, profile registries, and runtime generations.
+- Reject mixed schema proofs across documents, contexts, transactions, history,
+  selection, and incremental publication. Action/state/intent registry
+  correlation arrives with the compiled-profile generation in `alpha.4` and
+  its Wasm transport in `alpha.5`; `alpha.1` does not claim a generation that
+  does not yet exist.
+- Complete.
 
 ### 0.2.0-alpha.2 — fingerprint-bearing durable records
 
@@ -713,11 +735,11 @@ In addition to the complete repository gates, `0.2.0` requires proof that:
 
 - every input permutation yields identical resolved order, compiled bytes,
   fingerprint, or deterministic error;
-- changing only extension identity or version, action, state, intent, or
-  presentation declarations leaves the schema fingerprint unchanged when the
-  admitted schema projection, compiler contract, and admission limits are
-  identical, while a new engine still mints a fresh process-local profile
-  generation;
+- changing only extension identity or version, action, state, intent,
+  presentation declarations, or host resource policy leaves the schema
+  fingerprint unchanged when the admitted schema projection, compiler contract,
+  and compiled semantic admission constraints are identical, while a new engine
+  still mints a fresh process-local profile generation;
 - duplicate ownership, missing/wrong dependencies, conflicts, cycles, reserved
   identity impersonation, and every limit-plus-one case fail before engine
   construction;
