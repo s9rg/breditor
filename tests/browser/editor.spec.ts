@@ -156,6 +156,216 @@ test("backward selection remains directional and replaces the selected range", a
   await expect(page.getByRole("textbox")).toHaveText("abXf");
 });
 
+test("native host identity defeats a shadowed tagName on unsafe elements", async ({
+  page,
+}) => {
+  const outcomes = await page.evaluate(async () =>
+    Promise.all(
+      ["button", "input", "p", "span", "textarea"].map((tagName) =>
+        window.__breditorHarness?.probeEditorHost(tagName, "DIV"),
+      ),
+    ),
+  );
+
+  expect(outcomes).toEqual(
+    Array.from({ length: 5 }, () => ({
+      ok: false,
+      code: "browser_editor.invalid_options",
+    })),
+  );
+});
+
+test("an adopted iframe-realm host routes input and tears down cleanly", async ({
+  page,
+}) => {
+  const outcome = await page.evaluate(() => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("browser harness is unavailable");
+    return harness.probeAdoptedEditorHost();
+  });
+
+  expect(outcome).toEqual({
+    foreignPrototype: true,
+    adoptedOwnerDocument: true,
+    firstPhase: "live",
+    focusSucceeded: true,
+    routedDispatchReturned: false,
+    routedDefaultPrevented: true,
+    routedText: "x",
+    revisionAdvanced: true,
+    disposedPhase: "disposed",
+    hostEmptyAfterDispose: true,
+    postDisposeDispatchReturned: true,
+    postDisposeDefaultPrevented: false,
+    postDisposeRevisionStable: true,
+    reopenPhase: "live",
+  });
+});
+
+test("native host mutations defeat own setAttribute and append shadows", async ({
+  page,
+}) => {
+  const outcomes = await page.evaluate(async () => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("browser harness is unavailable");
+    return [
+      await harness.probeMutationShadowHosts("noOp"),
+      await harness.probeMutationShadowHosts("throw"),
+    ];
+  });
+
+  for (const outcome of outcomes) {
+    expect(outcome).toEqual({
+      ok: true,
+      code: undefined,
+      phase: "live",
+      editorAttributes: {
+        contenteditable: "true",
+        role: "textbox",
+        ariaLabel: "Mutation shadow editor",
+        ariaMultiline: "true",
+        ariaDisabled: "false",
+        spellcheck: "true",
+        marker: "",
+        inert: false,
+      },
+      toolbarRoot: {
+        tagName: "DIV",
+        marker: "",
+        role: "toolbar",
+        ariaLabel: "Editor controls",
+        ariaOrientation: "horizontal",
+        buttonCount: 3,
+      },
+    });
+  }
+});
+
+test("toolbar disposal defeats own remove shadows and permits host reuse", async ({
+  page,
+}) => {
+  const outcomes = await page.evaluate(async () => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("browser harness is unavailable");
+    return [
+      await harness.probeToolbarDisposalShadow("noOp"),
+      await harness.probeToolbarDisposalShadow("throw"),
+    ];
+  });
+
+  for (const outcome of outcomes) {
+    expect(outcome).toEqual({
+      firstOpen: true,
+      firstCode: undefined,
+      firstPhase: "live",
+      disposedToolbarChildCount: 0,
+      detachedOwnedNodeCount: 4,
+      ownedNodeCount: 4,
+      reopened: true,
+      reopenCode: undefined,
+      reopenPhase: "live",
+      reopenedToolbarRootCount: 1,
+      finalToolbarChildCount: 0,
+    });
+  }
+});
+
+for (const focusShadowMode of ["noOp", "throw"] as const) {
+  test(`detached toolbar buttons cannot dispatch through ${focusShadowMode} focus shadows`, async ({
+    page,
+  }) => {
+    const text = `detached ${focusShadowMode} toolbar`;
+    await select(page, 0, 0);
+    await insert(page, text);
+    await select(page, 0, text.length);
+
+    const bold = page.getByRole("button", { name: "Bold" });
+    const beforeKeyboardRevision = await page.evaluate(() =>
+      window.__breditorHarness?.snapshot().document.revision,
+    );
+    await page.keyboard.press("Shift+Tab");
+    await expect(bold).toBeFocused();
+    await page.keyboard.press("Space");
+    await expect(page.locator("#editor strong")).toHaveText(text);
+    const afterKeyboardRevision = await page.evaluate(() =>
+      window.__breditorHarness?.snapshot().document.revision,
+    );
+    expect(BigInt(afterKeyboardRevision ?? "0")).toBeGreaterThan(
+      BigInt(beforeKeyboardRevision ?? "0"),
+    );
+
+    await bold.click();
+    await expect(page.locator("#editor strong")).toHaveCount(0);
+    const afterClickRevision = await page.evaluate(() =>
+      window.__breditorHarness?.snapshot().document.revision,
+    );
+    expect(BigInt(afterClickRevision ?? "0")).toBeGreaterThan(
+      BigInt(afterKeyboardRevision ?? "0"),
+    );
+
+    const outcome = await page.evaluate((mode) => {
+      const harness = window.__breditorHarness;
+      if (harness === undefined) throw new Error("browser harness is unavailable");
+      return harness.probeDetachedToolbarButtonShadow(mode);
+    }, focusShadowMode);
+
+    expect(outcome).toMatchObject({
+      detachedBeforeShadow: true,
+      parentNodeShadowReads: 0,
+      isConnectedShadowReads: 0,
+      ownerDocumentShadowReads: 0,
+      focusShadowCalls: 0,
+      dispatchReturned: false,
+      clickDefaultPrevented: true,
+      beforePhase: "live",
+      afterPhase: "live",
+    });
+    expect(outcome.afterDocument).toEqual(outcome.beforeDocument);
+    expect(outcome.beforeDocumentJson).toBeDefined();
+    expect(outcome.afterDocumentJson).toBe(outcome.beforeDocumentJson);
+    expect(outcome.afterHtml).toBe(outcome.beforeHtml);
+  });
+}
+
+test("native typing, Backspace, and Delete stay on the semantic command path", async ({
+  page,
+}) => {
+  await select(page, 0, 0);
+  const textbox = page.getByRole("textbox");
+  const initialRevision = await page.evaluate(() =>
+    window.__breditorHarness?.snapshot().document.revision,
+  );
+  if (initialRevision === undefined) throw new Error("missing initial revision");
+
+  await page.keyboard.type("abcd");
+  await expect(textbox).toHaveText("abcd");
+  const typedRevision = await page.evaluate(() =>
+    window.__breditorHarness?.snapshot().document.revision,
+  );
+  expect(BigInt(typedRevision ?? "0")).toBeGreaterThan(BigInt(initialRevision));
+
+  await page.keyboard.press("Backspace");
+  await expect(textbox).toHaveText("abc");
+  const backwardRevision = await page.evaluate(() =>
+    window.__breditorHarness?.snapshot().document.revision,
+  );
+  expect(BigInt(backwardRevision ?? "0")).toBeGreaterThan(BigInt(typedRevision ?? "0"));
+
+  await select(page, 1, 1);
+  const selectedRevision = await page.evaluate(() =>
+    window.__breditorHarness?.snapshot().document.revision,
+  );
+  await page.keyboard.press("Delete");
+  await expect(textbox).toHaveText("ac");
+  const forwardRevision = await page.evaluate(() =>
+    window.__breditorHarness?.snapshot().document.revision,
+  );
+  expect(BigInt(forwardRevision ?? "0")).toBeGreaterThan(BigInt(selectedRevision ?? "0"));
+  expect(
+    await page.evaluate(() => window.__breditorHarness?.snapshot().status),
+  ).toEqual({ phase: "live" });
+});
+
 test("composition settles native DOM into one canonical Unicode commit", async ({
   page,
 }) => {

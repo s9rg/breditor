@@ -110,10 +110,13 @@ class FakeAdapter {
     });
   };
 
-  constructor(readonly projection: BaseDocumentProjection) {
-    this.host = document.createElement("div");
+  constructor(
+    readonly projection: BaseDocumentProjection,
+    host: HTMLElement = document.createElement("div"),
+  ) {
+    this.host = host;
     this.host.contentEditable = "true";
-    document.body.append(this.host);
+    if (!this.host.isConnected) document.body.append(this.host);
     const rendered = this.renderer.render(this.host, projection);
     if (!rendered.ok) throw new Error(rendered.error.code);
     this.rendered = rendered.value.rendered;
@@ -512,6 +515,144 @@ describe("BreditorBrowserEventRouter", () => {
     fixture.router.dispose();
   });
 
+  it("uses native host connectivity and owner document despite own shadows", () => {
+    const adapter = new FakeAdapter(projection());
+    const queue = new BreditorCommandQueue(adapter.commandExecutor);
+    const scheduler = new TaskScheduler();
+    const redirectedDocument = document.implementation.createHTMLDocument(
+      "redirected selection listener",
+    );
+    const ownerDocumentShadow = vi.fn(() => redirectedDocument);
+    const isConnectedShadow = vi.fn(() => false);
+    Object.defineProperties(adapter.host, {
+      ownerDocument: { configurable: true, get: ownerDocumentShadow },
+      isConnected: { configurable: true, get: isConnectedShadow },
+    });
+    const listeners = observeSelectionListenerLifecycle();
+    let router: BreditorBrowserEventRouter | undefined;
+    try {
+      router = new BreditorBrowserEventRouter(
+        queue,
+        adapter as unknown as BreditorWasmCommandAdapter,
+        options(scheduler),
+      );
+
+      expect(listeners.added.map((listener) => listener.target)).toEqual([
+        document,
+      ]);
+      expect(ownerDocumentShadow).not.toHaveBeenCalled();
+      expect(isConnectedShadow).not.toHaveBeenCalled();
+      router.dispose();
+      expect(listeners.removed).toEqual(listeners.added);
+    } finally {
+      router?.dispose();
+      Reflect.deleteProperty(adapter.host, "ownerDocument");
+      Reflect.deleteProperty(adapter.host, "isConnected");
+    }
+  });
+
+  it("does not derive listener intrinsics from an own document defaultView", () => {
+    const adapter = new FakeAdapter(projection());
+    const queue = new BreditorCommandQueue(adapter.commandExecutor);
+    const scheduler = new TaskScheduler();
+    const listeners = observeSelectionListenerLifecycle();
+    const defaultViewShadow = vi.fn(() => {
+      throw new Error("own defaultView must not select listener intrinsics");
+    });
+    const priorDescriptor = Object.getOwnPropertyDescriptor(document, "defaultView");
+    let router: BreditorBrowserEventRouter | undefined;
+    try {
+      Object.defineProperty(document, "defaultView", {
+        configurable: true,
+        get: defaultViewShadow,
+      });
+      router = new BreditorBrowserEventRouter(
+        queue,
+        adapter as unknown as BreditorWasmCommandAdapter,
+        options(scheduler),
+      );
+
+      expect(router.status).toEqual({ kind: "live" });
+      expect(defaultViewShadow).not.toHaveBeenCalled();
+      expect(listeners.added.map((listener) => listener.target)).toEqual([
+        document,
+      ]);
+      router.dispose();
+      expect(listeners.removed).toEqual(listeners.added);
+    } finally {
+      router?.dispose();
+      if (priorDescriptor === undefined) {
+        Reflect.deleteProperty(document, "defaultView");
+      } else {
+        Object.defineProperty(document, "defaultView", priorDescriptor);
+      }
+    }
+  });
+
+  it("routes and removes target-realm listeners for an adopted iframe host", () => {
+    const iframe = document.createElement("iframe");
+    document.body.append(iframe);
+    const foreignDocument = iframe.contentDocument;
+    if (foreignDocument === null) {
+      throw new Error("iframe realm is unavailable");
+    }
+    const host = foreignDocument.createElement("div");
+    const originalPrototype = Object.getPrototypeOf(host) as object;
+    expect(originalPrototype === HTMLDivElement.prototype).toBe(false);
+    document.adoptNode(host);
+    document.body.append(host);
+    expect(host.ownerDocument).toBe(document);
+    expect(Object.getPrototypeOf(host) === originalPrototype).toBe(true);
+    expect(host).not.toBeInstanceOf(HTMLElement);
+    const addTrap = vi.fn(() => {
+      throw new Error("host-only addEventListener prototype trap ran");
+    });
+    const removeTrap = vi.fn(() => {
+      throw new Error("host-only removeEventListener prototype trap ran");
+    });
+    const nodeTypeTrap = vi.fn(() => 1);
+    const ownerDocumentTrap = vi.fn(() => document);
+    const hostilePrototype = Object.create(originalPrototype) as object;
+    Object.defineProperties(hostilePrototype, {
+      nodeType: { configurable: true, get: nodeTypeTrap },
+      ownerDocument: { configurable: true, get: ownerDocumentTrap },
+      addEventListener: { configurable: true, value: addTrap },
+      removeEventListener: { configurable: true, value: removeTrap },
+    });
+    Object.setPrototypeOf(host, hostilePrototype);
+
+    let router: BreditorBrowserEventRouter | undefined;
+    try {
+      const adapter = new FakeAdapter(projection(), host);
+      installDomSelection(adapter.host, 1);
+      const queue = new BreditorCommandQueue(adapter.commandExecutor);
+      router = new BreditorBrowserEventRouter(
+        queue,
+        adapter as unknown as BreditorWasmCommandAdapter,
+        options(new TaskScheduler()),
+      );
+
+      expect(router.status).toEqual({ kind: "live" });
+      expect(
+        adapter.host.dispatchEvent(keyEvent("b", "KeyB", { ctrlKey: true })),
+      ).toBe(false);
+      expect(adapter.requests).toHaveLength(1);
+
+      expect(router.dispose()).toEqual({ kind: "disposed" });
+      expect(
+        adapter.host.dispatchEvent(keyEvent("b", "KeyB", { ctrlKey: true })),
+      ).toBe(true);
+      expect(adapter.requests).toHaveLength(1);
+      expect(addTrap).not.toHaveBeenCalled();
+      expect(removeTrap).not.toHaveBeenCalled();
+    } finally {
+      router?.dispose();
+      Object.setPrototypeOf(host, originalPrototype);
+      host.remove();
+      iframe.remove();
+    }
+  });
+
   it("restores canonical DOM after a reconciliation disposition", () => {
     const fixture = setup();
     fixture.adapter.host.firstElementChild?.append("drift");
@@ -885,4 +1026,55 @@ function installDomSelection(host: HTMLElement, offset: number): void {
   }
   selection.removeAllRanges();
   selection.addRange(range);
+}
+
+interface ObservedSelectionListener {
+  readonly target: EventTarget;
+  readonly listener: EventListenerOrEventListenerObject | null;
+  readonly capture: boolean;
+}
+
+function observeSelectionListenerLifecycle(): Readonly<{
+  added: ObservedSelectionListener[];
+  removed: ObservedSelectionListener[];
+}> {
+  const added: ObservedSelectionListener[] = [];
+  const removed: ObservedSelectionListener[] = [];
+  const nativeAdd = EventTarget.prototype.addEventListener;
+  const nativeRemove = EventTarget.prototype.removeEventListener;
+  vi.spyOn(EventTarget.prototype, "addEventListener").mockImplementation(function (
+    this: EventTarget,
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | AddEventListenerOptions,
+  ): void {
+    if (type === "selectionchange") {
+      added.push({
+        target: this,
+        listener,
+        capture: listenerCapture(options),
+      });
+    }
+    Reflect.apply(nativeAdd, this, [type, listener, options]);
+  });
+  vi.spyOn(EventTarget.prototype, "removeEventListener").mockImplementation(function (
+    this: EventTarget,
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: boolean | EventListenerOptions,
+  ): void {
+    if (type === "selectionchange") {
+      removed.push({
+        target: this,
+        listener,
+        capture: listenerCapture(options),
+      });
+    }
+    Reflect.apply(nativeRemove, this, [type, listener, options]);
+  });
+  return Object.freeze({ added, removed });
+}
+
+function listenerCapture(options?: boolean | EventListenerOptions): boolean {
+  return typeof options === "boolean" ? options : options?.capture === true;
 }

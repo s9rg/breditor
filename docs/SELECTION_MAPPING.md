@@ -1,6 +1,7 @@
 # Breditor selection mapping contract
 
-Status: implemented for the closed base schema in `0.0.52`; pre-`0.1` API
+Status: supported inside the public `0.1.0` runtime for the closed base schema;
+direct mapping and controller construction remains advanced and experimental
 
 The Rust editor state owns the semantic selection. A browser `Selection` is a
 temporary presentation of that value over one exact DOM projection, and a DOM
@@ -106,11 +107,15 @@ artifacts and never acquire fake AST paths.
   zero in its `<p>`, not into the placeholder `<br>`.
 - Root children points are invalid base range endpoints and are not emitted.
 
-Programmatic installation preserves anchor/focus direction. The preferred DOM
-operation is `setBaseAndExtent`. A fallback may collapse at the anchor and
-extend to the focus, but it must verify the installed endpoints afterward. If
-the platform cannot preserve a backward selection exactly, the write fails
-closed instead of silently turning it forward.
+Programmatic installation preserves anchor/focus direction. An exact caret
+whose DOM anchor and focus are the same container and offset is installed with
+`Range`, `removeAllRanges`, and `addRange`; this avoids WebKit transiently
+exposing new anchor/focus fields with an old `getRangeAt(0)` after an owned DOM
+replacement. Every non-identical endpoint pair uses `setBaseAndExtent` when it
+is available. A verified `Range` fallback is allowed for forward or collapsed
+selections when it is unavailable. If the platform cannot preserve a backward
+selection exactly, the write fails closed instead of silently turning it
+forward.
 
 ### DOM to AST
 

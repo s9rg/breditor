@@ -43,18 +43,20 @@ describe("BreditorToolbar", () => {
     expect(toolbar.element.getAttribute("aria-label")).toBe("Editor controls");
     expect(toolbar.element.getAttribute("aria-orientation")).toBe("horizontal");
     expect(host.hasAttribute("role")).toBe(false);
-    expect(buttons.map((button) => button.textContent)).toEqual(["Bold", "Undo", "Redo"]);
+    expect(buttons.map((button) => button.textContent)).toEqual([
+      "Bold",
+      "Undo",
+      "Redo",
+    ]);
     expect(buttons.every((button) => button.type === "button")).toBe(true);
     expect(buttons.map((button) => button.getAttribute("tabindex"))).toEqual([
       "0",
       "-1",
       "-1",
     ]);
-    expect(buttons.map((button) => button.getAttribute("aria-disabled"))).toEqual([
-      "false",
-      "false",
-      "true",
-    ]);
+    expect(
+      buttons.map((button) => button.getAttribute("aria-disabled")),
+    ).toEqual(["false", "false", "true"]);
     expect(buttons.map((button) => button.hasAttribute("disabled"))).toEqual([
       false,
       false,
@@ -65,6 +67,75 @@ describe("BreditorToolbar", () => {
     expect(buttons[2]?.hasAttribute("aria-pressed")).toBe(false);
 
     toolbar.dispose();
+  });
+
+  it("uses native host DOM operations despite own mutation shadows", () => {
+    const hostDocument =
+      document.implementation.createHTMLDocument("shadowed toolbar");
+    const host = hostDocument.createElement("div");
+    hostDocument.body.append(host);
+    const createElement = vi.fn(() => {
+      throw new Error("shadowed createElement must not be called");
+    });
+    Object.defineProperty(hostDocument, "createElement", {
+      configurable: true,
+      value: createElement,
+    });
+    const ownerDocument = vi.fn(() => {
+      throw new Error("shadowed ownerDocument must not be read");
+    });
+    const append = vi.fn();
+    const appendChild = vi.fn(() => {
+      throw new Error("shadowed appendChild must not be called");
+    });
+    const getAttribute = vi.fn(() => {
+      throw new Error("shadowed getAttribute must not be called");
+    });
+    const hasAttribute = vi.fn(() => {
+      throw new Error("shadowed hasAttribute must not be called");
+    });
+    const setAttribute = vi.fn(() => {
+      throw new Error("shadowed setAttribute must not be called");
+    });
+    const removeAttribute = vi.fn(() => {
+      throw new Error("shadowed removeAttribute must not be called");
+    });
+    Object.defineProperties(host, {
+      ownerDocument: { configurable: true, get: ownerDocument },
+      append: { configurable: true, value: append },
+      appendChild: { configurable: true, value: appendChild },
+      getAttribute: { configurable: true, value: getAttribute },
+      hasAttribute: { configurable: true, value: hasAttribute },
+      setAttribute: { configurable: true, value: setAttribute },
+      removeAttribute: { configurable: true, value: removeAttribute },
+    });
+
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch: completedDispatch },
+    );
+
+    expect(toolbar.element.parentNode).toBe(host);
+    expect(toolbar.element.ownerDocument).toBe(hostDocument);
+    expect(toolbar.element.getAttribute("data-breditor-toolbar-root")).toBe("");
+    expect(toolbarButtons(toolbar.element)).toHaveLength(3);
+    for (const shadow of [
+      createElement,
+      ownerDocument,
+      append,
+      appendChild,
+      getAttribute,
+      hasAttribute,
+      setAttribute,
+      removeAttribute,
+    ]) {
+      expect(shadow).not.toHaveBeenCalled();
+    }
+
+    toolbar.dispose();
+    expect(host.childNodes).toHaveLength(0);
   });
 
   it("publishes true, false, and mixed only for activation-tracked controls", () => {
@@ -157,13 +228,16 @@ describe("BreditorToolbar", () => {
     expect(disabledValues(host)).toEqual(["true", "true", "true"]);
 
     store.publishRaw({
-      entries: Array.from({ length: MAX_TOOLBAR_STATE_ENTRIES + 1 }, (_, index) =>
-        state(`example/control-${index}`, "enabled", "stateless"),
+      entries: Array.from(
+        { length: MAX_TOOLBAR_STATE_ENTRIES + 1 },
+        (_, index) => state(`example/control-${index}`, "enabled", "stateless"),
       ),
     });
     expect(disabledValues(host)).toEqual(["true", "true", "true"]);
 
-    store.publishRaw({ entries: [{ id: BASE_TOOLBAR_STATE_IDS.bold, availability: "maybe" }] });
+    store.publishRaw({
+      entries: [{ id: BASE_TOOLBAR_STATE_IDS.bold, availability: "maybe" }],
+    });
     expect(disabledValues(host)).toEqual(["true", "true", "true"]);
 
     store.publish(baseEntries());
@@ -274,7 +348,9 @@ describe("BreditorToolbar", () => {
       command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
     });
     expect(Object.isFrozen(invocations[0])).toBe(true);
-    expect(invocations[0]?.command).toBe(DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command);
+    expect(invocations[0]?.command).toBe(
+      DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+    );
     expect(document.activeElement).toBe(editor);
     expect(selection.toString()).toBe("selected");
 
@@ -313,6 +389,171 @@ describe("BreditorToolbar", () => {
     expect(toolbar.state).toBe("live");
     expect(document.activeElement).toBe(bold);
     toolbar.dispose();
+  });
+
+  it.each(["noOp", "throw"] as const)(
+    "uses native topology and focus proofs during %s-shadowed navigation and restoration",
+    (mode) => {
+      const editor = document.createElement("div");
+      editor.tabIndex = 0;
+      const host = document.createElement("div");
+      document.body.append(editor, host);
+      const dispatch = vi.fn(() => {
+        editor.focus();
+        return completedDispatch();
+      });
+      const toolbar = new BreditorToolbar(
+        host,
+        DEFAULT_TOOLBAR_MANIFEST,
+        new TestStateStore(baseEntries()),
+        { dispatch },
+      );
+      const [bold, undo] = toolbarButtons(host);
+      if (bold === undefined || undo === undefined) {
+        throw new Error("toolbar buttons are unavailable");
+      }
+      bold.focus();
+
+      const shadowResult = <Value>(value: Value): Value => {
+        if (mode === "throw") {
+          throw new DOMException(
+            "own focus topology shadow ran",
+            "InvalidStateError",
+          );
+        }
+        return value;
+      };
+      const focusShadow = vi.fn(() => shadowResult(undefined));
+      const parentNodeShadow = vi.fn(() => shadowResult(toolbar.element));
+      const isConnectedShadow = vi.fn(() => shadowResult(true));
+      const ownerDocumentShadow = vi.fn(() => shadowResult(document));
+      const activeElementShadow = vi.fn(() => shadowResult(undo));
+      const activeElementDescriptor = Object.getOwnPropertyDescriptor(
+        document,
+        "activeElement",
+      );
+      Object.defineProperties(undo, {
+        focus: { configurable: true, value: focusShadow },
+        parentNode: { configurable: true, get: parentNodeShadow },
+        isConnected: { configurable: true, get: isConnectedShadow },
+        ownerDocument: {
+          configurable: true,
+          get: ownerDocumentShadow,
+        },
+      });
+      Object.defineProperty(document, "activeElement", {
+        configurable: true,
+        get: activeElementShadow,
+      });
+
+      try {
+        expect(key(bold, "ArrowRight").defaultPrevented).toBe(true);
+        undo.click();
+
+        Reflect.deleteProperty(undo, "focus");
+        Reflect.deleteProperty(undo, "parentNode");
+        Reflect.deleteProperty(undo, "isConnected");
+        Reflect.deleteProperty(undo, "ownerDocument");
+        if (activeElementDescriptor === undefined) {
+          Reflect.deleteProperty(document, "activeElement");
+        } else {
+          Object.defineProperty(
+            document,
+            "activeElement",
+            activeElementDescriptor,
+          );
+        }
+
+        expect(toolbar.state).toBe("live");
+        expect(dispatch).toHaveBeenCalledOnce();
+        expect(document.activeElement).toBe(undo);
+        for (const shadow of [
+          focusShadow,
+          parentNodeShadow,
+          isConnectedShadow,
+          ownerDocumentShadow,
+          activeElementShadow,
+        ]) {
+          expect(shadow).not.toHaveBeenCalled();
+        }
+      } finally {
+        Reflect.deleteProperty(undo, "focus");
+        Reflect.deleteProperty(undo, "parentNode");
+        Reflect.deleteProperty(undo, "isConnected");
+        Reflect.deleteProperty(undo, "ownerDocument");
+        if (activeElementDescriptor === undefined) {
+          Reflect.deleteProperty(document, "activeElement");
+        } else {
+          Object.defineProperty(
+            document,
+            "activeElement",
+            activeElementDescriptor,
+          );
+        }
+        toolbar.dispose();
+      }
+    },
+  );
+
+  it("ignores a detached generated button despite forged topology and focus shadows", () => {
+    const host = mountHost();
+    const dispatch = vi.fn(completedDispatch);
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch },
+    );
+    const button = toolbarButtons(host)[0];
+    if (button === undefined) throw new Error("toolbar button is unavailable");
+    toolbar.element.removeChild(button);
+
+    const parentNodeShadow = vi.fn(() => toolbar.element);
+    const isConnectedShadow = vi.fn(() => true);
+    const ownerDocumentShadow = vi.fn(() => document);
+    const activeElementShadow = vi.fn(() => button);
+    const activeElementDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      "activeElement",
+    );
+    Object.defineProperties(button, {
+      parentNode: { configurable: true, get: parentNodeShadow },
+      isConnected: { configurable: true, get: isConnectedShadow },
+      ownerDocument: { configurable: true, get: ownerDocumentShadow },
+    });
+    Object.defineProperty(document, "activeElement", {
+      configurable: true,
+      get: activeElementShadow,
+    });
+
+    try {
+      button.click();
+
+      expect(toolbar.state).toBe("live");
+      expect(dispatch).not.toHaveBeenCalled();
+      for (const shadow of [
+        parentNodeShadow,
+        isConnectedShadow,
+        ownerDocumentShadow,
+        activeElementShadow,
+      ]) {
+        expect(shadow).not.toHaveBeenCalled();
+      }
+    } finally {
+      Reflect.deleteProperty(button, "parentNode");
+      Reflect.deleteProperty(button, "isConnected");
+      Reflect.deleteProperty(button, "ownerDocument");
+      if (activeElementDescriptor === undefined) {
+        Reflect.deleteProperty(document, "activeElement");
+      } else {
+        Object.defineProperty(
+          document,
+          "activeElement",
+          activeElementDescriptor,
+        );
+      }
+      toolbar.dispose();
+    }
   });
 
   it("never dispatches disabled controls and rechecks current state at click time", () => {
@@ -416,9 +657,9 @@ describe("BreditorToolbar", () => {
       DEFAULT_TOOLBAR_MANIFEST,
       new TestStateStore(baseEntries()),
       {
-      dispatch: () => {
-        throw new Error("uncertain dispatch");
-      },
+        dispatch: () => {
+          throw new Error("uncertain dispatch");
+        },
       },
     );
     expect(() => toolbarButtons(throwingHost)[0]?.click()).not.toThrow();
@@ -581,6 +822,70 @@ describe("BreditorToolbar", () => {
     replacement.dispose();
   });
 
+  it.each(["noOp", "throw"] as const)(
+    "uses native teardown despite %s own removal shadows",
+    (mode) => {
+      const host = mountHost();
+      const toolbar = new BreditorToolbar(
+        host,
+        DEFAULT_TOOLBAR_MANIFEST,
+        new TestStateStore(baseEntries()),
+        { dispatch: completedDispatch },
+      );
+      const root = toolbar.element;
+      const buttons = toolbarButtons(root);
+      const removeShadows = [root, ...buttons].map((element) => {
+        const shadow = vi.fn(() => {
+          if (mode === "throw") {
+            throw new DOMException(
+              "own remove shadow ran",
+              "InvalidStateError",
+            );
+          }
+        });
+        Object.defineProperty(element, "remove", {
+          configurable: true,
+          value: shadow,
+        });
+        return shadow;
+      });
+      const listenerShadows = buttons.map((button) => {
+        const shadow = vi.fn(() => {
+          if (mode === "throw") {
+            throw new DOMException(
+              "own removeEventListener shadow ran",
+              "InvalidStateError",
+            );
+          }
+        });
+        Object.defineProperty(button, "removeEventListener", {
+          configurable: true,
+          value: shadow,
+        });
+        return shadow;
+      });
+
+      expect(() => toolbar.dispose()).not.toThrow();
+
+      expect(toolbar.state).toBe("disposed");
+      expect(host.childNodes).toHaveLength(0);
+      expect(root.parentNode).toBeNull();
+      expect(buttons.every((button) => button.parentNode === null)).toBe(true);
+      for (const shadow of [...removeShadows, ...listenerShadows]) {
+        expect(shadow).not.toHaveBeenCalled();
+      }
+
+      const replacement = new BreditorToolbar(
+        host,
+        DEFAULT_TOOLBAR_MANIFEST,
+        new TestStateStore(baseEntries()),
+        { dispatch: completedDispatch },
+      );
+      expect(replacement.element.parentNode).toBe(host);
+      replacement.dispose();
+    },
+  );
+
   it("rejects duplicate live ownership and invalid subscription wiring", () => {
     const host = mountHost();
     const first = new BreditorToolbar(
@@ -633,12 +938,9 @@ describe("BreditorToolbar", () => {
         if (!attempted) {
           attempted = true;
           try {
-            new BreditorToolbar(
-              host,
-              DEFAULT_TOOLBAR_MANIFEST,
-              nestedStore,
-              { dispatch: completedDispatch },
-            );
+            new BreditorToolbar(host, DEFAULT_TOOLBAR_MANIFEST, nestedStore, {
+              dispatch: completedDispatch,
+            });
           } catch (error) {
             nestedError = error;
           }
@@ -647,17 +949,16 @@ describe("BreditorToolbar", () => {
       },
     });
 
-    const toolbar = new BreditorToolbar(
-      host,
-      reentrantManifest,
-      outerStore,
-      { dispatch: completedDispatch },
-    );
+    const toolbar = new BreditorToolbar(host, reentrantManifest, outerStore, {
+      dispatch: completedDispatch,
+    });
 
     expect(attempted).toBe(true);
     expect(nestedError).toBeInstanceOf(TypeError);
     expect(String(nestedError)).toMatch(/already/u);
-    expect(host.querySelectorAll('[data-breditor-toolbar-root]')).toHaveLength(1);
+    expect(host.querySelectorAll("[data-breditor-toolbar-root]")).toHaveLength(
+      1,
+    );
     expect(outerStore.listenerCount).toBe(1);
     expect(nestedStore.listenerCount).toBe(0);
     toolbar.dispose();
@@ -693,7 +994,8 @@ describe("BreditorToolbar", () => {
   });
 
   it("uses an isolated same-document root and rejects unsafe mount containers", () => {
-    const separateDocument = document.implementation.createHTMLDocument("toolbar");
+    const separateDocument =
+      document.implementation.createHTMLDocument("toolbar");
     const safeHost = separateDocument.createElement("nav");
     safeHost.setAttribute("aria-labelledby", "application-owned-label");
     separateDocument.body.append(safeHost);
@@ -705,7 +1007,9 @@ describe("BreditorToolbar", () => {
     );
     expect(toolbar.element.ownerDocument).toBe(separateDocument);
     expect(toolbar.element.getAttribute("aria-label")).toBe("Editor controls");
-    expect(safeHost.getAttribute("aria-labelledby")).toBe("application-owned-label");
+    expect(safeHost.getAttribute("aria-labelledby")).toBe(
+      "application-owned-label",
+    );
     expect(
       toolbarButtons(safeHost).filter((button) => button.tabIndex === 0),
     ).toHaveLength(1);
@@ -718,8 +1022,16 @@ describe("BreditorToolbar", () => {
       document.createElement("textarea"),
       document.createElement("a"),
     ];
+    Object.defineProperty(unsafeHosts[0], "tagName", {
+      configurable: true,
+      value: "DIV",
+    });
     const roleButton = document.createElement("div");
     roleButton.setAttribute("role", "button");
+    Object.defineProperties(roleButton, {
+      getAttribute: { configurable: true, value: () => null },
+      hasAttribute: { configurable: true, value: () => false },
+    });
     unsafeHosts.push(roleButton);
     const tabbable = document.createElement("div");
     tabbable.tabIndex = 0;
@@ -742,7 +1054,9 @@ describe("BreditorToolbar", () => {
           ),
         unsafeHost.outerHTML,
       ).toThrow(/host/u);
-      expect(unsafeHost.querySelector('[data-breditor-toolbar-root]')).toBeNull();
+      expect(
+        unsafeHost.querySelector("[data-breditor-toolbar-root]"),
+      ).toBeNull();
     }
   });
 });
@@ -753,7 +1067,10 @@ class TestStateStore {
   readonly #listeners = new Set<() => void>();
   readonly #throwOnUnsubscribe: boolean;
 
-  constructor(entries: readonly ToolbarActionStateEntry[], throwOnUnsubscribe = false) {
+  constructor(
+    entries: readonly ToolbarActionStateEntry[],
+    throwOnUnsubscribe = false,
+  ) {
     this.#snapshot = Object.freeze({ entries: Object.freeze([...entries]) });
     this.#throwOnUnsubscribe = throwOnUnsubscribe;
   }
@@ -821,14 +1138,20 @@ function mountHost(): HTMLElement {
 }
 
 function toolbarButtons(host: HTMLElement): HTMLButtonElement[] {
-  return Array.from(host.querySelectorAll<HTMLButtonElement>("button[data-breditor-state-id]"));
+  return Array.from(
+    host.querySelectorAll<HTMLButtonElement>("button[data-breditor-state-id]"),
+  );
 }
 
 function disabledValues(host: HTMLElement): Array<string | null> {
-  return toolbarButtons(host).map((button) => button.getAttribute("aria-disabled"));
+  return toolbarButtons(host).map((button) =>
+    button.getAttribute("aria-disabled"),
+  );
 }
 
-function tabIndexes(buttons: readonly HTMLButtonElement[]): Array<string | null> {
+function tabIndexes(
+  buttons: readonly HTMLButtonElement[],
+): Array<string | null> {
   return buttons.map((button) => button.getAttribute("tabindex"));
 }
 

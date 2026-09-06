@@ -228,7 +228,25 @@ pub(crate) fn point_protocol_child_count_maximum() -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{child_count_fits_point_protocol, point_protocol_child_count_maximum};
+    use super::{
+        DocumentLimits, child_count_fits_point_protocol, point_protocol_child_count_maximum,
+    };
+
+    #[test]
+    fn defaults_pin_the_official_v0_1_document_acceptance_floor() {
+        let limits = DocumentLimits::default();
+
+        assert_eq!(limits.max_json_bytes(), 16 * 1024 * 1024);
+        assert_eq!(limits.max_node_depth(), 64);
+        assert_eq!(limits.max_nodes(), 100_000);
+        assert_eq!(limits.max_children_per_element(), 10_000);
+        assert_eq!(limits.max_text_bytes(), 1024 * 1024);
+        assert_eq!(limits.max_total_text_bytes(), 8 * 1024 * 1024);
+        assert_eq!(limits.max_formats_per_text(), 32);
+        assert_eq!(limits.max_properties_per_owner(), 128);
+        assert_eq!(limits.max_property_depth(), 32);
+        assert_eq!(limits.max_property_values(), 10_000);
+    }
 
     #[test]
     fn child_count_reserves_a_representable_end_boundary() {

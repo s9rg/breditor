@@ -87,7 +87,7 @@
 //! successor begins separately with explicit recovery/frame policies and
 //! generation-relative offset zero.
 //! [`codec::LocalLogStorageGenerationJsonCodec`] provides strict
-//! ordinary-rotation validation for the unstable pre-`0.1`
+//! ordinary-rotation validation for the experimental repository-internal
 //! `breditor/local-log-storage-generation@1` shape. A separately trusted
 //! [`codec::LocalLogStorageGenerationBinding`] fixes the profile, scope, and
 //! old/new heads; borrowed preparation couples one compaction outcome to exact
@@ -341,7 +341,8 @@
 //! authenticates `IndexedDB` events, performs storage I/O, proves durability or
 //! stable currentness, grants adapter/writer authority, reconstructs a plan
 //! after process restart, or releases semantic ownership. All Storage V1 shapes
-//! remain unstable pre-`0.1` contracts.
+//! remain experimental contracts outside the `0.1.x` browser compatibility
+//! promise.
 //!
 //! Version `0.0.41` adds the pure writer-fence comparison and acquisition-plan
 //! boundary. [`local_log::LocalLogStorageWriterEpoch`] is a canonical nonzero,

@@ -1,10 +1,9 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.59` adds explicit, snapshot-correlated Document V1 and plain-text
-egress to the public `BreditorBrowserEditor` owner introduced in `0.0.58`. The
-owner wraps the
-lower-level behavior implemented through `0.0.57`: it boots the generated
+Version `0.1.0` freezes the supported high-level `BreditorBrowserEditor` owner
+and its explicit, snapshot-correlated Document V1 and plain-text egress. The
+owner boots the generated
 Rust/Wasm engine, renders the validated base-schema AST into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
 strict paragraph-local composition lease plus guarded copy/cut/paste without
@@ -19,17 +18,16 @@ optional declarative toolbar, and optional atomic IndexedDB autosave as one
 all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
-The package has a public ESM entry point. Its pre-`0.1` contract remains
-unstable, but a clean npm tarball is install-, import-, and type-check tested
+The package root is the supported `0.1.x` ESM entry point. Clean npm tarballs
+are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
-the corresponding TypeScript sources are not part of the published package.
+the corresponding TypeScript sources are not part of the package.
 
-The package root is the narrow high-level editor API. Lower-level renderer,
+Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
-available from the explicit `@breditor/browser/advanced` entry point.
-Consumers upgrading from `0.0.57` must move every former low-level root import
-from `@breditor/browser` to `@breditor/browser/advanced`; the symbols remain
-available there, but the root no longer re-exports them.
+available from the explicit `@breditor/browser/advanced` entry point, which is
+experimental and outside the `0.1.x` compatibility promise. Only the package
+root and the documented V1 browser formats carry that promise.
 
 ## Public runtime
 
@@ -37,7 +35,7 @@ Initialize the matching `@breditor/wasm` package once, then pass connected,
 empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
 
 ```sh
-npm install @breditor/browser@0.0.59 @breditor/wasm@0.0.59
+npm install @breditor/browser@0.1.0 @breditor/wasm@0.1.0
 ```
 
 ```ts
@@ -89,6 +87,53 @@ const result = await openBreditorBrowserEditor({
 if (!result.ok) throw new Error(result.error.message);
 const editor = result.editor;
 ```
+
+The supported `0.1.x` configuration passes the initialized, exactly
+version-matched official module namespace as shown above. The root option also
+admits a bare structural factory as an advanced testing/host escape hatch, but
+custom factory implementations and their generated handle protocol are not a
+supported compatibility surface.
+
+The editor's accessible `label` is retained verbatim and must be well-formed
+UTF-16 containing at least one non-whitespace character and 1 through 256
+UTF-16 code units. `MAX_BROWSER_EDITOR_LABEL_UTF16` exposes that ceiling. One
+editor retains at most 64 distinct subscriber functions, exposed as
+`MAX_BROWSER_EDITOR_SUBSCRIBERS`.
+
+`initialDocument.lineageId` is 1 through 128 ASCII characters, starts with a
+letter or digit, and then permits letters, digits, `.`, `_`, `:`, and `-`.
+`historyCapacity` is a safe integer from 0 through 100, whose ceiling is exposed
+as `MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY`. `documentJson` must be a conforming
+`breditor/document@1` value. A valid stored checkpoint takes precedence over
+all three fresh-document fields.
+
+The keyboard policy is explicit and platform-independent.
+`beforeinputPrimary` leaves Backspace, Delete, and Enter to `beforeinput`, while
+`structuralFallback` may translate those three keys at `keydown`; text is never
+derived from `keydown`. `primaryModifier` chooses `control` or `meta` for
+shortcuts, and `shortcuts` enables or disables Breditor's shortcut translation.
+
+The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
+`header`, `main`, `nav`, or `section`. The distinct toolbar host uses the same
+tag allowlist, has no `tabindex`, and is outside an effective editable region.
+Its optional case-insensitive role tokens are limited to
+`banner`, `complementary`, `contentinfo`, `form`, `generic`, `group`, `main`,
+`navigation`, `none`, `presentation`, `region`, or `search` (an empty role is
+also accepted). Both remain application-owned mounts with no framework-rendered
+children during the editor lifetime. `spellcheck` defaults to `true`. A custom
+`scheduleTask` must enqueue its callback for a later task and return `void`;
+calling it inline is invalid. An optional `AbortSignal` cancels startup only and
+does not dispose an editor that has already opened.
+
+Four root-owned styling hooks are stable in `0.1.x`. The application editing
+host carries `data-breditor-editor-root=""` for the successful owner lifetime,
+including a faulted phase, until disposal. The runtime appends one
+owned `<div data-breditor-toolbar-root="">` to the optional toolbar host. Each
+generated button carries `data-breditor-state-id` equal to its declaration's
+exact `stateId`, and carries `data-breditor-group` with the exact declared value
+only when `group` is present. Manifest order is preserved, but no other DOM
+topology or generated class name is promised. Disposal removes the owned
+toolbar root and restores the editing-host attributes installed by the owner.
 
 The Rust AST, selection, action state, history, and checkpoint remain
 authoritative. The editor exposes immutable status snapshots, bounded
@@ -340,8 +385,24 @@ ordinary input. Advanced integrations assembling the lower-level controllers
 must preserve that exact precedence and route clipboard-shaped
 `beforeinput`/`input` only to the clipboard controller; the ordinary controller
 reports `clipboardOwns` for those input types. Clipboard limits and failure
-semantics are summarized here so the published package does not depend on a
+semantics are summarized here so the packed package does not depend on a
 repository-only documentation link.
+
+Copy/cut output is bounded to 8 MiB plus 9,999 UTF-16 code units and the same
+UTF-8-byte count for plain text, and to 64 MiB in both measures for escaped
+HTML. Atomic plain-text paste accepts at most 65,536 UTF-16 code units and
+65,536 UTF-8 bytes. HTML-only paste accepts at most 2 MiB of source in each
+measure, then inspects at most 65,536 repaired nodes, depth 3, and 10,000
+paragraphs before producing the same 65,536-unit/byte plain-text result limit.
+Advertised `text/plain` always wins and a malformed, empty, throwing, or
+oversized preferred value fails closed without HTML fallback. Ill-formed
+Unicode fails closed. Because the operation publishes a paired HTML form,
+U+0000, U+0001–U+0008, U+000B, U+000E–U+001F, U+007F–U+009F,
+U+FDD0–U+FDEF, and every plane's U+nFFFE/U+nFFFF also reject the complete
+copy/cut operation: safe HTML-tokenizer representation of those controls and
+noncharacters cannot be guaranteed. Unsupported markup, attributes,
+namespaces, structure, or resource use likewise fails closed; no clipboard
+payload is included in a public error.
 
 This low-level wiring is host-trusted: the controller structurally snapshots an
 adapter-compatible JavaScript surface, and its lease excludes only submissions
@@ -363,12 +424,18 @@ store compares complete snapshots locally; the engine-global full/delta/cache-hi
 relation is never mistaken for an individual consumer's baseline.
 
 `BreditorToolbar` is driven by a bounded immutable presentation manifest. The
-default manifest contains Bold, Undo, and Redo, but visible order, labels,
-and optional grouping keys are browser-owned. Retained manifest fields must be
-own data properties and controls must be a bounded dense array; accessors and
-inherited fields are not executed. Shortcut descriptions remain out of the
-v0.0.56 schema until the runtime can register and verify the behavior they
-advertise.
+default manifest contains Bold, Undo, and Redo, but visible order, labels, and
+optional grouping keys are browser-owned. `createToolbarManifest` accepts a
+dense array of 1 through 64 own data controls. Toolbar/control labels are valid
+Unicode with non-whitespace content, no ASCII controls or DEL, at most 128
+UTF-16 code units, and at most 512 UTF-8 bytes. Unique state IDs and action IDs
+are at most 128 lowercase ASCII characters in `namespace/local-name` form.
+Optional groups are valid Unicode, trimmed, nonempty, control-free, and at most
+64 UTF-16 code units / 256 UTF-8 bytes. Nonempty string inputs are valid Unicode
+and at most 65,536 UTF-16 code units / 65,536 UTF-8 bytes. The package root
+exports these bounds. Accessors and inherited fields are not executed. Shortcut descriptions
+remain out of the `0.1.0` schema until the runtime can register and verify the
+behavior they advertise.
 
 The toolbar creates one isolated owned root inside a validated non-interactive
 mount. Native buttons expose only fresh availability and pressed/mixed state,
@@ -378,6 +445,11 @@ accepts only a minted synchronous outcome. The runtime converts invocations
 with `toolbarCommandRequest` and sends them through the same queue; Rust
 revalidates every command against the current observation. The complete
 manifest contract is documented in `docs/TOOLBAR.md` in the repository.
+
+A custom manifest does not register behavior. The official `0.1.0` engine
+publishes matching state/command bindings only for Bold, Undo, and Redo;
+another control stays disabled unless the injected engine already exposes its
+matching state and executable command.
 
 ## Session checkpoint persistence
 
@@ -397,7 +469,20 @@ new engine only after the Rust Session Checkpoint V1 decoder accepts it.
 2 s of continuous changes. Composition or another exclusive adapter lease can
 defer capture beyond that scheduling bound without a busy loop. The coordinator
 keeps at most one save active, retains exact flush epochs, and pauses on every
-failure until explicit retry.
+failure until explicit retry. One coordinator retains at most 1,024 concurrent
+`flushPersistence()`/`retryPersistence()` waiters; another call while that
+capacity is occupied resolves as `{ status: "rejected", reason: "capacity" }`.
+`MAX_SESSION_CHECKPOINT_AUTOSAVE_FLUSH_WAITERS` exposes the exact ceiling.
+High-level `persistence.autosave.delayMs` and `maxLatencyMs` accept safe integer
+milliseconds from 0 through 60,000 inclusive, require maximum latency to be at
+least the delay, and default to 250 and 2,000. These defaults and the maximum
+are root-exported constants. An optional scheduler supplies synchronous
+`now`, `schedule`, and `cancel` methods. `now()` must return a finite,
+nonnegative number; a clock regression is clamped to the last observed value.
+`now` and `schedule` must not throw or return thenables, and `schedule` must not
+fire its callback synchronously or reenter autosave while scheduling. Those
+violations pause persistence. A `cancel` throw or returned thenable is contained
+after logical timer invalidation and does not become a persistence failure.
 Its bounded `observeStatus()` feed delivers coalesced immutable lifecycle
 snapshots on microtasks, contains listener failure, and preserves a stable
 payload-free storage `causeCode` so applications can surface quota, conflict,

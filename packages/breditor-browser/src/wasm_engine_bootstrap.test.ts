@@ -188,7 +188,7 @@ function moduleFor(factory: WasmEngineBootstrapFactoryView): WasmEngineBootstrap
   return {
     BreditorEngine: factory,
     breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
-    breditorVersion: () => "0.0.59",
+    breditorVersion: () => "0.1.0",
   };
 }
 
@@ -620,7 +620,7 @@ describe("Wasm engine bootstrap", () => {
     const module = {
       BreditorEngine: throwingFactory,
       breditorWasmAbiVersion: () => rejected,
-      breditorVersion: () => "0.0.59",
+      breditorVersion: () => "0.1.0",
     } as unknown as WasmEngineBootstrapModuleView;
     expect(bootstrapWasmEngine(module, DOCUMENT_SOURCE)).toMatchObject({
       ok: false,

@@ -1,12 +1,17 @@
 # Breditor
 
-Breditor is an experimental, original rich-text editing engine. The name combines
-the HTML `<br>` element with “editor.” Other editors are research examples only;
-Breditor does not implement their document model, operation format, or plugin
-protocol.
+Breditor is an original, deliberately narrow rich-text editor with a
+deterministic Rust core. The name combines the HTML `<br>` element with
+“editor.” Other editors are research examples only; Breditor does not implement
+their document model, operation format, or plugin protocol.
 
-This repository currently contains the deterministic Rust core, its first
-narrow WebAssembly boundary, and a framework-neutral browser layer:
+Version `0.1.0` provides a supported framework-neutral browser editor, its
+generated WebAssembly engine, and a React reference integration. The repository
+also contains deeper experimental Rust storage and replay research. The exact
+support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
+history is in the [Changelog](CHANGELOG.md).
+
+The implementation includes:
 
 - immutable, structurally shared document values;
 - proof-derived cached document measurements for node count, maximum depth,
@@ -97,7 +102,7 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
 - a checkpoint-constrained engine owner that admits every effective mutation
   only after its complete canonical session checkpoint encodes, plus a generic
   no-DOM semantic Wasm projection with conservative commit invalidation; and
-- a publishable framework-neutral `@breditor/browser` package that consumes that
+- a framework-neutral `@breditor/browser` package that consumes that
   projection without JSON, creates a closed safe DOM vocabulary, maintains
   snapshot-local AST/DOM maps, retains proved paragraph identity, and rebuilds
   conservatively on broad impact or DOM drift, plus exact range/target mapping,
@@ -119,22 +124,20 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
   and an inherited proof-dropping compaction lifetime ceiling whose typed
   failures return the unchanged log owner.
 
-This is still a proof slice, not a complete editor. Structural edits beyond
-direct-root base-paragraph text structure, generic formatting kinds and
-attributes,
-  asynchronous action-state delivery, dynamic catalog registration,
-  presentation plugin lifecycle management, ordered log storage and tail-wide recovery,
-log/checkpoint coordinated replacement, storage-generation publication and initial
-scope provisioning, executable append I/O and process-restart append
-reconstruction,
-cryptographic integrity/authenticity, rollback protection, and
-crash-tail recovery,
-  asynchronous/programmatic clipboard,
-collaboration-aware or selective undo, and generic incremental validation for
-structural or custom-schema edits are not implemented. See
+The supported `0.1.0` product is intentionally small, not a general document
+processor. Structural edits beyond direct-root base-paragraph text structure,
+generic formatting kinds and attributes, asynchronous action-state delivery,
+dynamic catalog registration, presentation plugin lifecycle management,
+asynchronous/programmatic clipboard, collaboration-aware or selective undo,
+and generic incremental validation for structural or custom-schema edits are
+not implemented. The repository's ordered-log, storage-generation, and
+tail-recovery work remains experimental: it does not provide storage
+publication, scope provisioning, executable append I/O, process-restart append
+reconstruction, cryptographic authenticity, rollback protection, or crash-tail
+recovery. See
 [`docs/DATA_CONTRACT.md`](docs/DATA_CONTRACT.md) for the exact contracts and
 current performance limitations. The deliberately narrow browser-product
-target and remaining checkpoint sequence are frozen in
+boundary and its implementation history are recorded in
 [`docs/V0_1_SCOPE.md`](docs/V0_1_SCOPE.md). Fresh-genesis admission remains
 batch-only; hosts that need one-entry admission can compact an empty genesis
 generation into its first in-memory successor. That does not provision a
@@ -154,7 +157,8 @@ typestate, compare-and-swap, durability claim, or writable-owner release. The
 caller-supplied binding and prior manifest are not authority, and successful
 validation cannot prove ID/fence freshness or an empty successor. The
 implemented validation-only `breditor/local-log-storage-generation@1` shape
-remains a pre-`0.1` contract rather than a permanent compatibility promise.
+remains an experimental repository-internal contract outside the `0.1.x`
+compatibility promise.
 
 Version `0.0.33` is contract-only. It freezes one correctness-first
 [IndexedDB local-log profile](docs/INDEXEDDB_STORAGE_PROFILE.md): a distinct
@@ -359,8 +363,8 @@ mutation epoch cannot release a long-lived exclusive Rust writer. Rotation
 resolution remains pure Rust: no IndexedDB adapter, browser-event
 authentication, process-restart reconstruction, arbitrary far-later conflict
 classification, durability, or ownership release is implemented. All Storage
-V1 shapes remain unstable pre-`0.1` contracts rather than permanent
-compatibility promises.
+V1 shapes remain experimental repository-internal contracts outside the
+`0.1.x` compatibility promise.
 
 Version `0.0.41` implements the next pure-Rust writer-fence value boundary.
 `LocalLogStorageWriterEpoch` is a canonical, nonzero, nonwrapping `u64` with
@@ -698,7 +702,7 @@ checkpoint, and observation. The Wasm boundary now exposes guarded flattened
 semantic projections and commit-derived `none`, `textContainers`,
 `rootSplice`, or conservative `root` invalidation without importing DOM APIs.
 
-The private `@breditor/browser` workspace package validates and consumes that
+The `@breditor/browser` package validates and consumes that
 view, then renders the closed base schema using only `<p>`, `<strong>`, `<br>`,
 and text nodes. Host, paragraph, and text nodes receive private snapshot-local
 AST mappings; wrapper and placeholder nodes do not impersonate AST nodes.
@@ -784,8 +788,9 @@ authoritative projection without calling Rust before ordinary work can resume.
 The current implementation is limited to one range and one paragraph in a
 connected light-DOM host. It has no cross-block, shadow/composed-range,
 multi-range, arbitrary-IME-markup, or general mobile support claim; the real
-Chromium, Firefox, and WebKit matrix is now an automated `0.0.59`
-release-candidate gate. Its scope and remaining manual IME limits are recorded
+Chromium, Firefox, and WebKit matrix became an automated `0.0.59`
+release-candidate gate and remains a `0.1.0` release check. Its scope and manual
+IME limits are recorded
 in the [browser support and accessibility gate](docs/BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 Version `0.0.55` adds the [clipboard contract](docs/CLIPBOARD.md). A dedicated
@@ -837,9 +842,10 @@ tracked pressed/mixed state, and exact synchronous dispatch outcomes. Keyboard
 activation restores the same toolbar button after a command. Custom manifests can reorder or describe additional
 controls when a host supplies matching state and command implementations, but
 the distributed Rust/Wasm catalog itself remains the three base controls.
-Dynamic JavaScript action registration, styling/icons, menus, asynchronous
-delivery, and full assistive-technology certification remain later gates. The
-`0.0.59` candidate adds cross-browser keyboard/focus/ARIA assertions and an
+Dynamic JavaScript action registration, styling/icons, menus, and asynchronous
+delivery remain outside the `0.1.0` product. Full assistive-technology
+certification is explicitly not claimed. The `0.0.59` candidate added
+cross-browser keyboard/focus/ARIA assertions and an
 automated axe scan, neither of which by itself certifies WCAG conformance or
 screen-reader behavior.
 
@@ -864,7 +870,7 @@ checkpoint, not the proof kernel's ordered local log, merge, authenticated
 storage, rollback defense, or cross-device sync.
 
 Version `0.0.58` establishes the public framework-neutral browser owner, React
-reference integration, and publishable distribution foundation. The owner
+reference integration, and packaged distribution foundation. The owner
 boots the reviewed Wasm engine, restores or creates one session, installs the
 renderer, selection bridge, FIFO, unified composition/clipboard/ordinary event
 router, guarded action-state store, optional toolbar, and optional autosave as
@@ -893,15 +899,17 @@ with LF separators while discarding formatting. Both results report their
 UTF-8 byte length and exact document snapshot; busy, uncorrelated, malformed,
 and terminal reads fail closed without falling back to editable DOM.
 
-The candidate also adds a no-skip Playwright matrix for Chromium, Firefox, and
+That candidate also added a no-skip Playwright matrix for Chromium, Firefox, and
 WebKit using the generated Wasm and public browser runtime; a tarball-only
 consumer that imports, type-checks, bundles, and initializes the packages in a
 real Chromium page; and explicit package, Wasm, declaration, and React-example
 [size budgets](docs/SIZE_BUDGETS.md). The browser scenarios and accessibility
 claim boundaries are documented in the
 [browser support and accessibility gate](docs/BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
-The complete `0.0.59` validation gate has passed. The feature-free final
-`0.1.0` compatibility freeze and release notes remain separate work.
+The complete `0.0.59` validation gate passed. Version `0.1.0` makes no feature
+change to that candidate: it freezes the supported boundary, records the
+compatibility policy and limitations, and reruns the complete release suite.
+See [Compatibility](docs/COMPATIBILITY.md) and the [Changelog](CHANGELOG.md).
 
 ## Development
 

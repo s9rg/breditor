@@ -1,15 +1,14 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; checkpoints through the `0.0.59`
-release-candidate validation are complete
+Status: released; the `0.1.0` scope and every required release gate are complete
 
-`0.1.0` means a small, usable, local-first browser rich-text editor backed by
+`0.1.0` is a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
 contract already present in the proof kernel has a browser implementation.
 
 ## Product promise
 
-The release must let a user edit one document in a browser with:
+The release lets a user edit one document in a browser with:
 
 - the canonical Breditor document AST as the source of truth and the DOM as a
   disposable projection;
@@ -23,8 +22,9 @@ The release must let a user edit one document in a browser with:
 - copy, cut, and paste for the supported content subset, with untrusted HTML
   parsed through an explicit allowlist rather than installed as DOM;
 - deterministic local linear undo and redo with explicit history boundaries;
-- an accessible toolbar whose controls are derived from action-state contracts
-  and whose command surface can be extended without changing the editor loop;
+- an accessible toolbar whose Bold, Undo, and Redo controls are derived from
+  action-state contracts and can be reordered, relabeled, or grouped without
+  changing the editor loop;
 - reload recovery through an atomic IndexedDB session-checkpoint adapter;
 - a framework-neutral TypeScript package plus a React reference integration;
   and
@@ -32,13 +32,13 @@ The release must let a user edit one document in a browser with:
   tests.
 
 The `0.1.0` editor is single-user and local. It is expected to be useful for a
-small notes or form editor, not yet as a general document processor.
+small notes or form editor, not a general document processor.
 
 ## Architecture boundary
 
 Rust owns the validated AST, editor snapshots, action evaluation, transaction
 application, history, and checkpoint codecs. A narrow synchronous
-`EditorEngine` facade is the only intended command boundary for the first Wasm
+`EditorEngine` facade is the only intended command boundary for the `0.1.0` Wasm
 adapter. That facade prepares and publishes an action in one call, preventing a
 JavaScript host from retaining an executable preparation and applying it to a
 later observation. Every command carries the exact engine-instance/state/history
@@ -71,7 +71,7 @@ without mutation. A real selection move clears a caret-only
 pending-format override and closes the current merge group; an exact browser
 echo preserves both.
 
-## Why the first facade returns `EditorEngineEvent`
+## Why the `0.1.0` facade returns `EditorEngineEvent`
 
 The guarded engine returns a successful mutation as a private-constructor
 `EditorEngineEvent`, not an owned raw `Commit` or `LocalLogEvent`. Its kind
@@ -92,17 +92,17 @@ and retry identities needed by append. An append coordinator must reserve those
 identities and close conversion before mutation; inventing them in a UI facade
 would be untrustworthy and would couple every command to one storage policy.
 
-This is a deliberate pre-`0.1` limitation, not permission to reinterpret an
+This is a deliberate `0.1.0` limitation, not permission to reinterpret an
 engine event as an append-ready log entry. The `0.1.0` persistence promise uses
 an atomic `SessionCheckpoint` save/restore path. Executable Local Log Frame V1
 append, rotation, and restart reconstruction remain later work.
 
 ## Checkpoint sequence
 
-Every completed checkpoint must be formatted, linted, tested, documented,
-committed, and annotated with its matching version tag. The dependency order is
-frozen; a gate may be split into additional patch versions when review exposes
-a smaller safe boundary, but a later gate must not be claimed first.
+Every checkpoint was formatted, linted, tested, documented, committed, and
+annotated with its matching version tag. The dependency order remained frozen;
+review could split a gate into additional patch versions, but no later gate was
+claimed first.
 
 1. `0.0.48`: guarded Rust `EditorEngine` facade over actions, selection
    observation, history replay, and history-group boundaries.
@@ -178,11 +178,13 @@ a smaller safe boundary, but a later gate must not be claimed first.
     explicit artifact-size ceilings all pass the full release command set and
     independent audits.
 13. `0.1.0`: no new feature; only the final shippability gates and honest
-    release notes.
+    release notes. Complete: the version and compatibility freeze, full release
+    command set, package-consumer proof, documentation review, and independent
+    audits passed without widening the feature scope.
 
-## Release gates
+## Release gates (passed)
 
-`0.1.0` is shippable only when all of these hold:
+The `0.1.0` release satisfies all of these gates:
 
 - the full native Rust format, lint, unit, integration, compile-fail doctest,
   rustdoc, Wasm-target, and package checks pass;
@@ -210,7 +212,7 @@ a smaller safe boundary, but a later gate must not be claimed first.
 
 ## Explicitly outside `0.1.0`
 
-The first release does not promise headings, lists, links, images, tables,
+The `0.1.0` release does not promise headings, lists, links, images, tables,
 arbitrary node kinds, generic marks or attributes, a third-party Wasm plugin
 ABI, dynamic plugin unload, collaboration, remote cursors, CRDT/OT rebasing,
 selective undo, production-scale documents, cryptographic authenticity,

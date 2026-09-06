@@ -1,7 +1,8 @@
 # IndexedDB session-checkpoint storage
 
-Status: implemented by checkpoint `0.0.57`; `0.0.59` cross-browser validation
-complete; unstable before `0.1`.
+Status: supported by the optional public `0.1.0` autosave path; IndexedDB
+Checkpoint Profile V1 is the stable `0.1.x` storage profile, while direct
+store/autosave assembly remains an advanced integration surface
 
 Profile identifier: `breditor/indexeddb-session-checkpoint`
 
@@ -180,8 +181,10 @@ that epoch is committed or a relevant attempt fails. It does not convert an
 unknown transaction into success. Disposal cancels future scheduling but does
 not claim that an already dispatched IndexedDB transaction rolled back.
 Scheduler methods are synchronous host boundaries. `now` and `schedule` must
-not throw, return thenables, synchronously fire the timer, or synchronously call
-`markDirty()`, `flush()`, or `retry()`; violations pause with
+not throw or return thenables, and `schedule` must not synchronously fire the
+timer or synchronously call `markDirty()`, `flush()`, or `retry()`. `now()`
+must return a finite, nonnegative number; a regression is clamped to the last
+observed value. Violations pause with
 `session_checkpoint_autosave.scheduler_failed`, and rejected thenables are
 contained. `cancel` failures and returned thenables are contained after logical
 timer invalidation. Before storage dispatch, reentry invalidates the active
@@ -274,11 +277,11 @@ not treated as reliable storage completion.
   schemas. Those failures return no usable refreshed token; recovery requires
   an explicit host migration, database deletion/reset, or another product-level
   policy outside this profile.
-- The `0.0.59` Playwright gate exercises IndexedDB flush, reload restore, and
-  persisted undo/redo through the public runtime in Chromium, Firefox, and
-  WebKit. Deterministic and automated browser tests still cannot promise
-  durability against eviction, crashes, indefinite transactions, or every
-  platform storage policy. See
+- The `0.1.0` Playwright release gate, introduced at checkpoint `0.0.59`,
+  exercises IndexedDB flush, reload restore, and persisted undo/redo through
+  the public runtime in Chromium, Firefox, and WebKit. Deterministic and
+  automated browser tests still cannot promise durability against eviction,
+  crashes, indefinite transactions, or every platform storage policy. See
   [browser support and accessibility](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 ## Standards basis

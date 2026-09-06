@@ -12,7 +12,7 @@ to add that library solely to type-check Breditor.
 The package is ESM. Initialize it before calling any exported Rust function:
 
 ```sh
-npm install @breditor/wasm@0.0.59
+npm install @breditor/wasm@0.1.0
 ```
 
 ```ts
@@ -22,14 +22,25 @@ await init();
 console.log(breditorVersion());
 ```
 
-Bundlers may resolve the adjacent Wasm module through the generated default
-initializer. Hosts that instantiate synchronously can resolve
-`@breditor/wasm/wasm`, read those bytes, and pass them to `initSync`.
+The supported `0.1.x` browser bootstrap is the no-argument default asynchronous
+initializer shown above, called once in an HTTP(S) browser or browser bundler
+that resolves the adjacent generated Wasm asset, before passing the initialized
+namespace to the exactly matching `@breditor/browser` package. Synchronous
+`initSync`, initializer arguments, direct `@breditor/wasm/wasm` binary imports,
+and Node/file-URL initialization remain available to advanced hosts but do not
+carry the `0.1.x` compatibility promise.
+
+Ignore the value returned when the default initializer resolves. Only its
+no-argument call, asynchronous settlement, and the usable initialized namespace
+are supported; generated `InitOutput` members remain raw, unstable glue.
 
 Generated objects own Rust allocations. Follow the declaration's one-shot
 `take*` contracts and call `free()` on every owned handle. The higher-level
 `@breditor/browser` package contains the checked browser adapters and should be
-preferred by editor integrations.
+preferred by editor integrations. Raw generated handles and classes are an
+advanced boundary outside the `0.1.x` API compatibility promise; official
+browser/Wasm packages are supported only as an exact same-version pair with ABI
+generation `2`.
 
 ## Reproducible build
 
@@ -66,8 +77,8 @@ WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
 Licensed under either the MIT License or Apache License, Version 2.0, at your
 option. Both license texts are included in the package.
 
-The published package also contains `THIRD_PARTY_NOTICES.md`, the exact required
+The packed package also contains `THIRD_PARTY_NOTICES.md`, the exact required
 crate license and notice files under `third-party/`, and the official Rust 1.98.0
 standard-library `COPYRIGHT-library.html` under `dist/third-party/`. The
 inventory covers the locked `wasm32-unknown-unknown` normal/build dependency
-closure; development-only dependencies are not part of the published module.
+closure; development-only dependencies are not part of the compiled module.

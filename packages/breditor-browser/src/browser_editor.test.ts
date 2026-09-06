@@ -112,19 +112,100 @@ describe("BreditorBrowserEditor", () => {
     ).toThrow(/opened through its factory/u);
   });
 
+  it.each([
+    "article",
+    "aside",
+    "div",
+    "footer",
+    "header",
+    "main",
+    "nav",
+    "section",
+  ] as const)(
+    "accepts a connected empty <%s> editing host",
+    async (tagName) => {
+      const host = document.createElement(tagName);
+      document.body.append(host);
+      const fixture = moduleFixture();
+
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module),
+      );
+
+      expect(opened.ok).toBe(true);
+      if (opened.ok) opened.editor.dispose();
+    },
+  );
+
+  it("uses native host identity and topology despite own shadow properties", async () => {
+    const fixture = moduleFixture();
+    const disguisedInput = document.createElement("input");
+    Object.defineProperty(disguisedInput, "tagName", {
+      configurable: true,
+      value: "DIV",
+    });
+    document.body.append(disguisedInput);
+
+    const disconnected = document.createElement("div");
+    Object.defineProperty(disconnected, "isConnected", {
+      configurable: true,
+      value: true,
+    });
+
+    const populated = mountHost();
+    populated.append("application content");
+    Object.defineProperty(populated, "childNodes", {
+      configurable: true,
+      value: Object.freeze({ length: 0 }),
+    });
+
+    const editorHost = mountHost();
+    const disguisedToolbar = document.createElement("button");
+    Object.defineProperty(disguisedToolbar, "tagName", {
+      configurable: true,
+      value: "DIV",
+    });
+    document.body.append(disguisedToolbar);
+
+    for (const host of [disguisedInput, disconnected, populated]) {
+      await expect(
+        BreditorBrowserEditor.open(options(host, fixture.module)),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.invalid_options" },
+      });
+    }
+    await expect(
+      BreditorBrowserEditor.open(
+        options(editorHost, fixture.module, {
+          toolbar: { host: disguisedToolbar },
+        }),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.invalid_options" },
+    });
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+  });
+
   it("uses its private finalizer when startup aborts after full installation", async () => {
     const host = mountHost();
     const toolbarHost = mountHost();
     const fixture = moduleFixture();
+    const controller = new AbortController();
+    const abortedGetter = Object.getOwnPropertyDescriptor(
+      AbortSignal.prototype,
+      "aborted",
+    )?.get;
+    if (abortedGetter === undefined) throw new Error("AbortSignal getter missing");
     let reads = 0;
-    const signal = {
-      get aborted() {
+    vi.spyOn(AbortSignal.prototype, "aborted", "get").mockImplementation(
+      function (this: AbortSignal): boolean {
         reads += 1;
-        return reads >= 3;
+        if (reads >= 4) controller.abort();
+        return Reflect.apply(abortedGetter, this, []) as boolean;
       },
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    } as unknown as AbortSignal;
+    );
     const patchedDispose = vi
       .spyOn(BreditorBrowserEditor.prototype, "dispose")
       .mockImplementation(() => {
@@ -133,7 +214,7 @@ describe("BreditorBrowserEditor", () => {
 
     const result = await BreditorBrowserEditor.open(
       options(host, fixture.module, {
-        signal,
+        signal: controller.signal,
         toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
       }),
     );
@@ -225,10 +306,73 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
   });
 
+  it.each(["noOp", "throw"] as const)(
+    "uses native focus proofs despite %s own focus and document shadows",
+    async (mode) => {
+      const host = mountHost();
+      const opened = await BreditorBrowserEditor.open(
+        options(host, moduleFixture().module),
+      );
+      if (!opened.ok) throw new Error(opened.error.code);
+      const focusShadow = vi.fn(() => {
+        if (mode === "throw") {
+          throw new DOMException("own focus shadow ran", "InvalidStateError");
+        }
+      });
+      Object.defineProperty(host, "focus", {
+        configurable: true,
+        value: focusShadow,
+      });
+      const ownerDocumentShadow = vi.fn(() => document);
+      const activeElementDescriptor = Object.getOwnPropertyDescriptor(
+        document,
+        "activeElement",
+      );
+
+      try {
+        expect(opened.editor.focus()).toBe(true);
+        expect(document.activeElement).toBe(host);
+
+        Object.defineProperty(host, "ownerDocument", {
+          configurable: true,
+          get: ownerDocumentShadow,
+        });
+        Object.defineProperty(document, "activeElement", {
+          configurable: true,
+          value: host,
+        });
+        expect(opened.editor.focus()).toBe(true);
+        document.body.removeChild(host);
+
+        // The own activeElement value still claims success, but the native
+        // document getter proves that a detached host did not receive focus.
+        expect(document.activeElement).toBe(host);
+        expect(opened.editor.focus()).toBe(false);
+        expect(focusShadow).not.toHaveBeenCalled();
+        expect(ownerDocumentShadow).not.toHaveBeenCalled();
+      } finally {
+        Reflect.deleteProperty(host, "focus");
+        Reflect.deleteProperty(host, "ownerDocument");
+        if (activeElementDescriptor === undefined) {
+          Reflect.deleteProperty(document, "activeElement");
+        } else {
+          Object.defineProperty(
+            document,
+            "activeElement",
+            activeElementDescriptor,
+          );
+        }
+        opened.editor.dispose();
+      }
+    },
+  );
+
   it("exports exact Document V1 and semantic plain text without trusting hostile DOM", async () => {
     const host = mountHost();
     const fixture = moduleFixture({ text: "A💡" });
-    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
     if (!opened.ok) throw new Error(opened.error.code);
 
     const documentExport = opened.editor.exportContent("documentJson");
@@ -248,11 +392,13 @@ describe("BreditorBrowserEditor", () => {
       utf8Bytes: expect.any(Number),
       snapshot: { lineage: LINEAGE, revision: "0" },
     });
-    expect(documentExport.ok && JSON.parse(documentExport.value)).toMatchObject({
-      format: "breditor/document",
-      formatVersion: 1,
-      root: { children: [{ children: [{ text: "A💡" }] }] },
-    });
+    expect(documentExport.ok && JSON.parse(documentExport.value)).toMatchObject(
+      {
+        format: "breditor/document",
+        formatVersion: 1,
+        root: { children: [{ children: [{ text: "A💡" }] }] },
+      },
+    );
     expect(plainExport).toEqual({
       ok: true,
       format: "plainText",
@@ -261,15 +407,17 @@ describe("BreditorBrowserEditor", () => {
       snapshot: { lineage: LINEAGE, revision: "0" },
     });
     expect(Object.isFrozen(documentExport)).toBe(true);
-    expect(documentExport.ok && Object.isFrozen(documentExport.snapshot)).toBe(true);
+    expect(documentExport.ok && Object.isFrozen(documentExport.snapshot)).toBe(
+      true,
+    );
     expect(Object.isFrozen(plainExport)).toBe(true);
 
     host.textContent = "forged private DOM";
     expect(opened.editor.exportContent("plainText")).toEqual(plainExport);
     expect(opened.editor.exportContent("documentJson")).toEqual(documentExport);
-    expect(JSON.stringify(opened.editor.exportContent("plainText"))).not.toContain(
-      "forged private DOM",
-    );
+    expect(
+      JSON.stringify(opened.editor.exportContent("plainText")),
+    ).not.toContain("forged private DOM");
     opened.editor.dispose();
   });
 
@@ -311,7 +459,11 @@ describe("BreditorBrowserEditor", () => {
 
   it("returns stable redacted failures for invalid formats, invalid Wasm, and disposal", async () => {
     const malformed = await BreditorBrowserEditor.open(
-      options(mountHost(), moduleFixture({ documentJsonValue: "private malformed payload" }).module),
+      options(
+        mountHost(),
+        moduleFixture({ documentJsonValue: "private malformed payload" })
+          .module,
+      ),
     );
     if (!malformed.ok) throw new Error(malformed.error.code);
     expect(malformed.editor.exportContent("documentJson")).toEqual({
@@ -322,9 +474,9 @@ describe("BreditorBrowserEditor", () => {
         message: "The Wasm document export was invalid.",
       },
     });
-    expect(JSON.stringify(malformed.editor.exportContent("documentJson"))).not.toContain(
-      "private malformed payload",
-    );
+    expect(
+      JSON.stringify(malformed.editor.exportContent("documentJson")),
+    ).not.toContain("private malformed payload");
     expect(malformed.editor.exportContent("html" as never)).toEqual({
       ok: false,
       error: {
@@ -391,7 +543,9 @@ describe("BreditorBrowserEditor", () => {
       text: "never escape",
       onDocumentJson: () => editor?.dispose(),
     });
-    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
     if (!opened.ok) throw new Error(opened.error.code);
     editor = opened.editor;
 
@@ -422,7 +576,9 @@ describe("BreditorBrowserEditor", () => {
         nested = editor?.exportContent("plainText");
       },
     });
-    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
     if (!opened.ok) throw new Error(opened.error.code);
     editor = opened.editor;
 
@@ -469,36 +625,82 @@ describe("BreditorBrowserEditor", () => {
     expect(secondFixture.fromDocumentJson).toHaveBeenCalledOnce();
   });
 
-  it("rolls back a partially installed host attribute set and frees Wasm owners", async () => {
+  it("uses native host mutations and restores attributes despite own method shadows", async () => {
     const host = mountHost();
     const fixture = moduleFixture();
-    const nativeSetAttribute = host.setAttribute;
-    const setAttribute = vi.fn(function (
-      this: HTMLElement,
-      name: string,
-      value: string,
-    ): void {
-      if (name === "role")
-        throw new DOMException("private host detail", "InvalidStateError");
-      Reflect.apply(nativeSetAttribute, this, [name, value]);
+    const nativeGetAttribute = Element.prototype.getAttribute;
+    const nativeHasAttribute = Element.prototype.hasAttribute;
+    const nativeSetAttribute = Element.prototype.setAttribute;
+    const readAttribute = (name: string): string | null =>
+      Reflect.apply(nativeGetAttribute, host, [name]) as string | null;
+    const hasAttribute = (name: string): boolean =>
+      Reflect.apply(nativeHasAttribute, host, [name]) as boolean;
+    Reflect.apply(nativeSetAttribute, host, ["contenteditable", "false"]);
+    Reflect.apply(nativeSetAttribute, host, ["role", "group"]);
+    Reflect.apply(nativeSetAttribute, host, ["aria-label", "Prior label"]);
+    Reflect.apply(nativeSetAttribute, host, ["inert", ""]);
+
+    const getAttributeShadow = vi.fn(() => {
+      throw new DOMException("private host detail", "InvalidStateError");
     });
-    Object.defineProperty(host, "setAttribute", {
-      configurable: true,
-      value: setAttribute,
+    const hasAttributeShadow = vi.fn(() => {
+      throw new DOMException("private host detail", "InvalidStateError");
+    });
+    const setAttributeShadow = vi.fn(() => {
+      throw new DOMException("private host detail", "InvalidStateError");
+    });
+    const removeAttributeShadow = vi.fn(() => {
+      throw new DOMException("private host detail", "InvalidStateError");
+    });
+    Object.defineProperties(host, {
+      getAttribute: { configurable: true, value: getAttributeShadow },
+      hasAttribute: { configurable: true, value: hasAttributeShadow },
+      setAttribute: { configurable: true, value: setAttributeShadow },
+      removeAttribute: { configurable: true, value: removeAttributeShadow },
     });
 
     const result = await BreditorBrowserEditor.open(
       options(host, fixture.module),
     );
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: "browser_editor.setup_failed" },
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(readAttribute("contenteditable")).toBe("true");
+    expect(readAttribute("role")).toBe("textbox");
+    expect(readAttribute("aria-label")).toBe("Editor");
+    expect(readAttribute("aria-multiline")).toBe("true");
+    expect(readAttribute("aria-disabled")).toBe("false");
+    expect(readAttribute("spellcheck")).toBe("true");
+    expect(hasAttribute("inert")).toBe(false);
+    expect(readAttribute("data-breditor-editor-root")).toBe("");
+    expect(getAttributeShadow).not.toHaveBeenCalled();
+    expect(hasAttributeShadow).not.toHaveBeenCalled();
+    expect(setAttributeShadow).not.toHaveBeenCalled();
+    expect(removeAttributeShadow).not.toHaveBeenCalled();
+
+    const replaceChildrenShadow = vi.fn(() => {
+      throw new DOMException("private host detail", "InvalidStateError");
     });
-    expect(setAttribute).toHaveBeenCalledWith("contenteditable", "true");
-    expect(host.hasAttribute("contenteditable")).toBe(false);
-    expect(host.hasAttribute("role")).toBe(false);
+    Object.defineProperty(host, "replaceChildren", {
+      configurable: true,
+      value: replaceChildrenShadow,
+    });
+    result.editor.dispose();
+
+    expect(readAttribute("contenteditable")).toBe("false");
+    expect(readAttribute("role")).toBe("group");
+    expect(readAttribute("aria-label")).toBe("Prior label");
+    expect(hasAttribute("inert")).toBe(true);
+    expect(readAttribute("aria-multiline")).toBeNull();
+    expect(readAttribute("aria-disabled")).toBeNull();
+    expect(readAttribute("spellcheck")).toBeNull();
+    expect(readAttribute("data-breditor-editor-root")).toBeNull();
     expect(host.childNodes).toHaveLength(0);
+    expect(getAttributeShadow).not.toHaveBeenCalled();
+    expect(hasAttributeShadow).not.toHaveBeenCalled();
+    expect(setAttributeShadow).not.toHaveBeenCalled();
+    expect(removeAttributeShadow).not.toHaveBeenCalled();
+    expect(replaceChildrenShadow).not.toHaveBeenCalled();
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
     expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
   });
@@ -943,26 +1145,97 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
   });
 
+  it.each(["noOp", "throw"] as const)(
+    "uses native blur to quiesce a faulted host despite %s own focus shadows",
+    async (mode) => {
+      const host = mountHost();
+      const toolbarHost = mountHost();
+      const fixture = moduleFixture({ enableAction: true, actionThrows: true });
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module, {
+          toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+        }),
+      );
+      if (!opened.ok) throw new Error(opened.error.code);
+      const button = toolbarHost.querySelector("button");
+      if (!(button instanceof HTMLButtonElement)) {
+        throw new Error("toolbar missing");
+      }
+      expect(opened.editor.focus()).toBe(true);
+      expect(document.activeElement).toBe(host);
+
+      const blurShadow = vi.fn(() => {
+        if (mode === "throw") {
+          throw new DOMException("own blur shadow ran", "InvalidStateError");
+        }
+      });
+      const ownerDocumentShadow = vi.fn(() => document);
+      const activeElementDescriptor = Object.getOwnPropertyDescriptor(
+        document,
+        "activeElement",
+      );
+      Object.defineProperties(host, {
+        blur: { configurable: true, value: blurShadow },
+        ownerDocument: {
+          configurable: true,
+          get: ownerDocumentShadow,
+        },
+      });
+      Object.defineProperty(document, "activeElement", {
+        configurable: true,
+        value: host,
+      });
+
+      try {
+        button.click();
+      } finally {
+        Reflect.deleteProperty(host, "blur");
+        Reflect.deleteProperty(host, "ownerDocument");
+        if (activeElementDescriptor === undefined) {
+          Reflect.deleteProperty(document, "activeElement");
+        } else {
+          Object.defineProperty(
+            document,
+            "activeElement",
+            activeElementDescriptor,
+          );
+        }
+      }
+
+      expect(opened.editor.getStatus()).toEqual({
+        phase: "faulted",
+        reason: "toolbarDispatchFailed",
+      });
+      expect(document.activeElement).not.toBe(host);
+      expect(blurShadow).not.toHaveBeenCalled();
+      expect(ownerDocumentShadow).not.toHaveBeenCalled();
+      expect(host.getAttribute("contenteditable")).toBe("false");
+      expect(host.getAttribute("aria-disabled")).toBe("true");
+      expect(host.hasAttribute("inert")).toBe(true);
+      opened.editor.dispose();
+    },
+  );
+
   it("faults on toolbar presentation loss and refreshes a committed diagnostic snapshot", async () => {
     const host = mountHost();
     const toolbarHost = mountHost();
-    const fixture = moduleFixture({ enableAction: true, text: "before" });
+    let button: HTMLButtonElement | undefined;
+    const fixture = moduleFixture({
+      enableAction: true,
+      text: "before",
+      onAction: () => button?.remove(),
+    });
     const opened = await BreditorBrowserEditor.open(
       options(host, fixture.module, {
         toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
       }),
     );
     if (!opened.ok) throw new Error(opened.error.code);
-    const button = toolbarHost.querySelector("button");
-    if (!(button instanceof HTMLButtonElement))
+    const installedButton = toolbarHost.querySelector("button");
+    if (!(installedButton instanceof HTMLButtonElement))
       throw new Error("toolbar missing");
+    button = installedButton;
     button.focus();
-    Object.defineProperty(button, "focus", {
-      configurable: true,
-      value: () => {
-        throw new DOMException("private focus failure", "InvalidStateError");
-      },
-    });
 
     button.click();
     await settleMicrotasks();
@@ -1154,37 +1427,112 @@ describe("BreditorBrowserEditor", () => {
     if (retry.ok) retry.editor.dispose();
   });
 
-  it("settles an abort while IndexedDB open is pending and permits immediate reuse", async () => {
+  it.each(["noOp", "throw"] as const)(
+    "uses native AbortSignal state/listeners despite %s own shadows",
+    async (mode) => {
+      const host = mountHost();
+      const fixture = moduleFixture();
+      const request = {} as IDBOpenDBRequest;
+      const open = vi.fn(() => request);
+      const hangingFactory = { open } as unknown as IDBFactory;
+      const controller = new AbortController();
+      const abortedShadow = vi.fn(() => {
+        if (mode === "throw") {
+          throw new DOMException("own aborted shadow ran", "InvalidStateError");
+        }
+        return false;
+      });
+      const addShadow = vi.fn(() => {
+        if (mode === "throw") {
+          throw new DOMException("own add shadow ran", "InvalidStateError");
+        }
+      });
+      const removeShadow = vi.fn(() => {
+        if (mode === "throw") {
+          throw new DOMException("own remove shadow ran", "InvalidStateError");
+        }
+      });
+      Object.defineProperties(controller.signal, {
+        aborted: { configurable: true, get: abortedShadow },
+        addEventListener: { configurable: true, value: addShadow },
+        removeEventListener: { configurable: true, value: removeShadow },
+      });
+      const pending = BreditorBrowserEditor.open(
+        options(host, fixture.module, {
+          persistence: { indexedDB: hangingFactory, crypto: digestFixture() },
+          signal: controller.signal,
+        }),
+      );
+
+      controller.abort();
+      const result = await pending;
+
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.aborted" },
+      });
+      expect(open).toHaveBeenCalledOnce();
+      expect(abortedShadow).not.toHaveBeenCalled();
+      expect(addShadow).not.toHaveBeenCalled();
+      expect(removeShadow).not.toHaveBeenCalled();
+      expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+      expect(host.attributes).toHaveLength(0);
+      expect(host.childNodes).toHaveLength(0);
+
+      const retry = await BreditorBrowserEditor.open(
+        options(host, moduleFixture().module),
+      );
+      expect(retry.ok).toBe(true);
+      if (retry.ok) retry.editor.dispose();
+    },
+  );
+
+  it("makes a retained startup abort callback inert after storage transfers", async () => {
     const host = mountHost();
-    const fixture = moduleFixture();
-    const request = {} as IDBOpenDBRequest;
-    const open = vi.fn(() => request);
-    const hangingFactory = { open } as unknown as IDBFactory;
+    const toolbarHost = mountHost();
+    const fixture = moduleFixture({ enableAction: true });
     const controller = new AbortController();
-    const pending = BreditorBrowserEditor.open(
+    const signalEventTargetPrototype = Object.getPrototypeOf(
+      AbortSignal.prototype,
+    ) as EventTarget;
+    const originalRemove = signalEventTargetPrototype.removeEventListener;
+    vi.spyOn(signalEventTargetPrototype, "removeEventListener")
+      .mockImplementation(
+        function (
+          this: EventTarget,
+          type: string,
+          listener: EventListenerOrEventListenerObject | null,
+          options?: boolean | EventListenerOptions,
+        ): void {
+          if (this === controller.signal && type === "abort") return;
+          Reflect.apply(originalRemove, this, [type, listener, options]);
+        },
+      );
+    const opened = await BreditorBrowserEditor.open(
       options(host, fixture.module, {
-        persistence: { indexedDB: hangingFactory, crypto: digestFixture() },
         signal: controller.signal,
+        toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+        persistence: {
+          indexedDB: new IDBFactory(),
+          crypto: digestFixture(),
+          autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
+        },
       }),
     );
+    if (!opened.ok) throw new Error(opened.error.code);
+    const button = toolbarHost.querySelector("button");
+    if (!(button instanceof HTMLButtonElement)) {
+      throw new Error("toolbar missing");
+    }
 
     controller.abort();
-    const result = await pending;
+    button.click();
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: { code: "browser_editor.aborted" },
+    expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+    await expect(opened.editor.flushPersistence()).resolves.toEqual({
+      status: "committed",
     });
-    expect(open).toHaveBeenCalledOnce();
-    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
-    expect(host.attributes).toHaveLength(0);
-    expect(host.childNodes).toHaveLength(0);
-
-    const retry = await BreditorBrowserEditor.open(
-      options(host, moduleFixture().module),
-    );
-    expect(retry.ok).toBe(true);
-    if (retry.ok) retry.editor.dispose();
+    opened.editor.dispose();
   });
 
   it("re-proves dedicated mounts after persistence latency without overwriting intervening app content", async () => {
@@ -1246,6 +1594,13 @@ describe("BreditorBrowserEditor", () => {
     const abortedHost = mountHost();
     const controller = new AbortController();
     controller.abort();
+    const unsupportedHosts = ["button", "input", "p", "span", "textarea"].map(
+      (tagName) => {
+        const host = document.createElement(tagName);
+        document.body.append(host);
+        return host;
+      },
+    );
 
     await expect(
       BreditorBrowserEditor.open(options(disconnected, fixture.module)),
@@ -1259,6 +1614,14 @@ describe("BreditorBrowserEditor", () => {
       ok: false,
       error: { code: "browser_editor.invalid_options" },
     });
+    for (const unsupportedHost of unsupportedHosts) {
+      await expect(
+        BreditorBrowserEditor.open(options(unsupportedHost, fixture.module)),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.invalid_options" },
+      });
+    }
     await expect(
       BreditorBrowserEditor.open(
         options(sameToolbar, fixture.module, {
@@ -1348,7 +1711,7 @@ function moduleFixture(config: ModuleFixtureOptions = {}): ModuleFixture {
     module: {
       BreditorEngine: factory,
       breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
-      breditorVersion: () => "0.0.59",
+      breditorVersion: () => "0.1.0",
     },
     fromDocumentJson,
     fromSessionCheckpointJson,
@@ -1719,9 +2082,7 @@ function documentJsonValue(text: string): string {
           entityId: null,
           properties: {},
           children:
-            text.length === 0
-              ? []
-              : [{ kind: "text", text, formats: [] }],
+            text.length === 0 ? [] : [{ kind: "text", text, formats: [] }],
         },
       ],
     },

@@ -845,13 +845,19 @@ describe("BreditorDomSelectionBridge", () => {
     const renderer = new BreditorDomRenderer();
     const documentProjection = projection(0);
     const { rendered } = render(renderer, host, documentProjection);
-    const point = {
+    const anchor = {
+      kind: "text",
+      textPath: [0, 1],
+      utf16Offset: 2,
+      affinity: "before",
+    } as const;
+    const focus = {
       kind: "text",
       textPath: [0, 0],
       utf16Offset: 1,
       affinity: "after",
     } as const;
-    const semantic = semanticSelection(documentProjection, point, point);
+    const semantic = semanticSelection(documentProjection, anchor, focus);
     const browser = domSelection(host);
     const nativeSet = browser.setBaseAndExtent.bind(browser);
     const original = Object.getOwnPropertyDescriptor(browser, "setBaseAndExtent");
@@ -1098,6 +1104,45 @@ describe("BreditorDomSelectionBridge", () => {
       expect(browser.anchorNode).toBe(host.firstChild?.firstChild);
       expect(browser.focusNode).toBe(host.querySelector("strong")?.firstChild);
       expect(browser.focusOffset).toBe(4);
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(browser, "setBaseAndExtent");
+      } else {
+        Object.defineProperty(browser, "setBaseAndExtent", original);
+      }
+    }
+  });
+
+  it("uses a native Range for an exact collapsed caret even with a directional API", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const point = {
+      kind: "text",
+      textPath: [0, 0],
+      utf16Offset: 1,
+      affinity: "after",
+    } as const;
+    const caret = semanticSelection(documentProjection, point, point);
+    const browser = domSelection(host);
+    const original = Object.getOwnPropertyDescriptor(browser, "setBaseAndExtent");
+    let directionalWrites = 0;
+    try {
+      Object.defineProperty(browser, "setBaseAndExtent", {
+        configurable: true,
+        value: (() => {
+          directionalWrites += 1;
+          throw new Error("exact caret must use a Range");
+        }) satisfies Selection["setBaseAndExtent"],
+      });
+      expect(new BreditorDomSelectionBridge().write(rendered, caret).ok).toBe(true);
+      expect(directionalWrites).toBe(0);
+      expect(browser.anchorNode).toBe(host.firstChild?.firstChild);
+      expect(browser.anchorOffset).toBe(1);
+      expect(browser.focusNode).toBe(host.firstChild?.firstChild);
+      expect(browser.focusOffset).toBe(1);
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(browser, "setBaseAndExtent");

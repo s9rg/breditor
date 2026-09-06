@@ -1,6 +1,6 @@
 # Browser release size budgets
 
-Status: required release-candidate gate passed for `0.0.59`
+Status: required `0.1.0` release gate passed
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -9,7 +9,7 @@ singleton is absent or duplicated, or a budget is exceeded. Browser package
 sets are enumerated recursively so nested emitted modules cannot escape the
 total.
 
-The first-release ceilings are deliberately explicit:
+The `0.1.0` release ceilings are deliberately explicit:
 
 - all emitted `@breditor/browser` JavaScript: 800,000 bytes;
 - all emitted browser declarations: 225,000 bytes;
@@ -21,7 +21,7 @@ The first-release ceilings are deliberately explicit:
 - reference-application Wasm: 1,500,000 raw and 400,000 gzip bytes.
 
 These are regression ceilings, not claims that every consumer downloads every
-unbundled browser module. They include measured headroom for the pre-`0.1`
+unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
 Gzip measurements use Node's level-9 gzip implementation and are reproducible
 comparisons, not exact transfer-size promises for every CDN.

@@ -1,6 +1,7 @@
 # Breditor DOM projection contract
 
-Status: implemented for the closed base schema in `0.0.51`; pre-`0.1` API
+Status: supported inside the public `0.1.0` runtime for the closed base schema;
+direct adapter and renderer construction remains advanced and experimental
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an

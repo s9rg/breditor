@@ -157,7 +157,7 @@ export type BrowserActionStateReadError =
   | Readonly<{
       kind: "boundary";
       code: "action_state.invalid_wasm_view";
-      message: "The Wasm action-state view is invalid.";
+      message: string;
     }>
   | Readonly<{
       kind: "core";

@@ -1,19 +1,20 @@
 # Breditor browser runtime
 
-Status: public `0.0.59` startup, lifecycle, and content-egress contract
+Status: supported public `0.1.0` startup, lifecycle, and content-egress contract
 
-`BreditorBrowserEditor` is the recommended application boundary for the first
-browser release. It assembles the generated Rust/Wasm engine, typed projection,
-DOM renderer, selection bridge, serial command queue, native-event router,
-action-state store, optional toolbar, and optional IndexedDB autosave behind one
-framework-neutral owner.
+`BreditorBrowserEditor` is the recommended application boundary for the
+`0.1.0` browser release. It assembles the generated Rust/Wasm engine, typed
+projection, DOM renderer, selection bridge, serial command queue, native-event
+router, action-state store, optional toolbar, and optional IndexedDB autosave
+behind one framework-neutral owner.
 
 The package-root API is intentionally small. Applications receive the editing
-element, immutable status snapshots, subscription, focus, persistence flush and
-retry, explicit content export, and disposal. They do not receive the engine, observation handles,
-renderer, queue, delivery tokens, or native-event receipts. The lower-level
-pieces remain available from `@breditor/browser/advanced` for host-trusted
-integrations, but using them means owning their individual contracts.
+element, immutable status snapshots, subscription, focus, persistence flush
+and retry, explicit content export, and disposal. They do not receive the
+engine, observation handles, renderer, queue, delivery tokens, or native-event
+receipts. The lower-level pieces remain available from
+`@breditor/browser/advanced` for host-trusted integrations, but using them
+means owning their individual contracts.
 
 ## Startup
 
@@ -84,12 +85,17 @@ const editor: BreditorBrowserEditor = result.editor;
 editor.focus();
 ```
 
-The editing host and optional toolbar host must be connected HTML elements with
-no children. The runtime reserves the editing host before asynchronous storage
-work and rechecks both mounts after that work. A second live owner for the same
-editing or toolbar host is rejected. A failed open is all-or-nothing: installed
-DOM, attributes, listeners, storage connections, and generated owners are
-rolled back before the controlled error result is returned.
+The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
+`header`, `main`, `nav`, or `section`. The distinct optional toolbar host uses
+the same tag allowlist, has no `tabindex` attribute, and is outside an effective
+editable region. It has no role, an empty role, or
+only case-insensitive tokens from `banner`, `complementary`, `contentinfo`,
+`form`, `generic`, `group`, `main`, `navigation`, `none`, `presentation`,
+`region`, `search`. The runtime reserves the editing host before asynchronous
+storage work and rechecks both mounts after that work. A second live owner for
+the same editing or toolbar host is rejected. A failed open is all-or-nothing:
+installed DOM, attributes, listeners, storage connections, and generated
+owners are rolled back before the controlled error result is returned.
 
 The runtime installs `contenteditable="true"`, `role="textbox"`, an accessible
 label, multiline semantics, `aria-disabled="false"`, the configured spellcheck
@@ -109,11 +115,13 @@ stack. `historyCapacity` is an integer from 0 through 100. A lineage ID is at
 most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
-An initialized module namespace is preferred because startup verifies Wasm ABI
-generation `2` and probes its crate version. The narrower static
-`BreditorEngine` factory shape is also accepted for controlled embeddings, but
-it has no module-level compatibility probe. Applications should install matching
-versions of `@breditor/browser` and `@breditor/wasm`.
+An initialized module namespace is the supported configuration because startup
+verifies Wasm ABI generation `2` and probes its crate version. The narrower
+static `BreditorEngine` factory shape is accepted only as an experimental
+testing/controlled-host escape hatch; its returned handle protocol and runtime
+conformance are outside the `0.1.x` promise, and it has no module-level
+compatibility probe. Applications should install matching versions of
+`@breditor/browser` and `@breditor/wasm`.
 
 An optional `AbortSignal` cancels startup only. It closes an in-progress storage
 load and prevents an opened result from escaping, but it is not retained as the
@@ -133,13 +141,15 @@ editor's lifetime signal. Call `dispose()` on an editor that has already opened.
 
 Fault reasons are stable and payload-redacted. A fault stops the event router,
 toolbar, and command queue without retrying a possibly published command. It
-also makes the editing host inert, non-editable, accessibility-disabled, and
-unfocused synchronously so native DOM input cannot continue against frozen Rust
-state. The adapter, action snapshot, and persistence state remain available for
-diagnosis and for saving an already validated Rust commit. Applications should
-surface a recovery UI and eventually call `dispose()`; a faulted editor is not
-resumable. Disposal restores the host's exact pre-open attributes, including
-pre-existing `inert` and `aria-disabled` values.
+also synchronously makes the editing host inert, non-editable, and
+accessibility-disabled so native DOM input cannot continue against frozen Rust
+state. The runtime invokes native blur with one bounded retry as defense in
+depth, but does not promise to defeat a platform or application focus hook that
+immediately restores focus. The adapter, action snapshot, and persistence state
+remain available for diagnosis and for saving an already validated Rust commit.
+Applications should surface a recovery UI and eventually call `dispose()`; a
+faulted editor is not resumable. Disposal restores the host's exact pre-open
+attributes, including pre-existing `inert` and `aria-disabled` values.
 
 `getSnapshot()` returns one deeply immutable external-store snapshot:
 
@@ -282,10 +292,13 @@ authenticity nor rollback protection.
 
 `flushPersistence()` targets the dirty epoch visible when it is called and
 settles when that epoch is committed, persistence pauses, the editor is
-disposed, or waiter capacity is exhausted. Calls while clean resolve as
-`committed`; this does not force an initial write when no semantic commit has
-ever made the editor dirty. With persistence disabled, both persistence methods
-resolve as `{ status: "disabled" }`.
+disposed, or its exact capacity of 1,024 concurrent flush/retry waiters is
+exhausted. The package-root
+`MAX_SESSION_CHECKPOINT_AUTOSAVE_FLUSH_WAITERS` constant exposes that ceiling;
+an additional call resolves as `{ status: "rejected", reason: "capacity" }`.
+Calls while clean resolve as `committed`; this does not force an initial write
+when no semantic commit has ever made the editor dirty. With persistence
+disabled, both persistence methods resolve as `{ status: "disabled" }`.
 
 A failed capture, save, clock, scheduler, quota, connection, or CAS attempt
 pauses automatic work while preserving dirtiness. `flushPersistence()` does not
@@ -408,9 +421,15 @@ is discarded and physical engine release waits for the read handle to unwind.
 
 Omitting `toolbar` installs no toolbar. Passing `{ host }` installs the default
 Bold, Undo, and Redo manifest. A custom manifest must first pass
-`createToolbarManifest` and may contain at most 64 native-button declarations.
-It controls label, order, optional presentation group, pressed-state behavior,
-and a closed no-input/string-action or undo/redo command:
+`createToolbarManifest` and must contain 1 through 64 native-button
+declarations. Toolbar/control labels are nonblank, control-free valid Unicode
+bounded to 128 UTF-16 code units and 512 UTF-8 bytes; state/action IDs use the
+lowercase, 128-character `namespace/local-name` grammar; optional valid-Unicode,
+trimmed groups are bounded to 64 UTF-16 code units and 256 UTF-8 bytes; and
+nonempty string inputs are bounded to 65,536 UTF-16 code units and UTF-8 bytes.
+The package root exports the corresponding constants. A manifest controls label, order,
+optional presentation group, pressed-state behavior, and a closed
+no-input/string-action or undo/redo command:
 
 ```ts
 import { createToolbarManifest } from "@breditor/browser";
@@ -445,6 +464,10 @@ matching `stateId`, availability, and activation contract. Toolbar focus uses
 the last exact semantic editor selection, and dispatch still requires a fresh
 delivery token.
 
+The official `0.1.0` engine publishes matching state/command bindings only for
+Bold, Undo, and Redo. A manifest alone cannot register a new action or history
+command.
+
 Adding real behavior therefore proceeds from the core outward:
 
 1. Implement and register the action and its state evaluator in Rust.
@@ -456,11 +479,11 @@ Adding real behavior therefore proceeds from the core outward:
 
 There is no runtime JavaScript action registration, arbitrary callback command,
 dynamic manifest replacement, plugin unload, custom node renderer, or stable
-third-party Wasm plugin ABI in `0.0.59`.
+third-party Wasm plugin ABI in the supported `0.1.0` surface.
 
 ## Honest limitations
 
-The first runtime is deliberately a small local notes/form editor:
+The `0.1.0` runtime is deliberately a small local notes/form editor:
 
 - The AST accepts direct-root paragraphs, plain text, and property-free strong
   formatting only. There are no headings, lists, links, images, tables, nested
@@ -477,7 +500,7 @@ The first runtime is deliberately a small local notes/form editor:
   positions fail closed.
 - Composition is constrained to one range in one paragraph and to the strict
   text/`strong` temporary DOM subset. Handwriting, cross-block IME edits, and a
-  broad mobile/browser claim are not included yet.
+  broad mobile/browser claim are outside `0.1.0` support.
 - Clipboard integration uses synchronous event `clipboardData`. There is no
   async Clipboard API, files, images, custom internal MIME, or general rich
   mixed-format paste; admitted HTML-only paste is flattened to plain text.
@@ -502,5 +525,5 @@ The first runtime is deliberately a small local notes/form editor:
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),
 [session-checkpoint storage](./SESSION_CHECKPOINT_STORAGE.md), and
-[the frozen `0.1.0` scope](./V0_1_SCOPE.md) for the lower-level decisions and
+[the released `0.1.0` scope](./V0_1_SCOPE.md) for the lower-level decisions and
 release boundary.

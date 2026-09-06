@@ -11,6 +11,7 @@ import type {
   BrowserSelectionChangeDisposition,
 } from "./event_disposition.js";
 import type { RenderedProjection } from "./dom_renderer.js";
+import { nativeHtmlHostFacts } from "./html_host.js";
 import type { KeyboardTranslationPolicy } from "./keyboard.js";
 import {
   type BreditorWasmCommandAdapter,
@@ -53,11 +54,17 @@ interface ListenerRegistration {
   readonly type: string;
   readonly listener: EventListener;
   readonly capture: boolean;
+  readonly remove: typeof EventTarget.prototype.removeEventListener;
+}
+
+interface TargetListenerIntrinsics {
+  readonly add: typeof EventTarget.prototype.addEventListener;
+  readonly remove: typeof EventTarget.prototype.removeEventListener;
 }
 
 interface ListenerIntrinsics {
-  readonly add: typeof EventTarget.prototype.addEventListener;
-  readonly remove: typeof EventTarget.prototype.removeEventListener;
+  readonly host: TargetListenerIntrinsics;
+  readonly document: TargetListenerIntrinsics;
 }
 
 type NativeRoute =
@@ -149,7 +156,7 @@ export class BreditorBrowserEventRouter {
     if (ownerDocument === null) {
       throw new TypeError("browser event router host is invalid");
     }
-    const listenerIntrinsics = readListenerIntrinsics(ownerDocument);
+    const listenerIntrinsics = readListenerIntrinsics(host, ownerDocument);
     if (listenerIntrinsics === null) {
       throw new TypeError("browser event router listener capabilities are invalid");
     }
@@ -264,17 +271,25 @@ export class BreditorBrowserEventRouter {
   }
 
   #installListeners(): void {
-    this.#add(this.#host, "compositionstart", this.#onComposition, false);
-    this.#add(this.#host, "compositionupdate", this.#onComposition, false);
-    this.#add(this.#host, "compositionend", this.#onComposition, false);
-    this.#add(this.#host, "beforeinput", this.#onBeforeInput, false);
-    this.#add(this.#host, "input", this.#onInput, false);
-    this.#add(this.#host, "keydown", this.#onKeyDown, false);
-    this.#add(this.#host, "copy", this.#onCopy, false);
-    this.#add(this.#host, "cut", this.#onCut, false);
-    this.#add(this.#host, "paste", this.#onPaste, false);
-    this.#add(this.#host, "blur", this.#onBlur, true);
-    this.#add(this.#document, "selectionchange", this.#onSelectionChange, false);
+    const host = this.#listenerIntrinsics.host;
+    const document = this.#listenerIntrinsics.document;
+    this.#add(this.#host, "compositionstart", this.#onComposition, false, host);
+    this.#add(this.#host, "compositionupdate", this.#onComposition, false, host);
+    this.#add(this.#host, "compositionend", this.#onComposition, false, host);
+    this.#add(this.#host, "beforeinput", this.#onBeforeInput, false, host);
+    this.#add(this.#host, "input", this.#onInput, false, host);
+    this.#add(this.#host, "keydown", this.#onKeyDown, false, host);
+    this.#add(this.#host, "copy", this.#onCopy, false, host);
+    this.#add(this.#host, "cut", this.#onCut, false, host);
+    this.#add(this.#host, "paste", this.#onPaste, false, host);
+    this.#add(this.#host, "blur", this.#onBlur, true, host);
+    this.#add(
+      this.#document,
+      "selectionchange",
+      this.#onSelectionChange,
+      false,
+      document,
+    );
   }
 
   #add(
@@ -282,17 +297,20 @@ export class BreditorBrowserEventRouter {
     type: string,
     listener: EventListener,
     capture: boolean,
+    intrinsics: TargetListenerIntrinsics,
   ): void {
-    const registration = Object.freeze({ target, type, listener, capture });
+    const registration = Object.freeze({
+      target,
+      type,
+      listener,
+      capture,
+      remove: intrinsics.remove,
+    });
     // Record rollback before invoking platform code. A patched intrinsic may
     // install, synchronously dispatch into this router, and only then throw.
     this.#registrations.push(registration);
     try {
-      Reflect.apply(this.#listenerIntrinsics.add, target, [
-        type,
-        listener,
-        capture,
-      ]);
+      Reflect.apply(intrinsics.add, target, [type, listener, capture]);
     } catch (error) {
       if (this.#status.kind === "live") this.#status = DISPOSED_STATUS;
       this.#invalidatePendingRepair();
@@ -310,7 +328,7 @@ export class BreditorBrowserEventRouter {
       const registration = this.#registrations[index];
       if (registration === undefined) continue;
       try {
-        Reflect.apply(this.#listenerIntrinsics.remove, registration.target, [
+        Reflect.apply(registration.remove, registration.target, [
           registration.type,
           registration.listener,
           registration.capture,
@@ -780,37 +798,83 @@ function readInitialRender(
 
 function readOwnerDocument(host: HTMLElement): Document | null {
   try {
-    const ownerDocument = host.ownerDocument;
-    return host.isConnected &&
-        ownerDocument !== null &&
-        typeof ownerDocument === "object"
-      ? ownerDocument
-      : null;
+    const facts = nativeHtmlHostFacts(host);
+    return facts !== undefined && facts.isConnected ? facts.ownerDocument : null;
   } catch {
     return null;
   }
 }
 
-function readListenerIntrinsics(document: Document): ListenerIntrinsics | null {
+function readListenerIntrinsics(
+  host: HTMLElement,
+  document: Document,
+): ListenerIntrinsics | null {
   try {
-    const prototype = document.defaultView?.EventTarget.prototype;
-    if (prototype === undefined) return null;
-    const add = Object.getOwnPropertyDescriptor(
-      prototype,
-      "addEventListener",
-    )?.value as unknown;
-    const remove = Object.getOwnPropertyDescriptor(
-      prototype,
-      "removeEventListener",
-    )?.value as unknown;
-    if (typeof add !== "function" || typeof remove !== "function") return null;
-    return Object.freeze({
-      add: add as typeof EventTarget.prototype.addEventListener,
-      remove: remove as typeof EventTarget.prototype.removeEventListener,
-    });
+    const hostIntrinsics = readTargetListenerIntrinsics(host);
+    const documentIntrinsics = readTargetListenerIntrinsics(document);
+    return hostIntrinsics === null || documentIntrinsics === null
+      ? null
+      : Object.freeze({ host: hostIntrinsics, document: documentIntrinsics });
   } catch {
     return null;
   }
+}
+
+function readTargetListenerIntrinsics(
+  target: object,
+): TargetListenerIntrinsics | null {
+  const prototypes: object[] = [];
+  let candidate = Object.getPrototypeOf(target) as object | null;
+  while (candidate !== null) {
+    prototypes.push(candidate);
+    candidate = Object.getPrototypeOf(candidate) as object | null;
+  }
+
+  let nodePlatformIndex = -1;
+  // A host-only prototype can imitate one or both Node getter names. The
+  // actual Node prototype is deeper in the chain, so retain the deepest
+  // non-root prototype which owns both accessors before looking for listener
+  // methods. Mutating the realm-wide platform chain itself is outside the
+  // application-owned-host contract.
+  for (let index = 0; index < prototypes.length - 1; index += 1) {
+    candidate = prototypes[index] ?? null;
+    if (candidate === null) continue;
+    const nodeType = Object.getOwnPropertyDescriptor(
+      candidate,
+      "nodeType",
+    )?.get;
+    const ownerDocument = Object.getOwnPropertyDescriptor(
+      candidate,
+      "ownerDocument",
+    )?.get;
+    if (typeof nodeType === "function" && typeof ownerDocument === "function") {
+      nodePlatformIndex = index;
+    }
+  }
+  if (nodePlatformIndex === -1) return null;
+
+  // Starting at that deepest Node marker necessarily excludes host-local
+  // prototype layers. The first listener-owning prototype below it is the
+  // target realm's EventTarget prototype in supported browser DOMs.
+  for (let index = nodePlatformIndex; index < prototypes.length - 1; index += 1) {
+    candidate = prototypes[index] ?? null;
+    if (candidate === null) continue;
+    const add = Object.getOwnPropertyDescriptor(
+      candidate,
+      "addEventListener",
+    )?.value;
+    const remove = Object.getOwnPropertyDescriptor(
+      candidate,
+      "removeEventListener",
+    )?.value;
+    if (typeof add === "function" && typeof remove === "function") {
+      return Object.freeze({
+        add: add as typeof EventTarget.prototype.addEventListener,
+        remove: remove as typeof EventTarget.prototype.removeEventListener,
+      });
+    }
+  }
+  return null;
 }
 
 function snapshotOptions(options: BrowserEventRouterOptions): Readonly<{

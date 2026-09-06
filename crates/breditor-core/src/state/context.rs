@@ -52,3 +52,13 @@ impl Default for EditorContext {
         Self::new(CompiledSchema::default(), DocumentLimits::default())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::EditorContext;
+
+    #[test]
+    fn default_pins_the_official_v0_1_transaction_acceptance_floor() {
+        assert_eq!(EditorContext::default().max_operations_per_transaction(), 1_024);
+    }
+}

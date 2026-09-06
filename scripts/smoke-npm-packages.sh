@@ -72,8 +72,8 @@ printf 'smoke-npm-packages: packing explicitly verified artifacts with lifecycle
     --pack-destination "${tarball_directory}" >/dev/null
 )
 
-readonly browser_tarball="${tarball_directory}/breditor-browser-0.0.59.tgz"
-readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.0.59.tgz"
+readonly browser_tarball="${tarball_directory}/breditor-browser-0.1.0.tgz"
+readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.1.0.tgz"
 [[ -f "${browser_tarball}" ]] || fail "missing @breditor/browser tarball"
 [[ -f "${wasm_tarball}" ]] || fail "missing @breditor/wasm tarball"
 

@@ -1,7 +1,7 @@
 # Breditor clipboard contract
 
-Status: implemented for the closed base schema in `0.0.55`; `0.0.59`
-cross-browser validation complete; pre-`0.1` API
+Status: supported by the public `0.1.0` runtime for the closed base schema;
+direct controller construction remains an advanced integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and
 CKEditor are design references only; Breditor does not adopt their slice,
@@ -198,16 +198,16 @@ light-DOM editor and synchronous `ClipboardEvent.clipboardData` only.
 
 The low-level controller accepts the TypeScript adapter surface structurally.
 Application code must not forge, proxy, or mutate that wiring and must route all
-normal commands through the shared queue. The high-level runtime checkpoint is
-responsible for encapsulating these pieces so ordinary consumers cannot bypass
-their coordination accidentally.
+normal commands through the shared queue. The public high-level runtime
+encapsulates these pieces so ordinary consumers cannot bypass their coordination
+accidentally.
 
 Synthetic DOM tests establish the deterministic ownership and failure laws but
-do not alone claim browser interoperability. The `0.0.59` Playwright gate now
-dispatches the supported synchronous clipboard-event capability in Chromium,
-Firefox, and WebKit, including plain-text precedence and admitted HTML-only
-flattening. It does not exercise OS clipboard permissions, browser chrome, or
-the async Clipboard API. See
+do not alone claim browser interoperability. The `0.1.0` Playwright release
+gate, introduced at checkpoint `0.0.59`, dispatches the supported synchronous
+clipboard-event capability in Chromium, Firefox, and WebKit, including
+plain-text precedence and admitted HTML-only flattening. It does not exercise
+OS clipboard permissions, browser chrome, or the async Clipboard API. See
 [browser support and accessibility](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 ## Research basis

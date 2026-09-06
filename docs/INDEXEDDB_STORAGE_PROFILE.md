@@ -28,7 +28,8 @@ IndexedDB database name: `breditor-local-log-v1`
 
 IndexedDB database version: `1`
 
-Compatibility status: unstable pre-`0.1` profile; no permanent promise
+Compatibility status: experimental local-log profile outside the `0.1.x`
+browser compatibility promise
 
 This document freezes one correctness-first browser profile for the
 platform-neutral storage-generation contract. It is deliberately concrete:

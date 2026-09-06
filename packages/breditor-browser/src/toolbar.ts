@@ -13,6 +13,23 @@ import {
   type EditorDeliveryToken,
   type EngineCommandRequest,
 } from "./editor_command.js";
+import {
+  isSafeFlowContainerHost,
+  nativeAddEventListener,
+  nativeAppendChild,
+  nativeCreateHtmlElement,
+  nativeDocumentActiveElement,
+  nativeFocusHtmlElement,
+  nativeGetAttribute,
+  nativeHasAttribute,
+  nativeHtmlHostFacts,
+  nativeOwnerDocument,
+  nativeParentElement,
+  nativeRemoveAttribute,
+  nativeRemoveElement,
+  nativeRemoveEventListener,
+  nativeSetAttribute,
+} from "./html_host.js";
 
 /** Maximum entries inspected from one browser action-state snapshot. */
 export const MAX_TOOLBAR_STATE_ENTRIES = 512;
@@ -20,16 +37,17 @@ export const MAX_TOOLBAR_STATE_ENTRIES = 512;
 /** Maximum distinct lifecycle listeners retained by one mounted toolbar. */
 export const MAX_TOOLBAR_LIFECYCLE_SUBSCRIBERS = 64;
 
+const PREVENT_SCROLL_FOCUS_OPTIONS: FocusOptions = Object.freeze({
+  preventScroll: true,
+});
+
 /** Action-state fields consumed by the presentation layer. */
 export interface ToolbarActionStateEntry {
   readonly id: string;
   readonly availability:
-    | "enabled"
-    | "disabled"
-    | "blocked"
-    | "unhandled"
-    | "faulted";
-  readonly activation: "stateless" | "inactive" | "active" | "mixed" | undefined;
+    "enabled" | "disabled" | "blocked" | "unhandled" | "faulted";
+  readonly activation:
+    "stateless" | "inactive" | "active" | "mixed" | undefined;
 }
 
 /** Complete state read model needed by a toolbar refresh. */
@@ -148,7 +166,9 @@ export function toolbarCommandRequest(
 export type BreditorToolbarState = "live" | "faulted" | "disposed";
 
 /** One synchronous notification for the toolbar's terminal transition. */
-export type BreditorToolbarSubscriber = (state: BreditorToolbarState) => unknown;
+export type BreditorToolbarSubscriber = (
+  state: BreditorToolbarState,
+) => unknown;
 
 interface ButtonRecord {
   readonly declaration: ToolbarControlDeclaration;
@@ -187,6 +207,7 @@ const NOOP_UNSUBSCRIBE = Object.freeze((): void => {});
  */
 export class BreditorToolbar {
   readonly #host: HTMLElement;
+  readonly #ownerDocument: Document;
   readonly #element!: HTMLDivElement;
   readonly #manifest!: ToolbarManifest;
   readonly #readSnapshot!: () => ToolbarActionStateSnapshot | undefined;
@@ -205,10 +226,15 @@ export class BreditorToolbar {
     dispatcher: ToolbarCommandDispatcher,
   ) {
     requireToolbarHost(host);
+    const hostFacts = nativeHtmlHostFacts(host);
+    if (hostFacts === undefined) {
+      throw new TypeError("toolbar host is invalid");
+    }
     if (TOOLBAR_HOSTS.has(host)) {
       throw new TypeError("toolbar host already has a live Breditor toolbar");
     }
     this.#host = host;
+    this.#ownerDocument = hostFacts.ownerDocument;
     // Reserve before inspecting any application-controlled dependency. A
     // descriptor/proxy trap may reenter construction, but it cannot create a
     // second live toolbar for this mount while the outer constructor is open.
@@ -232,8 +258,7 @@ export class BreditorToolbar {
       }
       this.#readSnapshot = () =>
         Reflect.apply(getSnapshot, stateStore, []) as
-          | ToolbarActionStateSnapshot
-          | undefined;
+          ToolbarActionStateSnapshot | undefined;
       this.#readStoreStatus = () =>
         Reflect.apply(getStatus, stateStore, []) as unknown;
 
@@ -248,15 +273,17 @@ export class BreditorToolbar {
       this.#dispatch = (invocation) =>
         Reflect.apply(dispatch, dispatcher, [invocation]);
 
-      const element = host.ownerDocument.createElement("div");
-      element.setAttribute("data-breditor-toolbar-root", "");
-      element.setAttribute("role", "toolbar");
-      element.setAttribute("aria-label", this.#manifest.label);
-      element.setAttribute("aria-orientation", "horizontal");
+      const element = nativeCreateHtmlElement(this.#ownerDocument, "div");
+      nativeSetAttribute(element, "data-breditor-toolbar-root", "");
+      nativeSetAttribute(element, "role", "toolbar");
+      nativeSetAttribute(element, "aria-label", this.#manifest.label);
+      nativeSetAttribute(element, "aria-orientation", "horizontal");
       this.#element = element;
       this.#installButtons();
-      host.append(element);
-      const unsubscribe = Reflect.apply(subscribe, stateStore, [this.#refreshFromStore]);
+      nativeAppendChild(host, element);
+      const unsubscribe = Reflect.apply(subscribe, stateStore, [
+        this.#refreshFromStore,
+      ]);
       if (typeof unsubscribe !== "function") {
         throw new TypeError("toolbar action-state subscription is invalid");
       }
@@ -348,22 +375,21 @@ export class BreditorToolbar {
   }
 
   #installButtons(): void {
-    const ownerDocument = this.#element.ownerDocument;
     for (let index = 0; index < this.#manifest.controls.length; index += 1) {
       const declaration = this.#manifest.controls[index];
       if (declaration === undefined) continue;
-      const button = ownerDocument.createElement("button");
+      const button = nativeCreateHtmlElement(this.#ownerDocument, "button");
       button.type = "button";
       button.textContent = declaration.label;
-      button.setAttribute("aria-label", declaration.label);
-      button.setAttribute("aria-disabled", "true");
-      button.setAttribute("tabindex", index === 0 ? "0" : "-1");
-      button.setAttribute("data-breditor-state-id", declaration.stateId);
+      nativeSetAttribute(button, "aria-label", declaration.label);
+      nativeSetAttribute(button, "aria-disabled", "true");
+      nativeSetAttribute(button, "tabindex", index === 0 ? "0" : "-1");
+      nativeSetAttribute(button, "data-breditor-state-id", declaration.stateId);
       if (declaration.group !== undefined) {
-        button.setAttribute("data-breditor-group", declaration.group);
+        nativeSetAttribute(button, "data-breditor-group", declaration.group);
       }
       if (declaration.activation === "tracked") {
-        button.setAttribute("aria-pressed", "false");
+        nativeSetAttribute(button, "aria-pressed", "false");
       }
 
       const invocation: ToolbarCommandInvocation = Object.freeze({
@@ -399,12 +425,12 @@ export class BreditorToolbar {
         enabled: false,
       });
       this.#buttons.push(record);
-      button.addEventListener("pointerdown", onPointerDown);
-      button.addEventListener("mousedown", onMouseDown);
-      button.addEventListener("focus", onFocus);
-      button.addEventListener("keydown", onKeyDown);
-      button.addEventListener("click", onClick);
-      this.#element.append(button);
+      nativeAddEventListener(button, "pointerdown", onPointerDown);
+      nativeAddEventListener(button, "mousedown", onMouseDown);
+      nativeAddEventListener(button, "focus", onFocus);
+      nativeAddEventListener(button, "keydown", onKeyDown);
+      nativeAddEventListener(button, "click", onClick);
+      nativeAppendChild(this.#element, button);
     }
   }
 
@@ -426,7 +452,8 @@ export class BreditorToolbar {
         this.#fault();
         return;
       }
-      states = freshness === "fresh" ? normalizeActionStates(snapshot) : new Map();
+      states =
+        freshness === "fresh" ? normalizeActionStates(snapshot) : new Map();
     } catch {
       states = null;
     }
@@ -440,7 +467,10 @@ export class BreditorToolbar {
     }
   };
 
-  #renderButtonState(record: ButtonRecord, entry: NormalizedActionState | undefined): void {
+  #renderButtonState(
+    record: ButtonRecord,
+    entry: NormalizedActionState | undefined,
+  ): void {
     let contractMatches = false;
     if (record.declaration.activation === "tracked") {
       const pressed =
@@ -449,18 +479,24 @@ export class BreditorToolbar {
           : entry?.activation === "mixed"
             ? "mixed"
             : "false";
-      record.button.setAttribute("aria-pressed", pressed);
+      nativeSetAttribute(record.button, "aria-pressed", pressed);
       contractMatches =
         entry?.activation === "inactive" ||
         entry?.activation === "active" ||
         entry?.activation === "mixed";
     } else {
-      record.button.removeAttribute("aria-pressed");
+      nativeRemoveAttribute(record.button, "aria-pressed");
       contractMatches = entry?.activation === "stateless";
     }
     record.enabled =
-      this.#state === "live" && entry?.availability === "enabled" && contractMatches;
-    record.button.setAttribute("aria-disabled", record.enabled ? "false" : "true");
+      this.#state === "live" &&
+      entry?.availability === "enabled" &&
+      contractMatches;
+    nativeSetAttribute(
+      record.button,
+      "aria-disabled",
+      record.enabled ? "false" : "true",
+    );
   }
 
   #handlePointerDown(index: number, event: PointerEvent): void {
@@ -519,16 +555,24 @@ export class BreditorToolbar {
     if (index < 0 || index >= this.#buttons.length) return;
     this.#activeIndex = index;
     for (let candidate = 0; candidate < this.#buttons.length; candidate += 1) {
-      this.#buttons[candidate]?.button.setAttribute(
-        "tabindex",
-        candidate === this.#activeIndex ? "0" : "-1",
-      );
+      const button = this.#buttons[candidate]?.button;
+      if (button !== undefined) {
+        nativeSetAttribute(
+          button,
+          "tabindex",
+          candidate === this.#activeIndex ? "0" : "-1",
+        );
+      }
     }
     if (focus && this.#state === "live") {
       const button = this.#buttons[index]?.button;
       if (button === undefined) return;
-      button.focus();
-      if (button.ownerDocument.activeElement !== button) this.#fault();
+      if (!isMountedToolbarButton(button, this.#element)) {
+        this.#fault();
+        return;
+      }
+      nativeFocusHtmlElement(button);
+      if (!toolbarButtonHasFocus(button)) this.#fault();
     }
   }
 
@@ -543,12 +587,15 @@ export class BreditorToolbar {
 
   #handleClick(record: ButtonRecord, event: MouseEvent): void {
     event.preventDefault();
-    if (this.#state !== "live" || record.button.parentNode !== this.#element) {
+    if (
+      this.#state !== "live" ||
+      !isMountedToolbarButton(record.button, this.#element)
+    ) {
       return;
     }
     this.#refreshFromStore();
     if (!record.enabled || this.#state !== "live") return;
-    const restoreToolbarFocus = record.button.ownerDocument.activeElement === record.button;
+    const restoreToolbarFocus = toolbarButtonHasFocus(record.button);
     try {
       const result = this.#dispatch(record.invocation);
       if (isPromiseLike(result)) {
@@ -561,12 +608,12 @@ export class BreditorToolbar {
         return;
       }
       if (restoreToolbarFocus && this.#state === "live") {
-        if (record.button.parentNode !== this.#element || !record.button.isConnected) {
+        if (!isMountedToolbarButton(record.button, this.#element)) {
           this.#fault();
           return;
         }
-        record.button.focus({ preventScroll: true });
-        if (record.button.ownerDocument.activeElement !== record.button) {
+        nativeFocusHtmlElement(record.button, PREVENT_SCROLL_FOCUS_OPTIONS);
+        if (!toolbarButtonHasFocus(record.button)) {
           this.#fault();
         }
       }
@@ -582,7 +629,7 @@ export class BreditorToolbar {
     for (const record of this.#buttons) {
       record.enabled = false;
       try {
-        record.button.setAttribute("aria-disabled", "true");
+        nativeSetAttribute(record.button, "aria-disabled", "true");
       } catch {
         // The logical terminal state does not depend on damaged application DOM.
       }
@@ -605,20 +652,32 @@ export class BreditorToolbar {
   #disposeInstalledDom(): void {
     for (const record of this.#buttons) {
       bestEffort(() =>
-        record.button.removeEventListener("pointerdown", record.onPointerDown),
+        nativeRemoveEventListener(
+          record.button,
+          "pointerdown",
+          record.onPointerDown,
+        ),
       );
       bestEffort(() =>
-        record.button.removeEventListener("mousedown", record.onMouseDown),
+        nativeRemoveEventListener(
+          record.button,
+          "mousedown",
+          record.onMouseDown,
+        ),
       );
-      bestEffort(() => record.button.removeEventListener("focus", record.onFocus));
       bestEffort(() =>
-        record.button.removeEventListener("keydown", record.onKeyDown),
+        nativeRemoveEventListener(record.button, "focus", record.onFocus),
       );
-      bestEffort(() => record.button.removeEventListener("click", record.onClick));
-      bestEffort(() => record.button.remove());
+      bestEffort(() =>
+        nativeRemoveEventListener(record.button, "keydown", record.onKeyDown),
+      );
+      bestEffort(() =>
+        nativeRemoveEventListener(record.button, "click", record.onClick),
+      );
+      bestEffort(() => nativeRemoveElement(record.button));
     }
     this.#buttons.splice(0, this.#buttons.length);
-    bestEffort(() => this.#element.remove());
+    bestEffort(() => nativeRemoveElement(this.#element));
   }
 
   #notifyTerminal(state: Exclude<BreditorToolbarState, "live">): void {
@@ -634,12 +693,34 @@ export class BreditorToolbar {
   }
 }
 
+function isMountedToolbarButton(
+  button: HTMLButtonElement,
+  toolbarRoot: HTMLElement,
+): boolean {
+  const facts = nativeHtmlHostFacts(button);
+  return (
+    facts !== undefined &&
+    facts.isConnected &&
+    nativeParentElement(button) === toolbarRoot
+  );
+}
+
+function toolbarButtonHasFocus(button: HTMLButtonElement): boolean {
+  const ownerDocument = nativeOwnerDocument(button);
+  return (
+    ownerDocument !== null &&
+    nativeDocumentActiveElement(ownerDocument) === button
+  );
+}
+
 function normalizeActionStates(
   snapshot: ToolbarActionStateSnapshot | undefined,
 ): ReadonlyMap<string, NormalizedActionState> | null {
   if (snapshot === undefined) return new Map();
   if (typeof snapshot !== "object" || snapshot === null) return null;
-  const entries = (snapshot as unknown as Readonly<Record<string, unknown>>)["entries"];
+  const entries = (snapshot as unknown as Readonly<Record<string, unknown>>)[
+    "entries"
+  ];
   if (!Array.isArray(entries)) return null;
   const entryCount = entries.length;
   if (entryCount > MAX_TOOLBAR_STATE_ENTRIES) return null;
@@ -707,34 +788,26 @@ function readToolbarStoreFreshness(
 }
 
 function requireToolbarHost(host: unknown): asserts host is HTMLElement {
-  try {
-    if (
-      typeof host !== "object" ||
-      host === null ||
-      (host as Node).nodeType !== 1 ||
-      (host as Element).namespaceURI !== "http://www.w3.org/1999/xhtml" ||
-      (host as Element).ownerDocument === null ||
-      !SAFE_TOOLBAR_MOUNT_TAGS.has((host as Element).tagName) ||
-      hasInteractiveMountSemantics(host as HTMLElement) ||
-      isInsideEditableRegion(host as HTMLElement)
-    ) {
-      throw new TypeError("toolbar host is invalid");
-    }
-  } catch {
+  if (!isSafeToolbarHost(host)) {
     throw new TypeError("toolbar host is invalid");
   }
 }
 
-const SAFE_TOOLBAR_MOUNT_TAGS: ReadonlySet<string> = new Set([
-  "ARTICLE",
-  "ASIDE",
-  "DIV",
-  "FOOTER",
-  "HEADER",
-  "MAIN",
-  "NAV",
-  "SECTION",
-]);
+/** Internal shared admission check for the high-level runtime and toolbar. */
+export function isSafeToolbarHost(host: unknown): host is HTMLElement {
+  try {
+    if (
+      !isSafeFlowContainerHost(host) ||
+      hasInteractiveMountSemantics(host) ||
+      isInsideEditableRegion(host)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const SAFE_TOOLBAR_MOUNT_ROLES: ReadonlySet<string> = new Set([
   "",
@@ -753,8 +826,8 @@ const SAFE_TOOLBAR_MOUNT_ROLES: ReadonlySet<string> = new Set([
 ]);
 
 function hasInteractiveMountSemantics(host: HTMLElement): boolean {
-  if (host.hasAttribute("tabindex")) return true;
-  const role = host.getAttribute("role");
+  if (nativeHasAttribute(host, "tabindex")) return true;
+  const role = nativeGetAttribute(host, "role");
   if (role === null) return false;
   const tokens = role.trim().toLowerCase().split(/\s+/u);
   return tokens.some((token) => !SAFE_TOOLBAR_MOUNT_ROLES.has(token));
@@ -763,7 +836,7 @@ function hasInteractiveMountSemantics(host: HTMLElement): boolean {
 function isInsideEditableRegion(host: HTMLElement): boolean {
   let candidate: HTMLElement | null = host;
   while (candidate !== null) {
-    const raw = candidate.getAttribute("contenteditable");
+    const raw = nativeGetAttribute(candidate, "contenteditable");
     if (raw !== null) {
       const value = raw.trim().toLowerCase();
       if (value === "false") return false;
@@ -771,7 +844,7 @@ function isInsideEditableRegion(host: HTMLElement): boolean {
         return true;
       }
     }
-    candidate = candidate.parentElement;
+    candidate = nativeParentElement(candidate);
   }
   return false;
 }
@@ -793,8 +866,10 @@ function requireObject(
 function isPromiseLike(value: unknown): boolean {
   try {
     return (
-      (typeof value === "object" && value !== null) || typeof value === "function"
-    ) && typeof (value as Readonly<{ then?: unknown }>).then === "function";
+      ((typeof value === "object" && value !== null) ||
+        typeof value === "function") &&
+      typeof (value as Readonly<{ then?: unknown }>).then === "function"
+    );
   } catch {
     return true;
   }
@@ -815,14 +890,16 @@ function isOwnedToolbarDispatchResult(
 }
 
 function containAsyncRejection(value: unknown): void {
-  if (
-    !((typeof value === "object" && value !== null) || typeof value === "function")
-  ) {
+  if (!(
+    (typeof value === "object" && value !== null) ||
+    typeof value === "function"
+  )) {
     return;
   }
   try {
     const then = (value as Readonly<{ then?: unknown }>).then;
-    if (typeof then === "function") void Promise.resolve(value).catch(() => undefined);
+    if (typeof then === "function")
+      void Promise.resolve(value).catch(() => undefined);
   } catch {
     // A hostile thenable is subscriber-local failure too.
   }

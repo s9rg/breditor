@@ -1,7 +1,8 @@
 # Rust data contract
 
-Status: implemented vertical proof; not yet a permanent public wire
-compatibility promise
+Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
+the `0.1.x` browser path; other formats in this proof kernel remain experimental
+unless [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them
 Document format: `breditor/document`, version `1`
 Operation format: `breditor/operation`, version `1`
 Transaction-request format: `breditor/transaction-request`, version `1`
@@ -13,11 +14,11 @@ Local-log-checkpoint format: `breditor/local-log-checkpoint`, version `1`
 Local-log-frame format: binary `Local Log Frame`, version `1`
 Storage-generation validation format: `breditor/local-log-storage-generation`,
 version `1` (strict ordinary-rotation validation implemented in `0.0.32` and
-selected-root-aware next-rotation validation in `0.0.34`; still a pre-`0.1`,
-non-permanent compatibility contract)
+selected-root-aware next-rotation validation in `0.0.34`; experimental and
+outside the `0.1.x` compatibility promise)
 Initial storage-root format: `breditor/local-log-storage-root`, version `1`
-(strict pure-Rust validation implemented in `0.0.34`; still a pre-`0.1`,
-non-permanent compatibility contract)
+(strict pure-Rust validation implemented in `0.0.34`; experimental and outside
+the `0.1.x` compatibility promise)
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -245,8 +246,9 @@ nested checkpoints; the current checkpoint is decoded again to retain its
 anchor. It performs no I/O and proves no provisioning, CAS/head currentness,
 lifetime ID/fence freshness, empty-generation reservation, writer authority/epoch,
 durability, commit evidence, or ownership release. No IndexedDB, JavaScript,
-Wasm, or filesystem adapter exists, and these storage formats remain unstable
-pre-`0.1` contracts.
+Wasm, or filesystem adapter exists, and these storage formats remain
+experimental repository-internal contracts outside the `0.1.x` compatibility
+promise.
 
 Version `0.0.35` retains the complete checked selected binding and the exact
 canonical current/optional-immediate-predecessor selection bytes in the
@@ -3159,8 +3161,8 @@ implicitly.
 Version `0.0.32` implements the platform-neutral value and validation subset of
 [`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). The
 implemented validation-only `breditor/local-log-storage-generation@1` name and
-shape remain a pre-`0.1` contract rather than a permanent wire compatibility
-promise.
+shape remain an experimental repository-internal contract outside the `0.1.x`
+compatibility promise.
 
 The six new bounded types keep storage roles distinct:
 
@@ -3997,7 +3999,7 @@ Incremental admission performs ordered-map replay lookups per observation and
 retains every first-seen full active entry. A rejected attempt consumes no
 owner budget, so the core alone does not bound repeated hostile validation CPU.
 
-## Next gate
+## Implementation history and remaining local-log work
 
 Version `0.0.33` now freezes the explicit initial-root contract and the concrete
 `breditor/indexeddb-local-log@1` profile in
@@ -4564,7 +4566,7 @@ including multi-operation structural edits. Each update includes exact
 base/result snapshots and owns a complete final projection, so classification
 is never required for correctness.
 
-The private framework-neutral browser package consumes the generic view into a
+The framework-neutral browser package consumes the generic view into a
 deeply frozen closed-base-schema projection. Its DOM mapping is fixed and safe:
 the supplied host represents the document root, property-free `<p>` elements
 represent paragraphs, DOM text nodes represent text leaves, property-free
@@ -4642,13 +4644,16 @@ offset zero and the final host offset normalize to the first-start and last-end
 paragraph positions for select-all; internal root boundaries remain ambiguous
 and reject.
 
-Anchor and focus are never sorted. Programmatic writes use
-`Selection.setBaseAndExtent` when available and verify the installed nodes and
-offsets; a Range fallback is allowed for forward/collapsed selections only. A
-backward write fails before mutation when direction cannot be preserved. DOM
-has no affinity field, so new DOM input uses the frozen boundary-derived rule:
-start and empty boundaries are `after`, a non-empty end boundary is `before`,
-and an interior boundary is `after`.
+Anchor and focus are never sorted. An exact same-container, same-offset caret
+uses `Range`, `removeAllRanges`, and `addRange` even when
+`Selection.setBaseAndExtent` exists; this avoids WebKit exposing a transiently
+stale `getRangeAt(0)` after an owned DOM replacement. Other programmatic writes
+use `setBaseAndExtent` when available and verify the installed semantic
+endpoints. A verified Range fallback is allowed for forward/collapsed
+selections only. A backward write fails before mutation when direction cannot
+be preserved. DOM has no affinity field, so new DOM input uses the frozen
+boundary-derived rule: start and empty boundaries are `after`, a non-empty end
+boundary is `before`, and an interior boundary is `after`.
 
 One successful programmatic write records the renderer handle, generation, and
 complete directional spatial signature. Exactly one matching read is labeled a

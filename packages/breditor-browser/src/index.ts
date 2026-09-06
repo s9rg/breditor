@@ -36,11 +36,23 @@ export {
   BASE_TOOLBAR_STATE_IDS,
   DEFAULT_TOOLBAR_MANIFEST,
   MAX_TOOLBAR_CONTROLS,
+  MAX_TOOLBAR_GROUP_UTF16,
+  MAX_TOOLBAR_GROUP_UTF8,
+  MAX_TOOLBAR_LABEL_UTF16,
+  MAX_TOOLBAR_LABEL_UTF8,
+  MAX_TOOLBAR_QUALIFIED_NAME_ASCII,
+  MIN_TOOLBAR_CONTROLS,
   createToolbarManifest,
   type ToolbarCommandDeclaration,
   type ToolbarControlDeclaration,
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
+
+/** Public bounds for declarative toolbar string-action input. */
+export {
+  MAX_BROWSER_COMMAND_TEXT_UTF16,
+  MAX_BROWSER_COMMAND_TEXT_UTF8,
+} from "./editor_command.js";
 
 /** Host-selected keyboard behavior. */
 export type { KeyboardTranslationPolicy } from "./keyboard.js";
@@ -63,6 +75,12 @@ export type {
   BrowserActionValueArray,
   BrowserActionValueObject,
 } from "./wasm_action_state_adapter.js";
+export {
+  DEFAULT_SESSION_CHECKPOINT_AUTOSAVE_DELAY_MS,
+  DEFAULT_SESSION_CHECKPOINT_AUTOSAVE_MAX_LATENCY_MS,
+  MAX_SESSION_CHECKPOINT_AUTOSAVE_DELAY_MS,
+  MAX_SESSION_CHECKPOINT_AUTOSAVE_FLUSH_WAITERS,
+} from "./session_checkpoint_autosave.js";
 export type {
   SessionCheckpointAutosaveFailure,
   SessionCheckpointAutosaveFailureCode,

@@ -1,7 +1,7 @@
 # Breditor toolbar and action-state contract
 
-Status: implemented through checkpoint `0.0.58`; `0.0.59` cross-browser and
-accessibility validation complete.
+Status: supported by the public `0.1.0` runtime; required cross-browser and
+accessibility validation passed
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -131,15 +131,24 @@ revalidated after DOM access, and queued. No DOM range or an outside-host range
 is a focus transition and preserves semantic selection. Active composition,
 stale delivery, DOM drift, and queue uncertainty fail closed.
 
-The unified event router in `0.0.58` owns listener ordering and routes document
-`selectionchange` through the ordinary browser controller. Advanced hosts that
-assemble lower-level components must preserve that route and use the same queue
-observer for action-state refresh.
+The unified event router introduced at checkpoint `0.0.58` owns listener
+ordering and routes document `selectionchange` through the ordinary browser
+controller. Advanced hosts that assemble lower-level components must preserve
+that route and use the same queue observer for action-state refresh.
 
 ## Presentation manifest
 
-`createToolbarManifest` accepts at most 64 controls. The manifest and every
-nested value are copied and frozen. It admits primitive data only:
+`createToolbarManifest` accepts a dense array of 1 through 64 controls. The
+toolbar label and every control label contain valid Unicode, at least one
+non-whitespace character, no ASCII control or DEL character, and at most 128
+UTF-16 code units / 512 UTF-8 bytes. Every unique `stateId` and action ID is at
+most 128 ASCII characters and follows the lowercase
+`namespace/local-name` grammar. An optional group is valid Unicode, already
+trimmed, nonempty, control-free, and at most 64 UTF-16 code units / 256 UTF-8
+bytes. A string action input is nonempty valid Unicode and at most 65,536 UTF-16
+code units / 65,536 UTF-8 bytes. The public package root exports constants for
+these bounds. The manifest and every nested value are copied and frozen. It
+admits primitive data only:
 
 - a bounded toolbar label;
 - a unique qualified action-state ID per button;
@@ -154,19 +163,26 @@ presentation/state IDs outside this manifest.
 
 Every retained field must be an own data property, and `controls` must be a
 bounded dense array of own data elements. Accessors and inherited fields are
-never read. Undeclared properties are dropped. In particular, v0.0.56 does not
+never read. Undeclared properties are dropped. In particular, v0.1.0 does not
 admit `aria-keyshortcuts`: shortcut metadata will be added only with a runtime
 that registers and tests the advertised shortcut behavior.
 
 The default manifest is Bold, Undo, Redo. Custom validated manifests can omit,
-reorder, or extend those controls when the injected state catalog and command
-runtime support their state IDs and actions.
+reorder, or extend controls only when the injected state catalog and command
+runtime expose matching state IDs and commands. The official `0.1.0` engine
+exposes only the Bold, Undo, and Redo bindings; adding behavior requires a new
+engine command and state evaluator, not just a manifest entry.
 
 ## Accessible DOM behavior
 
-`BreditorToolbar` treats its constructor element as a mount, validates that it
-is a non-interactive flow container outside an active editable region, and
-appends one owned inner `<div data-breditor-toolbar-root>`. Only that inner root
+`BreditorToolbar` treats its constructor element as a mount. It accepts only an
+HTML `article`, `aside`, `div`, `footer`, `header`, `main`, `nav`, or `section`
+outside an effective editable region, with no `tabindex` attribute. A role is
+absent/empty or contains only case-insensitive `banner`, `complementary`,
+`contentinfo`, `form`, `generic`, `group`, `main`, `navigation`, `none`,
+`presentation`, `region`, or `search` tokens. The high-level owner additionally
+requires a connected, empty, distinct toolbar host. The toolbar appends one
+owned inner `<div data-breditor-toolbar-root>`. Only that inner root
 receives `role="toolbar"`, its accessible name, horizontal orientation, and the
 generated native `<button type="button">` controls. Existing mount attributes
 and children remain outside the toolbar role. `.element` returns the owned
@@ -177,8 +193,9 @@ and End implement roving focus. Pointer down prevents the primary pointer from
 stealing the editor's DOM selection. A keyboard-activated synchronous command
 can cause browser selection restoration to focus the editing host, so the
 toolbar restores the exact activating button with `preventScroll` and faults
-closed if it cannot prove restoration. The `0.0.59` Playwright matrix exercises
-this real-engine focus path in Chromium, Firefox, and WebKit; see the
+closed if it cannot prove restoration. The `0.1.0` Playwright release matrix,
+introduced at checkpoint `0.0.59`, exercises this real-engine focus path in
+Chromium, Firefox, and WebKit; see the
 [browser support and accessibility gate](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 Unavailable, stale, disposed, absent, malformed, unhandled, and faulted state
@@ -190,9 +207,9 @@ before dispatch, but the queue and Rust remain authoritative.
 Dispatch must return an outcome minted by `toolbarCommandDispatchResult`:
 `completed` means synchronous completion, `rejected` means no command ran, and
 `failed` means the runtime cannot prove a safe outcome. Thrown, asynchronous,
-forged, malformed, and failed outcomes fault the toolbar closed. The `0.0.58`
-high-level runtime owns this dispatcher; advanced low-level construction still
-requires a host-supplied implementation.
+forged, malformed, and failed outcomes fault the toolbar closed. The public
+`0.1.0` high-level runtime owns this dispatcher; advanced low-level
+construction still requires a host-supplied implementation.
 
 Disposal removes the owned inner root, generated buttons, listeners, and
 subscriptions without modifying the mount. Callback contract violations fault
@@ -200,14 +217,15 @@ the toolbar closed and disable every control. A failed constructor enters a
 terminal state before rollback, so even a callback retained by a broken
 subscriber becomes inert.
 
-Through `0.0.58`, `subscribe` exposes the toolbar's one terminal `faulted` or
-`disposed` transition to at most 64 distinct lifecycle listeners. Duplicate
-functions share one delivery slot with independent unsubscribe closures;
-throws and rejected promises are listener-local. The high-level browser owner
-uses this signal to turn presentation failure into a payload-redacted editor
-fault rather than continuing to report a false-live toolbar.
+Since checkpoint `0.0.58`, `subscribe` exposes the toolbar's one terminal
+`faulted` or `disposed` transition to at most 64 distinct lifecycle listeners.
+Duplicate functions share one delivery slot with independent unsubscribe
+closures; throws and rejected promises are listener-local. The high-level
+browser owner uses this signal to turn presentation failure into a
+payload-redacted editor fault rather than continuing to report a false-live
+toolbar.
 
-## Explicit limits through the `0.0.59` release candidate
+## Explicit `0.1.0` limits
 
 - The distributed catalog contains Bold, Undo, and Redo only.
 - One browser action-state snapshot admits at most 512 entries. One uniform
@@ -224,13 +242,13 @@ fault rather than continuing to report a false-live toolbar.
 - `unhandled` and `faulted` expose their category across Wasm, but not the
   routed fallthrough trace, fault code, or fault detail. Disabled reason detail
   likewise remains core-only; the browser receives only its stable reason code.
-- Toolbar state and dispatch remain synchronous; the `0.0.58` high-level runtime
+- Toolbar state and dispatch remain synchronous; the public `0.1.0` runtime
   bridges status into a bounded, immutable external-store subscription.
-- A host can inject a custom manifest, but this checkpoint does not dynamically
-  register Rust actions or catalog entries from JavaScript.
+- A host can inject a custom manifest, but the `0.1.0` surface does not
+  dynamically register Rust actions or catalog entries from JavaScript.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
-- The `0.0.59` automated gate covers keyboard navigation, computed focus
+- The `0.1.0` automated gate covers keyboard navigation, computed focus
   visibility, accessible names, toolbar semantics, and pressed/mixed state in
   Chromium, Firefox, and WebKit, plus an axe scan. It does not certify WCAG
   conformance or announcements and interaction in screen readers or other

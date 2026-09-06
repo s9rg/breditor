@@ -19,6 +19,19 @@ import {
   type IndexedDbSessionCheckpointCasToken,
   type IndexedDbSessionCheckpointLoadResult,
 } from "./indexeddb_session_checkpoint.js";
+import {
+  isSafeFlowContainerHost,
+  nativeBlurHtmlElement,
+  nativeDocumentActiveElement,
+  nativeFocusHtmlElement,
+  nativeGetAttribute,
+  nativeHasAttribute,
+  nativeHtmlHostFacts,
+  nativeOwnerDocument,
+  nativeRemoveAttribute,
+  nativeReplaceChildren,
+  nativeSetAttribute,
+} from "./html_host.js";
 import type { KeyboardTranslationPolicy } from "./keyboard.js";
 import {
   BreditorSessionCheckpointAutosave,
@@ -28,6 +41,7 @@ import {
 } from "./session_checkpoint_autosave.js";
 import {
   BreditorToolbar,
+  isSafeToolbarHost,
   toolbarCommandDispatchResult,
   toolbarCommandRequest,
   type ToolbarCommandDispatchResult,
@@ -78,7 +92,12 @@ export interface BreditorBrowserToolbarOptions {
   readonly manifest?: ToolbarManifest;
 }
 
-/** Generated static factory shape accepted by the high-level runtime. */
+/**
+ * Advanced bare-factory ingress validated at runtime.
+ *
+ * The returned generated-handle protocol is intentionally not a root API;
+ * supported applications pass the initialized official module namespace.
+ */
 export interface BreditorBrowserWasmFactory {
   fromDocumentJson(
     lineageId: string,
@@ -106,11 +125,17 @@ export interface BreditorBrowserEditorPersistenceOptions {
 
 /** Complete construction policy for one framework-neutral browser editor. */
 export interface BreditorBrowserEditorOptions {
-  /** Connected, initially empty, dedicated light-DOM editing host. */
+  /**
+   * Connected, initially empty HTML `article`, `aside`, `div`, `footer`,
+   * `header`, `main`, `nav`, or `section` used as the dedicated light-DOM host.
+   */
   readonly host: HTMLElement;
   /** Accessible name installed as `aria-label` on the editing host. */
   readonly label: string;
-  /** Initialized generated module namespace, or its exact static engine factory. */
+  /**
+   * Initialized official module namespace, or an advanced bare-factory escape
+   * hatch whose returned structural protocol is not a supported root contract.
+   */
   readonly wasm: BreditorBrowserWasmModule | BreditorBrowserWasmFactory;
   /** Used only when persistence is disabled or its exact slot is empty. */
   readonly initialDocument: BreditorBrowserInitialDocument;
@@ -207,32 +232,32 @@ export type BreditorBrowserContentExportError =
   | Readonly<{
       kind: "request";
       code: "content_export.invalid_format";
-      message: "The requested content export format is invalid.";
+      message: string;
     }>
   | Readonly<{
       kind: "lifecycle";
       code: "content_export.busy";
-      message: "The editor is temporarily busy and cannot export content.";
+      message: string;
     }>
   | Readonly<{
       kind: "lifecycle";
       code: "content_export.unavailable";
-      message: "Authoritative editor content is unavailable.";
+      message: string;
     }>
   | Readonly<{
       kind: "boundary";
       code: "content_export.invalid_wasm_view";
-      message: "The Wasm document export was invalid.";
+      message: string;
     }>
   | Readonly<{
       kind: "boundary";
       code: "content_export.invalid_projection";
-      message: "The semantic plain-text projection was invalid.";
+      message: string;
     }>
   | Readonly<{
       kind: "core";
       code: "content_export.core_rejected";
-      message: "The Rust editor core could not export content.";
+      message: string;
     }>;
 
 /** Synchronous, deeply immutable content export result. */
@@ -246,6 +271,12 @@ interface NormalizedAbortSignal {
   readonly isAborted: () => boolean;
   readonly add: (listener: () => void) => void;
   readonly remove: (listener: () => void) => void;
+}
+
+interface AbortSignalIntrinsics {
+  readonly aborted: (this: AbortSignal) => boolean;
+  readonly add: typeof EventTarget.prototype.addEventListener;
+  readonly remove: typeof EventTarget.prototype.removeEventListener;
 }
 
 interface NormalizedOptions {
@@ -304,11 +335,13 @@ const PERSISTENCE_DISABLED: BreditorBrowserEditorPersistenceStatus =
   });
 const PERSISTENCE_DISABLED_RESULT: BreditorBrowserEditorPersistenceResult =
   Object.freeze({ status: "disabled" });
-const INVALID_CONTENT_FORMAT: BreditorBrowserContentExportError = Object.freeze({
-  kind: "request",
-  code: "content_export.invalid_format",
-  message: "The requested content export format is invalid.",
-});
+const INVALID_CONTENT_FORMAT: BreditorBrowserContentExportError = Object.freeze(
+  {
+    kind: "request",
+    code: "content_export.invalid_format",
+    message: "The requested content export format is invalid.",
+  },
+);
 const CONTENT_BUSY: BreditorBrowserContentExportError = Object.freeze({
   kind: "lifecycle",
   code: "content_export.busy",
@@ -490,9 +523,9 @@ export class BreditorBrowserEditor {
       // did not populate, detach, or replace either dedicated mount meanwhile.
       if (
         EDITOR_HOSTS.get(normalized.host) !== reservation ||
-        !usableEmptyHost(normalized.host) ||
+        !usableEmptyEditorHost(normalized.host) ||
         (normalized.toolbar !== undefined &&
-          !usableEmptyHost(normalized.toolbar.host))
+          !usableEmptyToolbarHost(normalized.toolbar.host))
       ) {
         return openFailure("browser_editor.setup_failed");
       }
@@ -741,8 +774,16 @@ export class BreditorBrowserEditor {
     }
 
     return format === "documentJson"
-      ? contentExportFromDocumentJson(result as BrowserDocumentJsonReadResult, before, after)
-      : contentExportFromPlainText(result as BrowserProjectionPlainTextResult, before, after);
+      ? contentExportFromDocumentJson(
+          result as BrowserDocumentJsonReadResult,
+          before,
+          after,
+        )
+      : contentExportFromPlainText(
+          result as BrowserProjectionPlainTextResult,
+          before,
+          after,
+        );
   }
 
   #isDisposed(): boolean {
@@ -798,8 +839,11 @@ export class BreditorBrowserEditor {
   focus(): boolean {
     if (this.#status.phase !== "live") return false;
     try {
-      this.#host.focus();
-      const focused = this.#host.ownerDocument.activeElement === this.#host;
+      nativeFocusHtmlElement(this.#host);
+      const ownerDocument = nativeOwnerDocument(this.#host);
+      const focused =
+        ownerDocument !== null &&
+        nativeDocumentActiveElement(ownerDocument) === this.#host;
       return this.#status.phase === "live" && focused;
     } catch {
       return false;
@@ -1190,7 +1234,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const signal = options.signal;
     const spellcheck = options.spellcheck ?? true;
     if (
-      !usableEmptyHost(host) ||
+      !usableEmptyEditorHost(host) ||
       typeof label !== "string" ||
       label.length < 1 ||
       label.length > MAX_BROWSER_EDITOR_LABEL_UTF16 ||
@@ -1214,7 +1258,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       if (
         !objectLike(toolbar) ||
         toolbar.host === host ||
-        !usableEmptyHost(toolbar.host)
+        !usableEmptyToolbarHost(toolbar.host)
       ) {
         return null;
       }
@@ -1270,28 +1314,75 @@ function normalizeAbortSignal(
   if (value === undefined) return undefined;
   if (!objectLike(value)) return null;
   try {
+    const intrinsics = readAbortSignalIntrinsics();
+    if (intrinsics === null) return null;
     const signal = value as unknown as AbortSignal;
-    const add = signal.addEventListener;
-    const remove = signal.removeEventListener;
-    if (typeof add !== "function" || typeof remove !== "function") return null;
+    const initial = Reflect.apply(intrinsics.aborted, signal, []) as unknown;
+    if (typeof initial !== "boolean") return null;
     return Object.freeze({
       isAborted: () => {
         try {
-          return signal.aborted === true;
+          return Reflect.apply(intrinsics.aborted, signal, []) === true;
         } catch {
           return true;
         }
       },
       add: (listener: () => void) => {
-        Reflect.apply(add, signal, ["abort", listener, { once: true }]);
+        Reflect.apply(intrinsics.add, signal, ["abort", listener, { once: true }]);
       },
       remove: (listener: () => void) => {
-        Reflect.apply(remove, signal, ["abort", listener]);
+        Reflect.apply(intrinsics.remove, signal, ["abort", listener]);
       },
     });
   } catch {
     return null;
   }
+}
+
+function readAbortSignalIntrinsics(): AbortSignalIntrinsics | null {
+  try {
+    // Browser globals may be installed after module evaluation by a test or
+    // embedding environment, so resolve the current realm only at admission.
+    const signalPrototype =
+      typeof AbortSignal === "function" ? AbortSignal.prototype : undefined;
+    const aborted = signalPrototype === undefined
+      ? undefined
+      : Object.getOwnPropertyDescriptor(signalPrototype, "aborted")?.get;
+    // Some embeddings install AbortSignal and EventTarget from distinct DOM
+    // realms. Walk from AbortSignal.prototype so the listener methods carry the
+    // same implementation brand as the signal getter.
+    const add = prototypeMethod(signalPrototype, "addEventListener");
+    const remove = prototypeMethod(signalPrototype, "removeEventListener");
+    if (
+      typeof aborted !== "function" ||
+      typeof add !== "function" ||
+      typeof remove !== "function"
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      aborted: aborted as (this: AbortSignal) => boolean,
+      add: add as typeof EventTarget.prototype.addEventListener,
+      remove: remove as typeof EventTarget.prototype.removeEventListener,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function prototypeMethod(
+  prototype: object | undefined,
+  name: string,
+): ((this: unknown, ...args: unknown[]) => unknown) | undefined {
+  let candidate: object | null | undefined = prototype;
+  while (candidate !== undefined && candidate !== null) {
+    const value = Object.getOwnPropertyDescriptor(candidate, name)?.value;
+    if (typeof value === "function") {
+      return value as (this: unknown, ...args: unknown[]) => unknown;
+    }
+    candidate = Object.getPrototypeOf(candidate) as object | null;
+  }
+  return undefined;
 }
 
 async function loadUntilAbort(
@@ -1320,19 +1411,31 @@ async function loadUntilAbort(
   const abort = new Promise<Readonly<{ kind: "aborted" }>>((resolve) => {
     settleAbort = resolve;
   });
+  let active = true;
   const onAbort = (): void => {
+    if (!active) return;
+    active = false;
     bestEffortIntrinsic(store, STORAGE_CLOSE);
     settleAbort?.(Object.freeze({ kind: "aborted" }));
   };
   try {
     signal.add(onAbort);
   } catch {
+    active = false;
+    try {
+      signal.remove(onAbort);
+    } catch {
+      // Logical invalidation already makes a retained callback inert.
+    }
     return Object.freeze({ kind: "aborted" });
   }
   if (signal.isAborted()) onAbort();
   try {
     return await Promise.race([load, abort]);
   } finally {
+    // Invalidate first: a platform which retains the listener cannot close a
+    // persistence owner after startup has transferred it to a live editor.
+    active = false;
     try {
       signal.remove(onAbort);
     } catch {
@@ -1343,17 +1446,24 @@ async function loadUntilAbort(
 
 function usableEmptyHost(value: unknown): value is HTMLElement {
   try {
-    if (!objectLike(value)) return false;
-    const host = value as unknown as HTMLElement;
-    return (
-      host.nodeType === 1 &&
-      host.namespaceURI === "http://www.w3.org/1999/xhtml" &&
-      host.ownerDocument !== null &&
-      host.isConnected &&
-      host.childNodes.length === 0 &&
-      typeof host.replaceChildren === "function" &&
-      typeof host.setAttribute === "function"
-    );
+    const facts = nativeHtmlHostFacts(value);
+    return facts !== undefined && facts.isConnected && !facts.hasChildren;
+  } catch {
+    return false;
+  }
+}
+
+function usableEmptyEditorHost(value: unknown): value is HTMLElement {
+  try {
+    return usableEmptyHost(value) && isSafeFlowContainerHost(value);
+  } catch {
+    return false;
+  }
+}
+
+function usableEmptyToolbarHost(value: unknown): value is HTMLElement {
+  try {
+    return usableEmptyHost(value) && isSafeToolbarHost(value);
   } catch {
     return false;
   }
@@ -1383,7 +1493,7 @@ function snapshotHostAttributes(
   try {
     return Object.freeze(
       EDITOR_ATTRIBUTES.map((name) =>
-        Object.freeze({ name, value: host.getAttribute(name) }),
+        Object.freeze({ name, value: nativeGetAttribute(host, name) }),
       ),
     );
   } catch {
@@ -1395,18 +1505,30 @@ function installHostAttributes(options: NormalizedOptions): boolean {
   try {
     // Boolean HTML attributes are enabled by presence, so `inert="false"`
     // would still suppress the supposedly live editor.
-    options.host.removeAttribute("inert");
-    options.host.setAttribute("contenteditable", "true");
-    options.host.setAttribute("role", "textbox");
-    options.host.setAttribute("aria-label", options.label);
-    options.host.setAttribute("aria-multiline", "true");
-    options.host.setAttribute("aria-disabled", "false");
-    options.host.setAttribute(
+    nativeRemoveAttribute(options.host, "inert");
+    nativeSetAttribute(options.host, "contenteditable", "true");
+    nativeSetAttribute(options.host, "role", "textbox");
+    nativeSetAttribute(options.host, "aria-label", options.label);
+    nativeSetAttribute(options.host, "aria-multiline", "true");
+    nativeSetAttribute(options.host, "aria-disabled", "false");
+    nativeSetAttribute(
+      options.host,
       "spellcheck",
       options.spellcheck ? "true" : "false",
     );
-    options.host.setAttribute("data-breditor-editor-root", "");
-    return true;
+    nativeSetAttribute(options.host, "data-breditor-editor-root", "");
+    return (
+      !nativeHasAttribute(options.host, "inert") &&
+      nativeGetAttribute(options.host, "contenteditable") === "true" &&
+      nativeGetAttribute(options.host, "role") === "textbox" &&
+      nativeGetAttribute(options.host, "aria-label") === options.label &&
+      nativeGetAttribute(options.host, "aria-multiline") === "true" &&
+      nativeGetAttribute(options.host, "aria-disabled") === "false" &&
+      nativeGetAttribute(options.host, "spellcheck") ===
+        (options.spellcheck ? "true" : "false") &&
+      nativeHasAttribute(options.host, "data-breditor-editor-root") &&
+      nativeGetAttribute(options.host, "data-breditor-editor-root") === ""
+    );
   } catch {
     return false;
   }
@@ -1418,8 +1540,8 @@ function restoreHostAttributes(
 ): void {
   for (const attribute of attributes) {
     try {
-      if (attribute.value === null) host.removeAttribute(attribute.name);
-      else host.setAttribute(attribute.name, attribute.value);
+      if (attribute.value === null) nativeRemoveAttribute(host, attribute.name);
+      else nativeSetAttribute(host, attribute.name, attribute.value);
     } catch {
       // Disposal is terminal even if application DOM hooks throw.
     }
@@ -1428,22 +1550,34 @@ function restoreHostAttributes(
 
 function quiesceFaultedHost(host: HTMLElement): void {
   try {
-    host.setAttribute("contenteditable", "false");
+    nativeSetAttribute(host, "contenteditable", "false");
   } catch {
     // The remaining independent fault guards still run.
   }
   try {
-    host.setAttribute("aria-disabled", "true");
+    nativeSetAttribute(host, "aria-disabled", "true");
   } catch {
     // Accessibility state is best-effort when application DOM hooks throw.
   }
   try {
-    host.setAttribute("inert", "");
+    nativeSetAttribute(host, "inert", "");
   } catch {
     // `contenteditable=false` remains the primary native-mutation guard.
   }
   try {
-    host.blur();
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      nativeBlurHtmlElement(host);
+      const ownerDocument = nativeOwnerDocument(host);
+      if (
+        ownerDocument === null ||
+        nativeDocumentActiveElement(ownerDocument) !== host
+      ) {
+        return;
+      }
+    }
+    // A synchronous blur hook may restore focus. The bounded retry above
+    // verifies ordinary focus loss while the native inert/non-editable guards
+    // remain authoritative if the platform refuses to release focus.
   } catch {
     // Losing focus is defense in depth after editing is already disabled.
   }
@@ -1451,7 +1585,7 @@ function quiesceFaultedHost(host: HTMLElement): void {
 
 function clearOwnedHost(host: HTMLElement): void {
   try {
-    host.replaceChildren();
+    nativeReplaceChildren(host);
   } catch {
     // Disposal/startup rollback remains terminal.
   }

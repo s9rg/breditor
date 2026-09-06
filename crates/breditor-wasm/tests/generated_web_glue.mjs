@@ -80,7 +80,10 @@ function assertCommandError(result, expectedCode) {
 }
 
 assert.equal(api.breditorWasmAbiVersion(), "2");
-assert.match(api.breditorVersion(), /^0\.0\.\d+$/);
+assert.match(
+  api.breditorVersion(),
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/,
+);
 
 const invalidFactory = api.BreditorEngine.fromDocumentJson(
   "web-glue-redaction",

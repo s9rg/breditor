@@ -1,6 +1,6 @@
 # Browser support and accessibility gate
 
-Status: `0.0.59` release-candidate gate complete
+Status: required `0.1.0` desktop-browser and accessibility gate passed
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -9,9 +9,11 @@ opens the public `@breditor/browser` runtime in every engine. A missing browser
 capability or browser executable is a test failure; the core matrix is never
 silently skipped.
 
-The matrix covers the first-release contract:
+The matrix covers the supported `0.1.0` browser contract:
 
-- Unicode insertion and backward deletion across non-BMP text;
+- programmatically dispatched `beforeinput` coverage for Unicode insertion and
+  backward deletion across non-BMP text;
+- Playwright keyboard-driven ASCII typing, Backspace, and Delete;
 - forward/collapsed and backward browser selection mapping;
 - composition lease settlement into one canonical Rust commit;
 - Bold, Undo, and Redo through the public toolbar and shared history, including
@@ -76,6 +78,12 @@ The clipboard scenarios use real dispatched browser events with a bounded
 synchronous `clipboardData` capability. They deliberately do not grant or
 claim operating-system clipboard permissions, async Clipboard API behavior,
 file/image transfer, or browser chrome integration.
+
+The ordinary Unicode scenario dispatches cancelable `beforeinput` directly so
+it can cover non-BMP payloads deterministically. The separate ASCII scenario
+uses Playwright's keyboard path for typing, Backspace, and Delete in every
+engine. Neither is evidence for arbitrary hardware keyboards, mobile virtual
+keyboards, autocorrect, dead-key layouts, or platform text services.
 
 The composition scenario exercises the complete native-event/DOM-settlement
 path in all three desktop engines, but synthetic composition cannot reproduce

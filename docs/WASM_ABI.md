@@ -1,7 +1,8 @@
 # Breditor Wasm boundary
 
-Status: `0.0.59` packaged boundary contract; intentionally narrow and unstable before
-`0.1.0`
+Status: `0.1.0` packaged boundary contract; ABI generation `2` is authoritative
+for the matching official browser/Wasm packages, while direct raw-handle use is
+an intentionally narrow, advanced, and experimental integration surface
 
 The `publish = false` Rust crate remains a repository implementation artifact;
 it is not a crates.io release because its `breditor-core` dependency has no
@@ -12,13 +13,20 @@ import-time dependency on their concrete classes. A clean temporary consumer
 installs both npm tarballs, initializes the real Wasm module, imports the
 browser entry point, and type-checks without workspace paths.
 
+`@breditor/browser@0.1.0` and `@breditor/wasm@0.1.0` are supported as an
+exact-version pair. The generated raw classes and ownership handles documented
+below remain available for advanced integrations, but they are not the
+high-level browser compatibility surface.
+
 Generation requires the locked Cargo graph, the pinned Rust toolchain and Wasm
 target, and exactly `wasm-bindgen 0.2.127`. The build first writes an isolated
 directory, compares its declaration byte-for-byte with the reviewed ABI, and
 only then replaces `packages/breditor-wasm/dist`. The package check compares
-the complete content hashes from two such clean builds. `@breditor/wasm/wasm`
-exposes the adjacent module for hosts that use `initSync`; the package's
-generated default initializer remains the normal bundler entry point.
+the complete content hashes from two such clean builds. The no-argument default
+asynchronous initializer is the supported `0.1.x` HTTP(S)-browser/browser-
+bundler entry point. Advanced hosts may import `@breditor/wasm/wasm` and call
+`initSync`, but synchronous, binary, argument-taking, and direct Node/file-URL
+initialization carry no `0.1.x` compatibility promise.
 
 The `breditor-wasm` crate is the synchronous, no-DOM adapter around the Rust
 `CheckpointedEditorEngine`. Rust remains the sole owner of the document AST,
@@ -121,7 +129,7 @@ A successful admission check does not reserve the engine. If two queued
 commands share one observation, the first effective mutation wins and the
 second fails stale.
 
-The action surface introduced in `0.0.52` is deliberately limited to:
+The action surface introduced in `0.0.50` is deliberately limited to:
 
 - `executeNoInputAction`, for a compiled action whose registered descriptor
   declares no input; and
@@ -132,7 +140,7 @@ The host cannot choose or spoof an input contract. String routing is an exact
 allowlist of the action ID and registered contract/version for
 `breditor/insert-text` and `breditor/insert-plain-text`; a future typed base
 action fails closed until this ABI deliberately adds its input shape. This
-covers the complete base action set planned for `0.1.0`; it is not a generic
+covers the complete base action set supported by `0.1.0`; it is not a generic
 third-party Wasm plugin ABI. Undo, redo, close-history-group, and clear-history
 are separate guarded commands.
 
@@ -374,8 +382,10 @@ bounded reentrancy, guarded command/result ownership, and the paragraph-local
 composition lease are implemented by the framework-neutral browser package.
 Clipboard data handling is implemented outside Wasm in the framework-neutral
 browser package. Session-checkpoint scheduling and IndexedDB replacement are
-implemented there at `0.0.57`; a unified editable-host router and framework
-integration remain TypeScript responsibilities in later checkpoints.
+implemented there at checkpoint `0.0.57`; the unified editable-host router is
+also implemented there, and the React workspace supplies a reference framework
+integration. Those remain TypeScript responsibilities outside this Rust/Wasm
+ABI.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
 numeric/string coercions can execute before Rust entry; the host queue must not

@@ -1,6 +1,9 @@
 import { measureBoundedUnicodeText } from "./composition_event.js";
 import { browserCommandTextIsAdmissible } from "./editor_command.js";
 
+/** Minimum controls admitted by one presentation manifest. */
+export const MIN_TOOLBAR_CONTROLS = 1;
+
 /** Maximum controls admitted by one presentation manifest. */
 export const MAX_TOOLBAR_CONTROLS = 64;
 
@@ -12,6 +15,12 @@ export const MAX_TOOLBAR_LABEL_UTF8 = 512;
 
 /** Maximum UTF-16 length of one optional presentation group. */
 export const MAX_TOOLBAR_GROUP_UTF16 = 64;
+
+/** Maximum UTF-8 length of one optional presentation group. */
+export const MAX_TOOLBAR_GROUP_UTF8 = 256;
+
+/** Maximum ASCII length of a toolbar state or action qualified name. */
+export const MAX_TOOLBAR_QUALIFIED_NAME_ASCII = 128;
 
 /** Fixed observable identities used by the base toolbar/action-state catalog. */
 export const BASE_TOOLBAR_STATE_IDS = Object.freeze({
@@ -90,7 +99,10 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
     throw new TypeError("toolbar control count is invalid");
   }
   const controlCount = rawControlCount;
-  if (controlCount < 1 || controlCount > MAX_TOOLBAR_CONTROLS) {
+  if (
+    controlCount < MIN_TOOLBAR_CONTROLS ||
+    controlCount > MAX_TOOLBAR_CONTROLS
+  ) {
     throw new RangeError("toolbar control count is outside its fixed bounds");
   }
 
@@ -150,7 +162,11 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
     }
     if (
       group !== undefined &&
-      !validPresentationString(group, MAX_TOOLBAR_GROUP_UTF16)
+      !validPresentationString(
+        group,
+        MAX_TOOLBAR_GROUP_UTF16,
+        MAX_TOOLBAR_GROUP_UTF8,
+      )
     ) {
       throw new TypeError("toolbar presentation group is invalid");
     }
@@ -353,10 +369,11 @@ function validLabel(value: unknown): value is string {
 function validPresentationString(
   value: unknown,
   maximumUtf16: number,
+  maximumUtf8: number,
 ): value is string {
   return (
     typeof value === "string" &&
-    measureBoundedUnicodeText(value, maximumUtf16, maximumUtf16 * 4).ok &&
+    measureBoundedUnicodeText(value, maximumUtf16, maximumUtf8).ok &&
     value.trim() === value &&
     value.length > 0 &&
     !/[\u0000-\u001f\u007f]/u.test(value)
@@ -367,7 +384,7 @@ function validPresentationString(
 function validQualifiedName(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    value.length <= 128 &&
+    value.length <= MAX_TOOLBAR_QUALIFIED_NAME_ASCII &&
     /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value)
   );
 }

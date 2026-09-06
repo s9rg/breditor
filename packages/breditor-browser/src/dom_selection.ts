@@ -241,9 +241,10 @@ export class BreditorDomSelectionBridge {
    *
    * Directional anchor/focus semantics are verified after the browser call;
    * browser-normalized DOM aliases are accepted only at the same exact spatial
-   * positions. A browser lacking `setBaseAndExtent` can receive
-   * forward/collapsed ranges via `Range`, but backward ranges fail before DOM
-   * selection mutation.
+   * positions. An exact same-container caret uses `Range` to avoid WebKit's
+   * transient directional-API incoherence. Other ranges use
+   * `setBaseAndExtent` when available. Without it, forward/collapsed ranges may
+   * use a verified `Range`, but backward ranges fail before DOM mutation.
    */
   write(
     rendered: RenderedProjection,
@@ -351,7 +352,22 @@ export class BreditorDomSelectionBridge {
         return selectionFailure("selection.backward_unsupported");
       }
       try {
-        if (typeof setBaseAndExtent === "function") {
+        // A Range-installed exact caret avoids a WebKit race where
+        // setBaseAndExtent() updates anchor/focus immediately after an owned
+        // subtree replacement but getRangeAt(0) briefly retains the old range.
+        // Use the directional API for every non-identical endpoint so backward
+        // selections and semantically collapsed DOM aliases remain exact.
+        if (
+          anchor.node === focus.node &&
+          anchor.offset === focus.offset
+        ) {
+          installForwardRange(
+            rendered.host.ownerDocument,
+            domSelection,
+            anchor,
+            focus,
+          );
+        } else if (typeof setBaseAndExtent === "function") {
           setBaseAndExtent.call(
             domSelection,
             anchor.node,

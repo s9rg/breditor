@@ -148,9 +148,9 @@ terminal commit/noncommit receipt, head compare-and-swap, durability assertion,
 or writable successor owner. Validation
 cannot prove that the prior was authoritative, that an ID or fence is fresh,
 or that the physical successor is empty. The implemented validation-only
-`breditor/local-log-storage-generation@1` shape remains pre-`0.1`, not a
-permanent compatibility promise. Local Log Checkpoint V1 and Frame V1 remain
-unchanged.
+`breditor/local-log-storage-generation@1` shape remains an experimental
+repository-internal format outside the `0.1.x` browser compatibility promise.
+Local Log Checkpoint V1 and Frame V1 remain unchanged.
 
 Version `0.0.33` adds no Rust storage API. It freezes the separate
 [IndexedDB local-log profile](../../docs/INDEXEDDB_STORAGE_PROFILE.md),
@@ -328,8 +328,9 @@ checks. All other outcomes are non-retry classifications and release no writer,
 checkpoint anchor, or semantic owner. The crate still performs no storage I/O
 and cannot authenticate host events, prove durable or present currentness, or
 release a long-lived exclusive Rust writer. Crash-time plan reconstruction
-remains unimplemented, and these storage formats remain unstable pre-`0.1`
-contracts.
+remains unimplemented, and these storage formats remain experimental
+repository-internal contracts outside the `0.1.x` browser compatibility
+boundary.
 
 Version `0.0.40` adds the nominally separate rotation resolver over the same
 four surviving attempt sources. Its separate request identity is minted at

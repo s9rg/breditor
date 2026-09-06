@@ -26,15 +26,16 @@ Validation format name: `breditor/local-log-storage-generation`
 
 Implemented validation format version: `1`
 
-Compatibility status: unstable pre-`0.1` validation shape; no permanent promise
+Compatibility status: experimental repository-internal validation shape
+outside the `0.1.x` browser compatibility promise
 
 Version `0.0.32` implements the six bounded identity/version values, trusted
 ordinary-rotation binding, private-constructor non-`Clone` manifest, strict
 encode/decode codec, independent limits, and borrowed preparation validation
 for this shape. It does not implement a prepared state, capability, receipt,
 adapter, compare-and-swap, I/O, durability, restart selection, or ownership
-release. The implemented V1 validation shape remains a pre-`0.1` contract,
-not a permanent compatibility promise. Implementations must not treat
+release. The implemented V1 validation shape remains experimental and outside
+the `0.1.x` compatibility promise. Implementations must not treat
 successful validation as evidence that `breditor-core` can publish or commit
 the record, select storage during restart, or recover and activate log bytes.
 
@@ -265,11 +266,11 @@ Version `0.0.32` deliberately pins `serde_json` `1.0.151` and carries a complete
 golden V1 vector covering field order, integer spellings, quotes, slash,
 backslash, control escapes, raw Unicode, and non-BMP Unicode. This prevents a
 dependency update from silently changing plan identity. The pin is an explicit
-pre-`0.1` implementation choice, not a claim that serde's escaping behavior is
-the permanent protocol; a future dependency change must either preserve the
+experimental implementation choice, not a claim that serde's escaping behavior
+is a permanent protocol; a future dependency change must either preserve the
 golden bytes or introduce a separately reviewed canonical writer/version.
 
-## Storage-generation V1 validation value (pre-0.1)
+## Storage-generation V1 validation value (experimental)
 
 The validation-only V1 value is a strict JSON object. Its compact canonical
 UTF-8 encoding has no insignificant whitespace or trailing bytes and emits
@@ -1264,7 +1265,7 @@ This specification and the implemented values do not provide:
   preparation, request correlation, FIFO order, terminal classification, and
   exactly-one-head acknowledgement while the host chooses when to schedule
   those transitions; or
-- a permanent compatibility promise for the implemented pre-`0.1` V1 shape.
+- a permanent compatibility promise for the experimental V1 shape.
 
 `EndOfInput`, a valid CRC, successful JSON decode, object existence, file
 length, modification time, lexical ID order, the longest tail, and the newest
@@ -1272,7 +1273,7 @@ timestamp are never commit or recovery authority. Only the named profile's
 authoritative per-scope head and exact manifest record can select the new
 generation.
 
-## Implemented validation boundary and next gate
+## Implemented validation boundary and remaining work
 
 Version `0.0.32` implements only the bounded identities, trusted binding,
 private-constructor non-`Clone` manifest, independent limits, strict codec, and
