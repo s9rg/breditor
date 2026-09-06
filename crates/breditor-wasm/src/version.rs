@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 /// Runtime generation of the JavaScript-visible Breditor Wasm ABI.
-pub const BREDITOR_WASM_ABI_VERSION: &str = "1";
+pub const BREDITOR_WASM_ABI_VERSION: &str = "2";
 
 /// Returns the JavaScript-visible Wasm ABI generation.
 #[must_use]

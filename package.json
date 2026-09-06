@@ -14,14 +14,21 @@
     "clean": "npm run clean --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "check:wasm-package": "npm run check --workspace @breditor/wasm",
+    "check:size": "npm run build && node scripts/check-size-budgets.mjs",
     "smoke:packages": "./scripts/smoke-npm-packages.sh",
     "test": "npm run test --workspaces --if-present",
+    "test:browser": "npm run build && playwright test",
+    "typecheck:browser": "tsc -p tests/browser/tsconfig.json --noEmit",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.62.1",
     "fake-indexeddb": "6.2.5",
     "jsdom": "29.1.1",
+    "playwright-core": "1.62.1",
     "typescript": "7.0.2",
+    "vite": "8.2.2",
     "vitest": "5.0.0"
   }
 }

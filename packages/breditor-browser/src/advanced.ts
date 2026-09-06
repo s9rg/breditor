@@ -259,6 +259,28 @@ export {
   type WasmSessionCheckpointStringResultView,
 } from "./wasm_session_checkpoint.js";
 export {
+  MAX_BROWSER_DOCUMENT_JSON_BYTES,
+  consumeWasmDocumentJson,
+  documentJsonMatchesProjection,
+  documentJsonUtf8Bytes,
+  isOwnedBrowserDocumentJsonReadResult,
+  type BrowserDocumentJson,
+  type BrowserDocumentJsonReadError,
+  type BrowserDocumentJsonReadResult,
+  type WasmDocumentJsonErrorView,
+  type WasmDocumentJsonExpectedSnapshot,
+  type WasmDocumentJsonReadPort,
+  type WasmDocumentJsonStringResultView,
+} from "./wasm_document_json.js";
+export {
+  MAX_BROWSER_PLAIN_TEXT_UTF8_BYTES,
+  projectPlainText,
+  type BrowserProjectionPlainText,
+  type BrowserProjectionPlainTextError,
+  type BrowserProjectionPlainTextResult,
+  type ProjectionPlainTextReadPort,
+} from "./projection_plain_text.js";
+export {
   restoreWasmEngine,
   type BrowserWasmEngineRestoreError,
   type BrowserWasmEngineRestoreResult,
@@ -350,6 +372,10 @@ export {
   MAX_BROWSER_EDITOR_LABEL_UTF16,
   MAX_BROWSER_EDITOR_SUBSCRIBERS,
   openBreditorBrowserEditor,
+  type BreditorBrowserContentExport,
+  type BreditorBrowserContentExportError,
+  type BreditorBrowserContentExportResult,
+  type BreditorBrowserContentFormat,
   type BreditorBrowserEditorFaultReason,
   type BreditorBrowserEditorOpenError,
   type BreditorBrowserEditorOpenResult,

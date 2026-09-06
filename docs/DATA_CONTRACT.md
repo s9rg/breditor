@@ -200,11 +200,11 @@ The following remain deliberately unimplemented:
   preparation, the process-local bounded append FIFO, and its uncertain-head
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
-- the real-browser support matrix (published consumer packaging, a unified
-  end-user browser event router, and React integration exist at `0.0.58`; guarded
-  base-subset clipboard mutation exists at `0.0.55`; guarded action-state and
-  toolbar delivery exist at `0.0.56`; atomic single-slot session-checkpoint
-  persistence exists at `0.0.57`);
+- browser behavior beyond the lockfile-pinned desktop Chromium, Firefox, and
+  WebKit matrix implemented at `0.0.59`; that matrix covers the public packaged
+  runtime, unified event router, React integration, guarded clipboard, toolbar,
+  and single-slot checkpoint profile, but its synthetic composition checks do
+  not establish real operating-system IME or mobile-browser support;
 - atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
   boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
   append coordination;
@@ -4769,12 +4769,13 @@ selection without a Wasm call or semantic retry before releasing the queue.
 
 The current contract supports one light-DOM range and one paragraph only. It has
 no cross-block, shadow/composed-range, browser multi-range, arbitrary native
-markup, unified router, or general mobile-browser guarantee. The task-scheduling
-hook is synchronous and promise-free, but it must enqueue its callback for a
-future task; command delivery is synchronous too. Deterministic DOM tests cover
-the implemented event orders and all three bounded alias paths. The real
-Chromium, Firefox, and WebKit/Safari IME matrix remains the `0.0.59` gate; this
-checkpoint defines no separate mobile support matrix.
+markup, or general mobile-browser guarantee. The task-scheduling hook is
+synchronous and promise-free, but it must enqueue its callback for a future
+task; command delivery is synchronous too. Deterministic DOM tests cover the
+implemented event orders and all three bounded alias paths. The `0.0.59`
+Chromium, Firefox, and WebKit matrix exercises this complete path with synthetic
+composition events; it does not reproduce a real operating-system IME and
+defines no separate mobile support matrix.
 
 ## Guarded browser clipboard delivery (`0.0.55`)
 

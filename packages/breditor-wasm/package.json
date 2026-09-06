@@ -1,6 +1,13 @@
 {
   "name": "@breditor/wasm",
-  "version": "0.0.58",
+  "version": "0.0.59",
+  "description": "Generated WebAssembly engine package for the Breditor rich-text editor",
+  "keywords": [
+    "rich-text-editor",
+    "webassembly",
+    "rust"
+  ],
+  "author": "Breditor contributors",
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "sideEffects": false,
@@ -12,7 +19,9 @@
     "LICENSE",
     "LICENSE-APACHE",
     "LICENSE-MIT",
-    "README.md"
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "third-party"
   ],
   "exports": {
     ".": {

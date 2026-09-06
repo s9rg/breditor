@@ -1,6 +1,7 @@
 # Breditor toolbar and action-state contract
 
-Status: implemented through checkpoint `0.0.58`.
+Status: implemented through checkpoint `0.0.58`; `0.0.59` cross-browser and
+accessibility validation complete.
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -176,8 +177,9 @@ and End implement roving focus. Pointer down prevents the primary pointer from
 stealing the editor's DOM selection. A keyboard-activated synchronous command
 can cause browser selection restoration to focus the editing host, so the
 toolbar restores the exact activating button with `preventScroll` and faults
-closed if it cannot prove restoration. Real-engine cross-browser focus behavior
-is still part of the `0.0.59` matrix.
+closed if it cannot prove restoration. The `0.0.59` Playwright matrix exercises
+this real-engine focus path in Chromium, Firefox, and WebKit; see the
+[browser support and accessibility gate](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 Unavailable, stale, disposed, absent, malformed, unhandled, and faulted state
 disables dispatch with `aria-disabled="true"`. Tracked activation maps to
@@ -205,7 +207,7 @@ throws and rejected promises are listener-local. The high-level browser owner
 uses this signal to turn presentation failure into a payload-redacted editor
 fault rather than continuing to report a false-live toolbar.
 
-## Explicit limits through `0.0.58`
+## Explicit limits through the `0.0.59` release candidate
 
 - The distributed catalog contains Bold, Undo, and Redo only.
 - One browser action-state snapshot admits at most 512 entries. One uniform
@@ -228,5 +230,8 @@ fault rather than continuing to report a false-live toolbar.
   register Rust actions or catalog entries from JavaScript.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
-- Browser/assistive-technology claims remain unit-level until the real-browser
-  and accessibility gate in `0.0.59`.
+- The `0.0.59` automated gate covers keyboard navigation, computed focus
+  visibility, accessible names, toolbar semantics, and pressed/mixed state in
+  Chromium, Firefox, and WebKit, plus an axe scan. It does not certify WCAG
+  conformance or announcements and interaction in screen readers or other
+  assistive technology; those remain manual checks.

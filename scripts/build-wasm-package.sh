@@ -28,11 +28,36 @@ esac
 readonly cargo_target_directory
 readonly wasm_manifest="${repository_root}/crates/breditor-wasm/Cargo.toml"
 readonly reviewed_declaration="${repository_root}/crates/breditor-wasm/api/breditor_wasm.d.ts"
+readonly third_party_checker="${repository_root}/scripts/check-wasm-third-party-notices.mjs"
+readonly publication_lock_root="${repository_root}/target"
+readonly publication_lock_directory="${publication_lock_root}/breditor-wasm-dist.lock"
+generated_directory=""
+publication_lock_acquired=0
 
 fail() {
   printf 'build-wasm-package: %s\n' "$*" >&2
   exit 1
 }
+
+cleanup() {
+  if [[ -n "${generated_directory}" ]]; then
+    case "${generated_directory}" in
+      "${cargo_target_directory}"/wasm-package.*)
+        rm -rf -- "${generated_directory}"
+        ;;
+      *)
+        printf 'build-wasm-package: refusing to remove unexpected path: %s\n' "${generated_directory}" >&2
+        ;;
+    esac
+  fi
+
+  if (( publication_lock_acquired == 1 )); then
+    rmdir -- "${publication_lock_directory}" 2>/dev/null ||
+      printf 'build-wasm-package: could not release publication lock: %s\n' \
+        "${publication_lock_directory}" >&2
+  fi
+}
+trap cleanup EXIT
 
 resolve_executable() {
   local candidate="$1"
@@ -68,6 +93,8 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
 [[ -f "${wasm_manifest}" ]] || fail "missing Wasm crate manifest: ${wasm_manifest}"
 [[ -f "${reviewed_declaration}" ]] ||
   fail "missing reviewed TypeScript declaration: ${reviewed_declaration}"
+[[ -f "${third_party_checker}" ]] ||
+  fail "missing third-party dependency checker: ${third_party_checker}"
 [[ -f "${repository_root}/LICENSE-MIT" ]] || fail "missing repository MIT license"
 [[ -f "${repository_root}/LICENSE-APACHE" ]] || fail "missing repository Apache license"
 (
@@ -75,24 +102,21 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
   "${node_executable}" ../../scripts/check-package-licenses.mjs
 )
 
+mkdir -p -- "${publication_lock_root}"
+if ! mkdir -- "${publication_lock_directory}" 2>/dev/null; then
+  fail "another Wasm package build holds ${publication_lock_directory}; wait for it to finish, or remove that directory only after confirming no build is running."
+fi
+publication_lock_acquired=1
+
 mkdir -p -- "${cargo_target_directory}"
 generated_directory="$(mktemp -d "${cargo_target_directory}/wasm-package.XXXXXX")" ||
   fail "could not create a temporary generation directory under ${cargo_target_directory}."
 
-cleanup() {
-  if [[ -z "${generated_directory}" ]]; then
-    return
-  fi
-  case "${generated_directory}" in
-    "${cargo_target_directory}"/wasm-package.*)
-      rm -rf -- "${generated_directory}"
-      ;;
-    *)
-      printf 'build-wasm-package: refusing to remove unexpected path: %s\n' "${generated_directory}" >&2
-      ;;
-  esac
-}
-trap cleanup EXIT
+printf 'build-wasm-package: checking locked dependency graph and third-party notices\n'
+CARGO_BIN="${cargo_executable}" \
+  "${node_executable}" "${third_party_checker}" \
+  --copy-rust-notice \
+  "${generated_directory}/third-party/rust-1.98.0/COPYRIGHT-library.html"
 
 printf 'build-wasm-package: building breditor-wasm for wasm32-unknown-unknown (release)\n'
 (
@@ -133,6 +157,11 @@ generated_file_count="$(find "${generated_directory}" -mindepth 1 -maxdepth 1 -t
 readonly generated_file_count
 [[ "${generated_file_count}" == "4" ]] ||
   fail "expected exactly four generated package files, found ${generated_file_count}"
+
+generated_recursive_file_count="$(find "${generated_directory}" -type f | wc -l | tr -d '[:space:]')"
+readonly generated_recursive_file_count
+[[ "${generated_recursive_file_count}" == "5" ]] ||
+  fail "expected four generated artifacts and one Rust notice, found ${generated_recursive_file_count} files"
 
 if ! diff -u -- "${reviewed_declaration}" "${generated_directory}/breditor_wasm.d.ts"; then
   fail "generated declarations differ from the reviewed Rust ABI declaration"

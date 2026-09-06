@@ -1,6 +1,6 @@
 # Breditor browser runtime
 
-Status: public `0.0.58` startup and lifecycle contract
+Status: public `0.0.59` startup, lifecycle, and content-egress contract
 
 `BreditorBrowserEditor` is the recommended application boundary for the first
 browser release. It assembles the generated Rust/Wasm engine, typed projection,
@@ -10,7 +10,7 @@ framework-neutral owner.
 
 The package-root API is intentionally small. Applications receive the editing
 element, immutable status snapshots, subscription, focus, persistence flush and
-retry, and disposal. They do not receive the engine, observation handles,
+retry, explicit content export, and disposal. They do not receive the engine, observation handles,
 renderer, queue, delivery tokens, or native-event receipts. The lower-level
 pieces remain available from `@breditor/browser/advanced` for host-trusted
 integrations, but using them means owning their individual contracts.
@@ -110,7 +110,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized module namespace is preferred because startup verifies Wasm ABI
-generation `1` and probes its crate version. The narrower static
+generation `2` and probes its crate version. The narrower static
 `BreditorEngine` factory shape is also accepted for controlled embeddings, but
 it has no module-level compatibility probe. Applications should install matching
 versions of `@breditor/browser` and `@breditor/wasm`.
@@ -126,8 +126,10 @@ editor's lifetime signal. Call `dispose()` on an editor that has already opened.
 - `live`: native input and toolbar dispatch are admitted;
 - `faulted`: an event, queue, reconciliation, or toolbar outcome became
   uncertain and new editing work has been stopped; or
-- `disposed`: every public capability is terminal; physical release is complete
-  or waiting only for a reentrant synchronous engine call to unwind.
+- `disposed`: every public capability and external DOM, storage, and host
+  ownership is terminal. Generated-adapter release is normally complete or
+  deferred by one microtask; a persistently busy or unreadable engine may be
+  deliberately retained rather than risking use-after-free.
 
 Fault reasons are stable and payload-redacted. A fault stops the event router,
 toolbar, and command queue without retrying a possibly published command. It
@@ -345,6 +347,63 @@ This release supplies a reference integration rather than an
 persistence is selected, IndexedDB plus `SubtleCrypto`; it is not an SSR
 operation.
 
+## Explicit content egress
+
+`getSnapshot()` intentionally contains status and revision-correlated metadata,
+not document payloads. Applications explicitly request one of two bounded
+representations:
+
+```ts
+const document = editor.exportContent("documentJson");
+if (document.ok) {
+  console.log(document.format);    // "documentJson"
+  console.log(document.utf8Bytes); // exact UTF-8 length
+  console.log(document.snapshot);  // lineage + revision for these bytes
+  upload(document.value);
+}
+
+const text = editor.exportContent("plainText");
+```
+
+A success is a deeply frozen
+`{ ok: true, format, value, utf8Bytes, snapshot }` record. `documentJson`
+returns the exact canonical `breditor/document@1` encoding produced by the Rust
+core, including formatting. `plainText` is derived from the validated semantic
+projection rather than DOM `textContent`: it concatenates runs, removes strong
+formatting, joins adjacent paragraphs with one LF, retains empty paragraphs,
+and does not append a synthetic LF after the final paragraph.
+
+The API does not export HTML, editor state, a session checkpoint, selection,
+pending formatting, undo/redo history, transaction records, or raw commands.
+Those distinctions matter: Document V1 is lossless document content, while a
+Session Checkpoint V1 is the private local-durability representation that can
+retain deleted text in history.
+
+Document V1 deliberately has no embedded snapshot. Correlation therefore uses
+three proofs: the generated Rust method receives the adapter's exact observation;
+the browser validates the returned base-schema tree against the current owned
+projection, including paragraph/run text and strong formatting; and the
+high-level owner checks that the adapter snapshot was unchanged across the
+synchronous read. A custom structural factory cannot substitute a different
+valid base document without failing the boundary comparison.
+
+The high-level API collapses every structural core rejection to the fixed,
+payload-free `content_export.core_rejected` failure. Granular official Rust
+codes remain available only through the generated low-level Wasm method, where
+the caller also owns handle cleanup and observation discipline.
+
+`content_export.busy` is normal backpressure while composition, command
+execution, action/checkpoint/content reading, or another exclusive adapter
+lease is active. Call again after the active lease settles: command and read
+leases are synchronous, while composition settles at its scheduled task
+boundary. Disposed
+editors and adapters with internal uncertainty return
+`content_export.unavailable`. A high-level editor fault caused outside the
+adapter may still salvage content when the adapter itself remains `live` or
+`reconcile`; malformed core results and other internal adapter faults cannot.
+If disposal occurs reentrantly inside a generated getter, provisional content
+is discarded and physical engine release waits for the read handle to unwind.
+
 ## Toolbar and extension path
 
 Omitting `toolbar` installs no toolbar. Passing `{ host }` installs the default
@@ -397,7 +456,7 @@ Adding real behavior therefore proceeds from the core outward:
 
 There is no runtime JavaScript action registration, arbitrary callback command,
 dynamic manifest replacement, plugin unload, custom node renderer, or stable
-third-party Wasm plugin ABI in `0.0.58`.
+third-party Wasm plugin ABI in `0.0.59`.
 
 ## Honest limitations
 
@@ -407,9 +466,10 @@ The first runtime is deliberately a small local notes/form editor:
   formatting only. There are no headings, lists, links, images, tables, nested
   blocks, arbitrary marks, properties, or entity IDs.
 - The high-level snapshot exposes revision identity and action/persistence
-  state, not complete document JSON, HTML, plain text, transactions, or a
-  controlled-value `onChange` callback. The advanced contracts are not a
-  substitute for treating DOM as the model.
+  state, not content. Explicit egress supports Document V1 and semantic plain
+  text, not HTML, transactions, streaming output, editor-state/checkpoint
+  export, or a controlled-value `onChange` callback. The advanced contracts are
+  not a substitute for treating DOM as the model.
 - The public high-level command surface is native input plus the startup
   toolbar. There is not yet a general imperative application-command method.
 - Selection supports one directional light-DOM range. Shadow-root crossing,
@@ -434,9 +494,10 @@ The first runtime is deliberately a small local notes/form editor:
   collaborative undo.
 - Commands are synchronous. The bounded Rust and JSON limits are suitable for
   the current product scope, not production-scale documents.
-- The deterministic DOM tests do not yet constitute the Chromium, Firefox,
-  WebKit/Safari, mobile IME, or assistive-technology matrix required by the
-  `0.0.59` release-candidate gate.
+- The release suite exercises editing, selection, history, toolbar, persistence,
+  and content export in Chromium, Firefox, and WebKit through Playwright. This
+  desktop automation is not a broad mobile-IME or assistive-technology support
+  claim; those still need dedicated device and user-agent coverage.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

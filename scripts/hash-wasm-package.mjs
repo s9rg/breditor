@@ -8,10 +8,7 @@ if (directoryArgument === undefined) {
 }
 
 const directory = resolve(directoryArgument);
-const entries = (await readdir(directory, { withFileTypes: true }))
-  .filter((entry) => entry.isFile())
-  .map((entry) => entry.name)
-  .sort();
+const entries = (await listFiles(directory)).sort();
 const hashes = [];
 
 for (const name of entries) {
@@ -20,3 +17,22 @@ for (const name of entries) {
 }
 
 process.stdout.write(`${JSON.stringify(hashes)}\n`);
+
+async function listFiles(root, relativeDirectory = "") {
+  const absoluteDirectory = join(root, relativeDirectory);
+  const entries = await readdir(absoluteDirectory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relativePath = relativeDirectory
+      ? `${relativeDirectory}/${entry.name}`
+      : entry.name;
+    if (entry.isDirectory()) {
+      files.push(...(await listFiles(root, relativePath)));
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    } else {
+      throw new Error(`unexpected non-file package entry: ${relativePath}`);
+    }
+  }
+  return files;
+}

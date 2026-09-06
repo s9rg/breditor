@@ -16,6 +16,7 @@ import type {
   WasmActionStatesResultView,
 } from "./wasm_action_state_adapter.js";
 import {
+  BreditorWasmCommandAdapter,
   type WasmCommandObservationView,
   type WasmCommandResultView,
   type WasmSelectionResultView,
@@ -67,6 +68,7 @@ interface EngineRecord {
   readonly executeNoInputAction: ReturnType<typeof vi.fn>;
   readonly actionStates: ReturnType<typeof vi.fn>;
   readonly selection: ReturnType<typeof vi.fn>;
+  readonly documentJson: ReturnType<typeof vi.fn>;
 }
 
 interface ModuleFixture {
@@ -87,6 +89,9 @@ interface ModuleFixtureOptions {
   readonly actionThrows?: boolean;
   readonly enableAction?: boolean;
   readonly onAction?: () => void;
+  readonly onDocumentJson?: () => void;
+  readonly documentJsonValue?: string;
+  readonly documentJsonError?: Readonly<{ code: string; message: string }>;
 }
 
 beforeEach(() => {
@@ -218,6 +223,222 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.engines).toHaveLength(1);
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
     expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+  });
+
+  it("exports exact Document V1 and semantic plain text without trusting hostile DOM", async () => {
+    const host = mountHost();
+    const fixture = moduleFixture({ text: "A💡" });
+    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    if (!opened.ok) throw new Error(opened.error.code);
+
+    const documentExport = opened.editor.exportContent("documentJson");
+    const plainExport = opened.editor.exportContent("plainText");
+    if (documentExport.ok) {
+      const exactDocumentFormat: "documentJson" = documentExport.format;
+      expect(exactDocumentFormat).toBe("documentJson");
+    }
+    if (plainExport.ok) {
+      const exactPlainTextFormat: "plainText" = plainExport.format;
+      expect(exactPlainTextFormat).toBe("plainText");
+    }
+
+    expect(documentExport).toMatchObject({
+      ok: true,
+      format: "documentJson",
+      utf8Bytes: expect.any(Number),
+      snapshot: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(documentExport.ok && JSON.parse(documentExport.value)).toMatchObject({
+      format: "breditor/document",
+      formatVersion: 1,
+      root: { children: [{ children: [{ text: "A💡" }] }] },
+    });
+    expect(plainExport).toEqual({
+      ok: true,
+      format: "plainText",
+      value: "A💡",
+      utf8Bytes: 5,
+      snapshot: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(Object.isFrozen(documentExport)).toBe(true);
+    expect(documentExport.ok && Object.isFrozen(documentExport.snapshot)).toBe(true);
+    expect(Object.isFrozen(plainExport)).toBe(true);
+
+    host.textContent = "forged private DOM";
+    expect(opened.editor.exportContent("plainText")).toEqual(plainExport);
+    expect(opened.editor.exportContent("documentJson")).toEqual(documentExport);
+    expect(JSON.stringify(opened.editor.exportContent("plainText"))).not.toContain(
+      "forged private DOM",
+    );
+    opened.editor.dispose();
+  });
+
+  it("keeps adapter accessors nonreplaceable and uses constructor-minted content ports", async () => {
+    const prototype = BreditorWasmCommandAdapter.prototype;
+    expect(Object.isFrozen(prototype)).toBe(true);
+    expect(
+      Reflect.defineProperty(prototype, "documentJsonReadPort", {
+        configurable: true,
+        get: () => {
+          throw new Error("replacement must not install");
+        },
+      }),
+    ).toBe(false);
+    expect(
+      Reflect.defineProperty(prototype, "plainTextReadPort", {
+        configurable: true,
+        get: () => {
+          throw new Error("replacement must not install");
+        },
+      }),
+    ).toBe(false);
+
+    const fixture = moduleFixture({ text: "trusted" });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    expect(opened.editor.exportContent("plainText")).toMatchObject({
+      ok: true,
+      value: "trusted",
+    });
+    expect(opened.editor.exportContent("documentJson")).toMatchObject({
+      ok: true,
+      format: "documentJson",
+    });
+    opened.editor.dispose();
+  });
+
+  it("returns stable redacted failures for invalid formats, invalid Wasm, and disposal", async () => {
+    const malformed = await BreditorBrowserEditor.open(
+      options(mountHost(), moduleFixture({ documentJsonValue: "private malformed payload" }).module),
+    );
+    if (!malformed.ok) throw new Error(malformed.error.code);
+    expect(malformed.editor.exportContent("documentJson")).toEqual({
+      ok: false,
+      error: {
+        kind: "boundary",
+        code: "content_export.invalid_wasm_view",
+        message: "The Wasm document export was invalid.",
+      },
+    });
+    expect(JSON.stringify(malformed.editor.exportContent("documentJson"))).not.toContain(
+      "private malformed payload",
+    );
+    expect(malformed.editor.exportContent("html" as never)).toEqual({
+      ok: false,
+      error: {
+        kind: "request",
+        code: "content_export.invalid_format",
+        message: "The requested content export format is invalid.",
+      },
+    });
+    malformed.editor.dispose();
+    expect(malformed.editor.exportContent("plainText")).toEqual({
+      ok: false,
+      error: {
+        kind: "lifecycle",
+        code: "content_export.unavailable",
+        message: "Authoritative editor content is unavailable.",
+      },
+    });
+
+    const rejected = await BreditorBrowserEditor.open(
+      options(
+        mountHost(),
+        moduleFixture({
+          documentJsonError: {
+            code: "codec.private_document_title",
+            message: "private document contents must not escape",
+          },
+        }).module,
+      ),
+    );
+    if (!rejected.ok) throw new Error(rejected.error.code);
+    const coreFailure = rejected.editor.exportContent("documentJson");
+    expect(coreFailure).toEqual({
+      ok: false,
+      error: {
+        kind: "core",
+        code: "content_export.core_rejected",
+        message: "The Rust editor core could not export content.",
+      },
+    });
+    expect(JSON.stringify(coreFailure)).not.toContain("private");
+    rejected.editor.dispose();
+
+    const substituted = await BreditorBrowserEditor.open(
+      options(
+        mountHost(),
+        moduleFixture({
+          text: "authoritative",
+          documentJsonValue: documentJsonValue("different-valid-document"),
+        }).module,
+      ),
+    );
+    if (!substituted.ok) throw new Error(substituted.error.code);
+    expect(substituted.editor.exportContent("documentJson")).toMatchObject({
+      ok: false,
+      error: { code: "content_export.invalid_wasm_view" },
+    });
+    substituted.editor.dispose();
+  });
+
+  it("discards a provisional export when generated code disposes reentrantly", async () => {
+    const host = mountHost();
+    let editor: BreditorBrowserEditor | undefined;
+    const fixture = moduleFixture({
+      text: "never escape",
+      onDocumentJson: () => editor?.dispose(),
+    });
+    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    if (!opened.ok) throw new Error(opened.error.code);
+    editor = opened.editor;
+
+    const result = editor.exportContent("documentJson");
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: "lifecycle",
+        code: "content_export.unavailable",
+        message: "Authoritative editor content is unavailable.",
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("never escape");
+    expect(fixture.engines[0]?.rawFree).not.toHaveBeenCalled();
+    await settleMicrotasks();
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(host.childNodes).toHaveLength(0);
+  });
+
+  it("returns busy for a recursive content read without disturbing the outer export", async () => {
+    const host = mountHost();
+    let editor: BreditorBrowserEditor | undefined;
+    let nested: unknown;
+    const fixture = moduleFixture({
+      text: "outer",
+      onDocumentJson: () => {
+        nested = editor?.exportContent("plainText");
+      },
+    });
+    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    if (!opened.ok) throw new Error(opened.error.code);
+    editor = opened.editor;
+
+    const outer = editor.exportContent("documentJson");
+
+    expect(nested).toMatchObject({
+      ok: false,
+      error: { code: "content_export.busy" },
+    });
+    expect(outer).toMatchObject({
+      ok: true,
+      format: "documentJson",
+      snapshot: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(editor.getStatus()).toEqual({ phase: "live" });
+    editor.dispose();
   });
 
   it("reserves a host synchronously, rejects a second owner, and releases ownership on dispose", async () => {
@@ -607,6 +828,18 @@ describe("BreditorBrowserEditor", () => {
     expect(JSON.stringify(opened.editor.getSnapshot())).not.toContain(
       "private render failure",
     );
+    expect(opened.editor.exportContent("plainText")).toEqual({
+      ok: true,
+      format: "plainText",
+      value: "after",
+      utf8Bytes: 5,
+      snapshot: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(opened.editor.exportContent("documentJson")).toMatchObject({
+      ok: true,
+      format: "documentJson",
+      snapshot: { lineage: LINEAGE, revision: "1" },
+    });
 
     await settleMicrotasks();
 
@@ -643,6 +876,15 @@ describe("BreditorBrowserEditor", () => {
     text.parentElement?.dispatchEvent(
       new CompositionEvent("compositionstart", { bubbles: true, data: "" }),
     );
+
+    expect(opened.editor.exportContent("documentJson")).toMatchObject({
+      ok: false,
+      error: { code: "content_export.busy" },
+    });
+    expect(opened.editor.exportContent("plainText")).toMatchObject({
+      ok: false,
+      error: { code: "content_export.busy" },
+    });
 
     button.click();
 
@@ -689,6 +931,10 @@ describe("BreditorBrowserEditor", () => {
     expect(toolbarHost.childNodes).toHaveLength(0);
     expect(listener).toHaveBeenCalledOnce();
     expect(fixture.engines[0]?.rawFree).not.toHaveBeenCalled();
+    expect(opened.editor.exportContent("documentJson")).toMatchObject({
+      ok: false,
+      error: { code: "content_export.unavailable" },
+    });
     opened.editor.dispose();
     opened.editor.dispose();
     expect(host.getAttribute("contenteditable")).toBe("plaintext-only");
@@ -1102,7 +1348,7 @@ function moduleFixture(config: ModuleFixtureOptions = {}): ModuleFixture {
     module: {
       BreditorEngine: factory,
       breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
-      breditorVersion: () => "0.0.58",
+      breditorVersion: () => "0.0.59",
     },
     fromDocumentJson,
     fromSessionCheckpointJson,
@@ -1175,12 +1421,19 @@ function engineFixture(
       );
     },
   );
+  const documentJson = vi.fn((_expected: WasmCommandObservationView) => {
+    config.onDocumentJson?.();
+    return config.documentJsonError === undefined
+      ? documentResult(text, config.documentJsonValue)
+      : documentErrorResult(config.documentJsonError);
+  });
   const unexpected = (name: string): never => {
     throw new Error(`unexpected ${name}`);
   };
   const engine: WasmBootstrappedEngineView = {
     actionStates,
     sessionCheckpointJson: vi.fn(() => checkpointResult(lineage, revision)),
+    documentJson,
     clearSelection: vi.fn(() => unexpected("clearSelection")),
     setRangeSelection: vi.fn(() => unexpected("setRangeSelection")),
     selection,
@@ -1203,6 +1456,7 @@ function engineFixture(
       executeNoInputAction,
       actionStates,
       selection,
+      documentJson,
     },
   };
 }
@@ -1414,6 +1668,64 @@ function checkpointResult(
     },
     free: vi.fn(),
   };
+}
+
+function documentResult(
+  text: string,
+  override?: string,
+): WasmSessionCheckpointStringResultView {
+  let taken = false;
+  return {
+    status: "value",
+    error: undefined,
+    takeValue: () => {
+      if (taken) return undefined;
+      taken = true;
+      return override ?? documentJsonValue(text);
+    },
+    free: vi.fn(),
+  };
+}
+
+function documentErrorResult(
+  error: Readonly<{ code: string; message: string }>,
+): WasmSessionCheckpointStringResultView {
+  return {
+    status: "error",
+    error: {
+      code: error.code,
+      message: error.message,
+      free: vi.fn(),
+    },
+    takeValue: () => undefined,
+    free: vi.fn(),
+  };
+}
+
+function documentJsonValue(text: string): string {
+  return JSON.stringify({
+    format: "breditor/document",
+    formatVersion: 1,
+    schema: { name: "breditor/base", version: 1 },
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: [
+        {
+          kind: "element",
+          type: "breditor/paragraph",
+          entityId: null,
+          properties: {},
+          children:
+            text.length === 0
+              ? []
+              : [{ kind: "text", text, formats: [] }],
+        },
+      ],
+    },
+  });
 }
 
 function checkpointJson(lineage: string, revision: number): string {

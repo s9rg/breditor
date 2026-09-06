@@ -1,6 +1,14 @@
 {
   "name": "@breditor/browser",
-  "version": "0.0.58",
+  "version": "0.0.59",
+  "description": "Framework-neutral browser runtime for the Breditor rich-text editor",
+  "keywords": [
+    "rich-text-editor",
+    "contenteditable",
+    "webassembly",
+    "rust"
+  ],
+  "author": "Breditor contributors",
   "license": "MIT OR Apache-2.0",
   "type": "module",
   "sideEffects": false,
@@ -30,6 +38,14 @@
   },
   "dependencies": {
     "parse5": "8.0.1"
+  },
+  "peerDependencies": {
+    "@breditor/wasm": "0.0.59"
+  },
+  "peerDependenciesMeta": {
+    "@breditor/wasm": {
+      "optional": true
+    }
   },
   "scripts": {
     "clean": "node ../../scripts/clean-package.mjs",

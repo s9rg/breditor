@@ -5,7 +5,10 @@ import initialize, {
 import * as breditorWasm from "@breditor/wasm";
 import {
   openBreditorBrowserEditor,
+  type BreditorBrowserContentExport,
+  type BreditorBrowserContentExportResult,
   type BreditorBrowserDocumentSnapshot,
+  type BreditorBrowserEditor,
   type BreditorBrowserEditorOptions,
   type BreditorBrowserEditorOpenResult,
   type BreditorBrowserEditorPersistenceOptions,
@@ -39,6 +42,22 @@ const projectionResult: BrowserProjectionResult<BaseDocumentProjection> =
     paragraphs: [{ runs: [] }],
   });
 
+function consumeContentExports(editor: BreditorBrowserEditor): void {
+  const documentJson: BreditorBrowserContentExportResult<"documentJson"> =
+    editor.exportContent("documentJson");
+  const plainText: BreditorBrowserContentExportResult<"plainText"> =
+    editor.exportContent("plainText");
+  if (documentJson.ok) {
+    const exactDocument: BreditorBrowserContentExport<"documentJson"> =
+      documentJson;
+    void exactDocument;
+  }
+  if (plainText.ok) {
+    const exactTextFormat: "plainText" = plainText.format;
+    void exactTextFormat;
+  }
+}
+
 void initializer;
 void engineConstructor;
 void status;
@@ -51,3 +70,4 @@ void documentSnapshot;
 void browserWasmFactory;
 void browserWasmModule;
 void projectionResult;
+void consumeContentExports;

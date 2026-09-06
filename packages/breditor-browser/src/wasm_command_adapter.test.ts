@@ -30,6 +30,10 @@ import {
   type WasmSessionCheckpointStringResultView,
 } from "./wasm_session_checkpoint.js";
 import {
+  isOwnedBrowserDocumentJsonReadResult,
+  type WasmDocumentJsonStringResultView,
+} from "./wasm_document_json.js";
+import {
   isOwnedBrowserActionStateReadResult,
   type WasmActionStateSnapshotView,
   type WasmActionStateStringResultView,
@@ -377,6 +381,65 @@ describe("BreditorWasmCommandAdapter", () => {
       },
     });
     expect(isOwnedBrowserSessionCheckpointReadResult(unavailable)).toBe(true);
+  });
+
+  it("serializes document/plain-text reads under one content lease and preserves observation", () => {
+    const base = projectionFixture(0, "A💡");
+    const initial = observation(0);
+    const document = documentResult("A💡");
+    let nestedDocument: unknown;
+    let nestedPlainText: unknown;
+    let documentPort: BreditorWasmCommandAdapter["documentJsonReadPort"];
+    let plainTextPort: BreditorWasmCommandAdapter["plainTextReadPort"];
+    const engine = engineQueues({});
+    engine.documentJson = (expected) => {
+      expect(expected).toBe(initial);
+      nestedDocument = documentPort.read();
+      nestedPlainText = plainTextPort.read();
+      return document.view;
+    };
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    documentPort = adapter.documentJsonReadPort;
+    plainTextPort = adapter.plainTextReadPort;
+
+    const result = documentPort.read();
+
+    expect(nestedDocument).toBeUndefined();
+    expect(nestedPlainText).toBeUndefined();
+    expect(result).toMatchObject({
+      ok: true,
+      document: {
+        snapshot: { lineage: "adapter-tests", revision: "0" },
+      },
+    });
+    expect(isOwnedBrowserDocumentJsonReadResult(result)).toBe(true);
+    expect(document.free).toHaveBeenCalledOnce();
+    expect(initial.free).not.toHaveBeenCalled();
+    expect(adapter.state).toBe("live");
+
+    expect(plainTextPort.read()).toEqual({
+      ok: true,
+      content: {
+        text: "A💡",
+        utf8Bytes: 5,
+        snapshot: { lineage: "adapter-tests", revision: "0" },
+      },
+    });
+
+    adapter.dispose();
+    expect(documentPort.read()).toMatchObject({
+      ok: false,
+      error: { code: "document_json.adapter_unavailable" },
+    });
+    expect(plainTextPort.read()).toMatchObject({
+      ok: false,
+      error: { code: "plain_text.adapter_unavailable" },
+    });
+    expect(initial.free).toHaveBeenCalledOnce();
   });
 
   it("protects the raw engine and observation from aliased checkpoint results", () => {
@@ -2638,6 +2701,7 @@ function engineQueues(input: Readonly<{
   selection?: WasmSelectionResultView[];
   actionStates?: WasmActionStatesResultView[];
   sessionCheckpoints?: WasmSessionCheckpointStringResultView[];
+  documents?: WasmDocumentJsonStringResultView[];
 }>): WasmCommandEngineView {
   const take = <T>(values: T[] | undefined, name: string): T => {
     const value = values?.shift();
@@ -2648,6 +2712,7 @@ function engineQueues(input: Readonly<{
     actionStates: () => take(input.actionStates, "actionStates"),
     sessionCheckpointJson: () =>
       take(input.sessionCheckpoints, "sessionCheckpointJson"),
+    documentJson: () => take(input.documents, "documentJson"),
     clearSelection: () => take(input.setSelection, "clearSelection"),
     setRangeSelection: () => input.setRangeSelection?.() ?? take(input.setSelection, "setRangeSelection"),
     selection: () => take(input.selection, "selection"),
@@ -2656,6 +2721,47 @@ function engineQueues(input: Readonly<{
     undo: () => { throw new Error("unexpected undo"); },
     redo: () => { throw new Error("unexpected redo"); },
     closeHistoryGroup: () => take(input.closeHistory, "closeHistoryGroup"),
+  };
+}
+
+function documentResult(text: string): Readonly<{
+  view: WasmDocumentJsonStringResultView;
+  free: ReturnType<typeof vi.fn>;
+}> {
+  const free = vi.fn();
+  let taken = false;
+  const documentJson = JSON.stringify({
+    format: "breditor/document",
+    formatVersion: 1,
+    schema: { name: "breditor/base", version: 1 },
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: [
+        {
+          kind: "element",
+          type: "breditor/paragraph",
+          entityId: null,
+          properties: {},
+          children: text.length === 0 ? [] : [{ kind: "text", text, formats: [] }],
+        },
+      ],
+    },
+  });
+  return {
+    view: {
+      status: "value",
+      error: undefined,
+      takeValue: () => {
+        if (taken) return undefined;
+        taken = true;
+        return documentJson;
+      },
+      free,
+    },
+    free,
   };
 }
 

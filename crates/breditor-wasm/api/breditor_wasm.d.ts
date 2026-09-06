@@ -272,6 +272,16 @@ export class BreditorEngine {
      */
     closeHistoryGroup(expected: BreditorObservation): BreditorCommandResult;
     /**
+     * Encodes the canonical Document V1 value at one exact guarded observation.
+     *
+     * The complete engine, snapshot, and history observation is checked before
+     * encoding. The read is synchronous and non-mutating. Selection, pending
+     * formats, history, and editor identity are intentionally not included.
+     * A stale observation or representation failure is returned as a stable,
+     * payload-redacting [`BreditorError`] inside the one-shot string result.
+     */
+    documentJson(expected: BreditorObservation): BreditorStringResult;
+    /**
      * Executes one registered action whose descriptor accepts no input.
      *
      * The observation is checked before action parsing and checked again by
@@ -779,12 +789,6 @@ export interface InitOutput {
     readonly breditorVersion: () => [number, number];
     readonly breditorWasmAbiVersion: () => [number, number];
     readonly breditorengine_setRangeSelection: (a: number, b: number, c: any, d: any, e: any, f: any, g: any, h: any, i: any, j: any) => number;
-    readonly __wbg_breditorengine_free: (a: number, b: number) => void;
-    readonly breditorengine_actionStates: (a: number, b: number) => number;
-    readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number) => number;
-    readonly breditorengine_fromDocumentJson: (a: number, b: number, c: number, d: number, e: number) => number;
-    readonly breditorengine_fromSessionCheckpointJson: (a: number, b: number) => number;
-    readonly breditorengine_selection: (a: number, b: number) => number;
     readonly __wbg_breditoractionstatesresult_free: (a: number, b: number) => void;
     readonly __wbg_breditorerror_free: (a: number, b: number) => void;
     readonly __wbg_breditorstringresult_free: (a: number, b: number) => void;
@@ -797,6 +801,66 @@ export interface InitOutput {
     readonly breditorstringresult_status: (a: number) => [number, number];
     readonly breditorstringresult_takeValue: (a: number) => [number, number];
     readonly breditorstringresult_value: (a: number) => [number, number];
+    readonly __wbg_breditorengineresult_free: (a: number, b: number) => void;
+    readonly __wbg_breditorobservation_free: (a: number, b: number) => void;
+    readonly breditorengine_documentJson: (a: number, b: number) => number;
+    readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly breditorengine_redo: (a: number, b: number) => number;
+    readonly breditorengineresult_error: (a: number) => number;
+    readonly breditorengineresult_status: (a: number) => [number, number];
+    readonly breditorengineresult_takeEngine: (a: number) => number;
+    readonly breditorobservation_canRedo: (a: number) => number;
+    readonly breditorobservation_canUndo: (a: number) => number;
+    readonly breditorobservation_historyCapacity: (a: number) => number;
+    readonly breditorobservation_redoDepth: (a: number) => number;
+    readonly breditorobservation_snapshotLineage: (a: number) => [number, number];
+    readonly breditorobservation_snapshotRevision: (a: number) => [number, number];
+    readonly breditorobservation_undoDepth: (a: number) => number;
+    readonly __wbg_breditorprojection_free: (a: number, b: number) => void;
+    readonly breditorengine_clearHistory: (a: number, b: number) => number;
+    readonly breditorengine_clearSelection: (a: number, b: number) => number;
+    readonly breditorengine_selection: (a: number, b: number) => number;
+    readonly breditorengine_undo: (a: number, b: number) => number;
+    readonly breditorprojection_childAt: (a: number, b: number, c: number) => number;
+    readonly breditorprojection_childCount: (a: number, b: number) => number;
+    readonly breditorprojection_elementType: (a: number, b: number) => [number, number];
+    readonly breditorprojection_formatCount: (a: number, b: number) => number;
+    readonly breditorprojection_formatType: (a: number, b: number, c: number) => [number, number];
+    readonly breditorprojection_nodeCount: (a: number) => number;
+    readonly breditorprojection_nodeKind: (a: number, b: number) => [number, number];
+    readonly breditorprojection_rootIndex: (a: number) => number;
+    readonly breditorprojection_schemaName: (a: number) => [number, number];
+    readonly breditorprojection_schemaVersion: (a: number) => number;
+    readonly breditorprojection_snapshotLineage: (a: number) => [number, number];
+    readonly breditorprojection_snapshotRevision: (a: number) => [number, number];
+    readonly breditorprojection_text: (a: number, b: number) => [number, number];
+    readonly __wbg_breditorprojectionresult_free: (a: number, b: number) => void;
+    readonly __wbg_breditorprojectionupdate_free: (a: number, b: number) => void;
+    readonly breditorengine_closeHistoryGroup: (a: number, b: number) => number;
+    readonly breditorengine_observation: (a: number) => number;
+    readonly breditorengine_stateJson: (a: number) => number;
+    readonly breditorprojectionresult_error: (a: number) => number;
+    readonly breditorprojectionresult_status: (a: number) => [number, number];
+    readonly breditorprojectionresult_takeProjection: (a: number) => number;
+    readonly breditorprojectionupdate_affectedParagraphCount: (a: number) => number;
+    readonly breditorprojectionupdate_affectedParagraphIndex: (a: number, b: number) => number;
+    readonly breditorprojectionupdate_baseLineage: (a: number) => [number, number];
+    readonly breditorprojectionupdate_baseRevision: (a: number) => [number, number];
+    readonly breditorprojectionupdate_impact: (a: number) => [number, number];
+    readonly breditorprojectionupdate_newChildEnd: (a: number) => number;
+    readonly breditorprojectionupdate_newChildStart: (a: number) => number;
+    readonly breditorprojectionupdate_oldChildEnd: (a: number) => number;
+    readonly breditorprojectionupdate_oldChildStart: (a: number) => number;
+    readonly breditorprojectionupdate_resultLineage: (a: number) => [number, number];
+    readonly breditorprojectionupdate_resultRevision: (a: number) => [number, number];
+    readonly breditorprojectionupdate_takeProjection: (a: number) => number;
+    readonly __wbg_breditorengine_free: (a: number, b: number) => void;
+    readonly breditorengine_actionStates: (a: number, b: number) => number;
+    readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number) => number;
+    readonly breditorengine_fromDocumentJson: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly breditorengine_fromSessionCheckpointJson: (a: number, b: number) => number;
+    readonly breditorengine_projection: (a: number, b: number) => number;
+    readonly breditorengine_sessionCheckpointJson: (a: number) => number;
     readonly __wbg_breditorselection_free: (a: number, b: number) => void;
     readonly __wbg_breditorselectionresult_free: (a: number, b: number) => void;
     readonly breditorselection_anchorAffinity: (a: number) => [number, number];
@@ -814,59 +878,6 @@ export interface InitOutput {
     readonly breditorselectionresult_error: (a: number) => number;
     readonly breditorselectionresult_status: (a: number) => [number, number];
     readonly breditorselectionresult_takeSelection: (a: number) => number;
-    readonly __wbg_breditorengineresult_free: (a: number, b: number) => void;
-    readonly __wbg_breditorobservation_free: (a: number, b: number) => void;
-    readonly breditorengine_clearSelection: (a: number, b: number) => number;
-    readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
-    readonly breditorengine_projection: (a: number, b: number) => number;
-    readonly breditorengineresult_error: (a: number) => number;
-    readonly breditorengineresult_status: (a: number) => [number, number];
-    readonly breditorengineresult_takeEngine: (a: number) => number;
-    readonly breditorobservation_canRedo: (a: number) => number;
-    readonly breditorobservation_canUndo: (a: number) => number;
-    readonly breditorobservation_historyCapacity: (a: number) => number;
-    readonly breditorobservation_redoDepth: (a: number) => number;
-    readonly breditorobservation_snapshotLineage: (a: number) => [number, number];
-    readonly breditorobservation_snapshotRevision: (a: number) => [number, number];
-    readonly breditorobservation_undoDepth: (a: number) => number;
-    readonly __wbg_breditorprojectionresult_free: (a: number, b: number) => void;
-    readonly __wbg_breditorprojectionupdate_free: (a: number, b: number) => void;
-    readonly breditorengine_observation: (a: number) => number;
-    readonly breditorengine_undo: (a: number, b: number) => number;
-    readonly breditorprojectionresult_error: (a: number) => number;
-    readonly breditorprojectionresult_status: (a: number) => [number, number];
-    readonly breditorprojectionresult_takeProjection: (a: number) => number;
-    readonly breditorprojectionupdate_affectedParagraphCount: (a: number) => number;
-    readonly breditorprojectionupdate_affectedParagraphIndex: (a: number, b: number) => number;
-    readonly breditorprojectionupdate_baseLineage: (a: number) => [number, number];
-    readonly breditorprojectionupdate_baseRevision: (a: number) => [number, number];
-    readonly breditorprojectionupdate_impact: (a: number) => [number, number];
-    readonly breditorprojectionupdate_newChildEnd: (a: number) => number;
-    readonly breditorprojectionupdate_newChildStart: (a: number) => number;
-    readonly breditorprojectionupdate_oldChildEnd: (a: number) => number;
-    readonly breditorprojectionupdate_oldChildStart: (a: number) => number;
-    readonly breditorprojectionupdate_resultLineage: (a: number) => [number, number];
-    readonly breditorprojectionupdate_resultRevision: (a: number) => [number, number];
-    readonly breditorprojectionupdate_takeProjection: (a: number) => number;
-    readonly __wbg_breditorprojection_free: (a: number, b: number) => void;
-    readonly breditorengine_clearHistory: (a: number, b: number) => number;
-    readonly breditorengine_closeHistoryGroup: (a: number, b: number) => number;
-    readonly breditorengine_redo: (a: number, b: number) => number;
-    readonly breditorengine_sessionCheckpointJson: (a: number) => number;
-    readonly breditorengine_stateJson: (a: number) => number;
-    readonly breditorprojection_childAt: (a: number, b: number, c: number) => number;
-    readonly breditorprojection_childCount: (a: number, b: number) => number;
-    readonly breditorprojection_elementType: (a: number, b: number) => [number, number];
-    readonly breditorprojection_formatCount: (a: number, b: number) => number;
-    readonly breditorprojection_formatType: (a: number, b: number, c: number) => [number, number];
-    readonly breditorprojection_nodeCount: (a: number) => number;
-    readonly breditorprojection_nodeKind: (a: number, b: number) => [number, number];
-    readonly breditorprojection_rootIndex: (a: number) => number;
-    readonly breditorprojection_schemaName: (a: number) => [number, number];
-    readonly breditorprojection_schemaVersion: (a: number) => number;
-    readonly breditorprojection_snapshotLineage: (a: number) => [number, number];
-    readonly breditorprojection_snapshotRevision: (a: number) => [number, number];
-    readonly breditorprojection_text: (a: number, b: number) => [number, number];
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;

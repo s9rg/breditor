@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.58` packaged boundary contract; intentionally narrow and unstable before
+Status: `0.0.59` packaged boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 The `publish = false` Rust crate remains a repository implementation artifact;
@@ -42,8 +42,8 @@ The generated TypeScript declaration exposes thirteen opaque Wasm-owned classes:
 - `BreditorEngineResult` is the structured result of engine construction;
 - `BreditorCommandResult` is a committed, disabled, unchanged, or error
   command outcome; and
-- `BreditorStringResult` is a successful string or a structured error from a
-  fallible codec read;
+- `BreditorStringResult` is a successful one-shot string or a structured error
+  from a fallible codec read;
 - `BreditorError` contains a stable failure code and fixed redacted message;
 - `BreditorProjectionResult` owns a guarded projection read or error;
 - `BreditorProjection` is one flattened snapshot-bound semantic AST view; and
@@ -101,7 +101,7 @@ observation cannot cross a reload or reconstruction boundary.
 A failed factory returns no partial engine. The result's engine can be taken at
 most once. Its status changes from `engine` to `taken` after that transfer.
 
-`breditorWasmAbiVersion()` returns the transport generation (`"1"`), while
+`breditorWasmAbiVersion()` returns the transport generation (`"2"`), while
 `breditorVersion()` returns the crate release embedded in the module. A later
 TypeScript package can reject an incompatible generated module without opening
 or deserializing editor state.
@@ -152,6 +152,22 @@ string/number inspection rejects JavaScript wrapper objects and coercible values
 while per-parameter generated TypeScript annotations retain literal unions and
 `number`. A real change returns a selection event, clears pending formats, and
 creates no content-history entry. An exact echo or repeated clear is unchanged.
+
+`engine.documentJson(expected)` is the guarded lossless content-egress read. It
+checks the same complete engine, snapshot, and history observation before
+encoding the current immutable document through `DocumentJsonCodec` with that
+state's exact compiled schema and resource limits. Success is canonical compact
+Document V1 JSON in a one-shot `BreditorStringResult`; it contains the semantic
+AST and its properties, entities, formats, and Unicode text, but deliberately
+contains no selection, pending typing formats, snapshot identity, or history.
+A selection-only or history-only publication therefore changes which
+observation is accepted without changing the resulting document bytes.
+
+The read is synchronous and non-mutating. Stale and foreign observations use
+the existing guarded-engine codes. Any representation failure uses its stable
+codec code and a fixed payload-free message; neither path returns partial
+content. Callers that only need rendering should continue to use the non-JSON
+projection instead of repeatedly encoding the whole document.
 
 Known invalid values for those two built-ins retain their finite, stable input
 rule code (for example `breditor/insert-text-input-empty` or
@@ -244,7 +260,8 @@ on all paths.
 ## Publication, projection, and serialization
 
 A command result retains its sealed Rust `EditorEngineEvent`. `commitJson()` is
-a separate fallible read, and `stateJson()` remains a separate engine read.
+a separate fallible read, `stateJson()` remains a separate engine read, and
+`documentJson(expected)` is a separately guarded lossless content read.
 `sessionCheckpointJson()` clones canonical bytes that were encoded before the
 current session became authoritative. It has no domain-error path for a live
 engine, although allocation failure can still trap.
@@ -308,10 +325,10 @@ mutates or removes their public `free` property.
 
 ## Representation and resource limits
 
-Durable state, checkpoint, and commit values cross as owned UTF-8 JSON strings
-and retain their existing versioned codec contracts. The semantic projection is
-an explicitly non-durable, non-JSON rendering view. Revisions remain canonical
-decimal strings rather than lossy JavaScript numbers. History
+Durable document, state, checkpoint, and commit values cross as owned UTF-8 JSON
+strings and retain their existing versioned codec contracts. The semantic
+projection is an explicitly non-durable, non-JSON rendering view. Revisions
+remain canonical decimal strings rather than lossy JavaScript numbers. History
 capacity and depths are bounded `u32` values after checked admission. A
 successful `BreditorStringResult` supports `takeValue()` so a large encoded
 value can cross without first being cloned inside Wasm; its status then changes
@@ -456,12 +473,17 @@ The complete atomic single-slot storage and scheduling contract is in
 declaration in an isolated `target` directory, and compare it byte-for-byte
 with the reviewed snapshot. The declaration describes the transport types; it
 does not replace the JSON codec contracts documented here and in
-`DATA_CONTRACT.md`. The same gate runs a dependency-free Node.js probe against
-the generated web glue to cover ownership transfer, explicit disposal, numeric
+`DATA_CONTRACT.md`. The same gate runs a Node.js integration probe with the
+locked workspace dependencies against the generated web glue to cover
+ownership transfer, explicit disposal, numeric
 admission, redaction, wrong-class rejection, and inert/freed-handle behavior
 that direct Rust `wasm-bindgen-test` calls cannot exercise. Version `0.0.54`
 also type-checks the generated command/observation/selection result classes
 against the structural browser adapter and its composition owner, while the
 glue probe exercises real selection-view lifecycles and proves that coercible
-number/string objects cannot publish a selection mutation. Real browser IME
-coverage remains the `0.0.59` matrix gate rather than a Wasm ABI claim.
+number/string objects cannot publish a selection mutation. Version `0.0.59`
+additionally checks the generated guarded `documentJson` signature and exercises
+its success, stale/foreign rejection, Unicode, canonical re-import, replay, and
+one-shot result ownership through real glue. The browser matrix exercises
+synthetic composition events in actual browser engines. OS-driven IME remains a
+manual, out-of-scope validation item rather than a Wasm ABI claim.

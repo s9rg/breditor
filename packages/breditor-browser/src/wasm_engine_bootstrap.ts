@@ -13,7 +13,7 @@ import {
 } from "./wasm_session_checkpoint.js";
 
 /** JavaScript-visible Wasm transport generation accepted by this bootstrap. */
-export const BREDITOR_WASM_ABI_VERSION = "1" as const;
+export const BREDITOR_WASM_ABI_VERSION = "2" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
@@ -157,6 +157,7 @@ interface EngineMethodSnapshot {
   readonly cleanup: GeneratedCleanup;
   readonly actionStates: WasmCommandEngineView["actionStates"];
   readonly sessionCheckpointJson: WasmCommandEngineView["sessionCheckpointJson"];
+  readonly documentJson: WasmCommandEngineView["documentJson"];
   readonly clearSelection: WasmCommandEngineView["clearSelection"];
   readonly setRangeSelection: WasmCommandEngineView["setRangeSelection"];
   readonly selection: WasmCommandEngineView["selection"];
@@ -177,7 +178,7 @@ interface ObservationSnapshot {
 /**
  * Constructs one browser-ready generated engine and its exact initial AST.
  *
- * A generated module namespace must report ABI `1` and a syntactically valid
+ * A generated module namespace must report ABI `2` and a syntactically valid
  * crate version. A bare factory has no compatibility probe, so it is admitted
  * only through the complete fresh-and-restore static contract. All generated
  * handles are claimed before `then` or sibling getters are inspected. Result,
@@ -512,6 +513,7 @@ function snapshotEngineMethods(
       cleanup,
       actionStates: engine.actionStates,
       sessionCheckpointJson: engine.sessionCheckpointJson,
+      documentJson: engine.documentJson,
       clearSelection: engine.clearSelection,
       setRangeSelection: engine.setRangeSelection,
       selection: engine.selection,
@@ -526,6 +528,7 @@ function snapshotEngineMethods(
     const methods: readonly unknown[] = [
       snapshot.actionStates,
       snapshot.sessionCheckpointJson,
+      snapshot.documentJson,
       snapshot.clearSelection,
       snapshot.setRangeSelection,
       snapshot.selection,
@@ -596,6 +599,7 @@ function createEngineOwner(
   const owner: WasmBootstrappedEngineView = {
     actionStates: (expected) => invoke(snapshot.actionStates, [expected]),
     sessionCheckpointJson: () => invoke(snapshot.sessionCheckpointJson, []),
+    documentJson: (expected) => invoke(snapshot.documentJson, [expected]),
     clearSelection: (expected) => invoke(snapshot.clearSelection, [expected]),
     setRangeSelection: (
       expected,

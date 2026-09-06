@@ -10,5 +10,5 @@
     "target": "ES2022",
     "verbatimModuleSyntax": true
   },
-  "include": ["smoke.ts"]
+  "include": ["bundle.ts", "smoke.ts"]
 }

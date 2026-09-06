@@ -405,6 +405,7 @@ function engine(): Readonly<{
   const view: WasmRestoredEngineView = {
     actionStates: unsupported,
     sessionCheckpointJson: unsupported,
+    documentJson: unsupported,
     clearSelection: unsupported,
     setRangeSelection: unsupported,
     selection: unsupported,

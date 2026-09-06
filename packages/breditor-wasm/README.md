@@ -11,8 +11,12 @@ to add that library solely to type-check Breditor.
 
 The package is ESM. Initialize it before calling any exported Rust function:
 
+```sh
+npm install @breditor/wasm@0.0.59
+```
+
 ```ts
-import init, { BreditorEngine, breditorVersion } from "@breditor/wasm";
+import init, { breditorVersion } from "@breditor/wasm";
 
 await init();
 console.log(breditorVersion());
@@ -39,14 +43,31 @@ The build requires the repository's pinned Rust toolchain, the locked Cargo
 graph, the `wasm32-unknown-unknown` target, and exactly `wasm-bindgen 0.2.127`.
 Generation occurs in an isolated directory before the package `dist` directory
 is replaced. The check compares the generated declaration byte-for-byte with
-the reviewed Rust ABI declaration, verifies that two clean builds produce the
-same bytes, and initializes the built module in Node.js.
+the reviewed Rust ABI declaration, verifies the exact reachable normal/build
+dependency graph and license metadata, verifies required third-party notice
+bytes, verifies that two clean builds produce the same bytes, and initializes
+the built module in Node.js.
 
 Use `npm run smoke:packages` to pack both public workspace packages, install the
-tarballs in a clean temporary consumer, import and initialize them, and
-type-check a consumer program without workspace resolution.
+tarballs in a clean temporary consumer, import and initialize them, type-check
+and production-bundle a consumer program without workspace resolution, and
+launch the tarball-only result in real Chromium. The command requires the
+workspace dependencies, exact Wasm generator, and lockfile-selected Playwright
+Chromium executable:
+
+```sh
+npm ci
+npx playwright install chromium
+WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
+```
 
 ## License
 
 Licensed under either the MIT License or Apache License, Version 2.0, at your
 option. Both license texts are included in the package.
+
+The published package also contains `THIRD_PARTY_NOTICES.md`, the exact required
+crate license and notice files under `third-party/`, and the official Rust 1.98.0
+standard-library `COPYRIGHT-library.html` under `dist/third-party/`. The
+inventory covers the locked `wasm32-unknown-unknown` normal/build dependency
+closure; development-only dependencies are not part of the published module.

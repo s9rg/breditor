@@ -38,8 +38,11 @@ import {
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
 import type { BrowserActionStateSnapshot } from "./wasm_action_state_adapter.js";
+import type { BrowserProjectionPlainTextResult } from "./projection_plain_text.js";
 import {
   BreditorWasmCommandAdapter,
+  contentReadPortsForAdapter,
+  type WasmContentReadPorts,
   type WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
 import {
@@ -48,6 +51,7 @@ import {
   type WasmEngineBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
 } from "./wasm_engine_bootstrap.js";
+import type { BrowserDocumentJsonReadResult } from "./wasm_document_json.js";
 
 /** Maximum independent subscribers retained by one high-level editor. */
 export const MAX_BROWSER_EDITOR_SUBSCRIBERS = 64;
@@ -184,6 +188,60 @@ export type BreditorBrowserEditorOpenResult =
 export type BreditorBrowserEditorPersistenceResult =
   SessionCheckpointAutosaveFlushResult | Readonly<{ status: "disabled" }>;
 
+/** Explicit public content representations. No editor state is implied. */
+export type BreditorBrowserContentFormat = "documentJson" | "plainText";
+
+/** Snapshot-correlated, bounded content copied out of the Rust-owned session. */
+export interface BreditorBrowserContentExport<
+  Format extends BreditorBrowserContentFormat = BreditorBrowserContentFormat,
+> {
+  readonly ok: true;
+  readonly format: Format;
+  readonly value: string;
+  readonly utf8Bytes: number;
+  readonly snapshot: BreditorBrowserDocumentSnapshot;
+}
+
+/** Stable payload-redacted content-export failure. */
+export type BreditorBrowserContentExportError =
+  | Readonly<{
+      kind: "request";
+      code: "content_export.invalid_format";
+      message: "The requested content export format is invalid.";
+    }>
+  | Readonly<{
+      kind: "lifecycle";
+      code: "content_export.busy";
+      message: "The editor is temporarily busy and cannot export content.";
+    }>
+  | Readonly<{
+      kind: "lifecycle";
+      code: "content_export.unavailable";
+      message: "Authoritative editor content is unavailable.";
+    }>
+  | Readonly<{
+      kind: "boundary";
+      code: "content_export.invalid_wasm_view";
+      message: "The Wasm document export was invalid.";
+    }>
+  | Readonly<{
+      kind: "boundary";
+      code: "content_export.invalid_projection";
+      message: "The semantic plain-text projection was invalid.";
+    }>
+  | Readonly<{
+      kind: "core";
+      code: "content_export.core_rejected";
+      message: "The Rust editor core could not export content.";
+    }>;
+
+/** Synchronous, deeply immutable content export result. */
+export type BreditorBrowserContentExportResult<
+  Format extends BreditorBrowserContentFormat = BreditorBrowserContentFormat,
+> =
+  | Readonly<BreditorBrowserContentExport<Format>>
+  | Readonly<{ ok: false; error: BreditorBrowserContentExportError }>;
+
 interface NormalizedAbortSignal {
   readonly isAborted: () => boolean;
   readonly add: (listener: () => void) => void;
@@ -223,6 +281,7 @@ interface RuntimeResources {
   readonly hostAttributes: readonly HostAttributeSnapshot[];
   readonly engine: WasmBootstrappedEngineView;
   readonly adapter: BreditorWasmCommandAdapter;
+  readonly contentReadPorts: Readonly<WasmContentReadPorts>;
   readonly selectionBridge: BreditorDomSelectionBridge;
   readonly actionStore: BreditorActionStateStore;
   readonly queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
@@ -245,6 +304,38 @@ const PERSISTENCE_DISABLED: BreditorBrowserEditorPersistenceStatus =
   });
 const PERSISTENCE_DISABLED_RESULT: BreditorBrowserEditorPersistenceResult =
   Object.freeze({ status: "disabled" });
+const INVALID_CONTENT_FORMAT: BreditorBrowserContentExportError = Object.freeze({
+  kind: "request",
+  code: "content_export.invalid_format",
+  message: "The requested content export format is invalid.",
+});
+const CONTENT_BUSY: BreditorBrowserContentExportError = Object.freeze({
+  kind: "lifecycle",
+  code: "content_export.busy",
+  message: "The editor is temporarily busy and cannot export content.",
+});
+const CONTENT_UNAVAILABLE: BreditorBrowserContentExportError = Object.freeze({
+  kind: "lifecycle",
+  code: "content_export.unavailable",
+  message: "Authoritative editor content is unavailable.",
+});
+const INVALID_CONTENT_WASM_VIEW: BreditorBrowserContentExportError =
+  Object.freeze({
+    kind: "boundary",
+    code: "content_export.invalid_wasm_view",
+    message: "The Wasm document export was invalid.",
+  });
+const INVALID_CONTENT_PROJECTION: BreditorBrowserContentExportError =
+  Object.freeze({
+    kind: "boundary",
+    code: "content_export.invalid_projection",
+    message: "The semantic plain-text projection was invalid.",
+  });
+const CONTENT_CORE_REJECTED: BreditorBrowserContentExportError = Object.freeze({
+  kind: "core",
+  code: "content_export.core_rejected",
+  message: "The Rust editor core could not export content.",
+});
 const NOOP_UNSUBSCRIBE = Object.freeze((): void => {});
 const EDITOR_HOSTS = new WeakMap<HTMLElement, object>();
 const BROWSER_EDITOR_CONSTRUCTION = Object.freeze({});
@@ -285,6 +376,8 @@ export class BreditorBrowserEditor {
   readonly #hostAttributes: readonly HostAttributeSnapshot[];
   readonly #engine: WasmBootstrappedEngineView;
   readonly #adapter: BreditorWasmCommandAdapter;
+  readonly #readDocumentJson: BreditorWasmCommandAdapter["documentJsonReadPort"]["read"];
+  readonly #readPlainText: BreditorWasmCommandAdapter["plainTextReadPort"]["read"];
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #actionStore: BreditorActionStateStore;
   readonly #queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
@@ -320,6 +413,8 @@ export class BreditorBrowserEditor {
     this.#hostAttributes = resources.hostAttributes;
     this.#engine = resources.engine;
     this.#adapter = resources.adapter;
+    this.#readDocumentJson = resources.contentReadPorts.documentJson.read;
+    this.#readPlainText = resources.contentReadPorts.plainText.read;
     this.#selectionBridge = resources.selectionBridge;
     this.#actionStore = resources.actionStore;
     this.#queue = resources.queue;
@@ -454,6 +549,10 @@ export class BreditorBrowserEditor {
       });
       observation = undefined;
       rendered = undefined;
+      const contentReadPorts = contentReadPortsForAdapter(adapter);
+      if (contentReadPorts === undefined) {
+        return openFailure("browser_editor.setup_failed");
+      }
 
       const restored = adapter.restoreCanonicalRender();
       if (!restored.ok) {
@@ -497,6 +596,7 @@ export class BreditorBrowserEditor {
         hostAttributes,
         engine,
         adapter,
+        contentReadPorts,
         selectionBridge,
         actionStore,
         queue,
@@ -570,6 +670,83 @@ export class BreditorBrowserEditor {
   /** Stable immutable external-store snapshot. */
   getSnapshot(): BreditorBrowserEditorSnapshot {
     return this.#snapshot;
+  }
+
+  /**
+   * Copies authoritative content without exposing engine state or Wasm handles.
+   *
+   * `documentJson` is the lossless canonical Document V1 record. `plainText`
+   * joins semantic paragraphs with LF and strips formatting; it never reads
+   * mutable DOM text. Busy composition/delivery/read leases fail benignly.
+   */
+  exportContent(
+    format: "documentJson",
+  ): BreditorBrowserContentExportResult<"documentJson">;
+  exportContent(
+    format: "plainText",
+  ): BreditorBrowserContentExportResult<"plainText">;
+  exportContent(
+    format: BreditorBrowserContentFormat,
+  ): BreditorBrowserContentExportResult;
+  exportContent(
+    format: BreditorBrowserContentFormat,
+  ): BreditorBrowserContentExportResult {
+    if (format !== "documentJson" && format !== "plainText") {
+      return contentFailure(INVALID_CONTENT_FORMAT);
+    }
+    if (this.#status.phase === "disposed") {
+      return contentFailure(CONTENT_UNAVAILABLE);
+    }
+
+    let before: BreditorBrowserDocumentSnapshot;
+    let state: BreditorWasmCommandAdapter["state"];
+    try {
+      state = this.#adapter.state;
+      before = this.#adapter.snapshot;
+    } catch {
+      return contentFailure(CONTENT_UNAVAILABLE);
+    }
+    if (adapterStateIsContentBusy(state)) {
+      return contentFailure(CONTENT_BUSY);
+    }
+    if (state !== "live" && state !== "reconcile") {
+      return contentFailure(CONTENT_UNAVAILABLE);
+    }
+
+    const result =
+      format === "documentJson"
+        ? this.#readDocumentJson()
+        : this.#readPlainText();
+    if (result === undefined) {
+      return this.#isDisposed()
+        ? contentFailure(CONTENT_UNAVAILABLE)
+        : contentFailure(CONTENT_BUSY);
+    }
+
+    // A hostile generated getter may synchronously dispose the public owner.
+    // Discard its provisional bytes and let bounded physical teardown unwind.
+    let after: BreditorBrowserDocumentSnapshot;
+    let afterState: BreditorWasmCommandAdapter["state"];
+    try {
+      afterState = this.#adapter.state;
+      after = this.#adapter.snapshot;
+    } catch {
+      return contentFailure(CONTENT_UNAVAILABLE);
+    }
+    if (
+      this.#isDisposed() ||
+      (afterState !== "live" && afterState !== "reconcile")
+    ) {
+      return contentFailure(CONTENT_UNAVAILABLE);
+    }
+
+    return format === "documentJson"
+      ? contentExportFromDocumentJson(result as BrowserDocumentJsonReadResult, before, after)
+      : contentExportFromPlainText(result as BrowserProjectionPlainTextResult, before, after);
+  }
+
+  #isDisposed(): boolean {
+    return this.#status.phase === "disposed";
   }
 
   /** Bounded, duplicate-idempotent subscription for framework adapters. */
@@ -777,7 +954,8 @@ export class BreditorBrowserEditor {
         adapterState === "composition" ||
         adapterState === "executing" ||
         adapterState === "readingActionState" ||
-        adapterState === "readingCheckpoint"
+        adapterState === "readingCheckpoint" ||
+        adapterState === "readingContent"
       ) {
         // These states are temporary, exclusive leases rather than evidence of
         // uncertainty. In particular, pointerdown intentionally preserves an
@@ -911,6 +1089,90 @@ export function openBreditorBrowserEditor(
   options: BreditorBrowserEditorOptions,
 ): Promise<BreditorBrowserEditorOpenResult> {
   return BreditorBrowserEditor.open(options);
+}
+
+function contentExportFromDocumentJson(
+  result: BrowserDocumentJsonReadResult,
+  before: BreditorBrowserDocumentSnapshot,
+  after: BreditorBrowserDocumentSnapshot,
+): BreditorBrowserContentExportResult<"documentJson"> {
+  if (!result.ok) {
+    if (result.error.kind === "core") {
+      return contentFailure(CONTENT_CORE_REJECTED);
+    }
+    return contentFailure(
+      result.error.kind === "lifecycle"
+        ? CONTENT_UNAVAILABLE
+        : INVALID_CONTENT_WASM_VIEW,
+    );
+  }
+  const exported = result.document;
+  if (
+    !snapshotsMatch(before, after) ||
+    !snapshotsMatch(exported.snapshot, before)
+  ) {
+    return contentFailure(INVALID_CONTENT_WASM_VIEW);
+  }
+  return Object.freeze({
+    ok: true,
+    format: "documentJson",
+    value: exported.documentJson,
+    utf8Bytes: exported.documentUtf8Bytes,
+    snapshot: exported.snapshot,
+  });
+}
+
+function contentExportFromPlainText(
+  result: BrowserProjectionPlainTextResult,
+  before: BreditorBrowserDocumentSnapshot,
+  after: BreditorBrowserDocumentSnapshot,
+): BreditorBrowserContentExportResult<"plainText"> {
+  if (!result.ok) {
+    return contentFailure(
+      result.error.kind === "lifecycle"
+        ? CONTENT_UNAVAILABLE
+        : INVALID_CONTENT_PROJECTION,
+    );
+  }
+  const exported = result.content;
+  if (
+    !snapshotsMatch(before, after) ||
+    !snapshotsMatch(exported.snapshot, before)
+  ) {
+    return contentFailure(INVALID_CONTENT_PROJECTION);
+  }
+  return Object.freeze({
+    ok: true,
+    format: "plainText",
+    value: exported.text,
+    utf8Bytes: exported.utf8Bytes,
+    snapshot: exported.snapshot,
+  });
+}
+
+function contentFailure(
+  error: BreditorBrowserContentExportError,
+): Extract<BreditorBrowserContentExportResult, Readonly<{ ok: false }>> {
+  return Object.freeze({ ok: false, error });
+}
+
+function snapshotsMatch(
+  left: BreditorBrowserDocumentSnapshot,
+  right: BreditorBrowserDocumentSnapshot,
+): boolean {
+  return left.lineage === right.lineage && left.revision === right.revision;
+}
+
+function adapterStateIsContentBusy(
+  state: BreditorWasmCommandAdapter["state"],
+): boolean {
+  return (
+    state === "composition" ||
+    state === "executing" ||
+    state === "readingActionState" ||
+    state === "readingCheckpoint" ||
+    state === "readingContent"
+  );
 }
 
 function normalizeOptions(value: unknown): NormalizedOptions | null {
@@ -1237,7 +1499,8 @@ function adapterIsBusy(adapter: BreditorWasmCommandAdapter): boolean {
     return (
       adapter.state === "executing" ||
       adapter.state === "readingActionState" ||
-      adapter.state === "readingCheckpoint"
+      adapter.state === "readingCheckpoint" ||
+      adapter.state === "readingContent"
     );
   } catch {
     // An unreadable owned adapter is not safe to tear down underneath.

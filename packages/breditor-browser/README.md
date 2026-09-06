@@ -1,7 +1,9 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.58` adds the public `BreditorBrowserEditor` owner around the
+Version `0.0.59` adds explicit, snapshot-correlated Document V1 and plain-text
+egress to the public `BreditorBrowserEditor` owner introduced in `0.0.58`. The
+owner wraps the
 lower-level behavior implemented through `0.0.57`: it boots the generated
 Rust/Wasm engine, renders the validated base-schema AST into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
@@ -25,17 +27,43 @@ the corresponding TypeScript sources are not part of the published package.
 The package root is the narrow high-level editor API. Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point.
+Consumers upgrading from `0.0.57` must move every former low-level root import
+from `@breditor/browser` to `@breditor/browser/advanced`; the symbols remain
+available there, but the root no longer re-exports them.
 
 ## Public runtime
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
 empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
 
+```sh
+npm install @breditor/browser@0.0.59 @breditor/wasm@0.0.59
+```
+
 ```ts
 import { openBreditorBrowserEditor } from "@breditor/browser";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
 await initializeWasm();
+
+const EMPTY_DOCUMENT_JSON = JSON.stringify({
+  format: "breditor/document",
+  formatVersion: 1,
+  schema: { name: "breditor/base", version: 1 },
+  root: {
+    kind: "element",
+    type: "breditor/document",
+    entityId: null,
+    properties: {},
+    children: [{
+      kind: "element",
+      type: "breditor/paragraph",
+      entityId: null,
+      properties: {},
+      children: [],
+    }],
+  },
+});
 
 const result = await openBreditorBrowserEditor({
   host: document.querySelector("#editor") as HTMLElement,
@@ -64,11 +92,42 @@ const editor = result.editor;
 
 The Rust AST, selection, action state, history, and checkpoint remain
 authoritative. The editor exposes immutable status snapshots, bounded
-subscription, focus, persistence flush/retry, and idempotent disposal; it does
-not expose its engine, queue, observation, renderer, or delivery tokens.
+subscription, focus, explicit content export, persistence flush/retry, and
+idempotent disposal; it does not expose its engine, queue, observation,
+renderer, or delivery tokens.
 `initialDocument` is ignored when a valid stored session checkpoint exists.
 Call and await `flushPersistence()` before controlled navigation when saving
 matters, then call `dispose()`; disposal itself does not promise a save.
+
+Content leaves the editor only through the synchronous, discriminated API:
+
+```ts
+const exported = editor.exportContent("documentJson");
+if (exported.ok) {
+  sendToServer(exported.value, exported.snapshot);
+}
+```
+
+`documentJson` is the exact canonical, lossless `breditor/document@1` string
+encoded by Rust. `plainText` traverses the owned semantic projection, joins
+paragraphs with one LF, preserves empty paragraphs, strips strong formatting,
+and adds no trailing LF after the final paragraph. Both successes are deeply
+frozen `{ ok: true, format, value, utf8Bytes, snapshot }` records. Export never
+adds content to `getSnapshot()`, reads mutable DOM text, or exposes an editor
+state, checkpoint, history, HTML, or raw-command API.
+
+Composition, command delivery, checkpoint/action reads, and another content
+read return the stable `content_export.busy` result. Disposed editors and an
+internally faulted adapter return `content_export.unavailable`. A faulted
+high-level owner may still export an already validated Rust document when its
+adapter remains trustworthy in `live` or `reconcile` state. Document V1 carries
+no snapshot field of its own: the boundary passes the exact observation to
+Rust, compares the returned base-document semantics to the current owned
+projection, and rechecks the adapter snapshot before returning bytes.
+High-level core rejections are deliberately collapsed to the fixed,
+payload-free `content_export.core_rejected` error. Applications needing the
+official granular Rust code must call the generated low-level Wasm API directly
+and assume responsibility for its handles and lifecycle.
 
 ## Boundary
 
@@ -374,6 +433,9 @@ backpressure; terminal adapter loss pauses autosave. See
   custom internal MIME, files/images, or mixed-format rich paste.
 - No arbitrary elements, formats, properties, entity IDs, nested blocks, or
   extension DOM renderers are accepted yet.
+- Public content egress is Document V1 or semantic plain text only. There is no
+  HTML serializer, editor-state/session-checkpoint export, streaming export,
+  controlled-value callback, or implicit content payload in subscriptions.
 - DOM APIs do not provide an atomic transaction across several retained
   paragraphs. The renderer prepares and validates all replacement nodes first
   and attempts best-effort rollback if a DOM write unexpectedly throws. It then
@@ -394,10 +456,10 @@ backpressure; terminal adapter loss pauses autosave. See
   cross-block, shadow/composed, multi-range, arbitrary-markup, and nested-editor
   composition fail closed. The public runtime front-routes composition,
   clipboard, ordinary input, blur, and document selection through one owner.
-- Composition order and all three bounded alias paths are unit-tested in a
-  deterministic DOM. The real Chromium, Firefox, and WebKit/Safari engine
-  matrix, including IME behavior, remains the `0.0.59` gate; this checkpoint
-  defines no separate mobile support matrix.
+- The release suite exercises editing, selection, history, toolbar, persistence,
+  and content export in Chromium, Firefox, and WebKit through Playwright. This
+  desktop automation is not a broad mobile-IME or assistive-technology support
+  claim; those still need dedicated device and user-agent coverage.
 - Command execution is synchronous. Selection synchronization or a history
   boundary can publish before a later command error; queue fail-stop and
   canonical reconciliation are provided, but cross-stage rollback is not.
@@ -407,10 +469,15 @@ backpressure; terminal adapter loss pauses autosave. See
 From the repository root:
 
 ```sh
-npm run typecheck
-npm test
+npm ci
+export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
+npx playwright install
 npm run build
-WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
+npm run typecheck
+npm run typecheck:browser
+npm test
+npm run test:browser
+npm run smoke:packages
 ```
 
 The workspace pins TypeScript, Vitest, and jsdom exactly in

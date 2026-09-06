@@ -16,11 +16,14 @@ the host forever.
 From the repository root:
 
 ```sh
-npm install
+npm ci
+export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
+npm run build
 npm run dev --workspace @breditor/example-react
 ```
 
-The lifecycle regression suite covers Strict Mode, prop-driven replacement,
+After the package build above, the lifecycle regression suite covers Strict
+Mode, prop-driven replacement,
 failure recovery, stale asynchronous startup, dirty retirement ordering,
 rejected and hung flushes, truthful persistence status, and exact disposal:
 

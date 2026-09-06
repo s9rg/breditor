@@ -1,11 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  StrictMode,
-  act,
-  createRef,
-  type ReactElement,
-} from "react";
+import { StrictMode, act, createRef, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -23,13 +18,11 @@ vi.mock("@breditor/browser", () => ({
   openBreditorBrowserEditor: mocks.openEditor,
 }));
 
-import {
-  BreditorEditor,
-  type BreditorEditorHandle,
-} from "./BreditorEditor.js";
+import { BreditorEditor, type BreditorEditorHandle } from "./BreditorEditor.js";
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean })
-  .IS_REACT_ACT_ENVIRONMENT = true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 interface Deferred<T> {
   readonly promise: Promise<T>;
@@ -277,21 +270,17 @@ describe("BreditorEditor lifecycle", () => {
 
     const mounted = await render(view("Dirty editor"));
     await settle();
-    expect(status(mounted.container)).toBe(
-      "Unsaved changes; save scheduled.",
-    );
+    expect(status(mounted.container)).toBe("Unsaved changes; save scheduled.");
 
     await act(async () => {
       mounted.root.render(view("Replacement editor", "meta"));
     });
     await settle();
 
-    const editorMount = mounted.container.querySelector<HTMLDivElement>(
-      ".editor-mount",
-    );
-    const toolbarMount = mounted.container.querySelector<HTMLDivElement>(
-      ".toolbar-mount",
-    );
+    const editorMount =
+      mounted.container.querySelector<HTMLDivElement>(".editor-mount");
+    const toolbarMount =
+      mounted.container.querySelector<HTMLDivElement>(".toolbar-mount");
     expect(editorMount?.inert).toBe(true);
     expect(toolbarMount?.inert).toBe(true);
     expect(editorMount?.getAttribute("contenteditable")).toBe("false");
@@ -333,6 +322,38 @@ describe("BreditorEditor lifecycle", () => {
     expect(first.flushPersistence).toHaveBeenCalledTimes(1);
     expect(first.dispose).toHaveBeenCalledTimes(1);
     expect(second.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it("retires exactly once when focus throws and cleanup reenters during flush", async () => {
+    vi.useFakeTimers();
+    try {
+      const editor = fakeEditor();
+      editor.focus.mockImplementation(() => {
+        throw new Error("focus failed");
+      });
+      editor.flushPersistence.mockReturnValue(new Promise(() => {}));
+      mocks.openEditor.mockResolvedValue(successful(editor));
+
+      const mounted = await render(view("Throwing focus"));
+      await settle();
+      expect(editor.flushPersistence).toHaveBeenCalledTimes(1);
+
+      await act(async () => mounted.root.unmount());
+      mountedRoots.pop();
+      mounted.container.remove();
+      expect(editor.flushPersistence).toHaveBeenCalledTimes(1);
+      expect(editor.dispose).not.toHaveBeenCalled();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      await settle();
+
+      expect(editor.flushPersistence).toHaveBeenCalledTimes(1);
+      expect(editor.dispose).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("bounds a hung retirement before opening the replacement", async () => {
@@ -380,10 +401,7 @@ describe("BreditorEditor lifecycle", () => {
 
   it.each([
     [{ phase: "idle", dirty: false }, "All changes saved."],
-    [
-      { phase: "scheduled", dirty: true },
-      "Unsaved changes; save scheduled.",
-    ],
+    [{ phase: "scheduled", dirty: true }, "Unsaved changes; save scheduled."],
     [{ phase: "saving", dirty: true }, "Saving changes…"],
     [
       {
@@ -393,16 +411,19 @@ describe("BreditorEditor lifecycle", () => {
       },
       "Autosave paused; changes are not saved.",
     ],
-  ])("reports persistence state honestly for %o", async (persistence, message) => {
-    const editor = fakeEditor(undefined, persistence);
-    mocks.openEditor.mockResolvedValue(successful(editor));
+  ])(
+    "reports persistence state honestly for %o",
+    async (persistence, message) => {
+      const editor = fakeEditor(undefined, persistence);
+      mocks.openEditor.mockResolvedValue(successful(editor));
 
-    const mounted = await render(view("Persistence status"));
-    await settle();
+      const mounted = await render(view("Persistence status"));
+      await settle();
 
-    expect(status(mounted.container)).toBe(message);
-    expect(status(mounted.container)).not.toMatch(/^Saved state:/u);
-  });
+      expect(status(mounted.container)).toBe(message);
+      expect(status(mounted.container)).not.toMatch(/^Saved state:/u);
+    },
+  );
 
   it("exposes a bounded controlled-navigation flush without disposing", async () => {
     const editor = fakeEditor();

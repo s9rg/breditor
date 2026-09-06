@@ -1,6 +1,7 @@
 # Breditor browser event pipeline
 
-Status: implemented for the closed base schema through `0.0.58`; pre-`0.1` API
+Status: implemented for the closed base schema through `0.0.58`; `0.0.59`
+cross-browser release-candidate validation complete; pre-`0.1` API
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -264,10 +265,13 @@ multi-range selection, nested editable controls, arbitrary native IME markup,
 or an asynchronous executor. The temporary target DOM vocabulary is limited to
 text and property-free strong structure plus the empty-paragraph placeholder.
 
-The scheduler and controller are covered by deterministic DOM unit tests, not a
-shipping browser-support claim. The current Chromium, Firefox, and WebKit/Safari
-engine matrix, including real IME behavior, remains the `0.0.59` release gate;
-this checkpoint defines no separate mobile support matrix.
+The scheduler and controller are covered by deterministic DOM unit tests. The
+`0.0.59` Playwright gate additionally exercises their full event/temporary-DOM
+settlement path with synthetic composition in Chromium, Firefox, and WebKit.
+Synthetic composition does not prove operating-system IME behavior; real
+Japanese, Korean, Chinese, Indic, handwriting, dictation, autocorrect, and
+mobile-device input remain manual checks. See
+[browser support and accessibility](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 ## Queue contract
 
@@ -389,7 +393,7 @@ validated declarative control into an ordinary queue request, and Rust still
 revalidates availability at execution time. Action-state display and toolbar
 interaction details are specified in [the toolbar contract](TOOLBAR.md).
 
-Other intentional limits carried through `0.0.58`:
+Other intentional limits carried through the `0.0.59` release candidate:
 
 - one connected light-DOM host and one range selection;
 - no shadow-DOM composed-path ownership;
@@ -401,8 +405,10 @@ Other intentional limits carried through `0.0.58`:
   advances the autosave dirty epoch;
 - full DOM validation, projection/selection conversion, and composition
   reconciliation remain linear in the bounded document; and
-- the `0.0.58` high-level owner now installs the unified event router, but the
-  real-browser support matrix remains the `0.0.59` gate.
+- the high-level owner installs the unified event router, and the `0.0.59`
+  release-candidate suite exercises it in Chromium, Firefox, and WebKit; the
+  linked browser-support gate records the completed validation and its claim
+  boundary.
 
 ## Acceptance laws
 

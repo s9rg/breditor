@@ -84,7 +84,7 @@ extern "C" {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn factory_observation_and_json_reads_are_structured() -> TestResult {
-    assert_eq!(breditor_wasm_abi_version(), "1");
+    assert_eq!(breditor_wasm_abi_version(), "2");
     assert_eq!(breditor_version(), env!("CARGO_PKG_VERSION"));
     let mut result = BreditorEngine::from_document_json("wasm-factory", EMPTY_DOCUMENT_JSON, 100.0);
     assert_eq!(result.status(), "engine");
@@ -107,6 +107,20 @@ fn factory_observation_and_json_reads_are_structured() -> TestResult {
     let state_json = state.take_value().ok_or_else(|| test_error("state JSON was absent"))?;
     assert_eq!(state.status(), "taken");
     assert!(state_json.contains("\"format\":\"breditor/editor-state\""));
+
+    let mut document = engine.document_json(&observation);
+    assert_eq!(document.status(), "value");
+    assert!(document.error().is_none());
+    let document_copy =
+        document.value().ok_or_else(|| test_error("document JSON copy was absent"))?;
+    let document_json =
+        document.take_value().ok_or_else(|| test_error("document JSON was absent"))?;
+    assert_eq!(document_json, document_copy);
+    assert_eq!(document.status(), "taken");
+    assert!(document.value().is_none());
+    assert!(document.take_value().is_none());
+    assert!(document.error().is_none());
+    assert!(document_json.contains("\"format\":\"breditor/document\""));
 
     let mut checkpoint = engine.session_checkpoint_json();
     assert_eq!(checkpoint.status(), "value");
@@ -290,6 +304,121 @@ fn projection_reads_reject_stale_observations_without_disclosing_content() -> Te
     let mut stale = stale;
     assert!(stale.take_projection().is_none());
     assert_eq!(engine.observation().snapshot_revision(), "1");
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn document_json_is_lossless_canonical_and_tracks_content_replay_not_selection() -> TestResult {
+    const UNICODE_INSERTION: &str = " é🦀中文";
+    const HOSTILE_RICH_TEXT: &str = "<img src=x onerror=alert(1)>&\"\n💣";
+
+    let mut rich_result = BreditorEngine::from_document_json(
+        "wasm-document-json-rich",
+        PROJECTION_DOCUMENT_JSON,
+        0.0,
+    );
+    let rich_engine = require_engine(&mut rich_result)?;
+    let rich_observation = rich_engine.observation();
+    let rich_document = require_string(rich_engine.document_json(&rich_observation))?;
+    assert_document_json_is_canonical(&rich_document)?;
+    let rich_record: Value = serde_json::from_str(&rich_document)?;
+    let rich_run = &rich_record["root"]["children"][1]["children"][0];
+    assert_eq!(rich_run["text"], HOSTILE_RICH_TEXT);
+    assert_eq!(rich_run["formats"][0]["type"], "breditor/strong");
+
+    let checkpoint = selected_checkpoint("wasm-document-json")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+
+    let initial_document = require_string(engine.document_json(&initial))?;
+    assert_document_json_is_canonical(&initial_document)?;
+    let initial_record: Value = serde_json::from_str(&initial_document)?;
+    assert_eq!(initial_record["format"], "breditor/document");
+    assert_eq!(initial_record["formatVersion"], 1);
+    assert!(initial_record.get("snapshot").is_none());
+    assert!(initial_record.get("selection").is_none());
+    assert!(initial_record.get("pendingFormats").is_none());
+    assert!(initial_record.get("historyCapacity").is_none());
+
+    let inserted =
+        engine.execute_string_action(&initial, "breditor/insert-text", UNICODE_INSERTION);
+    assert_eq!(inserted.status(), "committed");
+    let after_insert = require_observation(&inserted)?;
+    let inserted_document = require_string(engine.document_json(&after_insert))?;
+    assert_document_json_is_canonical(&inserted_document)?;
+    assert_eq!(
+        serde_json::from_str::<Value>(&inserted_document)?["root"]["children"][0]["children"][0]["text"],
+        format!("a{UNICODE_INSERTION}")
+    );
+
+    let cleared = engine.clear_selection(&after_insert);
+    assert_eq!(cleared.status(), "committed");
+    assert_eq!(cleared.event_kind().as_deref(), Some("selection"));
+    let after_selection_only = require_observation(&cleared)?;
+    assert_ne!(after_selection_only.snapshot_revision(), after_insert.snapshot_revision());
+    assert_eq!(
+        require_string(engine.document_json(&after_selection_only))?,
+        inserted_document,
+        "selection-only publication must not change exported content"
+    );
+
+    let undone = engine.undo(&after_selection_only);
+    assert_eq!(undone.status(), "committed");
+    let after_undo = require_observation(&undone)?;
+    assert_eq!(require_string(engine.document_json(&after_undo))?, initial_document);
+
+    let redone = engine.redo(&after_undo);
+    assert_eq!(redone.status(), "committed");
+    let after_redo = require_observation(&redone)?;
+    assert_eq!(require_string(engine.document_json(&after_redo))?, inserted_document);
+
+    let checkpoint_after_redo = require_string(engine.session_checkpoint_json())?;
+    let mut restored_result = BreditorEngine::from_session_checkpoint_json(&checkpoint_after_redo);
+    let restored = require_engine(&mut restored_result)?;
+    let restored_observation = restored.observation();
+    assert_eq!(
+        require_string(restored.document_json(&restored_observation))?,
+        inserted_document,
+        "checkpoint restoration must preserve the authoritative document value"
+    );
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn document_json_rejects_stale_history_and_foreign_observations_without_content_leakage()
+-> TestResult {
+    const PRIVATE_TEXT: &str = "private-document-egress-payload";
+    let checkpoint = selected_checkpoint("wasm-document-json-guard")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let stale_snapshot = engine.observation();
+
+    let inserted =
+        engine.execute_string_action(&stale_snapshot, "breditor/insert-text", PRIVATE_TEXT);
+    let before_history_change = require_observation(&inserted)?;
+
+    let mut stale_result = engine.document_json(&stale_snapshot);
+    assert_string_error(&mut stale_result, "editor_engine.stale_snapshot", PRIVATE_TEXT)?;
+
+    let closed = engine.close_history_group(&before_history_change);
+    assert_eq!(closed.status(), "committed");
+    let current = require_observation(&closed)?;
+    assert_eq!(current.snapshot_revision(), before_history_change.snapshot_revision());
+    let mut stale_history = engine.document_json(&before_history_change);
+    assert_string_error(&mut stale_history, "editor_engine.stale_history", PRIVATE_TEXT)?;
+
+    let mut other_result =
+        BreditorEngine::from_document_json("wasm-document-json-other", EMPTY_DOCUMENT_JSON, 0.0);
+    let other = require_engine(&mut other_result)?;
+    let foreign = other.observation();
+    let mut foreign_result = engine.document_json(&foreign);
+    assert_string_error(&mut foreign_result, "editor_engine.stale_engine", PRIVATE_TEXT)?;
+
+    let current_document = require_string(engine.document_json(&current))?;
+    assert!(current_document.contains(PRIVATE_TEXT));
     Ok(())
 }
 
@@ -489,6 +618,7 @@ fn semantic_selection_round_trips_direction_affinity_empty_and_strong_points() -
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen_test]
+#[allow(clippy::too_many_lines)]
 fn selection_scalar_admission_is_exact_redacted_and_stale_first() -> TestResult {
     const PRIVATE: &str = "private-selection-coordinate";
     let mut result = BreditorEngine::from_document_json(
@@ -675,10 +805,10 @@ fn selection_jsvalue_admission_rejects_coercible_non_primitives_atomically() -> 
         let rejected = set_anchor_fields(
             &mut engine,
             &initial,
-            JsValue::from_str("children"),
-            value,
-            JsValue::from_f64(0.0),
-            JsValue::from_str("after"),
+            &JsValue::from_str("children"),
+            &value,
+            &JsValue::from_f64(0.0),
+            &JsValue::from_str("after"),
         );
         assert_command_error(&rejected, "breditor_wasm.invalid_selection_coordinate", PRIVATE)?;
         assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
@@ -688,10 +818,10 @@ fn selection_jsvalue_admission_rejects_coercible_non_primitives_atomically() -> 
         let rejected = set_anchor_fields(
             &mut engine,
             &initial,
-            value,
-            JsValue::from_f64(1.0),
-            JsValue::from_f64(0.0),
-            JsValue::from_str("after"),
+            &value,
+            &JsValue::from_f64(1.0),
+            &JsValue::from_f64(0.0),
+            &JsValue::from_str("after"),
         );
         assert_command_error(&rejected, "breditor_wasm.invalid_selection_point_kind", PRIVATE)?;
         assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
@@ -701,10 +831,10 @@ fn selection_jsvalue_admission_rejects_coercible_non_primitives_atomically() -> 
         let rejected = set_anchor_fields(
             &mut engine,
             &initial,
-            JsValue::from_str("children"),
-            JsValue::from_f64(1.0),
-            JsValue::from_f64(0.0),
-            value,
+            &JsValue::from_str("children"),
+            &JsValue::from_f64(1.0),
+            &JsValue::from_f64(0.0),
+            &value,
         );
         assert_command_error(&rejected, "breditor_wasm.invalid_selection_affinity", PRIVATE)?;
         assert_eq!(require_string(engine.session_checkpoint_json())?, checkpoint_before);
@@ -1134,17 +1264,17 @@ fn set_range_selection(
 fn set_anchor_fields(
     engine: &mut BreditorEngine,
     expected: &BreditorObservation,
-    anchor_kind: JsValue,
-    anchor_node_index: JsValue,
-    anchor_offset: JsValue,
-    anchor_affinity: JsValue,
+    anchor_kind: &JsValue,
+    anchor_node_index: &JsValue,
+    anchor_offset: &JsValue,
+    anchor_affinity: &JsValue,
 ) -> BreditorCommandResult {
     engine.set_range_selection(
         expected,
-        &anchor_kind,
-        &anchor_node_index,
-        &anchor_offset,
-        &anchor_affinity,
+        anchor_kind,
+        anchor_node_index,
+        anchor_offset,
+        anchor_affinity,
         &JsValue::from_str("children"),
         &JsValue::from_f64(1.0),
         &JsValue::from_f64(0.0),
@@ -1162,6 +1292,29 @@ fn require_string(mut result: BreditorStringResult) -> TestResult<String> {
     let value = result.take_value().ok_or_else(|| test_error("string result had no value"))?;
     assert_eq!(result.status(), "taken");
     Ok(value)
+}
+
+fn assert_document_json_is_canonical(json: &str) -> TestResult {
+    let context = EditorContext::default();
+    let codec =
+        DocumentJsonCodec::new(context.schema().clone()).with_limits(context.limits().clone());
+    let document = codec.decode(json)?;
+    assert_eq!(codec.encode(&document)?, json);
+    Ok(())
+}
+
+fn assert_string_error(result: &mut BreditorStringResult, code: &str, private: &str) -> TestResult {
+    assert_eq!(result.status(), "error");
+    assert!(result.value().is_none());
+    assert!(result.take_value().is_none());
+    assert_eq!(result.status(), "error");
+    let first = result.error().ok_or_else(|| test_error("string result had no error"))?;
+    let second = result.error().ok_or_else(|| test_error("string result lost its error"))?;
+    assert_eq!(first.code(), code);
+    assert_eq!(second.code(), code);
+    assert_eq!(first.message(), second.message());
+    assert!(!first.message().contains(private));
+    Ok(())
 }
 
 fn assert_engine_error(result: &BreditorEngineResult, code: &str, private: &str) -> TestResult {

@@ -30,6 +30,13 @@ import {
   type BaseDocumentProjection,
 } from "./projection.js";
 import {
+  invalidProjectionPlainTextResult,
+  projectPlainText,
+  unavailableProjectionPlainTextResult,
+  type BrowserProjectionPlainTextResult,
+  type ProjectionPlainTextReadPort,
+} from "./projection_plain_text.js";
+import {
   isOwnedBaseRangeSelection,
   type BaseEditorSelection,
   type BaseRangeSelection,
@@ -58,6 +65,15 @@ import {
   type WasmSessionCheckpointReadPort,
   type WasmSessionCheckpointStringResultView,
 } from "./wasm_session_checkpoint.js";
+import {
+  consumeWasmDocumentJson,
+  documentJsonMatchesProjection,
+  invalidWasmDocumentJsonReadResult,
+  unavailableWasmDocumentJsonReadResult,
+  type BrowserDocumentJsonReadResult,
+  type WasmDocumentJsonReadPort,
+  type WasmDocumentJsonStringResultView,
+} from "./wasm_document_json.js";
 
 /** Structural subset of the generated opaque observation owned by this adapter. */
 export interface WasmCommandObservationView {
@@ -108,6 +124,9 @@ export interface WasmCommandEngineView {
     expected: WasmCommandObservationView,
   ): WasmActionStatesResultView;
   sessionCheckpointJson(): WasmSessionCheckpointStringResultView;
+  documentJson(
+    expected: WasmCommandObservationView,
+  ): WasmDocumentJsonStringResultView;
   clearSelection(expected: WasmCommandObservationView): WasmCommandResultView;
   setRangeSelection(
     expected: WasmCommandObservationView,
@@ -159,6 +178,28 @@ export interface WasmCoreCommit {
   readonly eventKind:
     "selection" | "action" | "undo" | "redo" | "closeHistoryGroup";
   readonly snapshot: WasmCommandSnapshot;
+}
+
+/** Internal capability bundle used by the high-level owner without prototype lookup. */
+export interface WasmContentReadPorts {
+  readonly documentJson: WasmDocumentJsonReadPort;
+  readonly plainText: ProjectionPlainTextReadPort;
+}
+
+const CONTENT_READ_PORTS = new WeakMap<
+  BreditorWasmCommandAdapter,
+  Readonly<WasmContentReadPorts>
+>();
+
+/**
+ * Retrieves the constructor-minted content ports without consulting replaceable
+ * public adapter accessors. This helper is intentionally absent from package exports.
+ * @internal
+ */
+export function contentReadPortsForAdapter(
+  adapter: BreditorWasmCommandAdapter,
+): Readonly<WasmContentReadPorts> | undefined {
+  return CONTENT_READ_PORTS.get(adapter);
 }
 
 /** Synchronous listener for an adopted commit; failures are contained. */
@@ -243,6 +284,7 @@ type AdapterState =
   | "executing"
   | "readingActionState"
   | "readingCheckpoint"
+  | "readingContent"
   | "reconcile"
   | "faulted"
   | "disposed";
@@ -291,6 +333,8 @@ export class BreditorWasmCommandAdapter {
     this.#execute(request);
   readonly #actionStateReadPort: WasmActionStateReadPort;
   readonly #sessionCheckpointReadPort: WasmSessionCheckpointReadPort;
+  readonly #documentJsonReadPort: WasmDocumentJsonReadPort;
+  readonly #plainTextReadPort: ProjectionPlainTextReadPort;
   readonly #coreCommitObservers = new Map<symbol, WasmCoreCommitObserver>();
   #observation: WasmCommandObservationView | undefined;
   #observationCleanup: GeneratedHandleCleanup | undefined;
@@ -360,6 +404,19 @@ export class BreditorWasmCommandAdapter {
     this.#sessionCheckpointReadPort = Object.freeze({
       read: () => this.#readSessionCheckpoint(),
     });
+    this.#documentJsonReadPort = Object.freeze({
+      read: () => this.#readDocumentJson(),
+    });
+    this.#plainTextReadPort = Object.freeze({
+      read: () => this.#readPlainText(),
+    });
+    CONTENT_READ_PORTS.set(
+      this,
+      Object.freeze({
+        documentJson: this.#documentJsonReadPort,
+        plainText: this.#plainTextReadPort,
+      }),
+    );
   }
 
   /** Exact bridge which event admission must share with this adapter. */
@@ -387,6 +444,16 @@ export class BreditorWasmCommandAdapter {
   /** Handle-free checkpoint reader bound to this adapter's current engine. */
   get sessionCheckpointReadPort(): WasmSessionCheckpointReadPort {
     return this.#sessionCheckpointReadPort;
+  }
+
+  /** Exact lossless Document V1 reader bound to the current observation. */
+  get documentJsonReadPort(): WasmDocumentJsonReadPort {
+    return this.#documentJsonReadPort;
+  }
+
+  /** DOM-independent plain-text reader bound to the current projection. */
+  get plainTextReadPort(): ProjectionPlainTextReadPort {
+    return this.#plainTextReadPort;
   }
 
   /** Current semantic snapshot, including while DOM reconciliation is required. */
@@ -528,6 +595,67 @@ export class BreditorWasmCommandAdapter {
       return invalidWasmSessionCheckpointReadResult();
     } finally {
       if (this.#state === "readingCheckpoint") {
+        this.#state = resumeState;
+      }
+    }
+  }
+
+  #readDocumentJson(): BrowserDocumentJsonReadResult | undefined {
+    if (
+      this.#state === "faulted" ||
+      this.#state === "disposed" ||
+      this.#observation === undefined
+    ) {
+      return unavailableWasmDocumentJsonReadResult();
+    }
+    if (this.#state !== "live" && this.#state !== "reconcile") {
+      return undefined;
+    }
+    const observation = this.#observation;
+    const expected = this.#snapshot;
+    const resumeState = this.#state;
+    this.#state = "readingContent";
+    try {
+      const result = this.#engine.documentJson(observation);
+      const consumed = consumeWasmDocumentJson(expected, result, [
+        observation,
+        this.#engineOwner,
+      ]);
+      return consumed.ok &&
+        !documentJsonMatchesProjection(
+          consumed.document.documentJson,
+          this.#projection,
+        )
+        ? invalidWasmDocumentJsonReadResult()
+        : consumed;
+    } catch {
+      return invalidWasmDocumentJsonReadResult();
+    } finally {
+      if (this.#state === "readingContent") {
+        this.#state = resumeState;
+      }
+    }
+  }
+
+  #readPlainText(): BrowserProjectionPlainTextResult | undefined {
+    if (
+      this.#state === "faulted" ||
+      this.#state === "disposed" ||
+      this.#observation === undefined
+    ) {
+      return unavailableProjectionPlainTextResult();
+    }
+    if (this.#state !== "live" && this.#state !== "reconcile") {
+      return undefined;
+    }
+    const resumeState = this.#state;
+    this.#state = "readingContent";
+    try {
+      return projectPlainText(this.#projection);
+    } catch {
+      return invalidProjectionPlainTextResult();
+    } finally {
+      if (this.#state === "readingContent") {
         this.#state = resumeState;
       }
     }
@@ -967,7 +1095,8 @@ export class BreditorWasmCommandAdapter {
     if (
       this.#state === "executing" ||
       this.#state === "readingActionState" ||
-      this.#state === "readingCheckpoint"
+      this.#state === "readingCheckpoint" ||
+      this.#state === "readingContent"
     ) {
       throw new TypeError("cannot dispose a command adapter during delivery");
     }
@@ -1666,6 +1795,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     const receiver = value as WasmCommandEngineView;
     const actionStates = receiver.actionStates;
     const sessionCheckpointJson = receiver.sessionCheckpointJson;
+    const documentJson = receiver.documentJson;
     const clearSelection = receiver.clearSelection;
     const setRangeSelection = receiver.setRangeSelection;
     const selection = receiver.selection;
@@ -1677,6 +1807,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     if (
       typeof actionStates !== "function" ||
       typeof sessionCheckpointJson !== "function" ||
+      typeof documentJson !== "function" ||
       typeof clearSelection !== "function" ||
       typeof setRangeSelection !== "function" ||
       typeof selection !== "function" ||
@@ -1693,6 +1824,8 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
         Reflect.apply(actionStates, value, [expected]),
       sessionCheckpointJson: () =>
         Reflect.apply(sessionCheckpointJson, value, []),
+      documentJson: (expected) =>
+        Reflect.apply(documentJson, value, [expected]),
       clearSelection: (expected) =>
         Reflect.apply(clearSelection, value, [expected]),
       setRangeSelection: (

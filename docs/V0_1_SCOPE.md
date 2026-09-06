@@ -1,7 +1,7 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; checkpoint `0.0.58` complete, with implementation
-proceeding to `0.0.59`
+Status: frozen product target; checkpoints through the `0.0.59`
+release-candidate validation are complete
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -135,8 +135,9 @@ a smaller safe boundary, but a later gate must not be claimed first.
    authoritative projection before one guarded Rust insert, delete, or
    cancellation history boundary; and stale settlement falls back to
    canonical recovery without a Wasm call or treating native DOM as the model.
-   The integration is controller-only; the real-browser matrix remains
-   checkpoint `0.0.59`, and this checkpoint makes no broader device claim.
+   The integration was controller-only at this checkpoint; cross-browser
+   validation was deferred to `0.0.59`, and this checkpoint made no broader
+   device claim.
 8. `0.0.55`: sanitized supported-subset HTML copy/paste plus atomic multiline
    paste integration. Complete: semantic selections serialize to bounded plain
    text and escaped base-subset HTML; HTML-only paste uses a strict parse5 tree
@@ -144,7 +145,7 @@ a smaller safe boundary, but a later gate must not be claimed first.
    guards synchronous clipboard capability access, cancellation, one final Rust
    delete/insert, and operation-bound echo receipts. Clipboard/core work is not
    rollback-atomic, and the async Clipboard API, rich mixed-format paste, and
-   real-browser matrix remain outside this checkpoint.
+   cross-browser matrix were outside this checkpoint.
 9. `0.0.56`: extensible accessible toolbar and action-state refresh/delivery
    layer. Complete: the guarded Wasm engine owns the base Bold/Undo/Redo state
    catalog and cache; the browser consumes its disposable complete snapshots
@@ -169,8 +170,13 @@ a smaller safe boundary, but a later gate must not be claimed first.
     the React reference serializes bounded flush-before-dispose retirement,
     handles stale startup, and exposes controlled-navigation flushing without
     treating React or DOM state as the editor model.
-12. `0.0.59`: browser matrix, accessibility, packaging, size, documentation,
-    and release-candidate audit.
+12. `0.0.59`: browser matrix, accessibility, content egress, packaging, size,
+    documentation, and release-candidate audit. Complete: guarded canonical
+    Document V1 and semantic plain-text exports; a public-package Playwright
+    matrix for Chromium, Firefox, and WebKit; a tarball-only
+    import/typecheck/bundle/browser smoke path; exact third-party notices; and
+    explicit artifact-size ceilings all pass the full release command set and
+    independent audits.
 13. `0.1.0`: no new feature; only the final shippability gates and honest
     release notes.
 
@@ -180,13 +186,18 @@ a smaller safe boundary, but a later gate must not be claimed first.
 
 - the full native Rust format, lint, unit, integration, compile-fail doctest,
   rustdoc, Wasm-target, and package checks pass;
-- Wasm bindings have real-browser tests in current Chromium, Firefox, and
-  WebKit/Safari-class engines, including Unicode, directional selection,
+- Wasm bindings have real-browser tests in the lockfile-pinned Playwright
+  Chromium, Firefox, and WebKit/Safari-class engines, including Unicode,
+  directional selection,
   composition, undo/redo, clipboard, and reload cases;
 - a clean consumer project can install, type-check, bundle, and run the package
   without repository-only paths;
-- keyboard-only toolbar use, focus visibility, labels, pressed/mixed state, and
-  screen-reader semantics pass an accessibility audit;
+- keyboard-only toolbar use, focus visibility, labels, and pressed/mixed state
+  pass the cross-browser assertions, and the mounted fixture has no
+  axe-detectable violations; a representative Safari/macOS accessibility-tree
+  audit also confirms native roles, names, values, and state transitions; full
+  WCAG conformance and actual screen-reader or other assistive-technology
+  certification are not claimed by these gates;
 - malformed documents, stale snapshots, unsupported pasted content, corrupt
   checkpoints, and failed persistence return controlled errors without
   installing partial state; and

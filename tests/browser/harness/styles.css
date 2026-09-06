@@ -1,0 +1,62 @@
+:root {
+  color: #17211b;
+  background: #f4f7f2;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+#fixture {
+  width: min(44rem, calc(100% - 2rem));
+  margin: 2rem auto;
+}
+
+#toolbar > [role="toolbar"] {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid #5b6c61;
+  border-bottom: 0;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: #eef4f0;
+}
+
+#toolbar button {
+  min-height: 2.75rem;
+  padding: 0.4rem 0.8rem;
+  border: 2px solid #536259;
+  border-radius: 0.3rem;
+  color: #17211b;
+  background: #ffffff;
+}
+
+#toolbar button[aria-pressed="true"] {
+  color: #ffffff;
+  background: #175e39;
+}
+
+#toolbar button[aria-disabled="true"] {
+  color: #5b665f;
+  background: #e3e8e4;
+}
+
+#toolbar button:focus-visible,
+#editor:focus-visible {
+  outline: 4px solid #005fcc;
+  outline-offset: 3px;
+}
+
+#editor {
+  min-height: 10rem;
+  padding: 1rem;
+  border: 2px solid #5b6c61;
+  border-radius: 0 0 0.5rem 0.5rem;
+  line-height: 1.5;
+  background: #ffffff;
+}
+
+#status {
+  min-height: 1.5rem;
+}

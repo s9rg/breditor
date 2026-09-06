@@ -7,14 +7,15 @@
 //! before every mutation.
 //!
 //! All public failures are returned as structured, payload-redacting result
-//! objects. Commit, state, and checkpoint encoding are separate read operations:
-//! a serialization failure can therefore never disguise an already-published
-//! editor mutation.
+//! objects. Commit, document, state, and checkpoint encoding are separate read
+//! operations: a serialization failure can therefore never disguise an
+//! already-published editor mutation.
 
 mod action_state;
 mod action_value_json;
 mod command;
 mod command_result;
+mod document_json;
 mod engine;
 mod engine_result;
 mod error;

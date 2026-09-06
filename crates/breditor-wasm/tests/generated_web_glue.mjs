@@ -79,7 +79,7 @@ function assertCommandError(result, expectedCode) {
   error.free();
 }
 
-assert.equal(api.breditorWasmAbiVersion(), "1");
+assert.equal(api.breditorWasmAbiVersion(), "2");
 assert.match(api.breditorVersion(), /^0\.0\.\d+$/);
 
 const invalidFactory = api.BreditorEngine.fromDocumentJson(
@@ -118,6 +118,99 @@ for (const invalidCapacity of [
   error.free();
   result.free();
 }
+
+const documentFactory = api.BreditorEngine.fromSessionCheckpointJson(
+  SELECTED_CHECKPOINT_JSON,
+);
+const documentEngine = documentFactory.takeEngine();
+documentFactory.free();
+const documentInitial = documentEngine.observation();
+const initialDocumentResult = documentEngine.documentJson(documentInitial);
+assert.equal(initialDocumentResult.status, "value");
+assert.equal(initialDocumentResult.error, undefined);
+const copiedInitialDocument = initialDocumentResult.value;
+const initialDocument = initialDocumentResult.takeValue();
+assert.equal(initialDocumentResult.status, "taken");
+assert.equal(initialDocumentResult.value, undefined);
+assert.equal(initialDocumentResult.takeValue(), undefined);
+initialDocumentResult.free();
+assert.equal(initialDocument, copiedInitialDocument);
+assert.equal(JSON.parse(initialDocument).format, "breditor/document");
+assert.equal(JSON.parse(initialDocument).root.children[0].children[0].text, "a");
+
+const unicodeDocumentCommand = documentEngine.executeStringAction(
+  documentInitial,
+  "breditor/insert-text",
+  " é🦀中文",
+);
+assert.equal(unicodeDocumentCommand.status, "committed");
+const documentAfterInsert = unicodeDocumentCommand.observation();
+unicodeDocumentCommand.free();
+
+const staleDocumentResult = documentEngine.documentJson(documentInitial);
+assert.equal(staleDocumentResult.status, "error");
+assert.equal(staleDocumentResult.value, undefined);
+assert.equal(staleDocumentResult.takeValue(), undefined);
+assert.equal(staleDocumentResult.status, "error");
+const staleDocumentError = staleDocumentResult.error;
+staleDocumentResult.free();
+assert.equal(staleDocumentError.code, "editor_engine.stale_snapshot");
+assert.doesNotMatch(staleDocumentError.message, /é|🦀|中文/);
+staleDocumentError.free();
+
+const insertedDocument = takeString(
+  documentEngine.documentJson(documentAfterInsert),
+);
+assert.equal(
+  JSON.parse(insertedDocument).root.children[0].children[0].text,
+  "a é🦀中文",
+);
+const canonicalDocumentFactory = api.BreditorEngine.fromDocumentJson(
+  "web-glue-canonical-document",
+  insertedDocument,
+  2,
+);
+const canonicalDocumentEngine = canonicalDocumentFactory.takeEngine();
+canonicalDocumentFactory.free();
+const canonicalDocumentObservation = canonicalDocumentEngine.observation();
+assert.equal(
+  takeString(canonicalDocumentEngine.documentJson(canonicalDocumentObservation)),
+  insertedDocument,
+);
+
+const foreignDocumentResult = documentEngine.documentJson(
+  canonicalDocumentObservation,
+);
+assert.equal(foreignDocumentResult.status, "error");
+const foreignDocumentError = foreignDocumentResult.error;
+foreignDocumentResult.free();
+assert.equal(foreignDocumentError.code, "editor_engine.stale_engine");
+foreignDocumentError.free();
+
+const documentUndo = documentEngine.undo(documentAfterInsert);
+assert.equal(documentUndo.status, "committed");
+const documentAfterUndo = documentUndo.observation();
+documentUndo.free();
+assert.equal(
+  takeString(documentEngine.documentJson(documentAfterUndo)),
+  initialDocument,
+);
+const documentRedo = documentEngine.redo(documentAfterUndo);
+assert.equal(documentRedo.status, "committed");
+const documentAfterRedo = documentRedo.observation();
+documentRedo.free();
+assert.equal(
+  takeString(documentEngine.documentJson(documentAfterRedo)),
+  insertedDocument,
+);
+
+documentInitial.free();
+documentAfterInsert.free();
+documentAfterUndo.free();
+documentAfterRedo.free();
+documentEngine.free();
+canonicalDocumentObservation.free();
+canonicalDocumentEngine.free();
 
 const engine = takeEngine("web-glue-lifecycle");
 const firstObservation = engine.observation();

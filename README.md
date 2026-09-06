@@ -91,8 +91,9 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
 - a separate no-DOM `breditor-wasm` crate with opaque engine-created
   observation handles, structured domain results, guarded no-input/string
   action commands, history controls, strict document/checkpoint factories,
-  separate state/commit/checkpoint reads, runtime ABI/version probes, and an
-  exact generated TypeScript declaration gate;
+  separate state/commit/checkpoint reads, a guarded canonical Document V1
+  read, runtime ABI/version probes, and an exact generated TypeScript
+  declaration gate;
 - a checkpoint-constrained engine owner that admits every effective mutation
   only after its complete canonical session checkpoint encodes, plus a generic
   no-DOM semantic Wasm projection with conservative commit invalidation; and
@@ -108,7 +109,9 @@ narrow WebAssembly boundary, and a framework-neutral browser layer:
   guarded semantic copy/cut/paste with a bounded base-subset HTML allowlist,
   plus handle-free guarded action-state refresh, a last-good subscription
   store, and a bounded manifest-driven native-button toolbar whose commands
-  preserve semantic selection and re-enter the same FIFO;
+  preserve semantic selection and re-enter the same FIFO, plus synchronous,
+  snapshot-correlated canonical-document and semantic plain-text exports that
+  never treat the DOM as content;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -781,7 +784,9 @@ authoritative projection without calling Rust before ordinary work can resume.
 The current implementation is limited to one range and one paragraph in a
 connected light-DOM host. It has no cross-block, shadow/composed-range,
 multi-range, arbitrary-IME-markup, or general mobile support claim; the real
-Chromium, Firefox, and WebKit/Safari matrix remains checkpoint `0.0.59`.
+Chromium, Firefox, and WebKit matrix is now an automated `0.0.59`
+release-candidate gate. Its scope and remaining manual IME limits are recorded
+in the [browser support and accessibility gate](docs/BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 Version `0.0.55` adds the [clipboard contract](docs/CLIPBOARD.md). A dedicated
 controller reserves the idle queue built from the same captured adapter
@@ -803,7 +808,9 @@ failures require canonical reconciliation. At this checkpoint, async clipboard
 access, arbitrary rich content, a unified event router, and real browser
 interoperability remained later work. Version `0.0.58` now supplies the unified
 router; the async Clipboard API and broader rich-content formats remain outside
-the first release, while the real-browser matrix is the `0.0.59` gate.
+the first release. The `0.0.59` Playwright matrix now exercises the synchronous
+clipboard-event subset in Chromium, Firefox, and WebKit; it does not claim OS
+clipboard permissions or async Clipboard API behavior.
 
 Version `0.0.56` adds the [toolbar and action-state contract](docs/TOOLBAR.md).
 The Wasm engine owns one frozen base catalog and synchronous cache for Bold,
@@ -831,8 +838,10 @@ activation restores the same toolbar button after a command. Custom manifests ca
 controls when a host supplies matching state and command implementations, but
 the distributed Rust/Wasm catalog itself remains the three base controls.
 Dynamic JavaScript action registration, styling/icons, menus, asynchronous
-delivery, and real browser/assistive-technology certification remain later
-gates.
+delivery, and full assistive-technology certification remain later gates. The
+`0.0.59` candidate adds cross-browser keyboard/focus/ARIA assertions and an
+automated axe scan, neither of which by itself certifies WCAG conformance or
+screen-reader behavior.
 
 Version `0.0.57` adds the executable
 [single-slot IndexedDB session-checkpoint profile](docs/SESSION_CHECKPOINT_STORAGE.md).
@@ -876,21 +885,44 @@ installs both tarballs, imports and initializes them outside the workspace, and
 type-checks a consumer program. No npm publication is performed by these
 commands.
 
+Version `0.0.59` is the release-candidate validation checkpoint. It adds
+`exportContent("documentJson")`, which obtains exact canonical,
+lossless `breditor/document@1` bytes from the guarded Rust/Wasm engine, and
+`exportContent("plainText")`, which joins authoritative semantic paragraphs
+with LF separators while discarding formatting. Both results report their
+UTF-8 byte length and exact document snapshot; busy, uncorrelated, malformed,
+and terminal reads fail closed without falling back to editable DOM.
+
+The candidate also adds a no-skip Playwright matrix for Chromium, Firefox, and
+WebKit using the generated Wasm and public browser runtime; a tarball-only
+consumer that imports, type-checks, bundles, and initializes the packages in a
+real Chromium page; and explicit package, Wasm, declaration, and React-example
+[size budgets](docs/SIZE_BUDGETS.md). The browser scenarios and accessibility
+claim boundaries are documented in the
+[browser support and accessibility gate](docs/BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
+The complete `0.0.59` validation gate has passed. The feature-free final
+`0.1.0` compatibility freeze and release notes remain separate work.
+
 ## Development
 
 ```sh
+export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
+export WASM_BINDGEN_TEST_RUNNER_BIN=/absolute/path/to/wasm-bindgen-test-runner
 cargo fmt --all --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
-RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
-cargo check --workspace --target wasm32-unknown-unknown
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo test --workspace --all-features --locked
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --all-features --no-deps --locked
+./scripts/check-wasm-tests.sh
 npm ci
+npx playwright install
+npm run check:size
 npm run typecheck
+npm run typecheck:browser
 npm test
-npm run build
-WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run check:wasm-package
-WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run smoke:packages
-WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen ./scripts/check-wasm-api.sh
+npm run test:browser
+npm run check:wasm-package
+npm run smoke:packages
+./scripts/check-wasm-api.sh
 ```
 
 Breditor is available under either the MIT License or Apache License, Version

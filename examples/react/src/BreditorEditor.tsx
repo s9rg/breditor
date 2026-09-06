@@ -299,10 +299,7 @@ export const BreditorEditor = forwardRef<
     const opening = ownershipLane.current.then(async () => {
       try {
         await ensureWasm();
-        if (
-          abort.signal.aborted ||
-          generation.current !== currentGeneration
-        ) {
+        if (abort.signal.aborted || generation.current !== currentGeneration) {
           return;
         }
         setMountsRetiring(editorHost, toolbarHost, false);
@@ -341,10 +338,7 @@ export const BreditorEditor = forwardRef<
           }
           return;
         }
-        if (
-          abort.signal.aborted ||
-          generation.current !== currentGeneration
-        ) {
+        if (abort.signal.aborted || generation.current !== currentGeneration) {
           await retireEditor(result.editor, editorHost, toolbarHost);
           return;
         }
@@ -359,14 +353,15 @@ export const BreditorEditor = forwardRef<
         owned.focus();
       } catch {
         if (owned !== undefined) {
-          if (activeEditor.current === owned) activeEditor.current = undefined;
-          await retireEditor(owned, editorHost, toolbarHost);
+          const retiring = owned;
+          // Clear local ownership before the first await so a React cleanup
+          // cannot observe and enqueue a second retirement for this editor.
           owned = undefined;
+          if (activeEditor.current === retiring)
+            activeEditor.current = undefined;
+          await retireEditor(retiring, editorHost, toolbarHost);
         }
-        if (
-          !abort.signal.aborted &&
-          generation.current === currentGeneration
-        ) {
+        if (!abort.signal.aborted && generation.current === currentGeneration) {
           setLifecycle({
             phase: "failed",
             label,
@@ -405,21 +400,13 @@ export const BreditorEditor = forwardRef<
     };
   }, [editorHost, label, primaryModifier, toolbarHost]);
 
-  const currentLifecycle = hasConfiguration(
-    lifecycle,
-    label,
-    primaryModifier,
-  )
+  const currentLifecycle = hasConfiguration(lifecycle, label, primaryModifier)
     ? lifecycle
     : undefined;
   const editor =
-    currentLifecycle?.phase === "ready"
-      ? currentLifecycle.editor
-      : undefined;
+    currentLifecycle?.phase === "ready" ? currentLifecycle.editor : undefined;
   const openError =
-    currentLifecycle?.phase === "failed"
-      ? currentLifecycle.error
-      : undefined;
+    currentLifecycle?.phase === "failed" ? currentLifecycle.error : undefined;
 
   const subscribe = useCallback(
     (listener: () => void) => editor?.subscribe(listener) ?? noSubscription(),

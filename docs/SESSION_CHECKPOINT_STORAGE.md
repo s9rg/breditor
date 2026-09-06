@@ -1,6 +1,7 @@
 # IndexedDB session-checkpoint storage
 
-Status: implemented by checkpoint `0.0.57`; unstable before `0.1`.
+Status: implemented by checkpoint `0.0.57`; `0.0.59` cross-browser validation
+complete; unstable before `0.1`.
 
 Profile identifier: `breditor/indexeddb-session-checkpoint`
 
@@ -273,8 +274,12 @@ not treated as reliable storage completion.
   schemas. Those failures return no usable refreshed token; recovery requires
   an explicit host migration, database deletion/reset, or another product-level
   policy outside this profile.
-- Browser interoperability and lifecycle behavior become real-browser release
-  gates at `0.0.59`; deterministic unit tests alone do not certify every engine.
+- The `0.0.59` Playwright gate exercises IndexedDB flush, reload restore, and
+  persisted undo/redo through the public runtime in Chromium, Firefox, and
+  WebKit. Deterministic and automated browser tests still cannot promise
+  durability against eviction, crashes, indefinite transactions, or every
+  platform storage policy. See
+  [browser support and accessibility](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).
 
 ## Standards basis
 

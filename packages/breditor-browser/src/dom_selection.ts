@@ -8,6 +8,7 @@ import {
   type BaseEditorSelection,
   type BaseSelectionPoint,
   isOwnedBaseRangeSelection,
+  spatialPositionForPoint,
 } from "./selection.js";
 import type {
   BrowserSelectionErrorCode,
@@ -91,9 +92,19 @@ type DomSelectionSnapshot =
       endOffset: number;
     }>;
 
+type DomSelectionRangeSnapshot = Extract<
+  DomSelectionSnapshot,
+  Readonly<{ kind: "range" }>
+>;
+
 type DomSelectionSnapshotResult =
   | { readonly ok: true; readonly value: DomSelectionSnapshot }
-  | { readonly ok: false; readonly code: BrowserSelectionErrorCode };
+  | {
+      readonly ok: false;
+      readonly code: BrowserSelectionErrorCode;
+      /** Present only for a one-range, valid-offset anchor/Range disagreement. */
+      readonly incoherent?: DomSelectionRangeSnapshot;
+    };
 
 const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
@@ -228,9 +239,11 @@ export class BreditorDomSelectionBridge {
   /**
    * Installs one semantic range or explicit semantic absence without changing focus.
    *
-   * Directional anchor/focus endpoints are verified after the browser call. A
-   * browser lacking `setBaseAndExtent` can receive forward/collapsed ranges via
-   * `Range`, but backward ranges fail before DOM selection mutation.
+   * Directional anchor/focus semantics are verified after the browser call;
+   * browser-normalized DOM aliases are accepted only at the same exact spatial
+   * positions. A browser lacking `setBaseAndExtent` can receive
+   * forward/collapsed ranges via `Range`, but backward ranges fail before DOM
+   * selection mutation.
    */
   write(
     rendered: RenderedProjection,
@@ -255,17 +268,33 @@ export class BreditorDomSelectionBridge {
         return selectionFailure("selection.selection_api_unavailable");
       }
       const priorResult = captureDomSelection(domSelection);
-      if (!priorResult.ok) {
+      const prior = priorResult.ok ? priorResult.value : undefined;
+      // WebKit can transiently report anchor/focus offsets which disagree with
+      // getRangeAt(0) after an editor-owned subtree replacement. If both raw
+      // endpoints still map into the new canonical projection, it is safe to
+      // overwrite that unrestorable editor-owned state. Outside/cross-host or
+      // unmappable inconsistencies continue to fail before DOM mutation.
+      if (
+        !priorResult.ok &&
+        (selection === null ||
+          priorResult.incoherent === undefined ||
+          !incoherentSelectionIsOwnedByRenderedProjection(
+            rendered,
+            priorResult.incoherent,
+          ))
+      ) {
         this.#receipt = undefined;
         return selectionFailure(priorResult.code);
       }
-      const prior = priorResult.value;
       if (!rendered.validateCanonicalDom()) {
         this.#receipt = undefined;
         return selectionFailure("selection.dom_drift");
       }
       if (selection === null) {
-        const ownership = selectionSnapshotOwnership(rendered.host, prior);
+        const ownership =
+          prior === undefined
+            ? ({ ok: true, value: "insideHost" } as const)
+            : selectionSnapshotOwnership(rendered.host, prior);
         if (!ownership.ok) {
           this.#receipt = undefined;
           return selectionFailure(ownership.code);
@@ -338,13 +367,12 @@ export class BreditorDomSelectionBridge {
         this.#receipt = undefined;
         return selectionFailure("selection.dom_write_failed");
       }
-      if (
-        domSelection.rangeCount !== 1 ||
-        domSelection.anchorNode !== anchor.node ||
-        domSelection.anchorOffset !== anchor.offset ||
-        domSelection.focusNode !== focus.node ||
-        domSelection.focusOffset !== focus.offset
-      ) {
+      const signature = installedSemanticSelectionSignature(
+        rendered,
+        domSelection,
+        selection,
+      );
+      if (signature === null) {
         rollbackDomSelection(rendered.host, domSelection, prior);
         this.#receipt = undefined;
         return selectionFailure("selection.dom_write_failed");
@@ -353,17 +381,6 @@ export class BreditorDomSelectionBridge {
         rollbackDomSelection(rendered.host, domSelection, prior);
         this.#receipt = undefined;
         return selectionFailure("selection.dom_drift");
-      }
-      const signature = domRangeSignature(
-        rendered,
-        anchor.node,
-        anchor.offset,
-        focus.node,
-        focus.offset,
-      );
-      if (signature === null) {
-        this.#receipt = undefined;
-        return selectionFailure("selection.invalid_point");
       }
       this.#receipt = Object.freeze({
         rendered,
@@ -501,7 +518,22 @@ function captureDomSelection(selection: Selection): DomSelectionSnapshotResult {
     !isDomOffset(anchorOffset) ||
     !isDomOffset(focusOffset) ||
     !isDomOffset(startOffset) ||
-    !isDomOffset(endOffset) ||
+    !isDomOffset(endOffset)
+  ) {
+    return { ok: false, code: "selection.dom_read_failed" };
+  }
+  const snapshot: DomSelectionRangeSnapshot = Object.freeze({
+    kind: "range",
+    anchorNode,
+    anchorOffset,
+    focusNode,
+    focusOffset,
+    startNode,
+    startOffset,
+    endNode,
+    endOffset,
+  });
+  if (
     !(
       (startNode === anchorNode &&
         startOffset === anchorOffset &&
@@ -513,22 +545,115 @@ function captureDomSelection(selection: Selection): DomSelectionSnapshotResult {
         endOffset === anchorOffset)
     )
   ) {
-    return { ok: false, code: "selection.dom_read_failed" };
+    return {
+      ok: false,
+      code: "selection.dom_read_failed",
+      incoherent: snapshot,
+    };
   }
   return {
     ok: true,
-    value: Object.freeze({
-      kind: "range",
-      anchorNode,
-      anchorOffset,
-      focusNode,
-      focusOffset,
-      startNode,
-      startOffset,
-      endNode,
-      endOffset,
-    }),
+    value: snapshot,
   };
+}
+
+function incoherentSelectionIsOwnedByRenderedProjection(
+  rendered: RenderedProjection,
+  snapshot: DomSelectionRangeSnapshot,
+): boolean {
+  try {
+    return (
+      domPointMapsInsideRendered(
+        rendered,
+        snapshot.anchorNode,
+        snapshot.anchorOffset,
+      ) &&
+      domPointMapsInsideRendered(
+        rendered,
+        snapshot.focusNode,
+        snapshot.focusOffset,
+      ) &&
+      domPointMapsInsideRendered(
+        rendered,
+        snapshot.startNode,
+        snapshot.startOffset,
+      ) &&
+      domPointMapsInsideRendered(
+        rendered,
+        snapshot.endNode,
+        snapshot.endOffset,
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
+function domPointMapsInsideRendered(
+  rendered: RenderedProjection,
+  node: Node,
+  offset: number,
+): boolean {
+  return (
+    nodeIsInsideHost(rendered.host, node) &&
+    isDomOffset(offset) &&
+    mapDomPointToBaseSelectionPoint(rendered, node, offset).ok
+  );
+}
+
+function installedSemanticSelectionSignature(
+  rendered: RenderedProjection,
+  domSelection: Selection,
+  expected: BaseRangeSelection,
+): string | null {
+  const captured = captureDomSelection(domSelection);
+  if (!captured.ok || captured.value.kind !== "range") return null;
+  const actualAnchor = mapDomPointToBaseSelectionPoint(
+    rendered,
+    captured.value.anchorNode,
+    captured.value.anchorOffset,
+  );
+  const actualFocus = mapDomPointToBaseSelectionPoint(
+    rendered,
+    captured.value.focusNode,
+    captured.value.focusOffset,
+  );
+  if (!actualAnchor.ok || !actualFocus.ok) return null;
+  const expectedAnchor = spatialPositionForPoint(
+    rendered.projection,
+    expected.anchor,
+  );
+  const expectedFocus = spatialPositionForPoint(
+    rendered.projection,
+    expected.focus,
+  );
+  const installedAnchor = spatialPositionForPoint(
+    rendered.projection,
+    actualAnchor.value,
+  );
+  const installedFocus = spatialPositionForPoint(
+    rendered.projection,
+    actualFocus.value,
+  );
+  if (
+    expectedAnchor === null ||
+    expectedFocus === null ||
+    installedAnchor === null ||
+    installedFocus === null ||
+    expectedAnchor.paragraphIndex !== installedAnchor.paragraphIndex ||
+    expectedAnchor.utf16Offset !== installedAnchor.utf16Offset ||
+    expectedFocus.paragraphIndex !== installedFocus.paragraphIndex ||
+    expectedFocus.utf16Offset !== installedFocus.utf16Offset
+  ) {
+    return null;
+  }
+  return domRangeSignature(
+    rendered,
+    captured.value.anchorNode,
+    captured.value.anchorOffset,
+    captured.value.focusNode,
+    captured.value.focusOffset,
+  );
 }
 
 function selectionSnapshotOwnership(
@@ -561,10 +686,10 @@ function selectionSnapshotOwnership(
 function rollbackDomSelection(
   host: HTMLElement,
   selection: Selection,
-  snapshot: DomSelectionSnapshot,
+  snapshot: DomSelectionSnapshot | undefined,
 ): void {
   try {
-    if (snapshot.kind === "empty") {
+    if (snapshot === undefined || snapshot.kind === "empty") {
       selection.removeAllRanges();
     } else {
       const setBaseAndExtent = selection.setBaseAndExtent;
@@ -612,9 +737,9 @@ function rollbackDomSelection(
 
 function domSelectionMatchesSnapshot(
   selection: Selection,
-  snapshot: DomSelectionSnapshot,
+  snapshot: DomSelectionSnapshot | undefined,
 ): boolean {
-  if (snapshot.kind === "empty") {
+  if (snapshot === undefined || snapshot.kind === "empty") {
     return (
       selection.rangeCount === 0 &&
       selection.anchorNode === null &&

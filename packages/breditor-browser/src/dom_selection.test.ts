@@ -542,6 +542,208 @@ describe("BreditorDomSelectionBridge", () => {
     });
   });
 
+  it("replaces a transiently incoherent prior range only when all endpoints map inside the owned render", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const browser = domSelection(host);
+    const text = host.firstChild?.firstChild;
+    if (text === undefined || text === null) {
+      throw new Error("missing text");
+    }
+    browser.setBaseAndExtent(text, 1, text, 1);
+    const contradictoryRange = document.createRange();
+    contradictoryRange.setStart(text, 0);
+    contradictoryRange.setEnd(text, 0);
+    const nativeGetRangeAt = browser.getRangeAt.bind(browser);
+    const original = Object.getOwnPropertyDescriptor(browser, "getRangeAt");
+    const desired = semanticSelection(
+      documentProjection,
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 1,
+        affinity: "after",
+      },
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 3,
+        affinity: "before",
+      },
+    );
+    let calls = 0;
+
+    try {
+      Object.defineProperty(browser, "getRangeAt", {
+        configurable: true,
+        value: ((index: number) => {
+          calls += 1;
+          return calls === 1 ? contradictoryRange : nativeGetRangeAt(index);
+        }) satisfies Selection["getRangeAt"],
+      });
+      expect(new BreditorDomSelectionBridge().write(rendered, desired).ok).toBe(true);
+      expect(browser.anchorNode).toBe(text);
+      expect(browser.anchorOffset).toBe(1);
+      expect(browser.focusNode).toBe(text);
+      expect(browser.focusOffset).toBe(3);
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(browser, "getRangeAt");
+      } else {
+        Object.defineProperty(browser, "getRangeAt", original);
+      }
+    }
+  });
+
+  it("refuses incoherent prior ranges with an outside or cross-host Range endpoint", () => {
+    const host = document.createElement("div");
+    const outside = document.createTextNode("outside");
+    document.body.append(host, outside);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const browser = domSelection(host);
+    const text = host.firstChild?.firstChild;
+    if (text === undefined || text === null) {
+      throw new Error("missing text");
+    }
+    browser.setBaseAndExtent(text, 0, text, 0);
+    const desired = semanticSelection(
+      documentProjection,
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 1,
+        affinity: "after",
+      },
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 3,
+        affinity: "before",
+      },
+    );
+    const originalGet = Object.getOwnPropertyDescriptor(browser, "getRangeAt");
+    const originalSet = Object.getOwnPropertyDescriptor(browser, "setBaseAndExtent");
+    const nativeSet = browser.setBaseAndExtent.bind(browser);
+
+    try {
+      for (const kind of ["outside", "cross"] as const) {
+        const contradictoryRange = document.createRange();
+        if (kind === "outside") {
+          contradictoryRange.setStart(outside, 0);
+        } else {
+          contradictoryRange.setStart(text, 0);
+        }
+        contradictoryRange.setEnd(outside, outside.data.length);
+        let writes = 0;
+        Object.defineProperty(browser, "getRangeAt", {
+          configurable: true,
+          value: (() => contradictoryRange) satisfies Selection["getRangeAt"],
+        });
+        Object.defineProperty(browser, "setBaseAndExtent", {
+          configurable: true,
+          value: ((
+            anchorNode: Node,
+            anchorOffset: number,
+            focusNode: Node,
+            focusOffset: number,
+          ) => {
+            writes += 1;
+            nativeSet(anchorNode, anchorOffset, focusNode, focusOffset);
+          }) satisfies Selection["setBaseAndExtent"],
+        });
+
+        expect(new BreditorDomSelectionBridge().write(rendered, desired)).toMatchObject({
+          ok: false,
+          error: { code: "selection.dom_read_failed" },
+        });
+        expect(writes).toBe(0);
+        expect(browser.anchorNode).toBe(text);
+        expect(browser.anchorOffset).toBe(0);
+      }
+    } finally {
+      if (originalGet === undefined) {
+        Reflect.deleteProperty(browser, "getRangeAt");
+      } else {
+        Object.defineProperty(browser, "getRangeAt", originalGet);
+      }
+      if (originalSet === undefined) {
+        Reflect.deleteProperty(browser, "setBaseAndExtent");
+      } else {
+        Object.defineProperty(browser, "setBaseAndExtent", originalSet);
+      }
+    }
+  });
+
+  it("accepts a browser-normalized DOM alias only when its semantic anchor and focus remain exact", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const browser = domSelection(host);
+    const priorText = host.firstChild?.firstChild;
+    const strongText = host.querySelector("strong")?.firstChild;
+    if (
+      priorText === undefined ||
+      priorText === null ||
+      strongText === undefined ||
+      strongText === null
+    ) {
+      throw new Error("missing text");
+    }
+    browser.setBaseAndExtent(priorText, 0, priorText, 0);
+    const desired = semanticSelection(
+      documentProjection,
+      {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 1,
+        affinity: "after",
+      },
+      {
+        kind: "text",
+        textPath: [0, 1],
+        utf16Offset: 4,
+        affinity: "before",
+      },
+    );
+    const nativeSet = browser.setBaseAndExtent.bind(browser);
+    const original = Object.getOwnPropertyDescriptor(browser, "setBaseAndExtent");
+
+    try {
+      Object.defineProperty(browser, "setBaseAndExtent", {
+        configurable: true,
+        value: ((
+          _anchorNode: Node,
+          _anchorOffset: number,
+          focusNode: Node,
+          focusOffset: number,
+        ) => {
+          nativeSet(strongText, 0, focusNode, focusOffset);
+        }) satisfies Selection["setBaseAndExtent"],
+      });
+      const bridge = new BreditorDomSelectionBridge();
+      expect(bridge.write(rendered, desired).ok).toBe(true);
+      const observed = selectionValue(bridge.read(rendered));
+      expect(observed.kind).toBe("range");
+      if (observed.kind === "range") {
+        expect(observed.origin).toBe("programmaticEcho");
+        expect(observed.selection).toBe(desired);
+      }
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(browser, "setBaseAndExtent");
+      } else {
+        Object.defineProperty(browser, "setBaseAndExtent", original);
+      }
+    }
+  });
+
   it("suppresses one exact DOM-container signature only within its render generation", () => {
     const host = document.createElement("div");
     document.body.append(host);

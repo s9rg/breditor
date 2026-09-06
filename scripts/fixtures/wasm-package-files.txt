@@ -1,0 +1,17 @@
+package/LICENSE
+package/LICENSE-APACHE
+package/LICENSE-MIT
+package/README.md
+package/THIRD_PARTY_NOTICES.md
+package/dist/breditor_wasm.d.ts
+package/dist/breditor_wasm.js
+package/dist/breditor_wasm_bg.wasm
+package/dist/breditor_wasm_bg.wasm.d.ts
+package/dist/third-party/rust-1.98.0/COPYRIGHT-library.html
+package/index.d.ts
+package/package.json
+package/third-party/memchr-2.8.3/UNLICENSE
+package/third-party/unicode-ident-1.0.24/LICENSE-APACHE
+package/third-party/unicode-ident-1.0.24/LICENSE-UNICODE
+package/third-party/unicode-segmentation-1.13.3/COPYRIGHT
+package/third-party/zmij-1.0.23/LICENSE-MIT

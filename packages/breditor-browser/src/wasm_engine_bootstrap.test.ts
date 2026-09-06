@@ -150,6 +150,7 @@ function engineFixture(
   const engine = {
     actionStates: command,
     sessionCheckpointJson: command,
+    documentJson: command,
     clearSelection: command,
     setRangeSelection: command,
     selection: command,
@@ -187,7 +188,7 @@ function moduleFor(factory: WasmEngineBootstrapFactoryView): WasmEngineBootstrap
   return {
     BreditorEngine: factory,
     breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
-    breditorVersion: () => "0.0.58",
+    breditorVersion: () => "0.0.59",
   };
 }
 
@@ -269,7 +270,7 @@ describe("Wasm engine bootstrap", () => {
     const factory = factoryReturning(construction);
     const incompatible = {
       ...moduleFor(factory.factory),
-      breditorWasmAbiVersion: () => "2",
+      breditorWasmAbiVersion: () => "1",
     };
     const malformedVersion = {
       ...moduleFor(factory.factory),
@@ -619,7 +620,7 @@ describe("Wasm engine bootstrap", () => {
     const module = {
       BreditorEngine: throwingFactory,
       breditorWasmAbiVersion: () => rejected,
-      breditorVersion: () => "0.0.58",
+      breditorVersion: () => "0.0.59",
     } as unknown as WasmEngineBootstrapModuleView;
     expect(bootstrapWasmEngine(module, DOCUMENT_SOURCE)).toMatchObject({
       ok: false,

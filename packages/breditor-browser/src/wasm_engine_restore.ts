@@ -226,6 +226,7 @@ function isRestoredEngineView(value: unknown): value is WasmRestoredEngineView {
     "redo",
     "closeHistoryGroup",
     "sessionCheckpointJson",
+    "documentJson",
     "observation",
     "free",
   ] as const;

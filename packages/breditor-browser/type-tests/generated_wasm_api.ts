@@ -31,6 +31,7 @@ import type {
   WasmCommandResultView,
   WasmSelectionResultView,
 } from "../src/wasm_command_adapter.js";
+import type { WasmDocumentJsonStringResultView } from "../src/wasm_document_json.js";
 import type {
   WasmActionStateSnapshotView,
   WasmActionStateStringResultView,
@@ -77,6 +78,8 @@ const selectionResult: WasmSelectionResultView = generatedSelectionResult;
 const actionStateSnapshot: WasmActionStateSnapshotView = generatedActionStateSnapshot;
 const actionStatesResult: WasmActionStatesResultView = generatedActionStatesResult;
 const actionStateStringResult: WasmActionStateStringResultView = generatedStringResult;
+const documentJsonResult: WasmDocumentJsonStringResultView =
+  generatedEngine.documentJson(generatedObservation);
 
 generatedEngine.setRangeSelection(
   generatedObservation,
@@ -107,3 +110,4 @@ void selectionResult;
 void actionStateSnapshot;
 void actionStatesResult;
 void actionStateStringResult;
+void documentJsonResult;
