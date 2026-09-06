@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { IDBFactory } from "fake-indexeddb";
 
 const [modulePath, wasmPath, browserModulePath] = process.argv.slice(2);
 if (modulePath === undefined || wasmPath === undefined || browserModulePath === undefined) {
@@ -126,16 +127,117 @@ const disabled = engine.executeNoInputAction(
 assert.equal(disabled.status, "disabled");
 assert.equal(disabled.eventKind, undefined);
 assert.equal(disabled.error, undefined);
-const successor = disabled.observation();
+let successor = disabled.observation();
 assert.ok(successor instanceof api.BreditorObservation);
 disabled.free();
 firstObservation.free();
 assert.equal(successor.snapshotRevision, "0");
 
+const selectionCommand = engine.setRangeSelection(
+  successor,
+  "children",
+  1,
+  0,
+  "after",
+  "children",
+  1,
+  0,
+  "after",
+);
+assert.equal(selectionCommand.status, "committed");
+const selectedObservation = selectionCommand.observation();
+selectionCommand.free();
+successor.free();
+const inserted = engine.executeStringAction(
+  selectedObservation,
+  "breditor/insert-text",
+  "reload me",
+);
+assert.equal(inserted.status, "committed");
+successor = inserted.observation();
+inserted.free();
+selectedObservation.free();
+assert.equal(successor.snapshotRevision, "2");
+
 const encodedState = takeString(engine.stateJson());
+assert.match(encodedState, /"text":"reload me"/);
 assert.match(encodedState, /"format":"breditor\/editor-state"/);
 const encodedCheckpoint = takeString(engine.sessionCheckpointJson());
 assert.match(encodedCheckpoint, /"format":"breditor\/session-checkpoint"/);
+
+const browserCheckpoint = browser.consumeWasmSessionCheckpoint(
+  { lineage: "web-glue-lifecycle", revision: successor.snapshotRevision },
+  engine.sessionCheckpointJson(),
+  [engine],
+);
+assert.equal(browserCheckpoint.ok, true);
+assert.equal(browserCheckpoint.checkpoint.checkpointJson, encodedCheckpoint);
+assert.equal(
+  browserCheckpoint.checkpoint.checkpointUtf8Bytes,
+  new TextEncoder().encode(encodedCheckpoint).byteLength,
+);
+assert.ok(globalThis.crypto?.subtle);
+const checkpointDatabase = new IDBFactory();
+const checkpointWriter = new browser.IndexedDbSessionCheckpointStore({
+  indexedDB: checkpointDatabase,
+  crypto: globalThis.crypto.subtle,
+});
+const emptyCheckpointSlot = await checkpointWriter.load();
+assert.equal(emptyCheckpointSlot.ok, true);
+assert.equal(emptyCheckpointSlot.status, "empty");
+const checkpointAutosave = new browser.BreditorSessionCheckpointAutosave(
+  { read: () => browserCheckpoint },
+  checkpointWriter,
+  emptyCheckpointSlot.token,
+);
+checkpointAutosave.markDirty();
+assert.deepEqual(await checkpointAutosave.flush(), { status: "committed" });
+checkpointAutosave.dispose();
+checkpointWriter.close();
+
+const checkpointReader = new browser.IndexedDbSessionCheckpointStore({
+  indexedDB: checkpointDatabase,
+  crypto: globalThis.crypto.subtle,
+});
+const reloadedCheckpoint = await checkpointReader.load();
+assert.equal(reloadedCheckpoint.ok, true);
+assert.equal(reloadedCheckpoint.status, "loaded");
+assert.equal(reloadedCheckpoint.checkpointJson, encodedCheckpoint);
+assert.equal(
+  reloadedCheckpoint.checkpointUtf8Bytes,
+  browserCheckpoint.checkpoint.checkpointUtf8Bytes,
+);
+const browserRestore = browser.restoreWasmEngine(
+  api.BreditorEngine,
+  reloadedCheckpoint.checkpointJson,
+);
+assert.equal(browserRestore.ok, true);
+const browserRestoredEngine = browserRestore.engine;
+const browserRestoredObservation = browserRestoredEngine.observation();
+assert.equal(browserRestoredObservation.snapshotLineage, "web-glue-lifecycle");
+assert.equal(browserRestoredObservation.snapshotRevision, "2");
+assert.equal(takeString(browserRestoredEngine.stateJson()), encodedState);
+const browserUndo = browserRestoredEngine.undo(browserRestoredObservation);
+assert.equal(browserUndo.status, "committed");
+const browserUndoObservation = browserUndo.observation();
+browserUndo.free();
+browserRestoredObservation.free();
+assert.doesNotMatch(takeString(browserRestoredEngine.stateJson()), /"text":"reload me"/);
+const browserRedo = browserRestoredEngine.redo(browserUndoObservation);
+assert.equal(browserRedo.status, "committed");
+const browserRedoObservation = browserRedo.observation();
+browserRedo.free();
+browserUndoObservation.free();
+const redoneState = JSON.parse(takeString(browserRestoredEngine.stateJson()));
+const originalState = JSON.parse(encodedState);
+assert.deepEqual(redoneState.document, originalState.document);
+assert.deepEqual(redoneState.selection, originalState.selection);
+assert.deepEqual(redoneState.pendingFormats, originalState.pendingFormats);
+assert.equal(redoneState.snapshot.lineage, originalState.snapshot.lineage);
+assert.equal(redoneState.snapshot.revision, "4");
+browserRedoObservation.free();
+browserRestoredEngine.free();
+checkpointReader.close();
 
 const otherEngine = takeEngine("web-glue-other");
 const crossEngine = otherEngine.undo(successor);
@@ -166,10 +268,9 @@ assert.throws(
   }),
   /hostile string coercion ran before Rust/,
 );
-const stillCurrent = engine.undo(successor);
-assert.equal(stillCurrent.status, "unchanged");
-const afterUnchanged = stillCurrent.observation();
-stillCurrent.free();
+assert.equal(takeString(engine.stateJson()), encodedState);
+const afterUnchanged = engine.observation();
+assert.equal(afterUnchanged.snapshotRevision, successor.snapshotRevision);
 successor.free();
 
 assert.throws(() => otherEngine.undo({}), /expected instance/);

@@ -18,12 +18,17 @@ import {
 } from "./editor_command.js";
 import { BaseDocumentProjection } from "./projection.js";
 import { BaseRangeSelection, type BaseEditorSelection } from "./selection.js";
+import { BreditorCommandQueue } from "./command_queue.js";
 import type { BrowserSelectionResult } from "./selection_result.js";
 import type {
   SemanticProjectionUpdateView,
   SemanticProjectionView,
 } from "./wasm_projection_adapter.js";
 import type { SemanticSelectionView } from "./wasm_selection_adapter.js";
+import {
+  isOwnedBrowserSessionCheckpointReadResult,
+  type WasmSessionCheckpointStringResultView,
+} from "./wasm_session_checkpoint.js";
 import {
   isOwnedBrowserActionStateReadResult,
   type WasmActionStateSnapshotView,
@@ -32,6 +37,7 @@ import {
 } from "./wasm_action_state_adapter.js";
 import {
   BreditorWasmCommandAdapter,
+  MAX_WASM_CORE_COMMIT_OBSERVERS,
   type WasmCommandEngineView,
   type WasmCommandErrorView,
   type WasmCommandObservationView,
@@ -142,6 +148,89 @@ describe("BreditorWasmCommandAdapter", () => {
     },
   );
 
+  it("contains core-observer failures and gives each adopted commit to active listeners", async () => {
+    const base = projectionFixture(0, "a");
+    const nextProjection = projection(1, "a");
+    const selected = selection(base.projection, 1);
+    const initial = observation(0);
+    const committed = observation(1);
+    const update = projectionUpdate(base.projection, nextProjection);
+    const result = commandResult({
+      status: "committed",
+      eventKind: "selection",
+      successor: committed,
+      update: update.view,
+    });
+    const currentSelection = selectionResult(selectionView(1, 1));
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({
+        setSelection: [result.view],
+        selection: [currentSelection.view],
+      }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+    const removed = vi.fn();
+    const releaseRemoved = adapter.observeCoreCommits(removed);
+    releaseRemoved();
+    releaseRemoved();
+    let nestedCheckpoint: unknown;
+    adapter.observeCoreCommits(() => {
+      nestedCheckpoint = adapter.sessionCheckpointReadPort.read();
+      throw new Error("observer failure is isolated");
+    });
+    adapter.observeCoreCommits(() => Promise.reject(new Error("contained")));
+    const sibling = vi.fn();
+    adapter.observeCoreCommits(sibling);
+
+    const outcome = adapter.execute(
+      selectionSynchronizationRequest(
+        adapter.deliveryToken(),
+        selected,
+        { kind: "selectionchange", detail: "observer-test" },
+      ),
+    );
+
+    expect(outcome.command.status).toBe("committed");
+    expect(removed).not.toHaveBeenCalled();
+    expect(nestedCheckpoint).toBeUndefined();
+    expect(sibling).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "selection",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    expect(adapter.state).toBe("live");
+    await Promise.resolve();
+    adapter.dispose();
+  });
+
+  it("bounds core-commit listeners and clears them on disposal", () => {
+    const base = projectionFixture(0, "a");
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({}),
+      observation(0),
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+    const releases = Array.from(
+      { length: MAX_WASM_CORE_COMMIT_OBSERVERS },
+      () => adapter.observeCoreCommits(() => undefined),
+    );
+
+    expect(() => adapter.observeCoreCommits(() => undefined)).toThrow(RangeError);
+    releases[0]?.();
+    expect(() => adapter.observeCoreCommits(() => undefined)).not.toThrow();
+    for (const release of releases) release();
+    adapter.dispose();
+    expect(() => adapter.observeCoreCommits(() => undefined)).toThrow(/disposed/u);
+  });
+
   it("exposes a stable handle-free action-state port without recursive reads", () => {
     const base = projectionFixture(0, "a");
     const initial = observation(0);
@@ -174,6 +263,31 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
     expect(initial.free).toHaveBeenCalledOnce();
     expect(port.read()).toBeUndefined();
+  });
+
+  it("reports a thrown checkpoint invocation as a terminal capture failure", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const engine = engineQueues({});
+    engine.sessionCheckpointJson = () => {
+      throw new Error("hostile engine invocation");
+    };
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    expect(adapter.sessionCheckpointReadPort.read()).toEqual({
+      ok: false,
+      error: {
+        kind: "boundary",
+        code: "session_checkpoint.invalid_wasm_view",
+        message: "The Wasm session-checkpoint view is invalid.",
+      },
+    });
+    expect(adapter.state).toBe("live");
+    adapter.dispose();
   });
 
   it("does not free its private observation when a hostile action-state result aliases it", () => {
@@ -222,6 +336,458 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
     expect(initial.free).toHaveBeenCalledOnce();
     expect(free).not.toHaveBeenCalled();
+  });
+
+  it("exposes a stable private checkpoint port and rejects recursive reads", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const checkpoint = checkpointResult(0);
+    let nested: unknown;
+    let port: BreditorWasmCommandAdapter["sessionCheckpointReadPort"];
+    const engine = engineQueues({});
+    engine.sessionCheckpointJson = () => {
+      nested = port.read();
+      return checkpoint.view;
+    };
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    port = adapter.sessionCheckpointReadPort;
+
+    const result = port.read();
+
+    expect(adapter.sessionCheckpointReadPort).toBe(port);
+    expect(nested).toBeUndefined();
+    expect(result?.ok).toBe(true);
+    expect(isOwnedBrowserSessionCheckpointReadResult(result)).toBe(true);
+    expect(checkpoint.free).toHaveBeenCalledOnce();
+    expect(initial.free).not.toHaveBeenCalled();
+    expect(adapter.state).toBe("live");
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+    const unavailable = port.read();
+    expect(unavailable).toEqual({
+      ok: false,
+      error: {
+        kind: "lifecycle",
+        code: "session_checkpoint.adapter_unavailable",
+        message: "The Wasm session-checkpoint reader is permanently unavailable.",
+      },
+    });
+    expect(isOwnedBrowserSessionCheckpointReadResult(unavailable)).toBe(true);
+  });
+
+  it("protects the raw engine and observation from aliased checkpoint results", () => {
+    for (const alias of ["engine", "observation"] as const) {
+      const base = projectionFixture(0, "a");
+      const initial = observation(0);
+      const engineFree = vi.fn();
+      const engine = engineQueues({});
+      Object.assign(engine, { free: engineFree });
+      engine.sessionCheckpointJson = () =>
+        (alias === "engine" ? engine : initial) as unknown as
+          WasmSessionCheckpointStringResultView;
+      const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      });
+
+      expect(adapter.sessionCheckpointReadPort.read()?.ok).toBe(false);
+      expect(engineFree).not.toHaveBeenCalled();
+      expect(initial.free).not.toHaveBeenCalled();
+      adapter.dispose();
+      expect(initial.free).toHaveBeenCalledOnce();
+      expect(engineFree).not.toHaveBeenCalled();
+    }
+  });
+
+  it("contains a rejected async checkpoint impostor and remains live", async () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const engine = engineQueues({});
+    engine.sessionCheckpointJson = () =>
+      Promise.reject(new Error("must be contained")) as unknown as
+        WasmSessionCheckpointStringResultView;
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    expect(adapter.sessionCheckpointReadPort.read()?.ok).toBe(false);
+    expect(adapter.state).toBe("live");
+    await Promise.resolve();
+    adapter.dispose();
+  });
+
+  it("contains and rejects a thenable command-result handle before inspecting it", async () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const result = rejectedGeneratedHandle<WasmCommandResultView>({
+      status: "unchanged",
+      eventKind: undefined,
+      disabledActionId: undefined,
+      disabledReasonCode: undefined,
+      activation: undefined,
+      error: undefined,
+      observation: vi.fn(),
+      projectionUpdate: vi.fn(),
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ noInputAction: [result.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        noInputActionRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "toolbar", detail: "async-result" },
+          "breditor/toggle-strong",
+        ),
+      ),
+    ).toThrow(/asynchronous/u);
+    expect(result.free).toHaveBeenCalledOnce();
+    expect(result.view.observation).not.toHaveBeenCalled();
+    expect(adapter.state).toBe("faulted");
+    await Promise.resolve();
+    adapter.dispose();
+  });
+
+  it("releases a command result through the free method captured before then inspection", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const originalFree = vi.fn();
+    const replacementFree = vi.fn();
+    const result: WasmCommandResultView = {
+      status: "disabled",
+      eventKind: undefined,
+      disabledActionId: "breditor/toggle-strong",
+      disabledReasonCode: "breditor/not-enabled",
+      activation: "inactive",
+      error: undefined,
+      observation: () => successor,
+      projectionUpdate: () => undefined,
+      free: originalFree,
+    };
+    Object.defineProperty(result, "then", {
+      get() {
+        Object.assign(result, { free: replacementFree });
+        return undefined;
+      },
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ noInputAction: [result] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(
+      adapter.execute(
+        noInputActionRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "toolbar", detail: "mutating-then" },
+          "breditor/toggle-strong",
+        ),
+      ).command.status,
+    ).toBe("disabled");
+    expect(originalFree).toHaveBeenCalledOnce();
+    expect(replacementFree).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("retains the initial observation cleanup captured before engine inspection", () => {
+    const base = projectionFixture(0, "a");
+    const originalFree = vi.fn();
+    const replacementFree = vi.fn();
+    const initial: WasmCommandObservationView = {
+      snapshotLineage: "adapter-tests",
+      snapshotRevision: "0",
+      free: originalFree,
+    };
+    const engine = engineQueues({});
+    const actionStates = engine.actionStates;
+    Object.defineProperty(engine, "actionStates", {
+      get() {
+        Object.assign(initial, { free: replacementFree });
+        return actionStates;
+      },
+    });
+
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    adapter.dispose();
+
+    expect(originalFree).toHaveBeenCalledOnce();
+    expect(replacementFree).not.toHaveBeenCalled();
+  });
+
+  it("reports even an undefined value thrown by observation cleanup", () => {
+    const base = projectionFixture(0, "a");
+    const initial: WasmCommandObservationView = {
+      snapshotLineage: "adapter-tests",
+      snapshotRevision: "0",
+      free: vi.fn(() => {
+        throw undefined;
+      }),
+    };
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    let threw = false;
+    let thrown: unknown = "not thrown";
+    try {
+      adapter.dispose();
+    } catch (error) {
+      threw = true;
+      thrown = error;
+    }
+
+    expect(threw).toBe(true);
+    expect(thrown).toBeUndefined();
+    expect(adapter.state).toBe("disposed");
+  });
+
+  it("releases a nested error through the cleanup captured before later result calls", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const originalFree = vi.fn();
+    const replacementFree = vi.fn();
+    const error: WasmCommandErrorView = {
+      code: "editor_engine.action_failed",
+      message: "the command was rejected",
+      free: originalFree,
+    };
+    const resultFree = vi.fn();
+    const result: WasmCommandResultView = {
+      status: "error",
+      eventKind: undefined,
+      disabledActionId: undefined,
+      disabledReasonCode: undefined,
+      activation: undefined,
+      error,
+      observation: () => {
+        Object.assign(error, { free: replacementFree });
+        return undefined;
+      },
+      projectionUpdate: () => undefined,
+      free: resultFree,
+    };
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ noInputAction: [result] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        noInputActionRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "toolbar", detail: "mutating-error-owner" },
+          "breditor/toggle-strong",
+        ),
+      ),
+    ).toThrow(/command was rejected/u);
+    expect(originalFree).toHaveBeenCalledOnce();
+    expect(replacementFree).not.toHaveBeenCalled();
+    expect(resultFree).toHaveBeenCalledOnce();
+    adapter.dispose();
+  });
+
+  it("keeps an adopted successor cleanup captured before a later result call", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const originalFree = vi.fn();
+    const replacementFree = vi.fn();
+    const successor: WasmCommandObservationView = {
+      snapshotLineage: "adapter-tests",
+      snapshotRevision: "0",
+      free: originalFree,
+    };
+    const result = commandResult({ status: "unchanged", successor });
+    Object.assign(result.view, {
+      projectionUpdate: () => {
+        Object.assign(successor, { free: replacementFree });
+        return undefined;
+      },
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ setSelection: [result.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    const delivered = adapter.execute(
+      selectionSynchronizationRequest(
+        adapter.deliveryToken(),
+        selection(base.projection, 0),
+        { kind: "api", detail: "mutating-successor-owner" },
+      ),
+    );
+    expect(delivered.command.status).toBe("unchanged");
+    adapter.dispose();
+
+    expect(originalFree).toHaveBeenCalledOnce();
+    expect(replacementFree).not.toHaveBeenCalled();
+  });
+
+  it.each(["error", "observation", "projection"] as const)(
+    "contains and rejects a thenable nested %s handle",
+    async (kind) => {
+      const base = projectionFixture(0, "a");
+      const initial = observation(0);
+      const successor = kind === "observation"
+        ? rejectedGeneratedHandle<WasmCommandObservationView>()
+        : undefined;
+      const update = kind === "projection"
+        ? rejectedGeneratedHandle<SemanticProjectionUpdateView>()
+        : undefined;
+      const error = kind === "error"
+        ? rejectedGeneratedHandle<WasmCommandErrorView>()
+        : undefined;
+      const resultFree = vi.fn();
+      const result: WasmCommandResultView = kind === "error"
+        ? {
+            status: "error",
+            eventKind: undefined,
+            disabledActionId: undefined,
+            disabledReasonCode: undefined,
+            activation: undefined,
+            error: error?.view,
+            observation: () => undefined,
+            projectionUpdate: () => undefined,
+            free: resultFree,
+          }
+        : kind === "observation"
+          ? {
+              status: "disabled",
+              eventKind: undefined,
+              disabledActionId: "breditor/toggle-strong",
+              disabledReasonCode: "breditor/not-enabled",
+              activation: "inactive",
+              error: undefined,
+              observation: () => successor?.view,
+              projectionUpdate: () => undefined,
+              free: resultFree,
+            }
+          : {
+              status: "committed",
+              eventKind: "action",
+              disabledActionId: undefined,
+              disabledReasonCode: undefined,
+              activation: undefined,
+              error: undefined,
+              observation: () => observation(1),
+              projectionUpdate: () => update?.view,
+              free: resultFree,
+            };
+      const adapter = new BreditorWasmCommandAdapter(
+        engineQueues({ noInputAction: [result] }),
+        initial,
+        {
+          renderer: base.renderer,
+          rendered: base.rendered,
+          selectionBridge: new BreditorDomSelectionBridge(),
+        },
+      );
+
+      expect(() =>
+        adapter.execute(
+          noInputActionRequest(
+            adapter.deliveryToken(),
+            preserveSelectionSync(),
+            { kind: "toolbar", detail: `async-${kind}` },
+            "breditor/toggle-strong",
+          ),
+        ),
+      ).toThrow(/asynchronous/u);
+      expect(resultFree).toHaveBeenCalledOnce();
+      if (successor !== undefined) expect(successor.free).toHaveBeenCalledOnce();
+      if (update !== undefined) expect(update.free).toHaveBeenCalledOnce();
+      if (error !== undefined) expect(error.free).toHaveBeenCalledOnce();
+      expect(adapter.state).toBe("faulted");
+      await Promise.resolve();
+      adapter.dispose();
+    },
+  );
+
+  it("contains and rejects a thenable nested semantic-selection handle", async () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const committed = observation(1);
+    const update = projectionUpdate(base.projection, projection(1, "a"));
+    const result = commandResult({
+      status: "committed",
+      eventKind: "selection",
+      successor: committed,
+      update: update.view,
+    });
+    const selected = rejectedGeneratedHandle<SemanticSelectionView>();
+    const selectionResultFree = vi.fn();
+    const engineSelection: WasmSelectionResultView = {
+      status: "selection",
+      error: undefined,
+      takeSelection: () => selected.view,
+      free: selectionResultFree,
+    };
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({
+        setSelection: [result.view],
+        selection: [engineSelection],
+      }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        selectionSynchronizationRequest(
+          adapter.deliveryToken(),
+          selection(base.projection, 1),
+          { kind: "selectionchange", detail: "async-selection" },
+        ),
+      ),
+    ).toThrow(/asynchronous/u);
+    expect(selected.free).toHaveBeenCalledOnce();
+    expect(selectionResultFree).toHaveBeenCalledOnce();
+    expect(result.free).toHaveBeenCalledOnce();
+    expect(committed.free).toHaveBeenCalledOnce();
+    expect(adapter.state).toBe("faulted");
+    await Promise.resolve();
+    adapter.dispose();
   });
 
   it("runs selection then command, renders the update, and returns no Wasm handles", () => {
@@ -414,6 +980,58 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
   });
 
+  it("publishes a committed prestage even when the later command is rejected", () => {
+    const base = projectionFixture(0, "a");
+    const prestagedProjection = projection(1, "a");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    bridge.write(base.rendered, selected);
+    const initial = observation(0);
+    const prestaged = observation(1);
+    const prestageUpdate = projectionUpdate(base.projection, prestagedProjection);
+    const prestageResult = commandResult({
+      status: "committed",
+      eventKind: "selection",
+      successor: prestaged,
+      update: prestageUpdate.view,
+    });
+    const semanticSelection = selectionResult(selectionView(1, 1));
+    const rejected = commandError("editor_engine.action_rejected");
+    const engine = engineQueues({
+      setSelection: [prestageResult.view],
+      stringAction: [rejected.view],
+      selection: [semanticSelection.view],
+    });
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: bridge,
+    });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
+    const queueObserver = vi.fn();
+    const queue = new BreditorCommandQueue(adapter.commandExecutor, {
+      observer: queueObserver,
+    });
+
+    expect(queue.submit(actionRequest(adapter, selected))).toEqual({
+      status: "failed",
+      failure: { code: "command_queue.executor_threw", sequence: 1n },
+    });
+
+    expect(adapter.state).toBe("live");
+    expect(adapter.snapshot.revision).toBe("1");
+    expect(queueObserver).not.toHaveBeenCalled();
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "selection",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    expect(rejected.free).toHaveBeenCalledOnce();
+    expect(rejected.errorFree).toHaveBeenCalledOnce();
+    queue.dispose();
+    adapter.dispose();
+  });
+
   it.each([
     "editor_engine.stale_engine",
     "editor_engine.stale_snapshot",
@@ -477,6 +1095,8 @@ describe("BreditorWasmCommandAdapter", () => {
       rendered: base.rendered,
       selectionBridge: bridge,
     });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
 
     const outcome = adapter.execute(actionRequest(adapter, selected));
 
@@ -495,6 +1115,7 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(outcome.rendered).toBe(base.rendered);
     expect(adapter.snapshot.revision).toBe("0");
     expect(base.host.textContent).toBe("a");
+    expect(commits).not.toHaveBeenCalled();
     expect(disabled.free).toHaveBeenCalledOnce();
     adapter.dispose();
     expect(disabledObservation.free).toHaveBeenCalledOnce();
@@ -574,6 +1195,8 @@ describe("BreditorWasmCommandAdapter", () => {
       rendered: base.rendered,
       selectionBridge: bridge,
     });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
     const request = stringActionRequest(
       adapter.deliveryToken(),
       rangeSelectionSync(selected),
@@ -595,6 +1218,10 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(outcome.command.status).toBe("disabled");
     expect(adapter.snapshot.revision).toBe("0");
     expect(base.host.textContent).toBe("a");
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "closeHistoryGroup",
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
     adapter.dispose();
   });
 
@@ -970,6 +1597,8 @@ describe("BreditorWasmCommandAdapter", () => {
       rendered: base.rendered,
       selectionBridge: bridge,
     });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
 
     expect(() =>
       adapter.execute(
@@ -985,13 +1614,19 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(adapter.state).toBe("reconcile");
     expect(adapter.snapshot.revision).toBe("1");
     expect(base.host.textContent).toBe("ax");
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "action",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
     expect(adapter.restoreCanonicalRender().ok).toBe(true);
     expect(adapter.state).toBe("live");
     expect(adapter.deliveryToken().snapshotRevision).toBe("1");
     adapter.dispose();
   });
 
-  it("enters reconciliation after renderer.update fails and restores from the retained projection", () => {
+  it.each(["returns a failure", "throws"] as const)(
+    "enters reconciliation when renderer.update %s and restores the retained projection",
+    (failureMode) => {
     const base = projectionFixture(0, "a");
     const resultProjection = projection(1, "ax");
     const bridge = new BreditorDomSelectionBridge();
@@ -1009,33 +1644,61 @@ describe("BreditorWasmCommandAdapter", () => {
       update: update.view,
     });
     const afterRestore = selectionResult(selectionView(1, 2));
+    const checkpoint = checkpointResult(1);
     const engine = engineQueues({
       setSelection: [syncResult.view],
       stringAction: [actionResult.view],
       selection: [afterRestore.view],
+      sessionCheckpoints: [checkpoint.view],
     });
-    const updateRender = vi.spyOn(base.renderer, "update").mockReturnValueOnce({
-      ok: false,
-      error: {
-        code: "renderer.dom_write_failed",
-        message: "The DOM projection could not be installed.",
-      },
-    });
+    const updateRender = vi.spyOn(base.renderer, "update");
+    if (failureMode === "throws") {
+      updateRender.mockImplementationOnce(() => {
+        throw new Error("host DOM write threw");
+      });
+    } else {
+      updateRender.mockReturnValueOnce({
+        ok: false,
+        error: {
+          code: "renderer.dom_write_failed",
+          message: "The DOM projection could not be installed.",
+        },
+      });
+    }
     const adapter = new BreditorWasmCommandAdapter(engine, initial, {
       renderer: base.renderer,
       rendered: base.rendered,
       selectionBridge: bridge,
     });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
+    const queueObserver = vi.fn();
+    const queue = new BreditorCommandQueue(adapter.commandExecutor, {
+      observer: queueObserver,
+    });
 
-    expect(() => adapter.execute(actionRequest(adapter, selected))).toThrow(
-      /canonical DOM restoration/u,
-    );
+    expect(queue.submit(actionRequest(adapter, selected))).toEqual({
+      status: "failed",
+      failure: { code: "command_queue.executor_threw", sequence: 1n },
+    });
     expect(updateRender).toHaveBeenCalledOnce();
+    expect(queueObserver).not.toHaveBeenCalled();
     expect(adapter.state).toBe("reconcile");
     expect(adapter.snapshot.revision).toBe("1");
     expect(adapter.rendered).toBe(base.rendered);
     expect(base.host.textContent).toBe("a");
     expect(update.free).toHaveBeenCalledOnce();
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "action",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    expect(adapter.sessionCheckpointReadPort.read()).toMatchObject({
+      ok: true,
+      checkpoint: {
+        snapshot: { lineage: "adapter-tests", revision: "1" },
+      },
+    });
+    expect(checkpoint.free).toHaveBeenCalledOnce();
 
     const restored = adapter.restoreCanonicalRender();
     expect(restored.ok).toBe(true);
@@ -1045,8 +1708,10 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(adapter.deliveryToken().snapshotRevision).toBe("1");
     expect(afterRestore.free).toHaveBeenCalledOnce();
     expect(afterRestore.selectionFree).toHaveBeenCalledOnce();
-    adapter.dispose();
-  });
+      queue.dispose();
+      adapter.dispose();
+    },
+  );
 
   it("faults when projection-update metadata disagrees with its taken result snapshot", () => {
     const base = projectionFixture(0, "a");
@@ -1091,7 +1756,9 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
   });
 
-  it("attempts every cleanup and faults if a generated free throws", () => {
+  it.each(["throws", "returns a rejected thenable"] as const)(
+    "attempts every cleanup and faults if a generated free %s",
+    async (failureMode) => {
     const base = projectionFixture(0, "a");
     const bridge = new BreditorDomSelectionBridge();
     const selected = selection(base.projection, 1);
@@ -1105,7 +1772,9 @@ describe("BreditorWasmCommandAdapter", () => {
       eventKind: "action",
       successor: committed,
       update: projectionUpdate(base.projection, projection(1, "ax")).view,
-      freeThrows: true,
+      ...(failureMode === "throws"
+        ? { freeThrows: true }
+        : { freeResult: Promise.reject(new Error("free rejected")) }),
     });
     const selectionRead = selectionResult(selectionView(1, 2));
     const engine = engineQueues({
@@ -1118,6 +1787,8 @@ describe("BreditorWasmCommandAdapter", () => {
       rendered: base.rendered,
       selectionBridge: bridge,
     });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
 
     expect(() =>
       adapter.execute(
@@ -1129,13 +1800,20 @@ describe("BreditorWasmCommandAdapter", () => {
           "x",
         ),
       ),
-    ).toThrow(/free failed/u);
+    ).toThrow(failureMode === "throws" ? /free failed/u : /returned a value/u);
     expect(actionResult.free).toHaveBeenCalledOnce();
     expect(synchronized.free).toHaveBeenCalledOnce();
     expect(adapter.state).toBe("faulted");
+    expect(adapter.snapshot.revision).toBe("1");
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "action",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
     adapter.dispose();
     expect(committed.free).toHaveBeenCalledOnce();
-  });
+    await Promise.resolve();
+  },
+  );
 
   it("releases a newly installed render when a hostile selection result throws", () => {
     const base = projectionFixture(0, "a");
@@ -1694,6 +2372,15 @@ function observation(revision: number): TrackedObservation {
   };
 }
 
+function rejectedGeneratedHandle<T extends object>(
+  properties: Readonly<Record<string, unknown>> = {},
+): Readonly<{ view: T; free: ReturnType<typeof vi.fn> }> {
+  const free = vi.fn();
+  const rejected = Promise.reject(new Error("generated handle rejection must be contained"));
+  Object.assign(rejected, properties, { free });
+  return { view: rejected as unknown as T, free };
+}
+
 function actionRequest(
   adapter: BreditorWasmCommandAdapter,
   selected: BaseRangeSelection,
@@ -1716,12 +2403,15 @@ function commandResult(input: Readonly<{
   successor: WasmCommandObservationView;
   update?: SemanticProjectionUpdateView;
   freeThrows?: boolean;
+  freeResult?: unknown;
 }>): TrackedResult {
   const free = input.freeThrows
     ? vi.fn(() => {
         throw new Error("free failed");
       })
-    : vi.fn();
+    : input.freeResult === undefined
+      ? vi.fn()
+      : vi.fn(() => input.freeResult);
   return {
     free,
     view: {
@@ -1906,6 +2596,39 @@ function emptyActionStateResult(revision: number) {
   return { view, free, snapshotFree, valueFree };
 }
 
+function checkpointResult(revision: number): Readonly<{
+  view: WasmSessionCheckpointStringResultView;
+  free: ReturnType<typeof vi.fn>;
+}> {
+  const free = vi.fn();
+  let taken = false;
+  const checkpointJson = JSON.stringify({
+    format: "breditor/session-checkpoint",
+    formatVersion: 1,
+    historyBase: {
+      format: "breditor/editor-state",
+      formatVersion: 1,
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    },
+    currentRevision: String(revision),
+    historyCapacity: 0,
+    cursor: 0,
+    entries: [],
+    openMergeGroup: null,
+  });
+  const view: WasmSessionCheckpointStringResultView = {
+    status: "value",
+    error: undefined,
+    takeValue: () => {
+      if (taken) return undefined;
+      taken = true;
+      return checkpointJson;
+    },
+    free,
+  };
+  return { view, free };
+}
+
 function engineQueues(input: Readonly<{
   setSelection?: WasmCommandResultView[];
   setRangeSelection?: () => WasmCommandResultView;
@@ -1914,6 +2637,7 @@ function engineQueues(input: Readonly<{
   closeHistory?: WasmCommandResultView[];
   selection?: WasmSelectionResultView[];
   actionStates?: WasmActionStatesResultView[];
+  sessionCheckpoints?: WasmSessionCheckpointStringResultView[];
 }>): WasmCommandEngineView {
   const take = <T>(values: T[] | undefined, name: string): T => {
     const value = values?.shift();
@@ -1922,6 +2646,8 @@ function engineQueues(input: Readonly<{
   };
   return {
     actionStates: () => take(input.actionStates, "actionStates"),
+    sessionCheckpointJson: () =>
+      take(input.sessionCheckpoints, "sessionCheckpointJson"),
     clearSelection: () => take(input.setSelection, "clearSelection"),
     setRangeSelection: () => input.setRangeSelection?.() ?? take(input.setSelection, "setRangeSelection"),
     selection: () => take(input.selection, "selection"),

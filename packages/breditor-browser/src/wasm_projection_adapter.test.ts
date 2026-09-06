@@ -182,6 +182,21 @@ describe("Wasm semantic projection adapter", () => {
     ]);
   });
 
+  it("uses the projection cleanup captured before thenable inspection", () => {
+    const view = new FakeProjectionView("0", [[{ text: "plain", strong: false }]]);
+    const replacementFree = vi.fn();
+    Object.defineProperty(view, "then", {
+      get() {
+        Object.assign(view, { free: replacementFree });
+        return undefined;
+      },
+    });
+
+    expect(consumeSemanticProjection(view).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+    expect(replacementFree).not.toHaveBeenCalled();
+  });
+
   it("fails closed and frees a view with a non-preorder child index", () => {
     const view = new FakeProjectionView("0", [[{ text: "text", strong: false }]]);
     const root = view.nodes[0];
@@ -192,6 +207,17 @@ describe("Wasm semantic projection adapter", () => {
 
     const result = consumeSemanticProjection(view);
     expect(result.ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("bounds traversal by nodeCount before iterating a hostile run count", () => {
+    const view = new FakeProjectionView("0", [[{ text: "text", strong: false }]]);
+    const childCount = view.childCount.bind(view);
+    const childAt = vi.spyOn(view, "childAt");
+    view.childCount = (index) => index === 1 ? 10_000 : childCount(index);
+
+    expect(consumeSemanticProjection(view).ok).toBe(false);
+    expect(childAt).toHaveBeenCalledTimes(1);
     expect(view.freeCalls).toBe(1);
   });
 
@@ -291,6 +317,85 @@ describe("Wasm semantic projection adapter", () => {
     ).toBe(false);
     expect(updateView.freeCalls).toBe(1);
     expect(protectedProjection.freeCalls).toBe(0);
+  });
+
+  it("snapshots protected ownership before takeProjection can mutate its source list", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const protectedProjection = new FakeProjectionView("1", [[]]);
+    const protectedHandles: unknown[] = [protectedProjection];
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "root",
+      projection: undefined,
+    });
+    Object.assign(updateView, {
+      takeProjection: () => {
+        protectedHandles.splice(0, protectedHandles.length);
+        return protectedProjection;
+      },
+    });
+
+    expect(
+      consumeSemanticProjectionUpdate(base, updateView, protectedHandles).ok,
+    ).toBe(false);
+    expect(updateView.freeCalls).toBe(1);
+    expect(protectedProjection.freeCalls).toBe(0);
+  });
+
+  it("leaves the update caller-owned when protected ownership cannot be snapshotted", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const protectedProjection = new FakeProjectionView("1", [[]]);
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "root",
+      projection: protectedProjection,
+    });
+    const protectedHandles = new Proxy([protectedProjection], {
+      getOwnPropertyDescriptor(_target, property) {
+        if (property === "0") throw new Error("hostile ownership list");
+        return Reflect.getOwnPropertyDescriptor(_target, property);
+      },
+    });
+
+    expect(
+      consumeSemanticProjectionUpdate(base, updateView, protectedHandles).ok,
+    ).toBe(false);
+    expect(updateView.freeCalls).toBe(0);
+    expect(protectedProjection.freeCalls).toBe(0);
+  });
+
+  it("reads the affected-paragraph count exactly once", () => {
+    const base = valueOf(
+      consumeSemanticProjection(
+        new FakeProjectionView("0", [[{ text: "a", strong: false }]]),
+      ),
+    );
+    const resultView = new FakeProjectionView("1", [
+      [{ text: "b", strong: false }],
+    ]);
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "textContainers",
+      projection: resultView,
+      affected: [0],
+    });
+    const reads = vi.fn(() => 1);
+    Object.defineProperty(updateView, "affectedParagraphCount", { get: reads });
+
+    expect(consumeSemanticProjectionUpdate(base, updateView).ok).toBe(true);
+    expect(reads).toHaveBeenCalledOnce();
+  });
+
+  it("contains a rejected projection impostor even when it has no cleanup", async () => {
+    const rejected = Promise.reject(new Error("projection rejection must be contained"));
+
+    expect(
+      consumeSemanticProjection(rejected as unknown as SemanticProjectionView).ok,
+    ).toBe(false);
+    await Promise.resolve();
   });
 
   it("frees a self-aliased update exactly once", () => {

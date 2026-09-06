@@ -87,17 +87,22 @@ export interface SemanticProjectionUpdateView {
 export function consumeSemanticProjection(
   view: SemanticProjectionView,
 ): BrowserProjectionResult<BaseDocumentProjection> {
+  const cleanup = snapshotGeneratedCleanup(view);
+  const asynchronous = containGeneratedThenable(view);
+  if (cleanup === null) {
+    return projectionFailure("projection.invalid_shape");
+  }
   let result: BrowserProjectionResult<BaseDocumentProjection> = projectionFailure(
     "projection.invalid_shape",
   );
   try {
-    result = readSemanticProjection(view);
+    result = asynchronous
+      ? projectionFailure("projection.invalid_shape")
+      : readSemanticProjection(view);
   } catch {
     result = projectionFailure("projection.invalid_shape");
   } finally {
-    try {
-      view.free();
-    } catch {
+    if (!runGeneratedCleanup(cleanup)) {
       result = projectionFailure("projection.invalid_shape");
     }
   }
@@ -118,21 +123,147 @@ export function consumeSemanticProjectionUpdate(
   view: SemanticProjectionUpdateView,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
+  const protectedSet = snapshotProtectedHandles(protectedHandles);
+  if (protectedSet === null || protectedSet.has(view)) {
+    return projectionFailure("projection.invalid_update");
+  }
+  const cleanup = snapshotGeneratedCleanup(view);
+  const asynchronous = containGeneratedThenable(view);
+  if (cleanup === null) {
+    return projectionFailure("projection.invalid_update");
+  }
+  return consumeClaimedSemanticProjectionUpdate(
+    base,
+    view,
+    cleanup,
+    protectedSet,
+    asynchronous,
+  );
+}
+
+/** Consumes an update using cleanup captured by its outer owner. @internal */
+export function consumeSemanticProjectionUpdateWithCleanup(
+  base: BaseDocumentProjection,
+  view: SemanticProjectionUpdateView,
+  cleanup: () => unknown,
+  protectedHandles: readonly unknown[] = [],
+): BrowserProjectionResult<BaseProjectionUpdate> {
+  const protectedSet = snapshotProtectedHandles(protectedHandles);
+  if (protectedSet === null || protectedSet.has(view)) {
+    return projectionFailure("projection.invalid_update");
+  }
+  return consumeClaimedSemanticProjectionUpdate(
+    base,
+    view,
+    cleanup,
+    protectedSet,
+    containGeneratedThenable(view),
+  );
+}
+
+function consumeClaimedSemanticProjectionUpdate(
+  base: BaseDocumentProjection,
+  view: SemanticProjectionUpdateView,
+  cleanup: () => unknown,
+  protectedHandles: ReadonlySet<object>,
+  asynchronous: boolean,
+): BrowserProjectionResult<BaseProjectionUpdate> {
   let result: BrowserProjectionResult<BaseProjectionUpdate> = projectionFailure(
     "projection.invalid_update",
   );
   try {
-    result = readSemanticProjectionUpdate(base, view, protectedHandles);
+    result = asynchronous
+      ? projectionFailure("projection.invalid_update")
+      : readSemanticProjectionUpdate(base, view, protectedHandles);
   } catch {
     result = projectionFailure("projection.invalid_update");
   } finally {
-    try {
-      view.free();
-    } catch {
+    if (!runGeneratedCleanup(cleanup)) {
       result = projectionFailure("projection.invalid_update");
     }
   }
   return result;
+}
+
+function runGeneratedCleanup(cleanup: () => unknown): boolean {
+  try {
+    const returned = cleanup();
+    if (returned === undefined) return true;
+    containGeneratedSettlement(returned);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function snapshotGeneratedCleanup(value: unknown): (() => unknown) | null {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return null;
+  }
+  try {
+    const free = (value as { free?: unknown }).free;
+    if (typeof free !== "function") return null;
+    const receiver = value;
+    return () => Reflect.apply(free, receiver, []) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function containGeneratedThenable(value: unknown): boolean {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return false;
+  }
+  let then: unknown;
+  try {
+    then = (value as { then?: unknown }).then;
+  } catch {
+    return true;
+  }
+  if (then === undefined) return false;
+  containGeneratedSettlement(value);
+  return true;
+}
+
+const GENERATED_PROMISE_RESOLVE = Promise.resolve.bind(Promise);
+const GENERATED_PROMISE_THEN = Promise.prototype.then;
+const IGNORE_GENERATED_SETTLEMENT = (): undefined => undefined;
+
+function containGeneratedSettlement(value: unknown): void {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return;
+  }
+  try {
+    const settled = GENERATED_PROMISE_RESOLVE(value);
+    Reflect.apply(GENERATED_PROMISE_THEN, settled, [
+      IGNORE_GENERATED_SETTLEMENT,
+      IGNORE_GENERATED_SETTLEMENT,
+    ]);
+  } catch {
+    // The value is still rejected as an asynchronous generated handle.
+  }
+}
+
+function snapshotProtectedHandles(
+  values: readonly unknown[],
+): ReadonlySet<object> | null {
+  try {
+    if (!Array.isArray(values)) return null;
+    const length = values.length;
+    if (!Number.isSafeInteger(length) || length < 0 || length > 64) return null;
+    const output = new Set<object>();
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = Reflect.getOwnPropertyDescriptor(values, String(index));
+      if (descriptor === undefined || !("value" in descriptor)) return null;
+      const value = descriptor.value as unknown;
+      if ((typeof value === "object" && value !== null) || typeof value === "function") {
+        output.add(value);
+      }
+    }
+    return output;
+  } catch {
+    return null;
+  }
 }
 
 function readSemanticProjection(
@@ -167,7 +298,8 @@ function readSemanticProjection(
     paragraphCount === undefined ||
     !isIndex(paragraphCount) ||
     paragraphCount === 0 ||
-    paragraphCount > 10_000
+    paragraphCount > 10_000 ||
+    paragraphCount > nodeCount - 1
   ) {
     return projectionFailure("projection.invalid_shape");
   }
@@ -175,6 +307,9 @@ function readSemanticProjection(
   const paragraphs: Array<{ runs: Array<{ text: string; strong: boolean }> }> = [];
   let expectedIndex = 1;
   for (let paragraphOrdinal = 0; paragraphOrdinal < paragraphCount; paragraphOrdinal += 1) {
+    if (expectedIndex >= nodeCount) {
+      return projectionFailure("projection.invalid_shape");
+    }
     const paragraphIndex = view.childAt(0, paragraphOrdinal);
     if (
       paragraphIndex !== expectedIndex ||
@@ -188,7 +323,12 @@ function readSemanticProjection(
     }
     expectedIndex += 1;
     const runCount = view.childCount(paragraphIndex);
-    if (runCount === undefined || !isIndex(runCount) || runCount > 10_000) {
+    if (
+      runCount === undefined ||
+      !isIndex(runCount) ||
+      runCount > 10_000 ||
+      runCount > nodeCount - expectedIndex
+    ) {
       return projectionFailure("projection.invalid_shape");
     }
     const runs: Array<{ text: string; strong: boolean }> = [];
@@ -256,18 +396,19 @@ function readSemanticProjection(
 function readSemanticProjectionUpdate(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
-  protectedHandles: readonly unknown[],
+  protectedHandles: ReadonlySet<object>,
 ): BrowserProjectionResult<BaseProjectionUpdate> {
+  const affectedParagraphCount = view.affectedParagraphCount;
   if (
     !isSemanticProjectionUpdateView(view) ||
     view.baseLineage !== base.snapshot.lineage ||
     view.baseRevision !== base.snapshot.revision ||
-    !isIndex(view.affectedParagraphCount) ||
-    view.affectedParagraphCount > 10_000
+    !isIndex(affectedParagraphCount) ||
+    affectedParagraphCount > 10_000
   ) {
     return projectionFailure("projection.invalid_update");
   }
-  const impact = readSemanticImpact(view);
+  const impact = readSemanticImpact(view, affectedParagraphCount);
   if (impact === null) {
     return projectionFailure("projection.invalid_update");
   }
@@ -280,7 +421,7 @@ function readSemanticProjectionUpdate(
   // consumer, whose normal contract is to free the value it receives.
   if (
     (resultView as unknown) === view ||
-    protectedHandles.some((handle) => resultView === handle)
+    protectedHandles.has(resultView)
   ) {
     return projectionFailure("projection.invalid_update");
   }
@@ -298,29 +439,34 @@ function readSemanticProjectionUpdate(
   return BaseProjectionUpdate.create({ base, result: projection, impact });
 }
 
-function readSemanticImpact(view: SemanticProjectionUpdateView): BaseProjectionImpact | null {
+function readSemanticImpact(
+  view: SemanticProjectionUpdateView,
+  affectedParagraphCount: number,
+): BaseProjectionImpact | null {
   switch (view.impact) {
     case "none":
-      return noRangesAndNoParagraphs(view) ? { kind: "none" } : null;
+      return noRangesAndNoParagraphs(view, affectedParagraphCount)
+        ? { kind: "none" }
+        : null;
     case "textContainers": {
-      if (!rangesAbsent(view) || view.affectedParagraphCount === 0) {
+      if (!rangesAbsent(view) || affectedParagraphCount === 0) {
         return null;
       }
       const paragraphIndexes: number[] = [];
-      for (let ordinal = 0; ordinal < view.affectedParagraphCount; ordinal += 1) {
+      for (let ordinal = 0; ordinal < affectedParagraphCount; ordinal += 1) {
         const paragraphIndex = view.affectedParagraphIndex(ordinal);
         if (paragraphIndex === undefined || !isIndex(paragraphIndex)) {
           return null;
         }
         paragraphIndexes.push(paragraphIndex);
       }
-      if (view.affectedParagraphIndex(view.affectedParagraphCount) !== undefined) {
+      if (view.affectedParagraphIndex(affectedParagraphCount) !== undefined) {
         return null;
       }
       return { kind: "textContainers", paragraphIndexes };
     }
     case "rootSplice": {
-      if (view.affectedParagraphCount !== 0 || view.affectedParagraphIndex(0) !== undefined) {
+      if (affectedParagraphCount !== 0 || view.affectedParagraphIndex(0) !== undefined) {
         return null;
       }
       const { oldChildStart, oldChildEnd, newChildStart, newChildEnd } = view;
@@ -339,15 +485,20 @@ function readSemanticImpact(view: SemanticProjectionUpdateView): BaseProjectionI
       };
     }
     case "root":
-      return noRangesAndNoParagraphs(view) ? { kind: "root" } : null;
+      return noRangesAndNoParagraphs(view, affectedParagraphCount)
+        ? { kind: "root" }
+        : null;
     default:
       return null;
   }
 }
 
-function noRangesAndNoParagraphs(view: SemanticProjectionUpdateView): boolean {
+function noRangesAndNoParagraphs(
+  view: SemanticProjectionUpdateView,
+  affectedParagraphCount: number,
+): boolean {
   return (
-    view.affectedParagraphCount === 0 &&
+    affectedParagraphCount === 0 &&
     view.affectedParagraphIndex(0) === undefined &&
     rangesAbsent(view)
   );
@@ -376,8 +527,7 @@ function isSemanticProjectionView(view: SemanticProjectionView): boolean {
     typeof view.childAt === "function" &&
     typeof view.text === "function" &&
     typeof view.formatCount === "function" &&
-    typeof view.formatType === "function" &&
-    typeof view.free === "function"
+    typeof view.formatType === "function"
   );
 }
 
@@ -386,7 +536,6 @@ function isSemanticProjectionUpdateView(view: SemanticProjectionUpdateView): boo
     typeof view === "object" &&
     view !== null &&
     typeof view.affectedParagraphIndex === "function" &&
-    typeof view.takeProjection === "function" &&
-    typeof view.free === "function"
+    typeof view.takeProjection === "function"
   );
 }

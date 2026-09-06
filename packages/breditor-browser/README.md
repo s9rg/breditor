@@ -1,13 +1,14 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
-Version `0.0.56` renders the validated base-schema AST into disposable DOM,
+Version `0.0.57` renders the validated base-schema AST into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
 strict paragraph-local composition lease plus guarded copy/cut/paste without
 making the DOM or clipboard HTML an editor model. It also consumes guarded
 action-state snapshots, queue-routes real document selection changes, and
 renders an extensible accessible toolbar without making display state an
-execution capability.
+execution capability. It also restores and atomically autosaves complete Rust
+session checkpoints through a strict single-slot IndexedDB profile.
 
 The package is private while the pre-`0.1` package boundary is still moving.
 Its public entry point is nevertheless compiled and declaration-checked so a
@@ -155,6 +156,11 @@ successor and projection update, updates the DOM, restores the resulting core
 selection, and frees all generated handles before returning a handle-free
 outcome. A valid semantic successor whose DOM publication fails is retained for
 explicit full-render recovery; malformed or stale results fault the adapter.
+Generated cleanup methods are captured with their original receivers before
+any other untrusted handle property is inspected, so later getter-driven
+mutation cannot redirect or suppress cleanup. The adapter does not own the
+generated engine; its enclosing runtime must free that engine after disposing
+the adapter.
 
 ## Composition contract
 
@@ -256,11 +262,53 @@ with `toolbarCommandRequest` and sends them through the same queue; Rust
 revalidates every command against the current observation.
 See [`TOOLBAR.md`](../../docs/TOOLBAR.md).
 
+## Session checkpoint persistence
+
+`IndexedDbSessionCheckpointStore` owns one exact versioned database and one
+`"current"` record. A load returns either absence or a digest-verified complete
+checkpoint plus an opaque, store-bound compare-and-swap token. A save computes
+the UTF-8 byte count and SHA-256 before opening its transaction, rechecks the
+complete prior record inside one `readwrite` transaction, installs one whole
+replacement, and reports success only from transaction completion. Conflicts,
+corruption, quota, schema/version mismatch, connection loss, generation
+exhaustion, and digest failure remain distinct payload-redacted outcomes.
+
+`restoreWasmEngine` strictly consumes the generated restore result and owns the
+new engine only after the Rust Session Checkpoint V1 decoder accepts it.
+`BreditorSessionCheckpointAutosave` coalesces adopted core commits behind a
+250 ms trailing delay and, while capture is available, starts an attempt within
+2 s of continuous changes. Composition or another exclusive adapter lease can
+defer capture beyond that scheduling bound without a busy loop. The coordinator
+keeps at most one save active, retains exact flush epochs, and pauses on every
+failure until explicit retry.
+Its bounded `observeStatus()` feed delivers coalesced immutable lifecycle
+snapshots on microtasks, contains listener failure, and preserves a stable
+payload-free storage `causeCode` so applications can surface quota, conflict,
+or connection loss instead of silently stopping autosave.
+Wire it to the adapter's authoritative commit feed, not to queue completion:
+
+```ts
+const autosave = new BreditorSessionCheckpointAutosave(
+  adapter.sessionCheckpointReadPort,
+  checkpointStore,
+  loaded.token,
+);
+const stopObserving = adapter.observeCoreCommits(autosave.commitObserver);
+```
+
+The feed fires once whenever a validated Rust successor is adopted, even when
+a later DOM reconciliation or multi-stage command failure prevents the queue
+from reporting completion. Temporary composition/execution returns capture
+backpressure; terminal adapter loss pauses autosave. See
+[`SESSION_CHECKPOINT_STORAGE.md`](../../docs/SESSION_CHECKPOINT_STORAGE.md).
+
 ## Current limitations
 
 - The bundled toolbar catalog contains Bold, Undo, and Redo. Dynamic action or
-  catalog registration, persistence, and React integration belong to later
-  checkpoints.
+  catalog registration and React integration belong to later checkpoints.
+- Checkpoint persistence is one best-effort local slot, not an append log,
+  multi-document registry, merge protocol, authenticated store, rollback
+  defense, or cross-device synchronization.
 - Clipboard support is limited to synchronous event `clipboardData`, plain
   text, and the base paragraph/strong subset. There is no async Clipboard API,
   custom internal MIME, files/images, or mixed-format rich paste.
@@ -316,4 +364,6 @@ translation policy, one-shot event-echo suppression, queue-routed selection
 changes, guarded action-state ownership and store transitions, toolbar
 manifest and keyboard/ARIA behavior, exact composition/queue/
 renderer leases, alternate terminal event orders, strict temporary-DOM
-reconciliation, cancellation history boundaries, and fail-safe recovery.
+reconciliation, cancellation history boundaries, fail-safe recovery, strict
+checkpoint ownership/restore, IndexedDB schema/CAS/corruption paths, adopted-
+commit notification, and reentrancy-safe autosave scheduling.

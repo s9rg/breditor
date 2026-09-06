@@ -65,23 +65,100 @@ export function consumeSemanticSelection(
   projection: BaseDocumentProjection,
   view: SemanticSelectionView,
 ): BrowserSelectionResult<BaseEditorSelection> {
+  const cleanup = snapshotGeneratedCleanup(view);
+  const asynchronous = containGeneratedThenable(view);
+  if (cleanup === null) {
+    return selectionFailure("selection.invalid_wasm_view");
+  }
+  return consumeSemanticSelectionWithCleanup(
+    projection,
+    view,
+    cleanup,
+    asynchronous,
+  );
+}
+
+/** Consumes a selection using cleanup captured by its outer owner. @internal */
+export function consumeSemanticSelectionWithCleanup(
+  projection: BaseDocumentProjection,
+  view: SemanticSelectionView,
+  cleanup: () => unknown,
+  asynchronous = containGeneratedThenable(view),
+): BrowserSelectionResult<BaseEditorSelection> {
   let result: BrowserSelectionResult<BaseEditorSelection> = selectionFailure(
     "selection.invalid_wasm_view",
   );
   try {
-    result = isOwnedProjection(projection)
+    result = !asynchronous && isOwnedProjection(projection)
       ? readSemanticSelection(projection, view)
       : selectionFailure("selection.invalid_wasm_view");
   } catch {
     result = selectionFailure("selection.invalid_wasm_view");
   } finally {
-    try {
-      view.free();
-    } catch {
+    if (!runGeneratedCleanup(cleanup)) {
       result = selectionFailure("selection.invalid_wasm_view");
     }
   }
   return result;
+}
+
+function runGeneratedCleanup(cleanup: () => unknown): boolean {
+  try {
+    const returned = cleanup();
+    if (returned === undefined) return true;
+    containGeneratedSettlement(returned);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function snapshotGeneratedCleanup(value: unknown): (() => unknown) | null {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return null;
+  }
+  try {
+    const free = (value as { free?: unknown }).free;
+    if (typeof free !== "function") return null;
+    const receiver = value;
+    return () => Reflect.apply(free, receiver, []) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function containGeneratedThenable(value: unknown): boolean {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return false;
+  }
+  let then: unknown;
+  try {
+    then = (value as { then?: unknown }).then;
+  } catch {
+    return true;
+  }
+  if (then === undefined) return false;
+  containGeneratedSettlement(value);
+  return true;
+}
+
+const GENERATED_PROMISE_RESOLVE = Promise.resolve.bind(Promise);
+const GENERATED_PROMISE_THEN = Promise.prototype.then;
+const IGNORE_GENERATED_SETTLEMENT = (): undefined => undefined;
+
+function containGeneratedSettlement(value: unknown): void {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return;
+  }
+  try {
+    const settled = GENERATED_PROMISE_RESOLVE(value);
+    Reflect.apply(GENERATED_PROMISE_THEN, settled, [
+      IGNORE_GENERATED_SETTLEMENT,
+      IGNORE_GENERATED_SETTLEMENT,
+    ]);
+  } catch {
+    // The value is still rejected as an asynchronous generated handle.
+  }
 }
 
 /**
@@ -294,14 +371,7 @@ function preorderIndexForPoint(
 }
 
 function isSemanticSelectionView(view: unknown): view is SemanticSelectionView {
-  if (typeof view !== "object" || view === null) {
-    return false;
-  }
-  try {
-    return typeof (view as { free?: unknown }).free === "function";
-  } catch {
-    return false;
-  }
+  return typeof view === "object" && view !== null;
 }
 
 function isRangeOrder(value: unknown): value is BaseRangeOrder {

@@ -439,6 +439,81 @@ describe("Wasm action-state adapter", () => {
     expect(aliasResult.freeCalls).toBe(1);
   });
 
+  it("rejects a hostile protected-handle iterable before accepting ownership", () => {
+    const revoked = Proxy.revocable<unknown[]>([], {});
+    revoked.revoke();
+    const resultView = new FakeResult("taken", undefined);
+
+    expect(() =>
+      consumeWasmActionStates(
+        EXPECTED,
+        resultView,
+        revoked.proxy as readonly unknown[],
+      ),
+    ).not.toThrow();
+    expect(resultView.freeCalls).toBe(0);
+  });
+
+  it("captures cleanup before hostile expected and nested getters mutate it", async () => {
+    const outerFree = vi.fn();
+    const poisonedOuterFree = vi.fn();
+    const resultView = new FakeResult("taken", undefined);
+    Object.defineProperty(resultView, "free", {
+      configurable: true,
+      writable: true,
+      value: outerFree,
+    });
+    const expected = {
+      get lineage(): string {
+        Reflect.set(resultView, "free", poisonedOuterFree);
+        return EXPECTED.lineage;
+      },
+      revision: EXPECTED.revision,
+    };
+
+    expect(consumeWasmActionStates(expected, resultView).ok).toBe(false);
+    expect(outerFree).toHaveBeenCalledOnce();
+    expect(poisonedOuterFree).not.toHaveBeenCalled();
+
+    const errorFree = vi.fn();
+    const poisonedErrorFree = vi.fn();
+    const rejectedCode = Promise.reject(new Error("must be contained"));
+    const hostileError = {
+      message: "invalid action state",
+      free: errorFree,
+    };
+    Object.defineProperty(hostileError, "code", {
+      get: () => {
+        hostileError.free = poisonedErrorFree;
+        return rejectedCode;
+      },
+    });
+    const nestedResult = new FakeResult(
+      "error",
+      undefined,
+      hostileError as unknown as WasmActionStateErrorView,
+    );
+
+    expect(consumeWasmActionStates(EXPECTED, nestedResult).ok).toBe(false);
+    expect(errorFree).toHaveBeenCalledOnce();
+    expect(poisonedErrorFree).not.toHaveBeenCalled();
+    expect(nestedResult.freeCalls).toBe(1);
+    await Promise.resolve();
+  });
+
+  it("contains rejected indexed scalars and frees all acquired handles", async () => {
+    const entry = statelessEntry("breditor/control");
+    const snapshot = new FakeSnapshot([entry], [entry.id]);
+    const rejectedId = Promise.reject(new Error("must be contained"));
+    snapshot.entryId = () => rejectedId as unknown as string;
+    const resultView = new FakeResult("full", snapshot);
+
+    expect(consumeWasmActionStates(EXPECTED, resultView).ok).toBe(false);
+    expect(snapshot.freeCalls).toBe(1);
+    expect(resultView.freeCalls).toBe(1);
+    await Promise.resolve();
+  });
+
   it("contains throwing accessors while releasing every handle already acquired", () => {
     const entry = statelessEntry("breditor/control");
     const snapshot = new FakeSnapshot([entry], [entry.id]);
@@ -512,6 +587,32 @@ describe("Wasm action-state adapter", () => {
     expect(resultView.freeCalls).toBe(1);
     expect(snapshot.freeCalls).toBe(1);
     expect(snapshot.values.every((value) => value.freeCalls === 1)).toBe(true);
+  });
+
+  it("fails closed when cleanup throws undefined or returns a non-void value", () => {
+    const throwingCleanup = vi.fn((): never => {
+      throw undefined;
+    });
+    const throwingView = new FakeResult("taken", undefined);
+    Object.defineProperty(throwingView, "free", { value: throwingCleanup });
+    const nonvoidCleanup = vi.fn(() => 1);
+    const nonvoidView = new FakeResult("taken", undefined);
+    Object.defineProperty(nonvoidView, "free", { value: nonvoidCleanup });
+
+    expect(() => consumeWasmActionStates(EXPECTED, throwingView)).not.toThrow();
+    expect(consumeWasmActionStates(EXPECTED, nonvoidView).ok).toBe(false);
+    expect(throwingCleanup).toHaveBeenCalledOnce();
+    expect(nonvoidCleanup).toHaveBeenCalledOnce();
+  });
+
+  it("contains a rejected asynchronous cleanup impostor", async () => {
+    const view = new FakeResult("taken", undefined);
+    Object.defineProperty(view, "free", {
+      value: () => Promise.reject(new Error("private cleanup rejection")),
+    });
+
+    expect(consumeWasmActionStates(EXPECTED, view).ok).toBe(false);
+    await Promise.resolve();
   });
 
   it("still frees a result when the expected correlation object is malformed", () => {

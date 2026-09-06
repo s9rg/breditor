@@ -193,10 +193,13 @@ const INVALID_VIEW: BrowserActionStateReadError = Object.freeze({
 });
 
 const OWNED_READ_RESULTS = new WeakSet<object>();
+const PROMISE_RESOLVE = Promise.resolve.bind(Promise);
+const PROMISE_CATCH = Promise.prototype.catch;
+const IGNORE_SETTLEMENT = (): undefined => undefined;
 
 interface OwnedHandle {
   readonly value: object;
-  readonly free: () => void;
+  readonly free: () => unknown;
 }
 
 interface HandleRegistry {
@@ -242,7 +245,14 @@ export function consumeWasmActionStates(
   protectedHandles: readonly unknown[] = [],
 ): BrowserActionStateReadResult {
   const registry: HandleRegistry = { handles: [], seen: new Set(), invalid: false };
-  const protectedSet = objectSet(protectedHandles);
+  let protectedSet: ReadonlySet<object>;
+  try {
+    protectedSet = objectSet(protectedHandles);
+  } catch {
+    // The outer view cannot be accepted when a protected alias cannot be
+    // ruled out. Ownership therefore remains with the caller on this path.
+    return boundaryFailure();
+  }
   let provisional: BrowserActionStateReadResult = boundaryFailure();
   try {
     provisional = readWasmActionStates(expected, view, registry, protectedSet);
@@ -265,15 +275,18 @@ function readWasmActionStates(
   registry: HandleRegistry,
   protectedHandles: ReadonlySet<object>,
 ): BrowserActionStateReadResult {
-  const expectedSnapshot = readExpectedSnapshot(expected);
   const capturedResult = captureHandle(registry, view, protectedHandles);
+  const expectedSnapshot = readExpectedSnapshot(expected);
   if (expectedSnapshot === null || !capturedResult) {
     return boundaryFailure();
   }
 
   const status = view.status;
+  if (valueIsThenable(status)) return boundaryFailure();
   const takeSnapshot = view.takeSnapshot;
-  if (typeof takeSnapshot !== "function") return boundaryFailure();
+  if (valueIsThenable(takeSnapshot) || typeof takeSnapshot !== "function") {
+    return boundaryFailure();
+  }
   const rawError = view.error;
   const error = readOwnedError(rawError, registry, protectedHandles);
   if (registry.invalid) return boundaryFailure();
@@ -334,9 +347,13 @@ function readSnapshot(
   if (methods === null) return null;
 
   const lineage = view.snapshotLineage;
+  if (valueIsThenable(lineage)) return null;
   const revision = view.snapshotRevision;
+  if (valueIsThenable(revision)) return null;
   const entryCount = view.entryCount;
+  if (valueIsThenable(entryCount)) return null;
   const changedCount = view.changedCount;
+  if (valueIsThenable(changedCount)) return null;
   if (
     lineage !== expected.lineage ||
     revision !== expected.revision ||
@@ -355,13 +372,21 @@ function readSnapshot(
   let retainedValueCount = 0;
   let retainedValueTextBytes = 0;
   for (let index = 0; index < entryCount; index += 1) {
-    const id = callIndex(methods.entryId, view, index);
-    const rawStatus = callIndex(methods.entryStatus, view, index);
-    const activation = callIndex(methods.entryActivation, view, index);
-    const reasonCode = callIndex(methods.entryReasonCode, view, index);
-    const valueStatus = callIndex(methods.entryValueStatus, view, index);
-    const contractName = callIndex(methods.entryValueContractName, view, index);
-    const contractVersion = callIndex(methods.entryValueContractVersion, view, index);
+    const id = callScalarIndex(methods.entryId, view, index);
+    const rawStatus = callScalarIndex(methods.entryStatus, view, index);
+    const activation = callScalarIndex(methods.entryActivation, view, index);
+    const reasonCode = callScalarIndex(methods.entryReasonCode, view, index);
+    const valueStatus = callScalarIndex(methods.entryValueStatus, view, index);
+    const contractName = callScalarIndex(
+      methods.entryValueContractName,
+      view,
+      index,
+    );
+    const contractVersion = callScalarIndex(
+      methods.entryValueContractVersion,
+      view,
+      index,
+    );
     const valueResult = callIndex(methods.entryUniformValueJson, view, index);
     const encoded = consumeOwnedValueResult(
       valueResult,
@@ -425,7 +450,7 @@ function readSnapshot(
   const changedIds: string[] = [];
   let priorChangedId: string | undefined;
   for (let index = 0; index < changedCount; index += 1) {
-    const id = callIndex(methods.changedId, view, index);
+    const id = callScalarIndex(methods.changedId, view, index);
     if (
       typeof id !== "string" ||
       !entryIds.has(id) ||
@@ -436,7 +461,7 @@ function readSnapshot(
     changedIds.push(id);
     priorChangedId = id;
   }
-  if (callIndex(methods.changedId, view, changedCount) !== undefined) {
+  if (callScalarIndex(methods.changedId, view, changedCount) !== undefined) {
     return null;
   }
   if (
@@ -459,23 +484,58 @@ function readSnapshot(
 
 function readSnapshotMethods(view: WasmActionStateSnapshotView): SnapshotMethods | null {
   try {
+    const entryId = readSnapshotMethod(view, "entryId");
+    if (entryId === null) return null;
+    const entryStatus = readSnapshotMethod(view, "entryStatus");
+    if (entryStatus === null) return null;
+    const entryActivation = readSnapshotMethod(view, "entryActivation");
+    if (entryActivation === null) return null;
+    const entryReasonCode = readSnapshotMethod(view, "entryReasonCode");
+    if (entryReasonCode === null) return null;
+    const entryValueStatus = readSnapshotMethod(view, "entryValueStatus");
+    if (entryValueStatus === null) return null;
+    const entryValueContractName = readSnapshotMethod(
+      view,
+      "entryValueContractName",
+    );
+    if (entryValueContractName === null) return null;
+    const entryValueContractVersion = readSnapshotMethod(
+      view,
+      "entryValueContractVersion",
+    );
+    if (entryValueContractVersion === null) return null;
+    const entryUniformValueJson = readSnapshotMethod(
+      view,
+      "entryUniformValueJson",
+    );
+    if (entryUniformValueJson === null) return null;
+    const changedId = readSnapshotMethod(view, "changedId");
+    if (changedId === null) return null;
     const methods: SnapshotMethods = {
-      entryId: view.entryId,
-      entryStatus: view.entryStatus,
-      entryActivation: view.entryActivation,
-      entryReasonCode: view.entryReasonCode,
-      entryValueStatus: view.entryValueStatus,
-      entryValueContractName: view.entryValueContractName,
-      entryValueContractVersion: view.entryValueContractVersion,
-      entryUniformValueJson: view.entryUniformValueJson,
-      changedId: view.changedId,
+      entryId,
+      entryStatus,
+      entryActivation,
+      entryReasonCode,
+      entryValueStatus,
+      entryValueContractName,
+      entryValueContractVersion,
+      entryUniformValueJson,
+      changedId,
     };
-    return Object.values(methods).every((method) => typeof method === "function")
-      ? methods
-      : null;
+    return methods;
   } catch {
     return null;
   }
+}
+
+function readSnapshotMethod<TKey extends keyof SnapshotMethods>(
+  view: WasmActionStateSnapshotView,
+  key: TKey,
+): SnapshotMethods[TKey] | null {
+  const method = Reflect.get(view, key, view) as unknown;
+  return !valueIsThenable(method) && typeof method === "function"
+    ? (method as SnapshotMethods[TKey])
+    : null;
 }
 
 function sentinelFieldsAreAbsent(
@@ -488,13 +548,13 @@ function sentinelFieldsAreAbsent(
   const valueResult = callIndex(methods.entryUniformValueJson, view, index);
   const encoded = consumeOwnedValueResult(valueResult, registry, protectedHandles);
   return (
-    callIndex(methods.entryId, view, index) === undefined &&
-    callIndex(methods.entryStatus, view, index) === undefined &&
-    callIndex(methods.entryActivation, view, index) === undefined &&
-    callIndex(methods.entryReasonCode, view, index) === undefined &&
-    callIndex(methods.entryValueStatus, view, index) === undefined &&
-    callIndex(methods.entryValueContractName, view, index) === undefined &&
-    callIndex(methods.entryValueContractVersion, view, index) === undefined &&
+    callScalarIndex(methods.entryId, view, index) === undefined &&
+    callScalarIndex(methods.entryStatus, view, index) === undefined &&
+    callScalarIndex(methods.entryActivation, view, index) === undefined &&
+    callScalarIndex(methods.entryReasonCode, view, index) === undefined &&
+    callScalarIndex(methods.entryValueStatus, view, index) === undefined &&
+    callScalarIndex(methods.entryValueContractName, view, index) === undefined &&
+    callScalarIndex(methods.entryValueContractVersion, view, index) === undefined &&
     encoded !== null &&
     encoded.value === undefined
   );
@@ -558,14 +618,18 @@ function consumeOwnedValueResult(
   const result = value as WasmActionStateStringResultView;
   try {
     const status = result.status;
+    if (valueIsThenable(status)) return null;
     const takeValue = result.takeValue;
-    if (typeof takeValue !== "function") return null;
+    if (valueIsThenable(takeValue) || typeof takeValue !== "function") {
+      return null;
+    }
     const rawError = result.error;
     const error = readOwnedError(rawError, registry, protectedHandles);
     if (registry.invalid) return null;
     // Error getters clone Wasm handles. Capture the clone before a later
     // takeValue call can throw, so the outer registry remains exhaustive.
     const rawValue = Reflect.apply(takeValue, result, []) as unknown;
+    if (valueIsThenable(rawValue)) return null;
     if (status === "value") {
       if (error !== undefined || typeof rawValue !== "string") return null;
       if (rawValue.length > MAX_BROWSER_ACTION_STATE_VALUE_JSON_BYTES) return null;
@@ -696,7 +760,9 @@ function readExpectedSnapshot(
 ): Readonly<{ lineage: string; revision: string }> | null {
   try {
     const lineage = value.lineage;
+    if (valueIsThenable(lineage)) return null;
     const revision = value.revision;
+    if (valueIsThenable(revision)) return null;
     return typeof lineage === "string" &&
       isLineage(lineage) &&
       typeof revision === "string" &&
@@ -718,7 +784,9 @@ function readOwnedError(
   try {
     const error = value as WasmActionStateErrorView;
     const code = error.code;
+    if (valueIsThenable(code)) return null;
     const message = error.message;
+    if (valueIsThenable(message)) return null;
     return typeof code === "string" &&
       isStableCode(code) &&
       typeof message === "string" &&
@@ -751,29 +819,48 @@ function captureHandle(
     registry.invalid = true;
     return false;
   }
+  let free: unknown;
   try {
-    const free = (value as { free?: unknown }).free;
-    if (typeof free !== "function") {
-      registry.invalid = true;
-      return false;
-    }
-    registry.seen.add(value);
-    registry.handles.push({
-      value,
-      free: () => Reflect.apply(free, value, []),
-    });
-    return true;
+    free = (value as { free?: unknown }).free;
   } catch {
+    containThenable(value);
     registry.invalid = true;
     return false;
   }
+  if (typeof free !== "function") {
+    valueIsThenable(free);
+    containThenable(value);
+    registry.invalid = true;
+    return false;
+  }
+  registry.seen.add(value);
+  registry.handles.push({
+    value,
+    free: () => Reflect.apply(free, value, []),
+  });
+  const freeIsThenable = valueIsThenable(free);
+  const handleIsThenable = containThenable(value);
+  if (freeIsThenable || handleIsThenable) {
+    registry.invalid = true;
+    return false;
+  }
+  return true;
 }
 
 function freeHandles(registry: HandleRegistry): boolean {
-  let failed = false;
+  let failed = registry.invalid;
   for (let index = registry.handles.length - 1; index >= 0; index -= 1) {
+    const handle = registry.handles[index];
+    if (handle === undefined) {
+      failed = true;
+      continue;
+    }
     try {
-      registry.handles[index]?.free();
+      const returned = handle.free();
+      if (returned !== undefined) {
+        if (objectLike(returned)) containThenable(returned);
+        failed = true;
+      }
     } catch {
       failed = true;
     }
@@ -799,6 +886,39 @@ function callIndex<T>(
   index: number,
 ): T {
   return Reflect.apply(method, receiver, [index]) as T;
+}
+
+function callScalarIndex<T>(
+  method: (index: number) => T,
+  receiver: WasmActionStateSnapshotView,
+  index: number,
+): T {
+  const value = callIndex(method, receiver, index);
+  if (valueIsThenable(value)) {
+    throw new TypeError("generated scalar getter returned a thenable");
+  }
+  return value;
+}
+
+function valueIsThenable(value: unknown): boolean {
+  return objectLike(value) && containThenable(value);
+}
+
+function containThenable(value: object): boolean {
+  let then: unknown;
+  try {
+    then = (value as { then?: unknown }).then;
+  } catch {
+    return true;
+  }
+  if (then === undefined) return false;
+  try {
+    const assimilated = PROMISE_RESOLVE(value);
+    Reflect.apply(PROMISE_CATCH, assimilated, [IGNORE_SETTLEMENT]);
+  } catch {
+    // The value remains invalid even if rejection containment itself fails.
+  }
+  return true;
 }
 
 function boundaryFailure(): BrowserActionStateReadResult {

@@ -186,13 +186,14 @@ The following remain deliberately unimplemented:
   manifests (the browser now has a synchronous last-good state store and a
   bounded manifest-driven base toolbar);
 - ordered tail I/O and recovery orchestration, process-restart append
-  reconstruction, atomic checkpoint/log replacement,
+  reconstruction, coordinated local-log/checkpoint replacement,
   durable restart continuation, cryptographic integrity or authenticity,
   rollback protection, migration, and crash-tail truncation;
 - storage-generation initial provisioning, a general plan-level
   `DefinitelyNotCommitted` ownership state, process-restart plan reconstruction,
   transaction ownership typestate, adapter capabilities, authoritative-head
-  integration, and an executable filesystem or IndexedDB adapter (only the
+  integration, and an executable filesystem or IndexedDB adapter for that
+  local-log profile (only the
   profile contract, pure-Rust values/attempt mechanics, process-local host
   terminal attestations, both resolver state machines, writer-fence comparison/
   planning, the process-local acquisition/token lifecycle, pure append
@@ -200,9 +201,10 @@ The following remain deliberately unimplemented:
   request, terminal-classification, and explicit one-head-acknowledgement
   boundaries exist);
 - published consumer packaging, a unified end-user browser event router,
-  persistence/React integration, and the real-browser support matrix (guarded
+  React integration, and the real-browser support matrix (guarded
   base-subset clipboard mutation exists at `0.0.55`; guarded action-state and
-  toolbar delivery exist at `0.0.56`);
+  toolbar delivery exist at `0.0.56`; atomic single-slot session-checkpoint
+  persistence exists at `0.0.57`);
 - atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
   boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
   append coordination;
@@ -1130,6 +1132,25 @@ re-enter the ordinary guarded command FIFO; real in-editor `selectionchange`
 observations use a dedicated selection-only request. These are application
 contracts, not executable preparations, dynamic Rust plugin registration, or a
 new durable wire format.
+
+Version `0.0.57` adds an executable browser persistence profile without
+changing any Rust format. The observation-owning adapter strictly consumes one
+complete `SessionCheckpoint` result, and restore transfers a newly decoded
+engine only after the generated result passes ownership and shape checks. A
+bounded handle-free commit feed fires exactly when a validated Rust successor
+is adopted, including same-revision history-group boundaries and prestages
+whose later delivery fails.
+
+JavaScript stores one complete checkpoint under one exact IndexedDB schema. It
+verifies a closed outer record, canonical nonzero storage generation, exact
+UTF-8 length, and SHA-256, and replaces it only after a full-record
+compare-and-swap inside one `readwrite` transaction. The Rust decoder still
+authoritatively validates the inner checkpoint. Autosave coalesces adopted
+commits, allows one active save, tracks exact flush epochs, and pauses until
+explicit retry after failure. Retry reuses the current compare-and-swap token;
+it is not conflict resolution. This is best-effort one-slot recovery, not Local
+Log Frame V1 append, cross-document storage, merge, authenticity,
+anti-rollback, or cross-device synchronization.
 
 Element, format, schema, and top-level property names use the original qualified
 name grammar `namespace/local-name`. Both parts are ASCII lowercase, begin with a

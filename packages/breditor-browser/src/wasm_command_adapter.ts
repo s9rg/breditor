@@ -35,11 +35,11 @@ import {
   type BaseRangeSelection,
 } from "./selection.js";
 import {
-  consumeSemanticProjectionUpdate,
+  consumeSemanticProjectionUpdateWithCleanup,
   type SemanticProjectionUpdateView,
 } from "./wasm_projection_adapter.js";
 import {
-  consumeSemanticSelection,
+  consumeSemanticSelectionWithCleanup,
   semanticRangeSelectionScalars,
   type SemanticRangeSelectionScalars,
   type SemanticSelectionView,
@@ -50,6 +50,14 @@ import {
   type WasmActionStateReadPort,
   type WasmActionStatesResultView,
 } from "./wasm_action_state_adapter.js";
+import {
+  consumeWasmSessionCheckpoint,
+  invalidWasmSessionCheckpointReadResult,
+  unavailableWasmSessionCheckpointReadResult,
+  type BrowserSessionCheckpointReadResult,
+  type WasmSessionCheckpointReadPort,
+  type WasmSessionCheckpointStringResultView,
+} from "./wasm_session_checkpoint.js";
 
 /** Structural subset of the generated opaque observation owned by this adapter. */
 export interface WasmCommandObservationView {
@@ -96,6 +104,7 @@ export interface WasmSelectionResultView {
 /** Structural generated-engine surface used by the atomic browser sequence. */
 export interface WasmCommandEngineView {
   actionStates(expected: WasmCommandObservationView): WasmActionStatesResultView;
+  sessionCheckpointJson(): WasmSessionCheckpointStringResultView;
   clearSelection(expected: WasmCommandObservationView): WasmCommandResultView;
   setRangeSelection(
     expected: WasmCommandObservationView,
@@ -136,6 +145,18 @@ export interface WasmCommandSnapshot {
   readonly lineage: string;
   readonly revision: string;
 }
+
+/** Maximum independent listeners retained by one command adapter. */
+export const MAX_WASM_CORE_COMMIT_OBSERVERS = 64;
+
+/** Handle-free fact emitted exactly once for every adopted Rust commit. */
+export interface WasmCoreCommit {
+  readonly eventKind: "selection" | "action" | "undo" | "redo" | "closeHistoryGroup";
+  readonly snapshot: WasmCommandSnapshot;
+}
+
+/** Synchronous listener for an adopted commit; failures are contained. */
+export type WasmCoreCommitObserver = (commit: WasmCoreCommit) => unknown;
 
 /** Handle-free renderer metadata for one commit-bearing step. */
 export interface WasmCommandRenderMetadata {
@@ -215,6 +236,7 @@ type AdapterState =
   | "composition"
   | "executing"
   | "readingActionState"
+  | "readingCheckpoint"
   | "reconcile"
   | "faulted"
   | "disposed";
@@ -261,7 +283,10 @@ export class BreditorWasmCommandAdapter {
   readonly #commandExecutor = (request: EditorCommandRequest) =>
     this.#execute(request);
   readonly #actionStateReadPort: WasmActionStateReadPort;
+  readonly #sessionCheckpointReadPort: WasmSessionCheckpointReadPort;
+  readonly #coreCommitObservers = new Map<symbol, WasmCoreCommitObserver>();
   #observation: WasmCommandObservationView | undefined;
+  #observationCleanup: GeneratedHandleCleanup | undefined;
   #snapshot: WasmCommandSnapshot;
   #projection: BaseDocumentProjection;
   #rendered: RenderedProjection;
@@ -274,6 +299,23 @@ export class BreditorWasmCommandAdapter {
     observation: WasmCommandObservationView,
     options: BreditorWasmCommandAdapterOptions,
   ) {
+    if ((engine as unknown) === observation) {
+      throw new TypeError("Wasm command adapter dependencies are invalid");
+    }
+    const observationRegistry = createGeneratedHandleRegistry();
+    if (
+      !claimGeneratedHandle(observationRegistry, observation, [engine]) ||
+      containGeneratedThenable(observation)
+    ) {
+      throw new TypeError("Wasm command adapter dependencies are invalid");
+    }
+    const observationCleanup = transferGeneratedHandle(
+      observationRegistry,
+      observation,
+    );
+    if (observationCleanup === undefined) {
+      throw new TypeError("Wasm command adapter dependencies are invalid");
+    }
     const safeEngine = snapshotEngineView(engine);
     if (safeEngine === null) {
       throw new TypeError("Wasm command engine is invalid");
@@ -282,8 +324,7 @@ export class BreditorWasmCommandAdapter {
     const dependencies = snapshotAdapterOptions(options);
     if (
       snapshot === null ||
-      dependencies === null ||
-      (engine as unknown) === observation
+      dependencies === null
     ) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
@@ -297,6 +338,7 @@ export class BreditorWasmCommandAdapter {
     this.#engine = safeEngine;
     this.#engineOwner = engine;
     this.#observation = observation;
+    this.#observationCleanup = observationCleanup;
     this.#snapshot = snapshot;
     this.#renderer = dependencies.renderer;
     this.#rendered = dependencies.rendered;
@@ -308,6 +350,9 @@ export class BreditorWasmCommandAdapter {
     );
     this.#actionStateReadPort = Object.freeze({
       read: () => this.#readActionStates(),
+    });
+    this.#sessionCheckpointReadPort = Object.freeze({
+      read: () => this.#readSessionCheckpoint(),
     });
   }
 
@@ -333,6 +378,11 @@ export class BreditorWasmCommandAdapter {
     return this.#actionStateReadPort;
   }
 
+  /** Handle-free checkpoint reader bound to this adapter's current engine. */
+  get sessionCheckpointReadPort(): WasmSessionCheckpointReadPort {
+    return this.#sessionCheckpointReadPort;
+  }
+
   /** Current semantic snapshot, including while DOM reconciliation is required. */
   get snapshot(): WasmCommandSnapshot {
     return this.#snapshot;
@@ -341,6 +391,31 @@ export class BreditorWasmCommandAdapter {
   /** Current adapter lifecycle. Only `live` can issue normal delivery tokens. */
   get state(): AdapterState {
     return this.#state;
+  }
+
+  /**
+   * Observes every validated Rust commit at the instant its successor becomes
+   * authoritative, independently of later DOM or multi-stage delivery failure.
+   * The returned release function is idempotent.
+   */
+  observeCoreCommits(observer: WasmCoreCommitObserver): () => void {
+    if (typeof observer !== "function") {
+      throw new TypeError("core commit observer must be callable");
+    }
+    if (this.#state === "disposed") {
+      throw new TypeError("cannot observe a disposed command adapter");
+    }
+    if (this.#coreCommitObservers.size >= MAX_WASM_CORE_COMMIT_OBSERVERS) {
+      throw new RangeError("core commit observer capacity is exhausted");
+    }
+    const token = Symbol("breditor-core-commit-observer");
+    this.#coreCommitObservers.set(token, observer);
+    let active = true;
+    return Object.freeze((): void => {
+      if (!active) return;
+      active = false;
+      this.#coreCommitObservers.delete(token);
+    });
   }
 
   /** Current render handle; it may be noncanonical while state is `reconcile`. */
@@ -412,6 +487,36 @@ export class BreditorWasmCommandAdapter {
     } finally {
       if (this.#state === "readingActionState") {
         this.#state = "live";
+      }
+    }
+  }
+
+  #readSessionCheckpoint(): BrowserSessionCheckpointReadResult | undefined {
+    if (
+      this.#state === "faulted" ||
+      this.#state === "disposed" ||
+      this.#observation === undefined
+    ) {
+      return unavailableWasmSessionCheckpointReadResult();
+    }
+    if (this.#state !== "live" && this.#state !== "reconcile") {
+      return undefined;
+    }
+    const observation = this.#observation;
+    const expected = this.#snapshot;
+    const resumeState = this.#state;
+    this.#state = "readingCheckpoint";
+    try {
+      const result = this.#engine.sessionCheckpointJson();
+      return consumeWasmSessionCheckpoint(expected, result, [
+        observation,
+        this.#engineOwner,
+      ]);
+    } catch {
+      return invalidWasmSessionCheckpointReadResult();
+    } finally {
+      if (this.#state === "readingCheckpoint") {
+        this.#state = resumeState;
       }
     }
   }
@@ -842,12 +947,17 @@ export class BreditorWasmCommandAdapter {
 
   /** Releases the current observation and render authority exactly once. */
   dispose(): void {
-    if (this.#state === "executing" || this.#state === "readingActionState") {
+    if (
+      this.#state === "executing" ||
+      this.#state === "readingActionState" ||
+      this.#state === "readingCheckpoint"
+    ) {
       throw new TypeError("cannot dispose a command adapter during delivery");
     }
     if (this.#state === "disposed") {
       return;
     }
+    let failed = false;
     let firstFailure: unknown;
     if (this.#state === "composition") {
       const lease = this.#compositionLease;
@@ -866,29 +976,37 @@ export class BreditorWasmCommandAdapter {
           throw new TypeError(`composition disposal ${restored.reason}`);
         }
       } catch (error) {
+        failed = true;
         firstFailure = error;
         if (lease !== undefined) {
           this.#discardCompositionDomLease(lease);
         }
       }
     }
-    const observation = this.#observation;
+    const observationCleanup = this.#observationCleanup;
     this.#observation = undefined;
+    this.#observationCleanup = undefined;
     this.#compositionLease = undefined;
     this.#state = "disposed";
+    this.#coreCommitObservers.clear();
     try {
       if (this.#renderer.owns(this.#rendered)) {
         this.#renderer.release(this.#rendered);
       }
     } catch (error) {
-      firstFailure ??= error;
+      if (!failed) {
+        failed = true;
+        firstFailure = error;
+      }
     }
-    try {
-      observation?.free();
-    } catch (error) {
-      firstFailure ??= error;
+    if (observationCleanup !== undefined) {
+      const released = runGeneratedHandleCleanup(observationCleanup);
+      if (!released.ok && !failed) {
+        failed = true;
+        firstFailure = released.error;
+      }
     }
-    if (firstFailure !== undefined) {
+    if (failed) {
       throw firstFailure;
     }
   }
@@ -932,20 +1050,32 @@ export class BreditorWasmCommandAdapter {
     ) {
       throw new TypeError("Wasm command result handle is invalid or aliased");
     }
-    if (!isCommandResultView(result)) {
-      const cleanup = objectLike(result)
-        ? freeUnique([result], previous, [this.#engineOwner])
-        : undefined;
-      if (cleanup !== undefined) {
-        throw cleanup;
-      }
-      throw new TypeError("Wasm command result handle is invalid or aliased");
+    const owned = createGeneratedHandleRegistry();
+    const resultClaimed = claimGeneratedHandle(owned, result, [
+      previous,
+      this.#engineOwner,
+    ]);
+    const resultAsynchronous = containGeneratedThenable(result);
+    if (
+      !resultClaimed ||
+      resultAsynchronous ||
+      !isCommandResultView(result)
+    ) {
+      const cleanup = releaseGeneratedHandles(owned);
+      if (!cleanup.ok) throw cleanup.error;
+      throw new TypeError(
+        resultAsynchronous
+          ? "Wasm command result handle is asynchronous"
+          : "Wasm command result handle is invalid or aliased",
+      );
     }
 
+    const protectedHandles = [previous, this.#engineOwner] as const;
     let errorView: WasmCommandErrorView | undefined;
+    let copiedError: WasmCommandError | null | undefined;
     let successor: WasmCommandObservationView | undefined;
+    let nextSnapshot: WasmCommandSnapshot | null | undefined;
     let updateView: SemanticProjectionUpdateView | undefined;
-    let resultOwned = true;
     try {
       const status = result.status;
       const eventKind = result.eventKind;
@@ -953,13 +1083,19 @@ export class BreditorWasmCommandAdapter {
       const disabledReasonCode = result.disabledReasonCode;
       const activation = result.activation;
       errorView = result.error;
+      if (errorView !== undefined) {
+        claimSynchronousGeneratedHandle(owned, errorView, protectedHandles);
+        copiedError = readError(errorView);
+      }
       successor = result.observation();
+      if (successor !== undefined) {
+        claimSynchronousGeneratedHandle(owned, successor, protectedHandles);
+        nextSnapshot = readObservationSnapshot(successor);
+      }
       updateView = result.projectionUpdate();
-      assertDistinctGeneratedHandles(
-        previous,
-        [result, errorView, successor, updateView],
-        [this.#engineOwner],
-      );
+      if (updateView !== undefined) {
+        claimSynchronousGeneratedHandle(owned, updateView, protectedHandles);
+      }
 
       if (status === "error") {
         if (
@@ -973,32 +1109,25 @@ export class BreditorWasmCommandAdapter {
         ) {
           throw new TypeError("Wasm error result violated its exact shape");
         }
-        const error = readError(errorView);
-        if (error === null) {
+        if (copiedError === null || copiedError === undefined) {
           throw new TypeError("Wasm command error is invalid");
         }
-        const cleanup = freeUnique(
-          [errorView, result],
-          previous,
-          [this.#engineOwner],
-        );
-        errorView = undefined;
-        resultOwned = false;
-        if (cleanup !== undefined) {
-          throw cleanup;
-        }
-        if (error.stale) {
+        const cleanup = releaseGeneratedHandles(owned);
+        if (!cleanup.ok) throw cleanup.error;
+        if (copiedError.stale) {
           this.#state = "faulted";
         }
-        throw new KnownCommandRejection(error);
+        throw new KnownCommandRejection(copiedError);
       }
 
       if (errorView !== undefined || successor === undefined) {
         throw new TypeError("Wasm non-error result violated its exact shape");
       }
-      const nextSnapshot = readObservationSnapshot(successor);
       if (nextSnapshot === null) {
         throw new TypeError("Wasm successor observation is invalid");
+      }
+      if (nextSnapshot === undefined) {
+        throw new TypeError("Wasm successor observation is unavailable");
       }
       let transition: AppliedTransition = Object.freeze({
         projection: this.#projection,
@@ -1027,9 +1156,14 @@ export class BreditorWasmCommandAdapter {
             throw new TypeError("commit-bearing result omitted its projection update");
           }
           const ownedUpdate = updateView;
+          const updateCleanup = transferGeneratedHandle(owned, ownedUpdate);
+          if (updateCleanup === undefined) {
+            throw new TypeError("Wasm projection update ownership is unavailable");
+          }
           updateView = undefined;
           transition = this.#consumeAndRenderUpdate(
             ownedUpdate,
+            updateCleanup,
             successor,
             nextSnapshot,
             [previous, result, successor, this.#engineOwner],
@@ -1080,20 +1214,32 @@ export class BreditorWasmCommandAdapter {
         throw new TypeError("Wasm command status is invalid");
       }
 
-      const cleanup = freeUnique(
-        [result, previous],
-        successor,
-        [this.#engineOwner],
-      );
-      resultOwned = false;
+      const successorCleanup = transferGeneratedHandle(owned, successor);
+      if (successorCleanup === undefined) {
+        throw new TypeError("Wasm successor observation ownership is unavailable");
+      }
+      let cleanup = releaseGeneratedHandles(owned);
+      const previousCleanup = this.#observationCleanup;
+      const previousRelease = previousCleanup === undefined
+        ? generatedCleanupFailure(
+            new TypeError("current observation ownership is unavailable"),
+          )
+        : runGeneratedHandleCleanup(previousCleanup);
+      if (cleanup.ok && !previousRelease.ok) {
+        cleanup = previousRelease;
+      }
       this.#observation = successor;
+      this.#observationCleanup = successorCleanup;
       this.#snapshot = nextSnapshot;
       this.#projection = transition.projection;
       this.#rendered = transition.rendered;
       successor = undefined;
-      if (cleanup !== undefined) {
+      if (outcome.status === "committed") {
+        this.#publishCoreCommit(outcome.eventKind, outcome.snapshot);
+      }
+      if (!cleanup.ok) {
         this.#state = "faulted";
-        throw cleanup;
+        throw cleanup.error;
       }
       if (transition.domFailure) {
         this.#state = "reconcile";
@@ -1101,27 +1247,25 @@ export class BreditorWasmCommandAdapter {
       }
       return outcome;
     } finally {
-      const cleanup = freeUnique(
-        [errorView, successor, updateView, resultOwned ? result : undefined],
-        previous,
-        [this.#engineOwner],
-      );
-      if (cleanup !== undefined && this.#state === "executing") {
+      const cleanup = releaseGeneratedHandles(owned);
+      if (!cleanup.ok && this.#state === "executing") {
         this.#state = "faulted";
-        throw cleanup;
+        throw cleanup.error;
       }
     }
   }
 
   #consumeAndRenderUpdate(
     updateView: SemanticProjectionUpdateView,
+    updateCleanup: GeneratedHandleCleanup,
     successor: WasmCommandObservationView,
     nextSnapshot: WasmCommandSnapshot,
     protectedHandles: readonly unknown[],
   ): AppliedTransition {
-    const converted = consumeSemanticProjectionUpdate(
+    const converted = consumeSemanticProjectionUpdateWithCleanup(
       this.#projection,
       updateView,
+      updateCleanup,
       protectedHandles,
     );
     if (!converted.ok) {
@@ -1134,7 +1278,17 @@ export class BreditorWasmCommandAdapter {
     ) {
       throw new TypeError("projection update and successor observation disagree");
     }
-    const rendered = this.#renderer.update(this.#rendered, update);
+    let rendered: ReturnType<BreditorDomRenderer["update"]>;
+    try {
+      rendered = this.#renderer.update(this.#rendered, update);
+    } catch {
+      return Object.freeze({
+        projection: update.result,
+        rendered: this.#rendered,
+        metadata: undefined,
+        domFailure: true,
+      });
+    }
     if (!rendered.ok) {
       return Object.freeze({
         projection: update.result,
@@ -1188,55 +1342,73 @@ export class BreditorWasmCommandAdapter {
     projection: BaseDocumentProjection,
     protectedHandles: readonly unknown[] = [],
   ): BaseEditorSelection {
+    const owned = createGeneratedHandleRegistry();
+    const allProtectedHandles = [
+      observation,
+      this.#engineOwner,
+      ...protectedHandles,
+    ] as const;
     let result: WasmSelectionResultView | undefined;
     let errorView: WasmCommandErrorView | undefined;
     let selectionView: SemanticSelectionView | undefined;
-    let resultOwned = true;
     try {
       result = this.#engine.selection(observation);
-      if (
-        !isSelectionResultView(result) ||
-        (result as unknown) === observation ||
-        (result as unknown) === this.#engineOwner
-      ) {
+      if (allProtectedHandles.some((handle) => result === handle)) {
         throw new TypeError("Wasm selection result handle is invalid or aliased");
+      }
+      const resultClaimed = claimGeneratedHandle(
+        owned,
+        result,
+        allProtectedHandles,
+      );
+      const resultAsynchronous = containGeneratedThenable(result);
+      if (
+        !resultClaimed ||
+        resultAsynchronous ||
+        !isSelectionResultView(result)
+      ) {
+        throw new TypeError(
+          resultAsynchronous
+            ? "Wasm selection result handle is asynchronous"
+            : "Wasm selection result handle is invalid or aliased",
+        );
       }
       const status = result.status;
       errorView = result.error;
+      if (errorView !== undefined) {
+        claimSynchronousGeneratedHandle(owned, errorView, allProtectedHandles);
+      }
       selectionView = result.takeSelection();
-      assertDistinctGeneratedHandles(
-        observation,
-        [result, errorView, selectionView],
-        [this.#engineOwner, ...protectedHandles],
-      );
+      if (selectionView !== undefined) {
+        claimSynchronousGeneratedHandle(
+          owned,
+          selectionView,
+          allProtectedHandles,
+        );
+      }
       if (status !== "selection" || errorView !== undefined || selectionView === undefined) {
         throw new TypeError("Wasm selection read violated its exact shape");
       }
       const ownedSelection = selectionView;
+      const selectionCleanup = transferGeneratedHandle(owned, ownedSelection);
+      if (selectionCleanup === undefined) {
+        throw new TypeError("Wasm semantic selection ownership is unavailable");
+      }
       selectionView = undefined;
-      const consumed = consumeSemanticSelection(projection, ownedSelection);
+      const consumed = consumeSemanticSelectionWithCleanup(
+        projection,
+        ownedSelection,
+        selectionCleanup,
+      );
       if (!consumed.ok) {
         throw new TypeError("Wasm semantic selection is invalid");
       }
-      const cleanup = freeUnique(
-        [result],
-        observation,
-        [this.#engineOwner, ...protectedHandles],
-      );
-      resultOwned = false;
-      if (cleanup !== undefined) {
-        throw cleanup;
-      }
+      const cleanup = releaseGeneratedHandles(owned);
+      if (!cleanup.ok) throw cleanup.error;
       return consumed.value;
     } finally {
-      const cleanup = freeUnique(
-        [errorView, selectionView, resultOwned ? result : undefined],
-        observation,
-        [this.#engineOwner, ...protectedHandles],
-      );
-      if (cleanup !== undefined) {
-        throw cleanup;
-      }
+      const cleanup = releaseGeneratedHandles(owned);
+      if (!cleanup.ok) throw cleanup.error;
     }
   }
 
@@ -1248,6 +1420,22 @@ export class BreditorWasmCommandAdapter {
     if (!this.#selectionBridge.write(this.#rendered, value).ok) {
       this.#state = "reconcile";
       throw new DomReconciliationRequired();
+    }
+  }
+
+  #publishCoreCommit(
+    eventKind: WasmCoreCommit["eventKind"],
+    snapshot: WasmCommandSnapshot,
+  ): void {
+    if (this.#coreCommitObservers.size === 0) return;
+    const commit: WasmCoreCommit = Object.freeze({ eventKind, snapshot });
+    const observers = Array.from(this.#coreCommitObservers.values());
+    for (const observer of observers) {
+      try {
+        containObserverResult(Reflect.apply(observer, undefined, [commit]));
+      } catch {
+        // Commit publication is observational and cannot invalidate core state.
+      }
     }
   }
 
@@ -1389,8 +1577,7 @@ function readObservationSnapshot(value: unknown): WasmCommandSnapshot | null {
       lineage.length > 128 ||
       !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(lineage) ||
       typeof revision !== "string" ||
-      !canonicalU64(revision) ||
-      typeof observation.free !== "function"
+      !canonicalU64(revision)
     ) {
       return null;
     }
@@ -1409,8 +1596,7 @@ function readError(value: WasmCommandErrorView): WasmCommandError | null {
       !isStableCode(code) ||
       typeof message !== "string" ||
       message.length === 0 ||
-      message.length > 256 ||
-      typeof value.free !== "function"
+      message.length > 256
     ) {
       return null;
     }
@@ -1433,6 +1619,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     if (!objectLike(value)) return null;
     const receiver = value as WasmCommandEngineView;
     const actionStates = receiver.actionStates;
+    const sessionCheckpointJson = receiver.sessionCheckpointJson;
     const clearSelection = receiver.clearSelection;
     const setRangeSelection = receiver.setRangeSelection;
     const selection = receiver.selection;
@@ -1443,6 +1630,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     const closeHistoryGroup = receiver.closeHistoryGroup;
     if (
       typeof actionStates !== "function" ||
+      typeof sessionCheckpointJson !== "function" ||
       typeof clearSelection !== "function" ||
       typeof setRangeSelection !== "function" ||
       typeof selection !== "function" ||
@@ -1456,6 +1644,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     }
     const snapshot: WasmCommandEngineView = {
       actionStates: (expected) => Reflect.apply(actionStates, value, [expected]),
+      sessionCheckpointJson: () => Reflect.apply(sessionCheckpointJson, value, []),
       clearSelection: (expected) => Reflect.apply(clearSelection, value, [expected]),
       setRangeSelection: (
         expected,
@@ -1502,8 +1691,7 @@ function isCommandResultView(value: unknown): value is WasmCommandResultView {
       typeof value === "object" &&
       value !== null &&
       typeof result.observation === "function" &&
-      typeof result.projectionUpdate === "function" &&
-      typeof result.free === "function"
+      typeof result.projectionUpdate === "function"
     );
   } catch {
     return false;
@@ -1514,70 +1702,148 @@ function objectLike(value: unknown): value is object {
   return (typeof value === "object" && value !== null) || typeof value === "function";
 }
 
+const OBSERVER_PROMISE_RESOLVE = Promise.resolve.bind(Promise);
+const OBSERVER_PROMISE_CATCH = Promise.prototype.catch;
+const IGNORE_OBSERVER_SETTLEMENT = (): undefined => undefined;
+
+function containObserverResult(value: unknown): void {
+  if (!objectLike(value)) return;
+  try {
+    const contained = OBSERVER_PROMISE_RESOLVE(value);
+    Reflect.apply(OBSERVER_PROMISE_CATCH, contained, [IGNORE_OBSERVER_SETTLEMENT]);
+  } catch {
+    // Hostile thenable inspection and settlement remain observational only.
+  }
+}
+
+function containGeneratedThenable(value: unknown): boolean {
+  if (!objectLike(value)) return false;
+  let then: unknown;
+  try {
+    then = (value as { then?: unknown }).then;
+  } catch {
+    return true;
+  }
+  if (then === undefined) return false;
+  containObserverResult(value);
+  return true;
+}
+
 function isSelectionResultView(value: unknown): value is WasmSelectionResultView {
   try {
     const result = value as Partial<WasmSelectionResultView>;
     return (
       typeof value === "object" &&
       value !== null &&
-      typeof result.takeSelection === "function" &&
-      typeof result.free === "function"
+      typeof result.takeSelection === "function"
     );
   } catch {
     return false;
   }
 }
 
-function assertDistinctGeneratedHandles(
-  protectedObservation: WasmCommandObservationView,
-  values: readonly unknown[],
-  additionalProtectedHandles: readonly unknown[] = [],
-): void {
-  const seen = new Set<object>();
-  for (const value of values) {
-    if (value === undefined) {
-      continue;
-    }
-    if ((typeof value !== "object" && typeof value !== "function") || value === null) {
-      throw new TypeError("generated handle is not an object");
-    }
-    if (
-      value === protectedObservation ||
-      additionalProtectedHandles.some((handle) => value === handle) ||
-      seen.has(value)
-    ) {
-      throw new TypeError("generated handles alias protected ownership");
-    }
-    seen.add(value);
+type GeneratedHandleCleanup = () => unknown;
+
+interface GeneratedHandleRegistry {
+  readonly cleanups: Map<object, GeneratedHandleCleanup>;
+}
+
+type GeneratedCleanupResult =
+  | Readonly<{ ok: true }>
+  | Readonly<{ ok: false; error: unknown }>;
+
+const GENERATED_CLEANUP_SUCCESS: GeneratedCleanupResult = Object.freeze({
+  ok: true,
+});
+
+function generatedCleanupFailure(error: unknown): GeneratedCleanupResult {
+  return Object.freeze({ ok: false, error });
+}
+
+function createGeneratedHandleRegistry(): GeneratedHandleRegistry {
+  return { cleanups: new Map<object, GeneratedHandleCleanup>() };
+}
+
+function claimGeneratedHandle(
+  registry: GeneratedHandleRegistry,
+  value: unknown,
+  protectedHandles: readonly unknown[] = [],
+): value is object {
+  if (
+    !objectLike(value) ||
+    protectedHandles.some((handle) => value === handle) ||
+    registry.cleanups.has(value)
+  ) {
+    return false;
+  }
+  try {
+    const free = (value as { free?: unknown }).free;
+    if (typeof free !== "function") return false;
+    const receiver = value;
+    registry.cleanups.set(receiver, () =>
+      Reflect.apply(free, receiver, []) as unknown,
+    );
+    return true;
+  } catch {
+    return false;
   }
 }
 
-function freeUnique(
-  values: readonly unknown[],
-  protectedHandle?: unknown,
-  additionalProtectedHandles: readonly unknown[] = [],
-): unknown | undefined {
-  const seen = new Set<unknown>();
-  let firstFailure: unknown;
-  for (const value of values) {
-    if (
-      value === undefined ||
-      value === protectedHandle ||
-      additionalProtectedHandles.some((handle) => value === handle) ||
-      seen.has(value)
-    ) {
-      continue;
-    }
-    seen.add(value);
-    try {
-      const free = (value as { free?: unknown }).free;
-      if (typeof free !== "function") {
-        throw new TypeError("generated handle has no free method");
-      }
-      Reflect.apply(free, value, []);
-    } catch (error) {
-      firstFailure ??= error;
-    }
+function claimSynchronousGeneratedHandle(
+  registry: GeneratedHandleRegistry,
+  value: unknown,
+  protectedHandles: readonly unknown[] = [],
+): void {
+  if (!objectLike(value)) {
+    throw new TypeError("generated handle is not an object");
+  }
+  if (
+    protectedHandles.some((handle) => value === handle) ||
+    registry.cleanups.has(value)
+  ) {
+    throw new TypeError("generated handles alias protected ownership");
+  }
+  if (!claimGeneratedHandle(registry, value, protectedHandles)) {
+    throw new TypeError("generated handle has no stable free method");
+  }
+  if (containGeneratedThenable(value)) {
+    throw new TypeError("generated handle is asynchronous");
+  }
+}
+
+function transferGeneratedHandle(
+  registry: GeneratedHandleRegistry,
+  value: unknown,
+): GeneratedHandleCleanup | undefined {
+  if (!objectLike(value)) return undefined;
+  const cleanup = registry.cleanups.get(value);
+  if (cleanup !== undefined) registry.cleanups.delete(value);
+  return cleanup;
+}
+
+function runGeneratedHandleCleanup(
+  cleanup: GeneratedHandleCleanup,
+): GeneratedCleanupResult {
+  try {
+    const returned = Reflect.apply(cleanup, undefined, []) as unknown;
+    if (returned === undefined) return GENERATED_CLEANUP_SUCCESS;
+    containObserverResult(returned);
+    return generatedCleanupFailure(
+      new TypeError("generated handle free returned a value"),
+    );
+  } catch (error) {
+    return generatedCleanupFailure(error);
+  }
+}
+
+function releaseGeneratedHandles(
+  registry: GeneratedHandleRegistry,
+): GeneratedCleanupResult {
+  let firstFailure: GeneratedCleanupResult = GENERATED_CLEANUP_SUCCESS;
+  for (const [handle, cleanup] of Array.from(registry.cleanups.entries())) {
+    registry.cleanups.delete(handle);
+    const released = runGeneratedHandleCleanup(cleanup);
+    if (firstFailure.ok && !released.ok) firstFailure = released;
   }
   return firstFailure;
 }

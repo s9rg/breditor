@@ -121,7 +121,7 @@ direct-root base-paragraph text structure, generic formatting kinds and
 attributes,
   asynchronous action-state delivery, dynamic catalog registration,
   presentation plugin lifecycle management, ordered log storage and tail-wide recovery,
-checkpoint/log atomic replacement, storage-generation publication and initial
+log/checkpoint coordinated replacement, storage-generation publication and initial
 scope provisioning, executable append I/O and process-restart append
 reconstruction,
 cryptographic integrity/authenticity, rollback protection, and
@@ -831,6 +831,26 @@ the distributed Rust/Wasm catalog itself remains the three base controls.
 Dynamic JavaScript action registration, styling/icons, menus, asynchronous
 delivery, and real browser/assistive-technology certification remain later
 gates.
+
+Version `0.0.57` adds the executable
+[single-slot IndexedDB session-checkpoint profile](docs/SESSION_CHECKPOINT_STORAGE.md).
+The browser consumes bounded Session Checkpoint V1 strings without exposing
+generated handles, restores engines through strict Rust decode, and stores one
+digest-checked atomic replacement behind an opaque full-record compare-and-swap
+token. Schema/version mismatch, corruption, conflict, quota, abort, connection,
+generation, and digest failures stay explicit and payload-redacted.
+
+Autosave observes the command adapter's exact adopted-core-commit boundary,
+not queue success. It therefore marks selection/history prestages and valid
+commits that later require DOM reconciliation. A trailing/max-latency
+coordinator coalesces dirtiness, permits only one save, gives each `flush()` an
+exact epoch, and pauses until explicit retry after any failure. A bounded
+microtask status feed exposes that pause and its stable payload-free underlying
+failure code to application UI. Temporary
+composition or engine ownership defers capture; terminal adapter loss fails
+instead of polling. The first persistence product remains one best-effort local
+checkpoint, not the proof kernel's ordered local log, merge, authenticated
+storage, rollback defense, or cross-device sync.
 
 ## Development
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   BaseDocumentProjection,
@@ -107,6 +107,34 @@ describe("Wasm selection adapter", () => {
       childIndex: 0,
       affinity: "after",
     });
+  });
+
+  it("uses the selection cleanup captured before thenable inspection", () => {
+    const originalFree = vi.fn();
+    const replacementFree = vi.fn();
+    const view = rangeView(originalFree);
+    Object.defineProperty(view, "then", {
+      get() {
+        Object.assign(view, { free: replacementFree });
+        return undefined;
+      },
+    });
+
+    expect(consumeSemanticSelection(projection(), view).ok).toBe(true);
+    expect(originalFree).toHaveBeenCalledOnce();
+    expect(replacementFree).not.toHaveBeenCalled();
+  });
+
+  it("contains a rejected selection impostor even when it has no cleanup", async () => {
+    const rejected = Promise.reject(new Error("selection rejection must be contained"));
+
+    expect(
+      consumeSemanticSelection(
+        projection(),
+        rejected as unknown as SemanticSelectionView,
+      ).ok,
+    ).toBe(false);
+    await Promise.resolve();
   });
 
   it("keeps explicit semantic absence distinct and rejects populated none fields", () => {

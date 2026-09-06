@@ -1,6 +1,6 @@
 # Breditor browser event pipeline
 
-Status: implemented for the closed base schema through `0.0.56`; pre-`0.1` API
+Status: implemented for the closed base schema through `0.0.57`; pre-`0.1` API
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -302,6 +302,7 @@ and settlement or explicit recovery have completed.
 - the matching browser projection and renderer handle;
 - the renderer and selection bridge which produced that handle;
 - private token authority and delivery epoch; and
+- a bounded handle-free observer set for exact adopted Rust commits;
 - a closed lifecycle: `live`, `composition`, `executing`, `reconcile`,
   `faulted`, or `disposed`.
 
@@ -332,6 +333,14 @@ When Rust has produced a valid correlated successor but DOM publication or
 selection installation fails, the adapter retains that authoritative successor
 and projection in `reconcile`. `restoreCanonicalRender()` performs an explicit
 full render and selection restore. The semantic action is never retried.
+
+Every validated `committed` successor is published to the adapter's
+notification-only core-commit feed immediately after adoption and before a
+later cleanup or reconciliation error can escape. This includes same-revision
+history-group boundaries and selection/history prestages whose later command
+fails. Autosave uses this feed because a command-queue observer sees only
+successful whole deliveries. Observer failure is contained; reads and other
+work must be deferred while the adapter remains in its execution lease.
 
 ## Clipboard ownership (`0.0.55`)
 
@@ -380,7 +389,7 @@ validated declarative control into an ordinary queue request, and Rust still
 revalidates availability at execution time. Action-state display and toolbar
 interaction details are specified in [the toolbar contract](TOOLBAR.md).
 
-Other intentional limits through `0.0.56`:
+Other intentional limits through `0.0.57`:
 
 - one connected light-DOM host and one range selection;
 - no shadow-DOM composed-path ownership;
@@ -388,7 +397,8 @@ Other intentional limits through `0.0.56`:
 - no generic browser DOM-to-AST parser;
 - no asynchronous Clipboard API, custom/internal MIME, or rich mixed-format
   paste;
-- no direct persistence append in the event callback;
+- no direct persistence I/O in an event or commit callback; the callback only
+  advances the autosave dirty epoch;
 - full DOM validation, projection/selection conversion, and composition
   reconciliation remain linear in the bounded document; and
 - there is no unified end-user router or real-browser support matrix yet.
@@ -423,11 +433,16 @@ The release tests establish at least:
     settle or release a lease; and
 16. settlement and recovery failures quarantine without retrying a semantic
     command or exposing native composition payloads;
-17. clipboard capabilities are touched only under the adapter-executor queue
+17. each validated adopted core commit emits once independently of whole-queue
+    success, while disabled/unchanged results emit nothing; and
+18. the in-lease commit observer only advances the dirty epoch and schedules
+    later work; checkpoint capture and IndexedDB access occur outside the
+    synchronous event/adapter execution lease;
+19. clipboard capabilities are touched only under the adapter-executor queue
     lease, so reentrant submissions through that queue cannot interleave work;
-18. cut deletion occurs only after both semantic representations are written
+20. cut deletion occurs only after both semantic representations are written
     and native mutation is canceled;
-19. advertised plain text is authoritative, while HTML-only paste must pass the
+21. advertised plain text is authoritative, while HTML-only paste must pass the
     bounded closed allowlist and is reduced to plain text; and
-20. a committed cut or paste creates at most one exact echo receipt and never
+22. a committed cut or paste creates at most one exact echo receipt and never
     executes a second semantic command.

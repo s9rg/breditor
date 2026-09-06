@@ -1,6 +1,7 @@
 # Breditor `0.1.0` scope
 
-Status: frozen product target; implementation completed through `0.0.56`
+Status: frozen product target; checkpoint `0.0.57` complete, with implementation
+proceeding to `0.0.58`
 
 `0.1.0` means a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
@@ -154,7 +155,12 @@ a smaller safe boundary, but a later gate must not be claimed first.
    lifecycle, styling, and real assistive-technology claims remain outside this
    checkpoint.
 10. `0.0.57`: atomic IndexedDB `SessionCheckpoint` autosave, reload restore,
-    corruption handling, and schema/version rejection.
+    corruption handling, and schema/version rejection. Complete: one exact
+    digest-verified record is replaced through store-bound compare-and-swap;
+    adopted core commits drive bounded autosave with explicit paused status;
+    and generated Wasm, a fresh IndexedDB connection, strict Rust restoration,
+    edited document state, selection, undo, and redo pass one cross-layer reload
+    contract.
 11. `0.0.58`: framework-neutral package hardening and React reference editor.
 12. `0.0.59`: browser matrix, accessibility, packaging, size, documentation,
     and release-candidate audit.
@@ -177,8 +183,10 @@ a smaller safe boundary, but a later gate must not be claimed first.
 - malformed documents, stale snapshots, unsupported pasted content, corrupt
   checkpoints, and failed persistence return controlled errors without
   installing partial state; and
-- every committed state remains renderable and recoverably checkpointable even
-  when escaped JSON would exceed a codec output budget; and
+- every effective mutation is published only after its complete canonical
+  checkpoint fits the shared 16 MiB JSON budget; an oversized candidate fails
+  before publication, leaving the prior committed state renderable and
+  checkpointable; and
 - the documentation distinguishes implemented behavior, experimental formats,
   host-trusted evidence, and future work.
 

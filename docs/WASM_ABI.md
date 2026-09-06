@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.0.56` boundary contract; intentionally narrow and unstable before
+Status: `0.0.57` boundary contract; intentionally narrow and unstable before
 `0.1.0`
 
 At this checkpoint the Rust crate and generated declaration are
@@ -289,7 +289,13 @@ for each command, consume and free any string results and cloned errors, extract
 the successor observation, free the command result, then free the superseded
 observation; finally free the live observation and engine on teardown. A host
 may use `Symbol.dispose` where available, but must preserve the same ownership
-order.
+order. At every generated-handle boundary the browser snapshots the callable
+`free` method with its original receiver before inspecting `then` or any other
+untrusted property. That immutable cleanup capability, rather than a later
+property lookup, moves with an adopted observation or nested semantic view.
+Aliases of a protected owner are rejected without inspecting or freeing them;
+all other claimed handles are released exactly once even when a sibling getter
+mutates or removes their public `free` property.
 
 ## Representation and resource limits
 
@@ -341,8 +347,9 @@ panic-hook API. DOM selection conversion, focus, non-composition event ordering,
 bounded reentrancy, guarded command/result ownership, and the paragraph-local
 composition lease are implemented by the framework-neutral browser package.
 Clipboard data handling is implemented outside Wasm in the framework-neutral
-browser package. A unified editable-host router, persistence scheduling, and
-framework integration remain TypeScript responsibilities in later checkpoints.
+browser package. Session-checkpoint scheduling and IndexedDB replacement are
+implemented there at `0.0.57`; a unified editable-host router and framework
+integration remain TypeScript responsibilities in later checkpoints.
 No exported Rust call invokes host JavaScript while holding the mutable engine,
 so a well-typed call runs to completion. Raw JavaScript getters, proxies, and
 numeric/string coercions can execute before Rust entry; the host queue must not
@@ -352,7 +359,8 @@ treat argument evaluation as part of the guarded mutation.
 
 `BreditorWasmCommandAdapter` owns exactly one generated observation together
 with the matching consumed browser projection, current renderer handle, and DOM
-selection bridge. It issues private-authority delivery tokens for that exact
+selection bridge. It does not own or free the generated engine. It issues
+private-authority delivery tokens for that exact
 observation/render epoch. A token is spent before the first Wasm call and cannot
 be reused after any rejection.
 
@@ -405,6 +413,31 @@ A checkpoint is strictly decoded and replay-proved, but is not authenticated,
 globally ordered, or fresh. Loading an older valid checkpoint deliberately
 creates a new engine and can roll application state back. Authentication,
 anti-rollback policy, and storage provenance belong to the host envelope.
+
+## Browser checkpoint owner (`0.0.57`)
+
+The framework-neutral browser adapter calls `sessionCheckpointJson()` only
+through an observation-owning read port. It consumes the generated fallible-
+string result, checks its exact Session Checkpoint V1 envelope, current
+revision, history-base lineage, Unicode scalar representation, and 16 MiB
+browser limit, then frees every generated result/error handle. Raw engine and
+checkpoint-result objects never reach autosave or storage.
+
+`restoreWasmEngine` performs the inverse one-shot ownership transfer through
+`BreditorEngine.fromSessionCheckpointJson()`: malformed, aliased, thenable, or
+error results are freed and rejected without publishing an engine. The Rust
+decoder remains authoritative for the complete nested checkpoint contract.
+
+The command adapter emits a handle-free notification when—and only when—a
+validated committed successor is adopted. This point precedes any later DOM
+reconciliation or multi-stage delivery failure, so persistence cannot depend
+on whole-queue success. A generated mutator that throws or returns a malformed
+result before safe adoption instead creates fatal ABI uncertainty: the adapter
+and queue fault, the checkpoint port reports terminal unavailability, and the
+browser does not manufacture a commit claim.
+
+The complete atomic single-slot storage and scheduling contract is in
+[`SESSION_CHECKPOINT_STORAGE.md`](SESSION_CHECKPOINT_STORAGE.md).
 
 ## Generated declaration gate
 

@@ -27,7 +27,7 @@ checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
 
 [[package]]
 name = "breditor-core"
-version = "0.0.56"
+version = "0.0.57"
 dependencies = [
  "proptest",
  "serde",
@@ -38,7 +38,7 @@ dependencies = [
 
 [[package]]
 name = "breditor-wasm"
-version = "0.0.56"
+version = "0.0.57"
 dependencies = [
  "breditor-core",
  "serde_json",
