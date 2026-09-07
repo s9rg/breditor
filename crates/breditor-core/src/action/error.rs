@@ -146,7 +146,7 @@ pub enum ActionRegistryError {
 /// transaction failure's document-bearing source fields.
 #[derive(Clone, Eq, Error, PartialEq)]
 pub enum InvalidActionPlan {
-    /// Applying the generated exact-base transaction failed.
+    /// Applying the generated exact-state transaction failed.
     #[error("generated transaction failed preflight: {source}")]
     Transaction {
         /// Exact transaction failure.

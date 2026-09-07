@@ -23,6 +23,12 @@ are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
 the corresponding TypeScript sources are not part of the package.
 
+The `0.2.0-alpha.3` package version keeps this browser boundary unchanged:
+Wasm ABI 2, Document V1, Session Checkpoint V1, the base projection, and the
+Bold/Undo/Redo toolbar remain authoritative. The alpha.3 property-free format
+compiler and generic action are Rust-core-only until the scheduled profile-
+aware Wasm and browser checkpoints.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -35,7 +41,7 @@ Initialize the matching `@breditor/wasm` package once, then pass connected,
 empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.2 @breditor/wasm@0.2.0-alpha.2
+npm install @breditor/browser@0.2.0-alpha.3 @breditor/wasm@0.2.0-alpha.3
 ```
 
 ```ts

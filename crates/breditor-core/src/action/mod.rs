@@ -1,4 +1,4 @@
-//! Deterministic extensible actions that produce exact-base transactions.
+//! Deterministic extensible actions that produce base-text-profile transactions.
 //!
 //! The action layer owns no DOM, key event, toolbar presentation, clock, async
 //! runtime, or mutable editor state. A frozen registry evaluates pure typed

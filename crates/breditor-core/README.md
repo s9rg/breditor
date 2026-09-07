@@ -17,15 +17,27 @@ normalization. Existing V1 codec types and bytes remain exact-base-only, and
 mixed V1/V2 nesting fails closed. V2 publication-attempt entrypoints are
 deliberately deferred; the existing publication typestate remains V1-only.
 
+Version `0.2.0-alpha.3` adds the sealed public base-text extension compiler.
+`ExtensionManifest` now owns canonically ordered `InlineFormatSpecV1`
+declarations with independent nonzero `PersistedTypeRevision` values.
+`CompiledSchema::try_compile_base_text_profile` combines one resolved
+`ExtensionSet` with a caller-owned non-`breditor/*` `SchemaId`, preserving the
+base document/paragraph/text shape while admitting up to 255 additional
+property-free formats. The compiled schema fingerprint includes each admitted
+kind and revision but excludes its manifest owner and extension version.
+
 The separate `SchemaAdmissionRequest` boundary borrows a checked source
 checkpoint and prepares a new-lineage, empty-history target anchor together with
 exact canonical Local Log Checkpoint V2 JSON. A V2 Storage Root can be prepared
 from that result without treating validation as storage publication. Admission
 does not transform content, mutate the source, perform storage I/O, or prove
 authenticity, freshness, durability, compare-and-swap, or writer authority.
-General schema construction and non-base primitive-operation behavior remain
-staged, and the earlier `0.1.1` extension values remain behavior-free. The
-browser and Wasm ABI 2 remain V1-only during alpha.2. See the
+Arbitrary schema construction remains staged, but all four existing primitive
+operations now accept compiler-minted sealed base-text schemas and preserve
+their extension formats. The public `ToggleInlineFormatAction` can be
+explicitly registered for one admitted format; it is not automatically added
+by schema compilation, and the complete profile/action/intent compiler remains
+staged. The browser and Wasm ABI 2 remain V1-only during alpha.3. See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
 [schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and
@@ -64,13 +76,14 @@ resolving, and a nominally separate one-head acknowledgement family,
 UTF-16-safe points and
 selections, paragraph-local text splices, atomic transactions, direct-root
 paragraph split/join operations, proof-backed local
-validation for fixed-base text edits, structural relocation, heterogeneous
+validation for sealed base-text edits, structural relocation, heterogeneous
 change notifications, guarded root-text range replacement with a closed
 same-type inverse, exact in-memory undo/redo requests, an immutable typed
 action registry, a frozen semantic intent router, and seven base actions:
 inline and structural plain-text insertion, paragraph break, grapheme-aware
 backward and forward deletion, exact selection deletion, and strong-format
-toggle. Registry
+toggle, plus the configurable Rust-owned `ToggleInlineFormatAction` for an
+explicitly registered property-free format. Registry
 preparation is the authoritative integration path for semantic capability and
 execution: it preflights and caches an exact transaction result against one
 immutable state.
@@ -110,8 +123,8 @@ selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser
 scheduler,
-generic formatting-kind or attribute actions, log storage and tail-wide
-recovery orchestration,
+automatic extension action/intent compilation, formatting attributes, log
+storage and tail-wide recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
 scope provisioning, executable append I/O, process-restart append
 reconstruction,

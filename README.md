@@ -11,17 +11,19 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.2.0-alpha.2` checkpoint adds explicit fingerprint-bearing Rust
-V2 generations for the complete durable record graph over the parity-first
-schema compiler and behavior-free `0.1.1` extension set. It propagates the
-durable binding through recovery, tail, compaction, and storage validation and
-adds a non-destructive checkpoint-based structural-admission boundary. Every V1
-codec remains bound to the exact built-in base definition. Wasm ABI 2, the
-browser product, autosave, and IndexedDB continue to consume and emit V1 only;
-their profile-aware widening is scheduled for later checkpoints. Development
-toward `0.2.0` remains scoped to one complete, frozen semantic extension path
-for property-free inline formats. The decisions and checkpoint gates are
-recorded in the
+The current `0.2.0-alpha.3` checkpoint adds the first public, sealed schema
+extension path in the Rust core. An immutable extension manifest can own
+property-free inline-format declarations, and
+`CompiledSchema::try_compile_base_text_profile` deterministically compiles a
+resolved set under a caller-owned, non-`breditor/*` schema identity. The
+document/paragraph/text grammar and all canonicality laws remain fixed.
+Generic formatting uses the existing primitive operation language, exact
+inverses, history, replay, and fingerprint-bearing V2 records; it does not add
+an operation or codec variant. Every V1 codec remains bound to the exact
+built-in `breditor/base@1` strong-only definition. Wasm ABI 2, the browser
+product, autosave, and IndexedDB continue to consume and emit V1 only; their
+profile-aware widening is scheduled for later checkpoints. The decisions and
+checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
 are specified by the [schema fingerprint contract](docs/SCHEMA_FINGERPRINT.md).
@@ -33,7 +35,8 @@ The implementation includes:
 - immutable, structurally shared document values;
 - proof-derived cached document measurements for node count, maximum depth,
   total UTF-8 text bytes, and recursive property-value count;
-- a minimal compiled schema for document, paragraph, text, and strong formatting;
+- a minimal compiled base schema plus a sealed compiler for adding
+  property-free inline formats to the same document/paragraph/text grammar;
 - separate Rust-only fingerprint-bearing V2 codecs for document, operation,
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
@@ -89,17 +92,18 @@ The implementation includes:
 - an immutable, deterministic action registry with namespaced identities,
   bounded versioned inputs, exact prepared capabilities, and fail-closed
   extension conflicts;
-- an immutable behavior-free extension-set resolver with exact identities,
-  bounded dependency/conflict metadata, deterministic diagnostics, and
-  canonical dependency-first order; this metadata does not yet register
-  editor behavior or prove schema/persistence compatibility;
+- an immutable extension-set resolver with exact identities, bounded
+  dependency/conflict metadata, manifest-owned property-free inline-format
+  declarations, deterministic diagnostics, and canonical dependency-first
+  order; schema compatibility exists only after explicit sealed compilation
+  under a caller-owned profile `SchemaId`;
 - a frozen semantic intent router with declared input contracts, named
   bindings, explicit priority and disabled fallback policy, and distinct
   unhandled, blocked, and prepared outcomes;
 - one-call action observations that keep availability, active/inactive/mixed
   state, independently versioned values, and conservative effects coherent;
 - a frozen observable action-state catalog with presentation-independent
-  identities, immutable exact-base direct/routed/history batches, and a
+  identities, immutable exact-source direct/routed/history batches, and a
   synchronous single-observation cache with domain invalidation, exact-source
   coalescing, and bounded local deltas;
 - semantic `insert-text`, atomic `insert-plain-text`, paragraph break,
@@ -109,8 +113,10 @@ The implementation includes:
   pending formats, multiline insertion and extended deletion atomically replace
   cross-paragraph selections, while `toggle-strong`
   publishes tracked inactive/active/mixed state and preserves selected block
-  boundaries during cross-paragraph formatting;
-- a synchronous `EditorSession` publication boundary with exact-base commit
+  boundaries during cross-paragraph formatting, plus a public Rust-owned
+  `ToggleInlineFormatAction` that can be registered explicitly for any
+  property-free format admitted by the active sealed schema;
+- a synchronous `EditorSession` publication boundary with exact-state commit
   acceptance, intent/action execution, bounded linear history, deterministic
   merge groups, atomic undo/redo replay, and durable local checkpoint restore;
 - a guarded product-level `EditorEngine` that owns one session and one frozen
@@ -150,12 +156,15 @@ The implementation includes:
   failures return the unchanged log owner.
 
 The supported `0.1.0` product is intentionally small, not a general document
-processor. Structural edits beyond direct-root base-paragraph text structure,
-generic formatting kinds and attributes, asynchronous action-state delivery,
-dynamic catalog registration, presentation plugin lifecycle management,
-asynchronous/programmatic clipboard, collaboration-aware or selective undo,
-and generic incremental validation for structural or custom-schema edits are
-not implemented. The repository's ordered-log, storage-generation, and
+processor. The experimental alpha.3 Rust path adds generic property-free
+format kinds only; it does not add format attributes, arbitrary nodes,
+automatic action/intent registration, or browser rendering. Structural edits
+beyond the compiler-minted direct-root base-text shape, asynchronous
+action-state delivery, dynamic catalog registration, presentation plugin
+lifecycle management, asynchronous/programmatic clipboard,
+collaboration-aware or selective undo, and generic incremental validation for
+structural schemas are not implemented. The repository's ordered-log,
+storage-generation, and
 tail-recovery work remains experimental: it does not provide storage
 publication, scope provisioning, executable append I/O, process-restart append
 reconstruction, cryptographic authenticity, rollback protection, or crash-tail

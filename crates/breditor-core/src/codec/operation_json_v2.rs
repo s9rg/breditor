@@ -27,9 +27,9 @@ pub const OPERATION_V2_FORMAT_VERSION: u32 = 2;
 ///
 /// V2 deliberately reuses the closed primitive operation payload defined for
 /// V1. Only the independent outer envelope is new: it adds the compiled-schema
-/// fingerprint and cannot accept or emit a V1 envelope. Some structural
-/// primitive operations remain exact-base-only; the V2 binding does not weaken
-/// their unchanged semantic validation.
+/// fingerprint and cannot accept or emit a V1 envelope. The primitives admit
+/// only compiler-proved base-text profiles; the V2 binding does not weaken
+/// their unchanged structural validation.
 #[derive(Clone, Debug)]
 pub struct OperationJsonCodecV2 {
     context: EditorContext,

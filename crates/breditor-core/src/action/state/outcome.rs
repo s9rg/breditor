@@ -213,7 +213,7 @@ pub enum ActionStateOutcome {
     Fault(ActionStateFault),
 }
 
-/// One descriptor paired with its exact-base derived result.
+/// One descriptor paired with its exact-source derived result.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionStateEntry {
     descriptor: ActionStateDescriptor,

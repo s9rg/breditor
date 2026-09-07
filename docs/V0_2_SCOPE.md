@@ -1,7 +1,7 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1`, `0.2.0-alpha.1`, and `0.2.0-alpha.2`
-foundations are complete
+Status: in progress; the `0.1.1` through `0.2.0-alpha.3` Rust foundations are
+complete
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -163,7 +163,12 @@ when review finds a correctness boundary; later features are not claimed early.
    V1-only. Complete.
 4. `0.2.0-alpha.3`: sealed base-text schema extension for property-free inline
    formats plus generic format operations/actions, pending typing format,
-   inverse, relocation, undo/redo, and checkpoint replay coverage.
+   inverse, relocation, undo/redo, and checkpoint replay coverage. Manifests
+   own the declarations; callers supply a non-reserved profile `SchemaId`; the
+   compiler retains the fixed base structure and mints the only capability
+   accepted by the widened primitives. The generic action is configured by
+   format kind and remains an explicit caller registration until alpha.4.
+   Complete.
 5. `0.2.0-alpha.4`: frozen extension-owned action registrations, state
    definitions, and semantic intent bindings with ownership, compatibility, and
    aggregate resource limits.

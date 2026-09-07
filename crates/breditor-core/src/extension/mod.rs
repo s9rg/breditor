@@ -1,10 +1,12 @@
-//! Deterministic, behavior-free extension identity and dependency resolution.
+//! Deterministic data-only extension identity, dependency resolution, and
+//! sealed inline-format declarations.
 //!
-//! An [`ExtensionSet`] contains only bounded manifests, exact-version dependency
-//! edges, and explicit exact-version conflicts. Resolution never installs an
-//! action, changes a document schema, registers a renderer, executes extension
-//! code, or mutates editor state. Hosts may use the canonical order as input to
-//! later compilation stages, but those stages are outside this module.
+//! An [`ExtensionSet`] contains bounded manifests, exact-version dependency
+//! edges, explicit exact-version conflicts, and property-free
+//! [`InlineFormatSpecV1`] values. Resolution itself never compiles a schema,
+//! installs an action, registers a renderer, executes extension code, or
+//! mutates editor state. A resolved set can be supplied explicitly to the
+//! sealed base-text schema compiler.
 //!
 //! Extension identity is also not persistence compatibility. An
 //! [`ExtensionId`] is a developer-assigned name and version, not a fingerprint
@@ -13,6 +15,7 @@
 //! or replay log is compatible with any extension implementation.
 
 mod id;
+mod inline_format_spec_v1;
 mod limits;
 mod limits_error;
 mod manifest;
@@ -23,9 +26,11 @@ mod version;
 mod version_error;
 
 pub use id::ExtensionId;
+pub use inline_format_spec_v1::InlineFormatSpecV1;
 pub use limits::{
     ExtensionLimits, MAX_EXTENSION_CONFLICTS_PER_MANIFEST, MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST,
-    MAX_EXTENSION_SET_CONFLICTS, MAX_EXTENSION_SET_DEPENDENCIES, MAX_EXTENSION_SET_ENTRIES,
+    MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST, MAX_EXTENSION_SET_CONFLICTS,
+    MAX_EXTENSION_SET_DEPENDENCIES, MAX_EXTENSION_SET_ENTRIES,
 };
 pub use limits_error::ExtensionLimitsError;
 pub use manifest::ExtensionManifest;

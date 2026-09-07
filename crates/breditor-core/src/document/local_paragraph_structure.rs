@@ -22,7 +22,8 @@ pub(crate) enum LocalParagraphStructureError {
     /// proof required by this local publication boundary.
     #[error(transparent)]
     DocumentProofMismatch(#[from] DocumentProofMismatch),
-    /// This deliberately narrow boundary only supports the exact base schema.
+    /// This deliberately narrow boundary only supports compiler-proved
+    /// base-text profiles.
     #[error("paragraph structure publication does not support schema {active_schema}")]
     UnsupportedSchema {
         /// Unsupported active schema.
@@ -62,9 +63,9 @@ pub(crate) enum LocalParagraphStructureError {
 impl Document {
     /// Replaces a half-open range of base-document paragraphs.
     ///
-    /// This is the authoritative structural publication boundary for the fixed
-    /// base schema. It preserves untouched root-child allocations, rebuilds the
-    /// root, and always subjects the complete candidate tree to
+    /// This is the authoritative structural publication boundary for the
+    /// sealed base-text structure. It preserves untouched root-child
+    /// allocations, rebuilds the root, and always subjects the complete tree to
     /// [`Document::try_new`] before publishing it.
     pub(crate) fn try_replace_base_paragraph_range(
         &self,
@@ -105,7 +106,7 @@ fn ensure_supported_schema(
     if let Some(mismatch) = document.proof_mismatch(active_schema, limits) {
         return Err(local_proof_mismatch(mismatch));
     }
-    if !active_schema.is_exact_breditor_base() {
+    if !active_schema.supports_base_text_operations() {
         return Err(LocalParagraphStructureError::UnsupportedSchema {
             active_schema: active_schema.id().clone(),
         });

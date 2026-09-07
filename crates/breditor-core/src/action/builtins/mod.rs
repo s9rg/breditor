@@ -1,4 +1,4 @@
-//! Built-in semantic actions for the exact Breditor base schema.
+//! Core-owned semantic actions for Breditor's sealed base-text schemas.
 
 mod delete_backward;
 mod delete_forward;
@@ -8,6 +8,7 @@ mod insert_paragraph_break;
 mod insert_plain_text;
 mod insert_text;
 mod support;
+mod toggle_inline_format;
 mod toggle_strong;
 
 pub use delete_backward::{DeleteBackwardAction, delete_backward_action_id};
@@ -31,6 +32,7 @@ pub use insert_text::{
     InsertTextInput, InsertTextInputError, MAX_INSERT_TEXT_BYTES, MAX_INSERT_TEXT_UTF16_CODE_UNITS,
     insert_text_action_id, insert_text_input_contract,
 };
+pub use toggle_inline_format::ToggleInlineFormatAction;
 pub use toggle_strong::{ToggleStrongAction, toggle_strong_action_id};
 
 use crate::action::{ActionRegistration, ActionRegistry, ActionRegistryError};

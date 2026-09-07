@@ -136,7 +136,7 @@ impl ActionStateResourceError {
     }
 }
 
-/// Why a complete exact-base action-state batch could not be retained.
+/// Why a complete exact-source action-state batch could not be retained.
 ///
 /// Individual action, routing, and history failures stay inside their entry.
 /// This error is reserved for catalog-wide dynamic resource exhaustion, for

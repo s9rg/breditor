@@ -738,7 +738,7 @@ fn validate_structural_schema(
     context: &EditorContext,
     kind: OperationKind,
 ) -> Result<(), OperationValidationError> {
-    if !context.schema().is_exact_breditor_base() {
+    if !context.schema().supports_base_text_operations() {
         return Err(OperationValidationError::UnsupportedSchema {
             kind,
             schema: context.schema().id().clone(),

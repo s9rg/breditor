@@ -168,7 +168,7 @@ impl fmt::Debug for BlockedIntent {
     }
 }
 
-/// One routed binding and its cached exact-base prepared action.
+/// One routed binding and its cached exact-state prepared action.
 ///
 /// The action handler and transaction reducer already ran exactly once. Turning
 /// this value into an [`ActionPreparation`] or executing its route never runs
@@ -280,7 +280,7 @@ impl fmt::Debug for RoutedAction {
     }
 }
 
-/// Complete exact-base result of routing one declared semantic intent.
+/// Complete exact-state result of routing one declared semantic intent.
 #[must_use = "an intent route must be inspected or executed"]
 #[derive(Debug, Eq, PartialEq)]
 pub enum IntentRouteOutcome {
@@ -350,7 +350,7 @@ impl IntentRouteOutcome {
 
     /// Consumes this evaluated route into an exact execution receipt.
     ///
-    /// The complete exact base is checked before every receipt is returned, so
+    /// The complete exact source state is checked before every receipt is returned, so
     /// stale unhandled or blocked results never masquerade as current capability
     /// state. Prepared execution consumes the cached commit without rerunning the
     /// action handler or transaction reducer.

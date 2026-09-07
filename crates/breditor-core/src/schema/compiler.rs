@@ -1,7 +1,6 @@
 use std::{
     collections::BTreeMap,
     fmt,
-    num::NonZeroU32,
     sync::{Arc, OnceLock},
 };
 
@@ -9,9 +8,11 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 use crate::{
-    extension::ExtensionId,
+    extension::{ExtensionId, ExtensionSet},
     identity::QualifiedName,
-    schema::{SchemaFingerprint, SchemaId, SchemaVersion},
+    schema::{
+        PersistedTypeRevision, SchemaCompilationError, SchemaFingerprint, SchemaId, SchemaVersion,
+    },
 };
 
 use super::compiled_schema::CompiledSchema;
@@ -24,31 +25,11 @@ const FINGERPRINT_DOMAIN: &[u8] = b"breditor/schema-fingerprint\0";
 const MAX_ELEMENT_TYPES: u32 = 256;
 const MAX_INLINE_FORMAT_TYPES: u32 = 256;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-struct PersistedTypeRevision(NonZeroU32);
-
-impl PersistedTypeRevision {
-    fn try_new(value: u32) -> Result<Self, PersistedTypeRevisionError> {
-        NonZeroU32::new(value).map(Self).ok_or(PersistedTypeRevisionError::Zero)
-    }
-
-    const fn get(self) -> u32 {
-        self.0.get()
-    }
-
-    fn one() -> Self {
-        match Self::try_new(1) {
-            Ok(revision) => revision,
-            Err(error) => unreachable!("persisted revision one must be valid: {error}"),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
-enum PersistedTypeRevisionError {
-    #[error("persisted type revision zero is reserved")]
-    Zero,
-}
+/// Maximum extension-owned inline formats in one sealed base-text profile.
+///
+/// The compiler's 256-format ceiling includes the built-in `breditor/strong`
+/// declaration, leaving 255 identities for extensions.
+pub const MAX_BASE_TEXT_EXTENSION_INLINE_FORMATS: u32 = MAX_INLINE_FORMAT_TYPES - 1;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct CompiledSchemaDefinition {
@@ -200,7 +181,7 @@ pub(super) enum ChildKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum DeclarationOwner {
     Breditor,
-    #[allow(dead_code)] // The private extension compilation seam lands before its public caller.
+    Profile,
     Extension(ExtensionId),
 }
 
@@ -208,6 +189,7 @@ impl fmt::Display for DeclarationOwner {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Breditor => formatter.write_str("the Breditor core"),
+            Self::Profile => formatter.write_str("the compiled profile"),
             Self::Extension(id) => write!(formatter, "extension {id}"),
         }
     }
@@ -262,7 +244,7 @@ enum SchemaCompilerError {
     #[error("schema has {actual} inline-format types; the maximum is {maximum}")]
     TooManyInlineFormats { actual: u32, maximum: u32 },
     #[error("schema name {name} is reserved for the Breditor core, not {owner}")]
-    ReservedSchemaName { name: QualifiedName, owner: ExtensionId },
+    ReservedSchemaName { name: QualifiedName, owner: DeclarationOwner },
     #[error("element name {name} is reserved for the Breditor core, not {owner}")]
     ReservedElementName { name: QualifiedName, owner: ExtensionId },
     #[error("inline-format name {name} is reserved for the Breditor core, not {owner}")]
@@ -296,6 +278,103 @@ pub(super) fn compile_breditor_base() -> CompiledSchema {
         (Arc::clone(compiled.definition()), compiled.fingerprint())
     });
     CompiledSchema::from_compilation(Arc::clone(definition), *fingerprint)
+}
+
+pub(super) fn compile_base_text_profile(
+    schema_id: SchemaId,
+    extensions: &ExtensionSet,
+) -> Result<CompiledSchema, SchemaCompilationError> {
+    if schema_id.name().namespace() == "breditor" {
+        return Err(SchemaCompilationError::ReservedSchemaName { name: schema_id.name().clone() });
+    }
+
+    if let Some(manifest) =
+        extensions.manifests().find(|manifest| manifest.id().name().namespace() == "breditor")
+    {
+        return Err(SchemaCompilationError::ReservedExtensionName {
+            extension: manifest.id().clone(),
+        });
+    }
+
+    let format_count = extensions.manifests().fold(0_u32, |total, manifest| {
+        total.saturating_add(fixed_count(manifest.inline_formats().len()))
+    });
+    if format_count > MAX_BASE_TEXT_EXTENSION_INLINE_FORMATS {
+        return Err(SchemaCompilationError::TooManyInlineFormats {
+            actual: format_count,
+            maximum: MAX_BASE_TEXT_EXTENSION_INLINE_FORMATS,
+        });
+    }
+
+    let mut formats = extensions
+        .manifests()
+        .flat_map(|manifest| {
+            manifest.inline_formats().iter().map(move |format| {
+                (format.kind().clone(), manifest.id().clone(), format.revision())
+            })
+        })
+        .collect::<Vec<_>>();
+    formats.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    if let Some(pair) = formats.windows(2).find(|pair| pair[0].0 == pair[1].0) {
+        return Err(SchemaCompilationError::DuplicateInlineFormat {
+            kind: pair[0].0.clone(),
+            first_owner: pair[0].1.clone(),
+            second_owner: pair[1].1.clone(),
+        });
+    }
+    if let Some((kind, owner, _)) =
+        formats.iter().find(|(kind, _, _)| kind.namespace() == "breditor")
+    {
+        return Err(SchemaCompilationError::ReservedInlineFormatName {
+            kind: kind.clone(),
+            owner: owner.clone(),
+        });
+    }
+
+    let mut spec = base_spec();
+    spec.id = schema_id;
+    spec.owner = DeclarationOwner::Profile;
+    spec.inline_formats.extend(formats.into_iter().map(|(kind, owner, revision)| {
+        InlineFormatSpec {
+            kind,
+            owner: DeclarationOwner::Extension(owner),
+            revision,
+            allows_properties: false,
+        }
+    }));
+    compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
+}
+
+pub(super) fn supports_base_text_operations(definition: &CompiledSchemaDefinition) -> bool {
+    let base = base_spec();
+    if definition.root_kind != base.root_kind
+        || definition.paragraph_kind != base.paragraph_kind
+        || definition.strong_kind != base.strong_kind
+        || definition.constraints != base.constraints
+        || definition.elements.len() != base.elements.len()
+    {
+        return false;
+    }
+
+    for element in &base.elements {
+        let Some(compiled) = definition.elements.get(&element.kind) else {
+            return false;
+        };
+        if compiled.revision != element.revision
+            || compiled.allows_properties != element.allows_properties
+            || compiled.allows_entity_id != element.allows_entity_id
+            || compiled.children != element.children
+        {
+            return false;
+        }
+    }
+
+    let Some(strong) = definition.inline_formats.get(&base.strong_kind) else {
+        return false;
+    };
+    strong.revision == PersistedTypeRevision::one()
+        && !strong.allows_properties
+        && definition.inline_formats.values().all(|format| !format.allows_properties)
 }
 
 #[cfg(test)]
@@ -431,11 +510,11 @@ fn compile(
 
 fn reject_reserved_schema_name(spec: &SchemaSpec) -> Result<(), SchemaCompilerError> {
     if spec.id.name().namespace() == "breditor"
-        && let DeclarationOwner::Extension(owner) = &spec.owner
+        && !matches!(&spec.owner, DeclarationOwner::Breditor)
     {
         return Err(SchemaCompilerError::ReservedSchemaName {
             name: spec.id.name().clone(),
-            owner: owner.clone(),
+            owner: spec.owner.clone(),
         });
     }
     Ok(())
@@ -624,13 +703,13 @@ mod tests {
     use crate::{
         extension::{ExtensionId, ExtensionVersion},
         identity::QualifiedName,
-        schema::DocumentLimits,
+        schema::{DocumentLimits, PersistedTypeRevisionError},
     };
 
     use super::{
         ChildConstraint, ChildKind, CompilerLimits, DeclarationOwner, ElementSpec,
         InlineFormatSpec, MAX_ELEMENT_TYPES, MAX_INLINE_FORMAT_TYPES, PersistedTypeRevision,
-        PersistedTypeRevisionError, SchemaCompilerError, base_spec, compile, encode_fingerprint,
+        SchemaCompilerError, base_spec, compile, encode_fingerprint,
     };
 
     type TestResult = Result<(), Box<dyn Error>>;
@@ -721,6 +800,7 @@ mod tests {
         assert!(!schema.element_allows_entity_id(schema.root_kind()));
         assert!(!schema.format_allows_properties(schema.strong_kind()));
         assert!(schema.is_exact_breditor_base());
+        assert!(schema.supports_base_text_operations());
     }
 
     #[test]
@@ -816,7 +896,7 @@ mod tests {
             compile(schema_name, CompilerLimits::default()),
             Err(SchemaCompilerError::ReservedSchemaName {
                 name: QualifiedName::try_new("breditor/base")?,
-                owner: owner_id.clone(),
+                owner: DeclarationOwner::Extension(owner_id.clone()),
             })
         );
 
@@ -989,13 +1069,67 @@ mod tests {
     }
 
     #[test]
-    fn exact_base_check_compares_the_complete_definition() {
+    fn base_text_capability_rejects_every_representable_structural_widening() -> TestResult {
         let base = super::compile_breditor_base();
-        let mut changed = base_spec();
-        changed.elements[0].children.minimum = 2;
-        let changed = compile(changed, CompilerLimits::default());
-
         assert!(base.is_exact_breditor_base());
-        assert!(changed.is_ok_and(|schema| !schema.is_exact_breditor_base()));
+        assert!(base.supports_base_text_operations());
+
+        let owner = external_owner("example/capability-test", 1)?;
+        let mut extra_element = base_spec();
+        extra_element
+            .elements
+            .push(external_element(QualifiedName::try_new("example/aside")?, owner.clone()));
+
+        let mut property_format = base_spec();
+        let mut added_format =
+            external_format(QualifiedName::try_new("example/link")?, owner.clone());
+        added_format.allows_properties = true;
+        property_format.inline_formats.push(added_format);
+
+        let mut strong_revision = base_spec();
+        strong_revision.inline_formats[0].revision = PersistedTypeRevision::try_new(2)?;
+
+        let mut strong_properties = base_spec();
+        strong_properties.inline_formats[0].allows_properties = true;
+
+        let mut element_revision = base_spec();
+        element_revision.elements[0].revision = PersistedTypeRevision::try_new(2)?;
+
+        let mut root_properties = base_spec();
+        root_properties.elements[0].allows_properties = true;
+
+        let mut paragraph_entity = base_spec();
+        paragraph_entity.elements[1].allows_entity_id = true;
+
+        let mut changed_roles = base_spec();
+        std::mem::swap(&mut changed_roles.root_kind, &mut changed_roles.paragraph_kind);
+
+        let mut changed_child_range = base_spec();
+        changed_child_range.elements[0].children.minimum = 2;
+
+        let mut changed_child_kind = base_spec();
+        changed_child_kind.elements[1].children.kind =
+            ChildKind::Element(QualifiedName::from_known_static("breditor/paragraph"));
+
+        for (label, spec) in [
+            ("extra element", extra_element),
+            ("property-bearing added format", property_format),
+            ("strong revision", strong_revision),
+            ("strong property policy", strong_properties),
+            ("element revision", element_revision),
+            ("root property policy", root_properties),
+            ("paragraph entity policy", paragraph_entity),
+            ("role assignment", changed_roles),
+            ("child range", changed_child_range),
+            ("child kind", changed_child_kind),
+        ] {
+            let schema = compile(spec, CompilerLimits::default())?;
+            assert!(!schema.is_exact_breditor_base(), "{label} remained exact base");
+            assert!(
+                !schema.supports_base_text_operations(),
+                "{label} received the sealed base-text capability"
+            );
+        }
+        Ok(())
     }
 }

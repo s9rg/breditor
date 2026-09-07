@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::identity::QualifiedName;
+
 use super::ExtensionId;
 
 /// Why one behavior-free extension manifest could not be constructed.
@@ -30,6 +32,16 @@ pub enum ExtensionManifestError {
         /// Fixed implementation ceiling.
         maximum: u32,
     },
+    /// The inline-format declaration list exceeds its fixed ceiling.
+    #[error("extension {extension} has {actual} inline formats; the maximum is {maximum}")]
+    TooManyInlineFormats {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// Rejected fixed-width inline-format count.
+        actual: u32,
+        /// Fixed per-manifest declaration ceiling.
+        maximum: u32,
+    },
     /// One exact dependency occurs more than once.
     #[error("extension {extension} declares dependency {dependency} more than once")]
     DuplicateDependency {
@@ -47,6 +59,14 @@ pub enum ExtensionManifestError {
         /// First duplicated conflict by qualified-name ASCII bytes and then
         /// numeric extension version.
         conflict: ExtensionId,
+    },
+    /// One inline-format kind occurs more than once in this manifest.
+    #[error("extension {extension} declares inline-format kind {kind} more than once")]
+    DuplicateInlineFormat {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated format kind in canonical lexical order.
+        kind: QualifiedName,
     },
     /// A manifest depends on its own exact identity.
     #[error("extension {extension} cannot depend on itself")]

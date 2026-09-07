@@ -658,7 +658,7 @@ pub enum RootTextReplaceApplyError {
     /// by the active editor context.
     #[error(transparent)]
     DocumentProofMismatch(#[from] DocumentProofMismatch),
-    /// Structural paragraph metadata is not yet defined outside the exact base schema.
+    /// Structural paragraph metadata is not defined outside sealed base-text profiles.
     #[error("root-text replacement does not support schema {schema}")]
     UnsupportedSchema {
         /// Rejected active schema.

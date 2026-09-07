@@ -10,6 +10,10 @@ use crate::{
         Document, DocumentSchemaAdmissionError, ElementNode, FormatSet, NodeRef, PropertyMap,
         TextFragment, TextRun,
     },
+    extension::{
+        ExtensionId, ExtensionLimits, ExtensionManifest, ExtensionSet, ExtensionVersion,
+        InlineFormatSpecV1,
+    },
     identity::QualifiedName,
     local_log::{
         LocalLogCheckpointAnchor, LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogId,
@@ -19,7 +23,7 @@ use crate::{
     },
     operation::{TextRange, TextSplice},
     position::{NodePath, TextOffset},
-    schema::{CompiledSchema, DocumentLimits},
+    schema::{CompiledSchema, DocumentLimits, PersistedTypeRevision, SchemaId, SchemaVersion},
     session::{EditorSession, HistoryCapacity},
     state::{EditorContext, EditorState, LineageId, Revision},
     transaction::{HistoryIntent, Transaction, TransactionMetadata},
@@ -129,6 +133,63 @@ fn target_request() -> Result<SchemaAdmissionRequest, Box<dyn Error>> {
         binding,
         HistoryCapacity::try_new(9)?,
     ))
+}
+
+fn extension_profile_request() -> Result<SchemaAdmissionRequest, Box<dyn Error>> {
+    let manifest = ExtensionManifest::try_new_with_inline_formats(
+        ExtensionId::new(
+            QualifiedName::try_new("example/admission-extension")?,
+            ExtensionVersion::try_new(1)?,
+        ),
+        Vec::new(),
+        Vec::new(),
+        vec![InlineFormatSpecV1::new(
+            QualifiedName::try_new("example/emphasis")?,
+            PersistedTypeRevision::one(),
+        )],
+    )?;
+    let extensions = ExtensionSet::try_new(vec![manifest], ExtensionLimits::default())?;
+    let schema = CompiledSchema::try_compile_base_text_profile(
+        SchemaId::new(
+            QualifiedName::try_new("example/admission-profile")?,
+            SchemaVersion::try_new(1)?,
+        ),
+        &extensions,
+    )?;
+    Ok(SchemaAdmissionRequest::new(
+        EditorContext::new(schema, DocumentLimits::default()),
+        LineageId::try_new("extension-profile-lineage")?,
+        LocalLogCheckpointBinding::try_new(
+            LocalSessionId::try_new("session:extension-profile")?,
+            LocalLogId::try_new("log:extension-profile-sealed")?,
+            LocalLogId::try_new("log:extension-profile-active")?,
+        )?,
+        HistoryCapacity::try_new(9)?,
+    ))
+}
+
+#[test]
+fn compiled_extension_profile_is_a_real_structural_admission_target() -> TestResult {
+    let source = source_anchor(1, false)?;
+    let request = extension_profile_request()?;
+    let prepared = request.try_prepare(&source)?;
+
+    assert_eq!(
+        prepared.target_schema_binding(),
+        &request.target_context().schema().durable_binding()
+    );
+    assert!(
+        source.session().state().document().root().shares_allocation_with(
+            prepared.target_checkpoint().session().state().document().root()
+        )
+    );
+    let codec = LocalLogCheckpointJsonCodecV2::new(
+        request.target_context().clone(),
+        request.target_checkpoint_binding().clone(),
+    );
+    let decoded = codec.decode(prepared.target_checkpoint_json())?;
+    assert_eq!(codec.encode(&decoded)?, prepared.target_checkpoint_json());
+    Ok(())
 }
 
 #[test]

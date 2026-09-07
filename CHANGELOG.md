@@ -4,6 +4,60 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.3 - 2026-09-07
+
+This unpublished prerelease completes the Rust-core sealed inline-format
+checkpoint. Resolved extension manifests can now contribute property-free
+inline formats to the existing base text structure, and the resulting schema
+can use the already-versioned V2 persistence and replay graph. No browser or
+Wasm extension surface is opened yet.
+
+### Sealed schema contribution
+
+- Added the public nonzero `PersistedTypeRevision` and
+  `InlineFormatSpecV1` values. Each `ExtensionManifest` owns an immutable,
+  canonically ordered format list; duplicate kinds and the fixed 255-format
+  per-manifest ceiling fail before a manifest is published.
+- Added `CompiledSchema::try_compile_base_text_profile`, which accepts one
+  caller-owned non-`breditor/*` `SchemaId` and one resolved `ExtensionSet`.
+  The compiler fixes the document/paragraph/text grammar, built-in strong
+  format, property/entity prohibitions, and canonicality laws while admitting
+  at most 255 extension formats in total.
+- Compilation rejects reserved schema, extension, and format namespaces plus
+  duplicate format ownership in deterministic phases. The declared format
+  kind and persisted revision enter the canonical schema fingerprint; manifest
+  owner identity, `ExtensionVersion`, and declaration order do not.
+
+### Generic formatting and replay
+
+- Added `ToggleInlineFormatAction`, an immutable Rust-owned action configured
+  with one qualified format kind. It is enabled only when the active compiled
+  schema admits that kind as property-free, reports inactive/active/mixed
+  state, handles collapsed pending formats, and emits only existing
+  `TextSplice` or `RootTextReplace` primitives for extended selections.
+- Kept `ToggleStrongAction` as the compatibility wrapper for the existing
+  built-in action identity and diagnostics. The generic action is public but
+  is not automatically registered; compiled action ownership and semantic
+  intent routing remain the next checkpoint.
+- Extended `TextSplice`, `ParagraphSplit`, `ParagraphJoin`, and
+  `RootTextReplace` admission to compiler-minted sealed base-text schemas.
+  Extension formats survive canonicalization, exact inverse application,
+  relocation, undo, redo, independent-proof Session Checkpoint V2 restore,
+  and replay without rerunning the action handler.
+
+### Compatibility and deliberate limits
+
+- Every V1 codec remains byte-stable and exact-`breditor/base@1`-only. The
+  sealed profile path uses explicit V2 selector-and-fingerprint binding; Wasm
+  ABI 2, `@breditor/browser`, autosave, and IndexedDB remain V1-only.
+- `breditor/base@1` remains the original strong-only schema. Extension
+  profiles must use a caller-owned non-reserved schema selector and cannot add
+  nodes, properties, entities, format parameters, exclusions, normalization,
+  operation variants, codecs, or replay callbacks.
+- This checkpoint does not yet build a complete `CompiledEditorProfile`,
+  auto-register extension actions or states, bind semantic intents, or expose
+  extension presentation through Wasm, the browser renderer, or the toolbar.
+
 ## 0.2.0-alpha.2 - 2026-09-06
 
 This prerelease completes the Rust-core durable schema-binding checkpoint. It

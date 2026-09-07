@@ -253,7 +253,7 @@ impl EditorSession {
     ///
     /// A committed receipt publishes its already-preflighted commit. Blocked and
     /// unhandled receipts leave both state and history unchanged. Every route
-    /// validates its complete exact base before either effect.
+    /// validates its complete exact source state before either effect.
     ///
     /// # Errors
     ///

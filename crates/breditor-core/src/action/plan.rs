@@ -5,7 +5,7 @@ use crate::{
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
 };
 
-/// Complete detached recipe for one exact-base action transaction.
+/// Complete detached recipe for one exact-state action transaction.
 ///
 /// Every state and history policy is explicit. The registry binds this recipe
 /// to the evaluated [`crate::state::EditorState`] and stamps action metadata.

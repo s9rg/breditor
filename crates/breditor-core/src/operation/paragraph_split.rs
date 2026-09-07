@@ -255,7 +255,7 @@ pub enum ParagraphSplitApplyError {
     /// by the active editor context.
     #[error(transparent)]
     DocumentProofMismatch(#[from] DocumentProofMismatch),
-    /// Structural metadata semantics are not defined outside the exact base schema.
+    /// Structural metadata semantics are not defined outside sealed base-text profiles.
     #[error("paragraph split does not support schema {schema}")]
     UnsupportedSchema {
         /// Rejected active schema.

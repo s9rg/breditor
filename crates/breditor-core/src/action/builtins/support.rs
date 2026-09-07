@@ -15,7 +15,7 @@ use super::super::text_position::{
 pub(super) fn require_base_text_range(
     state: &EditorState,
 ) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
-    if !state.context().schema().is_exact_breditor_base() {
+    if !state.context().schema().supports_base_text_operations() {
         return Ok(Err(disabled_reason("breditor/unsupported-schema")));
     }
     match normalize_range_selection(state) {

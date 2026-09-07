@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
-Status: implemented Rust-core contract for `0.2.0-alpha.2`; browser and Wasm
-integration remains deliberately deferred
+Status: implemented Rust-core contract through `0.2.0-alpha.3`; browser and
+Wasm integration remains deliberately deferred
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.
@@ -123,7 +123,7 @@ current, predecessor, and candidate bytes only after their complete binding and
 canonical checks succeed. A failed candidate remains separate from the current
 selection, and a failed compare-and-swap never promotes it.
 
-The browser and Wasm ABI 2 remain V1-only during `alpha.2`. Browser persistence
+The browser and Wasm ABI 2 remain V1-only during `alpha.3`. Browser persistence
 does not accept V2 early, reuse the V1 IndexedDB slot, or fall back to fresh
 content after a mismatch. Profile-aware Wasm and browser persistence arrive in
 their later scheduled checkpoints.
@@ -172,15 +172,23 @@ document cannot directly mint a new persistence root. This narrower source
 contract makes history/session reset observable and prevents a document-only
 helper from being mistaken for persistence migration.
 
-## Deliberate alpha.2 limits
+## Deliberate alpha.3 limits
 
-- The public non-base schema/profile builder does not exist until the following
-  extension checkpoint. Alpha.2 exercises alternate definitions through
-  crate-private fixtures.
-- Existing primitive operation validation remains base-only until generic
-  property-free inline-format support lands. V2 operation-bearing records are
-  fully usable with the base schema; non-base empty state/session/control paths
-  prove binding behavior without pretending replay is already extensible.
+- The public compiler is only
+  `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
+  non-`breditor/*` `SchemaId` and manifest-owned property-free inline formats;
+  it cannot express nodes, properties, entities, format parameters,
+  exclusions, or normalization. A complete `CompiledEditorProfile` builder is
+  not implemented yet.
+- Existing primitive operation validation now accepts the compiler-minted
+  sealed base-text capability. `TextSplice`, `ParagraphSplit`,
+  `ParagraphJoin`, and `RootTextReplace` preserve admitted extension formats,
+  exact inverses, undo/redo, and V2 checkpoint replay. No operation tag, wire
+  shape, inverse callback, or replay callback was added.
+- `ToggleInlineFormatAction` is public and configurable by one admitted format
+  kind, but schema compilation does not assign its `ActionId`, register it,
+  declare action state, or bind an intent. Callers can register it explicitly
+  through the existing Rust action registry; compiled ownership arrives later.
 - Wasm ABI 2, browser validators, autosave, IndexedDB, and npm consumer fixtures
   continue to consume and emit V1 only.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,

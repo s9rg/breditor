@@ -3,9 +3,11 @@
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path; other formats in this proof kernel remain experimental
 unless [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them.
-The complete fingerprint-bearing V2 record graph is implemented as an
-experimental Rust-only `0.2.0-alpha.2` boundary. It does not widen any V1 codec,
-the browser product, its IndexedDB profile, or Wasm ABI 2.
+The complete fingerprint-bearing V2 record graph was implemented as the
+experimental Rust-only `0.2.0-alpha.2` boundary. `0.2.0-alpha.3` adds the sealed
+base-text schema compiler and generic property-free inline-format behavior in
+Rust. Neither checkpoint widens a V1 codec, the browser product, its IndexedDB
+profile, or Wasm ABI 2.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1` and `2`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -32,6 +34,10 @@ Base schema: `breditor/base`, version `1`
 The implemented Rust slice owns:
 
 - the canonical immutable AST and validated `Document`;
+- manifest-owned, canonically ordered property-free `InlineFormatSpecV1`
+  declarations with independent nonzero persisted type revisions, plus a
+  sealed compiler that combines one resolved extension set with a caller-owned
+  non-`breditor/*` `SchemaId` while retaining the built-in base-text shape;
 - exact proof-derived document measurements cached on each `Document`;
 - snapshot-local points, document-aware point ordering, and directional range
   selections;
@@ -182,11 +188,13 @@ The implemented Rust slice owns:
 - a frozen semantic intent router with canonical priority/fallback behavior and
   exact-state-bound outcomes;
 - one-call action observation contracts plus a frozen, bounded direct/routed/
-  history action-state catalog, immutable exact-base batches, and a
+  history action-state catalog, immutable exact-source batches, and a
   synchronous single-observation cache with bounded local deltas;
 - seven semantic base actions: exact inline and structural plain-text
   insertion, paragraph break, grapheme-aware backward and forward deletion,
-  exact selection deletion, and strong formatting; and
+  exact selection deletion, and strong formatting, plus an explicitly
+  registerable `ToggleInlineFormatAction` configured for one admitted
+  property-free format kind; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
   linear undo/redo history and opaque history-observation identity;
 - a product-level `EditorEngine` that exclusively combines one session and one
@@ -200,7 +208,9 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- generic formatting kinds and attributes beyond property-free strong text;
+- property-bearing formats and arbitrary structural schema kinds; automatic
+  compilation of extension-owned action/state/intent registrations is also
+  not yet implemented;
 - asynchronous action-state delivery, dynamic catalog registration,
   presentation plugin lifecycle, generalized keymaps, and durable registry
   manifests (the browser now has a synchronous last-good state store and a
@@ -454,7 +464,7 @@ ContinuedLocalLog + one new successor generation
     -> return the unchanged owner beside a typed error, or merge active replay tombstones
     -> publish the next LocalLogCheckpointAnchor without resetting global sequence/history
 
-EditorState + exact-base Transaction
+EditorState + exact-state Transaction
     -> apply operations in order to private immutable intermediates
     -> relocate or explicitly set editor state
     -> publish one Commit or publish nothing
@@ -462,7 +472,7 @@ EditorState + exact-base Transaction
 ActionInvocation + immutable ActionRegistry + exact EditorState
     -> decode one versioned bounded input
     -> Disabled(stable reason) or build one explicit ActionPlan
-    -> preflight one exact-base Transaction
+    -> preflight one compiler-supported base-text Transaction
     -> PreparedAction(transaction + cached Commit) or typed fault
 
 IntentInvocation + immutable IntentRouter + exact EditorState
@@ -481,7 +491,7 @@ current IntentRouteOutcome + EditorSession
     -> IntentExecutionOutcome::Unhandled or Blocked without publication
     -> IntentExecutionOutcome::Committed with one published cached Commit
 
-EditorSession + exact-base Commit or Transaction
+EditorSession + exact-state Commit or Transaction
     -> reject stale/reused state before mutation
     -> publish one authoritative current EditorState
     -> update bounded linear history under explicit intent
@@ -521,7 +531,8 @@ Every successfully validated `Document` also caches one exact `DocumentSummary`:
 Counts and bytes use checked `u64` arithmetic and depth uses `u32`, so the Rust
 contract does not change width between native and Wasm targets. The summary has
 no public constructor or mutation path. It is produced by complete validation or
-the private fixed-base local proof, is not serialized, does not affect content
+the private compiler-proved base-text local proof, is not serialized, does not
+affect content
 equality, and does not change document format version `1`. Decoding always
 recomputes it through complete validation. It is derived metadata, not a
 substitute for schema proof or evidence that the document satisfies a different
@@ -529,13 +540,14 @@ limit profile.
 
 Each document privately records the exact runtime limit profile that proved it;
 the JSON input-byte budget is excluded because it does not constrain a runtime
-tree. In version `0.0.3`, a fixed-base `TextSplice` with a matching profile can
-publish through one crate-private proof. That proof owns the path copy, validates
+tree. In version `0.0.3`, a fixed-base `TextSplice` with a matching profile
+gained one crate-private proof. Alpha.3 extends that optimization to the
+compiler-minted base-text capability. The proof owns the path copy, validates
 the actual post-seam paragraph, and updates root measurements with checked
-arithmetic. A profile mismatch, unsupported schema/path, failed proof consistency
-check, overflow, or possible limit violation sends the same candidate root to
-complete validation. The fallback constructs no synthetic report, so existing
-issue paths, ordering, and messages remain authoritative.
+arithmetic. A profile mismatch, unsupported schema/path, failed proof
+consistency check, overflow, or possible limit violation sends the same
+candidate root to complete validation. The fallback constructs no synthetic
+report, so existing issue paths, ordering, and messages remain authoritative.
 
 Version `0.0.4` deliberately publishes paragraph split/join candidates only
 through complete validation. This establishes the structural operation,
@@ -1211,6 +1223,10 @@ The enforced laws are:
 - configured byte, depth, node, child, text, format, and property limits are
   checked before a runtime document is published.
 
+A sealed base-text extension profile changes only the format-kind rule in that
+list: it also admits its compiled property-free format kinds. Every other tree
+law remains identical, and V1 remains bound to the strong-only base rule.
+
 The strict decoder rejects non-canonical data. A separately named recovery
 importer may repair foreign or damaged data later, but it must return diagnostics
 for every rewrite.
@@ -1288,6 +1304,39 @@ from context, while `Some(empty)` explicitly means unformatted. An override is
 valid only with a spatially collapsed range and formats permitted by the active
 schema.
 
+## Sealed base-text profile contract
+
+`InlineFormatSpecV1` is a checked Rust value, not a wire envelope. It contains
+exactly one qualified format kind and one nonzero `PersistedTypeRevision`.
+Properties, entities, parameters, groups, exclusions, inclusivity,
+normalization, callbacks, and codecs are not representable. The containing
+`ExtensionManifest::try_new_with_inline_formats` constructor owns these
+declarations, sorts them by format kind, rejects duplicate kinds, and accepts
+at most 255 declarations. The legacy `ExtensionManifest::try_new` constructor
+remains the zero-format convenience path.
+
+`CompiledSchema::try_compile_base_text_profile` takes one resolved
+`ExtensionSet` and one caller-owned `SchemaId`. The schema name, every extension
+identity, and every contributed format kind must stay outside the reserved
+`breditor/*` namespace. The aggregate extension-format ceiling is 255 because
+the fixed compiler ceiling is 256 including built-in `breditor/strong`.
+Duplicate ownership across manifests fails even when the declarations are
+otherwise equal. Compilation is deterministic, all-or-nothing, and never
+infers a selector from an extension or reuses `breditor/base@1`.
+
+The result fixes the same root, paragraph, text, property/entity, and
+canonicality laws as the base definition. Its schema fingerprint includes the
+caller-owned schema selector plus every admitted format kind and persisted
+revision in canonical order. It excludes declaration order, manifest owner,
+and `ExtensionVersion`. `CompiledSchema::is_property_free_inline_format` is a
+read-only language query; it neither registers an action nor grants ownership.
+The private compiler-minted base-text capability, rather than matching names
+alone, gates the primitive edit paths.
+
+These non-base schemas use only the V2 durable codec graph. Every V1 codec
+continues to require the exact built-in strong-only `breditor/base@1`
+definition.
+
 ## Text operation contract
 
 `TextSplice` replaces one half-open UTF-16 range inside one paragraph. Its range
@@ -1320,10 +1369,13 @@ the transaction operation cap, and all final document limits.
 ## Structural paragraph operation contract
 
 `ParagraphSplit` and `ParagraphJoin` are the first structural primitives. They
-support only paragraphs that are direct children of the exact
-`breditor/base@1` root. That restriction is explicit: copying or reconciling
-entity identities, properties, and arbitrary block metadata has not been
-specified, so other schemas fail instead of inheriting accidental behavior.
+support only property-free paragraphs that are direct children of a compiler-
+minted base-text root. This includes exact `breditor/base@1` and the sealed
+profiles produced by `CompiledSchema::try_compile_base_text_profile`; it does
+not include an arbitrary schema that happens to reuse the same names. That
+restriction is explicit: copying or reconciling entity identities, properties,
+and arbitrary block metadata has not been specified, so other schemas fail
+instead of inheriting accidental behavior.
 
 `ParagraphSplit` carries a direct-root paragraph path, one aggregate UTF-16
 scalar boundary, and the complete canonical paragraph expected at that path. It
@@ -1374,13 +1426,15 @@ tree cannot fail merely because a temporary representation exceeded a limit.
 Candidate limit/schema-rule failures carry the validator's unchanged
 `ValidationReport`; schema identity or unsupported-schema failures remain
 distinct typed errors. The transaction stays atomic in every case. These
-operations intentionally support only the exact base schema. A future schema
-with block properties, entity identities, or heterogeneous block shells needs
-an explicit metadata policy rather than silently inheriting this contract.
+operations intentionally support only the compiler-minted base-text capability.
+A schema with block properties, entity identities, different role kinds,
+different child constraints, different canonicality laws, or heterogeneous
+block shells needs an explicit operation policy rather than silently inheriting
+this contract. Property-free extension format sets are preserved exactly.
 
 ## Transactions, relocation, and commits
 
-A `Transaction` is authored against one exact base `EditorState`, not merely a
+A `Transaction` is authored against one exact input `EditorState`, not merely a
 document version number. Application verifies the schema, complete context,
 snapshot identity, and base-state equality. Operations run in order, each using
 the previous operation's result. If an operation, relocation choice, or result
@@ -1628,6 +1682,25 @@ from silently widening either version-1 contract.
   paragraphs inside a range containing other text remain intact and do not
   affect activation.
 
+`ToggleInlineFormatAction` is the generic alpha.3 form of that formatting
+behavior. Its checked configuration is one immutable `QualifiedName`; the host
+chooses a distinct `ActionId` only when explicitly registering it in an
+`ActionRegistry`. Evaluation first requires the active compiler-minted
+base-text profile and then requires the configured kind to be an admitted
+property-free inline format. An unknown or ineligible kind is disabled as
+`breditor/unsupported-inline-format` and produces no operation.
+
+For an admitted kind, the generic action uses the same collapsed pending-format
+precedence, affinity lookup, inactive/active/mixed rule, format-limit behavior,
+selection preservation, and same-/cross-paragraph primitive plans as the
+strong action. Adding one kind preserves every other format in canonical
+qualified-name order; removing it remains possible at the format-count ceiling.
+`ToggleStrongAction` delegates to this implementation while preserving the
+existing `breditor/toggle-strong` identity and strong-specific fault codes.
+Schema compilation does not automatically register the generic action, assign
+state identity, or bind an intent; those compiled-profile contracts are
+deferred to alpha.4.
+
 All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
 survives. Empty paragraphs and formatted seams have explicit behavior.
@@ -1683,7 +1756,7 @@ Declarations enumerate by lexical `IntentId`, global bindings by lexical
 `BindingId`, and each route by descending priority; identity is never a hidden
 priority tie-break. Negative, zero, and positive priorities are all ordinary
 values. Declaring an intent with zero bindings is valid and returns an
-exact-base `Unhandled` outcome with an empty trace. Invoking an undeclared
+exact-source `Unhandled` outcome with an empty trace. Invoking an undeclared
 intent instead returns typed `UnknownIntent`.
 
 Version `0.0.7` requires one trusted host compositor to own shared intent
@@ -1805,7 +1878,7 @@ value and 1 MiB UTF-8 payload budget. Construction totals every fixed input
 before descriptor validation, so an over-limit error reports the complete
 catalog aggregate rather than the prefix that first crossed the limit.
 
-Batch derivation is synchronous and exact-base. Direct sources call
+Batch derivation is synchronous and exact-source. Direct sources call
 `ActionRegistry::prepare`; routed sources call `IntentRouter::route`; history
 sources run the same replay preflight used by `EditorSession::undo` and `redo`.
 One entry's deterministic action, route, or replay fault does not erase other
@@ -2046,8 +2119,9 @@ protocol.
 The correctness-first implementation deliberately accepts costs that must be
 removed before large-document production use. Root-level node, depth, text-byte,
 and property-value measurements are cached for constant-time access. A
-fixed-base paragraph splice now validates the generated paragraph and applies
-checked global deltas instead of rescanning a matching-profile document, but:
+compiler-proved base-text paragraph splice now validates the generated
+paragraph and applies checked global deltas instead of rescanning a matching-
+profile document, but:
 
 - any profile/schema/path the local proof cannot establish falls back to
   full-tree schema and resource validation;
@@ -2295,6 +2369,12 @@ The complete composition graph is fixed:
 - `LocalLogStorageRootJsonCodecV2` and
   `LocalLogStorageGenerationJsonCodecV2` embed exact Local Log Checkpoint V2
   JSON and require explicit Frame V2 policy records.
+
+Alpha.3 does not add a V3 or change any V2 field. It makes the existing V2
+operation-bearing graph usable with a public compiler-minted base-text profile:
+format kinds remain data inside the existing fragments and documents, while
+the receiving schema selector and fingerprint determine whether they are
+admitted.
 
 Every repeated selector and fingerprint must equal the outer record and the
 receiving compiled schema. Matching durable identity from another compiled

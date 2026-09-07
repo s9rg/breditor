@@ -177,7 +177,9 @@ fn prove_summary(
     path: &NodePath,
     candidate_root: &NodeRef,
 ) -> Option<DocumentSummary> {
-    if !source.is_proven_for(schema, limits) || !schema.is_exact_breditor_base() || path.len() != 1
+    if !source.is_proven_for(schema, limits)
+        || !schema.supports_base_text_operations()
+        || path.len() != 1
     {
         return None;
     }
@@ -354,12 +356,16 @@ mod tests {
 
     use crate::{
         document::{
-            Document, ElementNode, FormatSet, NodeRef, PropertyMap, TextNode,
+            Document, ElementNode, Format, FormatSet, NodeRef, PropertyMap, TextNode,
             local_text_splice::{LocalTextPublicationError, LocalTextPublicationKind},
+        },
+        extension::{
+            ExtensionId, ExtensionLimits, ExtensionManifest, ExtensionSet, ExtensionVersion,
+            InlineFormatSpecV1,
         },
         identity::QualifiedName,
         position::NodePath,
-        schema::{CompiledSchema, DocumentLimits},
+        schema::{CompiledSchema, DocumentLimits, PersistedTypeRevision, SchemaId, SchemaVersion},
     };
 
     fn source_document(
@@ -386,6 +392,38 @@ mod tests {
         Ok(vec![NodeRef::text(TextNode::try_new("bb".to_owned(), FormatSet::default())?)])
     }
 
+    fn extension_schema() -> Result<CompiledSchema, Box<dyn Error>> {
+        let manifest = ExtensionManifest::try_new_with_inline_formats(
+            ExtensionId::new(
+                QualifiedName::try_new("example/local-proof-extension")?,
+                ExtensionVersion::try_new(1)?,
+            ),
+            Vec::new(),
+            Vec::new(),
+            vec![InlineFormatSpecV1::new(
+                QualifiedName::try_new("example/emphasis")?,
+                PersistedTypeRevision::one(),
+            )],
+        )?;
+        let extensions = ExtensionSet::try_new(vec![manifest], ExtensionLimits::default())?;
+        CompiledSchema::try_compile_base_text_profile(
+            SchemaId::new(
+                QualifiedName::try_new("example/local-proof-profile")?,
+                SchemaVersion::try_new(1)?,
+            ),
+            &extensions,
+        )
+        .map_err(Into::into)
+    }
+
+    fn extension_replacement() -> Result<Vec<NodeRef>, Box<dyn Error>> {
+        let formats = FormatSet::try_from_formats(vec![Format::new(
+            QualifiedName::try_new("example/emphasis")?,
+            PropertyMap::default(),
+        )])?;
+        Ok(vec![NodeRef::text(TextNode::try_new("bb".to_owned(), formats)?)])
+    }
+
     #[test]
     fn matching_profile_uses_incremental_proof() -> Result<(), Box<dyn Error>> {
         let schema = CompiledSchema::breditor_base();
@@ -394,6 +432,26 @@ mod tests {
         let path = NodePath::try_from_indices(vec![0])?;
         let publication =
             source.try_replace_base_paragraph_children(&schema, &limits, &path, replacement()?)?;
+        assert_eq!(publication.kind(), LocalTextPublicationKind::IncrementalProof);
+        let document = publication.into_document();
+        assert_eq!(document.summary().total_text_bytes(), 2);
+        assert!(document.is_proven_for(&schema, &limits));
+        Ok(())
+    }
+
+    #[test]
+    fn sealed_extension_profile_uses_incremental_proof_for_registered_formats()
+    -> Result<(), Box<dyn Error>> {
+        let schema = extension_schema()?;
+        let limits = DocumentLimits::default();
+        let source = source_document(&schema, &limits)?;
+        let path = NodePath::try_from_indices(vec![0])?;
+        let publication = source.try_replace_base_paragraph_children(
+            &schema,
+            &limits,
+            &path,
+            extension_replacement()?,
+        )?;
         assert_eq!(publication.kind(), LocalTextPublicationKind::IncrementalProof);
         let document = publication.into_document();
         assert_eq!(document.summary().total_text_bytes(), 2);

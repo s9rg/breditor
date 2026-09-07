@@ -179,7 +179,7 @@ impl fmt::Debug for DisabledActionPreparation {
     }
 }
 
-/// One exact-base transaction and its cached successful preflight commit.
+/// One exact-state transaction and its cached successful preflight commit.
 ///
 /// This value is deliberately one-shot and not cloneable. Execution never calls
 /// the action handler or transaction reducer again.
@@ -271,7 +271,7 @@ impl fmt::Debug for PreparedAction {
 pub enum ActionPreparation {
     /// The handler expectedly disabled the action.
     Disabled(DisabledActionPreparation),
-    /// The handler produced one successfully preflighted exact-base transaction.
+    /// The handler produced one successfully preflighted exact-state transaction.
     Enabled(PreparedAction),
 }
 

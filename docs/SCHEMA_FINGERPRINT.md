@@ -1,7 +1,8 @@
 # Schema fingerprint contract
 
-Status: compiler identity, strict public parser, durable binding, and the
-complete Rust-core V2 record graph are implemented in `0.2.0-alpha.2`.
+Status: compiler identity, strict public parser, durable binding, the complete
+Rust-core V2 record graph, and the sealed base-text extension compiler are
+implemented through `0.2.0-alpha.3`.
 
 `SchemaFingerprint` is the durable identity of one complete compiled content
 language. It lets Breditor distinguish schemas that share a human-readable
@@ -14,8 +15,11 @@ process-local validation proof. The public Rust type parses only the exact
 71-byte text form through `FromStr`/`TryFrom`; it deliberately has no public
 Serde contract. Every independent Rust V2 JSON envelope stores that canonical
 text beside `SchemaId` and requires both identities to match the receiving
-compiled schema. A general public schema compiler remains staged for a later
-prerelease.
+compiled schema. Alpha.3 exposes only
+`CompiledSchema::try_compile_base_text_profile`: callers provide a
+non-`breditor/*` schema selector and a resolved extension set whose manifests
+may add property-free inline formats. A general node/property schema compiler
+remains staged.
 
 ## Canonical byte encoding
 
@@ -91,6 +95,14 @@ explicit state construction boundary must fully validate before rebinding it.
 A different fingerprint fails closed and is never silently admitted or
 migrated.
 
+For a sealed base-text profile, each contributed qualified format kind and its
+nonzero persisted type revision enter the sorted inline-format projection.
+Changing only manifest order, the owning `ExtensionId`, or its
+`ExtensionVersion` therefore preserves the fingerprint. Changing the caller-
+owned profile `SchemaId`, a format kind, or its persisted revision changes the
+fingerprint. `breditor/base@1` is never used as an extension profile selector;
+it remains the locked strong-only vector below.
+
 ## Locked base vector
 
 The canonical `breditor/base@1` input is exactly 282 bytes and hashes to:
@@ -116,4 +128,4 @@ generation-locked nesting, as specified by the
 [durable schema binding contract](DURABLE_SCHEMA_BINDING.md). Legacy V1 records
 remain byte-for-byte unchanged and bound to the exact built-in base definition.
 Wasm ABI 2 and the browser persistence path continue to consume and emit V1
-only during alpha.2.
+only during alpha.3.

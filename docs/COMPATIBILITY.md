@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.2` Rust boundary
+## Experimental `0.2.0-alpha.3` Rust boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -165,7 +165,16 @@ prepared schema-admission paths. These contracts are additive research surfaces
 outside the stable `0.1.x` promise. Existing V1 codecs remain exact-base-only;
 neither generation auto-detects, upgrades, or silently nests the other.
 
-The alpha.2 npm version does not widen the browser product. Wasm ABI 2,
+Alpha.3 additionally exposes manifest-owned `InlineFormatSpecV1` declarations,
+independent persisted type revisions, and a sealed base-text compiler under a
+caller-owned non-`breditor/*` schema selector. Its compiler-minted schemas keep
+the exact built-in document/paragraph/text shape and may add only property-free
+inline formats. Existing primitive operations, exact inverses, history, and V2
+checkpoint replay preserve those formats; `ToggleInlineFormatAction` is the
+public Rust-owned generic planner. It must still be assigned and registered
+explicitly because compiled action/intent ownership is not an alpha.3 feature.
+
+The alpha.3 npm version does not widen the browser product. Wasm ABI 2,
 `@breditor/browser`, browser validation and export, autosave, and the IndexedDB
 Session Checkpoint Profile continue to consume and emit V1 only. The Rust V2
 families are not accepted in the V1 IndexedDB slot, and a mismatch must not be

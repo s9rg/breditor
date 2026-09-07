@@ -1,13 +1,14 @@
 use std::{fmt, sync::Arc};
 
 use crate::{
+    extension::ExtensionSet,
     identity::QualifiedName,
-    schema::{DurableSchemaBinding, SchemaFingerprint, SchemaId},
+    schema::{DurableSchemaBinding, SchemaCompilationError, SchemaFingerprint, SchemaId},
 };
 
 use super::compiler::{
-    ChildConstraint, CompiledSchemaDefinition, GlobalConstraints, compile_breditor_base,
-    is_exact_breditor_base,
+    ChildConstraint, CompiledSchemaDefinition, GlobalConstraints, compile_base_text_profile,
+    compile_breditor_base, is_exact_breditor_base, supports_base_text_operations,
 };
 
 /// The immutable schema used to validate a document.
@@ -21,6 +22,7 @@ pub struct CompiledSchema {
     definition: Arc<CompiledSchemaDefinition>,
     fingerprint: SchemaFingerprint,
     proof: CompiledSchemaProof,
+    supports_base_text_operations: bool,
 }
 
 /// Cloneable crate-private handle to one process-local schema-proof allocation.
@@ -57,6 +59,27 @@ impl CompiledSchema {
         compile_breditor_base()
     }
 
+    /// Compiles a sealed base-text schema from one resolved extension set.
+    ///
+    /// The root, paragraph, text, built-in strong-format, property, entity, and
+    /// canonicality laws remain fixed by Breditor. Each manifest may only add
+    /// property-free [`crate::extension::InlineFormatSpecV1`] declarations.
+    /// `schema_id` must use a non-`breditor/*` name: `breditor/base@1` continues
+    /// to mean exactly the original strong-only schema. The complete operation
+    /// is deterministic and publishes no partial schema on failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SchemaCompilationError`] for a reserved schema or extension
+    /// identity, an aggregate format-limit violation, duplicate ownership, or
+    /// an attempted core-format impersonation.
+    pub fn try_compile_base_text_profile(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        compile_base_text_profile(schema_id, extensions)
+    }
+
     /// Returns a test-only schema with the base selector and different content meaning.
     ///
     /// This narrow factory exists only so crate tests can prove that a matching
@@ -70,7 +93,13 @@ impl CompiledSchema {
         definition: Arc<CompiledSchemaDefinition>,
         fingerprint: SchemaFingerprint,
     ) -> Self {
-        Self { definition, fingerprint, proof: CompiledSchemaProof::fresh() }
+        let supports_base_text_operations = supports_base_text_operations(&definition);
+        Self {
+            definition,
+            fingerprint,
+            proof: CompiledSchemaProof::fresh(),
+            supports_base_text_operations,
+        }
     }
 
     pub(super) const fn definition(&self) -> &Arc<CompiledSchemaDefinition> {
@@ -105,6 +134,15 @@ impl CompiledSchema {
     #[must_use]
     pub fn root_kind(&self) -> &QualifiedName {
         self.definition.root_kind()
+    }
+
+    /// Returns whether a format is registered and permits no properties.
+    ///
+    /// This read-only query does not authorize an action or establish
+    /// ownership. It reports only the compiled document-language rule.
+    #[must_use]
+    pub fn is_property_free_inline_format(&self, kind: &QualifiedName) -> bool {
+        self.definition.inline_format(kind).is_some_and(|format| !format.allows_properties())
     }
 
     pub(crate) fn paragraph_kind(&self) -> &QualifiedName {
@@ -169,6 +207,10 @@ impl CompiledSchema {
 
     pub(crate) fn is_exact_breditor_base(&self) -> bool {
         is_exact_breditor_base(&self.definition)
+    }
+
+    pub(crate) const fn supports_base_text_operations(&self) -> bool {
+        self.supports_base_text_operations
     }
 }
 

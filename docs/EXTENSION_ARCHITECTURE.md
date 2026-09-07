@@ -1,7 +1,7 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1`, `0.2.0-alpha.1`, and
-`0.2.0-alpha.2` foundations are implemented and later stages remain planned
+Status: decision freeze; the `0.1.1` through `0.2.0-alpha.3` Rust foundations
+are implemented and later stages remain planned
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -302,6 +302,25 @@ Only one sealed subset is accepted in `0.2.0`:
 - adjacent text leaves with equal format sets remain non-canonical; and
 - the existing limits and complete final validation remain authoritative.
 
+The implemented alpha.3 Rust entrypoint is
+`CompiledSchema::try_compile_base_text_profile(schema_id, &extensions)`.
+The caller supplies the complete `SchemaId`, and its qualified name must not
+use the reserved `breditor/*` namespace. In particular, the compiler never
+reuses `breditor/base@1`: that selector remains exactly the original
+strong-only definition. Each resolved manifest owns its
+`InlineFormatSpecV1` declarations, each declaration carries a qualified kind
+and independent nonzero `PersistedTypeRevision`, and both per-manifest and
+aggregate extension-format counts are capped at 255. The built-in strong
+format occupies the final slot in the compiler's 256-format ceiling.
+
+Compilation is all-or-nothing and diagnostics follow canonical phases.
+Reserved schema and extension identities, aggregate overflow, duplicate
+cross-manifest format ownership, and reserved core-format impersonation fail
+without a partial schema. Declaration order, owning extension identity, and
+`ExtensionVersion` do not change the fingerprint when the admitted format
+kinds and revisions are unchanged; a changed schema selector, format kind, or
+persisted type revision does.
+
 In other editor terminology this resembles a very small property-free “mark”
 extension, but `InlineFormatSpecV1` is Breditor's contract. ProseMirror content
 expressions, Lexical node classes, Tiptap extension objects, and CKEditor schema
@@ -390,6 +409,25 @@ those primitives against an exact observation. Rust checks the runtime
 generation, schema proof, snapshot/revision guard, action input contract,
 declared effects, every primitive, selection and pending-format result,
 resource limits, and complete final schema validity before publishing anything.
+
+At alpha.3, `ToggleInlineFormatAction` is the public Rust-owned generic
+implementation. Construction permanently binds one qualified format kind;
+evaluation is disabled unless the active compiled schema admits that kind as
+property-free. Collapsed selections update explicit pending formats without a
+document operation. Extended same-paragraph and cross-paragraph selections
+emit existing guarded `TextSplice` and `RootTextReplace` values, preserving
+selection direction and reporting inactive, active, or mixed state.
+`ToggleStrongAction` remains a compatibility wrapper with its original action
+identity and diagnostic vocabulary. The generic action is not automatically
+registered: callers can register it explicitly with the existing
+`ActionRegistry`, while extension-owned action/intent compilation remains an
+alpha.4 responsibility.
+
+All four existing primitives—`TextSplice`, `ParagraphSplit`, `ParagraphJoin`,
+and `RootTextReplace`—accept only the compiler-minted base-text capability,
+not an arbitrary schema that happens to use similar names. Their wire shape is
+unchanged, and exact inverses, relocation, undo/redo, and V2 checkpoint replay
+preserve extension formats without invoking the generic action again.
 
 There is no browser-to-Rust extension action planner callback and no arbitrary
 operation-plan ingress in `0.2.0`. Portable browser code selects a registered
@@ -516,8 +554,8 @@ and versioning; Rust's native ABI is not a stable plugin ABI.
 
 The supported `0.2.0` ABI path will be Wasm ABI 3.
 
-This is a later release checkpoint, not an alpha.2 capability. The current
-alpha.2 browser and Wasm packages deliberately retain ABI 2 and accept or emit
+This is a later release checkpoint, not an alpha.3 capability. The current
+alpha.3 browser and Wasm packages deliberately retain ABI 2 and accept or emit
 only the existing Document V1 and Session Checkpoint V1 browser formats. None of
 the Rust V2 codec, durable-profile selection, or schema-admission API crosses
 ABI 2.
@@ -632,6 +670,12 @@ prepared-result admission API. The exact fingerprint contract and
 cross-implementation base vector are frozen in
 [Schema fingerprint contract](SCHEMA_FINGERPRINT.md).
 
+`0.2.0-alpha.3` settles the Rust value boundary for manifest-owned property-
+free formats, the caller-owned non-reserved profile schema selector, the sealed
+base-text compiler, and the configured generic toggle action. It deliberately
+does not settle automatic action ownership, intent routes, render order, or the
+safe browser recipe vocabulary.
+
 The following choices remain for later checkpoints and may be settled without
 weakening the decisions above:
 
@@ -641,9 +685,10 @@ weakening the decisions above:
 2. **Inline renderer order syntax.** Choose the smallest explicit
    `before`/`after` declaration and stable fallback needed for deterministic DOM
    nesting; it remains separate from semantic format-set order.
-3. **Generic action declaration.** Finalize the closed fields required to
-   instantiate toggle-format action state, effects, selection policy, and
-   history intent without an executable extension callback.
+3. **Compiled action declaration.** Define how a manifest requests and owns a
+   registration of the now-implemented generic toggle action, including its
+   action/state identities and intent route, without executable extension
+   callbacks or caller-selected effect declarations.
 4. **Safe render vocabulary.** Finalize the allowed element tokens, attribute
    tokens, nesting edges, and CSS-class policy. Recipes remain bounded data and
    never become executable callbacks.
@@ -695,6 +740,7 @@ earlier or skip a gate.
 - Cover pending typing format, inverse, relocation, undo/redo, and checkpoint
   replay.
 - Keep properties, nodes, normalization, and custom codecs rejected.
+- Complete.
 
 ### 0.2.0-alpha.4 — frozen actions and semantic intents
 

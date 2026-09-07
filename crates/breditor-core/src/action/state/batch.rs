@@ -16,7 +16,7 @@ use super::{
     },
 };
 
-/// Fixed-width measurements of dynamic payload retained by one exact-base batch.
+/// Fixed-width measurements of dynamic payload retained by one exact-source batch.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct ActionStateBatchSummary {
     entry_count: u32,

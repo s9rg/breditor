@@ -12,7 +12,7 @@ to add that library solely to type-check Breditor.
 The package is ESM. Initialize it before calling any exported Rust function:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.2
+npm install @breditor/wasm@0.2.0-alpha.3
 ```
 
 ```ts
@@ -41,6 +41,11 @@ preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the `0.1.x` API compatibility promise; official
 browser/Wasm packages are supported only as an exact same-version pair with ABI
 generation `2`.
+
+Version `0.2.0-alpha.3` does not expose the Rust core's sealed extension schema
+compiler or generic format action through Wasm. This package still accepts and
+emits the exact base-only Document V1 and Session Checkpoint V1 browser shapes;
+profile bootstrap is reserved for Wasm ABI 3.
 
 ## Reproducible build
 
