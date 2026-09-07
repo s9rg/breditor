@@ -655,6 +655,7 @@ pub mod identity;
 pub mod local_log;
 pub mod operation;
 pub mod position;
+pub mod profile;
 mod record;
 pub mod schema;
 pub mod schema_admission;

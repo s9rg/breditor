@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-alpha.3` packaged boundary contract; ABI generation `2` is authoritative
+Status: `0.2.0-alpha.4` packaged boundary contract; ABI generation `2` is authoritative
 for the matching official browser/Wasm packages, while direct raw-handle use is
 an intentionally narrow, advanced, and experimental integration surface
 
@@ -13,10 +13,17 @@ import-time dependency on their concrete classes. A clean temporary consumer
 installs both npm tarballs, initializes the real Wasm module, imports the
 browser entry point, and type-checks without workspace paths.
 
-`@breditor/browser@0.2.0-alpha.3` and `@breditor/wasm@0.2.0-alpha.3` are supported as an
-exact-version pair. The generated raw classes and ownership handles documented
-below remain available for advanced integrations, but they are not the
-high-level browser compatibility surface.
+`@breditor/browser@0.2.0-alpha.4` and `@breditor/wasm@0.2.0-alpha.4` are
+supported as an exact-version pair. The generated raw classes and ownership
+handles documented below remain available for advanced integrations, but they
+are not the high-level browser compatibility surface.
+
+Alpha.4 changes only Rust-core semantic profile construction. The
+manifest-owned toggle bundle, `CompiledEditorProfile`, and its process-local
+generation do not cross this ABI. `EditorEngine` and Wasm observations/outcomes
+do not yet carry that generation; ABI 3 and profile bootstrap remain alpha.5
+work. This ABI continues to admit and emit only the exact-base Document V1 and
+Session Checkpoint V1 browser shapes.
 
 Generation requires the locked Cargo graph, the pinned Rust toolchain and Wasm
 target, and exactly `wasm-bindgen 0.2.127`. The build first writes an isolated

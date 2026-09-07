@@ -1,6 +1,6 @@
 # Durable schema binding contract
 
-Status: implemented Rust-core contract through `0.2.0-alpha.3`; browser and
+Status: implemented Rust-core contract through `0.2.0-alpha.4`; browser and
 Wasm integration remains deliberately deferred
 
 This contract defines how Breditor records name the exact content language
@@ -123,7 +123,7 @@ current, predecessor, and candidate bytes only after their complete binding and
 canonical checks succeed. A failed candidate remains separate from the current
 selection, and a failed compare-and-swap never promotes it.
 
-The browser and Wasm ABI 2 remain V1-only during `alpha.3`. Browser persistence
+The browser and Wasm ABI 2 remain V1-only during `alpha.4`. Browser persistence
 does not accept V2 early, reuse the V1 IndexedDB slot, or fall back to fresh
 content after a mismatch. Profile-aware Wasm and browser persistence arrive in
 their later scheduled checkpoints.
@@ -172,27 +172,38 @@ document cannot directly mint a new persistence root. This narrower source
 contract makes history/session reset observable and prevents a document-only
 helper from being mistaken for persistence migration.
 
-## Deliberate alpha.3 limits
+## Deliberate alpha.4 limits
 
-- The public compiler is only
+- The public schema compiler remains
   `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
   non-`breditor/*` `SchemaId` and manifest-owned property-free inline formats;
-  it cannot express nodes, properties, entities, format parameters,
-  exclusions, or normalization. A complete `CompiledEditorProfile` builder is
-  not implemented yet.
+  it cannot express nodes, properties, entities, format parameters, exclusions,
+  or normalization. Alpha.4 adds
+  `CompiledEditorProfile::try_compile_base_text_profile` over that sealed
+  compiler and co-owns its exact `ExtensionSet`, schema, generated registry,
+  router, and catalog.
 - Existing primitive operation validation now accepts the compiler-minted
   sealed base-text capability. `TextSplice`, `ParagraphSplit`,
   `ParagraphJoin`, and `RootTextReplace` preserve admitted extension formats,
   exact inverses, undo/redo, and V2 checkpoint replay. No operation tag, wire
   shape, inverse callback, or replay callback was added.
-- `ToggleInlineFormatAction` is public and configurable by one admitted format
-  kind, but schema compilation does not assign its `ActionId`, register it,
-  declare action state, or bind an intent. Callers can register it explicitly
-  through the existing Rust action registry; compiled ownership arrives later.
+- A manifest-owned toggle bundle contains one same-manifest format kind plus
+  action, no-input intent, binding, and action-state IDs. Compilation generates
+  the existing Rust toggle action, a tracked intent, one priority-0 blocking
+  binding, and routed state. Per-manifest and aggregate limits are 255; IDs are
+  unique within each typed namespace and extension semantic IDs cannot use
+  `breditor/*`. Custom actions, callbacks, inputs, cross-extension targets,
+  shared identities, and fallback routes remain unavailable.
+- Every successful profile compilation mints a fresh opaque process-local
+  generation, but alpha.4 keeps it on the profile container. `EditorEngine`,
+  observations, outcomes, and Wasm do not carry it until alpha.5. Existing
+  native constructors remain advanced bypasses.
 - Wasm ABI 2, browser validators, autosave, IndexedDB, and npm consumer fixtures
-  continue to consume and emit V1 only.
+  continue to consume and emit exact-base V1 only. Rendering and toolbar support
+  remain alpha.6 and alpha.7 work.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.
 - A schema fingerprint proves equality of content meaning, not package origin,
-  extension code, action behavior, or browser presentation.
+  extension code, toggle action/intent/binding/state declarations, or browser
+  presentation.

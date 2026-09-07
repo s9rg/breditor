@@ -4,6 +4,58 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.4 - 2026-09-07
+
+This Rust-core checkpoint compiles the first complete semantic profile around
+the property-free inline-format path introduced in alpha.3. It does not widen
+the browser product, durable wire families, or Wasm ABI: the official npm pair
+is version-aligned at `0.2.0-alpha.4` but remains unpublished and continues to
+use Wasm ABI 2 and the exact-base V1 browser path.
+
+### Manifest-owned toggle bundles
+
+- Added immutable manifest-owned inline-format toggle declarations. Each bundle
+  names exactly one format kind, action ID, intent ID, binding ID, and
+  action-state ID; it carries no handler, callback, custom input, label, icon,
+  shortcut, or toolbar placement.
+- Limited toggle declarations to 255 per manifest and 255 across the compiled
+  profile. Each toggle must target a property-free format declared by the same
+  manifest, and one format can have at most one toggle.
+- Reject duplicate action, intent, binding, and action-state identities within
+  each typed namespace across the complete profile. Extension semantic
+  identities cannot use the reserved `breditor/*` namespace.
+
+### Immutable compiled editor profile
+
+- Added an immutable `CompiledEditorProfile` that co-owns one resolved
+  `ExtensionSet`, compiled schema, action registry, semantic intent router, and
+  observable action-state catalog. Each successful compilation mints a fresh,
+  opaque process-local profile generation for correlating those components.
+- Each admitted toggle instantiates the existing generic Rust
+  `ToggleInlineFormatAction`, a tracked no-input intent, one priority-0 blocking
+  binding, and routed action state suitable for a future toolbar. All mutation
+  planning and authoritative state evaluation remain in Rust. The existing base
+  actions and Bold/Undo/Redo action-state entries remain present.
+- Kept action, intent, binding, and action-state declarations out of the durable
+  schema fingerprint. Adding or renaming only this semantic routing bundle does
+  not change document meaning or any canonical V2 schema fingerprint.
+
+### Deliberate alpha.4 limits
+
+- Extensions cannot define custom actions, callbacks, action inputs, effect
+  declarations, cross-extension format targets, shared toggle routes, or
+  fallback routes. The only generated behavior is one no-input toggle per
+  admitted declaration targeting a manifest-owned property-free format.
+- Existing native Rust action-registry, intent-router, and engine APIs remain
+  advanced bypasses; a host that uses them directly is outside the compiled
+  profile's ownership and correlation guarantee.
+- `CompiledProfileGeneration` is only a Rust-local container identity in this
+  checkpoint. It is not yet carried by `EditorEngine`, observations, outcomes,
+  or Wasm values; that transport work belongs to alpha.5.
+- No browser rendering or toolbar UI is added. Profile-aware rendering remains
+  alpha.6 work and the supported browser intent/toolbar path remains alpha.7.
+  Every V1 codec remains exact-`breditor/base@1`-only.
+
 ## 0.2.0-alpha.3 - 2026-09-07
 
 This unpublished prerelease completes the Rust-core sealed inline-format

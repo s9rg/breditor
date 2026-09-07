@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.3` Rust boundary
+## Experimental `0.2.0-alpha.4` Rust boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -171,15 +171,28 @@ caller-owned non-`breditor/*` schema selector. Its compiler-minted schemas keep
 the exact built-in document/paragraph/text shape and may add only property-free
 inline formats. Existing primitive operations, exact inverses, history, and V2
 checkpoint replay preserve those formats; `ToggleInlineFormatAction` is the
-public Rust-owned generic planner. It must still be assigned and registered
-explicitly because compiled action/intent ownership is not an alpha.3 feature.
+public Rust-owned generic planner.
 
-The alpha.3 npm version does not widen the browser product. Wasm ABI 2,
+Alpha.4 adds a manifest-owned immutable toggle declaration for one
+same-manifest format kind and its action, no-input intent, binding, and
+action-state IDs. Compilation admits at most 255 per manifest and profile,
+rejects duplicate typed identities and all extension semantic IDs under
+`breditor/*`, and creates the existing generic toggle action, a tracked intent,
+one priority-0 blocking binding, and routed state. `CompiledEditorProfile`
+co-owns the extension set, schema, generated registry, router, and catalog under
+a fresh opaque Rust-local generation. These semantic declarations do not change
+the schema fingerprint. Custom actions, inputs, callbacks, cross-extension
+targets, shared/fallback routes, rendering, and toolbar UI are not included;
+native component APIs remain advanced bypasses.
+
+The alpha.4 npm version does not widen the browser product. Wasm ABI 2,
 `@breditor/browser`, browser validation and export, autosave, and the IndexedDB
 Session Checkpoint Profile continue to consume and emit V1 only. The Rust V2
 families are not accepted in the V1 IndexedDB slot, and a mismatch must not be
-replaced with fresh content. Profile-aware Wasm and browser persistence require
-their later explicit checkpoints and ABI generation.
+replaced with fresh content. The profile generation is not yet carried by
+`EditorEngine`, observations, outcomes, or Wasm values. Profile-aware Wasm and
+browser persistence require their later explicit checkpoints and ABI
+generation.
 
 ## Browser and Wasm pairing
 

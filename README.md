@@ -11,19 +11,20 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.2.0-alpha.3` checkpoint adds the first public, sealed schema
-extension path in the Rust core. An immutable extension manifest can own
-property-free inline-format declarations, and
-`CompiledSchema::try_compile_base_text_profile` deterministically compiles a
-resolved set under a caller-owned, non-`breditor/*` schema identity. The
-document/paragraph/text grammar and all canonicality laws remain fixed.
-Generic formatting uses the existing primitive operation language, exact
-inverses, history, replay, and fingerprint-bearing V2 records; it does not add
-an operation or codec variant. Every V1 codec remains bound to the exact
-built-in `breditor/base@1` strong-only definition. Wasm ABI 2, the browser
-product, autosave, and IndexedDB continue to consume and emit V1 only; their
-profile-aware widening is scheduled for later checkpoints. The decisions and
-checkpoint gates are recorded in the
+The current `0.2.0-alpha.4` checkpoint adds the first immutable compiled editor
+profile in the Rust core. Building one profile co-owns the resolved extension
+set, sealed schema, action registry, intent router, and observable action-state
+catalog under a fresh opaque process-local generation. A manifest can pair each
+property-free inline format it owns with one behavior-free toggle bundle naming
+the format, action, intent, binding, and action-state identities. The compiler
+instantiates the existing generic Rust toggle action, a tracked no-input intent,
+one priority-0 blocking binding, and routed toolbar-ready state; extensions do
+not supply callbacks, custom inputs, or operation variants. These semantic
+declarations do not change the schema fingerprint. Every V1 codec remains bound
+to the exact built-in `breditor/base@1` strong-only definition. Wasm ABI 2, the
+browser product, autosave, and IndexedDB continue to consume and emit V1 only;
+the new profile generation is Rust-local and is not yet carried by engine or
+Wasm observations. The decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
 are specified by the [schema fingerprint contract](docs/SCHEMA_FINGERPRINT.md).
@@ -94,9 +95,13 @@ The implementation includes:
   extension conflicts;
 - an immutable extension-set resolver with exact identities, bounded
   dependency/conflict metadata, manifest-owned property-free inline-format
-  declarations, deterministic diagnostics, and canonical dependency-first
-  order; schema compatibility exists only after explicit sealed compilation
-  under a caller-owned profile `SchemaId`;
+  declarations and toggle bundles, deterministic diagnostics, and canonical
+  dependency-first order; schema compatibility exists only after explicit
+  sealed compilation under a caller-owned profile `SchemaId`;
+- an immutable `CompiledEditorProfile` that co-owns the resolved extension set,
+  compiled schema, generated action registry, intent router, and action-state
+  catalog under one fresh Rust-local generation; generated toggles are bounded,
+  no-input, priority-0 blocking routes over manifest-owned formats;
 - a frozen semantic intent router with declared input contracts, named
   bindings, explicit priority and disabled fallback policy, and distinct
   unhandled, blocked, and prepared outcomes;
@@ -115,7 +120,8 @@ The implementation includes:
   publishes tracked inactive/active/mixed state and preserves selected block
   boundaries during cross-paragraph formatting, plus a public Rust-owned
   `ToggleInlineFormatAction` that can be registered explicitly for any
-  property-free format admitted by the active sealed schema;
+  property-free format admitted by the active sealed schema or instantiated by
+  the compiled-profile builder for a manifest-owned toggle bundle;
 - a synchronous `EditorSession` publication boundary with exact-state commit
   acceptance, intent/action execution, bounded linear history, deterministic
   merge groups, atomic undo/redo replay, and durable local checkpoint restore;
@@ -156,9 +162,14 @@ The implementation includes:
   failures return the unchanged log owner.
 
 The supported `0.1.0` product is intentionally small, not a general document
-processor. The experimental alpha.3 Rust path adds generic property-free
-format kinds only; it does not add format attributes, arbitrary nodes,
-automatic action/intent registration, or browser rendering. Structural edits
+processor. The experimental alpha.4 Rust path adds generic property-free
+format kinds and sealed manifest-owned toggle action/intent/state compilation;
+it does not add format attributes, arbitrary nodes, custom actions or inputs,
+callbacks, cross-extension/shared/fallback toggle routing, or browser rendering.
+One manifest and one complete profile can each contribute at most 255 toggles;
+every target is owned by that manifest, each typed ID is profile-unique in its
+namespace, and extension semantic IDs cannot use `breditor/*`.
+Structural edits
 beyond the compiler-minted direct-root base-text shape, asynchronous
 action-state delivery, dynamic catalog registration, presentation plugin
 lifecycle management, asynchronous/programmatic clipboard,

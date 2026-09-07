@@ -5,9 +5,10 @@ the `0.1.x` browser path; other formats in this proof kernel remain experimental
 unless [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them.
 The complete fingerprint-bearing V2 record graph was implemented as the
 experimental Rust-only `0.2.0-alpha.2` boundary. `0.2.0-alpha.3` adds the sealed
-base-text schema compiler and generic property-free inline-format behavior in
-Rust. Neither checkpoint widens a V1 codec, the browser product, its IndexedDB
-profile, or Wasm ABI 2.
+base-text schema compiler and generic property-free inline-format behavior;
+`0.2.0-alpha.4` compiles manifest-owned toggle bundles into one immutable Rust
+editor profile. None of these checkpoints widens a V1 codec, the browser
+product, its IndexedDB profile, or Wasm ABI 2.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1` and `2`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -38,6 +39,10 @@ The implemented Rust slice owns:
   declarations with independent nonzero persisted type revisions, plus a
   sealed compiler that combines one resolved extension set with a caller-owned
   non-`breditor/*` `SchemaId` while retaining the built-in base-text shape;
+- immutable manifest-owned `InlineFormatToggleSpecV1` bundles and an immutable
+  `CompiledEditorProfile` that co-owns the resolved extension set, compiled
+  schema, generated action registry, intent router, and action-state catalog
+  under one fresh opaque Rust-local generation;
 - exact proof-derived document measurements cached on each `Document`;
 - snapshot-local points, document-aware point ordering, and directional range
   selections;
@@ -194,7 +199,8 @@ The implemented Rust slice owns:
   insertion, paragraph break, grapheme-aware backward and forward deletion,
   exact selection deletion, and strong formatting, plus an explicitly
   registerable `ToggleInlineFormatAction` configured for one admitted
-  property-free format kind; and
+  property-free format kind and automatically instantiated by a compiled
+  profile for each valid manifest-owned toggle bundle; and
 - a synchronous exact-publication `EditorSession` with bounded deterministic
   linear undo/redo history and opaque history-observation identity;
 - a product-level `EditorEngine` that exclusively combines one session and one
@@ -208,9 +214,12 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- property-bearing formats and arbitrary structural schema kinds; automatic
-  compilation of extension-owned action/state/intent registrations is also
-  not yet implemented;
+- property-bearing formats, arbitrary structural schema kinds, custom extension
+  actions or inputs, callback planners, cross-extension toggle targets, shared
+  toggle routes, and fallback toggle routing;
+- propagation of `CompiledProfileGeneration` through `EditorEngine`, Rust/Wasm
+  observations and outcomes, or ABI 2; native registry/router/engine APIs remain
+  advanced bypasses outside compiled-profile correlation;
 - asynchronous action-state delivery, dynamic catalog registration,
   presentation plugin lifecycle, generalized keymaps, and durable registry
   manifests (the browser now has a synchronous last-good state store and a
@@ -1315,6 +1324,18 @@ declarations, sorts them by format kind, rejects duplicate kinds, and accepts
 at most 255 declarations. The legacy `ExtensionManifest::try_new` constructor
 remains the zero-format convenience path.
 
+Alpha.4 adds the checked, behavior-free `InlineFormatToggleSpecV1` value. Each
+declaration contains exactly a target format kind, `ActionId`, `IntentId`,
+`BindingId`, and `ActionStateId`; it has no handler, callback, input, label,
+renderer, or toolbar placement.
+`ExtensionManifest::try_new_with_inline_formats_and_toggles` canonicalizes these
+bundles, rejects duplicate targets and duplicate IDs in each typed namespace,
+and accepts at most 255; the older constructors remain zero-toggle convenience
+paths. Complete-profile compilation also caps the aggregate at 255, requires the
+target format to be declared by the same manifest, permits only one toggle per
+format, rejects duplicate typed identities across manifests, and reserves the
+complete `breditor/*` namespace from extension semantic IDs.
+
 `CompiledSchema::try_compile_base_text_profile` takes one resolved
 `ExtensionSet` and one caller-owned `SchemaId`. The schema name, every extension
 identity, and every contributed format kind must stay outside the reserved
@@ -1328,8 +1349,11 @@ The result fixes the same root, paragraph, text, property/entity, and
 canonicality laws as the base definition. Its schema fingerprint includes the
 caller-owned schema selector plus every admitted format kind and persisted
 revision in canonical order. It excludes declaration order, manifest owner,
-and `ExtensionVersion`. `CompiledSchema::is_property_free_inline_format` is a
-read-only language query; it neither registers an action nor grants ownership.
+`ExtensionVersion`, and every toggle action, intent, binding, and action-state
+identity. Adding or renaming only a semantic toggle declaration therefore does
+not change the schema fingerprint.
+`CompiledSchema::is_property_free_inline_format` is a read-only language query;
+it neither registers an action nor grants ownership.
 The private compiler-minted base-text capability, rather than matching names
 alone, gates the primitive edit paths.
 
@@ -1683,8 +1707,8 @@ from silently widening either version-1 contract.
   affect activation.
 
 `ToggleInlineFormatAction` is the generic alpha.3 form of that formatting
-behavior. Its checked configuration is one immutable `QualifiedName`; the host
-chooses a distinct `ActionId` only when explicitly registering it in an
+behavior. Its checked configuration is one immutable `QualifiedName`; native
+hosts can choose a distinct `ActionId` when explicitly registering it in an
 `ActionRegistry`. Evaluation first requires the active compiler-minted
 base-text profile and then requires the configured kind to be an admitted
 property-free inline format. An unknown or ineligible kind is disabled as
@@ -1697,9 +1721,33 @@ strong action. Adding one kind preserves every other format in canonical
 qualified-name order; removing it remains possible at the format-count ceiling.
 `ToggleStrongAction` delegates to this implementation while preserving the
 existing `breditor/toggle-strong` identity and strong-specific fault codes.
-Schema compilation does not automatically register the generic action, assign
-state identity, or bind an intent; those compiled-profile contracts are
-deferred to alpha.4.
+
+At alpha.4, a manifest can instead own an `InlineFormatToggleSpecV1` bundle.
+The compiled-profile builder requires its target to be a property-free format
+declared by that same manifest, then registers the existing generic action under
+the declared `ActionId`. It declares the corresponding `IntentId` with no input
+contract, adds exactly one priority-0 binding with disabled behavior set to
+block, and tracks the declared `ActionStateId` through the routed source. The
+result is immediately suitable for a future toolbar to observe, but alpha.4
+ships no profile-aware browser renderer or toolbar contribution.
+
+The generated path is deliberately closed: no custom action implementation,
+callback, input contract, caller-selected effects, cross-extension target,
+shared action/intent/binding/state identity, or fallback route is accepted.
+Limits are 255 toggle bundles per manifest and 255 across the profile. All
+extension-owned action, intent, binding, and action-state IDs must stay outside
+`breditor/*` and be unique profile-wide within their typed namespaces.
+
+`CompiledEditorProfile::try_compile_base_text_profile` immutably co-owns the
+exact `ExtensionSet`, compiled schema, generated `ActionRegistry`,
+`IntentRouter`, and `ActionStateCatalog`.
+Every successful compilation mints a fresh opaque process-local
+`CompiledProfileGeneration`, even when the semantic inputs are equal. This is a
+container correlation identity, not a schema fingerprint or executable-code
+hash, and it is not persisted. In alpha.4 it is not yet carried or checked by
+`EditorEngine`, action/intent observations or outcomes, or Wasm handles; alpha.5
+adds that transport. The existing public native component and engine APIs remain
+advanced bypasses and do not gain the compiled profile's correlation guarantee.
 
 All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
@@ -1759,12 +1807,16 @@ values. Declaring an intent with zero bindings is valid and returns an
 exact-source `Unhandled` outcome with an empty trace. Invoking an undeclared
 intent instead returns typed `UnknownIntent`.
 
-Version `0.0.7` requires one trusted host compositor to own shared intent
-declarations and allocate distinct priorities. Two plugins cannot each package
-the same declaration, even when identical, and equal priorities reject the
-whole router. Future plugin manifests need explicit ownership/coalescing plus
-dependency, before/after, or authorized priority-band policy; registration
-order will not become the fallback.
+The general native router still requires one trusted host compositor to own
+shared intent declarations and allocate distinct priorities. Two independent
+native registrations cannot each package the same declaration, even when
+identical, and equal priorities reject the whole router. Alpha.4's sealed
+compiled-profile path is narrower: every manifest-owned toggle receives a
+unique no-input intent and exactly one priority-0 blocking binding, so it has no
+shared declaration, priority negotiation, or fallback candidate. A future
+broader plugin path needs explicit ownership/coalescing plus dependency,
+before/after, or authorized priority-band policy; registration order will not
+become the fallback.
 
 Every binding explicitly chooses whether an expected disabled action falls
 through or blocks. Routing first validates the invocation envelope and exact
@@ -1809,6 +1861,9 @@ add an aggregate byte budget across retained disabled-reason details, and the
 action registry itself has no fixed entry cap. Router construction remains
 trusted native configuration; an untrusted plugin or Wasm boundary still needs
 memory, fuel/time, stack, and panic/trap isolation.
+The alpha.4 compiled-profile builder separately caps generated toggle actions,
+intents, bindings, and routed state entries at 255 through its aggregate toggle
+limit; that does not retroactively bound the advanced native constructors.
 Dynamic plugin ownership, unload/revocation epochs, dependency policy, priority
 authorization, reason-selective fallback, observers, nested routing, and atomic
 multi-action composition remain future contracts.
@@ -1877,6 +1932,13 @@ themselves at 512 entries. Fixed invocation inputs additionally share a 65,536
 value and 1 MiB UTF-8 payload budget. Construction totals every fixed input
 before descriptor validation, so an over-limit error reports the complete
 catalog aggregate rather than the prefix that first crossed the limit.
+
+For each alpha.4 manifest-owned toggle, profile compilation adds one routed
+catalog entry under the declared `ActionStateId`. Its source is the declared
+no-input `IntentId`; the single priority-0 blocking binding preserves the
+generic toggle action's tracked inactive/active/mixed indicator even when the
+action is unavailable. This makes the Rust descriptor toolbar-ready without
+adding browser presentation metadata or a toolbar implementation.
 
 Batch derivation is synchronous and exact-source. Direct sources call
 `ActionRegistry::prepare`; routed sources call `IntentRouter::route`; history
@@ -2040,6 +2102,13 @@ future Wasm boundary. It contains exactly one `EditorSession` and one immutable
 checkpointing, and independently composed action-state catalogs. `into_parts`
 consumes the engine and is the only way to regain its owned components. No
 method lends `&mut EditorSession`.
+
+Alpha.4 does not change that owner or its observation shape.
+`CompiledEditorProfile` can supply its generated registry to native code, but
+the engine does not own or expose the profile container, router, catalog, or
+`CompiledProfileGeneration`, and no engine observation or outcome checks that
+generation. Using the public engine/component constructors directly remains an
+advanced bypass. Alpha.5 adds the profile-correlated engine/Wasm boundary.
 
 Every mutation accepts `&EditorEngineObservation` and first compares its opaque
 live-engine identity, then its `SnapshotId` and `SessionHistoryStatus`, with the

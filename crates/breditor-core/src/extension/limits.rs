@@ -8,6 +8,8 @@ pub const MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST: u32 = 256;
 pub const MAX_EXTENSION_CONFLICTS_PER_MANIFEST: u32 = 256;
 /// Maximum property-free inline-format declarations accepted by one manifest.
 pub const MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST: u32 = 255;
+/// Maximum inline-format toggle declarations accepted by one manifest.
+pub const MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST: u32 = 255;
 /// Maximum aggregate exact dependency edges accepted by one extension set.
 pub const MAX_EXTENSION_SET_DEPENDENCIES: u32 = 16_384;
 /// Maximum aggregate explicit conflict edges accepted by one extension set.

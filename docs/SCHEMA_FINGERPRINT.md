@@ -2,7 +2,8 @@
 
 Status: compiler identity, strict public parser, durable binding, the complete
 Rust-core V2 record graph, and the sealed base-text extension compiler are
-implemented through `0.2.0-alpha.3`.
+implemented through `0.2.0-alpha.4`, including immutable compiled semantic
+profiles whose action/intent/state declarations remain outside this digest.
 
 `SchemaFingerprint` is the durable identity of one complete compiled content
 language. It lets Breditor distinguish schemas that share a human-readable
@@ -15,11 +16,14 @@ process-local validation proof. The public Rust type parses only the exact
 71-byte text form through `FromStr`/`TryFrom`; it deliberately has no public
 Serde contract. Every independent Rust V2 JSON envelope stores that canonical
 text beside `SchemaId` and requires both identities to match the receiving
-compiled schema. Alpha.3 exposes only
+compiled schema. Alpha.3 introduced
 `CompiledSchema::try_compile_base_text_profile`: callers provide a
 non-`breditor/*` schema selector and a resolved extension set whose manifests
-may add property-free inline formats. A general node/property schema compiler
-remains staged.
+may add property-free inline formats. Alpha.4 adds `CompiledEditorProfile`,
+which co-owns that schema with generated action, intent, binding, and
+action-state components under a fresh process-local generation. Those semantic
+components do not widen the fingerprint input. A general node/property schema
+compiler remains staged.
 
 ## Canonical byte encoding
 
@@ -81,9 +85,10 @@ revisions, property/entity capability, child grammar, and global canonicality
 constraints.
 
 The digest deliberately excludes extension owner and extension version,
-actions, intents, state declarations, labels, icons, CSS, toolbar placement,
-package paths and versions, process data, clocks, and randomness. Host resource
-policy is also excluded: `DocumentLimits`, JSON byte ceilings,
+toggle action IDs, intent IDs, binding IDs, action-state IDs, all other action
+and routing declarations, process-local profile generation, labels, icons, CSS,
+toolbar placement, package paths and versions, process data, clocks, and
+randomness. Host resource policy is also excluded: `DocumentLimits`, JSON byte ceilings,
 transaction-operation ceilings, and similar memory or work budgets can reject
 content on one host, but do not define a different content language.
 
@@ -102,6 +107,11 @@ Changing only manifest order, the owning `ExtensionId`, or its
 owned profile `SchemaId`, a format kind, or its persisted revision changes the
 fingerprint. `breditor/base@1` is never used as an extension profile selector;
 it remains the locked strong-only vector below.
+
+Likewise, adding, removing, or renaming only an alpha.4 toggle bundle while
+leaving the admitted schema projection unchanged preserves the fingerprint.
+It produces a different compiled semantic profile and fresh process-local
+generation, not a different durable content language.
 
 ## Locked base vector
 
@@ -128,4 +138,4 @@ generation-locked nesting, as specified by the
 [durable schema binding contract](DURABLE_SCHEMA_BINDING.md). Legacy V1 records
 remain byte-for-byte unchanged and bound to the exact built-in base definition.
 Wasm ABI 2 and the browser persistence path continue to consume and emit V1
-only during alpha.3.
+only during alpha.4. Every V1 record remains exact-`breditor/base@1`-only.

@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "breditor-core"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "proptest",
  "serde",
@@ -48,7 +48,7 @@ dependencies = [
 
 [[package]]
 name = "breditor-wasm"
-version = "0.2.0-alpha.3"
+version = "0.2.0-alpha.4"
 dependencies = [
  "breditor-core",
  "serde_json",

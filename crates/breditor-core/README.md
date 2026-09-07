@@ -37,7 +37,31 @@ operations now accept compiler-minted sealed base-text schemas and preserve
 their extension formats. The public `ToggleInlineFormatAction` can be
 explicitly registered for one admitted format; it is not automatically added
 by schema compilation, and the complete profile/action/intent compiler remains
-staged. The browser and Wasm ABI 2 remain V1-only during alpha.3. See the
+staged at that checkpoint.
+
+Version `0.2.0-alpha.4` adds that immutable compiler boundary through
+`CompiledEditorProfile::try_compile_base_text_profile`.
+`InlineFormatToggleSpecV1` lets a manifest associate one format it owns with an
+action ID, intent ID, binding ID, and action-state ID. Profile compilation
+accepts at most 255 toggles per manifest and across the complete profile,
+rejects cross-manifest targets, duplicate action, intent, binding, or
+action-state IDs within their typed namespaces, multiple toggles for one
+format, and every extension semantic identity under the reserved
+`breditor/*` namespace. Each valid declaration creates the existing generic
+Rust toggle action, a tracked no-input intent, a priority-0 blocking binding,
+and routed observable state. The complete built-in action registry and existing
+Bold, Undo, and Redo state entries remain present.
+
+The resulting `CompiledEditorProfile` co-owns the `ExtensionSet`, compiled
+schema, action registry, intent router, and action-state catalog and mints a
+fresh opaque process-local generation on every successful compilation. That
+generation is currently container-local: `EditorEngine`, its observations and
+outcomes, and Wasm ABI 2 do not carry it until alpha.5. The declaration bundle
+contains no callbacks, custom action input, renderer, or toolbar metadata, and
+does not enter the durable schema fingerprint. Existing native registry,
+router, and engine constructors remain advanced bypasses. The browser remains
+V1-only; profile-aware rendering and the supported toolbar arrive at alpha.6
+and alpha.7 respectively. See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
 [schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and
@@ -79,7 +103,9 @@ paragraph split/join operations, proof-backed local
 validation for sealed base-text edits, structural relocation, heterogeneous
 change notifications, guarded root-text range replacement with a closed
 same-type inverse, exact in-memory undo/redo requests, an immutable typed
-action registry, a frozen semantic intent router, and seven base actions:
+action registry, a frozen semantic intent router, an immutable compiled editor
+profile that owns the generated registry/router/catalog together with its
+extension set and schema under one Rust-local generation, and seven base actions:
 inline and structural plain-text insertion, paragraph break, grapheme-aware
 backward and forward deletion, exact selection deletion, and strong-format
 toggle, plus the configurable Rust-owned `ToggleInlineFormatAction` for an
@@ -123,8 +149,8 @@ selection, metadata, deduplication identity, or transaction boundary. The crate
 is intentionally smaller than the eventual editor runtime and has no
 action-state subscription/delivery layer, presentation manifest, browser
 scheduler,
-automatic extension action/intent compilation, formatting attributes, log
-storage and tail-wide recovery orchestration,
+profile-generation propagation through `EditorEngine` or Wasm, formatting
+attributes, log storage and tail-wide recovery orchestration,
 checkpoint/log atomic replacement, storage-generation publication or initial
 scope provisioning, executable append I/O, process-restart append
 reconstruction,

@@ -1,6 +1,6 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` through `0.2.0-alpha.3` Rust foundations are
+Status: in progress; the `0.1.1` through `0.2.0-alpha.4` Rust foundations are
 complete
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
@@ -53,12 +53,18 @@ action-, state-, or intent-only change can reopen the same document under the
 same schema fingerprint with a new process-local profile generation.
 
 Three identities stay separate. A durable schema fingerprint covers canonical
-content meaning and travels with records. A process-local compiled-profile
-generation correlates the schema, actions, state catalog, and intent router in
-one engine, but is not a hash of native executable code. Browser presentation
-configuration is checked for coverage at startup yet can change labels or
-styling across editor reconstruction without forcing document migration. CSS
-may change live without changing the checked contribution set.
+content meaning and travels with records. At the full `0.2.0` boundary, a
+process-local compiled-profile generation will correlate the schema, actions,
+state catalog, and intent router in one engine, but will not be a hash of native
+executable code. Browser presentation configuration is checked for coverage at
+startup yet can change labels or styling across editor reconstruction without
+forcing document migration. CSS may change live without changing the checked
+contribution set.
+
+Through alpha.4 that process-local generation identifies only the immutable
+Rust `CompiledEditorProfile` container. `EditorEngine`, its observations and
+outcomes, and Wasm values do not carry or check it yet; alpha.5 adds that
+correlation at the engine/Wasm boundary.
 
 Rust remains the authority for the AST, compiled schema, selection, action
 evaluation, primitive operations, transactions, history, replay, and durable
@@ -82,7 +88,14 @@ dynamically link arbitrary third-party Rust after it has been built.
   conflicts fail the complete build before content opens.
 - One installed extension version owns one qualified extension name in a
   profile.
-- Built-in identities, including `breditor/base@1`, cannot be impersonated.
+- Caller profile schema IDs, extension IDs, extension format kinds, and
+  extension-owned action, intent, binding, and state IDs cannot use the reserved
+  `breditor/*` namespace. The built-in `breditor/base@1` schema cannot be
+  impersonated.
+- One manifest-owned toggle bundle names one format kind, action, intent,
+  binding, and action-state identity; it targets a format declared by that same
+  manifest. Each typed identity is unique within its identity namespace, and
+  each toggle target is unique across the profile.
 - The complete canonical compiled schema definition controls validation-proof reuse.
   A schema name and version alone are insufficient proof.
 - Every published document passes complete schema validation. Derived
@@ -116,6 +129,9 @@ The release will not promise:
 - a stable sandboxed Wasm component-plugin ABI or dynamic native-code loading;
 - browser-to-Rust extension planner callbacks or arbitrary operation-plan
   ingress;
+- custom extension actions, action inputs, effect declarations, callbacks,
+  cross-extension toggle targets, shared toggle identities, or fallback toggle
+  routing in the first property-free format path;
 - schema migration execution beyond the identity, admission, and failure
   contracts required to prevent silent reinterpretation;
 - collaboration, CRDT/OT rebasing, selective undo, remote cursors, or remote
@@ -167,11 +183,22 @@ when review finds a correctness boundary; later features are not claimed early.
    own the declarations; callers supply a non-reserved profile `SchemaId`; the
    compiler retains the fixed base structure and mints the only capability
    accepted by the widened primitives. The generic action is configured by
-   format kind and remains an explicit caller registration until alpha.4.
+   format kind and remained an explicit caller registration in that checkpoint.
    Complete.
-5. `0.2.0-alpha.4`: frozen extension-owned action registrations, state
-   definitions, and semantic intent bindings with ownership, compatibility, and
-   aggregate resource limits.
+5. `0.2.0-alpha.4`: immutable manifest-owned inline-format toggle bundles, each
+   naming one same-manifest format kind plus unique action, no-input intent,
+   binding, and action-state identities. Compilation creates the existing
+   generic Rust toggle action, a tracked no-input intent, one priority-0
+   blocking binding, and routed toolbar-ready state. A
+   `CompiledEditorProfile` co-owns the extension set, schema, registry, router,
+   and catalog under a fresh opaque Rust-local generation. Per-manifest and
+   aggregate toggle limits are 255; custom actions/inputs/callbacks,
+   cross-extension targets, shared/fallback routes, and `breditor/*` extension
+   semantic IDs fail closed. Semantic-only declarations do not change the
+   schema fingerprint. Native component APIs remain advanced bypasses; the
+   generation is not yet carried by engines or Wasm, and there is no browser
+   renderer or toolbar widening. Wasm ABI 2 and every V1 codec remain
+   exact-base-only. Complete.
 6. `0.2.0-alpha.5`: Wasm ABI 3 profile bootstrap for both fresh and restored
    sessions, typed intent execution, profile-correlated projection/action-state
    observations, and an owned generation-correlated `CompiledProfileDescriptor`

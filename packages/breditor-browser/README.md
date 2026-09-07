@@ -23,11 +23,13 @@ are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
 the corresponding TypeScript sources are not part of the package.
 
-The `0.2.0-alpha.3` package version keeps this browser boundary unchanged:
+The `0.2.0-alpha.4` package version keeps this browser boundary unchanged:
 Wasm ABI 2, Document V1, Session Checkpoint V1, the base projection, and the
-Bold/Undo/Redo toolbar remain authoritative. The alpha.3 property-free format
-compiler and generic action are Rust-core-only until the scheduled profile-
-aware Wasm and browser checkpoints.
+Bold/Undo/Redo toolbar remain authoritative. The Rust core's compiled extension
+profile and manifest-owned toggle routes do not add a browser command, renderer,
+or toolbar contribution here. The profile generation is not yet carried by
+engine/Wasm observations; profile-aware rendering and the supported intent
+toolbar remain scheduled for alpha.6 and alpha.7.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -37,12 +39,15 @@ root and the documented V1 browser formats carry that promise.
 
 ## Public runtime
 
-Initialize the matching `@breditor/wasm` package once, then pass connected,
-empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
+This alpha.4 checkpoint is currently unpublished. After publication, the
+matching registry packages can be installed with:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.3 @breditor/wasm@0.2.0-alpha.3
+npm install @breditor/browser@0.2.0-alpha.4 @breditor/wasm@0.2.0-alpha.4
 ```
+
+Initialize the matching `@breditor/wasm` package once, then pass connected,
+empty editor and optional toolbar mounts to `openBreditorBrowserEditor`:
 
 ```ts
 import { openBreditorBrowserEditor } from "@breditor/browser";

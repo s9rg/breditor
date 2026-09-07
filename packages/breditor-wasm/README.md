@@ -9,11 +9,14 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-The package is ESM. Initialize it before calling any exported Rust function:
+This alpha.4 checkpoint is currently unpublished. After publication, the
+registry package can be installed with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.3
+npm install @breditor/wasm@0.2.0-alpha.4
 ```
+
+The package is ESM. Initialize it before calling any exported Rust function:
 
 ```ts
 import init, { breditorVersion } from "@breditor/wasm";
@@ -42,10 +45,11 @@ advanced boundary outside the `0.1.x` API compatibility promise; official
 browser/Wasm packages are supported only as an exact same-version pair with ABI
 generation `2`.
 
-Version `0.2.0-alpha.3` does not expose the Rust core's sealed extension schema
-compiler or generic format action through Wasm. This package still accepts and
-emits the exact base-only Document V1 and Session Checkpoint V1 browser shapes;
-profile bootstrap is reserved for Wasm ABI 3.
+Version `0.2.0-alpha.4` does not expose the Rust core's compiled editor profile,
+manifest-owned toggle bundles, or process-local profile generation through
+Wasm. This package still accepts and emits the exact base-only Document V1 and
+Session Checkpoint V1 browser shapes under ABI generation 2; profile bootstrap
+and generation-correlated observations are reserved for Wasm ABI 3 in alpha.5.
 
 ## Reproducible build
 
