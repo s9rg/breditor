@@ -19,6 +19,8 @@ impl LocalLogStorageRootJsonCodec {
         &self,
         selection: &LocalLogStorageRootSelection,
     ) -> Result<String, LocalLogStorageRootCodecError> {
+        crate::schema::require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogStorageRootCodecError::ContextConfigurationMismatch)?;
         self.validate_selection(selection)?;
         self.validate_nested_checkpoint(selection)?;
         self.validate_output_size(selection)?;

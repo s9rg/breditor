@@ -314,7 +314,8 @@ fn validate_replaced_scope(
     validate_current_head_index(current)?;
     let expected = queue.expected_binding().current_receipt();
     let observed = current.binding().current_receipt();
-    if expected.profile_id() != observed.profile_id()
+    if expected.schema_binding() != observed.schema_binding()
+        || expected.profile_id() != observed.profile_id()
         || expected.profile_version() != observed.profile_version()
         || expected.database_incarnation_id() != observed.database_incarnation_id()
         || expected.scope_id() != observed.scope_id()

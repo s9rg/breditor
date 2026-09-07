@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::local_log::{LocalLogId, LocalLogStorageFenceId, LocalLogStorageHeadId, LocalSessionId};
 
-use super::local_log_storage_generation_frame_v1::LocalLogStorageGenerationFrameV1;
+use super::{LocalLogStorageGenerationFrameV1, LocalLogStorageGenerationFrameV2};
 
 /// Persisted state of the generation selected as the current checkpoint.
 ///
@@ -48,6 +48,7 @@ enum LocalLogStorageSelectedCheckpointGenerationFacts {
         log_id: LocalLogId,
         session_id: LocalSessionId,
         frame: LocalLogStorageGenerationFrameV1,
+        frame_format_version: u32,
         activated_fence_id: LocalLogStorageFenceId,
         activated_by_head_id: LocalLogStorageHeadId,
         retired_by_head_id: LocalLogStorageHeadId,
@@ -99,6 +100,7 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
             log_id,
             session_id,
             frame,
+            frame.format_version(),
             activated_fence_id,
             activated_by_head_id,
             retired_by_head_id,
@@ -120,6 +122,7 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
             log_id,
             session_id,
             frame,
+            frame.format_version(),
             activated_fence_id,
             activated_by_head_id,
             retired_by_head_id,
@@ -132,6 +135,7 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
         log_id: LocalLogId,
         session_id: LocalSessionId,
         frame: LocalLogStorageGenerationFrameV1,
+        frame_format_version: u32,
         activated_fence_id: LocalLogStorageFenceId,
         activated_by_head_id: LocalLogStorageHeadId,
         retired_by_head_id: LocalLogStorageHeadId,
@@ -142,11 +146,52 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
                 log_id,
                 session_id,
                 frame,
+                frame_format_version,
                 activated_fence_id,
                 activated_by_head_id,
                 retired_by_head_id,
             },
         }
+    }
+
+    pub(super) const fn retired_v2(
+        log_id: LocalLogId,
+        session_id: LocalSessionId,
+        frame: LocalLogStorageGenerationFrameV2,
+        activated_fence_id: LocalLogStorageFenceId,
+        activated_by_head_id: LocalLogStorageHeadId,
+        retired_by_head_id: LocalLogStorageHeadId,
+    ) -> Self {
+        Self::rotation(
+            LocalLogStorageSelectedCheckpointGenerationState::Retired,
+            log_id,
+            session_id,
+            LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+            retired_by_head_id,
+        )
+    }
+
+    pub(super) const fn reclaimed_v2(
+        log_id: LocalLogId,
+        session_id: LocalSessionId,
+        frame: LocalLogStorageGenerationFrameV2,
+        activated_fence_id: LocalLogStorageFenceId,
+        activated_by_head_id: LocalLogStorageHeadId,
+        retired_by_head_id: LocalLogStorageHeadId,
+    ) -> Self {
+        Self::rotation(
+            LocalLogStorageSelectedCheckpointGenerationState::Reclaimed,
+            log_id,
+            session_id,
+            LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+            retired_by_head_id,
+        )
     }
 
     /// Returns the exact checkpoint generation-record state.
@@ -209,6 +254,31 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
         }
     }
 
+    /// Returns the retained frame generation, absent for checkpoint-only facts.
+    #[must_use]
+    pub const fn frame_format_version(&self) -> Option<u32> {
+        match &self.facts {
+            LocalLogStorageSelectedCheckpointGenerationFacts::CheckpointOnly { .. } => None,
+            LocalLogStorageSelectedCheckpointGenerationFacts::Rotation {
+                frame_format_version,
+                ..
+            } => Some(*frame_format_version),
+        }
+    }
+
+    /// Returns the Frame V2 policy when these are V2 rotation facts.
+    #[must_use]
+    pub const fn frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
+        match &self.facts {
+            LocalLogStorageSelectedCheckpointGenerationFacts::Rotation {
+                frame,
+                frame_format_version: 2,
+                ..
+            } => Some(LocalLogStorageGenerationFrameV2::new(frame.limits())),
+            _ => None,
+        }
+    }
+
     /// Returns the immutable fence that activated a retired or reclaimed generation.
     ///
     /// This is absent exactly for a checkpoint-only identity.
@@ -264,6 +334,7 @@ pub struct LocalLogStorageSelectedActiveGenerationBinding {
     log_id: LocalLogId,
     session_id: LocalSessionId,
     frame: LocalLogStorageGenerationFrameV1,
+    frame_format_version: u32,
     activated_fence_id: LocalLogStorageFenceId,
     activated_by_head_id: LocalLogStorageHeadId,
 }
@@ -278,7 +349,31 @@ impl LocalLogStorageSelectedActiveGenerationBinding {
         activated_fence_id: LocalLogStorageFenceId,
         activated_by_head_id: LocalLogStorageHeadId,
     ) -> Self {
-        Self { log_id, session_id, frame, activated_fence_id, activated_by_head_id }
+        Self {
+            log_id,
+            session_id,
+            frame,
+            frame_format_version: frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+        }
+    }
+
+    pub(super) const fn new_v2(
+        log_id: LocalLogId,
+        session_id: LocalSessionId,
+        frame: LocalLogStorageGenerationFrameV2,
+        activated_fence_id: LocalLogStorageFenceId,
+        activated_by_head_id: LocalLogStorageHeadId,
+    ) -> Self {
+        Self {
+            log_id,
+            session_id,
+            frame: LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame_format_version: frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+        }
     }
 
     /// Returns the active generation identity.
@@ -297,6 +392,22 @@ impl LocalLogStorageSelectedActiveGenerationBinding {
     #[must_use]
     pub const fn frame(&self) -> LocalLogStorageGenerationFrameV1 {
         self.frame
+    }
+
+    /// Returns the retained binary frame generation.
+    #[must_use]
+    pub const fn frame_format_version(&self) -> u32 {
+        self.frame_format_version
+    }
+
+    /// Returns the active Frame V2 policy when these are V2 facts.
+    #[must_use]
+    pub const fn frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
+        if self.frame_format_version == 2 {
+            Some(LocalLogStorageGenerationFrameV2::new(self.frame.limits()))
+        } else {
+            None
+        }
     }
 
     /// Returns the immutable non-secret fence that activated the generation.

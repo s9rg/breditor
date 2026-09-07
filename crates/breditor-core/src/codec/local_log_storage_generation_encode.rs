@@ -21,6 +21,8 @@ impl LocalLogStorageGenerationJsonCodec {
         manifest: &LocalLogStorageGenerationManifest,
         prior: &LocalLogStorageGenerationManifest,
     ) -> Result<String, LocalLogStorageGenerationCodecError> {
+        crate::schema::require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogStorageGenerationCodecError::ContextConfigurationMismatch)?;
         self.validate_rotation(manifest, prior)?;
         self.validate_nested_checkpoint(manifest)?;
         self.validate_output_size(manifest)?;

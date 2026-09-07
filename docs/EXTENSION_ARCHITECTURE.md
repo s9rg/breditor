@@ -1,6 +1,7 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` and `0.2.0-alpha.1` foundations are implemented and later stages remain planned
+Status: decision freeze; the `0.1.1`, `0.2.0-alpha.1`, and
+`0.2.0-alpha.2` foundations are implemented and later stages remain planned
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -334,8 +335,10 @@ half-upgraded mixed family.
 Strict decoding has three distinct checks:
 
 1. route and validate the complete wire envelope and resource limits;
-2. require the exact matching compiled schema fingerprint and proof; and
-3. reconstruct and completely validate the canonical value under that proof.
+2. require the selector and fingerprint to match the receiving compiled schema;
+   and
+3. reconstruct, completely validate, and bind the canonical value to the
+   receiving process-local proof.
 
 A matching `SchemaId` with a missing or different fingerprint fails. A legacy
 V1 record offered to a non-base profile fails. Unknown formats, unavailable
@@ -363,6 +366,18 @@ revisions, be pure/deterministic/bounded/all-or-nothing, run before target
 replay, validate its output under the target proof, and record the transition.
 It must not call JavaScript, DOM, time, randomness, network, or locale. There is
 no implicit downgrade, and opaque unknown-node preservation is deferred.
+
+`0.2.0-alpha.2` places this boundary in the standalone
+`SchemaAdmissionRequest::try_prepare` API. It borrows a checked
+`LocalLogCheckpointAnchor`, requires a different target fingerprint, lineage,
+and durable local-session identity, discards source selection and history, and
+returns a non-cloneable `PreparedSchemaAdmission`. That result keeps the new
+target checkpoint owner and its exact canonical Local Log Checkpoint V2 JSON
+together. It does not mutate an engine or storage and is not a publication or
+writer-fence receipt. A separate checked API can prepare a Storage Root V2
+candidate from it, but the host still owns publication and adoption. Requiring a
+checked source checkpoint, rather than accepting an arbitrary live session or
+raw document, is a deliberate release boundary.
 
 ### 7. Operations, replay, and history remain closed
 
@@ -499,7 +514,15 @@ The stock Wasm module cannot dynamically link arbitrary third-party Rust. A
 separate Wasm module has separate memory, tables, allocator, panic behavior,
 and versioning; Rust's native ABI is not a stable plugin ABI.
 
-The supported `0.2.0` ABI path is Wasm ABI 3:
+The supported `0.2.0` ABI path will be Wasm ABI 3.
+
+This is a later release checkpoint, not an alpha.2 capability. The current
+alpha.2 browser and Wasm packages deliberately retain ABI 2 and accept or emit
+only the existing Document V1 and Session Checkpoint V1 browser formats. None of
+the Rust V2 codec, durable-profile selection, or schema-admission API crosses
+ABI 2.
+
+That later boundary will:
 
 1. pass the complete manifest set during fresh or restored profile/engine
    bootstrap through the generated bounded value boundary;
@@ -601,31 +624,27 @@ These are product constraints, not implementation details to conceal:
 
 ## Staged implementation decisions and remaining questions
 
-`0.2.0-alpha.1` settles the canonical fingerprint bytes and SHA-256 hash, plus
-the bounded public `sha256:` lowercase-hex representation. The exact contract
-and cross-implementation base vector are frozen in
+`0.2.0-alpha.1` settles the canonical fingerprint bytes, SHA-256 hash, and
+bounded public `sha256:` lowercase-hex representation. `0.2.0-alpha.2` adds the
+strict public parser and owned durable binding, implements the separate V2
+record graph with fixed binary Frame V2 selection, and implements the separate
+prepared-result admission API. The exact fingerprint contract and
+cross-implementation base vector are frozen in
 [Schema fingerprint contract](SCHEMA_FINGERPRINT.md).
 
 The following choices remain for later checkpoints and may be settled without
 weakening the decisions above:
 
-1. **Durable fingerprint field shape.** Choose whether each new JSON/binary
-   generation carries the frozen 32-byte digest as its canonical lowercase
-   text form or a separately specified fixed binary field. It remains a
-   required field distinct from `SchemaId`.
-2. **Future manifest wire shape.** A public durable JSON or binary codec is not required
+1. **Future manifest wire shape.** A public durable JSON or binary codec is not required
    at `0.1.1`. If later exposed, freeze exact field names only after malformed,
    unknown, duplicate, missing, and over-limit fixtures pass.
-3. **Inline renderer order syntax.** Choose the smallest explicit
+2. **Inline renderer order syntax.** Choose the smallest explicit
    `before`/`after` declaration and stable fallback needed for deterministic DOM
    nesting; it remains separate from semantic format-set order.
-4. **Generic action declaration.** Finalize the closed fields required to
+3. **Generic action declaration.** Finalize the closed fields required to
    instantiate toggle-format action state, effects, selection policy, and
    history intent without an executable extension callback.
-5. **Admission API placement.** Decide whether schema-fingerprint admission is
-   an engine constructor variant or a separate owned-result call. Either form
-   validates source and target proofs atomically and resets history.
-6. **Safe render vocabulary.** Finalize the allowed element tokens, attribute
+4. **Safe render vocabulary.** Finalize the allowed element tokens, attribute
    tokens, nesting edges, and CSS-class policy. Recipes remain bounded data and
    never become executable callbacks.
 
@@ -663,9 +682,11 @@ earlier or skip a gate.
 ### 0.2.0-alpha.2 — fingerprint-bearing durable records
 
 - Add new schema-fingerprint-bearing generations for document, operation,
-  transaction, editor-state, commit, checkpoint, and local-log families.
+  transaction, editor-state, commit, checkpoint, local-log frame/tail, and
+  storage root/generation families.
 - Keep every legacy V1 codec exact-base-only and make schema-fingerprint
   admission and persistence mismatch non-destructive.
+- Complete.
 
 ### 0.2.0-alpha.3 — sealed property-free format extension
 

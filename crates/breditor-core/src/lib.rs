@@ -657,6 +657,7 @@ pub mod operation;
 pub mod position;
 mod record;
 pub mod schema;
+pub mod schema_admission;
 pub mod selection;
 pub mod session;
 pub mod state;

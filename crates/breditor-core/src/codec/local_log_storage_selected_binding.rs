@@ -94,6 +94,10 @@ impl fmt::Display for LocalLogStorageSelectedGenerationMismatchField {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LocalLogStorageSelectedBindingErrorCode {
+    /// Current and predecessor receipts name different durable schemas.
+    SchemaBindingMismatch,
+    /// Checkpoint and active generation facts use different frame generations.
+    FrameGenerationMismatch,
     /// A root incorrectly carried an exact predecessor receipt.
     UnexpectedPredecessor,
     /// A rotation omitted its exact predecessor receipt.
@@ -121,6 +125,12 @@ impl LocalLogStorageSelectedBindingErrorCode {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::SchemaBindingMismatch => {
+                "local_log_storage_selected_binding.schema_binding_mismatch"
+            }
+            Self::FrameGenerationMismatch => {
+                "local_log_storage_selected_binding.frame_generation_mismatch"
+            }
             Self::UnexpectedPredecessor => {
                 "local_log_storage_selected_binding.unexpected_predecessor"
             }
@@ -149,6 +159,12 @@ impl LocalLogStorageSelectedBindingErrorCode {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LocalLogStorageSelectedBindingError {
+    /// Current and predecessor receipt facts cannot cross a schema boundary.
+    #[error("current and predecessor selected receipts use different durable schema bindings")]
+    SchemaBindingMismatch,
+    /// One selected rotation crosses a binary frame generation.
+    #[error("selected checkpoint and active generations use different frame generations")]
+    FrameGenerationMismatch,
     /// Root is the first selection and cannot have a predecessor receipt.
     #[error("a selected root must not carry a predecessor receipt")]
     UnexpectedPredecessor,
@@ -199,6 +215,12 @@ impl LocalLogStorageSelectedBindingError {
     #[must_use]
     pub const fn code(&self) -> LocalLogStorageSelectedBindingErrorCode {
         match self {
+            Self::SchemaBindingMismatch => {
+                LocalLogStorageSelectedBindingErrorCode::SchemaBindingMismatch
+            }
+            Self::FrameGenerationMismatch => {
+                LocalLogStorageSelectedBindingErrorCode::FrameGenerationMismatch
+            }
             Self::UnexpectedPredecessor => {
                 LocalLogStorageSelectedBindingErrorCode::UnexpectedPredecessor
             }
@@ -266,6 +288,11 @@ impl LocalLogStorageSelectedBinding {
         checkpoint_generation: LocalLogStorageSelectedCheckpointGenerationBinding,
         active_generation: LocalLogStorageSelectedActiveGenerationBinding,
     ) -> Result<Self, LocalLogStorageSelectedBindingError> {
+        if predecessor_receipt.as_ref().is_some_and(|predecessor| {
+            predecessor.schema_binding() != current_receipt.schema_binding()
+        }) {
+            return Err(LocalLogStorageSelectedBindingError::SchemaBindingMismatch);
+        }
         match current_receipt.selection_kind() {
             LocalLogStorageSelectionKind::Root => {
                 if predecessor_receipt.is_some() {
@@ -357,8 +384,20 @@ impl LocalLogStorageSelectedBinding {
         if checkpoint_generation.log_id() == active_generation.log_id() {
             return Err(LocalLogStorageSelectedBindingError::GenerationNotAdvanced);
         }
+        if checkpoint_generation
+            .frame_format_version()
+            .is_some_and(|version| version != active_generation.frame_format_version())
+        {
+            return Err(LocalLogStorageSelectedBindingError::FrameGenerationMismatch);
+        }
 
         Ok(Self { current_receipt, predecessor_receipt, checkpoint_generation, active_generation })
+    }
+
+    /// Returns the schema identity retained by the current and predecessor edge.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &crate::schema::DurableSchemaBinding {
+        self.current_receipt.schema_binding()
     }
 
     /// Returns the envelope tip's exact transaction-record binding.

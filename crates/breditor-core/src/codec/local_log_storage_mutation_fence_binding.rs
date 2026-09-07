@@ -53,6 +53,12 @@ impl LocalLogStorageMutationFenceBinding {
         &self.selected_binding
     }
 
+    /// Returns the selected envelope's retained durable schema binding.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &crate::schema::DurableSchemaBinding {
+        self.selected_binding.schema_binding()
+    }
+
     /// Returns the exact selected current transaction receipt.
     #[must_use]
     pub const fn current_receipt(&self) -> &LocalLogStorageSelectionReceiptBinding {

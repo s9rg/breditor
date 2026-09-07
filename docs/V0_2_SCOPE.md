@@ -1,6 +1,7 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` extension set and `0.2.0-alpha.1` schema-proof foundation are complete
+Status: in progress; the `0.1.1`, `0.2.0-alpha.1`, and `0.2.0-alpha.2`
+foundations are complete
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -152,9 +153,14 @@ when review finds a correctness boundary; later features are not claimed early.
    canonical schema-fingerprint definition, and complete equivalence tests for
    `breditor/base@1`. Complete.
 3. `0.2.0-alpha.2`: fingerprint-bearing durable record generations and
-   schema-fingerprint admission for document, operation, transaction, editor-state, commit,
-   checkpoint, and local-log families. Legacy V1 records remain exact-base-only;
-   mismatch never overwrites retained persistence evidence.
+   schema-fingerprint admission for document, operation, transaction,
+   editor-state, commit, checkpoint, Local Log Frame/tail, and Storage
+   Root/Generation families. It includes non-destructive prepared admission from
+   a checked compact checkpoint into a fresh lineage and session, exact V2
+   checkpoint bytes, and a separately preparable Storage Root candidate. Legacy
+   V1 records remain exact-base-only; mismatch never overwrites retained
+   persistence evidence. The browser, IndexedDB profile, and Wasm ABI 2 remain
+   V1-only. Complete.
 4. `0.2.0-alpha.3`: sealed base-text schema extension for property-free inline
    formats plus generic format operations/actions, pending typing format,
    inverse, relocation, undo/redo, and checkpoint replay coverage.

@@ -18,6 +18,7 @@ use crate::{
         SESSION_CHECKPOINT_FORMAT_VERSION as RECORD_FORMAT_VERSION, SelectionRecordV1,
         SessionCheckpointRecordV1, SessionHistoryEntryRecordV1,
     },
+    schema::require_exact_breditor_base,
     session::{
         EditorSession, EditorSessionCheckpointParts, HistoryCapacity,
         HistoryCheckpointInvariantError, HistoryEntry,
@@ -50,7 +51,8 @@ use super::{
     },
 };
 
-type SessionHistoryEntryEncoding<'a> = SessionHistoryEntryRecordV1<OperationSequenceEncoding<'a>>;
+pub(crate) type SessionHistoryEntryEncoding<'a> =
+    SessionHistoryEntryRecordV1<OperationSequenceEncoding<'a>>;
 type SessionCheckpointEncoding<'a> =
     SessionCheckpointRecordV1<EditorStateEncoding<'a>, Vec<SessionHistoryEntryEncoding<'a>>>;
 
@@ -120,6 +122,8 @@ impl SessionCheckpointJsonCodec {
     /// JSON, invalid topology or values, resource-limit excess, failed replay,
     /// a noncanonical operation recipe, or an impossible checked assembly.
     pub fn decode(&self, json: &str) -> Result<EditorSession, SessionCheckpointCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| SessionCheckpointCodecError::ContextConfigurationMismatch)?;
         let maximum = self.context.limits().max_json_bytes();
         if json.len() > maximum {
             return Err(SessionCheckpointCodecError::InputTooLarge { actual: json.len(), maximum });
@@ -138,7 +142,6 @@ impl SessionCheckpointJsonCodec {
                 supported: SESSION_CHECKPOINT_FORMAT_VERSION,
             });
         }
-
         let envelope: BorrowedSessionCheckpointRecordV1<'_> = decode_outer_json(json)?;
         let capacity = decode_history_capacity(envelope.history_capacity, &self.limits)?;
         let entry_count = count_session_history_entries(envelope.entries.get(), capacity.get())
@@ -216,6 +219,8 @@ impl SessionCheckpointJsonCodec {
     /// excess, an impossible private invariant, an unrepresentable V1 value,
     /// operation validation failure, or serialization/byte-budget failure.
     pub fn encode(&self, session: &EditorSession) -> Result<String, SessionCheckpointCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| SessionCheckpointCodecError::ContextConfigurationMismatch)?;
         let EditorSessionCheckpointParts { state, history } = session.checkpoint_parts();
         if state.context() != &self.context {
             return Err(SessionCheckpointCodecError::ContextConfigurationMismatch);
@@ -308,7 +313,7 @@ impl SessionCheckpointJsonCodec {
         self.serialize_record(&record)
     }
 
-    fn decode_history_chain(
+    pub(crate) fn decode_history_chain(
         &self,
         history_base: &EditorState,
         preflighted_entries: Vec<PreflightedSessionHistoryEntry<'_>>,
@@ -367,7 +372,7 @@ impl SessionCheckpointJsonCodec {
         Ok((entries, current_boundary))
     }
 
-    fn encode_history_entries<'a>(
+    pub(crate) fn encode_history_entries<'a>(
         &'a self,
         history_base: &'a EditorState,
         entries: &[&'a HistoryEntry],
@@ -634,7 +639,7 @@ fn validate_history_base_header(raw: &RawValue) -> Result<(), SessionCheckpointC
     Ok(())
 }
 
-fn decode_history_capacity(
+pub(crate) fn decode_history_capacity(
     actual: u32,
     limits: &SessionCheckpointLimits,
 ) -> Result<HistoryCapacity, SessionCheckpointCodecError> {
@@ -648,7 +653,7 @@ fn decode_history_capacity(
     Ok(capacity)
 }
 
-fn validate_capacity_policy(
+pub(crate) fn validate_capacity_policy(
     capacity: HistoryCapacity,
     limits: &SessionCheckpointLimits,
 ) -> Result<(), SessionCheckpointCodecError> {
@@ -683,7 +688,10 @@ fn validate_encoding_operation_count(
     Ok(())
 }
 
-fn validate_cursor(cursor: u32, entry_count: u64) -> Result<(), SessionCheckpointCodecError> {
+pub(crate) fn validate_cursor(
+    cursor: u32,
+    entry_count: u64,
+) -> Result<(), SessionCheckpointCodecError> {
     if u64::from(cursor) > entry_count {
         return Err(SessionCheckpointTopologyError::CursorOutOfBounds {
             cursor: u64::from(cursor),
@@ -694,7 +702,7 @@ fn validate_cursor(cursor: u32, entry_count: u64) -> Result<(), SessionCheckpoin
     Ok(())
 }
 
-fn validate_open_group_topology(
+pub(crate) fn validate_open_group_topology(
     has_open_group: bool,
     cursor: u32,
     entry_count: u64,
@@ -715,7 +723,7 @@ fn validate_open_group_topology(
     Ok(())
 }
 
-fn history_entries_preflight_error(
+pub(crate) fn history_entries_preflight_error(
     error: SessionHistoryEntriesPreflightError,
 ) -> SessionCheckpointCodecError {
     match error {
@@ -782,7 +790,7 @@ const fn history_operation_limit_error(
     })
 }
 
-fn history_operation_validation_error(
+pub(crate) fn history_operation_validation_error(
     entry_index: u64,
     error: IndexedOperationValidationError,
 ) -> SessionCheckpointCodecError {
@@ -921,7 +929,7 @@ fn check_retained_limit(
     Ok(())
 }
 
-fn same_semantic_state(left: &EditorState, right: &EditorState) -> bool {
+pub(crate) fn same_semantic_state(left: &EditorState, right: &EditorState) -> bool {
     left.context() == right.context()
         && left.snapshot().lineage() == right.snapshot().lineage()
         && left.document() == right.document()
@@ -936,11 +944,15 @@ fn first_operation_mismatch(wire: &[Operation], applied: &[Operation]) -> Option
     mismatch.or((wire.len() != applied.len()).then_some(shared)).map(usize_to_u64)
 }
 
-fn history_assembly_error(error: HistoryCheckpointInvariantError) -> SessionCheckpointCodecError {
+pub(crate) fn history_assembly_error(
+    error: HistoryCheckpointInvariantError,
+) -> SessionCheckpointCodecError {
     runtime_invariant(format!("proved session history could not be assembled: {error:?}"))
 }
 
-fn runtime_invariant(diagnostic: impl Into<BoundedDiagnostic>) -> SessionCheckpointCodecError {
+pub(crate) fn runtime_invariant(
+    diagnostic: impl Into<BoundedDiagnostic>,
+) -> SessionCheckpointCodecError {
     SessionCheckpointCodecError::RuntimeInvariant { diagnostic: diagnostic.into() }
 }
 

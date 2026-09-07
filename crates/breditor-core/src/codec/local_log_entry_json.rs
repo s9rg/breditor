@@ -13,6 +13,7 @@ use crate::{
         LOCAL_LOG_ENTRY_FORMAT_VERSION as RECORD_FORMAT_VERSION, LocalLogEntryRecordV1,
         LocalLogEventRecordV1,
     },
+    schema::{require_exact_breditor_base, require_schema_binding},
     state::EditorContext,
     transaction::Commit,
 };
@@ -80,6 +81,8 @@ impl LocalLogEntryJsonCodec {
     /// unsupported routing fields, invalid identities or sequence, or an
     /// invalid nested commit.
     pub fn decode(&self, json: &str) -> Result<LocalLogEntry, LocalLogEntryCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| LocalLogEntryCodecError::ContextConfigurationMismatch)?;
         let maximum = self.context.limits().max_json_bytes();
         if json.len() > maximum {
             return Err(LocalLogEntryCodecError::InputTooLarge { actual: json.len(), maximum });
@@ -183,6 +186,10 @@ impl LocalLogEntryJsonCodec {
     /// Returns [`LocalLogEntryCodecError`] when a nested commit cannot encode,
     /// serialization fails, or the complete output exceeds the shared byte cap.
     pub fn encode(&self, entry: &LocalLogEntry) -> Result<String, LocalLogEntryCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| LocalLogEntryCodecError::ContextConfigurationMismatch)?;
+        require_schema_binding(self.context.schema(), entry.schema_binding())
+            .map_err(|_| LocalLogEntryCodecError::ContextConfigurationMismatch)?;
         entry.event().validate().map_err(LocalLogEntryCodecError::InvalidEventCommit)?;
         let event: LocalLogEventRecordV1<Box<RawValue>> = match entry.event().kind() {
             LocalLogEventKind::Commit => LocalLogEventRecordV1::Commit {

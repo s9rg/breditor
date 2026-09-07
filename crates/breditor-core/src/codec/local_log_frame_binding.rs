@@ -2,8 +2,8 @@ use crate::local_log::{LocalLogId, LocalSessionId};
 
 /// Trusted host binding for one active local-log tail.
 ///
-/// Local Log Frame V1 carries an ordinary Local Log Entry V1 payload, which
-/// already asserts both identities. The frame codec compares those untrusted
+/// Every frame generation carries a matching Local Log Entry generation whose
+/// payload asserts both identities. A frame codec compares those untrusted
 /// assertions with this independently supplied binding before publishing an
 /// entry. The binding is a storage-scope check, not authorization, integrity,
 /// provenance, writer fencing, or proof that the generation is still active.

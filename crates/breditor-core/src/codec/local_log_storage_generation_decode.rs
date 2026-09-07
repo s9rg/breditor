@@ -56,6 +56,8 @@ impl LocalLogStorageGenerationJsonCodec {
         json: &str,
         prior: &LocalLogStorageGenerationManifest,
     ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
+        crate::schema::require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogStorageGenerationCodecError::ContextConfigurationMismatch)?;
         self.decode_rotation_inner(json, Some(prior))
     }
 
@@ -367,7 +369,7 @@ where
         .map_err(LocalLogStorageGenerationCodecError::InvalidJson)
 }
 
-fn decode_profile_id(
+pub(super) fn decode_profile_id(
     raw: &RawValue,
 ) -> Result<LocalLogStorageProfileId, LocalLogStorageGenerationCodecError> {
     decode_bounded_identity(
@@ -379,7 +381,7 @@ fn decode_profile_id(
     )
 }
 
-fn decode_profile_version(
+pub(super) fn decode_profile_version(
     raw: &RawValue,
 ) -> Result<LocalLogStorageProfileVersion, LocalLogStorageGenerationCodecError> {
     let value: u32 = decode_json(raw.get())?;
@@ -392,7 +394,7 @@ fn decode_profile_version(
     })
 }
 
-fn decode_scope_id(
+pub(super) fn decode_scope_id(
     raw: &RawValue,
 ) -> Result<LocalLogStorageScopeId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -403,7 +405,7 @@ fn decode_scope_id(
     )
 }
 
-fn decode_transaction_id(
+pub(super) fn decode_transaction_id(
     raw: &RawValue,
 ) -> Result<LocalLogStorageTransactionId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -414,7 +416,7 @@ fn decode_transaction_id(
     )
 }
 
-fn decode_expected_head_id(
+pub(super) fn decode_expected_head_id(
     raw: &RawValue,
 ) -> Result<LocalLogStorageHeadId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -425,7 +427,7 @@ fn decode_expected_head_id(
     )
 }
 
-fn decode_committed_head_id(
+pub(super) fn decode_committed_head_id(
     raw: &RawValue,
 ) -> Result<LocalLogStorageHeadId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -436,7 +438,7 @@ fn decode_committed_head_id(
     )
 }
 
-fn decode_fence_id(
+pub(super) fn decode_fence_id(
     raw: &RawValue,
 ) -> Result<LocalLogStorageFenceId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -447,7 +449,7 @@ fn decode_fence_id(
     )
 }
 
-fn decode_session_id(
+pub(super) fn decode_session_id(
     raw: &RawValue,
 ) -> Result<LocalSessionId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -458,7 +460,9 @@ fn decode_session_id(
     )
 }
 
-fn decode_sealed_log_id(raw: &RawValue) -> Result<LocalLogId, LocalLogStorageGenerationCodecError> {
+pub(super) fn decode_sealed_log_id(
+    raw: &RawValue,
+) -> Result<LocalLogId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
         raw,
         LocalLogStorageGenerationRecordErrorCode::InvalidSealedLogId,
@@ -467,7 +471,7 @@ fn decode_sealed_log_id(raw: &RawValue) -> Result<LocalLogId, LocalLogStorageGen
     )
 }
 
-fn decode_successor_log_id(
+pub(super) fn decode_successor_log_id(
     raw: &RawValue,
 ) -> Result<LocalLogId, LocalLogStorageGenerationCodecError> {
     decode_local_identity(
@@ -545,7 +549,7 @@ fn decode_frame(
     Ok(LocalLogStorageGenerationFrameV1::new(LocalLogFrameLimits::new(maximum)))
 }
 
-fn decode_decimal_u64(
+pub(super) fn decode_decimal_u64(
     raw: &RawValue,
     code: LocalLogStorageGenerationRecordErrorCode,
     location: LocalLogStorageGenerationRecordLocation,
@@ -570,7 +574,7 @@ fn decode_decimal_u64(
         .map_err(|error| record_error(code, location, decimal_diagnostic(noun, error)))
 }
 
-fn decode_checkpoint_json(
+pub(super) fn decode_checkpoint_json(
     raw: &RawValue,
     maximum: usize,
 ) -> Result<String, LocalLogStorageGenerationCodecError> {

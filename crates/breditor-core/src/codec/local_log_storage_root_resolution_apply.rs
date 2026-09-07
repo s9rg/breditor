@@ -433,7 +433,8 @@ fn validate_other_scope(
             LocalLogStorageRootResolutionCollisionReason::CurrentCommittedHeadIndexMismatch,
         );
     }
-    if selected.profile_id() != candidate.profile_id()
+    if selected.schema_binding() != candidate.schema_binding()
+        || selected.profile_id() != candidate.profile_id()
         || selected.profile_version() != candidate.profile_version()
         || selected.database_incarnation_id() != candidate.database_incarnation_id()
         || selected.scope_id() != candidate.scope_id()
@@ -449,7 +450,8 @@ fn same_scope_lifetime(
     selected: &LocalLogStorageSelectedRoot,
 ) -> bool {
     let candidate = plan.candidate_receipt();
-    selected.profile_id() == candidate.profile_id()
+    selected.schema_binding() == candidate.schema_binding()
+        && selected.profile_id() == candidate.profile_id()
         && selected.profile_version() == candidate.profile_version()
         && selected.database_incarnation_id() == candidate.database_incarnation_id()
         && selected.scope_id() == candidate.scope_id()

@@ -11,11 +11,17 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.2.0-alpha.1` checkpoint builds the parity-first schema compiler
-and proof foundation over the behavior-free `0.1.1` extension set. Development
-toward `0.2.0` is scoped to one complete, frozen
-semantic extension path for property-free inline formats. The decisions and
-checkpoint gates are recorded in the
+The current `0.2.0-alpha.2` checkpoint adds explicit fingerprint-bearing Rust
+V2 generations for the complete durable record graph over the parity-first
+schema compiler and behavior-free `0.1.1` extension set. It propagates the
+durable binding through recovery, tail, compaction, and storage validation and
+adds a non-destructive checkpoint-based structural-admission boundary. Every V1
+codec remains bound to the exact built-in base definition. Wasm ABI 2, the
+browser product, autosave, and IndexedDB continue to consume and emit V1 only;
+their profile-aware widening is scheduled for later checkpoints. Development
+toward `0.2.0` remains scoped to one complete, frozen semantic extension path
+for property-free inline formats. The decisions and checkpoint gates are
+recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
 are specified by the [schema fingerprint contract](docs/SCHEMA_FINGERPRINT.md).
@@ -28,6 +34,10 @@ The implementation includes:
 - proof-derived cached document measurements for node count, maximum depth,
   total UTF-8 text bytes, and recursive property-value count;
 - a minimal compiled schema for document, paragraph, text, and strong formatting;
+- separate Rust-only fingerprint-bearing V2 codecs for document, operation,
+  transaction request, editor state, commit, session checkpoint, local-log
+  entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
+  with generation-locked nesting and non-destructive mismatch handling;
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
   editor-state checkpoints, self-contained replay-proved commit records, and

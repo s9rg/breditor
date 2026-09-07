@@ -3,7 +3,7 @@ use std::{
     fmt,
 };
 
-use crate::session::EditorSession;
+use crate::{schema::DurableSchemaBinding, session::EditorSession};
 
 use super::{
     LocalLogCompactionLimits, LocalLogEntry, LocalLogId, LocalLogRecoveryLimits, LocalLogSequence,
@@ -140,6 +140,12 @@ impl ContinuedLocalLog {
     #[must_use]
     pub const fn session(&self) -> &EditorSession {
         &self.session
+    }
+
+    /// Returns the exact durable content language shared by this active log.
+    #[must_use]
+    pub fn schema_binding(&self) -> DurableSchemaBinding {
+        self.session.state().context().schema().durable_binding()
     }
 
     /// Consumes the owner and returns its current editor session.
@@ -382,6 +388,7 @@ impl ContinuedLocalLog {
             }
         }
         let mut prior_first_delivery_index = None;
+        let schema_binding = self.session.state().context().schema().durable_binding();
         for (index, entry) in self.active_entries.iter().enumerate() {
             let Ok(offset) = u64::try_from(index) else {
                 return false;
@@ -397,6 +404,7 @@ impl ContinuedLocalLog {
             };
             if entry.session_id() != &self.session_id
                 || entry.log_id() != &self.active_log_id
+                || entry.schema_binding() != &schema_binding
                 || entry.sequence().get() != expected
                 || self.compacted_replays.contains_key(entry.replay_id())
                 || indexed_entry != index

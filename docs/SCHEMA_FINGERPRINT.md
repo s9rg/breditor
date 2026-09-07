@@ -1,6 +1,7 @@
 # Schema fingerprint contract
 
-Status: implemented for the private `0.2.0-alpha.1` base-schema compiler.
+Status: compiler identity, strict public parser, durable binding, and the
+complete Rust-core V2 record graph are implemented in `0.2.0-alpha.2`.
 
 `SchemaFingerprint` is the durable identity of one complete compiled content
 language. It lets Breditor distinguish schemas that share a human-readable
@@ -9,10 +10,12 @@ always `sha256:` followed by 64 lowercase hexadecimal digits.
 
 The fingerprint is not an extension identity, package signature,
 authorization token, provenance record, migration instruction, or
-process-local validation proof. `0.2.0-alpha.1` exposes the fingerprint of the
-built-in schema, but does not yet put it into a durable record or expose a
-general schema compiler. Those admission and wire-format changes are staged
-for `0.2.0-alpha.2`.
+process-local validation proof. The public Rust type parses only the exact
+71-byte text form through `FromStr`/`TryFrom`; it deliberately has no public
+Serde contract. Every independent Rust V2 JSON envelope stores that canonical
+text beside `SchemaId` and requires both identities to match the receiving
+compiled schema. A general public schema compiler remains staged for a later
+prerelease.
 
 ## Canonical byte encoding
 
@@ -104,7 +107,13 @@ of registration order, refactoring, dependency updates, or host policy.
 
 SHA-256 makes accidental or adversarial identity collision impractical, but it
 does not authenticate who supplied a schema or whether code is trustworthy.
-Callers must not parse the display string as a durable record in this
-checkpoint: no fingerprint-bearing wire generation exists yet. Legacy V1
-records remain byte-for-byte unchanged and bound to the exact built-in base
-definition.
+The parser rejects uppercase, whitespace, other prefixes, non-hex bytes, and
+short or long text without retaining the supplied payload in its typed error.
+`DocumentJsonCodecV2` is the explicit fingerprint-bearing document generation;
+it never widens the existing V1 codec or silently migrates content. The other
+Rust-core durable families likewise use separate V2 codec types with
+generation-locked nesting, as specified by the
+[durable schema binding contract](DURABLE_SCHEMA_BINDING.md). Legacy V1 records
+remain byte-for-byte unchanged and bound to the exact built-in base definition.
+Wasm ABI 2 and the browser persistence path continue to consume and emit V1
+only during alpha.2.

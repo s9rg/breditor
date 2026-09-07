@@ -30,6 +30,8 @@ impl LocalLogStorageGenerationJsonCodec {
         outcome: &LocalLogTailCompactionOutcome,
         inputs: &LocalLogStorageGenerationPreparationInputs,
     ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
+        crate::schema::require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogStorageGenerationCodecError::ContextConfigurationMismatch)?;
         self.validate_prior_binding(prior)?;
         validate_known_identity_reuse(self, prior, inputs)?;
         if outcome.anchor().session().state().context() != self.context() {

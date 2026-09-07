@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt};
 
-use crate::session::EditorSession;
+use crate::{schema::DurableSchemaBinding, session::EditorSession};
 
 use super::{LocalLogEntry, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
 
@@ -84,6 +84,12 @@ impl RecoveredLocalLog {
     #[must_use]
     pub const fn session(&self) -> &EditorSession {
         &self.session
+    }
+
+    /// Returns the exact durable content language shared by the session and entries.
+    #[must_use]
+    pub fn schema_binding(&self) -> DurableSchemaBinding {
+        self.session.state().context().schema().durable_binding()
     }
 
     /// Consumes the proof owner and returns its recovered editor session.
@@ -180,6 +186,7 @@ impl RecoveredLocalLog {
 
     pub(super) fn compaction_topology_is_valid(&self) -> bool {
         let represented = self.represented_replay_count();
+        let schema_binding = self.session.state().context().schema().durable_binding();
         let Ok(entry_count) = u64::try_from(self.entries.len()) else {
             return false;
         };
@@ -202,6 +209,7 @@ impl RecoveredLocalLog {
             };
             if entry.session_id() != &self.session_id
                 || entry.log_id() != &self.active_log_id
+                || entry.schema_binding() != &schema_binding
                 || entry.sequence().get() != expected
                 || self.replay_index.get(entry.replay_id()) != Some(&index)
             {

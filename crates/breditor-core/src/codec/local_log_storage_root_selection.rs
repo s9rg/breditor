@@ -5,10 +5,11 @@ use crate::local_log::{
     LocalLogStorageProfileVersion, LocalLogStorageScopeId, LocalLogStorageTransactionId,
     LocalSessionId,
 };
+use crate::schema::{CompiledSchema, DurableSchemaBinding};
 
-use super::LocalLogStorageGenerationFrameV1;
+use super::{LocalLogStorageGenerationFrameV1, LocalLogStorageGenerationFrameV2};
 
-/// One checked, canonicalizable Local Log Storage Root V1 selection.
+/// One checked, canonicalizable Local Log Storage Root selection.
 ///
 /// This immutable value is inspection data only. It does not own the
 /// checkpoint anchor, provision either generation, carry a writer capability,
@@ -18,6 +19,7 @@ use super::LocalLogStorageGenerationFrameV1;
 #[must_use = "a storage-root selection is inspection data that must be explicitly handled"]
 #[derive(Eq, PartialEq)]
 pub struct LocalLogStorageRootSelection {
+    schema_binding: DurableSchemaBinding,
     profile_id: LocalLogStorageProfileId,
     profile_version: LocalLogStorageProfileVersion,
     scope_id: LocalLogStorageScopeId,
@@ -28,6 +30,7 @@ pub struct LocalLogStorageRootSelection {
     checkpoint_log_id: LocalLogId,
     active_log_id: LocalLogId,
     active_frame: LocalLogStorageGenerationFrameV1,
+    active_frame_format_version: u32,
     checkpoint_json: String,
 }
 
@@ -48,6 +51,7 @@ pub(crate) struct LocalLogStorageRootSelectionParts {
 impl LocalLogStorageRootSelection {
     pub(crate) fn from_parts(parts: LocalLogStorageRootSelectionParts) -> Self {
         Self {
+            schema_binding: CompiledSchema::breditor_base().durable_binding(),
             profile_id: parts.profile_id,
             profile_version: parts.profile_version,
             scope_id: parts.scope_id,
@@ -58,8 +62,37 @@ impl LocalLogStorageRootSelection {
             checkpoint_log_id: parts.checkpoint_log_id,
             active_log_id: parts.active_log_id,
             active_frame: parts.active_frame,
+            active_frame_format_version: parts.active_frame.format_version(),
             checkpoint_json: parts.checkpoint_json,
         }
+    }
+
+    pub(crate) fn from_parts_v2(
+        schema_binding: DurableSchemaBinding,
+        parts: LocalLogStorageRootSelectionParts,
+        active_frame: LocalLogStorageGenerationFrameV2,
+    ) -> Self {
+        Self {
+            schema_binding,
+            profile_id: parts.profile_id,
+            profile_version: parts.profile_version,
+            scope_id: parts.scope_id,
+            transaction_id: parts.transaction_id,
+            committed_head_id: parts.committed_head_id,
+            fence_id: parts.fence_id,
+            session_id: parts.session_id,
+            checkpoint_log_id: parts.checkpoint_log_id,
+            active_log_id: parts.active_log_id,
+            active_frame: LocalLogStorageGenerationFrameV1::new(active_frame.limits()),
+            active_frame_format_version: active_frame.format_version(),
+            checkpoint_json: parts.checkpoint_json,
+        }
+    }
+
+    /// Returns the exact durable schema selector and fingerprint.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &DurableSchemaBinding {
+        &self.schema_binding
     }
 
     /// Returns the storage profile selected by trusted host configuration.
@@ -116,10 +149,32 @@ impl LocalLogStorageRootSelection {
         &self.active_log_id
     }
 
-    /// Returns the active generation's exact Frame V1 policy.
+    /// Returns the active generation's payload limits through the legacy Frame V1 view.
+    ///
+    /// For a V2 selection this is only a compatibility projection of the
+    /// limits; it does not change or report the retained generation. Call
+    /// [`Self::active_frame_format_version`] and [`Self::active_frame_v2`] when
+    /// protocol generation matters. Every V1 codec rejects V2-tagged values
+    /// before using this projection.
     #[must_use]
     pub const fn active_frame(&self) -> LocalLogStorageGenerationFrameV1 {
         self.active_frame
+    }
+
+    /// Returns the retained frame wire generation without projecting it away.
+    #[must_use]
+    pub const fn active_frame_format_version(&self) -> u32 {
+        self.active_frame_format_version
+    }
+
+    /// Returns the active Frame V2 policy when this is a V2 selection.
+    #[must_use]
+    pub const fn active_frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
+        if self.active_frame_format_version == 2 {
+            Some(LocalLogStorageGenerationFrameV2::new(self.active_frame.limits()))
+        } else {
+            None
+        }
     }
 
     /// Returns the exact canonical embedded Local Log Checkpoint V1 JSON.
@@ -139,6 +194,7 @@ impl fmt::Debug for LocalLogStorageRootSelection {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("LocalLogStorageRootSelection")
+            .field("schema_binding", &self.schema_binding)
             .field("profile_id", &self.profile_id)
             .field("profile_version", &self.profile_version)
             .field("scope_id", &self.scope_id)
@@ -149,6 +205,7 @@ impl fmt::Debug for LocalLogStorageRootSelection {
             .field("checkpoint_log_id", &self.checkpoint_log_id)
             .field("active_log_id", &self.active_log_id)
             .field("active_frame", &self.active_frame)
+            .field("active_frame_format_version", &self.active_frame_format_version)
             .field("checkpoint_json_bytes", &self.checkpoint_json.len())
             .finish_non_exhaustive()
     }

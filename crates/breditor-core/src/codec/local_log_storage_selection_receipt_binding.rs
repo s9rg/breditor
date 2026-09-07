@@ -5,6 +5,7 @@ use crate::local_log::{
     LocalLogStorageProfileVersion, LocalLogStorageScopeId, LocalLogStorageScopeIncarnationId,
     LocalLogStorageTransactionId, LocalSessionId,
 };
+use crate::schema::{CompiledSchema, DurableSchemaBinding};
 
 use super::local_log_storage_selection_kind::LocalLogStorageSelectionKind;
 
@@ -82,6 +83,7 @@ impl LocalLogStorageSelectionReceiptBindingError {
 /// mutable writer epoch, current writer fence, browser handle, or authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalLogStorageSelectionReceiptBinding {
+    schema_binding: DurableSchemaBinding,
     profile_id: LocalLogStorageProfileId,
     profile_version: LocalLogStorageProfileVersion,
     database_incarnation_id: LocalLogStorageDatabaseIncarnationId,
@@ -115,6 +117,46 @@ impl LocalLogStorageSelectionReceiptBinding {
         selection_kind: LocalLogStorageSelectionKind,
         session_id: LocalSessionId,
     ) -> Result<Self, LocalLogStorageSelectionReceiptBindingError> {
+        Self::try_new_with_schema_binding(
+            CompiledSchema::breditor_base().durable_binding(),
+            profile_id,
+            profile_version,
+            database_incarnation_id,
+            scope_id,
+            scope_incarnation_id,
+            transaction_id,
+            expected_head_id,
+            committed_head_id,
+            selection_kind,
+            session_id,
+        )
+    }
+
+    /// Creates a transaction association with an explicit durable schema binding.
+    ///
+    /// This is the non-legacy constructor used by fingerprint-bearing storage
+    /// protocols. The binding is retained through selection typestates and is
+    /// never inferred from candidate JSON. Storage V2 publication attempts are
+    /// a separate future boundary.
+    ///
+    /// # Errors
+    ///
+    /// Applies the same root-versus-rotation head-shape validation as
+    /// [`Self::try_new`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn try_new_with_schema_binding(
+        schema_binding: DurableSchemaBinding,
+        profile_id: LocalLogStorageProfileId,
+        profile_version: LocalLogStorageProfileVersion,
+        database_incarnation_id: LocalLogStorageDatabaseIncarnationId,
+        scope_id: LocalLogStorageScopeId,
+        scope_incarnation_id: LocalLogStorageScopeIncarnationId,
+        transaction_id: LocalLogStorageTransactionId,
+        expected_head_id: Option<LocalLogStorageHeadId>,
+        committed_head_id: LocalLogStorageHeadId,
+        selection_kind: LocalLogStorageSelectionKind,
+        session_id: LocalSessionId,
+    ) -> Result<Self, LocalLogStorageSelectionReceiptBindingError> {
         match selection_kind {
             LocalLogStorageSelectionKind::Root => {
                 if expected_head_id.is_some() {
@@ -135,6 +177,7 @@ impl LocalLogStorageSelectionReceiptBinding {
         }
 
         Ok(Self {
+            schema_binding,
             profile_id,
             profile_version,
             database_incarnation_id,
@@ -146,6 +189,12 @@ impl LocalLogStorageSelectionReceiptBinding {
             selection_kind,
             session_id,
         })
+    }
+
+    /// Returns the independently trusted durable schema binding.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &DurableSchemaBinding {
+        &self.schema_binding
     }
 
     /// Returns the independently trusted storage-profile identity.

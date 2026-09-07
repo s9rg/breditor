@@ -43,6 +43,12 @@ impl LocalLogStoragePreparedAttempt {
         Self { plan }
     }
 
+    /// Returns the durable schema binding that every retained candidate edge uses.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &crate::schema::DurableSchemaBinding {
+        self.plan.candidate_binding().schema_binding()
+    }
+
     /// Returns whether this exact candidate is a root or rotation.
     #[must_use]
     pub const fn selection_kind(&self) -> LocalLogStorageSelectionKind {

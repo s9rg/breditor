@@ -15,7 +15,8 @@ mod transaction_record;
 
 pub(crate) use commit_record::{COMMIT_FORMAT, COMMIT_FORMAT_VERSION, CommitRecordV1};
 pub(crate) use document_record::{
-    DocumentEnvelopeHeader, DocumentRecordV1, FormatRecordV1, NodeRecordV1, SchemaIdRecord,
+    DocumentEnvelopeHeader, DocumentRecordV1, DocumentRecordV2, FormatRecordV1, NodeRecordV1,
+    SchemaIdRecord,
 };
 pub(crate) use editor_state_record::{EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION};
 pub(crate) use editor_value_record::{

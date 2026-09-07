@@ -15,7 +15,7 @@ use crate::{
         TRANSACTION_REQUEST_FORMAT_VERSION as RECORD_FORMAT_VERSION, TransactionMetadataRecordV1,
         TransactionRequestRecordV1,
     },
-    schema::{SchemaId, SchemaVersion},
+    schema::{CompiledSchema, SchemaId, SchemaVersion, require_exact_breditor_base},
     state::{EditorContext, EditorState, SnapshotId},
     transaction::Transaction,
 };
@@ -90,6 +90,7 @@ impl TransactionJsonCodec {
         json: &str,
         base: &EditorState,
     ) -> Result<Transaction, TransactionCodecError> {
+        self.ensure_v1_schema()?;
         if base.context() != &self.context {
             return Err(TransactionCodecError::ContextConfigurationMismatch);
         }
@@ -180,10 +181,12 @@ impl TransactionJsonCodec {
     ///
     /// # Errors
     ///
-    /// Returns [`TransactionCodecError`] when the base context differs, the
-    /// request exceeds a semantic limit, an operation/state field fails static
-    /// validation, serialization fails, or the result exceeds the decode budget.
+    /// Returns [`TransactionCodecError`] when the context is not the exact
+    /// built-in V1 schema, the base context differs, the request exceeds a
+    /// semantic limit, an operation/state field fails static validation,
+    /// serialization fails, or the result exceeds the decode budget.
     pub fn encode(&self, transaction: &Transaction) -> Result<String, TransactionCodecError> {
+        self.ensure_v1_schema()?;
         if transaction.base_state().context() != &self.context {
             return Err(TransactionCodecError::ContextConfigurationMismatch);
         }
@@ -229,6 +232,15 @@ impl TransactionJsonCodec {
         serde_json::to_string(&record)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(TransactionCodecError::Encoding)
+    }
+
+    fn ensure_v1_schema(&self) -> Result<(), TransactionCodecError> {
+        require_exact_breditor_base(self.context.schema()).map_err(|_| {
+            TransactionCodecError::SchemaMismatch {
+                expected: CompiledSchema::breditor_base().id().clone(),
+                found: self.context.schema().id().clone(),
+            }
+        })
     }
 }
 

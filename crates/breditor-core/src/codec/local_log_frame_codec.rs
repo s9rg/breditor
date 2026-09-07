@@ -1,4 +1,4 @@
-use crate::{local_log::LocalLogEntry, state::EditorContext};
+use crate::{local_log::LocalLogEntry, schema::require_exact_breditor_base, state::EditorContext};
 
 use super::{
     BorrowedLocalLogFrame, LOCAL_LOG_ENTRY_FORMAT_VERSION, LocalLogEntryJsonCodec,
@@ -101,6 +101,7 @@ impl LocalLogFrameCodec {
     /// Returns [`LocalLogFrameCodecError`] for binding mismatch, entry encoding
     /// failure, payload resource excess, or platform length overflow.
     pub fn encode(&self, entry: &LocalLogEntry) -> Result<Vec<u8>, LocalLogFrameCodecError> {
+        self.ensure_v1_schema()?;
         self.validate_binding(entry)?;
         let payload = self
             .entry_codec
@@ -155,6 +156,7 @@ impl LocalLogFrameCodec {
         &self,
         input: &'a [u8],
     ) -> Result<LocalLogFrameScan<'a>, LocalLogFrameCodecError> {
+        self.ensure_v1_schema()?;
         if input.is_empty() {
             return Ok(LocalLogFrameScan::EndOfInput);
         }
@@ -242,6 +244,7 @@ impl LocalLogFrameCodec {
         &self,
         frame: BorrowedLocalLogFrame<'_>,
     ) -> Result<LocalLogEntry, LocalLogFrameCodecError> {
+        self.ensure_v1_schema()?;
         let payload_bytes = u64::try_from(frame.payload_bytes().len()).map_err(|_| {
             LocalLogFrameCodecError::PayloadLengthOverflow {
                 actual: frame.payload_bytes().len(),
@@ -264,6 +267,14 @@ impl LocalLogFrameCodec {
         let context_limit =
             u64::try_from(self.entry_codec.context().limits().max_json_bytes()).unwrap_or(u64::MAX);
         self.limits.max_payload_bytes().min(context_limit)
+    }
+
+    fn ensure_v1_schema(&self) -> Result<(), LocalLogFrameCodecError> {
+        require_exact_breditor_base(self.entry_codec.context().schema()).map_err(|_| {
+            LocalLogFrameCodecError::InvalidEntry(Box::new(
+                super::LocalLogEntryCodecError::ContextConfigurationMismatch,
+            ))
+        })
     }
 
     fn validate_payload_limit(&self, actual: u64) -> Result<(), LocalLogFrameCodecError> {

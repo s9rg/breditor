@@ -22,6 +22,16 @@ pub(crate) struct DocumentRecordV1 {
 }
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub(crate) struct DocumentRecordV2 {
+    pub(crate) format: String,
+    pub(crate) format_version: u32,
+    pub(crate) schema: SchemaIdRecord,
+    pub(crate) schema_fingerprint: String,
+    pub(crate) root: NodeRecordV1,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct SchemaIdRecord {
     pub(crate) name: String,

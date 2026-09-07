@@ -1,11 +1,11 @@
-/// Default maximum Local Log Entry V1 payload bytes in one frame.
+/// Default maximum generation-specific Local Log Entry payload bytes in one frame.
 ///
 /// This matches the default JSON ceiling while remaining an independent host
 /// policy. The semantic entry codec's context limit is enforced separately;
 /// scanning uses the smaller of the two ceilings.
 pub const DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES: u64 = 16 * 1024 * 1024;
 
-/// Host-authoritative resource policy for one Local Log Frame V1 payload.
+/// Host-authoritative resource policy for one Local Log Frame payload.
 ///
 /// The declared fixed-width payload length is checked against this limit and
 /// the semantic codec's JSON limit before conversion to `usize`, payload

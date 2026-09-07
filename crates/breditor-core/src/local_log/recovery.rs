@@ -133,6 +133,7 @@ impl LocalLogRecovery {
     fn validate_membership(
         &self,
         delivery_index: u64,
+        session: &EditorSession,
         entry: &LocalLogEntry,
     ) -> Result<(), LocalLogRecoveryError> {
         if entry.session_id() != &self.session_id {
@@ -147,6 +148,14 @@ impl LocalLogRecovery {
                 delivery_index,
                 expected: self.active_log_id.clone(),
                 actual: entry.log_id().clone(),
+            });
+        }
+        let expected = session.state().context().schema().durable_binding();
+        if entry.schema_binding() != &expected {
+            return Err(LocalLogRecoveryError::SchemaBindingMismatch {
+                delivery_index,
+                expected: Box::new(expected),
+                actual: Box::new(entry.schema_binding().clone()),
             });
         }
         Ok(())
@@ -173,7 +182,7 @@ impl RecoveryProgress {
         delivery_index: u64,
         entry: LocalLogEntry,
     ) -> Result<(), LocalLogRecoveryError> {
-        recovery.validate_membership(delivery_index, &entry)?;
+        recovery.validate_membership(delivery_index, &self.session, &entry)?;
         if self.is_exact_duplicate(delivery_index, &entry)? {
             return Ok(());
         }

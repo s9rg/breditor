@@ -96,6 +96,7 @@ fn checkpoint_immutable_facts_match(
     expected.log_id() == observed.log_id()
         && expected.session_id() == observed.session_id()
         && expected.established_by_head_id() == observed.established_by_head_id()
+        && expected.frame_format_version() == observed.frame_format_version()
         && expected.frame() == observed.frame()
         && expected.activated_fence_id() == observed.activated_fence_id()
         && expected.activated_by_head_id() == observed.activated_by_head_id()

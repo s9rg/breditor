@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::schema::DurableSchemaBinding;
+
 use super::{
     LocalLogEventApplicationError, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId,
 };
@@ -18,6 +20,8 @@ pub enum LocalLogRecoveryErrorCode {
     SessionMismatch,
     /// One entry names another append generation.
     ActiveLogMismatch,
+    /// One entry belongs to another durable content language.
+    SchemaBindingMismatch,
     /// A successor entry reused an identity whose full proof was compacted.
     CompactedReplayId,
     /// First-seen logical events exceed the host admission limit.
@@ -44,6 +48,7 @@ impl LocalLogRecoveryErrorCode {
             Self::CounterOverflow => "local_log_recovery.counter_overflow",
             Self::SessionMismatch => "local_log_recovery.session_mismatch",
             Self::ActiveLogMismatch => "local_log_recovery.active_log_mismatch",
+            Self::SchemaBindingMismatch => "local_log_recovery.schema_binding_mismatch",
             Self::CompactedReplayId => "local_log_recovery.compacted_replay_id",
             Self::UniqueEventLimit => "local_log_recovery.unique_event_limit",
             Self::AppliedOperationLimit => "local_log_recovery.applied_operation_limit",
@@ -144,6 +149,18 @@ pub enum LocalLogRecoveryError {
         /// Rejected append generation.
         actual: LocalLogId,
     },
+    /// An entry belongs to another durable content language.
+    #[error(
+        "local-log observation {delivery_index} has schema binding {actual:?}; expected {expected:?}"
+    )]
+    SchemaBindingMismatch {
+        /// Physical zero-based input index.
+        delivery_index: u64,
+        /// Binding derived independently from the receiving session context.
+        expected: Box<DurableSchemaBinding>,
+        /// Binding retained by the rejected entry.
+        actual: Box<DurableSchemaBinding>,
+    },
     /// A successor entry reused a replay ID represented by a compact checkpoint.
     #[error(
         "local-log observation {delivery_index} reuses compacted replay ID {replay_id} represented at sequence {checkpoint_sequence}"
@@ -239,6 +256,7 @@ impl LocalLogRecoveryError {
             Self::CounterOverflow { .. } => LocalLogRecoveryErrorCode::CounterOverflow,
             Self::SessionMismatch { .. } => LocalLogRecoveryErrorCode::SessionMismatch,
             Self::ActiveLogMismatch { .. } => LocalLogRecoveryErrorCode::ActiveLogMismatch,
+            Self::SchemaBindingMismatch { .. } => LocalLogRecoveryErrorCode::SchemaBindingMismatch,
             Self::CompactedReplayId { .. } => LocalLogRecoveryErrorCode::CompactedReplayId,
             Self::UniqueEventLimit { .. } => LocalLogRecoveryErrorCode::UniqueEventLimit,
             Self::AppliedOperationLimit { .. } => LocalLogRecoveryErrorCode::AppliedOperationLimit,
@@ -257,6 +275,7 @@ impl LocalLogRecoveryError {
             Self::CounterOverflow { delivery_index, .. } => *delivery_index,
             Self::SessionMismatch { delivery_index, .. }
             | Self::ActiveLogMismatch { delivery_index, .. }
+            | Self::SchemaBindingMismatch { delivery_index, .. }
             | Self::CompactedReplayId { delivery_index, .. }
             | Self::UniqueEventLimit { delivery_index, .. }
             | Self::AppliedOperationLimit { delivery_index, .. }
@@ -285,6 +304,10 @@ mod tests {
             (
                 LocalLogRecoveryErrorCode::ActiveLogMismatch,
                 "local_log_recovery.active_log_mismatch",
+            ),
+            (
+                LocalLogRecoveryErrorCode::SchemaBindingMismatch,
+                "local_log_recovery.schema_binding_mismatch",
             ),
             (
                 LocalLogRecoveryErrorCode::CompactedReplayId,

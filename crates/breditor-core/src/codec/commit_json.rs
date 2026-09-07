@@ -15,6 +15,7 @@ use crate::{
         CommitRecordV1, HistoryIntentRecordV1, PendingFormatRecordV1, SelectionRecordV1,
         TransactionMetadataRecordV1,
     },
+    schema::require_exact_breditor_base,
     state::EditorContext,
     transaction::{
         Commit, CommitCheckpointParts, HistoryIntent, PendingFormatsUpdate, SelectionUpdate,
@@ -102,6 +103,8 @@ impl CommitJsonCodec {
     /// or metadata are relative to that borrowed subvalue; stable codes, indexes,
     /// and typed locations are the control-flow contract.
     pub fn decode(&self, json: &str) -> Result<Commit, CommitCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| CommitCodecError::ContextConfigurationMismatch)?;
         let maximum = self.context.limits().max_json_bytes();
         if json.len() > maximum {
             return Err(CommitCodecError::InputTooLarge { actual: json.len(), maximum });
@@ -120,7 +123,6 @@ impl CommitJsonCodec {
                 supported: COMMIT_FORMAT_VERSION,
             });
         }
-
         let envelope: BorrowedCommitRecordV1<'_> = decode_json(json)?;
         validate_commit_before_header(envelope.before)?;
 
@@ -201,6 +203,8 @@ impl CommitJsonCodec {
     /// outside V1, serialization failure, or an output exceeding the decode
     /// byte budget.
     pub fn encode(&self, commit: &Commit) -> Result<String, CommitCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| CommitCodecError::ContextConfigurationMismatch)?;
         let CommitCheckpointParts { before, after, forward_operations, metadata } =
             commit.checkpoint_parts();
         if before.context() != &self.context || after.context() != &self.context {
@@ -326,7 +330,7 @@ fn validate_commit_before_header(raw: &RawValue) -> Result<(), CommitCodecError>
     Ok(())
 }
 
-fn decode_commit_metadata(
+pub(crate) fn decode_commit_metadata(
     record: TransactionMetadataRecordV1,
 ) -> Result<TransactionMetadata, CommitCodecError> {
     let action = record
@@ -357,7 +361,9 @@ fn decode_commit_metadata(
     Ok(TransactionMetadata::new(action, history))
 }
 
-fn commit_record_error_from_editor_value(error: &EditorValueRecordError) -> CommitCodecError {
+pub(crate) fn commit_record_error_from_editor_value(
+    error: &EditorValueRecordError,
+) -> CommitCodecError {
     let (code, location) = match error {
         EditorValueRecordError::InvalidSelectionPath { endpoint, .. } => (
             CommitRecordErrorCode::InvalidSelectionPath,
@@ -386,7 +392,9 @@ fn commit_record_error_from_editor_value(error: &EditorValueRecordError) -> Comm
     CommitRecordError::new(code, location, error.to_string()).into()
 }
 
-fn commit_operation_sequence_error(error: OperationSequenceDecodeError) -> CommitCodecError {
+pub(crate) fn commit_operation_sequence_error(
+    error: OperationSequenceDecodeError,
+) -> CommitCodecError {
     match error {
         OperationSequenceDecodeError::Json(source) => CommitCodecError::InvalidJson(source),
         OperationSequenceDecodeError::Limit(error) => commit_operation_limit_error(error),
@@ -402,18 +410,22 @@ fn commit_operation_sequence_error(error: OperationSequenceDecodeError) -> Commi
     }
 }
 
-const fn commit_operation_limit_error(error: OperationSequenceLimitError) -> CommitCodecError {
+pub(crate) const fn commit_operation_limit_error(
+    error: OperationSequenceLimitError,
+) -> CommitCodecError {
     CommitCodecError::OperationLimit { actual: error.actual, maximum: error.maximum }
 }
 
-fn commit_operation_validation_error(error: IndexedOperationValidationError) -> CommitCodecError {
+pub(crate) fn commit_operation_validation_error(
+    error: IndexedOperationValidationError,
+) -> CommitCodecError {
     CommitCodecError::OperationValidation {
         operation_index: error.operation_index,
         source: error.source,
     }
 }
 
-fn first_operation_mismatch(wire: &[Operation], applied: &[Operation]) -> Option<u64> {
+pub(crate) fn first_operation_mismatch(wire: &[Operation], applied: &[Operation]) -> Option<u64> {
     let shared = wire.len().min(applied.len());
     let mismatch =
         wire[..shared].iter().zip(&applied[..shared]).position(|(wire, applied)| wire != applied);

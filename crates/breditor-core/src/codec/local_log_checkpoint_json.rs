@@ -14,6 +14,7 @@ use crate::{
         DecimalU64Record, DecimalU64RecordError, LOCAL_LOG_CHECKPOINT_FORMAT as RECORD_FORMAT,
         LOCAL_LOG_CHECKPOINT_FORMAT_VERSION as RECORD_FORMAT_VERSION, LocalLogCheckpointRecordV1,
     },
+    schema::require_exact_breditor_base,
     state::EditorContext,
 };
 
@@ -120,6 +121,8 @@ impl LocalLogCheckpointJsonCodec {
         &self,
         json: &str,
     ) -> Result<LocalLogCheckpointAnchor, LocalLogCheckpointCodecError> {
+        require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogCheckpointCodecError::ContextConfigurationMismatch)?;
         let maximum = self.context().limits().max_json_bytes();
         if json.len() > maximum {
             return Err(LocalLogCheckpointCodecError::InputTooLarge {
@@ -209,6 +212,8 @@ impl LocalLogCheckpointJsonCodec {
         &self,
         anchor: &LocalLogCheckpointAnchor,
     ) -> Result<String, LocalLogCheckpointCodecError> {
+        require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogCheckpointCodecError::ContextConfigurationMismatch)?;
         let parts = anchor.checkpoint_parts();
         if parts.session.state().context() != self.context() {
             return Err(LocalLogCheckpointCodecError::ContextConfigurationMismatch);
@@ -385,7 +390,9 @@ where
         .map_err(LocalLogCheckpointCodecError::InvalidJson)
 }
 
-fn decode_session_id(raw: &RawValue) -> Result<LocalSessionId, LocalLogCheckpointCodecError> {
+pub(super) fn decode_session_id(
+    raw: &RawValue,
+) -> Result<LocalSessionId, LocalLogCheckpointCodecError> {
     preflight_bounded_string(
         raw,
         LocalLogCheckpointRecordErrorCode::InvalidSessionId,
@@ -402,7 +409,9 @@ fn decode_session_id(raw: &RawValue) -> Result<LocalSessionId, LocalLogCheckpoin
     })
 }
 
-fn decode_checkpoint_log_id(raw: &RawValue) -> Result<LocalLogId, LocalLogCheckpointCodecError> {
+pub(super) fn decode_checkpoint_log_id(
+    raw: &RawValue,
+) -> Result<LocalLogId, LocalLogCheckpointCodecError> {
     preflight_bounded_string(
         raw,
         LocalLogCheckpointRecordErrorCode::InvalidCheckpointLogId,
@@ -419,7 +428,9 @@ fn decode_checkpoint_log_id(raw: &RawValue) -> Result<LocalLogId, LocalLogCheckp
     })
 }
 
-fn decode_successor_log_id(raw: &RawValue) -> Result<LocalLogId, LocalLogCheckpointCodecError> {
+pub(super) fn decode_successor_log_id(
+    raw: &RawValue,
+) -> Result<LocalLogId, LocalLogCheckpointCodecError> {
     preflight_bounded_string(
         raw,
         LocalLogCheckpointRecordErrorCode::InvalidSuccessorLogId,
@@ -451,7 +462,7 @@ fn preflight_bounded_string(
     Ok(())
 }
 
-fn decode_covered_through(
+pub(super) fn decode_covered_through(
     raw: &RawValue,
 ) -> Result<Option<LocalLogSequence>, LocalLogCheckpointCodecError> {
     if raw.get().trim() != "null" && raw.get().len() > MAX_DECIMAL_U64_STRING_JSON_BYTES {
@@ -482,7 +493,7 @@ fn decode_covered_through(
         .transpose()
 }
 
-fn validate_binding_field(
+pub(super) fn validate_binding_field(
     field: LocalLogCheckpointBindingField,
     expected: &str,
     actual: &str,
@@ -529,13 +540,13 @@ fn record_error(
     LocalLogCheckpointRecordError::new(code, location, diagnostic).into()
 }
 
-fn runtime_invariant(diagnostic: &'static str) -> LocalLogCheckpointCodecError {
+pub(super) fn runtime_invariant(diagnostic: &'static str) -> LocalLogCheckpointCodecError {
     LocalLogCheckpointCodecError::RuntimeInvariant {
         diagnostic: BoundedDiagnostic::from(diagnostic),
     }
 }
 
-fn anchor_invariant_error(
+pub(super) fn anchor_invariant_error(
     error: LocalLogCheckpointAnchorInvariantError,
 ) -> LocalLogCheckpointCodecError {
     let diagnostic = match error {

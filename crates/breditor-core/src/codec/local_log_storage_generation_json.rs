@@ -78,6 +78,8 @@ impl LocalLogStorageGenerationJsonCodec {
         value: &LocalLogStorageGenerationManifest,
         prior: &LocalLogStorageGenerationManifest,
     ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        self.validate_schema_and_frame_generation(value)?;
+        self.validate_schema_and_frame_generation(prior)?;
         validate_intrinsic_topology(value)?;
         self.validate_binding(value)?;
         validate_continuity(value, prior)?;
@@ -90,6 +92,12 @@ impl LocalLogStorageGenerationJsonCodec {
         &self,
         selected: &LocalLogStorageSelectedRoot,
     ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        if selected.schema_binding() != &self.context.schema().durable_binding() {
+            return Err(LocalLogStorageGenerationCodecError::ContextConfigurationMismatch);
+        }
+        if selected.active_frame_format_version() != 1 {
+            return Err(runtime_invariant("legacy rotation source retained a non-V1 frame policy"));
+        }
         if self.binding.profile_id() != selected.profile_id() {
             return Err(LocalLogStorageGenerationContinuityError::ProfileIdChanged.into());
         }
@@ -111,6 +119,7 @@ impl LocalLogStorageGenerationJsonCodec {
         value: &LocalLogStorageGenerationManifest,
         selected: &LocalLogStorageSelectedRoot,
     ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        self.validate_schema_and_frame_generation(value)?;
         validate_intrinsic_topology(value)?;
         self.validate_binding(value)?;
         self.validate_selected_binding(selected)?;
@@ -121,6 +130,7 @@ impl LocalLogStorageGenerationJsonCodec {
         &self,
         prior: &LocalLogStorageGenerationManifest,
     ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        self.validate_schema_and_frame_generation(prior)?;
         validate_binding_field(
             LocalLogStorageGenerationBindingField::ProfileId,
             self.binding.profile_id() == prior.profile_id(),
@@ -137,6 +147,24 @@ impl LocalLogStorageGenerationJsonCodec {
             LocalLogStorageGenerationBindingField::ExpectedHeadId,
             self.binding.expected_head_id() == prior.committed_head_id(),
         )
+    }
+
+    fn validate_schema_and_frame_generation(
+        &self,
+        value: &LocalLogStorageGenerationManifest,
+    ) -> Result<(), LocalLogStorageGenerationCodecError> {
+        if value.schema_binding() != &self.context.schema().durable_binding() {
+            return Err(LocalLogStorageGenerationCodecError::ContextConfigurationMismatch);
+        }
+        if value.sealed_frame_format_version() != LOCAL_LOG_STORAGE_GENERATION_FRAME_FORMAT_VERSION
+            || value.successor_frame_format_version()
+                != LOCAL_LOG_STORAGE_GENERATION_FRAME_FORMAT_VERSION
+        {
+            return Err(runtime_invariant(
+                "legacy storage generation retained a non-V1 frame policy",
+            ));
+        }
+        Ok(())
     }
 
     pub(super) fn validate_nested_checkpoint(
@@ -265,7 +293,7 @@ fn frame_record(limits: super::LocalLogFrameLimits) -> LocalLogStorageGeneration
     }
 }
 
-fn validate_intrinsic_topology(
+pub(super) fn validate_intrinsic_topology(
     value: &LocalLogStorageGenerationManifest,
 ) -> Result<(), LocalLogStorageGenerationCodecError> {
     if value.expected_head_id() == value.committed_head_id() {
@@ -277,7 +305,7 @@ fn validate_intrinsic_topology(
     Ok(())
 }
 
-fn validate_selected_continuity(
+pub(super) fn validate_selected_continuity(
     value: &LocalLogStorageGenerationManifest,
     selected: &LocalLogStorageSelectedRoot,
 ) -> Result<(), LocalLogStorageGenerationCodecError> {
@@ -324,7 +352,7 @@ fn validate_selected_continuity(
     Ok(())
 }
 
-fn validate_continuity(
+pub(super) fn validate_continuity(
     value: &LocalLogStorageGenerationManifest,
     prior: &LocalLogStorageGenerationManifest,
 ) -> Result<(), LocalLogStorageGenerationCodecError> {
@@ -352,7 +380,7 @@ fn validate_continuity(
     Ok(())
 }
 
-fn validate_prior_topology(
+pub(super) fn validate_prior_topology(
     value: &LocalLogStorageGenerationManifest,
     prior: &LocalLogStorageGenerationManifest,
 ) -> Result<(), LocalLogStorageGenerationCodecError> {

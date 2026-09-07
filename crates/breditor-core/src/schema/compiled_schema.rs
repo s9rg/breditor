@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use crate::{
     identity::QualifiedName,
-    schema::{SchemaFingerprint, SchemaId},
+    schema::{DurableSchemaBinding, SchemaFingerprint, SchemaId},
 };
 
 use super::compiler::{
@@ -91,6 +91,14 @@ impl CompiledSchema {
     #[must_use]
     pub const fn fingerprint(&self) -> SchemaFingerprint {
         self.fingerprint
+    }
+
+    /// Returns the owned durable selector-and-fingerprint binding.
+    ///
+    /// This value deliberately excludes the process-local compiled proof.
+    #[must_use]
+    pub fn durable_binding(&self) -> DurableSchemaBinding {
+        DurableSchemaBinding::from_compiled(self)
     }
 
     /// Returns the required root element kind.

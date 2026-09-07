@@ -3,7 +3,7 @@ use std::{
     fmt,
 };
 
-use crate::session::EditorSession;
+use crate::{schema::DurableSchemaBinding, session::EditorSession};
 
 use super::{LocalLogCompactionLimits, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId};
 
@@ -166,6 +166,12 @@ impl LocalLogCheckpointAnchor {
     #[must_use]
     pub const fn session(&self) -> &EditorSession {
         &self.session
+    }
+
+    /// Returns the exact durable content language retained by this checkpoint.
+    #[must_use]
+    pub fn schema_binding(&self) -> DurableSchemaBinding {
+        self.session.state().context().schema().durable_binding()
     }
 
     /// Returns the represented prefix's last covered session-global sequence.

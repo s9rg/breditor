@@ -4,7 +4,7 @@ use crate::local_log::{LocalLogId, LocalSessionId};
 
 use super::LocalLogEntryCodecError;
 
-/// Stable category for one rejected Local Log Frame V1 operation.
+/// Stable category shared by generation-specific Local Log Frame codecs.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LocalLogFrameErrorCode {
@@ -12,7 +12,7 @@ pub enum LocalLogFrameErrorCode {
     SessionMismatch,
     /// An entry belongs to another append generation.
     ActiveLogMismatch,
-    /// Local Log Entry V1 encoding or semantic decoding failed.
+    /// The frame generation's required Local Log Entry codec failed.
     InvalidEntry,
     /// A payload length cannot fit the frame's fixed-width length field.
     PayloadLengthOverflow,
@@ -20,7 +20,7 @@ pub enum LocalLogFrameErrorCode {
     PayloadTooLarge,
     /// Header and payload length cannot fit one valid Rust slice.
     FrameLengthOverflow,
-    /// The fixed frame magic does not match Local Log Frame V1.
+    /// The fixed frame magic does not match a supported Local Log Frame.
     UnsupportedMagic,
     /// The fixed header failed its accidental-corruption check.
     HeaderChecksumMismatch,

@@ -22,6 +22,7 @@ use crate::{
         CompiledSchema, DocumentLimits, LimitKind, PropertyPathSegment, SchemaId, SchemaVersion,
         ValidationCode, ValidationDetail, ValidationIssue, ValidationReport, ValidationSubject,
         child_count_fits_point_protocol, point_protocol_child_count_maximum,
+        require_exact_breditor_base,
     },
 };
 
@@ -77,6 +78,7 @@ impl DocumentJsonCodec {
     /// non-canonical JSON, unsupported format identity, schema mismatch, or any
     /// validation problem.
     pub fn decode(&self, json: &str) -> Result<Document, DocumentCodecError> {
+        self.ensure_v1_schema()?;
         if json.len() > self.limits.max_json_bytes {
             return Err(DocumentCodecError::InputTooLarge {
                 actual: json.len(),
@@ -99,8 +101,6 @@ impl DocumentJsonCodec {
                 supported: DOCUMENT_FORMAT_VERSION,
             });
         }
-        self.ensure_v1_schema()?;
-
         let envelope: BorrowedDocumentEnvelopeV1<'_> = serde_json::from_str(json)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(DocumentCodecError::InvalidJson)?;
@@ -177,7 +177,7 @@ impl DocumentJsonCodec {
     }
 
     fn ensure_v1_schema(&self) -> Result<(), DocumentCodecError> {
-        if self.schema.is_exact_breditor_base() {
+        if require_exact_breditor_base(&self.schema).is_ok() {
             return Ok(());
         }
         Err(DocumentCodecError::SchemaMismatch {
@@ -230,16 +230,16 @@ enum PropertyOwner {
     Format(usize),
 }
 
-struct RecordBuilder {
+pub(super) struct RecordBuilder {
     issues: Vec<ValidationIssue>,
 }
 
 impl RecordBuilder {
-    const fn new() -> Self {
+    pub(super) const fn new() -> Self {
         Self { issues: Vec::new() }
     }
 
-    fn build_root(mut self, record: &NodeRecordV1) -> Result<NodeRef, ValidationReport> {
+    pub(super) fn build_root(mut self, record: &NodeRecordV1) -> Result<NodeRef, ValidationReport> {
         let root_path = NodePath::root();
         let root = self.build_node(record, &root_path);
         if self.issues.is_empty()

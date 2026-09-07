@@ -1,29 +1,48 @@
 //! Strict versioned codecs for untrusted persisted data.
 
+mod commit_encoding_v2;
 mod commit_error;
 mod commit_json;
+mod commit_json_v2;
+mod commit_v2_error;
 mod diagnostic;
 mod document_encoding;
 mod document_json;
+mod document_json_v2;
 mod document_preflight;
+mod document_v2_error;
 mod editor_state_encoding;
+mod editor_state_encoding_v2;
 mod editor_state_error;
 mod editor_state_json;
+mod editor_state_json_v2;
+mod editor_state_v2_error;
 mod editor_value_payload_v1;
 mod error;
 mod json_size;
+mod local_log_checkpoint_encoding_v2;
 mod local_log_checkpoint_error;
 mod local_log_checkpoint_json;
+mod local_log_checkpoint_json_v2;
 mod local_log_checkpoint_limits;
 mod local_log_checkpoint_tombstones_v1;
+mod local_log_checkpoint_v2_error;
+mod local_log_entry_encoding_v2;
 mod local_log_entry_error;
 mod local_log_entry_json;
+mod local_log_entry_json_v2;
+mod local_log_entry_v2_error;
 mod local_log_frame_binding;
 mod local_log_frame_checksum;
 mod local_log_frame_codec;
+mod local_log_frame_codec_v2;
 mod local_log_frame_error;
 mod local_log_frame_limits;
 mod local_log_frame_scan;
+mod local_log_frame_scan_v2;
+mod local_log_frame_v2_error;
+#[cfg(test)]
+mod local_log_frame_v2_tests;
 #[cfg(test)]
 mod local_log_storage_append_adversarial_tests;
 mod local_log_storage_append_attempt_aborted;
@@ -103,20 +122,30 @@ mod local_log_storage_generation_binding;
 mod local_log_storage_generation_checkpoint_preflight;
 mod local_log_storage_generation_decode;
 mod local_log_storage_generation_decode_from_selected;
+mod local_log_storage_generation_decode_from_selected_v2;
+mod local_log_storage_generation_decode_v2;
 mod local_log_storage_generation_encode;
 mod local_log_storage_generation_encode_from_selected;
+mod local_log_storage_generation_encode_v2;
+mod local_log_storage_generation_encoding_v2;
 mod local_log_storage_generation_error;
 mod local_log_storage_generation_frame_v1;
+mod local_log_storage_generation_frame_v2;
 mod local_log_storage_generation_json;
+mod local_log_storage_generation_json_v2;
 mod local_log_storage_generation_limits;
 mod local_log_storage_generation_manifest;
+mod local_log_storage_generation_manifest_v2;
 mod local_log_storage_generation_preparation_inputs;
 mod local_log_storage_generation_prepare;
 mod local_log_storage_generation_prepare_from_selected;
+mod local_log_storage_generation_prepare_from_selected_v2;
+mod local_log_storage_generation_prepare_v2;
 #[cfg(test)]
 mod local_log_storage_generation_selected_tests;
 #[cfg(test)]
 mod local_log_storage_generation_tests;
+mod local_log_storage_generation_v2_error;
 mod local_log_storage_host_attested_committed;
 mod local_log_storage_issued_append_attempt;
 mod local_log_storage_issued_attempt;
@@ -140,11 +169,17 @@ mod local_log_storage_retired_transaction_binding;
 mod local_log_storage_root_attempt_prepare;
 mod local_log_storage_root_binding;
 mod local_log_storage_root_decode;
+mod local_log_storage_root_decode_v2;
 mod local_log_storage_root_encode;
+mod local_log_storage_root_encode_v2;
+mod local_log_storage_root_encoding_v2;
 mod local_log_storage_root_error;
 mod local_log_storage_root_json;
+mod local_log_storage_root_json_v2;
 mod local_log_storage_root_preparation_inputs;
 mod local_log_storage_root_prepare;
+mod local_log_storage_root_prepare_from_admission_v2;
+mod local_log_storage_root_prepare_v2;
 mod local_log_storage_root_resolution;
 mod local_log_storage_root_resolution_adapter_request;
 #[cfg(test)]
@@ -167,8 +202,10 @@ mod local_log_storage_root_resolution_transition_error;
 mod local_log_storage_root_resolved;
 mod local_log_storage_root_retry_eligible_at_resolution;
 mod local_log_storage_root_selection;
+mod local_log_storage_root_selection_v2;
 #[cfg(test)]
 mod local_log_storage_root_tests;
+mod local_log_storage_root_v2_error;
 mod local_log_storage_rotation_attempt_prepare;
 mod local_log_storage_rotation_resolution;
 mod local_log_storage_rotation_resolution_adapter_request;
@@ -196,14 +233,20 @@ mod local_log_storage_selected_binding;
 mod local_log_storage_selected_binding_change;
 mod local_log_storage_selected_binding_compare_later;
 mod local_log_storage_selected_binding_observation_error;
+mod local_log_storage_selected_binding_v2;
 mod local_log_storage_selected_envelope_error;
 mod local_log_storage_selected_envelope_validate;
 mod local_log_storage_selected_generation_binding;
+mod local_log_storage_selected_generation_binding_v2;
 mod local_log_storage_selected_json;
+mod local_log_storage_selected_json_v2;
 mod local_log_storage_selected_root;
 mod local_log_storage_selected_root_error;
 mod local_log_storage_selected_root_normalize;
+mod local_log_storage_selected_root_normalize_v2;
+mod local_log_storage_selected_root_v2;
 mod local_log_storage_selected_rotation_normalize;
+mod local_log_storage_selected_rotation_normalize_v2;
 #[cfg(test)]
 mod local_log_storage_selected_tests;
 mod local_log_storage_selection_kind;
@@ -223,6 +266,8 @@ mod local_log_storage_uncertain_resubmit;
 mod local_log_storage_uncertain_writer_fence_acquisition;
 mod local_log_storage_uncertain_writer_fence_acquisition_observe_terminal;
 mod local_log_storage_uncertain_writer_fence_acquisition_resubmit;
+#[cfg(test)]
+mod local_log_storage_v2_tests;
 mod local_log_storage_writer_fence_acquisition_aborted;
 mod local_log_storage_writer_fence_acquisition_aborted_resubmit;
 mod local_log_storage_writer_fence_acquisition_adapter_request;
@@ -244,34 +289,63 @@ mod local_log_storage_writer_fence_acquisition_transition_error;
 #[cfg(test)]
 mod local_log_storage_writer_fence_adversarial_tests;
 mod local_log_tail_begin;
+mod local_log_tail_begin_v2;
 mod local_log_tail_compaction;
 mod local_log_tail_compaction_outcome;
+mod local_log_tail_compaction_outcome_v2;
 mod local_log_tail_compaction_reauthorization;
+mod local_log_tail_compaction_reauthorization_v2;
+mod local_log_tail_compaction_v2;
 mod local_log_tail_cursor;
+mod local_log_tail_cursor_v2;
 mod local_log_tail_error;
+mod local_log_tail_error_v2;
 mod local_log_tail_failure;
+mod local_log_tail_failure_v2;
 mod local_log_tail_observation;
+mod local_log_tail_observation_v2;
 mod local_log_tail_step;
+mod local_log_tail_step_v2;
+#[cfg(test)]
+mod local_log_tail_v2_tests;
 mod operation_error;
 mod operation_json;
+mod operation_json_v2;
+#[cfg(test)]
+mod operation_json_v2_tests;
 mod operation_payload_v1;
 mod operation_preflight;
 mod operation_sequence_v1;
+mod operation_v2_error;
+#[cfg(test)]
+mod runtime_codec_v2_tests;
+mod schema_binding_encoding;
+mod session_checkpoint_encoding_v2;
 mod session_checkpoint_entries_v1;
 mod session_checkpoint_error;
 mod session_checkpoint_json;
+mod session_checkpoint_json_v2;
 mod session_checkpoint_limits;
+mod session_checkpoint_v2_error;
 mod transaction_error;
 mod transaction_json;
+mod transaction_json_v2;
+#[cfg(test)]
+mod transaction_json_v2_tests;
 mod transaction_payload_v1;
+mod transaction_v2_error;
 
 pub use commit_error::{
     CommitApplicationError, CommitApplicationErrorCode, CommitCodecError, CommitRecordError,
     CommitRecordErrorCode, CommitRecordLocation,
 };
 pub use commit_json::{COMMIT_FORMAT, COMMIT_FORMAT_VERSION, CommitJsonCodec};
+pub use commit_json_v2::{COMMIT_V2_FORMAT_VERSION, CommitJsonCodecV2};
+pub use commit_v2_error::CommitV2CodecError;
 pub use diagnostic::{BoundedDiagnostic, MAX_DIAGNOSTIC_PREVIEW_BYTES};
 pub use document_json::{DOCUMENT_FORMAT, DOCUMENT_FORMAT_VERSION, DocumentJsonCodec};
+pub use document_json_v2::{DOCUMENT_V2_FORMAT_VERSION, DocumentJsonCodecV2};
+pub use document_v2_error::DocumentV2CodecError;
 pub use editor_state_error::{
     EditorStateCodecError, EditorStateRecordError, EditorStateRecordErrorCode,
     EditorStateRecordLocation,
@@ -279,6 +353,8 @@ pub use editor_state_error::{
 pub use editor_state_json::{
     EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION, EditorStateJsonCodec,
 };
+pub use editor_state_json_v2::{EDITOR_STATE_V2_FORMAT_VERSION, EditorStateJsonCodecV2};
+pub use editor_state_v2_error::EditorStateV2CodecError;
 pub use error::{CodecErrorCode, DocumentCodecError, JsonFailure, JsonFailureKind};
 pub use local_log_checkpoint_error::{
     LocalLogCheckpointBindingField, LocalLogCheckpointCodecError, LocalLogCheckpointRecordError,
@@ -289,9 +365,13 @@ pub use local_log_checkpoint_error::{
 pub use local_log_checkpoint_json::{
     LOCAL_LOG_CHECKPOINT_FORMAT, LOCAL_LOG_CHECKPOINT_FORMAT_VERSION, LocalLogCheckpointJsonCodec,
 };
+pub use local_log_checkpoint_json_v2::{
+    LOCAL_LOG_CHECKPOINT_V2_FORMAT_VERSION, LocalLogCheckpointJsonCodecV2,
+};
 pub use local_log_checkpoint_limits::{
     DEFAULT_LOCAL_LOG_CHECKPOINT_MAX_REPLAY_TOMBSTONES, LocalLogCheckpointLimits,
 };
+pub use local_log_checkpoint_v2_error::LocalLogCheckpointV2CodecError;
 pub use local_log_entry_error::{
     LocalLogCommitEventKind, LocalLogEntryCodecError, LocalLogEntryRecordError,
     LocalLogEntryRecordErrorCode, LocalLogEntryRecordLocation,
@@ -299,16 +379,23 @@ pub use local_log_entry_error::{
 pub use local_log_entry_json::{
     LOCAL_LOG_ENTRY_FORMAT, LOCAL_LOG_ENTRY_FORMAT_VERSION, LocalLogEntryJsonCodec,
 };
+pub use local_log_entry_json_v2::{LOCAL_LOG_ENTRY_V2_FORMAT_VERSION, LocalLogEntryJsonCodecV2};
+pub use local_log_entry_v2_error::LocalLogEntryV2CodecError;
 pub use local_log_frame_binding::LocalLogFrameBinding;
 pub use local_log_frame_codec::{
     LOCAL_LOG_FRAME_FORMAT_VERSION, LOCAL_LOG_FRAME_HEADER_BYTES, LOCAL_LOG_FRAME_MAGIC,
     LocalLogFrameCodec,
 };
+pub use local_log_frame_codec_v2::{LOCAL_LOG_FRAME_V2_FORMAT_VERSION, LocalLogFrameCodecV2};
 pub use local_log_frame_error::{LocalLogFrameCodecError, LocalLogFrameErrorCode};
 pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, LocalLogFrameLimits};
 pub use local_log_frame_scan::{
     BorrowedLocalLogFrame, LocalLogFrameScan, LocalLogFrameTruncation, LocalLogFrameTruncationStage,
 };
+pub use local_log_frame_scan_v2::{
+    BorrowedLocalLogFrameV2, LocalLogFrameScanV2, LocalLogFrameTruncationV2,
+};
+pub use local_log_frame_v2_error::LocalLogFrameV2CodecError;
 pub use local_log_storage_append_attempt_aborted::LocalLogStorageAppendAttemptAborted;
 pub use local_log_storage_append_head_acknowledged::LocalLogStorageAppendHeadAcknowledged;
 pub use local_log_storage_append_head_acknowledged_at_resolution::LocalLogStorageAppendHeadAcknowledgedAtResolution;
@@ -401,9 +488,13 @@ pub use local_log_storage_generation_error::{
     LocalLogStorageGenerationTopologyError, LocalLogStorageGenerationTopologyErrorCode,
 };
 pub use local_log_storage_generation_frame_v1::LocalLogStorageGenerationFrameV1;
+pub use local_log_storage_generation_frame_v2::LocalLogStorageGenerationFrameV2;
 pub use local_log_storage_generation_json::{
     LOCAL_LOG_STORAGE_GENERATION_FORMAT, LOCAL_LOG_STORAGE_GENERATION_FORMAT_VERSION,
     LocalLogStorageGenerationJsonCodec,
+};
+pub use local_log_storage_generation_json_v2::{
+    LOCAL_LOG_STORAGE_GENERATION_V2_FORMAT_VERSION, LocalLogStorageGenerationJsonCodecV2,
 };
 pub use local_log_storage_generation_limits::{
     DEFAULT_LOCAL_LOG_STORAGE_GENERATION_MAX_CHECKPOINT_JSON_BYTES,
@@ -412,7 +503,9 @@ pub use local_log_storage_generation_limits::{
 };
 pub use local_log_storage_generation_manifest::LocalLogStorageGenerationManifest;
 pub(crate) use local_log_storage_generation_manifest::LocalLogStorageGenerationManifestParts;
+pub use local_log_storage_generation_manifest_v2::LocalLogStorageGenerationManifestV2;
 pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerationPreparationInputs;
+pub use local_log_storage_generation_v2_error::LocalLogStorageGenerationV2CodecError;
 pub use local_log_storage_host_attested_committed::LocalLogStorageHostAttestedCommitted;
 pub use local_log_storage_mutation_fence_binding::LocalLogStorageMutationFenceBinding;
 pub use local_log_storage_mutation_fence_binding_observation_error::{
@@ -444,6 +537,9 @@ pub use local_log_storage_root_json::{
     LOCAL_LOG_STORAGE_ROOT_FORMAT, LOCAL_LOG_STORAGE_ROOT_FORMAT_VERSION,
     LocalLogStorageRootJsonCodec,
 };
+pub use local_log_storage_root_json_v2::{
+    LOCAL_LOG_STORAGE_ROOT_V2_FORMAT_VERSION, LocalLogStorageRootJsonCodecV2,
+};
 pub use local_log_storage_root_preparation_inputs::LocalLogStorageRootPreparationInputs;
 pub use local_log_storage_root_resolution::LocalLogStorageRootResolution;
 pub use local_log_storage_root_resolution_collision_reason::LocalLogStorageRootResolutionCollisionReason;
@@ -472,6 +568,8 @@ pub use local_log_storage_root_resolved::LocalLogStorageRootResolved;
 pub use local_log_storage_root_retry_eligible_at_resolution::LocalLogStorageRootRetryEligibleAtResolution;
 pub use local_log_storage_root_selection::LocalLogStorageRootSelection;
 pub(crate) use local_log_storage_root_selection::LocalLogStorageRootSelectionParts;
+pub use local_log_storage_root_selection_v2::LocalLogStorageRootSelectionV2;
+pub use local_log_storage_root_v2_error::LocalLogStorageRootV2CodecError;
 pub use local_log_storage_rotation_resolution::LocalLogStorageRotationResolution;
 pub use local_log_storage_rotation_resolution_collision_reason::LocalLogStorageRotationResolutionCollisionReason;
 pub use local_log_storage_rotation_resolution_evidence::LocalLogStorageRotationResolutionEvidence;
@@ -513,6 +611,7 @@ pub use local_log_storage_selected_binding_observation_error::{
     LocalLogStorageSelectedBindingObservationError,
     LocalLogStorageSelectedBindingObservationErrorCode,
 };
+pub use local_log_storage_selected_binding_v2::LocalLogStorageSelectedBindingV2;
 pub use local_log_storage_selected_envelope_error::{
     LocalLogStorageSelectedEnvelopeError, LocalLogStorageSelectedEnvelopeErrorCode,
 };
@@ -521,13 +620,19 @@ pub use local_log_storage_selected_generation_binding::{
     LocalLogStorageSelectedCheckpointGenerationBinding,
     LocalLogStorageSelectedCheckpointGenerationState,
 };
+pub use local_log_storage_selected_generation_binding_v2::{
+    LocalLogStorageSelectedActiveGenerationBindingV2,
+    LocalLogStorageSelectedCheckpointGenerationBindingV2,
+};
 pub use local_log_storage_selected_json::LocalLogStorageSelectedJsonCodec;
+pub use local_log_storage_selected_json_v2::LocalLogStorageSelectedJsonCodecV2;
 pub use local_log_storage_selected_root::LocalLogStorageSelectedRoot;
 pub use local_log_storage_selected_root_error::{
     LocalLogStorageSelectedRootError, LocalLogStorageSelectedRootErrorCode,
     LocalLogStorageSelectedRootGenerationField, LocalLogStorageSelectedRootReceiptField,
     LocalLogStorageSelectedRootValueRole,
 };
+pub use local_log_storage_selected_root_v2::LocalLogStorageSelectedRootV2;
 pub use local_log_storage_selection_kind::LocalLogStorageSelectionKind;
 pub use local_log_storage_selection_receipt_binding::{
     LocalLogStorageSelectionReceiptBinding, LocalLogStorageSelectionReceiptBindingError,
@@ -558,15 +663,22 @@ pub use local_log_storage_writer_fence_acquisition_transition_error::{
     LocalLogStorageWriterFenceAcquisitionTransitionErrorCode,
 };
 pub use local_log_tail_compaction_outcome::LocalLogTailCompactionOutcome;
+pub use local_log_tail_compaction_outcome_v2::LocalLogTailCompactionOutcomeV2;
 pub use local_log_tail_cursor::LocalLogTailCursor;
+pub use local_log_tail_cursor_v2::LocalLogTailCursorV2;
 pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};
+pub use local_log_tail_error_v2::LocalLogTailErrorV2;
 pub use local_log_tail_failure::LocalLogTailFailure;
+pub use local_log_tail_failure_v2::LocalLogTailFailureV2;
 pub use local_log_tail_step::{LocalLogTailStatus, LocalLogTailStep};
+pub use local_log_tail_step_v2::{LocalLogTailStatusV2, LocalLogTailStepV2};
 pub use operation_error::{
     OperationCodecError, OperationFragmentField, OperationOffsetField, OperationPathField,
     OperationRecordError, OperationRecordErrorCode, OperationRecordLocation,
 };
 pub use operation_json::{OPERATION_FORMAT, OPERATION_FORMAT_VERSION, OperationJsonCodec};
+pub use operation_json_v2::{OPERATION_V2_FORMAT_VERSION, OperationJsonCodecV2};
+pub use operation_v2_error::OperationV2CodecError;
 pub use session_checkpoint_error::{
     RetainedResourceKind, SessionCheckpointApplicationError, SessionCheckpointApplicationErrorCode,
     SessionCheckpointCodecError, SessionCheckpointRecordError, SessionCheckpointRecordErrorCode,
@@ -577,12 +689,16 @@ pub use session_checkpoint_error::{
 pub use session_checkpoint_json::{
     SESSION_CHECKPOINT_FORMAT, SESSION_CHECKPOINT_FORMAT_VERSION, SessionCheckpointJsonCodec,
 };
+pub use session_checkpoint_json_v2::{
+    SESSION_CHECKPOINT_V2_FORMAT_VERSION, SessionCheckpointJsonCodecV2,
+};
 pub use session_checkpoint_limits::{
     DEFAULT_SESSION_CHECKPOINT_MAX_AGGREGATE_FORWARD_OPERATIONS,
     DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY, DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
     DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_VALUES,
     DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_TEXT_BYTES, SessionCheckpointLimits,
 };
+pub use session_checkpoint_v2_error::SessionCheckpointV2CodecError;
 pub use transaction_error::{
     TransactionCodecError, TransactionRecordError, TransactionRecordErrorCode,
     TransactionRecordLocation,
@@ -590,3 +706,5 @@ pub use transaction_error::{
 pub use transaction_json::{
     TRANSACTION_REQUEST_FORMAT, TRANSACTION_REQUEST_FORMAT_VERSION, TransactionJsonCodec,
 };
+pub use transaction_json_v2::{TRANSACTION_REQUEST_V2_FORMAT_VERSION, TransactionJsonCodecV2};
+pub use transaction_v2_error::TransactionV2CodecError;

@@ -1,4 +1,10 @@
-use std::fmt;
+use std::{fmt, str::FromStr};
+
+use crate::schema::SchemaFingerprintParseError;
+
+const PREFIX: &str = "sha256:";
+const DIGEST_HEX_BYTES: usize = 64;
+const TEXT_BYTES: usize = PREFIX.len() + DIGEST_HEX_BYTES;
 
 /// Collision-resistant identity of one complete compiled content schema.
 ///
@@ -17,6 +23,59 @@ impl SchemaFingerprint {
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8; 32] {
         &self.0
+    }
+}
+
+impl FromStr for SchemaFingerprint {
+    type Err = SchemaFingerprintParseError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let bytes = value.as_bytes();
+        if bytes.len() != TEXT_BYTES {
+            return Err(SchemaFingerprintParseError::InvalidLength {
+                actual: bytes.len(),
+                expected: TEXT_BYTES,
+            });
+        }
+        if !bytes.starts_with(PREFIX.as_bytes()) {
+            return Err(SchemaFingerprintParseError::InvalidPrefix);
+        }
+
+        let mut digest = [0_u8; 32];
+        for (digest_index, output) in digest.iter_mut().enumerate() {
+            let high_index = PREFIX.len() + digest_index * 2;
+            let low_index = high_index + 1;
+            let high = lower_hex_value(bytes[high_index])
+                .ok_or(SchemaFingerprintParseError::InvalidHexDigit { index: high_index })?;
+            let low = lower_hex_value(bytes[low_index])
+                .ok_or(SchemaFingerprintParseError::InvalidHexDigit { index: low_index })?;
+            *output = high << 4 | low;
+        }
+        Ok(Self(digest))
+    }
+}
+
+impl TryFrom<&str> for SchemaFingerprint {
+    type Error = SchemaFingerprintParseError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl TryFrom<String> for SchemaFingerprint {
+    type Error = SchemaFingerprintParseError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+const fn lower_hex_value(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        _ => None,
     }
 }
 
@@ -40,6 +99,8 @@ impl fmt::Debug for SchemaFingerprint {
 
 #[cfg(test)]
 mod tests {
+    use crate::schema::SchemaFingerprintParseError;
+
     use super::SchemaFingerprint;
 
     #[test]
@@ -63,6 +124,40 @@ mod tests {
         assert_eq!(
             format!("{fingerprint:?}"),
             "SchemaFingerprint(\"sha256:5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a\")"
+        );
+    }
+
+    #[test]
+    fn canonical_text_roundtrips_without_serde() -> Result<(), SchemaFingerprintParseError> {
+        const TEXT: &str =
+            "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+        let fingerprint: SchemaFingerprint = TEXT.parse()?;
+        assert_eq!(fingerprint.to_string(), TEXT);
+        assert_eq!(SchemaFingerprint::try_from(TEXT), Ok(fingerprint));
+        assert_eq!(SchemaFingerprint::try_from(TEXT.to_owned()), Ok(fingerprint));
+        Ok(())
+    }
+
+    #[test]
+    fn parser_rejects_noncanonical_text_without_retaining_payload() {
+        assert_eq!(
+            "sha256:00".parse::<SchemaFingerprint>(),
+            Err(SchemaFingerprintParseError::InvalidLength { actual: 9, expected: 71 })
+        );
+        assert_eq!(
+            "sha512:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173"
+                .parse::<SchemaFingerprint>(),
+            Err(SchemaFingerprintParseError::InvalidPrefix)
+        );
+        assert_eq!(
+            "sha256:68Aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173"
+                .parse::<SchemaFingerprint>(),
+            Err(SchemaFingerprintParseError::InvalidHexDigit { index: 9 })
+        );
+        assert_eq!(
+            "sha256:68gecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173"
+                .parse::<SchemaFingerprint>(),
+            Err(SchemaFingerprintParseError::InvalidHexDigit { index: 9 })
         );
     }
 }

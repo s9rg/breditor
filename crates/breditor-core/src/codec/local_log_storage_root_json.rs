@@ -75,6 +75,12 @@ impl LocalLogStorageRootJsonCodec {
         &self,
         value: &LocalLogStorageRootSelection,
     ) -> Result<(), LocalLogStorageRootCodecError> {
+        if value.schema_binding() != &self.context.schema().durable_binding() {
+            return Err(LocalLogStorageRootCodecError::ContextConfigurationMismatch);
+        }
+        if value.active_frame_format_version() != LOCAL_LOG_STORAGE_ROOT_FRAME_FORMAT_VERSION {
+            return Err(runtime_invariant("legacy storage root retained a non-V1 frame policy"));
+        }
         validate_intrinsic_topology(value)?;
         self.validate_binding(value)
     }

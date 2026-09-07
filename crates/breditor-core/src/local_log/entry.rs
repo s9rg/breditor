@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::schema::{CompiledSchema, DurableSchemaBinding};
+
 use super::{
     LocalLogEvent, LocalLogEventKind, LocalLogId, LocalLogSequence, LocalSessionId, ReplayId,
 };
@@ -13,6 +15,7 @@ use super::{
 /// the session identity and must not reset the sequence.
 #[derive(Eq, PartialEq)]
 pub struct LocalLogEntry {
+    schema_binding: DurableSchemaBinding,
     session_id: LocalSessionId,
     log_id: LocalLogId,
     sequence: LocalLogSequence,
@@ -21,16 +24,51 @@ pub struct LocalLogEntry {
 }
 
 impl LocalLogEntry {
-    /// Creates one fully identified local-log event value.
+    /// Creates one exact-base-bound local-log event value.
+    ///
+    /// This legacy constructor preserves the Local Log Entry V1 contract. Use
+    /// [`Self::new_with_schema_binding`] when constructing a V2 entry for an
+    /// explicitly compiled schema.
     #[must_use]
-    pub const fn new(
+    pub fn new(
         session_id: LocalSessionId,
         log_id: LocalLogId,
         sequence: LocalLogSequence,
         replay_id: ReplayId,
         event: LocalLogEvent,
     ) -> Self {
-        Self { session_id, log_id, sequence, replay_id, event }
+        Self::new_with_schema_binding(
+            CompiledSchema::breditor_base().durable_binding(),
+            session_id,
+            log_id,
+            sequence,
+            replay_id,
+            event,
+        )
+    }
+
+    /// Creates one fully identified event under an explicit durable schema.
+    ///
+    /// The binding is retained even for control-only events so recovery,
+    /// duplicate detection, continuation, compaction, and storage cannot move
+    /// an event across content languages merely because it has no nested
+    /// commit payload.
+    #[must_use]
+    pub const fn new_with_schema_binding(
+        schema_binding: DurableSchemaBinding,
+        session_id: LocalSessionId,
+        log_id: LocalLogId,
+        sequence: LocalLogSequence,
+        replay_id: ReplayId,
+        event: LocalLogEvent,
+    ) -> Self {
+        Self { schema_binding, session_id, log_id, sequence, replay_id, event }
+    }
+
+    /// Returns the durable schema selector and complete-definition fingerprint.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &DurableSchemaBinding {
+        &self.schema_binding
     }
 
     /// Returns the append-generation identity.
@@ -77,15 +115,17 @@ impl LocalLogEntry {
     /// Commit-bearing events compare their complete durable Commit V1 proof,
     /// excluding replay-derived runtime caches.
     pub(crate) fn same_replay_binding(&self, other: &Self) -> bool {
-        let Self { log_id: _, session_id: _, sequence, replay_id, event } = self;
-        sequence == &other.sequence
+        let Self { schema_binding, log_id: _, session_id: _, sequence, replay_id, event } = self;
+        schema_binding == &other.schema_binding
+            && sequence == &other.sequence
             && replay_id == &other.replay_id
             && event.same_durable_value(&other.event)
     }
 
     /// Drops the full event proof and moves out its compact replay binding.
     pub(super) fn into_replay_tombstone(self) -> (ReplayId, LocalLogSequence) {
-        let Self { session_id: _, log_id: _, sequence, replay_id, event: _ } = self;
+        let Self { schema_binding: _, session_id: _, log_id: _, sequence, replay_id, event: _ } =
+            self;
         (replay_id, sequence)
     }
 }
@@ -94,6 +134,7 @@ impl fmt::Debug for LocalLogEntry {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("LocalLogEntry")
+            .field("schema_binding", &self.schema_binding)
             .field("session_id", &self.session_id)
             .field("log_id", &self.log_id)
             .field("sequence", &self.sequence)
@@ -124,6 +165,25 @@ mod tests {
         assert_eq!(entry.replay_id().as_str(), "request:41");
         assert_eq!(entry.event_kind(), LocalLogEventKind::CloseHistoryGroup);
         assert_eq!(entry.event().as_commit(), None);
+        assert_eq!(entry.schema_binding(), &CompiledSchema::breditor_base().durable_binding());
+        Ok(())
+    }
+
+    #[test]
+    fn explicit_constructor_retains_a_non_base_control_event_binding()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let schema_binding = CompiledSchema::test_semantic_variant_same_id().durable_binding();
+        let entry = LocalLogEntry::new_with_schema_binding(
+            schema_binding.clone(),
+            LocalSessionId::try_new("session:variant")?,
+            LocalLogId::try_new("log:variant")?,
+            LocalLogSequence::FIRST,
+            ReplayId::try_new("replay:variant")?,
+            LocalLogEvent::clear_history(),
+        );
+
+        assert_eq!(entry.schema_binding(), &schema_binding);
+        assert_eq!(entry.event_kind(), LocalLogEventKind::ClearHistory);
         Ok(())
     }
 

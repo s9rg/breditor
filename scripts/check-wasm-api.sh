@@ -16,6 +16,7 @@ readonly wasm_manifest="${repository_root}/crates/breditor-wasm/Cargo.toml"
 readonly checked_in_declaration="${repository_root}/crates/breditor-wasm/api/breditor_wasm.d.ts"
 readonly generated_glue_test="${repository_root}/crates/breditor-wasm/tests/generated_web_glue.mjs"
 readonly browser_projection_module="${repository_root}/packages/breditor-browser/dist/advanced.js"
+readonly abi_v2_baseline_check="${repository_root}/scripts/check-wasm-abi-v2-baseline.mjs"
 
 fail() {
   printf 'check-wasm-api: %s\n' "$*" >&2
@@ -61,6 +62,10 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
   fail "missing generated-glue test: ${generated_glue_test}"
 [[ -f "${browser_projection_module}" ]] ||
   fail "missing built browser advanced module; run 'npm run build' first."
+[[ -f "${abi_v2_baseline_check}" ]] ||
+  fail "missing ABI 2 baseline check: ${abi_v2_baseline_check}"
+
+"${node_executable}" "${abi_v2_baseline_check}"
 
 mkdir -p -- "${cargo_target_directory}"
 generated_directory="$(mktemp -d "${cargo_target_directory}/wasm-api-check.XXXXXX")" ||

@@ -2,23 +2,29 @@
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path; other formats in this proof kernel remain experimental
-unless [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them
-Document format: `breditor/document`, version `1`
-Operation format: `breditor/operation`, version `1`
-Transaction-request format: `breditor/transaction-request`, version `1`
-Editor-state format: `breditor/editor-state`, version `1`
-Commit format: `breditor/commit`, version `1`
-Session-checkpoint format: `breditor/session-checkpoint`, version `1`
-Local-log-entry format: `breditor/local-log-entry`, version `1`
-Local-log-checkpoint format: `breditor/local-log-checkpoint`, version `1`
-Local-log-frame format: binary `Local Log Frame`, version `1`
+unless [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them.
+The complete fingerprint-bearing V2 record graph is implemented as an
+experimental Rust-only `0.2.0-alpha.2` boundary. It does not widen any V1 codec,
+the browser product, its IndexedDB profile, or Wasm ABI 2.
+Document format: `breditor/document`, explicit versions `1` and `2`
+Operation format: `breditor/operation`, explicit versions `1` and `2`
+Transaction-request format: `breditor/transaction-request`, explicit versions
+`1` and `2`
+Editor-state format: `breditor/editor-state`, explicit versions `1` and `2`
+Commit format: `breditor/commit`, explicit versions `1` and `2`
+Session-checkpoint format: `breditor/session-checkpoint`, explicit versions `1`
+and `2`
+Local-log-entry format: `breditor/local-log-entry`, explicit versions `1` and
+`2`
+Local-log-checkpoint format: `breditor/local-log-checkpoint`, explicit versions
+`1` and `2`
+Local-log-frame format: binary `Local Log Frame`, explicit versions `1` and `2`
 Storage-generation validation format: `breditor/local-log-storage-generation`,
-version `1` (strict ordinary-rotation validation implemented in `0.0.32` and
-selected-root-aware next-rotation validation in `0.0.34`; experimental and
-outside the `0.1.x` compatibility promise)
-Initial storage-root format: `breditor/local-log-storage-root`, version `1`
-(strict pure-Rust validation implemented in `0.0.34`; experimental and outside
-the `0.1.x` compatibility promise)
+explicit versions `1` and `2` (experimental and outside the `0.1.x`
+compatibility promise)
+Initial storage-root format: `breditor/local-log-storage-root`, explicit
+versions `1` and `2` (experimental and outside the `0.1.x` compatibility
+promise)
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -34,20 +40,22 @@ The implemented Rust slice owns:
 - paragraph-local `TextSplice`, direct-root `ParagraphSplit`/`ParagraphJoin`,
   and guarded root-text range replacement operations with closed exact content
   inverses;
-- a singular, strict, versioned operation JSON codec that preserves every
+- the frozen, strict Operation V1 JSON codec that preserves every
   optimistic guard and validates statically knowable schema and resource laws;
-- a strict contextual transaction-request codec that binds ordered V1 operation
-  payloads and every state/metadata policy to one caller-supplied exact base;
-- a strict contextual editor-state checkpoint codec that restores the complete
+- the strict contextual Transaction Request V1 codec that binds ordered
+  operation payloads and every state/metadata policy to one caller-supplied
+  exact base;
+- the strict contextual Editor State V1 codec that restores the complete
   snapshot, existing Document V1 value, selection, and pending-format option
   under one caller-supplied context;
-- a strict self-contained commit codec that restores one before checkpoint,
-  replays canonical forward operations, applies explicit result editor values,
-  and publishes only the fully derived transition;
-- a strict contextual session-checkpoint codec that restores one exact current
-  state plus bounded chronological linear history, redo position, capacity,
-  and merge continuity while deriving historical documents and inverses;
-- a strict single-entry local-log envelope that assigns independent durable
+- the strict self-contained Commit V1 codec that restores one before
+  checkpoint, replays canonical forward operations, applies explicit result
+  editor values, and publishes only the fully derived transition;
+- the strict contextual Session Checkpoint V1 codec that restores one exact
+  current state plus bounded chronological linear history, redo position,
+  capacity, and merge continuity while deriving historical documents and
+  inverses;
+- the strict Local Log Entry V1 envelope that assigns independent durable
   session, append-generation, sequence, and retry identities to ordinary
   commits, undo/redo replays, and explicit history-boundary commands;
 - a platform-neutral binary frame around exact Local Log Entry V1 bytes, with
@@ -71,9 +79,20 @@ The implemented Rust slice owns:
 - fixed-policy checkpoint-linked successor admission that accepts either one
   recoverable observation at a time or one all-or-nothing complete vector, plus
   repeated consuming generation compaction under one cumulative replay ceiling;
-- a strict, expected-binding local-log-checkpoint codec that atomically restores
-  the anchor from one complete Session Checkpoint V1, generation boundary,
-  sequence frontier, and record-declared chronological replay-tombstone vector;
+- the strict, expected-binding Local Log Checkpoint V1 codec that atomically
+  restores the anchor from one complete Session Checkpoint V1, generation
+  boundary, sequence frontier, and record-declared chronological
+  replay-tombstone vector;
+- a separate alpha.2 V2 codec graph for Document, Operation, Transaction
+  Request, Editor State, Commit, Session Checkpoint, Local Log Entry, Local Log
+  Checkpoint, Local Log Frame, Storage Root, and Storage Generation; every JSON
+  envelope carries an exact schema selector and fingerprint, nested generations
+  are fixed, and runtime recovery, tail, compaction, selected-storage, and
+  root/generation-preparation paths retain and compare that binding; V2 does not
+  yet enter the V1 publication-attempt lifecycle;
+- non-destructive structural admission from a checked compact checkpoint into
+  an unchanged target-validated AST, fresh lineage and local session, empty
+  history, exact V2 checkpoint, and separately preparable V2 Storage Root;
 - six bounded local-log storage identity/version values plus a trusted
   ordinary-rotation binding, a private-constructor non-`Clone` manifest, and a
   strict prior-linked storage-generation codec whose borrowed preparation and
@@ -2176,6 +2195,8 @@ second, weaker validity contract.
 
 ## JSON shape
 
+Document V1 is exact-base-only and has this unchanged shape:
+
 ```json
 {
   "format": "breditor/document",
@@ -2198,6 +2219,109 @@ second, weaker validity contract.
   }
 }
 ```
+
+Document V2 uses the same format identifier through the separate
+`DocumentJsonCodecV2` entrypoint. Its direct canonical field order is `format`,
+`formatVersion`, `schema`, `schemaFingerprint`, then `root`:
+
+```json
+{
+  "format": "breditor/document",
+  "formatVersion": 2,
+  "schema": { "name": "breditor/base", "version": 1 },
+  "schemaFingerprint": "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173",
+  "root": {
+    "kind": "element",
+    "type": "breditor/document",
+    "entityId": null,
+    "properties": {},
+    "children": [
+      {
+        "kind": "element",
+        "type": "breditor/paragraph",
+        "entityId": null,
+        "properties": {},
+        "children": []
+      }
+    ]
+  }
+}
+```
+
+Both binding fields are required. The fingerprint parser accepts exactly
+`sha256:` plus 64 lowercase hexadecimal digits, and decode compares both the
+selector and fingerprint before root allocation preflight. Matching durable
+identity from another process-local compiled proof still receives complete
+tree validation. The V2 encoder likewise revalidates when proof or runtime
+policy differs. A mismatch never modifies the source JSON or publishes a
+document.
+
+`Document::try_admit_to_schema` is a separate borrowed structural boundary. It
+fully validates the claimed source first, then validates the same immutable AST
+under a target schema and policy. It performs no content transformation; on
+success the result shares the unchanged root allocation and carries the target
+binding/proof, while any failure leaves the source document untouched.
+
+Editor State V1 and all V1 containers continue to embed Document V1 only. A V2
+document cannot appear inside them, and neither document codec auto-detects or
+upgrades the other generation. Editor State V2 instead embeds Document V2, and
+the same explicit-generation rule holds at every V2 composition boundary.
+
+### Alpha.2 V2 family composition
+
+V1 and V2 are separate public codec families. Existing codec names,
+`*_FORMAT_VERSION` constants, error shapes, and canonical bytes remain V1 and
+exact-base-only. The V2 entrypoints use separate `*JsonCodecV2` types,
+`*_V2_FORMAT_VERSION` constants, and V2 errors. Every independent V2 JSON
+envelope keeps its V1 format string, uses `formatVersion: 2`, and emits `format`,
+`formatVersion`, `schema`, and `schemaFingerprint` before the existing
+family-specific fields in their frozen order.
+
+The complete composition graph is fixed:
+
+- `OperationJsonCodecV2` retains the closed V1 primitive-operation payload.
+- `TransactionJsonCodecV2` retains the V1 transaction fields and closed ordered
+  primitive-operation payloads; it does not nest standalone operation envelopes.
+- `EditorStateJsonCodecV2` embeds Document V2.
+- `CommitJsonCodecV2` embeds Editor State V2 and closed primitive-operation
+  payloads.
+- `SessionCheckpointJsonCodecV2` embeds Editor State V2 and closed
+  primitive-operation payloads.
+- `LocalLogEntryJsonCodecV2` embeds Commit V2 for commit, undo, and redo and
+  retains its outer binding for control-only events.
+- `LocalLogCheckpointJsonCodecV2` embeds Session Checkpoint V2.
+- `LocalLogFrameCodecV2` uses binary frame version `2`, retains the 28-byte
+  framing and CRC-32C layout, and carries only exact Local Log Entry V2 JSON.
+- `LocalLogStorageRootJsonCodecV2` and
+  `LocalLogStorageGenerationJsonCodecV2` embed exact Local Log Checkpoint V2
+  JSON and require explicit Frame V2 policy records.
+
+Every repeated selector and fingerprint must equal the outer record and the
+receiving compiled schema. Matching durable identity from another compiled
+instance still undergoes complete validation and is rebound to the receiver's
+process-local proof. Mixed generation nesting fails closed; no V2 decoder falls
+back to V1, and no V1 decoder learns V2 from the active context.
+
+Recovery, continuation, V2 tail admission/compaction, selected-root
+normalization, and root/generation preparation retain and compare the durable
+binding. These are runtime ownership and validation paths rather than new wire
+envelopes. They do not authenticate bytes or prove that a storage head is fresh
+or authoritative. V2 publication-attempt entrypoints are deliberately absent;
+the existing `Prepared` -> `Uncertain` storage typestate remains V1-only.
+
+`SchemaAdmissionRequest::try_prepare(&LocalLogCheckpointAnchor)` is the complete
+alpha.2 persistence-admission boundary. It borrows a checked compact source,
+fully validates its exact source binding and policy, validates the unchanged AST
+under a different target fingerprint and policy, resets selection and history,
+and creates a fresh lineage, local session, checkpoint/successor generation
+identities, and exact canonical Local Log Checkpoint V2 JSON. Success returns a
+non-`Clone` `PreparedSchemaAdmission`; a separate V2 Storage Root preparation
+can borrow that evidence without performing storage I/O. Failure consumes or
+changes no source document, session, checkpoint bytes, selected root, or
+external storage.
+This is structural admission only: it performs no node/format/property
+transformation and proves no publication, compare-and-swap, durability,
+authenticity, freshness, or writer fence.
 
 A singular guarded operation uses a separate envelope and closed tagged union:
 
@@ -2307,14 +2431,15 @@ ceilings use `u32`, so native and Wasm diagnostics do not depend on pointer
 width.
 
 Wire-shape changes increment the relevant envelope's `formatVersion`.
-Schema-semantic changes increment `schema.version`. A future schema fingerprint
-must additionally pin compiled definitions before user-defined schema identity
-can be treated as a compatibility proof. Canonical document/operation hashing
-is deliberately deferred until its cross-language byte specification is written
-and tested. Documents, singular operations, contextually decoded transaction
-requests, contextually decoded complete editor-state checkpoints,
-replay-proved commits, and bounded local linear-history sessions have
-persistent formats today. None of these formats is an ordered delivery log.
+Schema-semantic changes increment `schema.version`; every V2 record additionally
+pins the complete compiled definition with `SchemaFingerprint`. The selector
+alone is never compatibility proof, and the durable fingerprint never replaces
+complete validation under the receiving process-local proof. V1 remains bound
+to the exact built-in base definition. Documents, singular operations,
+contextually decoded transaction requests, contextually decoded complete
+editor-state checkpoints, replay-proved commits, and bounded local
+linear-history sessions have persistent formats today. None of these formats is
+an ordered delivery log.
 
 ### Transaction request V1
 
@@ -2437,7 +2562,8 @@ revision uses the same canonical decimal `u64` string as transaction-request
 V1. Selection uses the same directional range and UTF-16 point records, and
 pending formats use the same ascending, unique, property-free V1 records.
 Node, grid, multi-range, and attributed pending-format values are not silently
-downcast; they require a future state format version after corresponding
+downcast. Editor State V2 deliberately retains this same closed payload
+language; those values require a later semantic state generation after their
 runtime semantics exist.
 
 The closed non-null V1 shapes are:
@@ -2479,9 +2605,10 @@ the rest of its context differs. Its honest law is
 `decode(encode(state)) == state` for one exact context.
 
 Editor State V1 compositionally pins its embedded document to Document V1.
-Supporting a future document version in the standalone document codec cannot
+Supporting a newer document version in its separate document codec cannot
 silently widen this checkpoint; the editor-state format must choose an explicit
-versioned document entrypoint or advance its own version.
+versioned document entrypoint or advance its own version. Editor State V2 does
+exactly that and pins its embedded value to Document V2 without changing V1.
 
 After outer routing, deterministic failure precedence is snapshot
 reconstruction, selection preflight, pending-format preflight, embedded
@@ -2886,6 +3013,30 @@ emits deterministic compact Rust JSON. A commit that fits its standalone cap
 can still be rejected when the wrapper pushes the complete entry over that same
 context limit.
 
+### Local log entry V2
+
+`LocalLogEntryJsonCodecV2` is a separate, explicit fingerprint-bearing codec;
+the V1 type, constant, errors, and bytes do not change. It keeps the
+`breditor/local-log-entry` format string, requires `formatVersion: 2`, and
+emits exactly nine direct fields in this order: `format`, `formatVersion`,
+`schema`, `schemaFingerprint`, `sessionId`, `logId`, `sequence`, `replayId`,
+and `event`.
+
+Every decoded `LocalLogEntry` retains an owned `DurableSchemaBinding`, including
+`closeHistoryGroup` and `clearHistory`, whose event objects carry no commit.
+Encoding requires the retained selector and fingerprint to equal the codec's
+compiled schema. Commit, undo, and redo events embed only Commit V2; an embedded
+Commit V1 is rejected rather than upgraded. The outer and nested bindings are
+therefore independently checked under the same receiving context.
+
+Decode enforces the complete byte cap and routing header, validates the exact
+borrowed outer shape, parses and compares the selector, then parses and compares
+the strict lowercase SHA-256 fingerprint before allocating log identities or
+decoding the event. A wrong valid selector therefore takes precedence over
+malformed fingerprint text. Valid-but-different fingerprints retain typed
+expected/found evidence; malformed fingerprint diagnostics retain no attacker
+payload. Failed decode never consumes or rewrites the caller's input.
+
 ### Local Log Frame V1
 
 Local Log Frame V1 supplies deterministic binary boundaries around exact Local
@@ -3001,7 +3152,21 @@ hosts share the wire bytes and algorithm for inputs within their configured and
 representable limits, but policy and address-space failures can differ by
 platform. They also necessarily implement different durability mechanisms.
 
-### Active-tail cursor
+### Local Log Frame V2
+
+`LocalLogFrameCodecV2` retains the exact V1 magic, 28-byte header, unsigned
+big-endian integer widths, flags value, CRC-32C algorithm, header coverage, and
+scan boundaries. The two generation changes are explicit: the binary version at
+offset 8 is `2`, and the payload is exact Local Log Entry V2 UTF-8 JSON. The V2
+scanner never accepts Frame V1, and its semantic decoder never accepts Local Log
+Entry V1 or a mismatched durable schema binding.
+
+Frame V2 has the same corruption-only checksum and host-authority limitations as
+Frame V1. The schema fingerprint identifies content meaning; neither it nor the
+CRC authenticates the frame, proves order or freshness, establishes writer
+authority, or makes bytes durable.
+
+### Active-tail cursor V1
 
 `LocalLogTailCursor` is the first atomic composition of physical frame progress
 and semantic successor admission. It owns exactly one `ContinuedLocalLog`, one
@@ -3155,6 +3320,21 @@ anchor from `LocalLogTailCompactionOutcome::into_parts` and calls
 new active-generation codec binding and starts at generation-relative offset
 zero. The old offset and old recovery/frame policy are never carried forward
 implicitly.
+
+### Active-tail cursor V2
+
+`LocalLogCheckpointAnchor::begin_successor_tail_v2` creates a
+`LocalLogTailCursorV2` at offset zero with an owner-derived schema, session, and
+generation binding and an explicit Frame V2 policy. Each consuming observation
+scans and decodes only Frame V2 and atomically advances semantic admission and
+the generation-relative byte offset. A typed failure retains the unchanged V2
+cursor and, when decoding reached one, the rejected entry.
+
+V2 compaction returns `LocalLogTailCompactionOutcomeV2`, which keeps the next
+anchor, accepted-prefix length, old frame limits, durable schema binding, and
+fixed Frame V2 generation together. Its inherited and explicit-reauthorization
+edges preserve the same V1 semantic compaction laws. These values still prove no
+EOF, byte provenance, physical length, sealing, publication, or durability.
 
 ### Storage roots, attempts, and root resolution (no storage I/O)
 
@@ -3568,6 +3748,37 @@ are nonretry outcomes. Crash-time plan reconstruction, executable adapters, and
 ownership release remain unimplemented; the latter still requires a separately
 frozen held-lock, transaction-coupled admission, or revocable/speculative-branch
 contract.
+
+### Storage Root and Storage Generation V2
+
+`LocalLogStorageRootJsonCodecV2` and
+`LocalLogStorageGenerationJsonCodecV2` retain the V1 storage identity,
+association, canonical-byte, limit, and continuity laws while adding the common
+schema selector/fingerprint prefix. A V2 root embeds only exact Local Log
+Checkpoint V2 JSON and records an active Frame V2 policy. A V2 generation embeds
+only exact Local Log Checkpoint V2 JSON and records both sealed and successor
+Frame V2 policies. Ordinary rotation requires one unchanged durable schema
+binding and frame generation across the selected predecessor, compaction
+outcome, candidate, and decoded result.
+
+`LocalLogStorageSelectedJsonCodecV2::normalize_root_v2` and
+`normalize_rotation_v2` retain the complete checked binding and exact selected
+V2 envelopes without making the receipt authoritative. V2 root/generation
+preparation and selected-aware rotation reject cross-schema or mixed-frame
+inputs before producing candidate bytes. A V2 root may also be prepared by
+borrowing `PreparedSchemaAdmission`; that path validates the target binding and
+exact checkpoint again and does not consume or publish the admission result.
+
+Storage V2 deliberately stops before the existing publication-attempt,
+terminal-resolution, writer-fence, and append-queue typestates because those
+public types expose V1 frame projections. Those V1 paths are not widened or
+reinterpreted by alpha.2.
+
+These remain pure value, validation, normalization, and process-local ownership
+contracts. They do not provision a database or scope, perform I/O, authenticate
+receipt evidence, compare-and-swap a head, prove freshness or durability, or
+grant writer authority. The browser IndexedDB implementation remains the
+separate V1 Session Checkpoint Profile and does not accept these records.
 
 ### Genesis local-log recovery
 
@@ -3998,6 +4209,31 @@ identity-string cloning but is not constant-time or constant-space rotation.
 Incremental admission performs ordered-map replay lookups per observation and
 retains every first-seen full active entry. A rejected attempt consumes no
 owner budget, so the core alone does not bound repeated hostile validation CPU.
+
+### Local log checkpoint V2
+
+`LocalLogCheckpointJsonCodecV2` is the explicit fingerprint-bearing companion
+to the frozen V1 codec. It keeps `breditor/local-log-checkpoint`, requires
+`formatVersion: 2`, and emits exactly ten direct fields in this order: `format`,
+`formatVersion`, `schema`, `schemaFingerprint`, `sessionId`,
+`checkpointLogId`, `successorLogId`, `coveredThrough`, `replayTombstones`, and
+`sessionCheckpoint`. The nested value is always Session Checkpoint V2; a V1
+nested checkpoint fails closed.
+
+The codec requires the same independently trusted `LocalLogCheckpointBinding`
+as V1. The schema selector and fingerprint must first match the receiving
+compiled context; the session, sealed-generation, and successor-generation IDs
+must then match the host binding. Neither repeated wire binding is authority.
+Successful decode installs the host's tombstone policy and publishes an anchor
+whose session context retains the admitted durable schema binding. Encoding
+requires that complete runtime context and trusted log binding to still match.
+
+V2 retains V1's exact frontier/tombstone topology, two-pass bounded tombstone
+admission, genesis-empty-history rule, structural-versus-causal limitation, and
+two-pass outer output limit. Its exact borrowed outer decode is non-destructive.
+Adding a collision-resistant schema identity does not authenticate the record,
+prove that its session was caused by its tombstones, prevent rollback, establish
+writer authority, or make the checkpoint durable.
 
 ## Implementation history and remaining local-log work
 

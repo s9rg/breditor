@@ -6,12 +6,30 @@ Wasm binding dependencies.
 
 Version `0.2.0-alpha.1` compiles the built-in base schema from a private,
 declarative definition and introduces durable `SchemaFingerprint` plus
-collision-free process-local proof identity. General schema construction and
-fingerprint-bearing wire formats remain staged for later prereleases. The
-earlier `0.1.1` extension values remain behavior-free. See the
+collision-free process-local proof identity. Version `0.2.0-alpha.2` completes
+the Rust-core durable-binding checkpoint: strict public fingerprint parsing, an
+owned selector-and-fingerprint binding, and separate V2 codecs for Document,
+Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
+Log Entry, Local Log Checkpoint, Local Log Frame, Storage Root, and Storage
+Generation. The binding is retained through recovery, continuation, V2 tail
+admission and compaction, root/generation preparation, and selected-storage
+normalization. Existing V1 codec types and bytes remain exact-base-only, and
+mixed V1/V2 nesting fails closed. V2 publication-attempt entrypoints are
+deliberately deferred; the existing publication typestate remains V1-only.
+
+The separate `SchemaAdmissionRequest` boundary borrows a checked source
+checkpoint and prepares a new-lineage, empty-history target anchor together with
+exact canonical Local Log Checkpoint V2 JSON. A V2 Storage Root can be prepared
+from that result without treating validation as storage publication. Admission
+does not transform content, mutate the source, perform storage I/O, or prove
+authenticity, freshness, durability, compare-and-swap, or writer authority.
+General schema construction and non-base primitive-operation behavior remain
+staged, and the earlier `0.1.1` extension values remain behavior-free. The
+browser and Wasm ABI 2 remain V1-only during alpha.2. See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
-[schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md).
+[schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and
+[durable binding contract](../../docs/DURABLE_SCHEMA_BINDING.md).
 
 The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, strict versioned

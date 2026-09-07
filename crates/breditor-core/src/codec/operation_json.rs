@@ -6,7 +6,7 @@ use crate::{
     identity::QualifiedName,
     operation::Operation,
     record::{OperationEnvelopeHeader, OperationRecordEnvelopeV1, SchemaIdRecord},
-    schema::{SchemaId, SchemaVersion},
+    schema::{CompiledSchema, SchemaId, SchemaVersion, require_exact_breditor_base},
     state::EditorContext,
 };
 
@@ -58,6 +58,7 @@ impl OperationJsonCodec {
     /// Allocation-preflight JSON locations are relative to the raw `operation`
     /// payload; envelope and owned-record locations are relative to `json`.
     pub fn decode(&self, json: &str) -> Result<Operation, OperationCodecError> {
+        self.ensure_v1_schema()?;
         let maximum = self.context.limits().max_json_bytes();
         if json.len() > maximum {
             return Err(OperationCodecError::InputTooLarge { actual: json.len(), maximum });
@@ -109,11 +110,14 @@ impl OperationJsonCodec {
     ///
     /// # Errors
     ///
-    /// Returns [`OperationCodecError::Validation`] when the operation violates
-    /// this codec's active context, [`OperationCodecError::OutputTooLarge`] when
-    /// its encoding cannot be decoded under the same byte budget, or
-    /// [`OperationCodecError::Encoding`] on serialization failure.
+    /// Returns [`OperationCodecError::SchemaMismatch`] when the context is not
+    /// the exact built-in V1 schema, [`OperationCodecError::Validation`] when
+    /// the operation violates this codec's active context,
+    /// [`OperationCodecError::OutputTooLarge`] when its encoding cannot be
+    /// decoded under the same byte budget, or [`OperationCodecError::Encoding`]
+    /// on serialization failure.
     pub fn encode(&self, operation: &Operation) -> Result<String, OperationCodecError> {
+        self.ensure_v1_schema()?;
         operation.validate(&self.context)?;
         let record = record_from_operation(self.context.schema().id(), operation);
         let encoded = serde_json::to_string(&record)
@@ -124,6 +128,15 @@ impl OperationJsonCodec {
             return Err(OperationCodecError::OutputTooLarge { actual: encoded.len(), maximum });
         }
         Ok(encoded)
+    }
+
+    fn ensure_v1_schema(&self) -> Result<(), OperationCodecError> {
+        require_exact_breditor_base(self.context.schema()).map_err(|_| {
+            OperationCodecError::SchemaMismatch {
+                expected: CompiledSchema::breditor_base().id().clone(),
+                found: self.context.schema().id().clone(),
+            }
+        })
     }
 }
 

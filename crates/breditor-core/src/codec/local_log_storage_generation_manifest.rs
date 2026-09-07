@@ -5,10 +5,11 @@ use crate::local_log::{
     LocalLogStorageProfileVersion, LocalLogStorageScopeId, LocalLogStorageTransactionId,
     LocalSessionId,
 };
+use crate::schema::{CompiledSchema, DurableSchemaBinding};
 
-use super::LocalLogStorageGenerationFrameV1;
+use super::{LocalLogStorageGenerationFrameV1, LocalLogStorageGenerationFrameV2};
 
-/// One checked, canonicalizable Local Log Storage Generation V1 rotation value.
+/// One checked, canonicalizable Local Log Storage Generation rotation value.
 ///
 /// This immutable value contains inspection data only. It does not own the
 /// checkpoint anchor, quarantine a successor, carry a writer capability, prove
@@ -18,6 +19,7 @@ use super::LocalLogStorageGenerationFrameV1;
 #[must_use = "a storage-generation manifest is inspection data that must be explicitly handled"]
 #[derive(Eq, PartialEq)]
 pub struct LocalLogStorageGenerationManifest {
+    schema_binding: DurableSchemaBinding,
     profile_id: LocalLogStorageProfileId,
     profile_version: LocalLogStorageProfileVersion,
     scope_id: LocalLogStorageScopeId,
@@ -30,7 +32,9 @@ pub struct LocalLogStorageGenerationManifest {
     successor_log_id: LocalLogId,
     accepted_prefix_bytes: u64,
     sealed_frame: LocalLogStorageGenerationFrameV1,
+    sealed_frame_format_version: u32,
     successor_frame: LocalLogStorageGenerationFrameV1,
+    successor_frame_format_version: u32,
     checkpoint_json: String,
 }
 
@@ -54,6 +58,7 @@ pub(crate) struct LocalLogStorageGenerationManifestParts {
 impl LocalLogStorageGenerationManifest {
     pub(crate) fn from_parts(parts: LocalLogStorageGenerationManifestParts) -> Self {
         Self {
+            schema_binding: CompiledSchema::breditor_base().durable_binding(),
             profile_id: parts.profile_id,
             profile_version: parts.profile_version,
             scope_id: parts.scope_id,
@@ -66,9 +71,44 @@ impl LocalLogStorageGenerationManifest {
             successor_log_id: parts.successor_log_id,
             accepted_prefix_bytes: parts.accepted_prefix_bytes,
             sealed_frame: parts.sealed_frame,
+            sealed_frame_format_version: parts.sealed_frame.format_version(),
             successor_frame: parts.successor_frame,
+            successor_frame_format_version: parts.successor_frame.format_version(),
             checkpoint_json: parts.checkpoint_json,
         }
+    }
+
+    pub(crate) fn from_parts_v2(
+        schema_binding: DurableSchemaBinding,
+        parts: LocalLogStorageGenerationManifestParts,
+        sealed_frame: LocalLogStorageGenerationFrameV2,
+        successor_frame: LocalLogStorageGenerationFrameV2,
+    ) -> Self {
+        Self {
+            schema_binding,
+            profile_id: parts.profile_id,
+            profile_version: parts.profile_version,
+            scope_id: parts.scope_id,
+            transaction_id: parts.transaction_id,
+            expected_head_id: parts.expected_head_id,
+            committed_head_id: parts.committed_head_id,
+            fence_id: parts.fence_id,
+            session_id: parts.session_id,
+            sealed_log_id: parts.sealed_log_id,
+            successor_log_id: parts.successor_log_id,
+            accepted_prefix_bytes: parts.accepted_prefix_bytes,
+            sealed_frame: LocalLogStorageGenerationFrameV1::new(sealed_frame.limits()),
+            sealed_frame_format_version: sealed_frame.format_version(),
+            successor_frame: LocalLogStorageGenerationFrameV1::new(successor_frame.limits()),
+            successor_frame_format_version: successor_frame.format_version(),
+            checkpoint_json: parts.checkpoint_json,
+        }
+    }
+
+    /// Returns the exact durable schema selector and fingerprint.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &DurableSchemaBinding {
+        &self.schema_binding
     }
 
     /// Returns the storage profile selected by trusted host configuration.
@@ -143,16 +183,56 @@ impl LocalLogStorageGenerationManifest {
         self.accepted_prefix_bytes
     }
 
-    /// Returns the old generation's exact Frame V1 policy.
+    /// Returns sealed payload limits through the legacy Frame V1 view.
+    ///
+    /// On V2 manifests this is a compatibility projection only. Use
+    /// [`Self::sealed_frame_format_version`] and [`Self::sealed_frame_v2`] to
+    /// preserve the protocol generation. V1 codecs reject V2-tagged values.
     #[must_use]
     pub const fn sealed_frame(&self) -> LocalLogStorageGenerationFrameV1 {
         self.sealed_frame
     }
 
-    /// Returns the successor generation's selected Frame V1 policy.
+    /// Returns the retained sealed frame wire generation.
+    #[must_use]
+    pub const fn sealed_frame_format_version(&self) -> u32 {
+        self.sealed_frame_format_version
+    }
+
+    /// Returns the sealed Frame V2 policy when this is a V2 manifest.
+    #[must_use]
+    pub const fn sealed_frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
+        if self.sealed_frame_format_version == 2 {
+            Some(LocalLogStorageGenerationFrameV2::new(self.sealed_frame.limits()))
+        } else {
+            None
+        }
+    }
+
+    /// Returns successor payload limits through the legacy Frame V1 view.
+    ///
+    /// On V2 manifests this is a compatibility projection only. Use
+    /// [`Self::successor_frame_format_version`] and
+    /// [`Self::successor_frame_v2`] when the generation matters.
     #[must_use]
     pub const fn successor_frame(&self) -> LocalLogStorageGenerationFrameV1 {
         self.successor_frame
+    }
+
+    /// Returns the retained successor frame wire generation.
+    #[must_use]
+    pub const fn successor_frame_format_version(&self) -> u32 {
+        self.successor_frame_format_version
+    }
+
+    /// Returns the successor Frame V2 policy when this is a V2 manifest.
+    #[must_use]
+    pub const fn successor_frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
+        if self.successor_frame_format_version == 2 {
+            Some(LocalLogStorageGenerationFrameV2::new(self.successor_frame.limits()))
+        } else {
+            None
+        }
     }
 
     /// Returns the exact canonical embedded Local Log Checkpoint V1 JSON.
@@ -172,6 +252,7 @@ impl fmt::Debug for LocalLogStorageGenerationManifest {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("LocalLogStorageGenerationManifest")
+            .field("schema_binding", &self.schema_binding)
             .field("profile_id", &self.profile_id)
             .field("profile_version", &self.profile_version)
             .field("scope_id", &self.scope_id)
@@ -184,7 +265,9 @@ impl fmt::Debug for LocalLogStorageGenerationManifest {
             .field("successor_log_id", &self.successor_log_id)
             .field("accepted_prefix_bytes", &self.accepted_prefix_bytes)
             .field("sealed_frame", &self.sealed_frame)
+            .field("sealed_frame_format_version", &self.sealed_frame_format_version)
             .field("successor_frame", &self.successor_frame)
+            .field("successor_frame_format_version", &self.successor_frame_format_version)
             .field("checkpoint_json_bytes", &self.checkpoint_json.len())
             .finish_non_exhaustive()
     }

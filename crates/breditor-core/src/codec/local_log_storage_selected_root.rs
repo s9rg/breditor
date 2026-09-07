@@ -8,7 +8,7 @@ use crate::local_log::{
 };
 
 use super::{
-    local_log_storage_generation_frame_v1::LocalLogStorageGenerationFrameV1,
+    LocalLogStorageGenerationFrameV1, LocalLogStorageGenerationFrameV2,
     local_log_storage_selected_binding::LocalLogStorageSelectedBinding,
     local_log_storage_selected_root_error::LocalLogStorageSelectedRootError,
     local_log_storage_selection_kind::LocalLogStorageSelectionKind,
@@ -54,11 +54,23 @@ pub struct LocalLogStorageSelectedRoot {
 pub(super) struct LocalLogStoragePredecessorRotationSealedGeneration {
     log_id: LocalLogId,
     frame: LocalLogStorageGenerationFrameV1,
+    frame_format_version: u32,
 }
 
 impl LocalLogStoragePredecessorRotationSealedGeneration {
     pub(super) const fn new(log_id: LocalLogId, frame: LocalLogStorageGenerationFrameV1) -> Self {
-        Self { log_id, frame }
+        Self { log_id, frame, frame_format_version: frame.format_version() }
+    }
+
+    pub(super) const fn new_v2(
+        log_id: LocalLogId,
+        frame: LocalLogStorageGenerationFrameV2,
+    ) -> Self {
+        Self {
+            log_id,
+            frame: LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame_format_version: frame.format_version(),
+        }
     }
 
     pub(super) const fn log_id(&self) -> &LocalLogId {
@@ -67,6 +79,10 @@ impl LocalLogStoragePredecessorRotationSealedGeneration {
 
     pub(super) const fn frame(&self) -> LocalLogStorageGenerationFrameV1 {
         self.frame
+    }
+
+    pub(super) const fn frame_format_version(&self) -> u32 {
+        self.frame_format_version
     }
 }
 
@@ -87,6 +103,9 @@ impl LocalLogStorageSelectedRoot {
     pub(super) fn try_from_parts(
         parts: LocalLogStorageSelectedRootParts,
     ) -> Result<Self, LocalLogStorageSelectedRootError> {
+        if parts.checkpoint_anchor.schema_binding() != *parts.binding.schema_binding() {
+            return Err(LocalLogStorageSelectedRootError::SchemaBindingMismatch);
+        }
         let requires_predecessor = parts.binding.current_receipt().selection_kind()
             == LocalLogStorageSelectionKind::Rotation;
         if requires_predecessor != parts.binding.predecessor_receipt().is_some()
@@ -99,6 +118,12 @@ impl LocalLogStorageSelectedRoot {
             receipt.selection_kind() == LocalLogStorageSelectionKind::Rotation
         });
         if predecessor_is_rotation != parts.predecessor_rotation_sealed_generation.is_some() {
+            return Err(LocalLogStorageSelectedRootError::RuntimeInvariant);
+        }
+        if let Some(sealed) = parts.predecessor_rotation_sealed_generation.as_ref()
+            && parts.binding.checkpoint_generation().frame_format_version()
+                != Some(sealed.frame_format_version())
+        {
             return Err(LocalLogStorageSelectedRootError::RuntimeInvariant);
         }
 
@@ -117,6 +142,12 @@ impl LocalLogStorageSelectedRoot {
     #[must_use]
     pub const fn profile_id(&self) -> &LocalLogStorageProfileId {
         self.binding.current_receipt().profile_id()
+    }
+
+    /// Returns the durable schema binding retained by this selection.
+    #[must_use]
+    pub const fn schema_binding(&self) -> &crate::schema::DurableSchemaBinding {
+        self.binding.schema_binding()
     }
 
     /// Returns the selected storage-profile contract version for inspection.
@@ -198,6 +229,18 @@ impl LocalLogStorageSelectedRoot {
     #[must_use]
     pub const fn active_frame(&self) -> LocalLogStorageGenerationFrameV1 {
         self.binding.active_generation().frame()
+    }
+
+    /// Returns the retained active binary frame generation.
+    #[must_use]
+    pub const fn active_frame_format_version(&self) -> u32 {
+        self.binding.active_generation().frame_format_version()
+    }
+
+    /// Returns the active Frame V2 policy when this selection is V2-bound.
+    #[must_use]
+    pub const fn active_frame_v2(&self) -> Option<super::LocalLogStorageGenerationFrameV2> {
+        self.binding.active_generation().frame_v2()
     }
 
     /// Returns the complete trusted current receipt for inspection.

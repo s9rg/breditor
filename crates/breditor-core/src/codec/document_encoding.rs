@@ -8,7 +8,11 @@ use crate::document::{
     PropertyValueInner,
 };
 
-use super::document_json::{DOCUMENT_FORMAT, DOCUMENT_FORMAT_VERSION};
+use super::{
+    document_json::{DOCUMENT_FORMAT, DOCUMENT_FORMAT_VERSION},
+    document_json_v2::DOCUMENT_V2_FORMAT_VERSION,
+    schema_binding_encoding::SchemaBindingEncoding,
+};
 
 /// Borrowed deterministic encoding of one validated document as Document V1.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -32,6 +36,37 @@ impl Serialize for DocumentEncoding<'_> {
         record.serialize_field("format", DOCUMENT_FORMAT)?;
         record.serialize_field("formatVersion", &DOCUMENT_FORMAT_VERSION)?;
         record.serialize_field("schema", &SchemaEncoding(self.document))?;
+        record.serialize_field("root", &NodeEncoding(self.document.root()))?;
+        record.end()
+    }
+}
+
+/// Borrowed deterministic encoding of one validated document as Document V2.
+///
+/// This encoder is crate-private so outer V2 records can embed exactly one V2
+/// document without allocating or round-tripping nested JSON.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct DocumentEncodingV2<'a> {
+    document: &'a Document,
+}
+
+impl<'a> DocumentEncodingV2<'a> {
+    /// Borrows a document for serialization without constructing an owned record tree.
+    pub(crate) const fn new(document: &'a Document) -> Self {
+        Self { document }
+    }
+}
+
+impl Serialize for DocumentEncodingV2<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut record = serializer.serialize_struct("DocumentRecordV2", 5)?;
+        record.serialize_field("format", DOCUMENT_FORMAT)?;
+        record.serialize_field("formatVersion", &DOCUMENT_V2_FORMAT_VERSION)?;
+        SchemaBindingEncoding::new(self.document.schema(), self.document.schema_fingerprint())
+            .serialize_fields(&mut record)?;
         record.serialize_field("root", &NodeEncoding(self.document.root()))?;
         record.end()
     }

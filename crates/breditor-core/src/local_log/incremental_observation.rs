@@ -186,6 +186,15 @@ fn preflight_observation(
         };
         return Err(rejection(parts, entry, error));
     }
+    let expected_schema_binding = parts.session.state().context().schema().durable_binding();
+    if entry.schema_binding() != &expected_schema_binding {
+        let error = LocalLogRecoveryError::SchemaBindingMismatch {
+            delivery_index,
+            expected: Box::new(expected_schema_binding),
+            actual: Box::new(entry.schema_binding().clone()),
+        };
+        return Err(rejection(parts, entry, error));
+    }
     if let Some(checkpoint_sequence) = parts.compacted_replays.get(entry.replay_id()).copied() {
         let error = LocalLogRecoveryError::CompactedReplayId {
             delivery_index,

@@ -110,6 +110,8 @@ pub enum CodecErrorCode {
     InvalidSchemaName,
     /// The schema version is zero.
     InvalidSchemaVersion,
+    /// The schema fingerprint text violates its canonical representation.
+    InvalidSchemaFingerprint,
     /// The record targets a different compiled schema.
     SchemaMismatch,
     /// The caller supplied a runtime context incompatible with the codec.
@@ -155,6 +157,7 @@ impl CodecErrorCode {
             Self::UnsupportedFormatVersion => "codec.unsupported_format_version",
             Self::InvalidSchemaName => "codec.invalid_schema_name",
             Self::InvalidSchemaVersion => "codec.invalid_schema_version",
+            Self::InvalidSchemaFingerprint => "codec.invalid_schema_fingerprint",
             Self::SchemaMismatch => "codec.schema_mismatch",
             Self::ContextMismatch => "codec.context_mismatch",
             Self::SnapshotMismatch => "codec.snapshot_mismatch",
@@ -291,6 +294,7 @@ mod tests {
             (CodecErrorCode::UnsupportedFormatVersion, "codec.unsupported_format_version"),
             (CodecErrorCode::InvalidSchemaName, "codec.invalid_schema_name"),
             (CodecErrorCode::InvalidSchemaVersion, "codec.invalid_schema_version"),
+            (CodecErrorCode::InvalidSchemaFingerprint, "codec.invalid_schema_fingerprint"),
             (CodecErrorCode::SchemaMismatch, "codec.schema_mismatch"),
             (CodecErrorCode::ContextMismatch, "codec.context_mismatch"),
             (CodecErrorCode::SnapshotMismatch, "codec.snapshot_mismatch"),

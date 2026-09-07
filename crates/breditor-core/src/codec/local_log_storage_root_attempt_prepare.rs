@@ -36,6 +36,12 @@ impl LocalLogStorageRootJsonCodec {
         scope_incarnation_id: &LocalLogStorageScopeIncarnationId,
         selection: &LocalLogStorageRootSelection,
     ) -> Result<LocalLogStoragePreparedAttempt, LocalLogStorageAttemptPreparationError> {
+        crate::schema::require_exact_breditor_base(self.context().schema()).map_err(|_| {
+            LocalLogStorageAttemptPreparationError::InvalidCandidate {
+                kind: LocalLogStorageSelectionKind::Root,
+                code: crate::codec::CodecErrorCode::ContextMismatch,
+            }
+        })?;
         let candidate_json = self.encode_root(selection).map_err(|error| {
             LocalLogStorageAttemptPreparationError::InvalidCandidate {
                 kind: LocalLogStorageSelectionKind::Root,

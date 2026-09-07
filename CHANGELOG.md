@@ -4,6 +4,55 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.2 - 2026-09-06
+
+This prerelease completes the Rust-core durable schema-binding checkpoint. It
+adds an explicit fingerprint-bearing V2 generation for every durable record
+family while preserving every V1 type, method, constant, and canonical byte.
+It remains unpublished.
+
+### Durable identity and record generations
+
+- Added strict public `SchemaFingerprint` parsing and an owned
+  `DurableSchemaBinding` containing both the human-readable schema selector and
+  the exact compiled-content fingerprint. Syntax failure and a valid but
+  mismatched fingerprint remain distinct payload-free errors.
+- Added separate V2 codecs for Document, Operation, Transaction Request, Editor
+  State, Commit, Session Checkpoint, Local Log Entry, Local Log Checkpoint,
+  Local Log Frame, Storage Root, and Storage Generation. Each independent JSON
+  envelope uses canonical `format`, `formatVersion`, `schema`, then
+  `schemaFingerprint` order; every nested family is generation-locked.
+- Propagated the durable binding through control-only log entries, recovery,
+  continuation, Frame V2 tail admission, compaction, root/generation
+  preparation, selected-root normalization, and selected-aware rotation.
+  Matching fingerprints from independently compiled proofs are fully
+  revalidated and rebound; mixed V1/V2 or cross-fingerprint graphs fail closed.
+
+### Structural schema admission
+
+- Added `SchemaAdmissionRequest`, which borrows a checked compact checkpoint,
+  revalidates the source, validates the unchanged AST under a different target
+  schema, and prepares a fresh revision-zero lineage, session, empty history,
+  and exact Local Log Checkpoint V2 JSON.
+- Added an explicit bridge that prepares an unpublished Storage Root V2 from
+  the admission result. It rechecks the target binding and exact checkpoint
+  bytes and performs no storage I/O or publication.
+- Admission is deliberately structural only: it performs no content transform,
+  never replays source history under the target language, and leaves the source
+  owner and external persistence untouched on failure.
+
+### Compatibility and deliberate limits
+
+- V1 remains exact-base-only and byte-stable. Wasm ABI generation `2`, browser
+  validation, autosave, IndexedDB, and all browser behavior remain V1-only;
+  package versions move together solely for exact-pair repository testing.
+- Storage V2 stops at checked prepare, encode, decode, and normalization. It
+  does not enter the V1 `Prepared` -> `Uncertain` publication lifecycle and
+  grants no compare-and-swap, durability, authenticity, freshness, writer-fence,
+  or append authority.
+- General non-base profile construction and generic property-free inline-format
+  operations remain scheduled for `0.2.0-alpha.3`.
+
 ## 0.2.0-alpha.1 - 2026-09-06
 
 This prerelease replaces the fixed base-schema implementation with a private,

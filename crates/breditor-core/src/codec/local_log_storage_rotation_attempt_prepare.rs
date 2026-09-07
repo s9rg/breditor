@@ -34,6 +34,12 @@ impl LocalLogStorageGenerationJsonCodec {
         selected: &LocalLogStorageSelectedRoot,
         manifest: &LocalLogStorageGenerationManifest,
     ) -> Result<LocalLogStoragePreparedAttempt, LocalLogStorageAttemptPreparationError> {
+        crate::schema::require_exact_breditor_base(self.context().schema()).map_err(|_| {
+            LocalLogStorageAttemptPreparationError::InvalidCandidate {
+                kind: LocalLogStorageSelectionKind::Rotation,
+                code: crate::codec::CodecErrorCode::ContextMismatch,
+            }
+        })?;
         let candidate_json =
             self.encode_rotation_from_selected(manifest, selected).map_err(|error| {
                 LocalLogStorageAttemptPreparationError::InvalidCandidate {

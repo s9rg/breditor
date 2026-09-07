@@ -42,7 +42,22 @@ impl LocalLogStorageSelectedJsonCodec {
         current_json: &str,
         predecessor_json: &str,
     ) -> Result<LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootError> {
+        crate::schema::require_exact_breditor_base(self.context().schema()).map_err(|_| {
+            LocalLogStorageSelectedRootError::InvalidSelection {
+                role: LocalLogStorageSelectedRootValueRole::Current,
+                selection_kind: LocalLogStorageSelectionKind::Rotation,
+                code: crate::codec::CodecErrorCode::ContextMismatch,
+            }
+        })?;
         self.require_current_kind(LocalLogStorageSelectionKind::Rotation)?;
+        if self.binding().active_generation().frame_format_version() != 1
+            || self.binding().checkpoint_generation().frame_format_version() != Some(1)
+        {
+            return Err(LocalLogStorageSelectedRootError::GenerationMismatch {
+                role: LocalLogStorageSelectedRootValueRole::Current,
+                field: LocalLogStorageSelectedRootGenerationField::ActiveFrame,
+            });
+        }
 
         let current_receipt = self.binding().current_receipt();
         let current = self

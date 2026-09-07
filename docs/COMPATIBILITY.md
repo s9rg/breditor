@@ -155,6 +155,23 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
+## Experimental `0.2.0-alpha.2` Rust boundary
+
+The Rust core now has separate fingerprint-bearing V2 codecs for Document,
+Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
+Log Entry, Local Log Checkpoint, Local Log Frame, Storage Root, and Storage
+Generation, plus binding-aware recovery, tail, compaction, selected-storage, and
+prepared schema-admission paths. These contracts are additive research surfaces
+outside the stable `0.1.x` promise. Existing V1 codecs remain exact-base-only;
+neither generation auto-detects, upgrades, or silently nests the other.
+
+The alpha.2 npm version does not widen the browser product. Wasm ABI 2,
+`@breditor/browser`, browser validation and export, autosave, and the IndexedDB
+Session Checkpoint Profile continue to consume and emit V1 only. The Rust V2
+families are not accepted in the V1 IndexedDB slot, and a mismatch must not be
+replaced with fresh content. Profile-aware Wasm and browser persistence require
+their later explicit checkpoints and ABI generation.
+
 ## Browser and Wasm pairing
 
 The supported official configuration uses exactly matching versions of
@@ -254,8 +271,10 @@ no `0.1.x` compatibility promise:
 - the unpublished `breditor-core` and `breditor-wasm` Rust APIs, module layout,
   trait implementations, error types, and in-memory representations;
 - operation, transaction-request, editor-state, commit, local-log entry,
-  local-log checkpoint, Local Log Frame V1, local-log recovery/compaction,
-  storage-root, and local-log storage-generation formats and state machines;
+  local-log checkpoint, Local Log Frame, local-log recovery/tail/compaction,
+  storage-root, local-log storage-generation, selected-storage normalization,
+  and schema-admission formats and state machines, including their experimental
+  V2 generations;
 - internal renderer generations, AST/DOM map identity, engine observations,
   history stamps, delivery tokens, queue receipts, storage attempt IDs, writer
   epochs, replay tombstones, and other process-local identities; and

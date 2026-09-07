@@ -29,6 +29,8 @@ impl LocalLogStorageRootJsonCodec {
         outcome: &LocalLogTailCompactionOutcome,
         inputs: &LocalLogStorageRootPreparationInputs,
     ) -> Result<LocalLogStorageRootSelection, LocalLogStorageRootCodecError> {
+        crate::schema::require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogStorageRootCodecError::ContextConfigurationMismatch)?;
         if outcome.anchor().session().state().context() != self.context() {
             return Err(LocalLogStorageRootCodecError::ContextConfigurationMismatch);
         }

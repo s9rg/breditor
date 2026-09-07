@@ -64,6 +64,9 @@ impl LocalLogStorageSelectedJsonCodec {
         &self,
         expected: LocalLogStorageSelectionKind,
     ) -> Result<(), LocalLogStorageSelectedRootError> {
+        if self.binding.schema_binding() != &self.context.schema().durable_binding() {
+            return Err(LocalLogStorageSelectedRootError::SchemaBindingMismatch);
+        }
         let actual = self.binding.current_receipt().selection_kind();
         if actual == expected {
             Ok(())

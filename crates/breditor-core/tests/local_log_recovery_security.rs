@@ -16,6 +16,7 @@ use breditor_core::{
     },
     operation::{TextRange, TextSplice},
     position::{Affinity, Point, TextOffset},
+    schema::{DurableSchemaBinding, SchemaFingerprint},
     selection::{RangeSelection, Selection},
     session::EditorSession,
     state::{EditorContext, EditorState, LineageId},
@@ -226,6 +227,44 @@ fn zero_and_exact_resource_limit_edges_are_deterministic() -> TestResult {
     assert_eq!(exact.exact_duplicate_count(), 1);
     assert_eq!(exact.applied_operation_count(), 1);
     assert_eq!(exact.entries().len(), 1);
+    Ok(())
+}
+
+#[test]
+fn recovery_rejects_a_control_event_from_another_schema_binding() -> TestResult {
+    let context = EditorContext::default();
+    let initial = state(&context, "base", "schema-binding-mismatch")?;
+    let expected = context.schema().durable_binding();
+    let foreign_fingerprint: SchemaFingerprint =
+        "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff".parse()?;
+    assert_ne!(foreign_fingerprint, expected.fingerprint());
+    let actual = DurableSchemaBinding::new(expected.schema().clone(), foreign_fingerprint);
+    let rejected = LocalLogEntry::new_with_schema_binding(
+        actual.clone(),
+        LocalSessionId::try_new(SESSION_ID)?,
+        LocalLogId::try_new(LOG_ID)?,
+        LocalLogSequence::FIRST,
+        ReplayId::try_new("schema:mismatch")?,
+        LocalLogEvent::close_history_group(),
+    );
+
+    let error = recovery()?
+        .recover(EditorSession::new(initial), vec![rejected])
+        .err()
+        .ok_or_else(|| test_error("foreign schema binding unexpectedly entered recovery"))?;
+    assert_eq!(error.code(), LocalLogRecoveryErrorCode::SchemaBindingMismatch);
+    assert_eq!(error.delivery_index(), Some(0));
+    let LocalLogRecoveryError::SchemaBindingMismatch {
+        delivery_index,
+        expected: found_expected,
+        actual: found_actual,
+    } = error
+    else {
+        return Err(test_error("schema mismatch used the wrong error variant").into());
+    };
+    assert_eq!(delivery_index, 0);
+    assert_eq!(*found_expected, expected);
+    assert_eq!(*found_actual, actual);
     Ok(())
 }
 

@@ -102,6 +102,8 @@ impl fmt::Display for LocalLogStorageSelectedRootGenerationField {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum LocalLogStorageSelectedRootErrorCode {
+    /// Retained schema identity differs from the receiving runtime context.
+    SchemaBindingMismatch,
     /// The invoked action disagrees with the independently trusted current kind.
     SelectionKindMismatch,
     /// A current or predecessor selection failed its strict format codec.
@@ -123,6 +125,9 @@ impl LocalLogStorageSelectedRootErrorCode {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::SchemaBindingMismatch => {
+                "local_log_storage_selected_root.schema_binding_mismatch"
+            }
             Self::SelectionKindMismatch => {
                 "local_log_storage_selected_root.selection_kind_mismatch"
             }
@@ -147,6 +152,9 @@ impl LocalLogStorageSelectedRootErrorCode {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum LocalLogStorageSelectedRootError {
+    /// Retained receipt and checkpoint schema identity differ.
+    #[error("selected-root durable schema binding does not match its checkpoint context")]
+    SchemaBindingMismatch,
     /// The caller chose the root or rotation action contrary to trusted routing.
     #[error("selected-root action expected {expected} but the trusted current receipt is {actual}")]
     SelectionKindMismatch {
@@ -200,6 +208,9 @@ impl LocalLogStorageSelectedRootError {
     #[must_use]
     pub const fn code(&self) -> LocalLogStorageSelectedRootErrorCode {
         match self {
+            Self::SchemaBindingMismatch => {
+                LocalLogStorageSelectedRootErrorCode::SchemaBindingMismatch
+            }
             Self::SelectionKindMismatch { .. } => {
                 LocalLogStorageSelectedRootErrorCode::SelectionKindMismatch
             }

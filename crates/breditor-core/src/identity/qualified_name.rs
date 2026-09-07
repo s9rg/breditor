@@ -141,7 +141,7 @@ pub enum QualifiedNameError {
         part: NamePart,
     },
     /// A namespace or local name contained an unsupported character.
-    #[error("qualified-name {part} has invalid character `{character}` at byte {byte_index}")]
+    #[error("qualified-name {part} has invalid character {character:?} at byte {byte_index}")]
     InvalidCharacter {
         /// The invalid side of the name.
         part: NamePart,
@@ -212,5 +212,17 @@ mod tests {
             QualifiedName::try_new("breditor/table/cell"),
             Err(QualifiedNameError::MultipleSeparators)
         );
+    }
+
+    #[test]
+    fn invalid_character_diagnostic_escapes_control_characters() {
+        let Err(error) = QualifiedName::try_new("breditor/table\ncell") else {
+            unreachable!("a qualified name containing a newline must be rejected")
+        };
+        let diagnostic = error.to_string();
+
+        assert!(diagnostic.contains(r"'\n'"));
+        assert!(!diagnostic.contains('\n'));
+        assert!(!diagnostic.contains('\r'));
     }
 }

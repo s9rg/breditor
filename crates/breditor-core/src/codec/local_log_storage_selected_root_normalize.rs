@@ -27,7 +27,19 @@ impl LocalLogStorageSelectedJsonCodec {
         &self,
         json: &str,
     ) -> Result<LocalLogStorageSelectedRoot, LocalLogStorageSelectedRootError> {
+        crate::schema::require_exact_breditor_base(self.context().schema()).map_err(|_| {
+            LocalLogStorageSelectedRootError::InvalidSelection {
+                role: LocalLogStorageSelectedRootValueRole::Current,
+                selection_kind: LocalLogStorageSelectionKind::Root,
+                code: crate::codec::CodecErrorCode::ContextMismatch,
+            }
+        })?;
         self.require_current_kind(LocalLogStorageSelectionKind::Root)?;
+        if self.binding().active_generation().frame_format_version() != 1 {
+            return Err(generation_mismatch(
+                LocalLogStorageSelectedRootGenerationField::ActiveFrame,
+            ));
+        }
 
         let receipt = self.binding().current_receipt();
         let selection = self.root_codec_for(receipt).decode_root(json).map_err(|error| {

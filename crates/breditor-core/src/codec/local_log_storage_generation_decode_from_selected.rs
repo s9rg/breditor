@@ -28,6 +28,8 @@ impl LocalLogStorageGenerationJsonCodec {
         json: &str,
         selected: &LocalLogStorageSelectedRoot,
     ) -> Result<LocalLogStorageGenerationManifest, LocalLogStorageGenerationCodecError> {
+        crate::schema::require_exact_breditor_base(self.context().schema())
+            .map_err(|_| LocalLogStorageGenerationCodecError::ContextConfigurationMismatch)?;
         let manifest = self.decode_bound_rotation(json)?;
         self.validate_rotation_from_selected_root(&manifest, selected)?;
         Ok(manifest)

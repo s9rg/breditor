@@ -12,6 +12,7 @@ use crate::{
         EDITOR_STATE_FORMAT as RECORD_FORMAT, EDITOR_STATE_FORMAT_VERSION as RECORD_FORMAT_VERSION,
         PendingFormatRecordV1, SelectionRecordV1,
     },
+    schema::require_exact_breditor_base,
     state::{EditorContext, EditorState},
 };
 
@@ -79,6 +80,8 @@ impl EditorStateJsonCodec {
     /// unsupported state/document format, invalid snapshot or state value,
     /// document failure, or failed complete editor-state validation.
     pub fn decode(&self, json: &str) -> Result<EditorState, EditorStateCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| EditorStateCodecError::ContextConfigurationMismatch)?;
         let maximum = self.context.limits().max_json_bytes();
         if json.len() > maximum {
             return Err(EditorStateCodecError::InputTooLarge { actual: json.len(), maximum });
@@ -97,7 +100,6 @@ impl EditorStateJsonCodec {
                 supported: EDITOR_STATE_FORMAT_VERSION,
             });
         }
-
         let envelope: BorrowedEditorStateRecordV1<'_> = decode_json(json)?;
         let snapshot_record: BorrowedSnapshotIdRecord<'_> = decode_raw_record(envelope.snapshot)?;
         let snapshot = decode_snapshot_id_v1(
@@ -153,6 +155,8 @@ impl EditorStateJsonCodec {
     /// differs, a state value cannot be represented by V1, serialization fails,
     /// or the result exceeds the same byte budget enforced by decode.
     pub fn encode(&self, state: &EditorState) -> Result<String, EditorStateCodecError> {
+        require_exact_breditor_base(self.context.schema())
+            .map_err(|_| EditorStateCodecError::ContextConfigurationMismatch)?;
         if state.context() != &self.context {
             return Err(EditorStateCodecError::ContextConfigurationMismatch);
         }
