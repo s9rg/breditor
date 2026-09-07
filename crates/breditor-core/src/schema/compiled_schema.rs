@@ -145,6 +145,13 @@ impl CompiledSchema {
         self.definition.inline_format(kind).is_some_and(|format| !format.allows_properties())
     }
 
+    /// Iterates every admitted inline-format identity in canonical lexical order.
+    pub(crate) fn inline_formats(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&QualifiedName, crate::schema::PersistedTypeRevision)> {
+        self.definition.inline_formats().map(|(kind, format)| (kind, format.revision()))
+    }
+
     pub(crate) fn paragraph_kind(&self) -> &QualifiedName {
         self.definition.paragraph_kind()
     }

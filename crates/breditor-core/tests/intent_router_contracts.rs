@@ -1614,6 +1614,7 @@ fn unavailable_routes_check_exact_base_before_reporting_unavailability() -> Test
             base_snapshot,
             binding: error_binding,
             reason: error_reason,
+            indicator: _,
             fallthroughs,
         }) if error_intent == intent
             && base_snapshot == initial.snapshot().clone()

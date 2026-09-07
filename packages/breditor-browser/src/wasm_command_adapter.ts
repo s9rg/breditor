@@ -43,6 +43,7 @@ import {
 } from "./selection.js";
 import {
   consumeSemanticProjectionUpdateWithCleanup,
+  projectionMatchesProfileGeneration,
   type SemanticProjectionUpdateView,
 } from "./wasm_projection_adapter.js";
 import {
@@ -74,11 +75,20 @@ import {
   type WasmDocumentJsonReadPort,
   type WasmDocumentJsonStringResultView,
 } from "./wasm_document_json.js";
+import {
+  isOwnedBrowserCompiledProfileDescriptor,
+  wasmProfileGenerationIsLive,
+  wasmViewMatchesProfileGeneration,
+  type BrowserCompiledProfileDescriptor,
+  type WasmProfileCorrelatedView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 /** Structural subset of the generated opaque observation owned by this adapter. */
-export interface WasmCommandObservationView {
+export interface WasmCommandObservationView extends WasmProfileCorrelatedView {
   readonly snapshotLineage: string;
   readonly snapshotRevision: string;
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   free(): void;
 }
 
@@ -90,7 +100,7 @@ export interface WasmCommandErrorView {
 }
 
 /** Structural subset of the generated one-command result. */
-export interface WasmCommandResultView {
+export interface WasmCommandResultView extends WasmProfileCorrelatedView {
   readonly status: "committed" | "disabled" | "unchanged" | "error";
   readonly eventKind:
     | "action"
@@ -105,21 +115,24 @@ export interface WasmCommandResultView {
   readonly activation:
     "stateless" | "inactive" | "active" | "mixed" | undefined;
   readonly error: WasmCommandErrorView | undefined;
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   observation(): WasmCommandObservationView | undefined;
   projectionUpdate(): SemanticProjectionUpdateView | undefined;
   free(): void;
 }
 
 /** Structural subset of the generated selection-read result. */
-export interface WasmSelectionResultView {
+export interface WasmSelectionResultView extends WasmProfileCorrelatedView {
   readonly status: "selection" | "taken" | "error";
   readonly error: WasmCommandErrorView | undefined;
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   takeSelection(): SemanticSelectionView | undefined;
   free(): void;
 }
 
 /** Structural generated-engine surface used by the atomic browser sequence. */
-export interface WasmCommandEngineView {
+export interface WasmCommandEngineView extends WasmProfileCorrelatedView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   actionStates(
     expected: WasmCommandObservationView,
   ): WasmActionStatesResultView;
@@ -273,6 +286,8 @@ export type WasmCompositionLeaseRestoreOutcome =
 
 /** Constructor dependencies which must be shared with browser event admission. */
 export interface BreditorWasmCommandAdapterOptions {
+  readonly profileGeneration: WasmProfileGenerationView;
+  readonly profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly renderer: BreditorDomRenderer;
   readonly rendered: RenderedProjection;
   readonly selectionBridge: BreditorDomSelectionBridge;
@@ -324,6 +339,9 @@ interface ActiveCompositionLease {
 export class BreditorWasmCommandAdapter {
   readonly #engine: WasmCommandEngineView;
   readonly #engineOwner: WasmCommandEngineView;
+  readonly #profileGeneration: WasmProfileGenerationView;
+  readonly #profileGenerationCleanup: GeneratedHandleCleanup;
+  readonly #schemaFingerprint: string;
   readonly #renderer: BreditorDomRenderer;
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #host: HTMLElement;
@@ -350,21 +368,32 @@ export class BreditorWasmCommandAdapter {
     observation: WasmCommandObservationView,
     options: BreditorWasmCommandAdapterOptions,
   ) {
-    if ((engine as unknown) === observation) {
+    const profileGeneration = options.profileGeneration;
+    if (
+      (engine as unknown) === observation ||
+      (engine as unknown) === profileGeneration ||
+      (observation as unknown) === profileGeneration
+    ) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
     const observationRegistry = createGeneratedHandleRegistry();
     if (
+      !claimGeneratedHandle(observationRegistry, profileGeneration, [engine]) ||
       !claimGeneratedHandle(observationRegistry, observation, [engine]) ||
+      containGeneratedThenable(profileGeneration) ||
       containGeneratedThenable(observation)
     ) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
+    const profileGenerationCleanup = transferGeneratedHandle(
+      observationRegistry,
+      profileGeneration,
+    );
     const observationCleanup = transferGeneratedHandle(
       observationRegistry,
       observation,
     );
-    if (observationCleanup === undefined) {
+    if (profileGenerationCleanup === undefined || observationCleanup === undefined) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
     const safeEngine = snapshotEngineView(engine);
@@ -373,11 +402,21 @@ export class BreditorWasmCommandAdapter {
     }
     const snapshot = readObservationSnapshot(observation);
     const dependencies = snapshotAdapterOptions(options);
-    if (snapshot === null || dependencies === null) {
+    if (
+      snapshot === null ||
+      dependencies === null ||
+      !wasmProfileGenerationIsLive(profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(engine, profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(observation, profileGeneration)
+    ) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
     if (
       !dependencies.renderer.owns(dependencies.rendered) ||
+      !projectionMatchesProfileGeneration(
+        dependencies.rendered.projection,
+        profileGeneration,
+      ) ||
       dependencies.rendered.projection.snapshot.lineage !== snapshot.lineage ||
       dependencies.rendered.projection.snapshot.revision !== snapshot.revision
     ) {
@@ -387,6 +426,9 @@ export class BreditorWasmCommandAdapter {
     }
     this.#engine = safeEngine;
     this.#engineOwner = engine;
+    this.#profileGeneration = profileGeneration;
+    this.#profileGenerationCleanup = profileGenerationCleanup;
+    this.#schemaFingerprint = dependencies.profileDescriptor.schema.fingerprint;
     this.#observation = observation;
     this.#observationCleanup = observationCleanup;
     this.#snapshot = snapshot;
@@ -532,6 +574,16 @@ export class BreditorWasmCommandAdapter {
       return false;
     }
     return (
+      wasmProfileGenerationIsLive(this.#profileGeneration) &&
+      wasmViewMatchesProfileGeneration(this.#engine, this.#profileGeneration) &&
+      wasmViewMatchesProfileGeneration(
+        this.#observation,
+        this.#profileGeneration,
+      ) &&
+      projectionMatchesProfileGeneration(
+        this.#projection,
+        this.#profileGeneration,
+      ) &&
       editorDeliveryTokenMatches(
         token,
         this.#rendered,
@@ -547,7 +599,13 @@ export class BreditorWasmCommandAdapter {
   #readActionStates(): BrowserActionStateReadResult | undefined {
     if (
       (this.#state !== "live" && this.#state !== "reconcile") ||
-      this.#observation === undefined
+      this.#observation === undefined ||
+      !wasmProfileGenerationIsLive(this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(this.#engine, this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(
+        this.#observation,
+        this.#profileGeneration,
+      )
     ) {
       return undefined;
     }
@@ -557,7 +615,7 @@ export class BreditorWasmCommandAdapter {
     this.#state = "readingActionState";
     try {
       const result = this.#engine.actionStates(observation);
-      return consumeWasmActionStates(expected, result, [
+      return consumeWasmActionStates(expected, result, this.#profileGeneration, [
         observation,
         this.#engineOwner,
       ]);
@@ -574,7 +632,13 @@ export class BreditorWasmCommandAdapter {
     if (
       this.#state === "faulted" ||
       this.#state === "disposed" ||
-      this.#observation === undefined
+      this.#observation === undefined ||
+      !wasmProfileGenerationIsLive(this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(this.#engine, this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(
+        this.#observation,
+        this.#profileGeneration,
+      )
     ) {
       return unavailableWasmSessionCheckpointReadResult();
     }
@@ -590,6 +654,7 @@ export class BreditorWasmCommandAdapter {
       return consumeWasmSessionCheckpoint(expected, result, [
         observation,
         this.#engineOwner,
+        this.#profileGeneration,
       ]);
     } catch {
       return invalidWasmSessionCheckpointReadResult();
@@ -604,7 +669,13 @@ export class BreditorWasmCommandAdapter {
     if (
       this.#state === "faulted" ||
       this.#state === "disposed" ||
-      this.#observation === undefined
+      this.#observation === undefined ||
+      !wasmProfileGenerationIsLive(this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(this.#engine, this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(
+        this.#observation,
+        this.#profileGeneration,
+      )
     ) {
       return unavailableWasmDocumentJsonReadResult();
     }
@@ -620,6 +691,7 @@ export class BreditorWasmCommandAdapter {
       const consumed = consumeWasmDocumentJson(expected, result, [
         observation,
         this.#engineOwner,
+        this.#profileGeneration,
       ]);
       return consumed.ok &&
         !documentJsonMatchesProjection(
@@ -641,7 +713,17 @@ export class BreditorWasmCommandAdapter {
     if (
       this.#state === "faulted" ||
       this.#state === "disposed" ||
-      this.#observation === undefined
+      this.#observation === undefined ||
+      !wasmProfileGenerationIsLive(this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(this.#engine, this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(
+        this.#observation,
+        this.#profileGeneration,
+      ) ||
+      !projectionMatchesProfileGeneration(
+        this.#projection,
+        this.#profileGeneration,
+      )
     ) {
       return unavailableProjectionPlainTextResult();
     }
@@ -1152,6 +1234,13 @@ export class BreditorWasmCommandAdapter {
         firstFailure = released.error;
       }
     }
+    const generationRelease = runGeneratedHandleCleanup(
+      this.#profileGenerationCleanup,
+    );
+    if (!generationRelease.ok && !failed) {
+      failed = true;
+      firstFailure = generationRelease.error;
+    }
     if (failed) {
       throw firstFailure;
     }
@@ -1192,7 +1281,8 @@ export class BreditorWasmCommandAdapter {
     const previous = this.#requireObservation();
     if (
       (result as unknown) === previous ||
-      (result as unknown) === this.#engineOwner
+      (result as unknown) === this.#engineOwner ||
+      (result as unknown) === this.#profileGeneration
     ) {
       throw new TypeError("Wasm command result handle is invalid or aliased");
     }
@@ -1200,9 +1290,15 @@ export class BreditorWasmCommandAdapter {
     const resultClaimed = claimGeneratedHandle(owned, result, [
       previous,
       this.#engineOwner,
+      this.#profileGeneration,
     ]);
     const resultAsynchronous = containGeneratedThenable(result);
-    if (!resultClaimed || resultAsynchronous || !isCommandResultView(result)) {
+    if (
+      !resultClaimed ||
+      resultAsynchronous ||
+      !isCommandResultView(result) ||
+      !wasmViewMatchesProfileGeneration(result, this.#profileGeneration)
+    ) {
       const cleanup = releaseGeneratedHandles(owned);
       if (!cleanup.ok) throw cleanup.error;
       throw new TypeError(
@@ -1212,7 +1308,11 @@ export class BreditorWasmCommandAdapter {
       );
     }
 
-    const protectedHandles = [previous, this.#engineOwner] as const;
+    const protectedHandles = [
+      previous,
+      this.#engineOwner,
+      this.#profileGeneration,
+    ] as const;
     let errorView: WasmCommandErrorView | undefined;
     let copiedError: WasmCommandError | null | undefined;
     let successor: WasmCommandObservationView | undefined;
@@ -1232,11 +1332,19 @@ export class BreditorWasmCommandAdapter {
       successor = result.observation();
       if (successor !== undefined) {
         claimSynchronousGeneratedHandle(owned, successor, protectedHandles);
-        nextSnapshot = readObservationSnapshot(successor);
+        nextSnapshot = wasmViewMatchesProfileGeneration(
+          successor,
+          this.#profileGeneration,
+        )
+          ? readObservationSnapshot(successor)
+          : null;
       }
       updateView = result.projectionUpdate();
       if (updateView !== undefined) {
         claimSynchronousGeneratedHandle(owned, updateView, protectedHandles);
+        if (!wasmViewMatchesProfileGeneration(updateView, this.#profileGeneration)) {
+          throw new TypeError("Wasm projection update has the wrong profile generation");
+        }
       }
 
       if (status === "error") {
@@ -1316,7 +1424,13 @@ export class BreditorWasmCommandAdapter {
             updateCleanup,
             successor,
             nextSnapshot,
-            [previous, result, successor, this.#engineOwner],
+            [
+              previous,
+              result,
+              successor,
+              this.#engineOwner,
+              this.#profileGeneration,
+            ],
           );
         }
         outcome = Object.freeze({
@@ -1423,6 +1537,8 @@ export class BreditorWasmCommandAdapter {
       this.#projection,
       updateView,
       updateCleanup,
+      this.#profileGeneration,
+      this.#schemaFingerprint,
       protectedHandles,
     );
     if (!converted.ok) {
@@ -1505,6 +1621,7 @@ export class BreditorWasmCommandAdapter {
     const allProtectedHandles = [
       observation,
       this.#engineOwner,
+      this.#profileGeneration,
       ...protectedHandles,
     ] as const;
     let result: WasmSelectionResultView | undefined;
@@ -1526,7 +1643,8 @@ export class BreditorWasmCommandAdapter {
       if (
         !resultClaimed ||
         resultAsynchronous ||
-        !isSelectionResultView(result)
+        !isSelectionResultView(result) ||
+        !wasmViewMatchesProfileGeneration(result, this.#profileGeneration)
       ) {
         throw new TypeError(
           resultAsynchronous
@@ -1546,6 +1664,12 @@ export class BreditorWasmCommandAdapter {
           selectionView,
           allProtectedHandles,
         );
+        if (!wasmViewMatchesProfileGeneration(
+          selectionView,
+          this.#profileGeneration,
+        )) {
+          throw new TypeError("Wasm semantic selection has the wrong profile generation");
+        }
       }
       if (
         status !== "selection" ||
@@ -1564,6 +1688,7 @@ export class BreditorWasmCommandAdapter {
         projection,
         ownedSelection,
         selectionCleanup,
+        this.#profileGeneration,
       );
       if (!consumed.ok) {
         throw new TypeError("Wasm semantic selection is invalid");
@@ -1605,7 +1730,15 @@ export class BreditorWasmCommandAdapter {
   }
 
   #requireObservation(): WasmCommandObservationView {
-    if (this.#observation === undefined) {
+    if (
+      this.#observation === undefined ||
+      !wasmProfileGenerationIsLive(this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(this.#engine, this.#profileGeneration) ||
+      !wasmViewMatchesProfileGeneration(
+        this.#observation,
+        this.#profileGeneration,
+      )
+    ) {
       throw new TypeError("Wasm command adapter has no live observation");
     }
     return this.#observation;
@@ -1723,18 +1856,24 @@ function snapshotAdapterOptions(
   value: unknown,
 ): BreditorWasmCommandAdapterOptions | null {
   const record = readExactDataRecord(value, [
+    "profileGeneration",
+    "profileDescriptor",
     "renderer",
     "rendered",
     "selectionBridge",
   ]);
   if (
     record === null ||
+    !wasmProfileGenerationIsLive(record["profileGeneration"]) ||
+    !isAdapterProfileDescriptor(record["profileDescriptor"]) ||
     !(record["renderer"] instanceof BreditorDomRenderer) ||
     !(record["selectionBridge"] instanceof BreditorDomSelectionBridge)
   ) {
     return null;
   }
   return Object.freeze({
+    profileGeneration: record["profileGeneration"],
+    profileDescriptor: record["profileDescriptor"],
     renderer: record["renderer"],
     rendered: record["rendered"] as RenderedProjection,
     selectionBridge: record["selectionBridge"],
@@ -1760,6 +1899,12 @@ function readObservationSnapshot(value: unknown): WasmCommandSnapshot | null {
   } catch {
     return null;
   }
+}
+
+function isAdapterProfileDescriptor(
+  value: unknown,
+): value is BrowserCompiledProfileDescriptor {
+  return isOwnedBrowserCompiledProfileDescriptor(value);
 }
 
 function readError(value: WasmCommandErrorView): WasmCommandError | null {
@@ -1804,6 +1949,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     const undo = receiver.undo;
     const redo = receiver.redo;
     const closeHistoryGroup = receiver.closeHistoryGroup;
+    const matchesProfileGeneration = receiver.matchesProfileGeneration;
     if (
       typeof actionStates !== "function" ||
       typeof sessionCheckpointJson !== "function" ||
@@ -1815,7 +1961,8 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
       typeof executeStringAction !== "function" ||
       typeof undo !== "function" ||
       typeof redo !== "function" ||
-      typeof closeHistoryGroup !== "function"
+      typeof closeHistoryGroup !== "function" ||
+      typeof matchesProfileGeneration !== "function"
     ) {
       return null;
     }
@@ -1859,6 +2006,8 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
       redo: (expected) => Reflect.apply(redo, value, [expected]),
       closeHistoryGroup: (expected) =>
         Reflect.apply(closeHistoryGroup, value, [expected]),
+      matchesProfileGeneration: (generation) =>
+        Reflect.apply(matchesProfileGeneration, value, [generation]) as boolean,
     };
     return Object.freeze(snapshot);
   } catch {

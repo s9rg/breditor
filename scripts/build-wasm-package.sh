@@ -7,6 +7,7 @@
 set -euo pipefail
 
 readonly required_wasm_bindgen_version="0.2.127"
+readonly required_rolldown_version="rolldown v1.2.7"
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_directory
 repository_root="$(cd -- "${script_directory}/.." && pwd)"
@@ -83,6 +84,17 @@ node_executable="$(resolve_executable "${node_candidate}")" ||
   fail "Node.js was not found; put it on PATH or set NODE_BIN to its executable."
 readonly node_executable
 
+readonly rolldown_candidate="${ROLLDOWN_BIN:-${repository_root}/node_modules/.bin/rolldown}"
+rolldown_executable="$(resolve_executable "${rolldown_candidate}")" ||
+  fail "Rolldown 1.2.7 was not found; run 'npm ci' or set ROLLDOWN_BIN to its executable."
+readonly rolldown_executable
+
+rolldown_version="$("${rolldown_executable}" --version 2>/dev/null)" ||
+  fail "could not read the Rolldown version from ${rolldown_executable}."
+readonly rolldown_version
+[[ "${rolldown_version}" == "${required_rolldown_version}" ]] ||
+  fail "expected ${required_rolldown_version}, found '${rolldown_version}' at ${rolldown_executable}."
+
 wasm_bindgen_version="$("${wasm_bindgen_executable}" --version 2>/dev/null)" ||
   fail "could not read the wasm-bindgen version from ${wasm_bindgen_executable}."
 readonly wasm_bindgen_version
@@ -118,7 +130,7 @@ CARGO_BIN="${cargo_executable}" \
   --copy-rust-notice \
   "${generated_directory}/third-party/rust-1.98.0/COPYRIGHT-library.html"
 
-printf 'build-wasm-package: building breditor-wasm for wasm32-unknown-unknown (release)\n'
+printf 'build-wasm-package: building breditor-wasm for wasm32-unknown-unknown (wasm-release)\n'
 (
   cd -- "${repository_root}"
   CARGO_INCREMENTAL=0 \
@@ -128,11 +140,11 @@ printf 'build-wasm-package: building breditor-wasm for wasm32-unknown-unknown (r
     --manifest-path "${repository_root}/Cargo.toml" \
     --locked \
     --package breditor-wasm \
-    --release \
+    --profile wasm-release \
     --target wasm32-unknown-unknown
 )
 
-readonly compiled_wasm="${cargo_target_directory}/wasm32-unknown-unknown/release/breditor_wasm.wasm"
+readonly compiled_wasm="${cargo_target_directory}/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm"
 [[ -f "${compiled_wasm}" ]] ||
   fail "Cargo did not produce the expected module: ${compiled_wasm}"
 
@@ -140,8 +152,27 @@ printf 'build-wasm-package: generating package with %s\n' "${expected_version_ou
 "${wasm_bindgen_executable}" "${compiled_wasm}" \
   --target web \
   --typescript \
+  --remove-name-section \
+  --remove-producers-section \
   --out-dir "${generated_directory}" \
   --out-name breditor_wasm
+
+readonly generated_javascript="${generated_directory}/breditor_wasm.js"
+readonly minified_javascript="${generated_directory}/breditor_wasm.min.js"
+[[ -f "${generated_javascript}" ]] ||
+  fail "wasm-bindgen did not produce breditor_wasm.js"
+
+printf 'build-wasm-package: minifying JavaScript glue with %s\n' "${required_rolldown_version}"
+"${rolldown_executable}" "${generated_javascript}" \
+  --file "${minified_javascript}" \
+  --format esm \
+  --platform browser \
+  --minify \
+  --postBanner '/* @ts-self-types="./breditor_wasm.d.ts" */' \
+  --logLevel silent >/dev/null
+[[ -f "${minified_javascript}" ]] ||
+  fail "Rolldown did not produce minified JavaScript glue"
+mv -- "${minified_javascript}" "${generated_javascript}"
 
 for generated_name in \
   breditor_wasm.d.ts \

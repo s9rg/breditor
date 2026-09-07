@@ -31,11 +31,16 @@ explicit browser build and two-build Wasm package check and before isolated
 installation. Packing disables lifecycle hooks so ambient npm configuration
 cannot turn those prerequisites into a stale-artifact pass.
 
-The workspace release profile keeps optimization level 3 and uses one
-code-generation unit without LTO. That reviewed recipe lets the compiler
-deduplicate generic machinery within each crate while retaining byte-identical
-clean Wasm builds, instead of hiding growth by relaxing a raw, gzip, or tarball
-ceiling.
+Native release builds keep optimization level 3 and one code-generation unit
+without LTO. Shipped Wasm instead uses the dedicated `wasm-release` profile:
+size optimization, fat LTO, one code-generation unit, aborting panics, and
+stripped symbols. The pinned package pipeline also removes Wasm name and
+producer sections and uses exact `rolldown 1.2.7` to deterministically minify
+generated JavaScript glue while retaining its declaration link. Package checks
+rebuild twice and compare complete hashes, so those transformations cannot hide
+nondeterminism. This reviewed recipe preserves the native throughput policy and
+keeps ABI 3 within the existing raw, gzip, glue, and tarball ceilings instead
+of raising them.
 
 The current React example deliberately initializes the editor eagerly, so its
 single JavaScript chunk can exceed Vite's generic 500 kB raw warning while still

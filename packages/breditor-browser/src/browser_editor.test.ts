@@ -22,6 +22,7 @@ import {
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
 import {
+  BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   type WasmBootstrappedEngineView,
   type WasmEngineBootstrapFactoryView,
@@ -29,6 +30,10 @@ import {
   type WasmEngineBootstrapResultView,
   type WasmProjectionReadResultView,
 } from "./wasm_engine_bootstrap.js";
+import type {
+  WasmCompiledProfileDescriptorView,
+  WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 import type {
   SemanticProjectionUpdateView,
   SemanticProjectionView,
@@ -39,6 +44,8 @@ import type { WasmSessionCheckpointStringResultView } from "./wasm_session_check
 const LINEAGE = "browser-editor-tests";
 const STATE_ID = "example/control-toggle";
 const ACTION_ID = "example/toggle";
+const BASE_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
 const KEYBOARD = Object.freeze({
   editing: "structuralFallback" as const,
   primaryModifier: "control" as const,
@@ -1711,7 +1718,7 @@ function moduleFixture(config: ModuleFixtureOptions = {}): ModuleFixture {
     module: {
       BreditorEngine: factory,
       breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
-      breditorVersion: () => "0.1.0",
+      breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
     },
     fromDocumentJson,
     fromSessionCheckpointJson,
@@ -1725,6 +1732,12 @@ function engineFixture(
   initialText: string,
   config: ModuleFixtureOptions,
 ): Readonly<{ engine: WasmBootstrappedEngineView; record: EngineRecord }> {
+  const generation: WasmProfileGenerationView = {
+    matches(other): boolean {
+      return other === generation;
+    },
+    free: vi.fn(),
+  };
   let revision = initialRevision;
   let text = initialText;
   let active = false;
@@ -1738,6 +1751,7 @@ function engineFixture(
     return {
       snapshotLineage: lineage,
       snapshotRevision: String(snapshotRevision),
+      matchesProfileGeneration: (candidate) => candidate === generation,
       free,
     };
   };
@@ -1751,10 +1765,14 @@ function engineFixture(
       Number(expected.snapshotRevision),
       config.enableAction === true,
       active,
+      generation,
     );
   });
   const selection = vi.fn((expected: WasmCommandObservationView) =>
-    selectionResult(noneSelection(lineage, Number(expected.snapshotRevision))),
+    selectionResult(
+      noneSelection(lineage, Number(expected.snapshotRevision), generation),
+      generation,
+    ),
   );
   const executeNoInputAction = vi.fn(
     (expected: WasmCommandObservationView, actionId: string) => {
@@ -1780,7 +1798,9 @@ function engineFixture(
           baseText,
           successorRevision,
           nextText,
+          generation,
         ),
+        generation,
       );
     },
   );
@@ -1805,9 +1825,15 @@ function engineFixture(
     undo: vi.fn(() => unexpected("undo")),
     redo: vi.fn(() => unexpected("redo")),
     closeHistoryGroup: vi.fn(() => unexpected("closeHistoryGroup")),
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    profileGeneration: vi.fn(() => generation),
+    profileDescriptor: vi.fn(() => baseDescriptor(generation)),
     observation: vi.fn(() => initialObservation),
     projection: vi.fn(() =>
-      projectionReadResult(projectionView(lineage, revision, text)),
+      projectionReadResult(
+        projectionView(lineage, revision, text, generation),
+        generation,
+      ),
     ),
     free: rawFree,
   };
@@ -1842,11 +1868,13 @@ function constructionResult(
 
 function projectionReadResult(
   projection: SemanticProjectionView,
+  generation: WasmProfileGenerationView,
 ): WasmProjectionReadResultView {
   let taken = false;
   return {
     status: "projection",
     error: undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     takeProjection: () => {
       if (taken) return undefined;
       taken = true;
@@ -1860,10 +1888,12 @@ function projectionView(
   lineage: string,
   revision: number,
   text: string,
+  generation: WasmProfileGenerationView,
 ): SemanticProjectionView {
   return {
     schemaName: "breditor/base",
     schemaVersion: 1,
+    schemaFingerprint: BASE_SCHEMA_FINGERPRINT,
     snapshotLineage: lineage,
     snapshotRevision: String(revision),
     nodeCount: 3,
@@ -1882,6 +1912,7 @@ function projectionView(
     text: (index) => (index === 2 ? text : undefined),
     formatCount: (index) => (index === 2 ? 0 : undefined),
     formatType: () => undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     free: vi.fn(),
   };
 }
@@ -1889,6 +1920,7 @@ function projectionView(
 function noneSelection(
   lineage: string,
   revision: number,
+  generation: WasmProfileGenerationView,
 ): SemanticSelectionView {
   return {
     snapshotLineage: lineage,
@@ -1903,17 +1935,20 @@ function noneSelection(
     focusOffset: undefined,
     focusAffinity: undefined,
     rangeOrder: undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     free: vi.fn(),
   };
 }
 
 function selectionResult(
   selection: SemanticSelectionView,
+  generation: WasmProfileGenerationView,
 ): WasmSelectionResultView {
   let taken = false;
   return {
     status: "selection",
     error: undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     takeSelection: () => {
       if (taken) return undefined;
       taken = true;
@@ -1928,10 +1963,12 @@ function actionStatesResult(
   revision: number,
   enabled: boolean,
   active: boolean,
+  generation: WasmProfileGenerationView,
 ): WasmActionStatesResultView {
   let taken = false;
   const entryCount = enabled ? 1 : 0;
   const snapshot: WasmActionStateSnapshotView = {
+    matchesProfileGeneration: (candidate) => candidate === generation,
     snapshotLineage: lineage,
     snapshotRevision: String(revision),
     entryCount,
@@ -1952,6 +1989,7 @@ function actionStatesResult(
   return {
     status: "full",
     error: undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     takeSnapshot: () => {
       if (taken) return undefined;
       taken = true;
@@ -1973,6 +2011,7 @@ function absentStringResult(): WasmActionStateStringResultView {
 function commandResult(
   successor: WasmCommandObservationView,
   update: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView,
 ): WasmCommandResultView {
   return {
     status: "committed",
@@ -1981,6 +2020,7 @@ function commandResult(
     disabledReasonCode: undefined,
     activation: undefined,
     error: undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     observation: () => successor,
     projectionUpdate: () => update,
     free: vi.fn(),
@@ -1993,6 +2033,7 @@ function projectionUpdate(
   baseText: string,
   resultRevision: number,
   resultText: string,
+  generation: WasmProfileGenerationView,
 ): SemanticProjectionUpdateView {
   let taken = false;
   return {
@@ -2000,6 +2041,7 @@ function projectionUpdate(
     baseRevision: String(baseRevision),
     resultLineage: lineage,
     resultRevision: String(resultRevision),
+    matchesProfileGeneration: (candidate) => candidate === generation,
     impact: "textContainers",
     affectedParagraphCount: 1,
     oldChildStart: undefined,
@@ -2010,8 +2052,48 @@ function projectionUpdate(
     takeProjection: () => {
       if (taken) return undefined;
       taken = true;
-      return projectionView(lineage, resultRevision, resultText);
+      return projectionView(lineage, resultRevision, resultText, generation);
     },
+    free: vi.fn(),
+  };
+}
+
+function baseDescriptor(
+  generation: WasmProfileGenerationView,
+): WasmCompiledProfileDescriptorView {
+  return {
+    schemaName: "breditor/base",
+    schemaVersion: 1,
+    schemaFingerprint: BASE_SCHEMA_FINGERPRINT,
+    formatCount: 1,
+    intentCount: 0,
+    actionStateCount: 3,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
+    formatRevision: (index) => index === 0 ? 1 : undefined,
+    intentId: () => undefined,
+    intentInputKind: () => undefined,
+    intentInputContractName: () => undefined,
+    intentInputContractVersion: () => undefined,
+    intentActivationContract: () => undefined,
+    intentValueContractName: () => undefined,
+    intentValueContractVersion: () => undefined,
+    actionStateId: (index) => [
+      "breditor/control-bold",
+      "breditor/control-redo",
+      "breditor/control-undo",
+    ][index],
+    actionStateSourceKind: (index) =>
+      index === 0 ? "direct" : index === 1 || index === 2 ? "history" : undefined,
+    actionStateSourceActionId: (index) =>
+      index === 0 ? "breditor/toggle-strong" : undefined,
+    actionStateSourceIntentId: () => undefined,
+    actionStateHistoryDirection: (index) =>
+      index === 1 ? "redo" : index === 2 ? "undo" : undefined,
+    actionStateActivationContract: (index) =>
+      index === 0 ? "tracked" : index === 1 || index === 2 ? "stateless" : undefined,
+    actionStateValueContractName: () => undefined,
+    actionStateValueContractVersion: () => undefined,
     free: vi.fn(),
   };
 }

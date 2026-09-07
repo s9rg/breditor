@@ -1,11 +1,12 @@
 use breditor_core::{
     position::{Affinity, Point},
+    profile::CompiledProfileGeneration,
     selection::{RangeOrder, Selection},
     state::EditorState,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{BreditorError, error::SELECTION_READ_CODE};
+use crate::{BreditorError, BreditorProfileGeneration, error::SELECTION_READ_CODE};
 
 use super::node_index::semantic_node_index;
 
@@ -34,13 +35,17 @@ enum SelectionPointSnapshotKind {
 /// snapshot and must be paired with its guarded observation.
 #[wasm_bindgen]
 pub struct BreditorSelection {
+    generation: CompiledProfileGeneration,
     lineage: String,
     revision: String,
     value: SelectionSnapshotValue,
 }
 
 impl BreditorSelection {
-    pub(crate) fn from_state(state: &EditorState) -> Result<Self, BreditorError> {
+    pub(crate) fn from_state(
+        generation: CompiledProfileGeneration,
+        state: &EditorState,
+    ) -> Result<Self, BreditorError> {
         let value = match state.selection() {
             None => SelectionSnapshotValue::None,
             Some(Selection::Range(range)) => {
@@ -56,6 +61,7 @@ impl BreditorSelection {
             _ => return Err(selection_read_error()),
         };
         Ok(Self {
+            generation,
             lineage: state.snapshot().lineage().as_str().to_owned(),
             revision: state.snapshot().revision().get().to_string(),
             value,
@@ -100,6 +106,13 @@ impl SelectionPointSnapshot {
 
 #[wasm_bindgen]
 impl BreditorSelection {
+    /// Checks the selection's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns the lineage of the exact editor snapshot represented here.
     #[must_use]
     #[wasm_bindgen(getter, js_name = snapshotLineage)]

@@ -2,6 +2,7 @@ use std::{fmt, sync::Arc};
 
 use crate::{
     identity::QualifiedName,
+    profile::CompiledProfileGeneration,
     session::EditorSession,
     state::{EditorState, EditorStateField},
 };
@@ -21,6 +22,7 @@ use super::{
 /// the prior observation and its identity untouched.
 pub struct ActionStateCache {
     catalog: ActionStateCatalog,
+    profile_generation: Option<CompiledProfileGeneration>,
     source_leaders: Box<[usize]>,
     leader_has_followers: Box<[bool]>,
     current: Option<ActionStateObservation>,
@@ -39,10 +41,27 @@ impl ActionStateCache {
         }
         Self {
             catalog,
+            profile_generation: None,
             source_leaders,
             leader_has_followers: leader_has_followers.into_boxed_slice(),
             current: None,
         }
+    }
+
+    /// Creates a cache bound to one exact compiled-profile generation.
+    pub(crate) fn with_profile_generation(
+        catalog: ActionStateCatalog,
+        profile_generation: CompiledProfileGeneration,
+    ) -> Self {
+        let mut cache = Self::new(catalog);
+        cache.profile_generation = Some(profile_generation);
+        cache
+    }
+
+    /// Returns the expected compiled-profile generation, when this cache is bound.
+    #[must_use]
+    pub const fn profile_generation(&self) -> Option<&CompiledProfileGeneration> {
+        self.profile_generation.as_ref()
     }
 
     /// Returns the exact catalog authority evaluated by this cache.
@@ -76,13 +95,19 @@ impl ActionStateCache {
     ///
     /// # Errors
     ///
-    /// Returns [`ActionStateDeriveError`] when the staged complete batch exceeds
-    /// a batch-wide retained payload bound. The previous observation remains
-    /// installed and no partial update is returned.
+    /// Returns [`ActionStateDeriveError`] when the supplied session belongs to a
+    /// different compiled-profile generation or the staged complete batch
+    /// exceeds a batch-wide retained payload bound. The previous observation
+    /// remains installed and no partial update is returned.
     pub fn refresh(
         &mut self,
         session: &EditorSession,
     ) -> Result<ActionStateCacheUpdate, ActionStateDeriveError> {
+        if let Some(expected) = self.profile_generation.as_ref()
+            && session.state().context().profile_generation() != Some(expected)
+        {
+            return Err(ActionStateDeriveError::ProfileGenerationMismatch);
+        }
         let base = session.state().clone();
         let history = session.history_status();
         let previous = self.current.clone();
@@ -100,7 +125,11 @@ impl ActionStateCache {
         let batch =
             self.derive_batch(session, base, history, previous.as_ref(), changed_domains)?;
         let id = ActionStateObservationId::new();
-        let observation = ActionStateObservation::new(id.clone(), Arc::new(batch));
+        let observation = ActionStateObservation::new(
+            self.profile_generation.clone(),
+            id.clone(),
+            Arc::new(batch),
+        );
         let update = previous.as_ref().map_or_else(
             || ActionStateCacheUpdate::full(observation.clone()),
             |prior| {
@@ -168,6 +197,7 @@ impl fmt::Debug for ActionStateCache {
         formatter
             .debug_struct("ActionStateCache")
             .field("catalog", &self.catalog)
+            .field("profile_generation", &self.profile_generation)
             .field("source_group_count", &source_group_count)
             .field("has_current", &self.current.is_some())
             .finish_non_exhaustive()

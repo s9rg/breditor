@@ -115,13 +115,15 @@ stack. `historyCapacity` is an integer from 0 through 100. A lineage ID is at
 most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
-An initialized module namespace is the supported configuration because startup
-verifies Wasm ABI generation `2` and probes its crate version. The narrower
-static `BreditorEngine` factory shape is accepted only as an experimental
-testing/controlled-host escape hatch; its returned handle protocol and runtime
-conformance are outside the `0.1.x` promise, and it has no module-level
-compatibility probe. Applications should install matching versions of
-`@breditor/browser` and `@breditor/wasm`.
+An initialized official module namespace is the supported configuration.
+Starting with `0.2.0-alpha.5`, startup verifies Wasm ABI generation `3` and the
+exact matching crate/package version before it reads the generated engine
+factory. The supported root option rejects a bare structural factory, which has
+no module-level compatibility probe. Lower-level factory types remain available
+only from the experimental advanced surface for adapter tests and controlled
+host integration; their generated handle protocol is not a compatibility
+promise. Applications should install matching versions of `@breditor/browser`
+and `@breditor/wasm`.
 
 An optional `AbortSignal` cancels startup only. It closes an in-progress storage
 load and prevents an opened result from escaping, but it is not retained as the

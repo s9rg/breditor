@@ -139,10 +139,13 @@ impl ActionStateResourceError {
 /// Why a complete exact-source action-state batch could not be retained.
 ///
 /// Individual action, routing, and history failures stay inside their entry.
-/// This error is reserved for catalog-wide dynamic resource exhaustion, for
-/// which no partial batch is returned.
+/// This error is reserved for a profile-generation mismatch or catalog-wide
+/// dynamic resource exhaustion, for which no partial batch is returned.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateDeriveError {
+    /// A profile-bound cache received a session from another or no generation.
+    #[error("action-state cache and session profile generations differ")]
+    ProfileGenerationMismatch,
     /// Retained dynamic values exceed the batch-wide budget.
     #[error("derived action-state batch contains {actual} values; the limit is {maximum}")]
     ValueCount {

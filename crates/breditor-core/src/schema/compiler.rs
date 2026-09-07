@@ -67,6 +67,12 @@ impl CompiledSchemaDefinition {
         self.inline_formats.get(kind)
     }
 
+    pub(super) fn inline_formats(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&QualifiedName, &InlineFormatDefinition)> {
+        self.inline_formats.iter()
+    }
+
     pub(super) const fn constraints(&self) -> GlobalConstraints {
         self.constraints
     }
@@ -101,6 +107,10 @@ pub(super) struct InlineFormatDefinition {
 }
 
 impl InlineFormatDefinition {
+    pub(super) const fn revision(&self) -> PersistedTypeRevision {
+        self.revision
+    }
+
     pub(super) const fn allows_properties(&self) -> bool {
         self.allows_properties
     }

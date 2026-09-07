@@ -21,12 +21,12 @@ export {
   type BreditorBrowserDocumentSnapshot,
   type BreditorBrowserInitialDocument,
   type BreditorBrowserToolbarOptions,
-  type BreditorBrowserWasmFactory,
   type BreditorBrowserWasmModule,
 } from "./browser_editor.js";
 
 /** Public compatibility value and bootstrap shapes for initialized Wasm modules. */
 export {
+  BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY,
 } from "./wasm_engine_bootstrap.js";

@@ -5,7 +5,7 @@ use breditor_core::action::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    BreditorStringResult,
+    BreditorProfileGeneration, BreditorStringResult,
     action_value_json::{action_value_json, state_value_status},
 };
 
@@ -47,6 +47,13 @@ impl BreditorActionStateSnapshot {
 
 #[wasm_bindgen]
 impl BreditorActionStateSnapshot {
+    /// Checks the snapshot's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.observation.profile_generation() == Some(&generation.inner)
+    }
+
     /// Returns the lineage of the exact editor state evaluated by every entry.
     #[must_use]
     #[wasm_bindgen(getter, js_name = snapshotLineage)]

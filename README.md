@@ -11,20 +11,22 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.2.0-alpha.4` checkpoint adds the first immutable compiled editor
-profile in the Rust core. Building one profile co-owns the resolved extension
-set, sealed schema, action registry, intent router, and observable action-state
-catalog under a fresh opaque process-local generation. A manifest can pair each
-property-free inline format it owns with one behavior-free toggle bundle naming
-the format, action, intent, binding, and action-state identities. The compiler
-instantiates the existing generic Rust toggle action, a tracked no-input intent,
-one priority-0 blocking binding, and routed toolbar-ready state; extensions do
-not supply callbacks, custom inputs, or operation variants. These semantic
-declarations do not change the schema fingerprint. Every V1 codec remains bound
-to the exact built-in `breditor/base@1` strong-only definition. Wasm ABI 2, the
-browser product, autosave, and IndexedDB continue to consume and emit V1 only;
-the new profile generation is Rust-local and is not yet carried by engine or
-Wasm observations. The decisions and checkpoint gates are recorded in the
+The current `0.2.0-alpha.5` checkpoint carries the immutable compiled editor
+profile through the guarded Rust engine and Wasm ABI 3. Profile-created engine
+contexts, observations, intent outcomes, action-state snapshots, projections,
+selection reads, and command results all share one opaque process-local
+generation that has no scalar or wire representation. An owned canonical
+descriptor exposes the durable schema binding, admitted format revisions,
+intent contracts, and complete action-state sources. Strict bounded profile
+bootstrap can create fresh or restored V2 engines, and synchronous no-input
+intent execution retains commit, blocked, or unhandled route provenance without
+rerunning a handler. Legacy exact-base V1 Wasm factories remain available as an
+advanced compatibility path, while official browser bootstrap now requires an
+exact `@breditor/browser@0.2.0-alpha.5` / `@breditor/wasm@0.2.0-alpha.5` pair,
+ABI `3`, and the exact built-in profile descriptor before opening content. The
+supported browser still renders only the built-in base profile; extension
+render recipes and intent toolbar controls arrive in alpha.6 and alpha.7. The
+decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
 are specified by the [schema fingerprint contract](docs/SCHEMA_FINGERPRINT.md).
@@ -132,10 +134,11 @@ The implementation includes:
   undo, redo, and effective history controls without a mutable-session escape;
 - a separate no-DOM `breditor-wasm` crate with opaque engine-created
   observation handles, structured domain results, guarded no-input/string
-  action commands, history controls, strict document/checkpoint factories,
-  separate state/commit/checkpoint reads, a guarded canonical Document V1
-  read, runtime ABI/version probes, and an exact generated TypeScript
-  declaration gate;
+  action commands and no-input semantic intents, history controls, reusable
+  compiled-profile and strict document/checkpoint factories, an opaque profile
+  generation and canonical descriptor, guarded mode-selected Document,
+  Commit, state, and session-checkpoint V1/V2 egress, runtime ABI/version
+  probes, and an exact generated TypeScript declaration gate;
 - a checkpoint-constrained engine owner that admits every effective mutation
   only after its complete canonical session checkpoint encodes, plus a generic
   no-DOM semantic Wasm projection with conservative commit invalidation; and
@@ -693,8 +696,10 @@ undo/redo conversion can still fail after session replay has published. A
 and retry identities. A future coordinator must close conversion and those
 identities before publication. Version `0.1.0` instead uses atomic
 session-checkpoint persistence.
-`EditorEngine` adds no Wasm ABI, browser event loop, DOM projection, scheduler,
-subscription delivery, or storage I/O.
+The core `EditorEngine` type itself adds no Wasm ABI, browser event loop, DOM
+projection, scheduler, subscription delivery, or storage I/O; the separate
+Wasm and browser packages adapt it without moving those concerns into Rust
+core.
 
 Version `0.0.49` expands the base registry from four to seven actions without
 expanding the primitive operation algebra. Backward and forward deletion use
@@ -886,7 +891,9 @@ buttons in an owned inner toolbar root with roving focus, fresh availability,
 tracked pressed/mixed state, and exact synchronous dispatch outcomes. Keyboard
 activation restores the same toolbar button after a command. Custom manifests can reorder or describe additional
 controls when a host supplies matching state and command implementations, but
-the distributed Rust/Wasm catalog itself remains the three base controls.
+the supported browser toolbar remains the three base controls. Starting with
+alpha.5, a compiled-profile Rust/Wasm catalog can also carry admitted extension
+state entries; the browser does not present them until alpha.7.
 Dynamic JavaScript action registration, styling/icons, menus, and asynchronous
 delivery remain outside the `0.1.0` product. Full assistive-technology
 certification is explicitly not claimed. The `0.0.59` candidate added

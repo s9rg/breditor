@@ -3,7 +3,7 @@ members = ["crates/breditor-core", "crates/breditor-wasm"]
 resolver = "3"
 
 [workspace.package]
-version = "0.2.0-alpha.4"
+version = "0.2.0-alpha.5"
 edition = "2024"
 rust-version = "1.98"
 authors = ["Breditor contributors"]
@@ -18,13 +18,26 @@ unicode-segmentation = "=1.13.3"
 wasm-bindgen = "=0.2.127"
 wasm-bindgen-test = "=0.3.77"
 
-# The shipped Wasm is built from this profile. A single code-generation unit
-# preserves optimization level 3 while keeping generated artifacts small and
-# byte-reproducible across clean builds.
+# Native release builds retain throughput-oriented optimization. The published
+# Wasm package uses the dedicated `wasm-release` profile below so its size
+# policy cannot silently change the native engine's optimization strategy.
 [profile.release]
 opt-level = 3
 lto = false
 codegen-units = 1
+
+# The package scripts are the only supported path for producing shipped Wasm.
+# Size-oriented LLVM optimization plus whole-program LTO keeps ABI 3 below its
+# checked release budgets without a post-link binary rewriter. Aborting panics
+# match wasm32's fail-closed boundary, while stripping symbols prevents debug
+# metadata from leaking into the distributable module.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
 
 [workspace.lints.rust]
 missing_docs = "deny"

@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::schema::{CompiledSchema, DocumentLimits};
+use crate::{
+    profile::CompiledProfileGeneration,
+    schema::{CompiledSchema, DocumentLimits},
+};
 
 /// Immutable schema and resource limits used to execute editor transactions.
 ///
@@ -12,13 +15,33 @@ pub struct EditorContext {
     schema: Arc<CompiledSchema>,
     limits: DocumentLimits,
     max_operations_per_transaction: u32,
+    profile_generation: Option<CompiledProfileGeneration>,
 }
 
 impl EditorContext {
     /// Creates an execution context from a compiled schema and limits.
     #[must_use]
     pub fn new(schema: CompiledSchema, limits: DocumentLimits) -> Self {
-        Self { schema: Arc::new(schema), limits, max_operations_per_transaction: 1_024 }
+        Self {
+            schema: Arc::new(schema),
+            limits,
+            max_operations_per_transaction: 1_024,
+            profile_generation: None,
+        }
+    }
+
+    /// Creates a context bound to one compiled profile generation.
+    pub(crate) fn with_profile_generation(
+        schema: CompiledSchema,
+        limits: DocumentLimits,
+        profile_generation: CompiledProfileGeneration,
+    ) -> Self {
+        Self {
+            schema: Arc::new(schema),
+            limits,
+            max_operations_per_transaction: 1_024,
+            profile_generation: Some(profile_generation),
+        }
     }
 
     /// Returns the compiled schema.
@@ -37,6 +60,13 @@ impl EditorContext {
     #[must_use]
     pub const fn max_operations_per_transaction(&self) -> u32 {
         self.max_operations_per_transaction
+    }
+
+    /// Returns the opaque process-local profile generation, when this context
+    /// was created by a compiled profile.
+    #[must_use]
+    pub const fn profile_generation(&self) -> Option<&CompiledProfileGeneration> {
+        self.profile_generation.as_ref()
     }
 
     /// Sets the maximum operations executed by one atomic transaction.
@@ -58,6 +88,7 @@ impl PartialEq for EditorContext {
         self.shares_schema_proof(other)
             && self.limits == other.limits
             && self.max_operations_per_transaction == other.max_operations_per_transaction
+            && self.profile_generation == other.profile_generation
     }
 }
 

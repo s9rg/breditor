@@ -375,13 +375,14 @@ impl IntentRouteOutcome {
             }
             Self::Blocked(outcome) => {
                 let BlockedIntent { intent_id, binding, preparation, fallthroughs } = outcome;
-                let (base, reason, _indicator) = preparation.into_parts();
+                let (base, reason, indicator) = preparation.into_parts();
                 validate_route_base(&intent_id, Some(&binding), &base, current)?;
                 Ok(IntentExecutionOutcome::Blocked {
                     intent: intent_id,
                     base_snapshot: base.snapshot().clone(),
                     binding,
                     reason,
+                    indicator,
                     fallthroughs,
                 })
             }

@@ -7,6 +7,7 @@
 set -euo pipefail
 
 readonly required_wasm_bindgen_version="0.2.127"
+readonly required_rolldown_version="rolldown v1.2.7"
 script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly script_directory
 repository_root="$(cd -- "${script_directory}/.." && pwd)"
@@ -16,7 +17,7 @@ readonly wasm_manifest="${repository_root}/crates/breditor-wasm/Cargo.toml"
 readonly checked_in_declaration="${repository_root}/crates/breditor-wasm/api/breditor_wasm.d.ts"
 readonly generated_glue_test="${repository_root}/crates/breditor-wasm/tests/generated_web_glue.mjs"
 readonly browser_projection_module="${repository_root}/packages/breditor-browser/dist/advanced.js"
-readonly abi_v2_baseline_check="${repository_root}/scripts/check-wasm-abi-v2-baseline.mjs"
+readonly abi_v3_baseline_check="${repository_root}/scripts/check-wasm-abi-v3-baseline.mjs"
 
 fail() {
   printf 'check-wasm-api: %s\n' "$*" >&2
@@ -47,6 +48,17 @@ node_executable="$(resolve_executable "${node_candidate}")" ||
   fail "Node.js was not found; put it on PATH or set NODE_BIN to its executable."
 readonly node_executable
 
+readonly rolldown_candidate="${ROLLDOWN_BIN:-${repository_root}/node_modules/.bin/rolldown}"
+rolldown_executable="$(resolve_executable "${rolldown_candidate}")" ||
+  fail "Rolldown 1.2.7 was not found; run 'npm ci' or set ROLLDOWN_BIN to its executable."
+readonly rolldown_executable
+
+rolldown_version="$("${rolldown_executable}" --version 2>/dev/null)" ||
+  fail "could not read the Rolldown version from ${rolldown_executable}."
+readonly rolldown_version
+[[ "${rolldown_version}" == "${required_rolldown_version}" ]] ||
+  fail "expected ${required_rolldown_version}, found '${rolldown_version}' at ${rolldown_executable}."
+
 wasm_bindgen_version="$("${wasm_bindgen_executable}" --version 2>/dev/null)" ||
   fail "could not read the version from ${wasm_bindgen_executable}."
 readonly wasm_bindgen_version
@@ -62,10 +74,10 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
   fail "missing generated-glue test: ${generated_glue_test}"
 [[ -f "${browser_projection_module}" ]] ||
   fail "missing built browser advanced module; run 'npm run build' first."
-[[ -f "${abi_v2_baseline_check}" ]] ||
-  fail "missing ABI 2 baseline check: ${abi_v2_baseline_check}"
+[[ -f "${abi_v3_baseline_check}" ]] ||
+  fail "missing ABI 3 baseline check: ${abi_v3_baseline_check}"
 
-"${node_executable}" "${abi_v2_baseline_check}"
+"${node_executable}" "${abi_v3_baseline_check}"
 
 mkdir -p -- "${cargo_target_directory}"
 generated_directory="$(mktemp -d "${cargo_target_directory}/wasm-api-check.XXXXXX")" ||
@@ -84,7 +96,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-printf 'check-wasm-api: building breditor-wasm for wasm32-unknown-unknown (release)\n'
+printf 'check-wasm-api: building breditor-wasm for wasm32-unknown-unknown (wasm-release)\n'
 (
   cd -- "${repository_root}"
   CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="${cargo_target_directory}" \
@@ -92,17 +104,19 @@ printf 'check-wasm-api: building breditor-wasm for wasm32-unknown-unknown (relea
     --manifest-path "${repository_root}/Cargo.toml" \
     --locked \
     --package breditor-wasm \
-    --release \
+    --profile wasm-release \
     --target wasm32-unknown-unknown
 )
 
-readonly compiled_wasm="${cargo_target_directory}/wasm32-unknown-unknown/release/breditor_wasm.wasm"
+readonly compiled_wasm="${cargo_target_directory}/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm"
 [[ -f "${compiled_wasm}" ]] || fail "Cargo did not produce the expected module: ${compiled_wasm}"
 
 printf 'check-wasm-api: generating TypeScript declarations with %s\n' "${expected_version_output}"
 "${wasm_bindgen_executable}" "${compiled_wasm}" \
   --target web \
   --typescript \
+  --remove-name-section \
+  --remove-producers-section \
   --out-dir "${generated_directory}" \
   --out-name breditor_wasm
 
@@ -123,7 +137,17 @@ readonly generated_module="${generated_directory}/breditor_wasm.mjs"
   fail "wasm-bindgen did not produce the expected JavaScript glue: ${generated_javascript}"
 [[ -f "${generated_webassembly}" ]] ||
   fail "wasm-bindgen did not produce the expected transformed module: ${generated_webassembly}"
-cp -- "${generated_javascript}" "${generated_module}"
+
+printf 'check-wasm-api: minifying JavaScript glue with %s\n' "${required_rolldown_version}"
+"${rolldown_executable}" "${generated_javascript}" \
+  --file "${generated_module}" \
+  --format esm \
+  --platform browser \
+  --minify \
+  --postBanner '/* @ts-self-types="./breditor_wasm.d.ts" */' \
+  --logLevel silent >/dev/null
+[[ -f "${generated_module}" ]] ||
+  fail "Rolldown did not produce the expected minified JavaScript glue: ${generated_module}"
 
 printf 'check-wasm-api: exercising generated JavaScript glue with Node.js\n'
 "${node_executable}" \

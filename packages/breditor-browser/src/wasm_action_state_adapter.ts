@@ -1,3 +1,10 @@
+import {
+  wasmProfileGenerationIsLive,
+  wasmViewMatchesProfileGeneration,
+  type WasmProfileCorrelatedView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
+
 /** Maximum entries admitted by the browser action-state boundary. */
 export const MAX_BROWSER_ACTION_STATE_ENTRIES = 512;
 
@@ -65,7 +72,8 @@ export type BrowserActionStateValueStatus =
   | "mixed";
 
 /** Structural subset of one owned generated action-state snapshot. */
-export interface WasmActionStateSnapshotView {
+export interface WasmActionStateSnapshotView extends WasmProfileCorrelatedView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   readonly snapshotLineage: string;
   readonly snapshotRevision: string;
   readonly entryCount: number;
@@ -83,7 +91,8 @@ export interface WasmActionStateSnapshotView {
 }
 
 /** Structural subset of one generated action-state refresh result. */
-export interface WasmActionStatesResultView {
+export interface WasmActionStatesResultView extends WasmProfileCorrelatedView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   readonly status: "full" | "unchanged" | "delta" | "taken" | "error";
   readonly error: WasmActionStateErrorView | undefined;
   takeSnapshot(): WasmActionStateSnapshotView | undefined;
@@ -242,12 +251,13 @@ interface SnapshotMethods {
 export function consumeWasmActionStates(
   expected: WasmActionStateExpectedSnapshot,
   view: WasmActionStatesResultView,
+  generation: WasmProfileGenerationView,
   protectedHandles: readonly unknown[] = [],
 ): BrowserActionStateReadResult {
   const registry: HandleRegistry = { handles: [], seen: new Set(), invalid: false };
   let protectedSet: ReadonlySet<object>;
   try {
-    protectedSet = objectSet(protectedHandles);
+    protectedSet = objectSet(protectedHandles, generation);
   } catch {
     // The outer view cannot be accepted when a protected alias cannot be
     // ruled out. Ownership therefore remains with the caller on this path.
@@ -255,7 +265,13 @@ export function consumeWasmActionStates(
   }
   let provisional: BrowserActionStateReadResult = boundaryFailure();
   try {
-    provisional = readWasmActionStates(expected, view, registry, protectedSet);
+    provisional = readWasmActionStates(
+      expected,
+      view,
+      generation,
+      registry,
+      protectedSet,
+    );
   } catch {
     provisional = boundaryFailure();
   }
@@ -272,12 +288,18 @@ export function isOwnedBrowserActionStateReadResult(
 function readWasmActionStates(
   expected: WasmActionStateExpectedSnapshot,
   view: WasmActionStatesResultView,
+  generation: WasmProfileGenerationView,
   registry: HandleRegistry,
   protectedHandles: ReadonlySet<object>,
 ): BrowserActionStateReadResult {
   const capturedResult = captureHandle(registry, view, protectedHandles);
   const expectedSnapshot = readExpectedSnapshot(expected);
-  if (expectedSnapshot === null || !capturedResult) {
+  if (
+    expectedSnapshot === null ||
+    !capturedResult ||
+    !wasmProfileGenerationIsLive(generation) ||
+    !wasmViewMatchesProfileGeneration(view, generation)
+  ) {
     return boundaryFailure();
   }
 
@@ -318,6 +340,7 @@ function readWasmActionStates(
     expectedSnapshot,
     status,
     rawSnapshot as WasmActionStateSnapshotView,
+    generation,
     registry,
     protectedHandles,
   );
@@ -337,12 +360,14 @@ function readSnapshot(
   expected: Readonly<{ lineage: string; revision: string }>,
   kind: "full" | "unchanged" | "delta",
   view: WasmActionStateSnapshotView,
+  generation: WasmProfileGenerationView,
   registry: HandleRegistry,
   protectedHandles: ReadonlySet<object>,
 ): Readonly<{
   snapshot: BrowserActionStateSnapshot;
   changedIds: readonly string[];
 }> | null {
+  if (!wasmViewMatchesProfileGeneration(view, generation)) return null;
   const methods = readSnapshotMethods(view);
   if (methods === null) return null;
 
@@ -868,9 +893,21 @@ function freeHandles(registry: HandleRegistry): boolean {
   return failed;
 }
 
-function objectSet(values: readonly unknown[]): ReadonlySet<object> {
+function objectSet(
+  values: readonly unknown[],
+  required?: unknown,
+): ReadonlySet<object> {
+  if (!Array.isArray(values) || values.length > 64) {
+    throw new TypeError("invalid protected-handle list");
+  }
   const output = new Set<object>();
-  for (const value of values) {
+  if (objectLike(required)) output.add(required);
+  for (let index = 0; index < values.length; index += 1) {
+    const descriptor = Reflect.getOwnPropertyDescriptor(values, String(index));
+    if (descriptor === undefined || !("value" in descriptor)) {
+      throw new TypeError("invalid protected-handle entry");
+    }
+    const value = descriptor.value as unknown;
     if (objectLike(value)) output.add(value);
   }
   return output;

@@ -13,11 +13,11 @@ import {
   type BreditorBrowserEditorOpenResult,
   type BreditorBrowserEditorPersistenceOptions,
   type BreditorBrowserEditorSnapshot,
-  type BreditorBrowserWasmFactory,
   type BreditorBrowserWasmModule,
 } from "@breditor/browser";
 import {
   BaseDocumentProjection,
+  type BreditorBrowserWasmFactory,
   type BrowserProjectionResult,
 } from "@breditor/browser/advanced";
 

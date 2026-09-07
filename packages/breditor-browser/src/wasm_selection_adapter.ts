@@ -10,6 +10,15 @@ import {
 } from "./selection.js";
 import type { BrowserSelectionResult } from "./selection_result.js";
 import { selectionFailure, selectionSuccess } from "./selection_result.js";
+import {
+  projectionMatchesProfileGeneration,
+} from "./wasm_projection_adapter.js";
+import {
+  wasmProfileGenerationIsLive,
+  wasmViewMatchesProfileGeneration,
+  type WasmProfileCorrelatedView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 /** Point kinds exposed by the scalar Wasm selection boundary. */
 export type SemanticSelectionPointKind = "text" | "children";
@@ -20,7 +29,8 @@ export type SemanticSelectionPointKind = "text" | "children";
  * Node indexes address the same generic flattened preorder tree consumed by
  * the projection adapter. The view is consumed and freed on every path.
  */
-export interface SemanticSelectionView {
+export interface SemanticSelectionView extends WasmProfileCorrelatedView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   readonly snapshotLineage: string;
   readonly snapshotRevision: string;
   readonly kind: "none" | "range";
@@ -64,7 +74,11 @@ interface ReadPoint {
 export function consumeSemanticSelection(
   projection: BaseDocumentProjection,
   view: SemanticSelectionView,
+  generation: WasmProfileGenerationView,
 ): BrowserSelectionResult<BaseEditorSelection> {
+  if ((view as unknown) === generation) {
+    return selectionFailure("selection.invalid_wasm_view");
+  }
   const cleanup = snapshotGeneratedCleanup(view);
   const asynchronous = containGeneratedThenable(view);
   if (cleanup === null) {
@@ -74,6 +88,7 @@ export function consumeSemanticSelection(
     projection,
     view,
     cleanup,
+    generation,
     asynchronous,
   );
 }
@@ -83,13 +98,18 @@ export function consumeSemanticSelectionWithCleanup(
   projection: BaseDocumentProjection,
   view: SemanticSelectionView,
   cleanup: () => unknown,
+  generation: WasmProfileGenerationView,
   asynchronous = containGeneratedThenable(view),
 ): BrowserSelectionResult<BaseEditorSelection> {
   let result: BrowserSelectionResult<BaseEditorSelection> = selectionFailure(
     "selection.invalid_wasm_view",
   );
   try {
-    result = !asynchronous && isOwnedProjection(projection)
+    result = !asynchronous &&
+      isOwnedProjection(projection) &&
+      wasmProfileGenerationIsLive(generation) &&
+      projectionMatchesProfileGeneration(projection, generation) &&
+      wasmViewMatchesProfileGeneration(view, generation)
       ? readSemanticSelection(projection, view)
       : selectionFailure("selection.invalid_wasm_view");
   } catch {

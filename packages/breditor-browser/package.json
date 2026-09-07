@@ -1,6 +1,6 @@
 {
   "name": "@breditor/browser",
-  "version": "0.2.0-alpha.4",
+  "version": "0.2.0-alpha.5",
   "description": "Framework-neutral browser runtime for the Breditor rich-text editor",
   "keywords": [
     "rich-text-editor",
@@ -40,7 +40,7 @@
     "parse5": "8.0.1"
   },
   "peerDependencies": {
-    "@breditor/wasm": "0.2.0-alpha.4"
+    "@breditor/wasm": "0.2.0-alpha.5"
   },
   "peerDependenciesMeta": {
     "@breditor/wasm": {
@@ -49,7 +49,7 @@
   },
   "scripts": {
     "clean": "node ../../scripts/clean-package.mjs",
-    "build": "node ../../scripts/check-package-licenses.mjs && npm run clean && tsc -p tsconfig.json",
+    "build": "node ../../scripts/check-package-licenses.mjs && node ../../scripts/check-browser-wasm-package-pair.mjs && npm run clean && tsc -p tsconfig.json",
     "prepack": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json"

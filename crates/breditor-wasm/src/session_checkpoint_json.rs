@@ -5,7 +5,7 @@ use crate::{BreditorEngine, BreditorStringResult};
 #[wasm_bindgen]
 impl BreditorEngine {
     /// Encodes current state and retained linear history as Session Checkpoint
-    /// V1 JSON.
+    /// V1 JSON for legacy constructors or V2 JSON for compiled-profile factories.
     ///
     /// The checkpoint was encoded before its session became authoritative, so
     /// a live engine always returns a successful clone of the cached canonical

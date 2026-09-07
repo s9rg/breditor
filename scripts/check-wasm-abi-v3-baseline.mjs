@@ -11,8 +11,8 @@ const declarationPath = join(
 const versionPath = join(repository, "crates/breditor-wasm/src/version.rs");
 
 const expectedNormalizedSha256 =
-  "b722da6868ae142de56a45683ddfbfd9e2c63a5938baf9093ff72d3671b1a52a";
-const expectedInitOutputMembers = 127;
+  "c7be931c5b7b01035e0a03712beb80c35398e4c59e0193060a9e1fc14d8c342f";
+const expectedInitOutputMembers = 202;
 
 const declaration = readFileSync(declarationPath, "utf8");
 const marker = "export interface InitOutput {";
@@ -28,7 +28,10 @@ const members = declaration
   .filter((line) => line.length > 0);
 if (members.length !== expectedInitOutputMembers) {
   fail(
-    `reviewed InitOutput has ${members.length} members; ABI 2 requires ${expectedInitOutputMembers}`,
+    "reviewed InitOutput has " +
+      members.length +
+      " members; ABI 3 requires " +
+      expectedInitOutputMembers,
   );
 }
 if (new Set(members).size !== members.length) {
@@ -45,24 +48,30 @@ const normalized =
 const actual = createHash("sha256").update(normalized).digest("hex");
 if (actual !== expectedNormalizedSha256) {
   fail(
-    `reviewed declaration changed ABI 2 (normalized SHA-256 ${actual}; expected ${expectedNormalizedSha256})`,
+    "reviewed declaration changed ABI 3 (normalized SHA-256 " +
+      actual +
+      "; expected " +
+      expectedNormalizedSha256 +
+      ")",
   );
 }
 
 const versionSource = readFileSync(versionPath, "utf8");
 if (
   !versionSource.includes(
-    'pub const BREDITOR_WASM_ABI_VERSION: &str = "2";',
+    'pub const BREDITOR_WASM_ABI_VERSION: &str = "3";',
   )
 ) {
-  fail("Rust Wasm boundary no longer declares exact ABI generation 2");
+  fail("Rust Wasm boundary no longer declares exact ABI generation 3");
 }
 
 console.log(
-  `check-wasm-abi-v2-baseline: ${members.length} signatures and ABI generation 2 are unchanged.`,
+  "check-wasm-abi-v3-baseline: " +
+    members.length +
+    " signatures and ABI generation 3 are unchanged.",
 );
 
 function fail(message) {
-  console.error(`check-wasm-abi-v2-baseline: ${message}`);
+  console.error("check-wasm-abi-v3-baseline: " + message);
   process.exit(1);
 }

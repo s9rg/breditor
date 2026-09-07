@@ -23,13 +23,15 @@ are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
 the corresponding TypeScript sources are not part of the package.
 
-The `0.2.0-alpha.4` package version keeps this browser boundary unchanged:
-Wasm ABI 2, Document V1, Session Checkpoint V1, the base projection, and the
-Bold/Undo/Redo toolbar remain authoritative. The Rust core's compiled extension
-profile and manifest-owned toggle routes do not add a browser command, renderer,
-or toolbar contribution here. The profile generation is not yet carried by
-engine/Wasm observations; profile-aware rendering and the supported intent
-toolbar remain scheduled for alpha.6 and alpha.7.
+The `0.2.0-alpha.5` package requires Wasm ABI 3 and an exact matching Wasm
+package version before it reads the generated engine factory. Bootstrap owns
+and validates the compiled-profile generation and descriptor and checks every
+observation, projection, selection, action-state, and command result against
+that opaque generation. The former bare-factory and standalone restore seams
+are not accepted by the supported root API. Document V1, Session Checkpoint V1,
+the exact built-in base profile/projection, and the Bold/Undo/Redo toolbar remain
+the supported browser product. Profile-aware extension rendering and the
+supported intent toolbar remain scheduled for alpha.6 and alpha.7.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -39,11 +41,11 @@ root and the documented V1 browser formats carry that promise.
 
 ## Public runtime
 
-This alpha.4 checkpoint is currently unpublished. After publication, the
+This alpha.5 checkpoint is currently unpublished. After publication, the
 matching registry packages can be installed with:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.4 @breditor/wasm@0.2.0-alpha.4
+npm install @breditor/browser@0.2.0-alpha.5 @breditor/wasm@0.2.0-alpha.5
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -99,11 +101,12 @@ if (!result.ok) throw new Error(result.error.message);
 const editor = result.editor;
 ```
 
-The supported `0.1.x` configuration passes the initialized, exactly
-version-matched official module namespace as shown above. The root option also
-admits a bare structural factory as an advanced testing/host escape hatch, but
-custom factory implementations and their generated handle protocol are not a
-supported compatibility surface.
+The supported `0.2.0-alpha.5` configuration passes the initialized, exactly
+version-matched official module namespace as shown above. The root option does
+not admit a bare structural factory. Lower-level structural factory types exist
+only on the experimental advanced surface for adapter testing and host-side
+integration; custom factory implementations and their generated handle
+protocol are not a supported compatibility surface.
 
 The editor's accessible `label` is retained verbatim and must be well-formed
 UTF-16 containing at least one non-whitespace character and 1 through 256
@@ -473,8 +476,10 @@ replacement, and reports success only from transaction completion. Conflicts,
 corruption, quota, schema/version mismatch, connection loss, generation
 exhaustion, and digest failure remain distinct payload-redacted outcomes.
 
-`restoreWasmEngine` strictly consumes the generated restore result and owns the
-new engine only after the Rust Session Checkpoint V1 decoder accepts it.
+`bootstrapWasmEngine` strictly consumes the generated construction result for
+either a fresh Document V1 request or a restored Session Checkpoint V1 request.
+It transfers the new engine only after it verifies the exact
+ABI/package/profile contract and the Rust decoder accepts the complete source.
 `BreditorSessionCheckpointAutosave` coalesces adopted core commits behind a
 250 ms trailing delay and, while capture is available, starts an attempt within
 2 s of continuous changes. Composition or another exclusive adapter lease can

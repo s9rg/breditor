@@ -1,6 +1,8 @@
 use breditor_core::engine::EditorEngineObservation;
 use wasm_bindgen::prelude::wasm_bindgen;
 
+use crate::BreditorProfileGeneration;
+
 /// Opaque, process-local observation required by every editor command.
 ///
 /// Only the engine and command results produce usable instances; a raw
@@ -25,6 +27,13 @@ impl BreditorObservation {
 
 #[wasm_bindgen]
 impl BreditorObservation {
+    /// Checks the observation's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.inner.profile_generation() == Some(&generation.inner)
+    }
+
     /// Returns the snapshot lineage as a portable string.
     #[must_use]
     #[wasm_bindgen(getter, js_name = snapshotLineage)]

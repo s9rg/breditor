@@ -9,12 +9,15 @@
 //! clock, persistence, framework, or Wasm boundary.
 
 mod action_outcome;
+mod checkpoint_codec;
 mod checkpointed_editor_engine;
 mod checkpointed_editor_engine_error;
 mod editor_engine;
+mod editor_profile_error;
 mod error;
 mod event;
 mod instance_id;
+mod intent_outcome;
 mod observation;
 
 pub use action_outcome::{EditorActionOutcome, EditorDisabledAction};
@@ -23,6 +26,8 @@ pub use checkpointed_editor_engine_error::{
     CheckpointedEditorEngineError, CheckpointedEditorEngineErrorCode,
 };
 pub use editor_engine::EditorEngine;
+pub use editor_profile_error::{EditorEngineProfileError, EditorEngineProfileErrorCode};
 pub use error::{EditorEngineError, EditorEngineErrorCode};
 pub use event::{EditorEngineEvent, EditorEngineEventKind};
+pub use intent_outcome::EditorIntentOutcome;
 pub use observation::EditorEngineObservation;

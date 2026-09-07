@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::BreditorError;
+use breditor_core::profile::CompiledProfileGeneration;
+
+use crate::{BreditorError, BreditorProfileGeneration};
 
 use super::BreditorProjection;
 
@@ -9,23 +11,37 @@ use super::BreditorProjection;
 /// A successful projection can be taken exactly once.
 #[wasm_bindgen]
 pub struct BreditorProjectionResult {
+    generation: CompiledProfileGeneration,
     projection: Option<BreditorProjection>,
     error: Option<BreditorError>,
     succeeded: bool,
 }
 
 impl BreditorProjectionResult {
-    pub(crate) const fn success(projection: BreditorProjection) -> Self {
-        Self { projection: Some(projection), error: None, succeeded: true }
+    pub(crate) const fn success(
+        generation: CompiledProfileGeneration,
+        projection: BreditorProjection,
+    ) -> Self {
+        Self { generation, projection: Some(projection), error: None, succeeded: true }
     }
 
-    pub(crate) const fn from_error(error: BreditorError) -> Self {
-        Self { projection: None, error: Some(error), succeeded: false }
+    pub(crate) const fn from_error(
+        generation: CompiledProfileGeneration,
+        error: BreditorError,
+    ) -> Self {
+        Self { generation, projection: None, error: Some(error), succeeded: false }
     }
 }
 
 #[wasm_bindgen]
 impl BreditorProjectionResult {
+    /// Checks the result's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns `projection`, `taken`, or `error`.
     #[must_use]
     #[wasm_bindgen(getter, unchecked_return_type = "BreditorProjectionResultStatus")]

@@ -27,48 +27,60 @@ impl BreditorEngine {
         value: &str,
     ) -> BreditorCommandResult {
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::checkpointed_engine(&error),
+            );
         }
         let Ok(action_id) = ActionId::try_new(action_id) else {
-            return BreditorCommandResult::from_error(BreditorError::new(
-                INVALID_ACTION_ID_CODE,
-                "the action identity is invalid",
-            ));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::new(INVALID_ACTION_ID_CODE, "the action identity is invalid"),
+            );
         };
         let contract = match self.inner.action_registry().descriptor(&action_id) {
             Some(descriptor) => match descriptor.input_contract() {
                 Some(contract) if supports_string_input(&action_id, contract) => contract.clone(),
                 Some(_) => {
-                    return BreditorCommandResult::from_error(BreditorError::new(
-                        UNSUPPORTED_ACTION_INPUT_CODE,
-                        "the action input shape is not supported by this Wasm ABI",
-                    ));
+                    return BreditorCommandResult::from_error(
+                        self,
+                        BreditorError::new(
+                            UNSUPPORTED_ACTION_INPUT_CODE,
+                            "the action input shape is not supported by this Wasm ABI",
+                        ),
+                    );
                 }
                 None => {
-                    return BreditorCommandResult::from_error(BreditorError::new(
-                        ACTION_REJECTS_STRING_CODE,
-                        "the action does not accept string input",
-                    ));
+                    return BreditorCommandResult::from_error(
+                        self,
+                        BreditorError::new(
+                            ACTION_REJECTS_STRING_CODE,
+                            "the action does not accept string input",
+                        ),
+                    );
                 }
             },
             None => {
-                return BreditorCommandResult::from_error(BreditorError::new(
-                    UNKNOWN_ACTION_CODE,
-                    "the action is not registered",
-                ));
+                return BreditorCommandResult::from_error(
+                    self,
+                    BreditorError::new(UNKNOWN_ACTION_CODE, "the action is not registered"),
+                );
             }
         };
         let Ok(value) = ActionValue::try_from_string(value) else {
-            return BreditorCommandResult::from_error(BreditorError::new(
-                STRING_INPUT_LIMIT_CODE,
-                "the string action input exceeds its boundary limit",
-            ));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::new(
+                    STRING_INPUT_LIMIT_CODE,
+                    "the string action input exceeds its boundary limit",
+                ),
+            );
         };
         let invocation = ActionInvocation::new(action_id, ActionInput::typed(contract, value));
         match self.inner.execute_action(expected.inner(), &invocation) {
-            Ok(outcome) => BreditorCommandResult::from_action_outcome(outcome),
+            Ok(outcome) => BreditorCommandResult::from_action_outcome(self, outcome),
             Err(error) => {
-                BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error))
+                BreditorCommandResult::from_error(self, BreditorError::checkpointed_engine(&error))
             }
         }
     }

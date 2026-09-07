@@ -4,13 +4,22 @@ import {
   BaseDocumentProjection,
   type BrowserProjectionResult,
   type BrowserSelectionResult,
-  consumeSemanticSelection,
+  consumeSemanticSelection as consumeSemanticSelectionRaw,
   semanticRangeSelectionScalars,
   type SemanticSelectionView,
+  type WasmProfileGenerationView,
 } from "./advanced.js";
+import { associateProjectionWithProfileGeneration } from "./wasm_projection_adapter.js";
+
+const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
+  matches(other) {
+    return other === TEST_PROFILE_GENERATION;
+  },
+  free: vi.fn(),
+};
 
 function projection() {
-  return projectionValue(
+  const value = projectionValue(
     BaseDocumentProjection.create({
       schema: { name: "breditor/base", version: 1 },
       snapshot: { lineage: "wasm-selection", revision: "8" },
@@ -24,6 +33,19 @@ function projection() {
         { runs: [] },
       ],
     }),
+  );
+  associateProjectionWithProfileGeneration(value, TEST_PROFILE_GENERATION);
+  return value;
+}
+
+function consumeSemanticSelection(
+  documentProjection: BaseDocumentProjection,
+  view: SemanticSelectionView,
+) {
+  return consumeSemanticSelectionRaw(
+    documentProjection,
+    view,
+    TEST_PROFILE_GENERATION,
   );
 }
 
@@ -58,6 +80,8 @@ function rangeView(
     focusOffset: 0,
     focusAffinity: "after",
     rangeOrder: "backward",
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     ...overrides,
     free,
   };
@@ -77,11 +101,26 @@ function noneView(free: () => void): SemanticSelectionView {
     focusOffset: undefined,
     focusAffinity: undefined,
     rangeOrder: undefined,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     free,
   };
 }
 
 describe("Wasm selection adapter", () => {
+  it("rejects a selection from another profile generation", () => {
+    const foreignGeneration: WasmProfileGenerationView = {
+      matches(other) { return other === foreignGeneration; },
+      free: vi.fn(),
+    };
+    const free = vi.fn();
+
+    expect(
+      consumeSemanticSelectionRaw(projection(), noneView(free), foreignGeneration).ok,
+    ).toBe(false);
+    expect(free).toHaveBeenCalledOnce();
+  });
+
   it("consumes one exact directional range and frees its view", () => {
     let freeCount = 0;
     const selection = selectionValue(

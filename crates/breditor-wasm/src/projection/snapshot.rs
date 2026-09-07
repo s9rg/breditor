@@ -1,8 +1,11 @@
 use breditor_core::{
     document::{NodeKind, NodeRef},
+    profile::CompiledProfileGeneration,
     state::EditorState,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
+
+use crate::BreditorProfileGeneration;
 
 use super::node_record::ProjectionNodeRecord;
 
@@ -21,20 +24,24 @@ use super::node_record::ProjectionNodeRecord;
 /// engine.
 #[wasm_bindgen]
 pub struct BreditorProjection {
+    generation: CompiledProfileGeneration,
     schema_name: String,
     schema_version: u32,
+    schema_fingerprint: String,
     lineage: String,
     revision: String,
     nodes: Vec<ProjectionNodeRecord>,
 }
 
 impl BreditorProjection {
-    pub(crate) fn from_state(state: &EditorState) -> Self {
+    pub(crate) fn from_state(generation: CompiledProfileGeneration, state: &EditorState) -> Self {
         let mut nodes = Vec::new();
         append_preorder(state.document().root(), &mut nodes);
         Self {
+            generation,
             schema_name: state.document().schema().name().as_str().to_owned(),
             schema_version: state.document().schema().version().get(),
+            schema_fingerprint: state.document().schema_fingerprint().to_string(),
             lineage: state.snapshot().lineage().as_str().to_owned(),
             revision: state.snapshot().revision().get().to_string(),
             nodes,
@@ -48,6 +55,13 @@ impl BreditorProjection {
 
 #[wasm_bindgen]
 impl BreditorProjection {
+    /// Checks the projection's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns the qualified schema name that defines the projected semantics.
     #[must_use]
     #[wasm_bindgen(getter, js_name = schemaName)]
@@ -60,6 +74,13 @@ impl BreditorProjection {
     #[wasm_bindgen(getter, js_name = schemaVersion)]
     pub fn schema_version(&self) -> u32 {
         self.schema_version
+    }
+
+    /// Returns the complete compiled-schema fingerprint.
+    #[must_use]
+    #[wasm_bindgen(getter, js_name = schemaFingerprint)]
+    pub fn schema_fingerprint(&self) -> String {
+        self.schema_fingerprint.clone()
     }
 
     /// Returns the lineage of the exact editor snapshot projected here.

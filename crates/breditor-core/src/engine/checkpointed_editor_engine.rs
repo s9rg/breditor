@@ -1,8 +1,9 @@
 use std::fmt;
 
 use crate::{
-    action::{ActionInvocation, ActionRegistry},
-    codec::{SessionCheckpointJsonCodec, SessionCheckpointLimits},
+    action::{ActionInvocation, ActionRegistry, routing::IntentInvocation},
+    codec::SessionCheckpointLimits,
+    profile::{CompiledProfileDescriptor, CompiledProfileGeneration},
     selection::Selection,
     session::EditorSession,
     state::EditorState,
@@ -10,14 +11,14 @@ use crate::{
 
 use super::{
     CheckpointedEditorEngineError, EditorActionOutcome, EditorEngine, EditorEngineEvent,
-    EditorEngineObservation,
+    EditorEngineObservation, EditorIntentOutcome, checkpoint_codec::CheckpointCodec,
 };
 
 /// Guarded editor owner whose every effective mutation remains checkpoint-representable.
 ///
 /// Construction strictly encodes the initial session. Each mutation then runs
 /// on a private candidate with the same opaque engine and history identities.
-/// The complete candidate Session Checkpoint V1 is encoded before one
+/// The complete candidate selected session-checkpoint version is encoded before one
 /// infallible owner replacement publishes either the candidate or its event.
 /// A failed command or encoding therefore leaves the state, history, cached
 /// checkpoint, and caller observation exact and reusable.
@@ -26,7 +27,7 @@ use super::{
 /// implements neither `DerefMut` nor `Clone`. That sealed surface ensures a new
 /// mutation route must make an explicit checkpoint-admission decision.
 pub struct CheckpointedEditorEngine {
-    codec: SessionCheckpointJsonCodec,
+    codec: CheckpointCodec,
     current: CheckpointedEditorEngineCurrent,
 }
 
@@ -36,11 +37,12 @@ struct CheckpointedEditorEngineCurrent {
 }
 
 impl CheckpointedEditorEngine {
-    /// Constrains an engine to one explicit session-checkpoint policy.
+    /// Constrains an engine to legacy-compatible Session Checkpoint V1.
     ///
-    /// The checkpoint codec always uses the engine's exact immutable context;
-    /// callers choose only the aggregate session limits. The retained canonical
-    /// JSON is regenerated after every effective admitted mutation.
+    /// The checkpoint codec always uses the engine's exact immutable context.
+    /// Callers choose only the aggregate session limits; use
+    /// [`Self::try_new_v2`] for the fingerprint-bearing profile boundary. The
+    /// retained canonical JSON is regenerated after every effective mutation.
     ///
     /// # Errors
     ///
@@ -51,11 +53,35 @@ impl CheckpointedEditorEngine {
         engine: EditorEngine,
         limits: SessionCheckpointLimits,
     ) -> Result<Self, CheckpointedEditorEngineError> {
-        let codec =
-            SessionCheckpointJsonCodec::new(engine.state().context().clone()).with_limits(limits);
-        let checkpoint_json = codec
-            .encode(engine.session())
-            .map_err(|error| CheckpointedEditorEngineError::checkpoint(error.code()))?;
+        let codec = CheckpointCodec::v1(engine.state().context().clone(), limits);
+        Self::try_new_with_codec(engine, codec)
+    }
+
+    /// Constrains an engine to fingerprint-bearing Session Checkpoint V2.
+    ///
+    /// This explicit construction path prevents a profile bootstrap from
+    /// accidentally choosing legacy V1 merely because its schema currently
+    /// equals the built-in base definition. Every later mutation retains this
+    /// exact V2 admission policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns a payload-redacting session-checkpoint representation error when
+    /// the supplied initial session cannot be encoded under `limits`.
+    pub fn try_new_v2(
+        engine: EditorEngine,
+        limits: SessionCheckpointLimits,
+    ) -> Result<Self, CheckpointedEditorEngineError> {
+        let codec = CheckpointCodec::v2(engine.state().context().clone(), limits);
+        Self::try_new_with_codec(engine, codec)
+    }
+
+    fn try_new_with_codec(
+        engine: EditorEngine,
+        codec: CheckpointCodec,
+    ) -> Result<Self, CheckpointedEditorEngineError> {
+        let checkpoint_json =
+            codec.encode(engine.session()).map_err(CheckpointedEditorEngineError::checkpoint)?;
         Ok(Self { codec, current: CheckpointedEditorEngineCurrent { engine, checkpoint_json } })
     }
 
@@ -77,13 +103,34 @@ impl CheckpointedEditorEngine {
         self.current.engine.action_registry()
     }
 
+    /// Returns the complete compiled-profile descriptor, when configured.
+    #[must_use]
+    pub fn compiled_profile_descriptor(&self) -> Option<&CompiledProfileDescriptor> {
+        self.current.engine.compiled_profile_descriptor()
+    }
+
+    /// Returns the opaque compiled-profile generation, when configured.
+    #[must_use]
+    pub fn profile_generation(&self) -> Option<&CompiledProfileGeneration> {
+        self.current.engine.profile_generation()
+    }
+
     /// Returns the aggregate policy applied to construction and every mutation.
     #[must_use]
     pub const fn session_checkpoint_limits(&self) -> &SessionCheckpointLimits {
         self.codec.limits()
     }
 
-    /// Returns the latest canonical Session Checkpoint V1 JSON.
+    /// Returns the selected session-checkpoint wire format version.
+    ///
+    /// [`Self::try_new`] selects V1 and [`Self::try_new_v2`] selects V2. The
+    /// selection is retained for every later candidate mutation.
+    #[must_use]
+    pub const fn session_checkpoint_format_version(&self) -> u32 {
+        self.codec.format_version()
+    }
+
+    /// Returns the latest canonical selected-version session-checkpoint JSON.
     ///
     /// The borrowed value was fully encoded before the corresponding session
     /// became authoritative, so this read has no codec failure path and makes
@@ -130,6 +177,30 @@ impl CheckpointedEditorEngine {
         let mut candidate = self.candidate(expected)?;
         let outcome = candidate.execute_action(expected, invocation)?;
         self.finish_action_candidate(candidate, outcome)
+    }
+
+    /// Routes and conditionally publishes one semantic intent under checkpoint admission.
+    ///
+    /// Blocked and unhandled outcomes reuse the admitted checkpoint. A
+    /// committed outcome becomes authoritative only after the complete
+    /// candidate session encodes successfully.
+    ///
+    /// # Errors
+    ///
+    /// Returns a guarded-engine or checkpoint representation failure without
+    /// changing the authoritative owner or cached checkpoint.
+    pub fn execute_intent(
+        &mut self,
+        expected: &EditorEngineObservation,
+        invocation: &IntentInvocation,
+    ) -> Result<EditorIntentOutcome, CheckpointedEditorEngineError> {
+        let mut candidate = self.candidate(expected)?;
+        let outcome = candidate.execute_intent(expected, invocation)?;
+        if outcome.is_committed() {
+            self.publish_candidate(candidate, outcome)
+        } else {
+            Ok(outcome)
+        }
     }
 
     /// Publishes one host-observed selection only when its candidate checkpoint encodes.
@@ -255,7 +326,7 @@ impl CheckpointedEditorEngine {
         let checkpoint_json = self
             .codec
             .encode(candidate.session())
-            .map_err(|error| CheckpointedEditorEngineError::checkpoint(error.code()))?;
+            .map_err(CheckpointedEditorEngineError::checkpoint)?;
         self.current = CheckpointedEditorEngineCurrent { engine: candidate, checkpoint_json };
         Ok(outcome)
     }

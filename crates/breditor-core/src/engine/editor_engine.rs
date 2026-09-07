@@ -2,8 +2,11 @@ use std::fmt;
 
 use crate::{
     action::{
-        ActionPreparation, ActionRegistry, ActionRegistryError, builtins::base_action_registry,
+        ActionPreparation, ActionRegistry, ActionRegistryError,
+        builtins::base_action_registry,
+        routing::{IntentInvocation, IntentRouter},
     },
+    profile::{CompiledEditorProfile, CompiledProfileDescriptor, CompiledProfileGeneration},
     selection::Selection,
     session::EditorSession,
     state::EditorState,
@@ -12,7 +15,8 @@ use crate::{
 
 use super::{
     EditorActionOutcome, EditorDisabledAction, EditorEngineError, EditorEngineEvent,
-    EditorEngineObservation, instance_id::EditorEngineInstanceId,
+    EditorEngineObservation, EditorEngineProfileError, EditorIntentOutcome,
+    instance_id::EditorEngineInstanceId,
 };
 
 /// Exclusive synchronous owner of one editor session and action generation.
@@ -36,6 +40,7 @@ pub struct EditorEngine {
     instance: EditorEngineInstanceId,
     session: EditorSession,
     action_registry: ActionRegistry,
+    profile: Option<CompiledEditorProfile>,
 }
 
 impl EditorEngine {
@@ -46,11 +51,12 @@ impl EditorEngine {
     /// it either replaces this engine after all admission work succeeds or is
     /// discarded without exposing a mutation result.
     pub(super) fn clone_for_prepublication(&self) -> Self {
-        let Self { instance, session, action_registry } = self;
+        let Self { instance, session, action_registry, profile } = self;
         Self {
             instance: instance.clone(),
             session: session.clone_for_prepublication(),
             action_registry: action_registry.clone(),
+            profile: profile.clone(),
         }
     }
 
@@ -61,7 +67,42 @@ impl EditorEngine {
     /// supplied session and registry were recovered through [`Self::into_parts`].
     #[must_use]
     pub fn new(session: EditorSession, action_registry: ActionRegistry) -> Self {
-        Self { instance: EditorEngineInstanceId::new(), session, action_registry }
+        Self { instance: EditorEngineInstanceId::new(), session, action_registry, profile: None }
+    }
+
+    /// Creates an engine owning one exact compiled profile and matching session.
+    ///
+    /// Generation admission precedes schema-proof admission. This makes a
+    /// cross-profile session distinguishable without disclosing either opaque
+    /// identity. The profile's action registry and intent router become the
+    /// sole execution authorities retained by the engine.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EditorEngineProfileError`] when the session is unprofiled,
+    /// belongs to another generation, or lacks the profile's schema proof. No
+    /// partially assembled engine is returned.
+    pub fn try_with_compiled_profile(
+        session: EditorSession,
+        profile: CompiledEditorProfile,
+    ) -> Result<Self, EditorEngineProfileError> {
+        let context = session.state().context();
+        let Some(generation) = context.profile_generation() else {
+            return Err(EditorEngineProfileError::MissingGeneration);
+        };
+        if generation != profile.generation() {
+            return Err(EditorEngineProfileError::GenerationMismatch);
+        }
+        if !profile.schema().shares_proof(context.schema().proof()) {
+            return Err(EditorEngineProfileError::SchemaProofMismatch);
+        }
+        let action_registry = profile.action_registry().clone();
+        Ok(Self {
+            instance: EditorEngineInstanceId::new(),
+            session,
+            action_registry,
+            profile: Some(profile),
+        })
     }
 
     /// Creates an engine containing the exact Breditor base action generation.
@@ -96,10 +137,29 @@ impl EditorEngine {
         &self.action_registry
     }
 
+    /// Returns the profile-owned semantic intent router, when configured.
+    #[must_use]
+    pub fn intent_router(&self) -> Option<&IntentRouter> {
+        self.profile.as_ref().map(CompiledEditorProfile::intent_router)
+    }
+
+    /// Returns the complete compiled-profile descriptor, when configured.
+    #[must_use]
+    pub fn compiled_profile_descriptor(&self) -> Option<&CompiledProfileDescriptor> {
+        self.profile.as_ref().map(CompiledEditorProfile::descriptor)
+    }
+
+    /// Returns the engine's opaque compiled-profile generation, when configured.
+    #[must_use]
+    pub fn profile_generation(&self) -> Option<&CompiledProfileGeneration> {
+        self.profile.as_ref().map(CompiledEditorProfile::generation)
+    }
+
     /// Captures the exact engine, state, and history basis for a later command.
     #[must_use]
     pub fn observation(&self) -> EditorEngineObservation {
         EditorEngineObservation::new(
+            self.profile_generation().cloned(),
             self.instance.clone(),
             self.state().snapshot().clone(),
             self.session.history_status(),
@@ -116,7 +176,8 @@ impl EditorEngine {
     ///
     /// # Errors
     ///
-    /// Returns [`EditorEngineError::StaleEngine`],
+    /// Returns [`EditorEngineError::ProfileGenerationMismatch`],
+    /// [`EditorEngineError::StaleEngine`],
     /// [`EditorEngineError::StaleSnapshot`], or
     /// [`EditorEngineError::StaleHistory`] using the same precedence as every
     /// guarded mutation. The engine is never changed.
@@ -127,10 +188,13 @@ impl EditorEngine {
         self.require_observation(actual)
     }
 
-    /// Consumes the engine and releases both owned components.
+    /// Consumes the engine into an advanced unprofiled session and registry.
     ///
     /// Reassembling them with [`Self::new`] creates a new engine identity and
-    /// deliberately invalidates every previously captured observation.
+    /// deliberately invalidates every previously captured observation. Calling
+    /// this on a profile-owned engine explicitly drops its profile descriptor,
+    /// router, and generation authority; the returned session still carries
+    /// its context generation and cannot be supplied to an unrelated profile.
     #[must_use]
     pub fn into_parts(self) -> (EditorSession, ActionRegistry) {
         (self.session, self.action_registry)
@@ -174,6 +238,34 @@ impl EditorEngine {
                 Ok(EditorActionOutcome::Committed(event))
             }
         }
+    }
+
+    /// Routes and synchronously consumes one typed semantic intent.
+    ///
+    /// The observation guard runs before profile/router access and all input
+    /// validation. Routing, action preparation, and publication complete in
+    /// this call, so no executable prepared route can escape the engine.
+    /// Blocked and unhandled results are successful unchanged outcomes.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`EditorEngineError`] for a mismatched observation, an
+    /// unprofiled engine, routing failure, or an unexpected exact-base failure.
+    /// Every error leaves state and history unchanged.
+    pub fn execute_intent(
+        &mut self,
+        expected: &EditorEngineObservation,
+        invocation: &IntentInvocation,
+    ) -> Result<EditorIntentOutcome, EditorEngineError> {
+        self.require_observation(expected)?;
+        let router = self
+            .profile
+            .as_ref()
+            .map(CompiledEditorProfile::intent_router)
+            .ok_or(EditorEngineError::ProfileUnavailable)?;
+        let route = router.route(self.session.state(), invocation)?;
+        let execution = self.session.execute_intent_route(route)?;
+        Ok(EditorIntentOutcome::new(execution, self.observation()))
     }
 
     /// Publishes one host-observed selection against an exact engine observation.
@@ -292,6 +384,9 @@ impl EditorEngine {
         &self,
         actual: &EditorEngineObservation,
     ) -> Result<(), EditorEngineError> {
+        if actual.profile_generation() != self.profile_generation() {
+            return Err(EditorEngineError::ProfileGenerationMismatch);
+        }
         if actual.instance() != &self.instance {
             return Err(EditorEngineError::StaleEngine);
         }
@@ -316,6 +411,98 @@ impl fmt::Debug for EditorEngine {
             .field("snapshot", self.state().snapshot())
             .field("history", &self.session.history_status())
             .field("action_count", &self.action_registry.len())
+            .field("profile_generation", &self.profile_generation())
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+
+    use crate::{
+        action::{
+            ActionStateCatalog,
+            builtins::base_action_registry,
+            routing::{
+                IntentDeclaration, IntentExecutionOutcome, IntentId, IntentInvocation, IntentRouter,
+            },
+        },
+        codec::DocumentJsonCodec,
+        extension::ExtensionSet,
+        profile::CompiledEditorProfile,
+        schema::{CompiledSchema, DocumentLimits},
+        session::EditorSession,
+        state::{EditorContext, EditorState, LineageId},
+    };
+
+    use super::{EditorEngine, EditorEngineProfileError};
+
+    const EMPTY_DOCUMENT: &str = concat!(
+        r#"{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":["#,
+        r#"{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}"#,
+        r#"]}}"#,
+    );
+
+    fn profile_with_unbound_intent() -> Result<CompiledEditorProfile, Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let actions = base_action_registry()?;
+        let intent = IntentId::try_new("test/unbound-intent")?;
+        let router =
+            IntentRouter::try_new(actions, vec![IntentDeclaration::new(intent)], Vec::new())?;
+        let action_states = ActionStateCatalog::try_new_with_router(router.clone(), Vec::new())?;
+        Ok(CompiledEditorProfile::from_compilation(
+            ExtensionSet::empty(),
+            schema,
+            router,
+            action_states,
+        ))
+    }
+
+    fn session(context: &EditorContext, lineage: &str) -> Result<EditorSession, Box<dyn Error>> {
+        let document = DocumentJsonCodec::new(context.schema().clone()).decode(EMPTY_DOCUMENT)?;
+        let state =
+            EditorState::try_new(context, LineageId::try_new(lineage)?, document, None, None)?;
+        Ok(EditorSession::new(state))
+    }
+
+    #[test]
+    fn profile_constructor_rejects_matching_generation_with_wrong_schema_proof()
+    -> Result<(), Box<dyn Error>> {
+        let profile = profile_with_unbound_intent()?;
+        let context = EditorContext::with_profile_generation(
+            CompiledSchema::breditor_base(),
+            DocumentLimits::default(),
+            profile.generation().clone(),
+        );
+        let result = EditorEngine::try_with_compiled_profile(
+            session(&context, "wrong-profile-schema-proof")?,
+            profile,
+        );
+
+        assert!(matches!(result, Err(EditorEngineProfileError::SchemaProofMismatch)));
+        Ok(())
+    }
+
+    #[test]
+    fn declared_intent_without_bindings_returns_unhandled_successor() -> Result<(), Box<dyn Error>>
+    {
+        let profile = profile_with_unbound_intent()?;
+        let context = profile.editor_context(DocumentLimits::default());
+        let mut engine = EditorEngine::try_with_compiled_profile(
+            session(&context, "profile-unhandled-intent")?,
+            profile,
+        )?;
+        let expected = engine.observation();
+        let outcome = engine.execute_intent(
+            &expected,
+            &IntentInvocation::without_input(IntentId::try_new("test/unbound-intent")?),
+        )?;
+
+        assert!(matches!(outcome.execution(), IntentExecutionOutcome::Unhandled { .. }));
+        assert!(!outcome.is_committed());
+        assert_eq!(outcome.observation(), &expected);
+        assert_eq!(engine.observation(), expected);
+        Ok(())
     }
 }

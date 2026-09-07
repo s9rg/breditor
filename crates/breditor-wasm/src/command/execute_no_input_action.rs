@@ -24,38 +24,47 @@ impl BreditorEngine {
         action_id: &str,
     ) -> BreditorCommandResult {
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::checkpointed_engine(&error),
+            );
         }
         let Ok(action_id) = ActionId::try_new(action_id) else {
-            return BreditorCommandResult::from_error(BreditorError::new(
-                INVALID_ACTION_ID_CODE,
-                "the action identity is invalid",
-            ));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::new(INVALID_ACTION_ID_CODE, "the action identity is invalid"),
+            );
         };
         let Some(descriptor) = self.inner.action_registry().descriptor(&action_id) else {
-            return BreditorCommandResult::from_error(BreditorError::new(
-                UNKNOWN_ACTION_CODE,
-                "the action is not registered",
-            ));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::new(UNKNOWN_ACTION_CODE, "the action is not registered"),
+            );
         };
         if let Some(contract) = descriptor.input_contract() {
             if supports_string_input(&action_id, contract) {
-                return BreditorCommandResult::from_error(BreditorError::new(
-                    ACTION_REQUIRES_STRING_CODE,
-                    "the action requires string input",
-                ));
+                return BreditorCommandResult::from_error(
+                    self,
+                    BreditorError::new(
+                        ACTION_REQUIRES_STRING_CODE,
+                        "the action requires string input",
+                    ),
+                );
             }
-            return BreditorCommandResult::from_error(BreditorError::new(
-                UNSUPPORTED_ACTION_INPUT_CODE,
-                "the action input shape is not supported by this Wasm ABI",
-            ));
+            return BreditorCommandResult::from_error(
+                self,
+                BreditorError::new(
+                    UNSUPPORTED_ACTION_INPUT_CODE,
+                    "the action input shape is not supported by this Wasm ABI",
+                ),
+            );
         }
 
         let invocation = ActionInvocation::without_input(action_id);
         match self.inner.execute_action(expected.inner(), &invocation) {
-            Ok(outcome) => BreditorCommandResult::from_action_outcome(outcome),
+            Ok(outcome) => BreditorCommandResult::from_action_outcome(self, outcome),
             Err(error) => {
-                BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error))
+                BreditorCommandResult::from_error(self, BreditorError::checkpointed_engine(&error))
             }
         }
     }

@@ -10,7 +10,8 @@ use breditor_core::{
     state::{EditorContext, EditorState, LineageId},
 };
 use breditor_wasm::{
-    BreditorActionStateSnapshot, BreditorActionStatesResult, BreditorCommandResult, BreditorEngine,
+    BreditorActionStateSnapshot, BreditorActionStatesResult, BreditorCommandResult,
+    BreditorCompiledProfile, BreditorCompiledProfileDescriptor, BreditorEngine,
     BreditorEngineResult, BreditorObservation, BreditorProjection, BreditorProjectionResult,
     BreditorStringResult, breditor_version, breditor_wasm_abi_version,
 };
@@ -39,6 +40,25 @@ const TEXT_DOCUMENT_JSON: &str = r#"{
     "children":[{"kind":"element","type":"breditor/paragraph","entityId":null,
       "properties":{},"children":[{"kind":"text","text":"a","formats":[]}]}]}
 }"#;
+
+const PROFILE_BOOTSTRAP_JSON: &str = r#"{
+  "format":"breditor/profile-bootstrap","formatVersion":1,
+  "schema":{"name":"example/editor","version":1},
+  "extensions":[{
+    "id":{"name":"example/highlight-extension","version":1},
+    "dependencies":[],"conflicts":[],
+    "inlineFormats":[{"kind":"example/highlight","revision":7}],
+    "inlineFormatToggles":[{
+      "formatKind":"example/highlight",
+      "actionId":"example/toggle-highlight",
+      "intentId":"example/toggle-highlight-intent",
+      "bindingId":"example/toggle-highlight-binding",
+      "actionStateId":"example/highlight-control"
+    }]
+  }]
+}"#;
+
+const PROFILE_INTENT: &str = "example/toggle-highlight-intent";
 
 const PROJECTION_DOCUMENT_JSON: &str = r#"{
   "format":"breditor/document","formatVersion":1,
@@ -84,7 +104,7 @@ extern "C" {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn factory_observation_and_json_reads_are_structured() -> TestResult {
-    assert_eq!(breditor_wasm_abi_version(), "2");
+    assert_eq!(breditor_wasm_abi_version(), "3");
     assert_eq!(breditor_version(), env!("CARGO_PKG_VERSION"));
     let mut result = BreditorEngine::from_document_json("wasm-factory", EMPTY_DOCUMENT_JSON, 100.0);
     assert_eq!(result.status(), "engine");
@@ -127,6 +147,246 @@ fn factory_observation_and_json_reads_are_structured() -> TestResult {
     let checkpoint_json =
         checkpoint.take_value().ok_or_else(|| test_error("checkpoint JSON was absent"))?;
     assert!(checkpoint_json.contains("\"format\":\"breditor/session-checkpoint\""));
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[allow(clippy::too_many_lines)]
+fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
+    let mut profile_result = BreditorCompiledProfile::from_bootstrap_json(PROFILE_BOOTSTRAP_JSON);
+    assert_eq!(profile_result.status(), "profile");
+    assert!(profile_result.error().is_none());
+    let profile =
+        profile_result.take_profile().ok_or_else(|| test_error("compiled profile was absent"))?;
+    assert_eq!(profile_result.status(), "taken");
+    assert!(profile_result.take_profile().is_none());
+
+    let generation = profile.generation();
+    let generation_copy = profile.generation();
+    assert!(generation.matches(&generation_copy));
+    assert!(profile.matches_profile_generation(&generation));
+
+    let descriptor = profile.descriptor();
+    assert!(descriptor.matches_profile_generation(&generation));
+    assert_eq!(descriptor.schema_name(), "example/editor");
+    assert_eq!(descriptor.schema_version(), 1);
+    assert!(descriptor.schema_fingerprint().starts_with("sha256:"));
+    assert_eq!(descriptor.schema_fingerprint().len(), 71);
+    assert_eq!(descriptor.format_count(), 2);
+    assert_eq!(descriptor.format_kind(0).as_deref(), Some("breditor/strong"));
+    assert_eq!(descriptor.format_revision(0), Some(1));
+    assert_eq!(descriptor.format_kind(1).as_deref(), Some("example/highlight"));
+    assert_eq!(descriptor.format_revision(1), Some(7));
+    assert_eq!(descriptor.format_kind(2), None);
+    assert_eq!(descriptor.format_revision(2), None);
+
+    assert_eq!(descriptor.intent_count(), 1);
+    assert_eq!(descriptor.intent_id(0).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.intent_input_kind(0).as_deref(), Some("none"));
+    assert_eq!(descriptor.intent_input_contract_name(0), None);
+    assert_eq!(descriptor.intent_input_contract_version(0), None);
+    assert_eq!(descriptor.intent_activation_contract(0).as_deref(), Some("tracked"));
+    assert_eq!(descriptor.intent_value_contract_name(0), None);
+    assert_eq!(descriptor.intent_value_contract_version(0), None);
+    assert_eq!(descriptor.intent_id(1), None);
+
+    assert_eq!(descriptor.action_state_count(), 4);
+    assert_eq!(descriptor.action_state_id(3).as_deref(), Some("example/highlight-control"));
+    assert_eq!(descriptor.action_state_source_kind(3).as_deref(), Some("routed"));
+    assert_eq!(descriptor.action_state_source_action_id(3), None);
+    assert_eq!(descriptor.action_state_source_intent_id(3).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.action_state_history_direction(3), None);
+    assert_eq!(descriptor.action_state_activation_contract(3).as_deref(), Some("tracked"));
+    assert_eq!(descriptor.action_state_value_contract_name(3), None);
+    assert_eq!(descriptor.action_state_value_contract_version(3), None);
+    assert_eq!(descriptor.action_state_source_kind(4), None);
+
+    let v2_document = profile_document_v2(&descriptor, "abc");
+    let mut rejected =
+        profile.create_engine_from_document_json("profile-v2-reject", TEXT_DOCUMENT_JSON, 100.0);
+    assert_eq!(rejected.status(), "error");
+    assert!(rejected.take_engine().is_none());
+    assert!(rejected.error().is_some());
+
+    let mut engine_result =
+        profile.create_engine_from_document_json("profile-v2", &v2_document, 100.0);
+    let mut engine = require_engine(&mut engine_result)?;
+    assert!(engine.matches_profile_generation(&generation));
+    assert!(engine.profile_generation().matches(&generation));
+    assert!(engine.profile_descriptor().matches_profile_generation(&generation));
+
+    let observation = engine.observation();
+    assert!(observation.matches_profile_generation(&generation));
+    let state: Value = serde_json::from_str(&require_string(engine.state_json())?)?;
+    assert_eq!(state["formatVersion"], 2);
+    assert_eq!(state["schemaFingerprint"], descriptor.schema_fingerprint());
+    let document: Value =
+        serde_json::from_str(&require_string(engine.document_json(&observation))?)?;
+    assert_eq!(document["formatVersion"], 2);
+    assert_eq!(document["schemaFingerprint"], descriptor.schema_fingerprint());
+    let checkpoint = require_string(engine.session_checkpoint_json())?;
+    let checkpoint_record: Value = serde_json::from_str(&checkpoint)?;
+    assert_eq!(checkpoint_record["formatVersion"], 2);
+    assert_eq!(checkpoint_record["schemaFingerprint"], descriptor.schema_fingerprint());
+
+    let mut projection_result = engine.projection(&observation);
+    assert!(projection_result.matches_profile_generation(&generation));
+    let projection = require_projection(&mut projection_result)?;
+    assert!(projection.matches_profile_generation(&generation));
+    assert_eq!(projection.schema_fingerprint(), descriptor.schema_fingerprint());
+
+    let mut selection_result = engine.selection(&observation);
+    assert!(selection_result.matches_profile_generation(&generation));
+    let selection = selection_result
+        .take_selection()
+        .ok_or_else(|| test_error("profile selection was absent"))?;
+    assert!(selection.matches_profile_generation(&generation));
+    assert_eq!(selection.kind(), "none");
+
+    let mut states_result = engine.action_states(&observation);
+    assert!(states_result.matches_profile_generation(&generation));
+    let states = require_action_state_snapshot(&mut states_result)?;
+    assert!(states.matches_profile_generation(&generation));
+    assert_eq!(states.entry_count(), 4);
+    assert_eq!(states.entry_id(3).as_deref(), Some("example/highlight-control"));
+
+    let unchanged = engine.clear_selection(&observation);
+    assert_eq!(unchanged.status(), "unchanged");
+    assert!(unchanged.matches_profile_generation(&generation));
+
+    let blocked = engine.execute_no_input_intent(&observation, PROFILE_INTENT);
+    assert_eq!(blocked.status(), "blocked");
+    assert!(blocked.matches_profile_generation(&generation));
+    assert_eq!(blocked.intent_id().as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(blocked.binding_id().as_deref(), Some("example/toggle-highlight-binding"));
+    assert_eq!(blocked.action_id().as_deref(), Some("example/toggle-highlight"));
+    assert_eq!(blocked.binding_priority(), Some(0));
+    assert_eq!(blocked.blocked_reason_code().as_deref(), Some("breditor/no-selection"));
+    assert_eq!(blocked.blocked_reason_detail_json().status(), "absent");
+    assert_eq!(blocked.blocked_activation().as_deref(), Some("inactive"));
+    assert_eq!(blocked.blocked_value_status().as_deref(), Some("unsupported"));
+    assert_eq!(blocked.blocked_value_contract_name(), None);
+    assert_eq!(blocked.blocked_value_contract_version(), None);
+    assert_eq!(blocked.blocked_value_json().status(), "absent");
+    assert_eq!(blocked.fallthrough_count(), 0);
+    assert_eq!(blocked.fallthrough_binding_id(0), None);
+    assert_eq!(blocked.commit_json().status(), "absent");
+    assert!(blocked.projection_update().is_none());
+    assert!(blocked.error().is_none());
+    let blocked_observation = blocked
+        .observation()
+        .ok_or_else(|| test_error("blocked intent omitted its observation"))?;
+    assert_eq!(blocked_observation.snapshot_revision(), observation.snapshot_revision());
+    assert!(blocked_observation.matches_profile_generation(&generation));
+
+    let invalid = engine.execute_no_input_intent(&observation, "");
+    assert_eq!(invalid.status(), "error");
+    assert!(invalid.matches_profile_generation(&generation));
+    assert_eq!(
+        invalid.error().map(|error| error.code()).as_deref(),
+        Some("breditor_wasm.invalid_intent_id")
+    );
+    let unknown = engine.execute_no_input_intent(&observation, "example/unknown");
+    assert_eq!(unknown.status(), "error");
+    assert_eq!(
+        unknown.error().map(|error| error.code()).as_deref(),
+        Some("editor_engine.intent_routing")
+    );
+
+    let mut restored_result = profile.create_engine_from_session_checkpoint_json(&checkpoint);
+    let restored = require_engine(&mut restored_result)?;
+    assert!(restored.matches_profile_generation(&generation));
+    let mut cross_engine = restored.document_json(&observation);
+    assert_string_error(&mut cross_engine, "editor_engine.stale_engine", "abc")?;
+
+    let mut independent_result =
+        BreditorCompiledProfile::from_bootstrap_json(PROFILE_BOOTSTRAP_JSON);
+    let independent = independent_result
+        .take_profile()
+        .ok_or_else(|| test_error("independent profile was absent"))?;
+    let independent_generation = independent.generation();
+    assert!(!independent_generation.matches(&generation));
+    assert!(!profile.matches_profile_generation(&independent_generation));
+    let mut independent_engine_result =
+        independent.create_engine_from_session_checkpoint_json(&checkpoint);
+    let independent_engine = require_engine(&mut independent_engine_result)?;
+    let mut foreign_generation = independent_engine.document_json(&observation);
+    assert_string_error(
+        &mut foreign_generation,
+        "editor_engine.profile_generation_mismatch",
+        "abc",
+    )?;
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+fn profile_intents_publish_v2_with_owned_provenance_and_successor_state() -> TestResult {
+    let mut profile_result = BreditorCompiledProfile::from_bootstrap_json(PROFILE_BOOTSTRAP_JSON);
+    let profile =
+        profile_result.take_profile().ok_or_else(|| test_error("compiled profile was absent"))?;
+    let generation = profile.generation();
+    let descriptor = profile.descriptor();
+    let checkpoint = profile_checkpoint_v2(&descriptor, "profile-intent-commit", "abc")?;
+    let mut engine_result = profile.create_engine_from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut engine_result)?;
+    let initial = engine.observation();
+
+    let intent = engine.execute_no_input_intent(&initial, PROFILE_INTENT);
+    assert_eq!(intent.status(), "committed");
+    assert!(intent.matches_profile_generation(&generation));
+    assert_eq!(intent.intent_id().as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(intent.binding_id().as_deref(), Some("example/toggle-highlight-binding"));
+    assert_eq!(intent.action_id().as_deref(), Some("example/toggle-highlight"));
+    assert_eq!(intent.binding_priority(), Some(0));
+    assert_eq!(intent.blocked_reason_code(), None);
+    assert_eq!(intent.blocked_activation(), None);
+    assert_eq!(intent.fallthrough_count(), 0);
+    assert!(intent.error().is_none());
+
+    let commit_json = require_string(intent.commit_json())?;
+    let commit: Value = serde_json::from_str(&commit_json)?;
+    assert_eq!(commit["formatVersion"], 2);
+    assert_eq!(commit["schemaFingerprint"], descriptor.schema_fingerprint());
+
+    let mut update = intent
+        .projection_update()
+        .ok_or_else(|| test_error("committed intent omitted projection update"))?;
+    assert!(update.matches_profile_generation(&generation));
+    assert_eq!(update.base_revision(), "0");
+    assert_eq!(update.result_revision(), "1");
+    let final_projection = update
+        .take_projection()
+        .ok_or_else(|| test_error("intent projection update omitted projection"))?;
+    assert!(final_projection.matches_profile_generation(&generation));
+
+    let successor = intent
+        .observation()
+        .ok_or_else(|| test_error("committed intent omitted successor observation"))?;
+    assert!(successor.matches_profile_generation(&generation));
+    assert_eq!(successor.snapshot_revision(), "1");
+    let document: Value = serde_json::from_str(&require_string(engine.document_json(&successor))?)?;
+    assert_eq!(document["formatVersion"], 2);
+    assert_eq!(
+        document["root"]["children"][0]["children"][0]["formats"][0]["type"],
+        "example/highlight"
+    );
+
+    let mut states_result = engine.action_states(&successor);
+    let states = require_action_state_snapshot(&mut states_result)?;
+    assert!(states.matches_profile_generation(&generation));
+    assert_eq!(states.entry_id(3).as_deref(), Some("example/highlight-control"));
+    assert_eq!(states.entry_status(3).as_deref(), Some("enabled"));
+    assert_eq!(states.entry_activation(3).as_deref(), Some("active"));
+
+    let checkpoint_after = require_string(engine.session_checkpoint_json())?;
+    assert_eq!(serde_json::from_str::<Value>(&checkpoint_after)?["formatVersion"], 2);
+    let mut restored_result = profile.create_engine_from_session_checkpoint_json(&checkpoint_after);
+    let restored = require_engine(&mut restored_result)?;
+    let restored_observation = restored.observation();
+    assert!(restored_observation.matches_profile_generation(&generation));
+    assert_eq!(restored_observation.snapshot_revision(), "1");
     Ok(())
 }
 
@@ -415,7 +675,11 @@ fn document_json_rejects_stale_history_and_foreign_observations_without_content_
     let other = require_engine(&mut other_result)?;
     let foreign = other.observation();
     let mut foreign_result = engine.document_json(&foreign);
-    assert_string_error(&mut foreign_result, "editor_engine.stale_engine", PRIVATE_TEXT)?;
+    assert_string_error(
+        &mut foreign_result,
+        "editor_engine.profile_generation_mismatch",
+        PRIVATE_TEXT,
+    )?;
 
     let current_document = require_string(engine.document_json(&current))?;
     assert!(current_document.contains(PRIVATE_TEXT));
@@ -1152,13 +1416,100 @@ fn checkpoint_restore_allocates_a_fresh_engine_identity() -> TestResult {
     let mut second = require_engine(&mut second_result)?;
 
     let cross_engine = second.undo(&first_observation);
-    assert_command_error(&cross_engine, "editor_engine.stale_engine", "wasm-restore")?;
+    assert_command_error(
+        &cross_engine,
+        "editor_engine.profile_generation_mismatch",
+        "wasm-restore",
+    )?;
     assert_eq!(second.observation().snapshot_revision(), "0");
 
     let current = first.observation();
     let first_undo = first.undo(&current);
     assert_eq!(first_undo.status(), "unchanged");
     Ok(())
+}
+
+fn profile_document_v2(descriptor: &BreditorCompiledProfileDescriptor, text: &str) -> String {
+    serde_json::json!({
+        "format": "breditor/document",
+        "formatVersion": 2,
+        "schema": {
+            "name": descriptor.schema_name(),
+            "version": descriptor.schema_version(),
+        },
+        "schemaFingerprint": descriptor.schema_fingerprint(),
+        "root": {
+            "kind": "element",
+            "type": "breditor/document",
+            "entityId": null,
+            "properties": {},
+            "children": [{
+                "kind": "element",
+                "type": "breditor/paragraph",
+                "entityId": null,
+                "properties": {},
+                "children": [{
+                    "kind": "text",
+                    "text": text,
+                    "formats": [],
+                }],
+            }],
+        },
+    })
+    .to_string()
+}
+
+fn profile_checkpoint_v2(
+    descriptor: &BreditorCompiledProfileDescriptor,
+    lineage: &str,
+    text: &str,
+) -> TestResult<String> {
+    let document: Value = serde_json::from_str(&profile_document_v2(descriptor, text))?;
+    Ok(serde_json::json!({
+        "format": "breditor/session-checkpoint",
+        "formatVersion": 2,
+        "schema": {
+            "name": descriptor.schema_name(),
+            "version": descriptor.schema_version(),
+        },
+        "schemaFingerprint": descriptor.schema_fingerprint(),
+        "historyBase": {
+            "format": "breditor/editor-state",
+            "formatVersion": 2,
+            "schema": {
+                "name": descriptor.schema_name(),
+                "version": descriptor.schema_version(),
+            },
+            "schemaFingerprint": descriptor.schema_fingerprint(),
+            "snapshot": {
+                "lineage": lineage,
+                "revision": "0",
+            },
+            "document": document,
+            "selection": {
+                "kind": "range",
+                "anchor": {
+                    "kind": "text",
+                    "textPath": [0, 0],
+                    "utf16Offset": 0,
+                    "affinity": "before",
+                },
+                "focus": {
+                    "kind": "text",
+                    "textPath": [0, 0],
+                    "utf16Offset": 3,
+                    "affinity": "after",
+                },
+            },
+            "pendingFormats": null,
+        },
+        "currentRevision": "0",
+        "historyCapacity": 100,
+        "cursor": 0,
+        "entries": [],
+        "openMergeGroup": null,
+    })
+    .to_string())
 }
 
 fn selected_checkpoint(lineage: &str) -> TestResult<String> {

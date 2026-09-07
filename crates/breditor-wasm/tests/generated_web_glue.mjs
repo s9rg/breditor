@@ -39,6 +39,97 @@ const EMPTY_DOCUMENT_JSON = JSON.stringify({
 const SELECTED_CHECKPOINT_JSON =
   '{"format":"breditor/session-checkpoint","formatVersion":1,"historyBase":{"format":"breditor/editor-state","formatVersion":1,"snapshot":{"lineage":"web-glue-projection-update","revision":"0"},"document":{"format":"breditor/document","formatVersion":1,"schema":{"name":"breditor/base","version":1},"root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},"children":[{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[{"kind":"text","text":"a","formats":[]}]}]}},"selection":{"kind":"range","anchor":{"kind":"text","textPath":[0,0],"utf16Offset":1,"affinity":"after"},"focus":{"kind":"text","textPath":[0,0],"utf16Offset":1,"affinity":"after"}},"pendingFormats":null},"currentRevision":"0","historyCapacity":100,"cursor":0,"entries":[],"openMergeGroup":null}';
 
+const PROFILE_BOOTSTRAP_JSON = JSON.stringify({
+  format: "breditor/profile-bootstrap",
+  formatVersion: 1,
+  schema: { name: "example/editor", version: 1 },
+  extensions: [
+    {
+      id: { name: "example/highlight-extension", version: 1 },
+      dependencies: [],
+      conflicts: [],
+      inlineFormats: [{ kind: "example/highlight", revision: 7 }],
+      inlineFormatToggles: [
+        {
+          formatKind: "example/highlight",
+          actionId: "example/toggle-highlight",
+          intentId: "example/toggle-highlight-intent",
+          bindingId: "example/toggle-highlight-binding",
+          actionStateId: "example/highlight-control",
+        },
+      ],
+    },
+  ],
+});
+
+const PROFILE_INTENT = "example/toggle-highlight-intent";
+
+function profileDocument(descriptor, text) {
+  return {
+    format: "breditor/document",
+    formatVersion: 2,
+    schema: {
+      name: descriptor.schemaName,
+      version: descriptor.schemaVersion,
+    },
+    schemaFingerprint: descriptor.schemaFingerprint,
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: [
+        {
+          kind: "element",
+          type: "breditor/paragraph",
+          entityId: null,
+          properties: {},
+          children: [{ kind: "text", text, formats: [] }],
+        },
+      ],
+    },
+  };
+}
+
+function profileCheckpoint(descriptor, lineage, text) {
+  const document = profileDocument(descriptor, text);
+  return JSON.stringify({
+    format: "breditor/session-checkpoint",
+    formatVersion: 2,
+    schema: document.schema,
+    schemaFingerprint: document.schemaFingerprint,
+    historyBase: {
+      format: "breditor/editor-state",
+      formatVersion: 2,
+      schema: document.schema,
+      schemaFingerprint: document.schemaFingerprint,
+      snapshot: { lineage, revision: "0" },
+      document,
+      selection: {
+        kind: "range",
+        anchor: {
+          kind: "text",
+          textPath: [0, 0],
+          utf16Offset: 0,
+          affinity: "before",
+        },
+        focus: {
+          kind: "text",
+          textPath: [0, 0],
+          utf16Offset: text.length,
+          affinity: "after",
+        },
+      },
+      pendingFormats: null,
+    },
+    currentRevision: "0",
+    historyCapacity: 100,
+    cursor: 0,
+    entries: [],
+    openMergeGroup: null,
+  });
+}
+
 function takeEngine(lineage, capacity = 2) {
   const result = api.BreditorEngine.fromDocumentJson(
     lineage,
@@ -79,11 +170,358 @@ function assertCommandError(result, expectedCode) {
   error.free();
 }
 
-assert.equal(api.breditorWasmAbiVersion(), "2");
+assert.equal(api.breditorWasmAbiVersion(), "3");
 assert.match(
   api.breditorVersion(),
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
 );
+
+const invalidProfileResult =
+  api.BreditorCompiledProfile.fromBootstrapJson("private-invalid-profile");
+assert.equal(invalidProfileResult.status, "error");
+assert.equal(invalidProfileResult.takeProfile(), undefined);
+const invalidProfileError = invalidProfileResult.error;
+assert.ok(invalidProfileError instanceof api.BreditorError);
+invalidProfileResult.free();
+assert.equal(
+  invalidProfileError.code,
+  "breditor_wasm.invalid_profile_bootstrap",
+);
+assert.doesNotMatch(invalidProfileError.message, /private-invalid-profile/);
+invalidProfileError.free();
+
+const profileResult =
+  api.BreditorCompiledProfile.fromBootstrapJson(PROFILE_BOOTSTRAP_JSON);
+assert.equal(profileResult.status, "profile");
+assert.equal(profileResult.error, undefined);
+const profile = profileResult.takeProfile();
+assert.ok(profile instanceof api.BreditorCompiledProfile);
+assert.equal(profileResult.status, "taken");
+assert.equal(profileResult.takeProfile(), undefined);
+profileResult.free();
+
+const profileGeneration = profile.generation();
+const profileGenerationCopy = profile.generation();
+assert.ok(profileGeneration.matches(profileGenerationCopy));
+assert.ok(profile.matchesProfileGeneration(profileGeneration));
+profileGenerationCopy.free();
+
+const profileDescriptor = profile.descriptor();
+assert.ok(profileDescriptor.matchesProfileGeneration(profileGeneration));
+assert.equal(profileDescriptor.schemaName, "example/editor");
+assert.equal(profileDescriptor.schemaVersion, 1);
+assert.match(profileDescriptor.schemaFingerprint, /^sha256:[0-9a-f]{64}$/);
+assert.equal(profileDescriptor.formatCount, 2);
+assert.equal(profileDescriptor.formatKind(0), "breditor/strong");
+assert.equal(profileDescriptor.formatRevision(0), 1);
+assert.equal(profileDescriptor.formatKind(1), "example/highlight");
+assert.equal(profileDescriptor.formatRevision(1), 7);
+assert.equal(profileDescriptor.formatKind(2), undefined);
+assert.equal(profileDescriptor.intentCount, 1);
+assert.equal(profileDescriptor.intentId(0), "example/toggle-highlight-intent");
+assert.equal(profileDescriptor.intentInputKind(0), "none");
+assert.equal(profileDescriptor.intentInputContractName(0), undefined);
+assert.equal(profileDescriptor.intentInputContractVersion(0), undefined);
+assert.equal(profileDescriptor.intentActivationContract(0), "tracked");
+assert.equal(profileDescriptor.intentValueContractName(0), undefined);
+assert.equal(profileDescriptor.intentValueContractVersion(0), undefined);
+assert.equal(profileDescriptor.actionStateCount, 4);
+assert.equal(profileDescriptor.actionStateId(3), "example/highlight-control");
+assert.equal(profileDescriptor.actionStateSourceKind(3), "routed");
+assert.equal(profileDescriptor.actionStateSourceActionId(3), undefined);
+assert.equal(
+  profileDescriptor.actionStateSourceIntentId(3),
+  "example/toggle-highlight-intent",
+);
+assert.equal(profileDescriptor.actionStateHistoryDirection(3), undefined);
+assert.equal(profileDescriptor.actionStateActivationContract(3), "tracked");
+assert.equal(profileDescriptor.actionStateValueContractName(3), undefined);
+assert.equal(profileDescriptor.actionStateValueContractVersion(3), undefined);
+
+const independentProfileResult =
+  api.BreditorCompiledProfile.fromBootstrapJson(PROFILE_BOOTSTRAP_JSON);
+const independentProfile = independentProfileResult.takeProfile();
+independentProfileResult.free();
+const independentGeneration = independentProfile.generation();
+const independentDescriptor = independentProfile.descriptor();
+assert.equal(
+  independentDescriptor.schemaFingerprint,
+  profileDescriptor.schemaFingerprint,
+);
+assert.equal(profileGeneration.matches(independentGeneration), false);
+assert.equal(profile.matchesProfileGeneration(independentGeneration), false);
+independentDescriptor.free();
+
+const rejectedProfileFactory = profile.createEngineFromDocumentJson(
+  "web-glue-profile-v1-rejected",
+  EMPTY_DOCUMENT_JSON,
+  2,
+);
+assert.equal(rejectedProfileFactory.status, "error");
+assert.equal(rejectedProfileFactory.takeEngine(), undefined);
+const rejectedProfileFactoryError = rejectedProfileFactory.error;
+assert.ok(rejectedProfileFactoryError instanceof api.BreditorError);
+rejectedProfileFactory.free();
+rejectedProfileFactoryError.free();
+
+const profileDocumentJson = JSON.stringify(
+  profileDocument(profileDescriptor, "abc"),
+);
+const profileEngineResult = profile.createEngineFromDocumentJson(
+  "web-glue-profile-v2",
+  profileDocumentJson,
+  2,
+);
+const profileEngine = profileEngineResult.takeEngine();
+assert.ok(profileEngine instanceof api.BreditorEngine);
+profileEngineResult.free();
+assert.ok(profileEngine.matchesProfileGeneration(profileGeneration));
+const profileEngineGeneration = profileEngine.profileGeneration();
+assert.ok(profileEngineGeneration.matches(profileGeneration));
+profileEngineGeneration.free();
+const profileEngineDescriptor = profileEngine.profileDescriptor();
+assert.equal(
+  profileEngineDescriptor.schemaFingerprint,
+  profileDescriptor.schemaFingerprint,
+);
+assert.ok(
+  profileEngineDescriptor.matchesProfileGeneration(profileGeneration),
+);
+profileEngineDescriptor.free();
+
+const profileObservation = profileEngine.observation();
+assert.ok(profileObservation.matchesProfileGeneration(profileGeneration));
+const profileState = JSON.parse(takeString(profileEngine.stateJson()));
+assert.equal(profileState.formatVersion, 2);
+assert.equal(
+  profileState.schemaFingerprint,
+  profileDescriptor.schemaFingerprint,
+);
+const profileDocumentOutput = JSON.parse(
+  takeString(profileEngine.documentJson(profileObservation)),
+);
+assert.equal(profileDocumentOutput.formatVersion, 2);
+assert.equal(
+  profileDocumentOutput.schemaFingerprint,
+  profileDescriptor.schemaFingerprint,
+);
+
+const profileProjectionResult = profileEngine.projection(profileObservation);
+assert.ok(
+  profileProjectionResult.matchesProfileGeneration(profileGeneration),
+);
+const profileProjection = profileProjectionResult.takeProjection();
+profileProjectionResult.free();
+assert.ok(profileProjection.matchesProfileGeneration(profileGeneration));
+assert.equal(
+  profileProjection.schemaFingerprint,
+  profileDescriptor.schemaFingerprint,
+);
+profileProjection.free();
+
+const profileSelectionResult = profileEngine.selection(profileObservation);
+assert.ok(profileSelectionResult.matchesProfileGeneration(profileGeneration));
+const profileSelection = profileSelectionResult.takeSelection();
+profileSelectionResult.free();
+assert.ok(profileSelection.matchesProfileGeneration(profileGeneration));
+assert.equal(profileSelection.kind, "none");
+profileSelection.free();
+
+const profileStatesResult = profileEngine.actionStates(profileObservation);
+assert.ok(profileStatesResult.matchesProfileGeneration(profileGeneration));
+const profileStates = profileStatesResult.takeSnapshot();
+profileStatesResult.free();
+assert.ok(profileStates.matchesProfileGeneration(profileGeneration));
+assert.equal(profileStates.entryCount, 4);
+assert.equal(profileStates.entryId(3), "example/highlight-control");
+profileStates.free();
+
+const unchangedProfileCommand =
+  profileEngine.clearSelection(profileObservation);
+assert.equal(unchangedProfileCommand.status, "unchanged");
+assert.ok(
+  unchangedProfileCommand.matchesProfileGeneration(profileGeneration),
+);
+const unchangedProfileObservation = unchangedProfileCommand.observation();
+unchangedProfileCommand.free();
+assert.ok(
+  unchangedProfileObservation.matchesProfileGeneration(profileGeneration),
+);
+unchangedProfileObservation.free();
+
+const blockedProfileIntent = profileEngine.executeNoInputIntent(
+  profileObservation,
+  PROFILE_INTENT,
+);
+assert.equal(blockedProfileIntent.status, "blocked");
+assert.ok(blockedProfileIntent.matchesProfileGeneration(profileGeneration));
+assert.equal(blockedProfileIntent.intentId, PROFILE_INTENT);
+assert.equal(
+  blockedProfileIntent.bindingId,
+  "example/toggle-highlight-binding",
+);
+assert.equal(blockedProfileIntent.actionId, "example/toggle-highlight");
+assert.equal(blockedProfileIntent.bindingPriority, 0);
+assert.equal(
+  blockedProfileIntent.blockedReasonCode,
+  "breditor/no-selection",
+);
+assert.equal(blockedProfileIntent.blockedActivation, "inactive");
+assert.equal(blockedProfileIntent.blockedValueStatus, "unsupported");
+assert.equal(blockedProfileIntent.blockedValueContractName, undefined);
+assert.equal(blockedProfileIntent.blockedValueContractVersion, undefined);
+const blockedDetail = blockedProfileIntent.blockedReasonDetailJson();
+assert.equal(blockedDetail.status, "absent");
+blockedDetail.free();
+const blockedValue = blockedProfileIntent.blockedValueJson();
+assert.equal(blockedValue.status, "absent");
+blockedValue.free();
+assert.equal(blockedProfileIntent.fallthroughCount, 0);
+assert.equal(blockedProfileIntent.fallthroughBindingId(0), undefined);
+assert.equal(blockedProfileIntent.projectionUpdate(), undefined);
+const blockedCommit = blockedProfileIntent.commitJson();
+assert.equal(blockedCommit.status, "absent");
+blockedCommit.free();
+const blockedSuccessor = blockedProfileIntent.observation();
+assert.ok(blockedSuccessor.matchesProfileGeneration(profileGeneration));
+blockedSuccessor.free();
+blockedProfileIntent.free();
+
+const invalidProfileIntent =
+  profileEngine.executeNoInputIntent(profileObservation, "");
+assert.equal(invalidProfileIntent.status, "error");
+assert.ok(invalidProfileIntent.matchesProfileGeneration(profileGeneration));
+const invalidProfileIntentError = invalidProfileIntent.error;
+invalidProfileIntent.free();
+assert.equal(
+  invalidProfileIntentError.code,
+  "breditor_wasm.invalid_intent_id",
+);
+invalidProfileIntentError.free();
+
+const selectedProfileCheckpoint = profileCheckpoint(
+  profileDescriptor,
+  "web-glue-profile-intent",
+  "abc",
+);
+const selectedProfileResult =
+  profile.createEngineFromSessionCheckpointJson(selectedProfileCheckpoint);
+const selectedProfileEngine = selectedProfileResult.takeEngine();
+selectedProfileResult.free();
+const selectedProfileObservation = selectedProfileEngine.observation();
+const committedProfileIntent = selectedProfileEngine.executeNoInputIntent(
+  selectedProfileObservation,
+  PROFILE_INTENT,
+);
+assert.equal(committedProfileIntent.status, "committed");
+assert.ok(
+  committedProfileIntent.matchesProfileGeneration(profileGeneration),
+);
+assert.equal(committedProfileIntent.intentId, PROFILE_INTENT);
+assert.equal(
+  committedProfileIntent.bindingId,
+  "example/toggle-highlight-binding",
+);
+assert.equal(committedProfileIntent.actionId, "example/toggle-highlight");
+assert.equal(committedProfileIntent.fallthroughCount, 0);
+const committedIntentJson = JSON.parse(
+  takeString(committedProfileIntent.commitJson()),
+);
+assert.equal(committedIntentJson.formatVersion, 2);
+assert.equal(
+  committedIntentJson.schemaFingerprint,
+  profileDescriptor.schemaFingerprint,
+);
+const committedIntentUpdate = committedProfileIntent.projectionUpdate();
+assert.ok(
+  committedIntentUpdate.matchesProfileGeneration(profileGeneration),
+);
+const committedIntentProjection = committedIntentUpdate.takeProjection();
+assert.ok(
+  committedIntentProjection.matchesProfileGeneration(profileGeneration),
+);
+committedIntentProjection.free();
+committedIntentUpdate.free();
+const committedIntentObservation = committedProfileIntent.observation();
+assert.ok(
+  committedIntentObservation.matchesProfileGeneration(profileGeneration),
+);
+assert.equal(committedIntentObservation.snapshotRevision, "1");
+committedProfileIntent.free();
+const formattedProfileDocument = JSON.parse(
+  takeString(
+    selectedProfileEngine.documentJson(committedIntentObservation),
+  ),
+);
+assert.equal(formattedProfileDocument.formatVersion, 2);
+assert.equal(
+  formattedProfileDocument.root.children[0].children[0].formats[0].type,
+  "example/highlight",
+);
+const committedProfileStatesResult =
+  selectedProfileEngine.actionStates(committedIntentObservation);
+const committedProfileStates = committedProfileStatesResult.takeSnapshot();
+committedProfileStatesResult.free();
+assert.equal(committedProfileStates.entryActivation(3), "active");
+assert.ok(committedProfileStates.matchesProfileGeneration(profileGeneration));
+committedProfileStates.free();
+
+const profileCheckpointAfterCommit = takeString(
+  selectedProfileEngine.sessionCheckpointJson(),
+);
+assert.equal(JSON.parse(profileCheckpointAfterCommit).formatVersion, 2);
+const sameGenerationRestoreResult =
+  profile.createEngineFromSessionCheckpointJson(profileCheckpointAfterCommit);
+const sameGenerationRestore = sameGenerationRestoreResult.takeEngine();
+sameGenerationRestoreResult.free();
+assert.ok(sameGenerationRestore.matchesProfileGeneration(profileGeneration));
+const staleEngineRead = sameGenerationRestore.documentJson(
+  committedIntentObservation,
+);
+assert.equal(staleEngineRead.status, "error");
+const staleEngineError = staleEngineRead.error;
+staleEngineRead.free();
+assert.equal(staleEngineError.code, "editor_engine.stale_engine");
+staleEngineError.free();
+sameGenerationRestore.free();
+
+const independentRestoreResult =
+  independentProfile.createEngineFromSessionCheckpointJson(
+    profileCheckpointAfterCommit,
+  );
+const independentRestore = independentRestoreResult.takeEngine();
+independentRestoreResult.free();
+assert.ok(independentRestore.matchesProfileGeneration(independentGeneration));
+const foreignGenerationRead = independentRestore.documentJson(
+  committedIntentObservation,
+);
+assert.equal(foreignGenerationRead.status, "error");
+const foreignGenerationError = foreignGenerationRead.error;
+foreignGenerationRead.free();
+assert.equal(
+  foreignGenerationError.code,
+  "editor_engine.profile_generation_mismatch",
+);
+foreignGenerationError.free();
+
+// Factories clone profile identity: every retained engine and observation
+// remains valid after the originating profile and descriptor are disposed.
+profileDescriptor.free();
+profile.free();
+assert.ok(profileEngine.matchesProfileGeneration(profileGeneration));
+assert.ok(
+  selectedProfileEngine.matchesProfileGeneration(profileGeneration),
+);
+
+profileObservation.free();
+profileEngine.free();
+selectedProfileObservation.free();
+committedIntentObservation.free();
+selectedProfileEngine.free();
+independentRestore.free();
+independentGeneration.free();
+independentProfile.free();
+profileGeneration.free();
 
 const invalidFactory = api.BreditorEngine.fromDocumentJson(
   "web-glue-redaction",
@@ -187,7 +625,10 @@ const foreignDocumentResult = documentEngine.documentJson(
 assert.equal(foreignDocumentResult.status, "error");
 const foreignDocumentError = foreignDocumentResult.error;
 foreignDocumentResult.free();
-assert.equal(foreignDocumentError.code, "editor_engine.stale_engine");
+assert.equal(
+  foreignDocumentError.code,
+  "editor_engine.profile_generation_mismatch",
+);
 foreignDocumentError.free();
 
 const documentUndo = documentEngine.undo(documentAfterInsert);
@@ -304,36 +745,43 @@ assert.equal(
   reloadedCheckpoint.checkpointUtf8Bytes,
   browserCheckpoint.checkpoint.checkpointUtf8Bytes,
 );
-const browserRestore = browser.restoreWasmEngine(
-  api.BreditorEngine,
-  reloadedCheckpoint.checkpointJson,
-);
+const browserRestore = browser.bootstrapWasmEngine(api, {
+  kind: "sessionCheckpoint",
+  checkpointJson: reloadedCheckpoint.checkpointJson,
+});
 assert.equal(browserRestore.ok, true);
 const browserRestoredEngine = browserRestore.engine;
-const browserRestoredObservation = browserRestoredEngine.observation();
+const browserRestoredObservation = browserRestore.observation;
 assert.equal(browserRestoredObservation.snapshotLineage, "web-glue-lifecycle");
 assert.equal(browserRestoredObservation.snapshotRevision, "2");
-assert.equal(takeString(browserRestoredEngine.stateJson()), encodedState);
+assert.equal(
+  takeString(browserRestoredEngine.sessionCheckpointJson()),
+  encodedCheckpoint,
+);
 const browserUndo = browserRestoredEngine.undo(browserRestoredObservation);
 assert.equal(browserUndo.status, "committed");
 const browserUndoObservation = browserUndo.observation();
 browserUndo.free();
 browserRestoredObservation.free();
-assert.doesNotMatch(takeString(browserRestoredEngine.stateJson()), /"text":"reload me"/);
+assert.doesNotMatch(
+  takeString(browserRestoredEngine.documentJson(browserUndoObservation)),
+  /"text":"reload me"/,
+);
 const browserRedo = browserRestoredEngine.redo(browserUndoObservation);
 assert.equal(browserRedo.status, "committed");
 const browserRedoObservation = browserRedo.observation();
 browserRedo.free();
 browserUndoObservation.free();
-const redoneState = JSON.parse(takeString(browserRestoredEngine.stateJson()));
+const redoneDocument = JSON.parse(
+  takeString(browserRestoredEngine.documentJson(browserRedoObservation)),
+);
 const originalState = JSON.parse(encodedState);
-assert.deepEqual(redoneState.document, originalState.document);
-assert.deepEqual(redoneState.selection, originalState.selection);
-assert.deepEqual(redoneState.pendingFormats, originalState.pendingFormats);
-assert.equal(redoneState.snapshot.lineage, originalState.snapshot.lineage);
-assert.equal(redoneState.snapshot.revision, "4");
+assert.deepEqual(redoneDocument.root, originalState.document.root);
+assert.equal(browserRedoObservation.snapshotLineage, originalState.snapshot.lineage);
+assert.equal(browserRedoObservation.snapshotRevision, "4");
 browserRedoObservation.free();
 browserRestoredEngine.free();
+browserRestore.profileGeneration.free();
 checkpointReader.close();
 
 const otherEngine = takeEngine("web-glue-other");
@@ -342,7 +790,10 @@ assert.equal(crossEngine.status, "error");
 assert.equal(crossEngine.observation(), undefined);
 const crossEngineError = crossEngine.error;
 crossEngine.free();
-assert.equal(crossEngineError.code, "editor_engine.stale_engine");
+assert.equal(
+  crossEngineError.code,
+  "editor_engine.profile_generation_mismatch",
+);
 assert.equal(crossEngineError.message, "the guarded editor command was rejected");
 crossEngineError.free();
 
@@ -657,6 +1108,10 @@ assert.equal(projectionFactory.status, "engine");
 const projectionEngine = projectionFactory.takeEngine();
 projectionFactory.free();
 const projectionObservation = projectionEngine.observation();
+const projectionGeneration = projectionEngine.profileGeneration();
+const projectionDescriptor = projectionEngine.profileDescriptor();
+const projectionSchemaFingerprint = projectionDescriptor.schemaFingerprint;
+projectionDescriptor.free();
 
 const rawProjectionResult = projectionEngine.projection(projectionObservation);
 assert.equal(rawProjectionResult.status, "projection");
@@ -682,7 +1137,11 @@ rawProjection.free();
 const adapterProjectionResult = projectionEngine.projection(projectionObservation);
 const adapterProjection = adapterProjectionResult.takeProjection();
 adapterProjectionResult.free();
-const browserBaseResult = browser.consumeSemanticProjection(adapterProjection);
+const browserBaseResult = browser.consumeSemanticProjection(
+  adapterProjection,
+  projectionGeneration,
+  projectionSchemaFingerprint,
+);
 assert.equal(browserBaseResult.ok, true);
 const browserBase = browserBaseResult.value;
 assert.deepEqual(browserBase.snapshot, {
@@ -702,6 +1161,7 @@ adapterSelectionResult.free();
 const browserSelectionResult = browser.consumeSemanticSelection(
   browserBase,
   adapterSelection,
+  projectionGeneration,
 );
 assert.equal(browserSelectionResult.ok, true);
 const browserSelection = browserSelectionResult.value;
@@ -755,6 +1215,8 @@ const adapterUpdate = projectionCommand.projectionUpdate();
 const browserUpdateResult = browser.consumeSemanticProjectionUpdate(
   browserBase,
   adapterUpdate,
+  projectionGeneration,
+  projectionSchemaFingerprint,
 );
 assert.equal(browserUpdateResult.ok, true);
 assert.equal(browserUpdateResult.value.impact.kind, "textContainers");
@@ -766,6 +1228,7 @@ projectionCommand.free();
 projectionObservation.free();
 projectionSuccessor.free();
 projectionEngine.free();
+projectionGeneration.free();
 
 // A fabricated or freed class instance passes wasm-bindgen's JavaScript
 // `instanceof` check but fails during Rust ABI conversion. Conversion happens

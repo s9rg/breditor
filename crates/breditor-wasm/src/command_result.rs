@@ -1,14 +1,16 @@
 use breditor_core::{
     action::{ActionActivation, ActionStateValue},
-    codec::CommitJsonCodec,
+    codec::{CommitJsonCodec, CommitJsonCodecV2},
     engine::{
         EditorActionOutcome, EditorDisabledAction, EditorEngineEvent, EditorEngineObservation,
     },
+    profile::CompiledProfileGeneration,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    BreditorError, BreditorObservation, BreditorProjectionUpdate, BreditorStringResult,
+    BreditorEngine, BreditorError, BreditorObservation, BreditorProfileGeneration,
+    BreditorProjectionUpdate, BreditorStringResult,
     action_value_json::{action_value_json, state_value_status},
 };
 
@@ -27,38 +29,55 @@ enum CommandResultValue {
 /// JavaScript object is freed.
 #[wasm_bindgen]
 pub struct BreditorCommandResult {
+    generation: CompiledProfileGeneration,
+    checkpoint_format_version: u32,
     value: CommandResultValue,
 }
 
 impl BreditorCommandResult {
-    pub(crate) const fn committed(event: EditorEngineEvent) -> Self {
-        Self { value: CommandResultValue::Committed(event) }
+    fn with_value(engine: &BreditorEngine, value: CommandResultValue) -> Self {
+        Self {
+            generation: engine.generation.clone(),
+            checkpoint_format_version: engine.inner.session_checkpoint_format_version(),
+            value,
+        }
     }
 
-    pub(crate) const fn from_disabled(disabled: EditorDisabledAction) -> Self {
-        Self { value: CommandResultValue::Disabled(disabled) }
+    pub(crate) fn committed(engine: &BreditorEngine, event: EditorEngineEvent) -> Self {
+        Self::with_value(engine, CommandResultValue::Committed(event))
     }
 
-    pub(crate) const fn unchanged(observation: EditorEngineObservation) -> Self {
-        Self { value: CommandResultValue::Unchanged(observation) }
+    pub(crate) fn from_disabled(engine: &BreditorEngine, disabled: EditorDisabledAction) -> Self {
+        Self::with_value(engine, CommandResultValue::Disabled(disabled))
     }
 
-    pub(crate) const fn from_error(error: BreditorError) -> Self {
-        Self { value: CommandResultValue::Error(error) }
+    pub(crate) fn unchanged(engine: &BreditorEngine, observation: EditorEngineObservation) -> Self {
+        Self::with_value(engine, CommandResultValue::Unchanged(observation))
     }
 
-    pub(crate) fn from_action_outcome(outcome: EditorActionOutcome) -> Self {
+    pub(crate) fn from_error(engine: &BreditorEngine, error: BreditorError) -> Self {
+        Self::with_value(engine, CommandResultValue::Error(error))
+    }
+
+    pub(crate) fn from_action_outcome(
+        engine: &BreditorEngine,
+        outcome: EditorActionOutcome,
+    ) -> Self {
         match outcome {
-            EditorActionOutcome::Committed(event) => Self::committed(event),
-            EditorActionOutcome::Disabled(disabled) => Self::from_disabled(disabled),
+            EditorActionOutcome::Committed(event) => Self::committed(engine, event),
+            EditorActionOutcome::Disabled(disabled) => Self::from_disabled(engine, disabled),
         }
     }
 
     pub(crate) fn from_optional_event(
+        engine: &BreditorEngine,
         event: Option<EditorEngineEvent>,
         unchanged: EditorEngineObservation,
     ) -> Self {
-        event.map_or_else(|| Self::unchanged(unchanged), Self::committed)
+        event.map_or_else(
+            || Self::unchanged(engine, unchanged),
+            |event| Self::committed(engine, event),
+        )
     }
 
     fn disabled_value(&self) -> Option<&EditorDisabledAction> {
@@ -73,6 +92,13 @@ impl BreditorCommandResult {
 
 #[wasm_bindgen]
 impl BreditorCommandResult {
+    /// Checks the result's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns `committed`, `disabled`, `unchanged`, or `error`.
     #[must_use]
     #[wasm_bindgen(getter, unchecked_return_type = "BreditorCommandStatus")]
@@ -135,8 +161,9 @@ impl BreditorCommandResult {
     ///
     /// Encoding is intentionally not part of command publication. `absent`
     /// means the outcome is disabled/unchanged or its effective event is a
-    /// history-only control. `error` means publication succeeded but Commit V1
-    /// could not be represented within the active codec budget.
+    /// history-only control. `error` means publication succeeded but the
+    /// mode-selected Commit V1 or V2 could not be represented within the
+    /// active codec budget.
     #[must_use]
     #[wasm_bindgen(js_name = commitJson)]
     pub fn commit_json(&self) -> BreditorStringResult {
@@ -146,12 +173,22 @@ impl BreditorCommandResult {
         let Some(commit) = event.commit() else {
             return BreditorStringResult::absent();
         };
-        match CommitJsonCodec::new(commit.after().context().clone()).encode(commit) {
-            Ok(json) => BreditorStringResult::from_value(json),
-            Err(error) => BreditorStringResult::from_error(BreditorError::codec(
-                error.code(),
-                "the published commit could not be encoded",
-            )),
+        if self.checkpoint_format_version == 1 {
+            match CommitJsonCodec::new(commit.after().context().clone()).encode(commit) {
+                Ok(json) => BreditorStringResult::from_value(json),
+                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                    error.code(),
+                    "the published commit could not be encoded",
+                )),
+            }
+        } else {
+            match CommitJsonCodecV2::new(commit.after().context().clone()).encode(commit) {
+                Ok(json) => BreditorStringResult::from_value(json),
+                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                    error.code(),
+                    "the published commit could not be encoded",
+                )),
+            }
         }
     }
 
@@ -166,7 +203,9 @@ impl BreditorCommandResult {
         let CommandResultValue::Committed(event) = &self.value else {
             return None;
         };
-        event.commit().map(BreditorProjectionUpdate::from_commit)
+        event
+            .commit()
+            .map(|commit| BreditorProjectionUpdate::from_commit(self.generation.clone(), commit))
     }
 
     /// Returns the action identity for a disabled action outcome.
@@ -262,10 +301,11 @@ mod tests {
         codec::DocumentJsonCodec,
         engine::EditorEngine,
         position::{Affinity, NodePath, Point},
+        profile::CompiledEditorProfile,
         schema::DocumentLimits,
         selection::{RangeSelection, Selection},
         session::{EditorSession, HistoryCapacity},
-        state::{EditorContext, EditorState, LineageId},
+        state::{EditorState, LineageId},
     };
 
     use crate::BreditorEngine;
@@ -375,14 +415,14 @@ mod tests {
     fn engine_with_max_json_bytes(
         maximum: Option<usize>,
     ) -> Result<BreditorEngine, Box<dyn Error>> {
-        let defaults = EditorContext::default();
-        let document = DocumentJsonCodec::new(defaults.schema().clone())
-            .with_limits(defaults.limits().clone())
-            .decode(DOCUMENT_JSON)?;
         let limits = maximum.map_or_else(DocumentLimits::default, |maximum| {
             DocumentLimits::default().with_max_json_bytes(maximum)
         });
-        let context = EditorContext::new(defaults.schema().clone(), limits);
+        let profile = CompiledEditorProfile::try_compile_breditor_base()?;
+        let context = profile.editor_context(limits);
+        let document = DocumentJsonCodec::new(context.schema().clone())
+            .with_limits(context.limits().clone())
+            .decode(DOCUMENT_JSON)?;
         let point = Point::Text {
             text_path: NodePath::try_from_indices(vec![0, 0])?,
             utf16_offset: 14,
@@ -397,7 +437,9 @@ mod tests {
             None,
         )?;
         let session = EditorSession::with_history_capacity(state, HistoryCapacity::DISABLED);
-        Ok(BreditorEngine::try_new(EditorEngine::try_with_base_actions(session)?)?)
+        let action_states = profile.action_state_cache();
+        let engine = EditorEngine::try_with_compiled_profile(session, profile)?;
+        Ok(BreditorEngine::try_new_v1(engine, action_states)?)
     }
 
     fn require_checkpoint(engine: &BreditorEngine) -> Result<String, Box<dyn Error>> {

@@ -14,6 +14,14 @@ import {
   type WasmActionStateStringResultView,
   type WasmActionStatesResultView,
 } from "./wasm_action_state_adapter.js";
+import type { WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
+
+const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
+  matches(other): boolean {
+    return other === TEST_PROFILE_GENERATION;
+  },
+  free: vi.fn(),
+};
 
 interface EntryFixture {
   readonly id: string;
@@ -41,6 +49,10 @@ class SnapshotView implements WasmActionStateSnapshotView {
   readonly changedCount: number;
   readonly values: AbsentStringResult[] = [];
   freeCalls = 0;
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
 
   constructor(
     readonly snapshotRevision: string,
@@ -100,6 +112,10 @@ class ResultView implements WasmActionStatesResultView {
   readonly error = undefined;
   freeCalls = 0;
 
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
+
   constructor(
     readonly status: "full" | "unchanged" | "delta",
     private snapshot: WasmActionStateSnapshotView | undefined,
@@ -129,6 +145,10 @@ class ErrorView implements WasmActionStateErrorView {
 class ErrorResultView implements WasmActionStatesResultView {
   readonly status = "error";
   freeCalls = 0;
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
 
   constructor(readonly error: WasmActionStateErrorView) {}
 
@@ -183,6 +203,7 @@ function readResult(
   return consumeWasmActionStates(
     { lineage: "store-tests", revision },
     new ResultView(kind, new SnapshotView(revision, entries, changedIds)),
+    TEST_PROFILE_GENERATION,
   );
 }
 
@@ -190,6 +211,7 @@ function coreFailure(): BrowserActionStateReadResult {
   return consumeWasmActionStates(
     { lineage: "store-tests", revision: "1" },
     new ErrorResultView(new ErrorView()),
+    TEST_PROFILE_GENERATION,
   );
 }
 

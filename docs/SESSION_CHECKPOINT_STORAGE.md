@@ -225,10 +225,10 @@ const stopStatusObservation = autosave.observeStatus((status) => {
 
 Release `stopAutosaveObservation` and `stopStatusObservation`, dispose
 autosave, dispose the adapter, close the store, and finally free the generated
-engine when the editor is torn down. `restoreWasmEngine()` transfers engine
-ownership to its successful caller; the adapter borrows that engine and does
-not free it. A host may call `flush()` before teardown, but must handle its
-explicit committed/failed/disposed result.
+engine when the editor is torn down. `bootstrapWasmEngine()` with a
+`sessionCheckpoint` source transfers engine ownership to its successful caller;
+the adapter borrows that engine and does not free it. A host may call `flush()`
+before teardown, but must handle its explicit committed/failed/disposed result.
 
 Continuous autosave is the durability mechanism. A host may request a best-
 effort flush when a document becomes hidden, but unload/page-exit events are

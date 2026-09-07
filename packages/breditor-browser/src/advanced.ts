@@ -284,14 +284,6 @@ export {
   type ProjectionPlainTextReadPort,
 } from "./projection_plain_text.js";
 export {
-  restoreWasmEngine,
-  type BrowserWasmEngineRestoreError,
-  type BrowserWasmEngineRestoreResult,
-  type WasmEngineRestoreFactoryView,
-  type WasmEngineRestoreResultView,
-  type WasmRestoredEngineView,
-} from "./wasm_engine_restore.js";
-export {
   IndexedDbSessionCheckpointStore,
   MAX_SESSION_CHECKPOINT_UTF8_BYTES,
   SESSION_CHECKPOINT_DATABASE_NAME,
@@ -347,6 +339,7 @@ export {
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
 export {
+  BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY,
   bootstrapWasmEngine,
@@ -362,6 +355,27 @@ export {
   type WasmProjectionReadResultView,
   type WasmSessionCheckpointBootstrapSource,
 } from "./wasm_engine_bootstrap.js";
+export {
+  MAX_BROWSER_PROFILE_ACTION_STATES,
+  MAX_BROWSER_PROFILE_FORMATS,
+  MAX_BROWSER_PROFILE_INTENTS,
+  consumeWasmCompiledProfileDescriptor,
+  isOwnedBrowserCompiledProfileDescriptor,
+  type BrowserCompiledProfileDescriptor,
+  type BrowserProfileActionStateDescriptor,
+  type BrowserProfileActionStateSource,
+  type BrowserProfileDescriptorError,
+  type BrowserProfileDescriptorResult,
+  type BrowserProfileFormatDescriptor,
+  type BrowserProfileIntentDescriptor,
+  type BrowserProfileIntentInput,
+  type BrowserProfileSchemaDescriptor,
+  type BrowserProfileStateContract,
+  type BrowserProfileValueContract,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileCorrelatedView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 export {
   BreditorBrowserEventRouter,
   MAX_BROWSER_EVENT_ROUTER_SUBSCRIBERS,

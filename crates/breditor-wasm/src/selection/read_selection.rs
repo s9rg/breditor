@@ -9,12 +9,16 @@ impl BreditorEngine {
     /// Reads the semantic selection at one exact guarded engine observation.
     #[must_use]
     pub fn selection(&self, expected: &BreditorObservation) -> BreditorSelectionResult {
+        let generation = self.generation.clone();
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorSelectionResult::from_error(BreditorError::checkpointed_engine(&error));
+            return BreditorSelectionResult::from_error(
+                generation,
+                BreditorError::checkpointed_engine(&error),
+            );
         }
-        match BreditorSelection::from_state(self.inner.state()) {
-            Ok(selection) => BreditorSelectionResult::success(selection),
-            Err(error) => BreditorSelectionResult::from_error(error),
+        match BreditorSelection::from_state(generation.clone(), self.inner.state()) {
+            Ok(selection) => BreditorSelectionResult::success(generation, selection),
+            Err(error) => BreditorSelectionResult::from_error(generation, error),
         }
     }
 }

@@ -1,7 +1,7 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` through `0.2.0-alpha.4` Rust foundations
-are implemented and later stages remain planned
+Status: decision freeze; the `0.1.1` through `0.2.0-alpha.5` engine/Wasm
+foundations are implemented and later stages remain planned
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -134,9 +134,11 @@ The alpha.4 result is a private-constructor `CompiledEditorProfile`. It co-owns
 the resolved `ExtensionSet`, compiled schema, generated action registry, intent
 router, observable action-state catalog, and a fresh opaque process-local
 generation. All of those components come from one compilation; callers cannot
-mix and match them. At this checkpoint the generation identifies that Rust
-container only. It is not yet carried or checked by `EditorEngine`, its
-observations or outcomes, or Wasm values; alpha.5 adds that propagation.
+mix and match them. Alpha.5 carries that generation through profile-created
+contexts, engines, observations, intent outcomes, action-state caches, and the
+Wasm owned-handle graph. It remains non-scalar and non-durable; a separate
+engine-instance identity still rejects observations from a sibling engine made
+by the same reusable profile.
 
 A semantic profile is fixed for an engine's lifetime. Installing, removing, or
 changing a semantic extension requires a new profile and a new engine/session.
@@ -259,13 +261,14 @@ fingerprint. Documents and candidate results must be validated with that proof.
 Another compiled definition cannot reuse it merely by claiming the same
 `SchemaId`.
 
-Separately, alpha.4 gives each successfully compiled `CompiledEditorProfile` an
+Separately, alpha.4 gave each successfully compiled `CompiledEditorProfile` an
 opaque `CompiledProfileGeneration`. It correlates that container's schema,
 action registry, action-state catalog, and intent router. It is not persisted,
 stable across reconstruction, or presented as a digest of native Rust handlers.
-Alpha.5 will make the engine, action and intent observations, outcomes,
-transactions, history, and projection observations carry or check that
-generation; alpha.4 does not claim this wider enforcement.
+Alpha.5 carries or checks it through profile-created contexts, engines,
+action-state observations, intent outcomes, and Wasm projection handles. It is
+not added to transactions or durable history records; those inherit the
+profile-bound context without serializing its process-local identity.
 
 The browser constructs a third, presentation-only identity after verifying
 that its declarative render recipes exactly cover the active format set and
@@ -412,8 +415,9 @@ those primitives against an exact observation. The existing Rust registry path
 checks the schema proof, snapshot/revision guard, action input contract,
 declared effects, every primitive, selection and pending-format result,
 resource limits, and complete final schema validity before publishing anything.
-The profile-aware engine/Wasm boundary in alpha.5 will additionally check the
-compiled-profile generation; alpha.4 does not add that check to engine values.
+The profile-aware engine/Wasm boundary in alpha.5 additionally checks the
+compiled-profile generation before engine instance, snapshot, or history
+identity.
 
 At alpha.3, `ToggleInlineFormatAction` became the public Rust-owned generic
 implementation. Construction permanently binds one qualified format kind;
@@ -571,15 +575,14 @@ The stock Wasm module cannot dynamically link arbitrary third-party Rust. A
 separate Wasm module has separate memory, tables, allocator, panic behavior,
 and versioning; Rust's native ABI is not a stable plugin ABI.
 
-The supported `0.2.0` ABI path will be Wasm ABI 3.
+The supported `0.2.0` ABI path is Wasm ABI 3. Alpha.5 carries a compiled profile
+and its opaque generation through Rust-owned engines and Wasm handles. New
+profile factories explicitly accept Document V2 or Session Checkpoint V2; the
+legacy exact-base factory remains a separate V1 compatibility path. The
+supported browser consumes ABI 3 but deliberately admits only the exact
+built-in base descriptor until profile-aware rendering lands in alpha.6.
 
-This is a later release checkpoint, not an alpha.4 capability. The current
-alpha.4 browser and Wasm packages deliberately retain ABI 2 and accept or emit
-only the existing Document V1 and Session Checkpoint V1 browser formats. None of
-the Rust V2 codec, durable-profile selection, schema-admission API, compiled
-profile, or process-local profile generation crosses ABI 2.
-
-That later boundary will:
+The ABI 3 boundary:
 
 1. pass the complete manifest set during fresh or restored profile/engine
    bootstrap through the generated bounded value boundary;
@@ -602,8 +605,8 @@ strict versioned shapes and stable diagnostic codes, and all new collections
 have exact count/byte limits.
 
 A product needing custom native semantic code must build and distribute a
-different executable Breditor core. At alpha.4 every successfully compiled
-profile, rather than every engine, receives a fresh process-local
+different executable Breditor core. Every successfully compiled profile,
+rather than every engine, receives a fresh process-local
 `CompiledProfileGeneration`; alpha.5 carries it into engine/Wasm observations.
 Its durable `SchemaFingerprint` changes only when the canonical compiled schema
 meaning, schema-compiler contract, or compiled content-language admission
@@ -663,8 +666,9 @@ These are product constraints, not implementation details to conceal:
   or add fallback routing.
 - Native action-registry, intent-router, catalog, and engine APIs remain
   advanced bypasses outside compiled-profile correlation.
-- The alpha.4 profile generation identifies the Rust profile container only; it
-  is not carried by an engine, observation, outcome, or Wasm object yet.
+- The process-local profile generation is carried through profile-created
+  engines, observations, outcomes, caches, and Wasm handles, but it has no
+  scalar, JSON, durable, or cross-compilation representation.
 - Unknown or missing semantic types fail closed; there is no opaque round trip.
 - Moving to another durable schema fingerprint through admission or migration
   creates a new history lineage and clears undo/redo. Reconstructing a profile
@@ -705,9 +709,17 @@ base-text compiler, and the configured generic toggle action.
 same-owner target rule, profile-wide typed identity ownership, fixed
 per-manifest and aggregate limits, generated no-input action/intent/state route,
 and the immutable `CompiledEditorProfile` container with its fresh Rust-local
-generation. It deliberately does not propagate that generation through the
-engine or Wasm, define custom action/input/callback seams, or settle render
-order and the safe browser recipe vocabulary.
+generation.
+
+`0.2.0-alpha.5` propagates that opaque generation through profile-created
+contexts, engines, observations, intent outcomes, action-state caches, and the
+Wasm ABI 3 handle graph. It adds a canonical owned descriptor, strict bounded
+ABI-local profile bootstrap, reusable V2 fresh/restore factories, no-input
+semantic intent execution, and exact official browser/Wasm version pairing.
+Legacy exact-base V1 factories remain an explicit compatibility path. The
+generation is still neither durable nor scalar, and this checkpoint does not
+define custom action/input/callback seams, render order, safe recipes, or
+extension toolbar UI.
 
 The following choices remain for later checkpoints and may be settled without
 weakening the decisions above:
@@ -796,6 +808,7 @@ earlier or skip a gate.
   and state/value contracts.
 - Regenerate declarations, enforce exact official package pairing, run the real
   Wasm suite, and verify owned results are disposed on every path.
+- Complete.
 
 ### 0.2.0-alpha.6 — complete profile-aware base-text browser support
 

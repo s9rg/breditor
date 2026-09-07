@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   bootstrapWasmEngine,
   isOwnedBrowserWasmEngineBootstrapResult,
@@ -11,10 +12,94 @@ import {
   type WasmProjectionReadResultView,
 } from "./wasm_engine_bootstrap.js";
 import type {
+  WasmCompiledProfileDescriptorView,
+  WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
+import type {
   WasmCommandObservationView,
 } from "./wasm_command_adapter.js";
 import type { SemanticProjectionView } from "./wasm_projection_adapter.js";
 import type { WasmSessionCheckpointErrorView } from "./wasm_session_checkpoint.js";
+
+const BASE_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+
+class FakeGeneration implements WasmProfileGenerationView {
+  freeCalls = 0;
+
+  matches(other: WasmProfileGenerationView): boolean {
+    return other === this;
+  }
+
+  free(): void {
+    this.freeCalls += 1;
+  }
+}
+
+class FakeDescriptor implements WasmCompiledProfileDescriptorView {
+  readonly schemaName = "breditor/base";
+  readonly schemaVersion = 1;
+  readonly schemaFingerprint = BASE_SCHEMA_FINGERPRINT;
+  readonly formatCount = 1;
+  readonly intentCount = 0;
+  readonly actionStateCount = 3;
+  freeCalls = 0;
+
+  constructor(readonly generation: WasmProfileGenerationView) {}
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === this.generation;
+  }
+
+  formatKind(index: number): string | undefined {
+    return index === 0 ? "breditor/strong" : undefined;
+  }
+
+  formatRevision(index: number): number | undefined {
+    return index === 0 ? 1 : undefined;
+  }
+
+  intentId(): undefined { return undefined; }
+  intentInputKind(): undefined { return undefined; }
+  intentInputContractName(): undefined { return undefined; }
+  intentInputContractVersion(): undefined { return undefined; }
+  intentActivationContract(): undefined { return undefined; }
+  intentValueContractName(): undefined { return undefined; }
+  intentValueContractVersion(): undefined { return undefined; }
+
+  actionStateId(index: number): string | undefined {
+    return [
+      "breditor/control-bold",
+      "breditor/control-redo",
+      "breditor/control-undo",
+    ][index];
+  }
+
+  actionStateSourceKind(index: number): "direct" | "history" | undefined {
+    return index === 0 ? "direct" : index === 1 || index === 2 ? "history" : undefined;
+  }
+
+  actionStateSourceActionId(index: number): string | undefined {
+    return index === 0 ? "breditor/toggle-strong" : undefined;
+  }
+
+  actionStateSourceIntentId(): undefined { return undefined; }
+
+  actionStateHistoryDirection(index: number): "undo" | "redo" | undefined {
+    return index === 1 ? "redo" : index === 2 ? "undo" : undefined;
+  }
+
+  actionStateActivationContract(index: number): "stateless" | "tracked" | undefined {
+    return index === 0 ? "tracked" : index === 1 || index === 2 ? "stateless" : undefined;
+  }
+
+  actionStateValueContractName(): undefined { return undefined; }
+  actionStateValueContractVersion(): undefined { return undefined; }
+
+  free(): void {
+    this.freeCalls += 1;
+  }
+}
 
 class FakeError implements WasmSessionCheckpointErrorView {
   freeCalls = 0;
@@ -32,6 +117,7 @@ class FakeError implements WasmSessionCheckpointErrorView {
 class FakeProjection implements SemanticProjectionView {
   readonly schemaName = "breditor/base";
   readonly schemaVersion = 1;
+  readonly schemaFingerprint = BASE_SCHEMA_FINGERPRINT;
   readonly rootIndex = 0;
   readonly nodeCount = 3;
   freeCalls = 0;
@@ -40,7 +126,12 @@ class FakeProjection implements SemanticProjectionView {
     readonly snapshotLineage = "bootstrap-tests",
     readonly snapshotRevision = "0",
     readonly contents = "hello",
+    readonly generation: WasmProfileGenerationView = new FakeGeneration(),
   ) {}
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === this.generation;
+  }
 
   nodeKind(index: number): "element" | "text" | undefined {
     return index < 2 ? "element" : index === 2 ? "text" : undefined;
@@ -86,8 +177,13 @@ class FakeProjectionResult implements WasmProjectionReadResultView {
   constructor(
     readonly status: "projection" | "taken" | "error",
     private projectionView: SemanticProjectionView | undefined,
+    readonly generation: WasmProfileGenerationView,
     readonly error: WasmSessionCheckpointErrorView | undefined = undefined,
   ) {}
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === this.generation;
+  }
 
   takeProjection(): SemanticProjectionView | undefined {
     this.takeCalls += 1;
@@ -128,6 +224,8 @@ interface EngineFixture {
   readonly engineFree: ReturnType<typeof vi.fn>;
   readonly observation: WasmCommandObservationView;
   readonly observationFree: ReturnType<typeof vi.fn>;
+  readonly generation: FakeGeneration;
+  readonly descriptor: FakeDescriptor;
   readonly projection: FakeProjection;
   readonly projectionResult: FakeProjectionResult;
   readonly command: ReturnType<typeof vi.fn>;
@@ -137,14 +235,21 @@ function engineFixture(
   lineage = "bootstrap-tests",
   revision = "0",
 ): EngineFixture {
+  const generation = new FakeGeneration();
+  const descriptor = new FakeDescriptor(generation);
   const observationFree = vi.fn();
   const observation: WasmCommandObservationView = {
     snapshotLineage: lineage,
     snapshotRevision: revision,
+    matchesProfileGeneration: (candidate) => candidate === generation,
     free: observationFree,
   };
-  const projection = new FakeProjection(lineage, revision);
-  const projectionResult = new FakeProjectionResult("projection", projection);
+  const projection = new FakeProjection(lineage, revision, "hello", generation);
+  const projectionResult = new FakeProjectionResult(
+    "projection",
+    projection,
+    generation,
+  );
   const engineFree = vi.fn();
   const command = vi.fn(() => ({ marker: "command-result" }));
   const engine = {
@@ -159,6 +264,10 @@ function engineFixture(
     undo: command,
     redo: command,
     closeHistoryGroup: command,
+    matchesProfileGeneration: (candidate: WasmProfileGenerationView) =>
+      candidate === generation,
+    profileGeneration: vi.fn(() => generation),
+    profileDescriptor: vi.fn(() => descriptor),
     observation: vi.fn(() => observation),
     projection: vi.fn(() => projectionResult),
     free: engineFree,
@@ -168,6 +277,8 @@ function engineFixture(
     engineFree,
     observation,
     observationFree,
+    generation,
+    descriptor,
     projection,
     projectionResult,
     command,
@@ -188,7 +299,7 @@ function moduleFor(factory: WasmEngineBootstrapFactoryView): WasmEngineBootstrap
   return {
     BreditorEngine: factory,
     breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
-    breditorVersion: () => "0.1.0",
+    breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
   };
 }
 
@@ -205,7 +316,7 @@ const CHECKPOINT_SOURCE = Object.freeze({
 });
 
 describe("Wasm engine bootstrap", () => {
-  it("constructs Document V1, consumes temporary handles, and transfers two owners", () => {
+  it("constructs Document V1, consumes temporary handles, and transfers three owners", () => {
     const fixture = engineFixture();
     const construction = new FakeConstructionResult("engine", fixture.engine);
     const factory = factoryReturning(construction);
@@ -234,22 +345,26 @@ describe("Wasm engine bootstrap", () => {
     expect(fixture.projection.freeCalls).toBe(1);
     expect(fixture.engineFree).not.toHaveBeenCalled();
     expect(fixture.observationFree).not.toHaveBeenCalled();
+    expect(fixture.generation.freeCalls).toBe(0);
     expect(Object.isFrozen(result.engine)).toBe(true);
 
     result.observation.free();
     result.observation.free();
+    result.profileGeneration.free();
+    result.profileGeneration.free();
     result.engine.free();
     result.engine.free();
     expect(fixture.observationFree).toHaveBeenCalledOnce();
+    expect(fixture.generation.freeCalls).toBe(1);
     expect(fixture.engineFree).toHaveBeenCalledOnce();
   });
 
-  it("restores a checkpoint through the separate factory path", () => {
+  it("restores a checkpoint through the same correlated module bootstrap", () => {
     const fixture = engineFixture("restored", "42");
     const construction = new FakeConstructionResult("engine", fixture.engine);
     const factory = factoryReturning(construction);
 
-    const result = bootstrapWasmEngine(factory.factory, CHECKPOINT_SOURCE);
+    const result = bootstrapWasmEngine(moduleFor(factory.factory), CHECKPOINT_SOURCE);
 
     expect(result.ok).toBe(true);
     expect(factory.fromSessionCheckpointJson).toHaveBeenCalledWith("{}");
@@ -260,6 +375,7 @@ describe("Wasm engine bootstrap", () => {
         revision: "42",
       });
       result.observation.free();
+      result.profileGeneration.free();
       result.engine.free();
     }
   });
@@ -283,10 +399,114 @@ describe("Wasm engine bootstrap", () => {
     });
     expect(bootstrapWasmEngine(malformedVersion, DOCUMENT_SOURCE)).toMatchObject({
       ok: false,
-      error: { code: "engine_bootstrap.invalid_wasm_module" },
+      error: { code: "engine_bootstrap.incompatible_wasm_version" },
     });
     expect(factory.fromDocumentJson).not.toHaveBeenCalled();
     expect(fixture.engineFree).not.toHaveBeenCalled();
+  });
+
+  it("rejects compatibility mismatches before accessing the generated factory", () => {
+    const factoryReads = vi.fn();
+    const module = {
+      breditorWasmAbiVersion: () => "2",
+      breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
+    } as unknown as WasmEngineBootstrapModuleView;
+    Object.defineProperty(module, "BreditorEngine", {
+      get: () => {
+        factoryReads();
+        throw new Error("factory must remain inaccessible");
+      },
+    });
+
+    expect(bootstrapWasmEngine(module, DOCUMENT_SOURCE)).toMatchObject({
+      ok: false,
+      error: { code: "engine_bootstrap.incompatible_wasm_abi" },
+    });
+    expect(factoryReads).not.toHaveBeenCalled();
+
+    Reflect.set(module, "breditorWasmAbiVersion", () => BREDITOR_WASM_ABI_VERSION);
+    Reflect.set(module, "breditorVersion", () => "0.2.0-alpha.4");
+    expect(bootstrapWasmEngine(module, DOCUMENT_SOURCE)).toMatchObject({
+      ok: false,
+      error: { code: "engine_bootstrap.incompatible_wasm_version" },
+    });
+    expect(factoryReads).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-base profile descriptor before reading a projection", () => {
+    const fixture = engineFixture();
+    Object.defineProperty(fixture.descriptor, "schemaName", {
+      value: "example/document",
+    });
+
+    const result = bootstrapWasmEngine(
+      moduleFor(
+        factoryReturning(new FakeConstructionResult("engine", fixture.engine)).factory,
+      ),
+      DOCUMENT_SOURCE,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "engine_bootstrap.invalid_profile_descriptor" },
+    });
+    expect(fixture.engine.projection).not.toHaveBeenCalled();
+    expect(fixture.descriptor.freeCalls).toBe(1);
+    expect(fixture.generation.freeCalls).toBe(1);
+    expect(fixture.engineFree).toHaveBeenCalledOnce();
+    expect(fixture.observationFree).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "engine",
+      "engine_bootstrap.invalid_profile_generation",
+      (fixture: EngineFixture) => {
+        Reflect.set(fixture.engine, "matchesProfileGeneration", () => false);
+      },
+    ],
+    [
+      "descriptor",
+      "engine_bootstrap.invalid_profile_descriptor",
+      (fixture: EngineFixture) => {
+        Reflect.set(fixture.descriptor, "matchesProfileGeneration", () => false);
+      },
+    ],
+    [
+      "observation",
+      "engine_bootstrap.invalid_wasm_view",
+      (fixture: EngineFixture) => {
+        Reflect.set(fixture.observation, "matchesProfileGeneration", () => false);
+      },
+    ],
+    [
+      "projection result",
+      "engine_bootstrap.invalid_wasm_view",
+      (fixture: EngineFixture) => {
+        Reflect.set(fixture.projectionResult, "matchesProfileGeneration", () => false);
+      },
+    ],
+    [
+      "projection",
+      "engine_bootstrap.invalid_wasm_view",
+      (fixture: EngineFixture) => {
+        Reflect.set(fixture.projection, "matchesProfileGeneration", () => false);
+      },
+    ],
+  ] as const)("rejects a mismatched %s generation", (_label, code, mutate) => {
+    const fixture = engineFixture();
+    mutate(fixture);
+
+    const result = bootstrapWasmEngine(
+      moduleFor(
+        factoryReturning(new FakeConstructionResult("engine", fixture.engine)).factory,
+      ),
+      DOCUMENT_SOURCE,
+    );
+
+    expect(result).toMatchObject({ ok: false, error: { code } });
+    expect(fixture.engineFree).toHaveBeenCalledOnce();
+    expect(fixture.generation.freeCalls).toBe(1);
   });
 
   it("rejects malformed sources before calling generated code", () => {
@@ -305,7 +525,7 @@ describe("Wasm engine bootstrap", () => {
     for (const value of values) {
       expect(
         bootstrapWasmEngine(
-          factory.factory,
+          moduleFor(factory.factory),
           value as unknown as typeof DOCUMENT_SOURCE,
         ),
       ).toMatchObject({
@@ -322,7 +542,7 @@ describe("Wasm engine bootstrap", () => {
     const construction = new FakeConstructionResult("error", undefined, error);
 
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
 
@@ -341,12 +561,17 @@ describe("Wasm engine bootstrap", () => {
   it("frees the engine and observation when the guarded projection fails", () => {
     const fixture = engineFixture();
     const error = new FakeError("editor_engine.stale_snapshot");
-    const projectionResult = new FakeProjectionResult("error", undefined, error);
+    const projectionResult = new FakeProjectionResult(
+      "error",
+      undefined,
+      fixture.generation,
+      error,
+    );
     Reflect.set(fixture.engine, "projection", vi.fn(() => projectionResult));
     const construction = new FakeConstructionResult("engine", fixture.engine);
 
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
 
@@ -369,14 +594,15 @@ describe("Wasm engine bootstrap", () => {
         () =>
           new FakeProjectionResult(
             "projection",
-            new FakeProjection("bootstrap-tests", "1"),
+            new FakeProjection("bootstrap-tests", "1", "hello", fixture.generation),
+            fixture.generation,
           ),
       ),
     );
     const construction = new FakeConstructionResult("engine", fixture.engine);
 
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
 
@@ -393,7 +619,7 @@ describe("Wasm engine bootstrap", () => {
     const resultAsEngine = new FakeConstructionResult("engine", undefined);
     Reflect.set(resultAsEngine, "engineView", resultAsEngine);
     const engineAlias = bootstrapWasmEngine(
-      factoryReturning(resultAsEngine).factory,
+      moduleFor(factoryReturning(resultAsEngine).factory),
       DOCUMENT_SOURCE,
     );
     expect(engineAlias.ok).toBe(false);
@@ -406,9 +632,9 @@ describe("Wasm engine bootstrap", () => {
       vi.fn(() => observationAliasEngine.engine),
     );
     const aliasedObservation = bootstrapWasmEngine(
-      factoryReturning(
+      moduleFor(factoryReturning(
         new FakeConstructionResult("engine", observationAliasEngine.engine),
-      ).factory,
+      ).factory),
       DOCUMENT_SOURCE,
     );
     expect(aliasedObservation.ok).toBe(false);
@@ -421,9 +647,9 @@ describe("Wasm engine bootstrap", () => {
       vi.fn(() => projectionAlias.engine),
     );
     const aliasedProjectionResult = bootstrapWasmEngine(
-      factoryReturning(
+      moduleFor(factoryReturning(
         new FakeConstructionResult("engine", projectionAlias.engine),
-      ).factory,
+      ).factory),
       DOCUMENT_SOURCE,
     );
     expect(aliasedProjectionResult.ok).toBe(false);
@@ -449,7 +675,7 @@ describe("Wasm engine bootstrap", () => {
     });
 
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
 
@@ -469,7 +695,7 @@ describe("Wasm engine bootstrap", () => {
       return undefined;
     });
     expect(
-      bootstrapWasmEngine(factoryReturning(hostile).factory, DOCUMENT_SOURCE)
+      bootstrapWasmEngine(moduleFor(factoryReturning(hostile).factory), DOCUMENT_SOURCE)
         .ok,
     ).toBe(false);
     expect(originalErrorFree).toHaveBeenCalledOnce();
@@ -484,12 +710,13 @@ describe("Wasm engine bootstrap", () => {
     const projectionResult = new FakeProjectionResult(
       "projection",
       rejected as unknown as SemanticProjectionView,
+      fixture.generation,
     );
     Reflect.set(fixture.engine, "projection", vi.fn(() => projectionResult));
 
     const result = bootstrapWasmEngine(
-      factoryReturning(new FakeConstructionResult("engine", fixture.engine))
-        .factory,
+      moduleFor(factoryReturning(new FakeConstructionResult("engine", fixture.engine))
+        .factory),
       DOCUMENT_SOURCE,
     );
 
@@ -506,7 +733,7 @@ describe("Wasm engine bootstrap", () => {
     const originalCommand = fixture.engine.undo;
     const construction = new FakeConstructionResult("engine", fixture.engine);
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
     if (!result.ok) throw new Error("bootstrap failed");
@@ -535,8 +762,8 @@ describe("Wasm engine bootstrap", () => {
       }
     }));
     const result = bootstrapWasmEngine(
-      factoryReturning(new FakeConstructionResult("engine", fixture.engine))
-        .factory,
+      moduleFor(factoryReturning(new FakeConstructionResult("engine", fixture.engine))
+        .factory),
       DOCUMENT_SOURCE,
     );
     if (!result.ok) throw new Error("bootstrap failed");
@@ -551,8 +778,8 @@ describe("Wasm engine bootstrap", () => {
     const fixture = engineFixture();
     Reflect.set(fixture.engine, "undo", vi.fn(() => fixture.engine));
     const result = bootstrapWasmEngine(
-      factoryReturning(new FakeConstructionResult("engine", fixture.engine))
-        .factory,
+      moduleFor(factoryReturning(new FakeConstructionResult("engine", fixture.engine))
+        .factory),
       DOCUMENT_SOURCE,
     );
     if (!result.ok) throw new Error("bootstrap failed");
@@ -571,7 +798,7 @@ describe("Wasm engine bootstrap", () => {
     Reflect.set(construction, "free", vi.fn(() => "not void"));
 
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
 
@@ -592,7 +819,7 @@ describe("Wasm engine bootstrap", () => {
     }));
 
     const result = bootstrapWasmEngine(
-      factoryReturning(construction).factory,
+      moduleFor(factoryReturning(construction).factory),
       DOCUMENT_SOURCE,
     );
 
@@ -611,7 +838,7 @@ describe("Wasm engine bootstrap", () => {
       },
       fromSessionCheckpointJson: vi.fn(),
     } as unknown as WasmEngineBootstrapFactoryView;
-    expect(bootstrapWasmEngine(throwingFactory, DOCUMENT_SOURCE)).toMatchObject({
+    expect(bootstrapWasmEngine(moduleFor(throwingFactory), DOCUMENT_SOURCE)).toMatchObject({
       ok: false,
       error: { code: "engine_bootstrap.invalid_wasm_module" },
     });
@@ -620,7 +847,7 @@ describe("Wasm engine bootstrap", () => {
     const module = {
       BreditorEngine: throwingFactory,
       breditorWasmAbiVersion: () => rejected,
-      breditorVersion: () => "0.1.0",
+      breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
     } as unknown as WasmEngineBootstrapModuleView;
     expect(bootstrapWasmEngine(module, DOCUMENT_SOURCE)).toMatchObject({
       ok: false,

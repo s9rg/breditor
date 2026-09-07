@@ -65,6 +65,17 @@ pub(super) fn compile_base_text_profile(
     Ok(CompiledEditorProfile::from_compilation(extensions, schema, router, action_states))
 }
 
+pub(super) fn compile_breditor_base_profile()
+-> Result<CompiledEditorProfile, ProfileCompilationError> {
+    let extensions = ExtensionSet::empty();
+    let schema = CompiledSchema::breditor_base();
+    let actions = ActionRegistry::try_new(base_action_registrations())?;
+    let router = IntentRouter::try_new(actions, Vec::new(), Vec::new())?;
+    let action_states =
+        ActionStateCatalog::try_new_with_router(router.clone(), base_action_state_registrations())?;
+    Ok(CompiledEditorProfile::from_compilation(extensions, schema, router, action_states))
+}
+
 fn validate_toggle_count(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
     let actual = extensions.manifests().fold(0_u32, |total, manifest| {
         total.saturating_add(fixed_count(manifest.inline_format_toggles().len()))

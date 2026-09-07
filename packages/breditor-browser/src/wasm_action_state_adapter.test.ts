@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MAX_BROWSER_ACTION_STATE_ENTRIES,
   MAX_BROWSER_ACTION_STATE_VALUE_JSON_BYTES,
-  consumeWasmActionStates,
+  consumeWasmActionStates as consumeWasmActionStatesRaw,
   isOwnedBrowserActionStateReadResult,
   type BrowserActionStateActivation,
   type BrowserActionStateValueStatus,
@@ -13,6 +13,14 @@ import {
   type WasmActionStateStringResultView,
   type WasmActionStatesResultView,
 } from "./wasm_action_state_adapter.js";
+import type { WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
+
+const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
+  matches(other) {
+    return other === TEST_PROFILE_GENERATION;
+  },
+  free: vi.fn(),
+};
 
 interface FakeEntry {
   readonly id: string;
@@ -119,6 +127,10 @@ class FakeSnapshot implements WasmActionStateSnapshotView {
   free(): void {
     this.freeCalls += 1;
   }
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
 }
 
 class FakeResult implements WasmActionStatesResultView {
@@ -141,9 +153,26 @@ class FakeResult implements WasmActionStatesResultView {
   free(): void {
     this.freeCalls += 1;
   }
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
 }
 
 const EXPECTED = Object.freeze({ lineage: "action-state-tests", revision: "7" });
+
+function consumeWasmActionStates(
+  expected: Parameters<typeof consumeWasmActionStatesRaw>[0],
+  view: WasmActionStatesResultView,
+  protectedHandles: readonly unknown[] = [],
+) {
+  return consumeWasmActionStatesRaw(
+    expected,
+    view,
+    TEST_PROFILE_GENERATION,
+    protectedHandles,
+  );
+}
 
 function statelessEntry(
   id: string,
@@ -161,6 +190,21 @@ function statelessEntry(
 }
 
 describe("Wasm action-state adapter", () => {
+  it("rejects a result from another profile generation", () => {
+    const foreignGeneration: WasmProfileGenerationView = {
+      matches(other) { return other === foreignGeneration; },
+      free: vi.fn(),
+    };
+    const snapshot = new FakeSnapshot([], []);
+    const resultView = new FakeResult("full", snapshot);
+
+    expect(
+      consumeWasmActionStatesRaw(EXPECTED, resultView, foreignGeneration).ok,
+    ).toBe(false);
+    expect(resultView.freeCalls).toBe(1);
+    expect(snapshot.freeCalls).toBe(0);
+  });
+
   it("copies a complete typed snapshot, freezes it deeply, and frees every handle", () => {
     const entries: FakeEntry[] = [
       {

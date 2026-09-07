@@ -3,7 +3,10 @@ use std::fmt;
 use thiserror::Error;
 
 use crate::{
-    action::{ActionExecutionError, ActionPrepareError},
+    action::{
+        ActionExecutionError, ActionPrepareError,
+        routing::{IntentRouteBaseError, IntentRouteError},
+    },
     session::HistoryReplayError,
     state::SnapshotId,
     transaction::TransactionApplyError,
@@ -13,6 +16,8 @@ use crate::{
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum EditorEngineErrorCode {
+    /// An observation belongs to another compiled-profile generation.
+    ProfileGenerationMismatch,
     /// A delayed command came from another live engine instance.
     StaleEngine,
     /// A delayed command named a snapshot other than the engine's current one.
@@ -27,6 +32,12 @@ pub enum EditorEngineErrorCode {
     SelectionUpdate,
     /// An available undo or redo transition could not replay.
     HistoryReplay,
+    /// Semantic intent execution requires a profile-owned router.
+    ProfileUnavailable,
+    /// A semantic intent could not be routed.
+    IntentRouting,
+    /// A routed semantic intent could not be consumed at its exact base.
+    IntentExecution,
 }
 
 impl EditorEngineErrorCode {
@@ -34,6 +45,7 @@ impl EditorEngineErrorCode {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::ProfileGenerationMismatch => "editor_engine.profile_generation_mismatch",
             Self::StaleEngine => "editor_engine.stale_engine",
             Self::StaleSnapshot => "editor_engine.stale_snapshot",
             Self::StaleHistory => "editor_engine.stale_history",
@@ -41,6 +53,9 @@ impl EditorEngineErrorCode {
             Self::ActionExecution => "editor_engine.action_execution",
             Self::SelectionUpdate => "editor_engine.selection_update",
             Self::HistoryReplay => "editor_engine.history_replay",
+            Self::ProfileUnavailable => "editor_engine.profile_unavailable",
+            Self::IntentRouting => "editor_engine.intent_routing",
+            Self::IntentExecution => "editor_engine.intent_execution",
         }
     }
 }
@@ -53,6 +68,9 @@ impl EditorEngineErrorCode {
 #[non_exhaustive]
 #[derive(Clone, Eq, Error, PartialEq)]
 pub enum EditorEngineError {
+    /// The observation belongs to another compiled-profile generation.
+    #[error("engine observation belongs to another compiled profile generation")]
+    ProfileGenerationMismatch,
     /// The observation belongs to another engine instance.
     #[error("engine observation belongs to another engine instance")]
     StaleEngine,
@@ -91,6 +109,21 @@ pub enum EditorEngineError {
         /// Exact typed replay failure.
         source: HistoryReplayError,
     },
+    /// This engine was created through the advanced unprofiled constructor.
+    #[error("semantic intent execution requires a compiled editor profile")]
+    ProfileUnavailable,
+    /// Semantic intent declaration, input, or action routing failed.
+    #[error("intent routing failed: {source}")]
+    IntentRouting {
+        /// Exact typed routing failure.
+        source: IntentRouteError,
+    },
+    /// A routed semantic intent no longer matched its exact source state.
+    #[error("intent execution failed: {source}")]
+    IntentExecution {
+        /// Exact typed route-consumption failure.
+        source: IntentRouteBaseError,
+    },
 }
 
 impl EditorEngineError {
@@ -98,6 +131,7 @@ impl EditorEngineError {
     #[must_use]
     pub const fn code(&self) -> EditorEngineErrorCode {
         match self {
+            Self::ProfileGenerationMismatch => EditorEngineErrorCode::ProfileGenerationMismatch,
             Self::StaleEngine => EditorEngineErrorCode::StaleEngine,
             Self::StaleSnapshot { .. } => EditorEngineErrorCode::StaleSnapshot,
             Self::StaleHistory => EditorEngineErrorCode::StaleHistory,
@@ -105,6 +139,9 @@ impl EditorEngineError {
             Self::ActionExecution { .. } => EditorEngineErrorCode::ActionExecution,
             Self::SelectionUpdate { .. } => EditorEngineErrorCode::SelectionUpdate,
             Self::HistoryReplay { .. } => EditorEngineErrorCode::HistoryReplay,
+            Self::ProfileUnavailable => EditorEngineErrorCode::ProfileUnavailable,
+            Self::IntentRouting { .. } => EditorEngineErrorCode::IntentRouting,
+            Self::IntentExecution { .. } => EditorEngineErrorCode::IntentExecution,
         }
     }
 }
@@ -112,6 +149,7 @@ impl EditorEngineError {
 impl fmt::Debug for EditorEngineError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::ProfileGenerationMismatch => formatter.write_str("ProfileGenerationMismatch"),
             Self::StaleEngine => formatter.write_str("StaleEngine"),
             Self::StaleSnapshot { expected, actual } => formatter
                 .debug_struct("StaleSnapshot")
@@ -132,6 +170,14 @@ impl fmt::Debug for EditorEngineError {
                 .finish_non_exhaustive(),
             Self::HistoryReplay { .. } => formatter
                 .debug_struct("HistoryReplay")
+                .field("source", &"<redacted>")
+                .finish_non_exhaustive(),
+            Self::ProfileUnavailable => formatter.write_str("ProfileUnavailable"),
+            Self::IntentRouting { source } => {
+                formatter.debug_struct("IntentRouting").field("source", source).finish()
+            }
+            Self::IntentExecution { .. } => formatter
+                .debug_struct("IntentExecution")
                 .field("source", &"<redacted>")
                 .finish_non_exhaustive(),
         }
@@ -162,6 +208,18 @@ impl From<HistoryReplayError> for EditorEngineError {
     }
 }
 
+impl From<IntentRouteError> for EditorEngineError {
+    fn from(source: IntentRouteError) -> Self {
+        Self::IntentRouting { source }
+    }
+}
+
+impl From<IntentRouteBaseError> for EditorEngineError {
+    fn from(source: IntentRouteBaseError) -> Self {
+        Self::IntentExecution { source }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::EditorEngineErrorCode;
@@ -169,6 +227,10 @@ mod tests {
     #[test]
     fn error_code_strings_are_stable_and_namespaced() {
         let cases = [
+            (
+                EditorEngineErrorCode::ProfileGenerationMismatch,
+                "editor_engine.profile_generation_mismatch",
+            ),
             (EditorEngineErrorCode::StaleEngine, "editor_engine.stale_engine"),
             (EditorEngineErrorCode::StaleSnapshot, "editor_engine.stale_snapshot"),
             (EditorEngineErrorCode::StaleHistory, "editor_engine.stale_history"),
@@ -176,6 +238,9 @@ mod tests {
             (EditorEngineErrorCode::ActionExecution, "editor_engine.action_execution"),
             (EditorEngineErrorCode::SelectionUpdate, "editor_engine.selection_update"),
             (EditorEngineErrorCode::HistoryReplay, "editor_engine.history_replay"),
+            (EditorEngineErrorCode::ProfileUnavailable, "editor_engine.profile_unavailable"),
+            (EditorEngineErrorCode::IntentRouting, "editor_engine.intent_routing"),
+            (EditorEngineErrorCode::IntentExecution, "editor_engine.intent_execution"),
         ];
 
         for (code, expected) in cases {

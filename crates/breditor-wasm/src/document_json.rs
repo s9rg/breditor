@@ -1,17 +1,18 @@
 //! Guarded lossless document-content export.
 //!
-//! This boundary deliberately exports only the canonical Document V1 value.
+//! Legacy engines export Document V1 and compiled-profile engines export the
+//! fingerprint-bearing Document V2 value.
 //! Editor selection, pending typing formats, history, and process-local
 //! observation identity remain outside the document envelope.
 
-use breditor_core::codec::DocumentJsonCodec;
+use breditor_core::codec::{DocumentJsonCodec, DocumentJsonCodecV2};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{BreditorEngine, BreditorError, BreditorObservation, BreditorStringResult};
 
 #[wasm_bindgen]
 impl BreditorEngine {
-    /// Encodes the canonical Document V1 value at one exact guarded observation.
+    /// Encodes the engine mode's canonical Document V1 or V2 value.
     ///
     /// The complete engine, snapshot, and history observation is checked before
     /// encoding. The read is synchronous and non-mutating. Selection, pending
@@ -26,15 +27,28 @@ impl BreditorEngine {
         }
 
         let state = self.inner.state();
-        match DocumentJsonCodec::new(state.context().schema().clone())
-            .with_limits(state.context().limits().clone())
-            .encode(state.document())
-        {
-            Ok(json) => BreditorStringResult::from_value(json),
-            Err(error) => BreditorStringResult::from_error(BreditorError::codec(
-                error.code(),
-                "the current document could not be encoded",
-            )),
+        if self.inner.session_checkpoint_format_version() == 1 {
+            match DocumentJsonCodec::new(state.context().schema().clone())
+                .with_limits(state.context().limits().clone())
+                .encode(state.document())
+            {
+                Ok(json) => BreditorStringResult::from_value(json),
+                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                    error.code(),
+                    "the current document could not be encoded",
+                )),
+            }
+        } else {
+            match DocumentJsonCodecV2::new(state.context().schema().clone())
+                .with_limits(state.context().limits().clone())
+                .encode(state.document())
+            {
+                Ok(json) => BreditorStringResult::from_value(json),
+                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                    error.code(),
+                    "the current document could not be encoded",
+                )),
+            }
         }
     }
 }

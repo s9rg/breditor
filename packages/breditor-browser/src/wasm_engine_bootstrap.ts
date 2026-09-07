@@ -11,15 +11,30 @@ import {
   sessionCheckpointJsonUtf8Bytes,
   type WasmSessionCheckpointErrorView,
 } from "./wasm_session_checkpoint.js";
+import {
+  consumeWasmCompiledProfileDescriptorWithCleanup,
+  wasmProfileGenerationIsLive,
+  wasmViewMatchesProfileGeneration,
+  type BrowserCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileCorrelatedView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 /** JavaScript-visible Wasm transport generation accepted by this bootstrap. */
-export const BREDITOR_WASM_ABI_VERSION = "2" as const;
+export const BREDITOR_WASM_ABI_VERSION = "3" as const;
+
+/** Exact official Wasm package version paired with this browser build. */
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.2.0-alpha.5" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
 
+const BREDITOR_BASE_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+
 /** Generated projection-read result consumed during engine bootstrap. */
-export interface WasmProjectionReadResultView {
+export interface WasmProjectionReadResultView extends WasmProfileCorrelatedView {
   readonly status: "projection" | "taken" | "error";
   readonly error: WasmSessionCheckpointErrorView | undefined;
   takeProjection(): SemanticProjectionView | undefined;
@@ -27,7 +42,13 @@ export interface WasmProjectionReadResultView {
 }
 
 /** Complete generated engine surface required by browser bootstrap. */
-export interface WasmBootstrappedEngineView extends WasmCommandEngineView {
+export interface WasmBootstrappedEngineView
+  extends WasmCommandEngineView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
+  /** Clones this engine's opaque process-local compiled-profile generation. */
+  profileGeneration(): WasmProfileGenerationView;
+  /** Clones the complete descriptor for this engine's compiled profile. */
+  profileDescriptor(): WasmCompiledProfileDescriptorView;
   /** Captures an exact process-local observation of the current session. */
   observation(): WasmCommandObservationView;
   /** Reads the semantic AST for one exact observation. */
@@ -44,7 +65,7 @@ export interface WasmEngineBootstrapResultView {
   free(): void;
 }
 
-/** Narrow static generated factory accepted without a module namespace. */
+/** Narrow static generated factory exposed by the paired module namespace. */
 export interface WasmEngineBootstrapFactoryView {
   fromDocumentJson(
     lineageId: string,
@@ -90,7 +111,10 @@ export type BrowserWasmEngineBootstrapError =
         | "engine_bootstrap.invalid_request"
         | "engine_bootstrap.invalid_wasm_module"
         | "engine_bootstrap.incompatible_wasm_abi"
+        | "engine_bootstrap.incompatible_wasm_version"
         | "engine_bootstrap.invalid_wasm_view"
+        | "engine_bootstrap.invalid_profile_generation"
+        | "engine_bootstrap.invalid_profile_descriptor"
         | "engine_bootstrap.invalid_initial_projection";
       message: string;
     }>
@@ -100,11 +124,13 @@ export type BrowserWasmEngineBootstrapError =
       message: "The Rust editor core rejected engine bootstrap.";
     }>;
 
-/** Complete initial state with exactly two generated owners transferred. */
+/** Complete initial state with exactly three generated owners transferred. */
 export type BrowserWasmEngineBootstrapResult =
   | Readonly<{
       ok: true;
       engine: WasmBootstrappedEngineView;
+      profileGeneration: WasmProfileGenerationView;
+      profileDescriptor: BrowserCompiledProfileDescriptor;
       observation: WasmCommandObservationView;
       projection: BaseDocumentProjection;
     }>
@@ -122,9 +148,21 @@ const INCOMPATIBLE_ABI = boundaryError(
   "engine_bootstrap.incompatible_wasm_abi",
   "The Wasm module uses an incompatible Breditor ABI.",
 );
+const INCOMPATIBLE_VERSION = boundaryError(
+  "engine_bootstrap.incompatible_wasm_version",
+  "The Wasm package version does not exactly match the browser package.",
+);
 const INVALID_VIEW = boundaryError(
   "engine_bootstrap.invalid_wasm_view",
   "A generated Wasm bootstrap view is invalid.",
+);
+const INVALID_GENERATION = boundaryError(
+  "engine_bootstrap.invalid_profile_generation",
+  "The Wasm compiled-profile generation is invalid.",
+);
+const INVALID_DESCRIPTOR = boundaryError(
+  "engine_bootstrap.invalid_profile_descriptor",
+  "The Wasm compiled-profile descriptor is invalid.",
 );
 const INVALID_PROJECTION = boundaryError(
   "engine_bootstrap.invalid_initial_projection",
@@ -166,6 +204,9 @@ interface EngineMethodSnapshot {
   readonly undo: WasmCommandEngineView["undo"];
   readonly redo: WasmCommandEngineView["redo"];
   readonly closeHistoryGroup: WasmCommandEngineView["closeHistoryGroup"];
+  readonly matchesProfileGeneration: WasmBootstrappedEngineView["matchesProfileGeneration"];
+  readonly profileGeneration: WasmBootstrappedEngineView["profileGeneration"];
+  readonly profileDescriptor: WasmBootstrappedEngineView["profileDescriptor"];
   readonly observation: WasmBootstrappedEngineView["observation"];
   readonly projection: WasmBootstrappedEngineView["projection"];
 }
@@ -178,21 +219,21 @@ interface ObservationSnapshot {
 /**
  * Constructs one browser-ready generated engine and its exact initial AST.
  *
- * A generated module namespace must report ABI `2` and a syntactically valid
- * crate version. A bare factory has no compatibility probe, so it is admitted
- * only through the complete fresh-and-restore static contract. All generated
+ * A generated module namespace must report ABI `3` and the exact package
+ * version paired with this browser build before its factory is accessed. All generated
  * handles are claimed before `then` or sibling getters are inspected. Result,
  * error, and projection handles are consumed here; only a frozen engine
- * forwarding owner and the real generated observation cross the success edge.
+ * forwarding owner, opaque profile generation, and real generated observation
+ * cross the success edge.
  */
 export function bootstrapWasmEngine(
-  moduleOrFactory: WasmEngineBootstrapModuleView | WasmEngineBootstrapFactoryView,
+  module: WasmEngineBootstrapModuleView,
   source: WasmEngineBootstrapSource,
 ): BrowserWasmEngineBootstrapResult {
   const request = readSource(source);
   if (request === null) return failure(INVALID_REQUEST);
 
-  const resolved = resolveFactory(moduleOrFactory);
+  const resolved = resolveFactory(module);
   if (!resolved.ok) return failure(resolved.error);
 
   const registry: GeneratedHandleRegistry = {
@@ -226,12 +267,14 @@ export function bootstrapWasmEngine(
   const transferred = provisional.ok
     ? new Set<object>([
         hiddenEngineOwner(provisional.engine),
+        provisional.profileGeneration,
         provisional.observation,
       ])
     : EMPTY_OBJECT_SET;
   const cleanupFailed = releaseGeneratedHandles(registry, transferred);
   const transferredOwnerLost = provisional.ok && (
     !engineOwnerIsLive(provisional.engine) ||
+    !profileGenerationOwnerIsLive(provisional.profileGeneration) ||
     !observationOwnerIsLive(provisional.observation)
   );
   if (cleanupFailed || transferredOwnerLost) {
@@ -245,6 +288,11 @@ export function bootstrapWasmEngine(
         bestEffortRelease(registry, provisional.observation);
       } else {
         discardGeneratedHandle(registry, provisional.observation);
+      }
+      if (profileGenerationOwnerIsLive(provisional.profileGeneration)) {
+        bestEffortRelease(registry, provisional.profileGeneration);
+      } else {
+        discardGeneratedHandle(registry, provisional.profileGeneration);
       }
     }
     return failure(INVALID_VIEW);
@@ -308,6 +356,45 @@ function consumeConstructionResult(
   const engineSnapshot = snapshotEngineMethods(rawEngine, registry);
   if (engineSnapshot === null) return failure(INVALID_VIEW);
 
+  const rawGeneration = Reflect.apply(
+    engineSnapshot.profileGeneration,
+    rawEngine,
+    [],
+  ) as unknown;
+  if (
+    !claimGeneratedHandle(registry, rawGeneration, protectedHandles) ||
+    !wasmProfileGenerationIsLive(rawGeneration) ||
+    !wasmViewMatchesProfileGeneration(rawEngine, rawGeneration)
+  ) {
+    return failure(INVALID_GENERATION);
+  }
+
+  const rawDescriptor = Reflect.apply(
+    engineSnapshot.profileDescriptor,
+    rawEngine,
+    [],
+  ) as unknown;
+  if (
+    !claimGeneratedHandle(registry, rawDescriptor, protectedHandles) ||
+    !objectLike(rawDescriptor)
+  ) {
+    return failure(INVALID_DESCRIPTOR);
+  }
+  const descriptorCleanup = takeGeneratedCleanup(registry, rawDescriptor);
+  if (descriptorCleanup === undefined) return failure(INVALID_DESCRIPTOR);
+  const descriptorResult = consumeWasmCompiledProfileDescriptorWithCleanup(
+    rawGeneration,
+    rawDescriptor as WasmCompiledProfileDescriptorView,
+    descriptorCleanup,
+    [rawEngine, rawGeneration],
+  );
+  if (
+    !descriptorResult.ok ||
+    !isExactBuiltInBaseDescriptor(descriptorResult.descriptor)
+  ) {
+    return failure(INVALID_DESCRIPTOR);
+  }
+
   const rawObservation = Reflect.apply(
     engineSnapshot.observation,
     rawEngine,
@@ -315,7 +402,8 @@ function consumeConstructionResult(
   ) as unknown;
   if (
     !claimGeneratedHandle(registry, rawObservation, protectedHandles) ||
-    !objectLike(rawObservation)
+    !objectLike(rawObservation) ||
+    !wasmViewMatchesProfileGeneration(rawObservation, rawGeneration)
   ) {
     return failure(INVALID_VIEW);
   }
@@ -335,13 +423,18 @@ function consumeConstructionResult(
   const projectionResult = consumeProjectionRead(
     projectionRead,
     rawEngine,
+    rawGeneration,
     rawObservation,
     observationSnapshot,
+    descriptorResult.descriptor,
     registry,
     protectedHandles,
   );
   if (!projectionResult.ok) return failure(projectionResult.error);
 
+  if (!installProfileGenerationCleanup(rawGeneration, registry)) {
+    return failure(INVALID_GENERATION);
+  }
   if (!installObservationCleanup(rawObservation, registry)) {
     return failure(INVALID_VIEW);
   }
@@ -350,6 +443,8 @@ function consumeConstructionResult(
   const success = Object.freeze({
     ok: true as const,
     engine,
+    profileGeneration: rawGeneration,
+    profileDescriptor: descriptorResult.descriptor,
     observation: rawObservation as WasmCommandObservationView,
     projection: projectionResult.projection,
   });
@@ -360,8 +455,10 @@ function consumeConstructionResult(
 function consumeProjectionRead(
   rawResult: unknown,
   rawEngine: object,
+  rawGeneration: WasmProfileGenerationView,
   rawObservation: object,
   expected: ObservationSnapshot,
+  descriptor: BrowserCompiledProfileDescriptor,
   registry: GeneratedHandleRegistry,
   protectedHandles: ReadonlySet<object>,
 ):
@@ -371,6 +468,9 @@ function consumeProjectionRead(
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
   const result = rawResult as WasmProjectionReadResultView;
+  if (!wasmViewMatchesProfileGeneration(result, rawGeneration)) {
+    return Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
   const status = readScalar(result, "status");
   const takeProjection = readMethod(result, "takeProjection");
   if (status.invalid || takeProjection === null) {
@@ -390,6 +490,7 @@ function consumeProjectionRead(
   if (rawProjection !== undefined) {
     if (
       rawProjection === rawEngine ||
+      rawProjection === rawGeneration ||
       rawProjection === rawObservation ||
       !claimGeneratedHandle(registry, rawProjection, protectedHandles)
     ) {
@@ -405,7 +506,8 @@ function consumeProjectionRead(
   if (
     status.value !== "projection" ||
     error !== undefined ||
-    !objectLike(rawProjection)
+    !objectLike(rawProjection) ||
+    !wasmViewMatchesProfileGeneration(rawProjection, rawGeneration)
   ) {
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
@@ -414,7 +516,11 @@ function consumeProjectionRead(
   if (facade === null) {
     return Object.freeze({ ok: false, error: INVALID_VIEW });
   }
-  const consumed = consumeSemanticProjection(facade);
+  const consumed = consumeSemanticProjection(
+    facade,
+    rawGeneration,
+    descriptor.schema.fingerprint,
+  );
   if (!consumed.ok) {
     return Object.freeze({ ok: false, error: INVALID_PROJECTION });
   }
@@ -437,6 +543,7 @@ function snapshotProjectionFacade(
     const view = raw as SemanticProjectionView;
     const schemaName = view.schemaName;
     const schemaVersion = view.schemaVersion;
+    const schemaFingerprint = view.schemaFingerprint;
     const snapshotLineage = view.snapshotLineage;
     const snapshotRevision = view.snapshotRevision;
     const nodeCount = view.nodeCount;
@@ -448,9 +555,11 @@ function snapshotProjectionFacade(
     const text = view.text;
     const formatCount = view.formatCount;
     const formatType = view.formatType;
+    const matchesProfileGeneration = view.matchesProfileGeneration;
     const scalars = [
       schemaName,
       schemaVersion,
+      schemaFingerprint,
       snapshotLineage,
       snapshotRevision,
       nodeCount,
@@ -464,8 +573,10 @@ function snapshotProjectionFacade(
       text,
       formatCount,
       formatType,
+      matchesProfileGeneration,
     ];
     if (
+      typeof schemaFingerprint !== "string" ||
       scalars.some(valueIsThenable) ||
       methods.some((method) =>
         typeof method !== "function" || valueIsThenable(method)
@@ -481,6 +592,7 @@ function snapshotProjectionFacade(
     return Object.freeze({
       schemaName,
       schemaVersion,
+      schemaFingerprint,
       snapshotLineage,
       snapshotRevision,
       nodeCount,
@@ -492,6 +604,8 @@ function snapshotProjectionFacade(
       text: (index: number) => invoke(text, [index]) as ReturnType<SemanticProjectionView["text"]>,
       formatCount: (index: number) => invoke(formatCount, [index]) as ReturnType<SemanticProjectionView["formatCount"]>,
       formatType: (index: number, ordinal: number) => invoke(formatType, [index, ordinal]) as ReturnType<SemanticProjectionView["formatType"]>,
+      matchesProfileGeneration: (generation: WasmProfileGenerationView) =>
+        invoke(matchesProfileGeneration as Function, [generation]) as boolean,
       free: (() => cleanup()) as () => void,
     });
   } catch {
@@ -522,6 +636,9 @@ function snapshotEngineMethods(
       undo: engine.undo,
       redo: engine.redo,
       closeHistoryGroup: engine.closeHistoryGroup,
+      matchesProfileGeneration: engine.matchesProfileGeneration,
+      profileGeneration: engine.profileGeneration,
+      profileDescriptor: engine.profileDescriptor,
       observation: engine.observation,
       projection: engine.projection,
     };
@@ -537,6 +654,9 @@ function snapshotEngineMethods(
       snapshot.undo,
       snapshot.redo,
       snapshot.closeHistoryGroup,
+      snapshot.matchesProfileGeneration,
+      snapshot.profileGeneration,
+      snapshot.profileDescriptor,
       snapshot.observation,
       snapshot.projection,
     ];
@@ -551,6 +671,7 @@ function snapshotEngineMethods(
 
 const HIDDEN_ENGINE_OWNER = new WeakMap<WasmBootstrappedEngineView, object>();
 const ENGINE_OWNER_LIVENESS = new WeakMap<WasmBootstrappedEngineView, () => boolean>();
+const PROFILE_GENERATION_OWNER_LIVENESS = new WeakMap<object, () => boolean>();
 const OBSERVATION_OWNER_LIVENESS = new WeakMap<object, () => boolean>();
 
 function createEngineOwner(
@@ -631,6 +752,10 @@ function createEngineOwner(
     redo: (expected) => invoke(snapshot.redo, [expected]),
     closeHistoryGroup: (expected) =>
       invoke(snapshot.closeHistoryGroup, [expected]),
+    matchesProfileGeneration: (generation) =>
+      invoke(snapshot.matchesProfileGeneration, [generation]),
+    profileGeneration: () => invoke(snapshot.profileGeneration, []),
+    profileDescriptor: () => invoke(snapshot.profileDescriptor, []),
     observation: () => invoke(snapshot.observation, []),
     projection: (expected) => invoke(snapshot.projection, [expected]),
     free: stableFree,
@@ -680,6 +805,43 @@ function installObservationCleanup(
   }
 }
 
+function installProfileGenerationCleanup(
+  generation: WasmProfileGenerationView,
+  registry: GeneratedHandleRegistry,
+): boolean {
+  const cleanup = registry.cleanups.get(generation);
+  if (cleanup === undefined) return false;
+  let live = true;
+  const stableFree = (): void => {
+    if (!live) return;
+    live = false;
+    const returned = cleanup();
+    if (returned !== undefined) {
+      containSettlement(returned);
+      throw new TypeError("generated profile-generation cleanup returned a value");
+    }
+  };
+  try {
+    const installed = Reflect.defineProperty(generation, "free", {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: stableFree,
+    });
+    const descriptor = Reflect.getOwnPropertyDescriptor(generation, "free");
+    const valid = installed &&
+      descriptor !== undefined &&
+      "value" in descriptor &&
+      descriptor.value === stableFree &&
+      descriptor.configurable === false &&
+      descriptor.writable === false;
+    if (valid) PROFILE_GENERATION_OWNER_LIVENESS.set(generation, () => live);
+    return valid;
+  } catch {
+    return false;
+  }
+}
+
 function hiddenEngineOwner(owner: WasmBootstrappedEngineView): object {
   return HIDDEN_ENGINE_OWNER.get(owner) ?? owner;
 }
@@ -692,6 +854,10 @@ function observationOwnerIsLive(owner: WasmCommandObservationView): boolean {
   return OBSERVATION_OWNER_LIVENESS.get(owner)?.() === true;
 }
 
+function profileGenerationOwnerIsLive(owner: WasmProfileGenerationView): boolean {
+  return PROFILE_GENERATION_OWNER_LIVENESS.get(owner)?.() === true;
+}
+
 function resolveFactory(
   value: unknown,
 ):
@@ -701,44 +867,30 @@ function resolveFactory(
     return Object.freeze({ ok: false, error: INVALID_MODULE });
   }
   try {
-    const candidate = value as Partial<WasmEngineBootstrapModuleView> &
-      Partial<WasmEngineBootstrapFactoryView>;
-    const moduleFactory = candidate.BreditorEngine;
-    const abiProbe = candidate.breditorWasmAbiVersion;
-    const versionProbe = candidate.breditorVersion;
-    let factory: unknown = value;
-    const protectedHandles = new Set<object>([value]);
+    const candidate = value as Partial<WasmEngineBootstrapModuleView>;
+    // Compatibility probes are captured and called before the generated
+    // factory property is touched. A mismatched package therefore cannot run a
+    // hostile or simply incompatible factory getter as part of rejection.
+    const abiProbe = Reflect.get(candidate, "breditorWasmAbiVersion", candidate) as unknown;
+    const versionProbe = Reflect.get(candidate, "breditorVersion", candidate) as unknown;
     if (
-      moduleFactory !== undefined ||
-      abiProbe !== undefined ||
-      versionProbe !== undefined
+      typeof abiProbe !== "function" ||
+      valueIsThenable(abiProbe) ||
+      typeof versionProbe !== "function" ||
+      valueIsThenable(versionProbe)
     ) {
-      if (
-        !objectLike(moduleFactory) ||
-        containThenable(moduleFactory) ||
-        typeof abiProbe !== "function" ||
-        valueIsThenable(abiProbe) ||
-        typeof versionProbe !== "function" ||
-        valueIsThenable(versionProbe)
-      ) {
-        return Object.freeze({ ok: false, error: INVALID_MODULE });
-      }
-      const abi = Reflect.apply(abiProbe, value, []) as unknown;
-      if (valueIsThenable(abi) || abi !== BREDITOR_WASM_ABI_VERSION) {
-        return Object.freeze({ ok: false, error: INCOMPATIBLE_ABI });
-      }
-      const version = Reflect.apply(versionProbe, value, []) as unknown;
-      if (
-        valueIsThenable(version) ||
-        typeof version !== "string" ||
-        version.length > 64 ||
-        !/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/u.test(version)
-      ) {
-        return Object.freeze({ ok: false, error: INVALID_MODULE });
-      }
-      factory = moduleFactory;
-      protectedHandles.add(moduleFactory);
+      return Object.freeze({ ok: false, error: INVALID_MODULE });
     }
+    const abi = Reflect.apply(abiProbe, value, []) as unknown;
+    if (valueIsThenable(abi) || abi !== BREDITOR_WASM_ABI_VERSION) {
+      return Object.freeze({ ok: false, error: INCOMPATIBLE_ABI });
+    }
+    const version = Reflect.apply(versionProbe, value, []) as unknown;
+    if (valueIsThenable(version) || version !== BREDITOR_BROWSER_PACKAGE_VERSION) {
+      return Object.freeze({ ok: false, error: INCOMPATIBLE_VERSION });
+    }
+
+    const factory = Reflect.get(candidate, "BreditorEngine", candidate) as unknown;
     if (!objectLike(factory) || containThenable(factory)) {
       return Object.freeze({ ok: false, error: INVALID_MODULE });
     }
@@ -753,7 +905,7 @@ function resolveFactory(
     ) {
       return Object.freeze({ ok: false, error: INVALID_MODULE });
     }
-    protectedHandles.add(factory);
+    const protectedHandles = new Set<object>([value, factory]);
     return Object.freeze({
       ok: true,
       value: Object.freeze({
@@ -883,6 +1035,62 @@ function readObservation(value: object): ObservationSnapshot | null {
   } catch {
     return null;
   }
+}
+
+function isExactBuiltInBaseDescriptor(
+  descriptor: BrowserCompiledProfileDescriptor,
+): boolean {
+  const { schema, formats, intents, actionStates } = descriptor;
+  return schema.name === "breditor/base" &&
+    schema.version === 1 &&
+    schema.fingerprint === BREDITOR_BASE_SCHEMA_FINGERPRINT &&
+    formats.length === 1 &&
+    formats[0]?.kind === "breditor/strong" &&
+    formats[0]?.revision === 1 &&
+    intents.length === 0 &&
+    actionStates.length === 3 &&
+    actionStateMatches(
+      actionStates[0],
+      "breditor/control-bold",
+      "direct",
+      "breditor/toggle-strong",
+      "tracked",
+    ) &&
+    actionStateMatches(
+      actionStates[1],
+      "breditor/control-redo",
+      "history",
+      "redo",
+      "stateless",
+    ) &&
+    actionStateMatches(
+      actionStates[2],
+      "breditor/control-undo",
+      "history",
+      "undo",
+      "stateless",
+    );
+}
+
+function actionStateMatches(
+  state: BrowserCompiledProfileDescriptor["actionStates"][number] | undefined,
+  id: string,
+  sourceKind: "direct" | "history",
+  sourceIdentity: string,
+  activation: "stateless" | "tracked",
+): boolean {
+  if (
+    state === undefined ||
+    state.id !== id ||
+    state.source.kind !== sourceKind ||
+    state.state.activation !== activation ||
+    state.state.value !== undefined
+  ) {
+    return false;
+  }
+  return state.source.kind === "direct"
+    ? state.source.actionId === sourceIdentity
+    : state.source.direction === sourceIdentity;
 }
 
 function readScalar(

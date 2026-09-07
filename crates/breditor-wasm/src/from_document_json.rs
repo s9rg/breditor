@@ -1,16 +1,18 @@
 use breditor_core::{
     codec::{DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY, DocumentJsonCodec},
     engine::EditorEngine,
+    profile::CompiledEditorProfile,
+    schema::DocumentLimits,
     session::{EditorSession, HistoryCapacity},
-    state::{EditorContext, EditorState, LineageId},
+    state::{EditorState, LineageId},
 };
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     BreditorEngine, BreditorEngineResult, BreditorError,
     error::{
-        BASE_ACTIONS_CODE, INVALID_HISTORY_CAPACITY_CODE, INVALID_INITIAL_STATE_CODE,
-        INVALID_LINEAGE_CODE,
+        INVALID_HISTORY_CAPACITY_CODE, INVALID_INITIAL_STATE_CODE, INVALID_LINEAGE_CODE,
+        PROFILE_COMPILATION_CODE,
     },
 };
 
@@ -42,7 +44,13 @@ impl BreditorEngine {
                 "the history capacity is invalid",
             ));
         };
-        let context = EditorContext::default();
+        let Ok(profile) = CompiledEditorProfile::try_compile_breditor_base() else {
+            return BreditorEngineResult::from_error(BreditorError::new(
+                PROFILE_COMPILATION_CODE,
+                "the compiled base profile is unavailable",
+            ));
+        };
+        let context = profile.editor_context(DocumentLimits::default());
         let document_codec =
             DocumentJsonCodec::new(context.schema().clone()).with_limits(context.limits().clone());
         let document = match document_codec.decode(document_json) {
@@ -61,20 +69,21 @@ impl BreditorEngine {
             ));
         };
         let session = EditorSession::with_history_capacity(state, history_capacity);
-        let Ok(engine) = EditorEngine::try_with_base_actions(session) else {
+        let action_states = profile.action_state_cache();
+        let Ok(engine) = EditorEngine::try_with_compiled_profile(session, profile.clone()) else {
             return BreditorEngineResult::from_error(BreditorError::new(
-                BASE_ACTIONS_CODE,
-                "the compiled base action registry is unavailable",
+                PROFILE_COMPILATION_CODE,
+                "the compiled base profile is unavailable",
             ));
         };
-        match Self::try_new(engine) {
+        match Self::try_new_v1(engine, action_states) {
             Ok(engine) => BreditorEngineResult::success(engine),
             Err(error) => BreditorEngineResult::from_error(error),
         }
     }
 }
 
-fn parse_history_capacity(value: f64) -> Option<HistoryCapacity> {
+pub(crate) fn parse_history_capacity(value: f64) -> Option<HistoryCapacity> {
     if !value.is_finite()
         || value < 0.0
         || value > f64::from(DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY)

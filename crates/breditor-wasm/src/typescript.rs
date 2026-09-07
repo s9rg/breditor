@@ -5,6 +5,9 @@ const TYPESCRIPT_TYPES: &str = r#"
 /** Outcome of one guarded editor command. */
 export type BreditorCommandStatus = "committed" | "disabled" | "unchanged" | "error";
 
+/** Outcome of one guarded semantic-intent execution. */
+export type BreditorIntentResultStatus = "committed" | "blocked" | "unhandled" | "error";
+
 /** Kind of sealed event published by the editor engine. */
 export type BreditorEngineEventKind = "action" | "selection" | "undo" | "redo" | "closeHistoryGroup" | "clearHistory";
 
@@ -22,6 +25,21 @@ export type BreditorActionStateEntryStatus = "enabled" | "disabled" | "blocked" 
 
 /** Lifecycle state of an engine-construction result. */
 export type BreditorEngineResultStatus = "engine" | "taken" | "error";
+
+/** Lifecycle state of a compiled-profile bootstrap result. */
+export type BreditorCompiledProfileResultStatus = "profile" | "taken" | "error";
+
+/** Cross-language input envelope admitted by one semantic intent. */
+export type BreditorProfileIntentInputKind = "none" | "typed";
+
+/** Semantic source evaluated by one action-state entry. */
+export type BreditorProfileActionStateSourceKind = "direct" | "routed" | "history";
+
+/** Selection-sensitive activation shape promised by a profile contract. */
+export type BreditorProfileActivationContract = "stateless" | "tracked";
+
+/** Linear-history relationship of one profile state entry. */
+export type BreditorProfileHistoryDirection = "undo" | "redo";
 
 /** Lifecycle state of a fallible string-producing result. */
 export type BreditorStringResultStatus = "value" | "taken" | "absent" | "error";

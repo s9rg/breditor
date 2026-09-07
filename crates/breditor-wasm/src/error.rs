@@ -18,7 +18,6 @@ use wasm_bindgen::prelude::wasm_bindgen;
 pub(crate) const INVALID_LINEAGE_CODE: &str = "breditor_wasm.invalid_lineage";
 pub(crate) const INVALID_HISTORY_CAPACITY_CODE: &str = "breditor_wasm.invalid_history_capacity";
 pub(crate) const INVALID_INITIAL_STATE_CODE: &str = "breditor_wasm.invalid_initial_state";
-pub(crate) const BASE_ACTIONS_CODE: &str = "breditor_wasm.base_actions_unavailable";
 pub(crate) const INVALID_ACTION_ID_CODE: &str = "breditor_wasm.invalid_action_id";
 pub(crate) const UNKNOWN_ACTION_CODE: &str = "breditor_wasm.unknown_action";
 pub(crate) const ACTION_REQUIRES_STRING_CODE: &str = "breditor_wasm.action_requires_string_input";
@@ -34,8 +33,12 @@ pub(crate) const INVALID_SELECTION_COORDINATE_CODE: &str =
 pub(crate) const INVALID_SELECTION_AFFINITY_CODE: &str = "breditor_wasm.invalid_selection_affinity";
 pub(crate) const INVALID_SELECTION_NODE_CODE: &str = "breditor_wasm.invalid_selection_node";
 pub(crate) const SELECTION_READ_CODE: &str = "breditor_wasm.selection_read";
-pub(crate) const ACTION_STATE_CATALOG_CODE: &str = "breditor_wasm.action_state_catalog";
 pub(crate) const ACTION_STATE_READ_CODE: &str = "breditor_wasm.action_state_read";
+pub(crate) const PROFILE_BOOTSTRAP_LIMIT_CODE: &str = "breditor_wasm.profile_bootstrap_json_limit";
+pub(crate) const INVALID_PROFILE_BOOTSTRAP_CODE: &str = "breditor_wasm.invalid_profile_bootstrap";
+pub(crate) const PROFILE_COMPILATION_CODE: &str = "breditor_wasm.profile_compilation";
+pub(crate) const INVALID_INTENT_ID_CODE: &str = "breditor_wasm.invalid_intent_id";
+pub(crate) const INTENT_REQUIRES_INPUT_CODE: &str = "breditor_wasm.intent_requires_input";
 
 /// Structured, stable, payload-redacting error returned by the Wasm boundary.
 ///
@@ -81,13 +84,6 @@ impl BreditorError {
 
     pub(crate) const fn codec(code: CodecErrorCode, message: &'static str) -> Self {
         Self::new(code.as_str(), message)
-    }
-
-    pub(crate) const fn action_state_catalog() -> Self {
-        Self::new(
-            ACTION_STATE_CATALOG_CODE,
-            "the compiled base action-state catalog is unavailable",
-        )
     }
 
     pub(crate) const fn action_state_read() -> Self {

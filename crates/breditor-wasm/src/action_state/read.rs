@@ -6,7 +6,7 @@ use super::BreditorActionStatesResult;
 
 #[wasm_bindgen]
 impl BreditorEngine {
-    /// Refreshes the complete base action-state catalog at one guarded engine instant.
+    /// Refreshes the complete profile action-state catalog at one guarded engine instant.
     ///
     /// The exact engine, snapshot, and history observation is checked before
     /// the cache is consulted. A stale read cannot mutate the cache. A
@@ -17,14 +17,19 @@ impl BreditorEngine {
     #[must_use]
     #[wasm_bindgen(js_name = actionStates)]
     pub fn action_states(&mut self, expected: &BreditorObservation) -> BreditorActionStatesResult {
+        let generation = self.generation.clone();
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorActionStatesResult::from_error(BreditorError::checkpointed_engine(
-                &error,
-            ));
+            return BreditorActionStatesResult::from_error(
+                generation,
+                BreditorError::checkpointed_engine(&error),
+            );
         }
         match self.action_states.refresh(self.inner.session()) {
-            Ok(update) => BreditorActionStatesResult::from_update(&update),
-            Err(_) => BreditorActionStatesResult::from_error(BreditorError::action_state_read()),
+            Ok(update) => BreditorActionStatesResult::from_update(generation, &update),
+            Err(_) => BreditorActionStatesResult::from_error(
+                generation,
+                BreditorError::action_state_read(),
+            ),
         }
     }
 }

@@ -1,7 +1,7 @@
-use breditor_core::action::ActionStateCacheUpdate;
+use breditor_core::{action::ActionStateCacheUpdate, profile::CompiledProfileGeneration};
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::BreditorError;
+use crate::{BreditorError, BreditorProfileGeneration};
 
 use super::BreditorActionStateSnapshot;
 
@@ -29,13 +29,17 @@ impl SuccessfulActionStatesStatus {
 /// transfer; `error` never contains a snapshot.
 #[wasm_bindgen]
 pub struct BreditorActionStatesResult {
+    generation: CompiledProfileGeneration,
     snapshot: Option<BreditorActionStateSnapshot>,
     successful_status: Option<SuccessfulActionStatesStatus>,
     error: Option<BreditorError>,
 }
 
 impl BreditorActionStatesResult {
-    pub(crate) fn from_update(update: &ActionStateCacheUpdate) -> Self {
+    pub(crate) fn from_update(
+        generation: CompiledProfileGeneration,
+        update: &ActionStateCacheUpdate,
+    ) -> Self {
         let successful_status = if update.is_full() {
             SuccessfulActionStatesStatus::Full
         } else if update.is_unchanged() {
@@ -44,19 +48,30 @@ impl BreditorActionStatesResult {
             SuccessfulActionStatesStatus::Delta
         };
         Self {
+            generation,
             snapshot: Some(BreditorActionStateSnapshot::from_update(update)),
             successful_status: Some(successful_status),
             error: None,
         }
     }
 
-    pub(crate) const fn from_error(error: BreditorError) -> Self {
-        Self { snapshot: None, successful_status: None, error: Some(error) }
+    pub(crate) const fn from_error(
+        generation: CompiledProfileGeneration,
+        error: BreditorError,
+    ) -> Self {
+        Self { generation, snapshot: None, successful_status: None, error: Some(error) }
     }
 }
 
 #[wasm_bindgen]
 impl BreditorActionStatesResult {
+    /// Checks the result's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns `full`, `unchanged`, `delta`, `taken`, or `error`.
     #[must_use]
     #[wasm_bindgen(getter, unchecked_return_type = "BreditorActionStatesResultStatus")]

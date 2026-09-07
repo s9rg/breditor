@@ -5,9 +5,19 @@ import {
   type SemanticProjectionImpact,
   type SemanticProjectionUpdateView,
   type SemanticProjectionView,
-  consumeSemanticProjection,
-  consumeSemanticProjectionUpdate,
+  consumeSemanticProjection as consumeSemanticProjectionRaw,
+  consumeSemanticProjectionUpdate as consumeSemanticProjectionUpdateRaw,
+  type WasmProfileGenerationView,
 } from "./advanced.js";
+
+const TEST_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
+  matches(other) {
+    return other === TEST_PROFILE_GENERATION;
+  },
+  free: vi.fn(),
+};
 
 type FlatNode =
   | { readonly kind: "element"; readonly elementType: string; readonly children: readonly number[] }
@@ -20,6 +30,7 @@ type FlatNode =
 class FakeProjectionView implements SemanticProjectionView {
   readonly schemaName = "breditor/base";
   readonly schemaVersion = 1;
+  readonly schemaFingerprint = TEST_SCHEMA_FINGERPRINT;
   readonly snapshotLineage = "adapter-tests";
   readonly snapshotRevision: string;
   readonly rootIndex = 0;
@@ -100,6 +111,10 @@ class FakeProjectionView implements SemanticProjectionView {
   free(): void {
     this.freeCalls += 1;
   }
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
 }
 
 class FakeUpdateView implements SemanticProjectionUpdateView {
@@ -157,6 +172,34 @@ class FakeUpdateView implements SemanticProjectionUpdateView {
   free(): void {
     this.freeCalls += 1;
   }
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === TEST_PROFILE_GENERATION;
+  }
+}
+
+function consumeSemanticProjection(
+  view: SemanticProjectionView,
+): BrowserProjectionResult<import("./projection.js").BaseDocumentProjection> {
+  return consumeSemanticProjectionRaw(
+    view,
+    TEST_PROFILE_GENERATION,
+    TEST_SCHEMA_FINGERPRINT,
+  );
+}
+
+function consumeSemanticProjectionUpdate(
+  base: import("./projection.js").BaseDocumentProjection,
+  view: SemanticProjectionUpdateView,
+  protectedHandles: readonly unknown[] = [],
+) {
+  return consumeSemanticProjectionUpdateRaw(
+    base,
+    view,
+    TEST_PROFILE_GENERATION,
+    TEST_SCHEMA_FINGERPRINT,
+    protectedHandles,
+  );
 }
 
 function valueOf<T>(result: BrowserProjectionResult<T>): T {
@@ -167,6 +210,39 @@ function valueOf<T>(result: BrowserProjectionResult<T>): T {
 }
 
 describe("Wasm semantic projection adapter", () => {
+  it("rejects projections and updates from another profile generation", () => {
+    const foreignGeneration: WasmProfileGenerationView = {
+      matches(other) { return other === foreignGeneration; },
+      free: vi.fn(),
+    };
+    const projectionView = new FakeProjectionView("0", [[]]);
+    expect(
+      consumeSemanticProjectionRaw(
+        projectionView,
+        foreignGeneration,
+        TEST_SCHEMA_FINGERPRINT,
+      ).ok,
+    ).toBe(false);
+    expect(projectionView.freeCalls).toBe(1);
+
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "root",
+      projection: new FakeProjectionView("1", [[]]),
+    });
+    expect(
+      consumeSemanticProjectionUpdateRaw(
+        base,
+        updateView,
+        foreignGeneration,
+        TEST_SCHEMA_FINGERPRINT,
+      ).ok,
+    ).toBe(false);
+    expect(updateView.freeCalls).toBe(1);
+  });
+
   it("consumes an exact flattened preorder view without parsing JSON", () => {
     const view = new FakeProjectionView("0", [
       [{ text: "plain", strong: false }, { text: "strong", strong: true }],
@@ -413,6 +489,8 @@ describe("Wasm semantic projection adapter", () => {
       oldChildEnd: undefined,
       newChildStart: undefined,
       newChildEnd: undefined,
+      matchesProfileGeneration: (generation) =>
+        generation === TEST_PROFILE_GENERATION,
       affectedParagraphIndex: () => undefined,
       takeProjection: () => updateView as unknown as SemanticProjectionView,
       free,

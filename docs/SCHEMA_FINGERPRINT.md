@@ -2,8 +2,9 @@
 
 Status: compiler identity, strict public parser, durable binding, the complete
 Rust-core V2 record graph, and the sealed base-text extension compiler are
-implemented through `0.2.0-alpha.4`, including immutable compiled semantic
-profiles whose action/intent/state declarations remain outside this digest.
+implemented through `0.2.0-alpha.5`, including immutable compiled semantic
+profiles whose action/intent/state declarations remain outside this digest and
+whose separate runtime generation now crosses the engine/Wasm boundary.
 
 `SchemaFingerprint` is the durable identity of one complete compiled content
 language. It lets Breditor distinguish schemas that share a human-readable
@@ -137,5 +138,8 @@ Rust-core durable families likewise use separate V2 codec types with
 generation-locked nesting, as specified by the
 [durable schema binding contract](DURABLE_SCHEMA_BINDING.md). Legacy V1 records
 remain byte-for-byte unchanged and bound to the exact built-in base definition.
-Wasm ABI 2 and the browser persistence path continue to consume and emit V1
-only during alpha.4. Every V1 record remains exact-`breditor/base@1`-only.
+Wasm ABI 3 exposes explicit profile factories that consume and emit V2. The
+legacy built-in Wasm factories and the supported base-only browser persistence
+path continue to use V1 during alpha.5. Every V1 record remains
+exact-`breditor/base@1`-only; the runtime profile generation never enters this
+digest or any wire record.

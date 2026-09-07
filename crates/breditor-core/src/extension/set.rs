@@ -29,6 +29,11 @@ pub struct ExtensionSet {
 }
 
 impl ExtensionSet {
+    /// Creates the trusted empty extension set used by the built-in profile.
+    pub(crate) fn empty() -> Self {
+        Self { manifests: Arc::new(BTreeMap::new()), resolution_order: Arc::from([]) }
+    }
+
     /// Validates and resolves a complete immutable manifest graph.
     ///
     /// Validation phases are manifest count, duplicate exact IDs, multiple

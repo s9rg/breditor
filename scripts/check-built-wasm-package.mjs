@@ -51,7 +51,7 @@ const api = await import(moduleUrl.href);
 assert.equal(typeof api.default, "function");
 assert.equal(typeof api.initSync, "function");
 api.initSync({ module: wasmBytes });
-assert.equal(api.breditorWasmAbiVersion(), "2");
+assert.equal(api.breditorWasmAbiVersion(), "3");
 assert.equal(api.breditorVersion(), packageJson.version);
 
 async function listFiles(root, relativeDirectory = "") {

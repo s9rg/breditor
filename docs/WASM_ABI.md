@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-alpha.4` packaged boundary contract; ABI generation `2` is authoritative
+Status: `0.2.0-alpha.5` packaged boundary contract; ABI generation `3` is authoritative
 for the matching official browser/Wasm packages, while direct raw-handle use is
 an intentionally narrow, advanced, and experimental integration surface
 
@@ -13,27 +13,34 @@ import-time dependency on their concrete classes. A clean temporary consumer
 installs both npm tarballs, initializes the real Wasm module, imports the
 browser entry point, and type-checks without workspace paths.
 
-`@breditor/browser@0.2.0-alpha.4` and `@breditor/wasm@0.2.0-alpha.4` are
+`@breditor/browser@0.2.0-alpha.5` and `@breditor/wasm@0.2.0-alpha.5` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
 are not the high-level browser compatibility surface.
 
-Alpha.4 changes only Rust-core semantic profile construction. The
-manifest-owned toggle bundle, `CompiledEditorProfile`, and its process-local
-generation do not cross this ABI. `EditorEngine` and Wasm observations/outcomes
-do not yet carry that generation; ABI 3 and profile bootstrap remain alpha.5
-work. This ABI continues to admit and emit only the exact-base Document V1 and
-Session Checkpoint V1 browser shapes.
+Alpha.5 carries the Rust core's compiled semantic profile through ABI 3. A
+strict bounded bootstrap request creates a reusable compiled-profile owner;
+fresh and restore factories use fingerprint-bearing Document V2 and Session
+Checkpoint V2. The profile descriptor and every engine-related owned result
+can be checked against an opaque runtime generation that has no scalar or wire
+representation. No-input semantic intents return committed, blocked,
+unhandled, or error results with route provenance. The existing exact-base
+Document V1 and Session Checkpoint V1 static engine factories remain as an
+advanced compatibility path.
 
-Generation requires the locked Cargo graph, the pinned Rust toolchain and Wasm
-target, and exactly `wasm-bindgen 0.2.127`. The build first writes an isolated
-directory, compares its declaration byte-for-byte with the reviewed ABI, and
-only then replaces `packages/breditor-wasm/dist`. The package check compares
-the complete content hashes from two such clean builds. The no-argument default
-asynchronous initializer is the supported `0.1.x` HTTP(S)-browser/browser-
-bundler entry point. Advanced hosts may import `@breditor/wasm/wasm` and call
-`initSync`, but synchronous, binary, argument-taking, and direct Node/file-URL
-initialization carry no `0.1.x` compatibility promise.
+Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
+and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed
+`rolldown 1.2.7`. Cargo uses the dedicated size-oriented `wasm-release`
+profile, `wasm-bindgen` removes name and producer sections, and Rolldown
+deterministically minifies the JavaScript glue while retaining its declaration
+link. The build first writes an isolated directory, compares its declaration
+byte-for-byte with the reviewed ABI, and only then replaces
+`packages/breditor-wasm/dist`. The package check compares the complete content
+hashes from two such clean builds. The no-argument default asynchronous
+initializer is the supported `0.1.x` HTTP(S)-browser/browser-bundler entry
+point. Advanced hosts may import `@breditor/wasm/wasm` and call `initSync`, but
+synchronous, binary, argument-taking, and direct Node/file-URL initialization
+carry no `0.1.x` compatibility promise.
 
 The `breditor-wasm` crate is the synchronous, no-DOM adapter around the Rust
 `CheckpointedEditorEngine`. Rust remains the sole owner of the document AST,
@@ -48,15 +55,23 @@ Tiptap, or CKEditor protocol.
 
 ## Boundary objects
 
-The generated TypeScript declaration exposes thirteen opaque Wasm-owned classes:
+The generated TypeScript declaration exposes the following opaque Wasm-owned
+classes:
 
-- `BreditorEngine` owns one editor session and the compiled base action
-  registry plus its base action-state cache;
+- `BreditorCompiledProfile` is a reusable immutable compiled-profile owner;
+- `BreditorCompiledProfileResult` is its one-shot strict-bootstrap result;
+- `BreditorCompiledProfileDescriptor` exposes bounded canonical declaration
+  metadata without executable callbacks;
+- `BreditorProfileGeneration` owns an opaque process-local correlation handle;
+- `BreditorEngine` owns one profile-correlated editor session and its complete
+  profile action-state cache;
 - `BreditorObservation` owns the exact private engine/state/history token for
   one instant;
 - `BreditorEngineResult` is the structured result of engine construction;
 - `BreditorCommandResult` is a committed, disabled, unchanged, or error
   command outcome; and
+- `BreditorIntentResult` is a committed, blocked, unhandled, or error semantic
+  intent outcome with route provenance;
 - `BreditorStringResult` is a successful one-shot string or a structured error
   from a fallible codec read;
 - `BreditorError` contains a stable failure code and fixed redacted message;
@@ -98,6 +113,57 @@ API.
 
 ## Engine construction
 
+`BreditorCompiledProfile.fromBootstrapJson(profileJson)` strictly decodes the
+ABI-local `breditor/profile-bootstrap` version 1 envelope. The request names one
+non-reserved profile schema and a bounded extension-manifest graph with
+property-free inline formats and manifest-owned toggle bundles. Unknown,
+missing, duplicate, malformed, oversized, over-count, unresolved, conflicting,
+or otherwise uncompilable input fails closed with no partial profile. This
+bootstrap shape is ABI-local configuration, not a durable manifest codec.
+
+```json
+{
+  "format": "breditor/profile-bootstrap",
+  "formatVersion": 1,
+  "schema": { "name": "example/editor", "version": 1 },
+  "extensions": [
+    {
+      "id": { "name": "example/highlight", "version": 1 },
+      "dependencies": [],
+      "conflicts": [],
+      "inlineFormats": [
+        { "kind": "example/highlight", "revision": 1 }
+      ],
+      "inlineFormatToggles": [
+        {
+          "formatKind": "example/highlight",
+          "actionId": "example/toggle-highlight",
+          "intentId": "example/toggle-highlight",
+          "bindingId": "example/toggle-highlight-primary",
+          "actionStateId": "example/control-highlight"
+        }
+      ]
+    }
+  ]
+}
+```
+
+A successful result transfers one reusable `BreditorCompiledProfile` through
+`takeProfile()`. `generation()` returns an independently disposable opaque
+generation handle. `descriptor()` returns an independently disposable,
+canonical descriptor containing the schema selector/fingerprint, every format
+kind/revision, every intent input and state contract, and every action-state
+contract plus its direct, routed, or history source.
+
+`profile.createEngineFromDocumentJson(lineageId, documentJson,
+historyCapacity)` strictly decodes Document V2 under that exact compiled schema.
+`profile.createEngineFromSessionCheckpointJson(checkpointJson)` strictly
+decodes and replay-proves Session Checkpoint V2. Both methods borrow rather than
+consume the profile, so one profile can create multiple engine instances that
+share its generation but reject each other's observations. Recompiling the same
+bootstrap can preserve the durable fingerprint while minting a different
+runtime generation.
+
 `BreditorEngine.fromDocumentJson(lineageId, documentJson, historyCapacity)`
 strictly decodes Document V1 under the default base schema and interactive
 resource limits, creates revision zero with no selection or pending formats,
@@ -111,12 +177,15 @@ history.
 `BreditorEngine.fromSessionCheckpointJson(checkpointJson)` strictly decodes and
 replay-proves Session Checkpoint V1 under the same default context. Restoration
 always creates fresh process-local engine and history identities, so an old
-observation cannot cross a reload or reconstruction boundary.
+observation cannot cross a reload or reconstruction boundary. These two static
+factories are the explicit legacy path; their engines are correlated to a
+fresh trusted built-in profile generation, but their document and checkpoint
+egress remains V1.
 
 A failed factory returns no partial engine. The result's engine can be taken at
 most once. Its status changes from `engine` to `taken` after that transfer.
 
-`breditorWasmAbiVersion()` returns the transport generation (`"2"`), while
+`breditorWasmAbiVersion()` returns the transport generation (`"3"`), while
 `breditorVersion()` returns the crate release embedded in the module. A later
 TypeScript package can reject an incompatible generated module without opening
 or deserializing editor state.
@@ -128,6 +197,14 @@ or deserializing editor state.
 and undo/redo depths are informational. The private engine identity and history
 stamp remain inside Rust and are never serialized. A raw-constructed JavaScript
 wrapper is not a valid observation.
+
+`engine.profileGeneration()` and `profile.generation()` return independent
+opaque handles. `matchesProfileGeneration(generation)` is the only supported
+comparison on the profile, descriptor, engine, observation, projection/update,
+selection/result, action-state/result, command result, and intent result. The
+opaque handle exposes no stable bytes or ordering and must never be persisted.
+Two engines created by one reusable profile match the same generation but
+still reject each other's observations through their separate engine identity.
 
 Every command borrows an observation. The adapter first performs a read-only
 admission check before action-ID or action-value construction, and the
@@ -151,6 +228,19 @@ covers the complete base action set supported by `0.1.0`; it is not a generic
 third-party Wasm plugin ABI. Undo, redo, close-history-group, and clear-history
 are separate guarded commands.
 
+`executeNoInputIntent(expected, intentId)` is the alpha.5 portable semantic
+surface. It first validates the complete observation, then parses the qualified
+intent identity and requires that its descriptor declares no input. Routing,
+action evaluation, transaction preflight, and route consumption complete once
+inside Rust; no prepared route crosses Wasm and no handler is rerun. The owned
+`BreditorIntentResult` reports `committed`, `blocked`, `unhandled`, or `error`.
+It retains intent, selected/blocking binding and action, binding priority,
+earlier disabled fallthroughs and reason details, blocked activation/value
+indicator, a successor observation for every non-error outcome, Commit V2 and
+projection update for a commit, and its profile generation. A generic typed
+`ActionValue` JSON intent method is deliberately absent because the existing
+contract identity does not define one portable value schema.
+
 `engine.selection(expected)` returns a guarded, one-shot semantic selection
 view correlated to the exact snapshot. `none` has no endpoint fields. `range`
 preserves directional anchor and focus through point kind, target preorder node
@@ -170,9 +260,11 @@ creates no content-history entry. An exact echo or repeated clear is unchanged.
 
 `engine.documentJson(expected)` is the guarded lossless content-egress read. It
 checks the same complete engine, snapshot, and history observation before
-encoding the current immutable document through `DocumentJsonCodec` with that
-state's exact compiled schema and resource limits. Success is canonical compact
-Document V1 JSON in a one-shot `BreditorStringResult`; it contains the semantic
+encoding the current immutable document through the engine's sealed codec mode
+with that state's exact compiled schema and resource limits. Legacy factory
+engines return Document V1; compiled-profile factory engines return
+fingerprint-bearing Document V2. Success is canonical compact JSON in a
+one-shot `BreditorStringResult`; it contains the semantic
 AST and its properties, entities, formats, and Unicode text, but deliberately
 contains no selection, pending typing formats, snapshot identity, or history.
 A selection-only or history-only publication therefore changes which
@@ -221,8 +313,8 @@ complete engine/snapshot/history observation before consulting the cache. A
 stale call returns the same redacted stale-engine category as other guarded
 reads and leaves the prior cache observation installed.
 
-The compiled base catalog has three presentation-independent observable IDs in
-canonical lexical order:
+Every compiled profile catalog contains the three built-in,
+presentation-independent observable IDs in canonical lexical order:
 
 - `breditor/control-bold` directly prepares `breditor/toggle-strong`, so its
   enabled state and inactive/active/mixed indicator come from the same semantic
@@ -231,9 +323,10 @@ canonical lexical order:
 - `breditor/control-undo` preflights the current undo branch.
 
 These observable IDs are not command IDs, labels, icons, shortcuts, or toolbar
-positions. The browser manifest maps them to presentation and dispatch. A
-later extended catalog can add direct, routed, or history sources without
-changing the flattened entry contract.
+positions. The browser manifest maps them to presentation and dispatch. An
+extended profile catalog also contains its admitted routed action-state entries
+without changing the flattened entry contract; alpha.5 transports them even
+though the supported browser does not render their controls until alpha.7.
 
 A successful result is `full`, `unchanged`, or `delta` and owns one complete
 snapshot. `takeSnapshot()` transfers it exactly once and changes the result to
@@ -282,9 +375,10 @@ current session became authoritative. It has no domain-error path for a live
 engine, although allocation failure can still trap.
 
 Every effective command executes on a private candidate with the exact same
-engine and history observation identities. Rust encodes the complete candidate
-Session Checkpoint V1 before replacing the authoritative owner or returning its
-event. A checkpoint representation error therefore means no mutation was
+profile, engine, and history observation identities. Rust encodes the complete
+candidate in the engine's sealed Session Checkpoint mode—V1 for the legacy
+factory, V2 for the compiled-profile factories—before replacing the
+authoritative owner or returning its event. A checkpoint representation error therefore means no mutation was
 published: state, history, cached bytes, and the supplied observation remain
 exact and reusable. Disabled actions and exact no-ops do not re-encode.
 
@@ -466,10 +560,14 @@ revision, history-base lineage, Unicode scalar representation, and 16 MiB
 browser limit, then frees every generated result/error handle. Raw engine and
 checkpoint-result objects never reach autosave or storage.
 
-`restoreWasmEngine` performs the inverse one-shot ownership transfer through
-`BreditorEngine.fromSessionCheckpointJson()`: malformed, aliased, thenable, or
-error results are freed and rejected without publishing an engine. The Rust
-decoder remains authoritative for the complete nested checkpoint contract.
+Alpha.5's `bootstrapWasmEngine` performs the one-shot ownership transfer for
+both `BreditorEngine.fromDocumentJson()` and
+`BreditorEngine.fromSessionCheckpointJson()`. It verifies the module's exact
+ABI and package version before touching the factory; malformed, aliased,
+thenable, or error results are freed and rejected without publishing an engine.
+The Rust decoder remains authoritative for the complete nested V1 source
+contract, while the browser additionally validates the returned base-profile
+generation, descriptor, observation, and projection as one correlated result.
 
 The command adapter emits a handle-free notification when—and only when—a
 validated committed successor is adopted. This point precedes any later DOM

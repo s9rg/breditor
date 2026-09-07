@@ -13,11 +13,14 @@ impl BreditorEngine {
     /// error and the engine remains unchanged.
     #[must_use]
     pub fn projection(&self, expected: &BreditorObservation) -> BreditorProjectionResult {
+        let generation = self.generation.clone();
         if let Err(error) = self.inner.check_observation(expected.inner()) {
-            return BreditorProjectionResult::from_error(BreditorError::checkpointed_engine(
-                &error,
-            ));
+            return BreditorProjectionResult::from_error(
+                generation,
+                BreditorError::checkpointed_engine(&error),
+            );
         }
-        BreditorProjectionResult::success(BreditorProjection::from_state(self.inner.state()))
+        let projection = BreditorProjection::from_state(generation.clone(), self.inner.state());
+        BreditorProjectionResult::success(generation, projection)
     }
 }

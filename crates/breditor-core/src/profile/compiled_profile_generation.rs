@@ -4,9 +4,9 @@ use std::{fmt, sync::Arc};
 ///
 /// Clones retain allocation identity and independently compiled profiles always
 /// receive distinct generations, even when all declarative inputs are equal.
-/// The value has no ordering, counter, or wire representation. At alpha.4 it
-/// identifies only the immutable profile container; engine and observation
-/// carriage begins with the profile-aware runtime boundary in alpha.5.
+/// The value has no ordering, counter, or wire representation. Profile-created
+/// contexts carry it through state, history, engines, and derived observations;
+/// restoring durable data under a newly compiled profile installs a fresh one.
 #[derive(Clone)]
 pub struct CompiledProfileGeneration(Arc<CompiledProfileGenerationIdentity>);
 

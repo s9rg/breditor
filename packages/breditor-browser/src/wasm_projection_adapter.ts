@@ -1,7 +1,22 @@
-import { BaseDocumentProjection, type BaseDocumentProjectionInput } from "./projection.js";
+import {
+  BaseDocumentProjection,
+  isOwnedProjection,
+  type BaseDocumentProjectionInput,
+} from "./projection.js";
 import { BaseProjectionUpdate, type BaseProjectionImpact } from "./projection_update.js";
 import type { BrowserProjectionResult } from "./result.js";
 import { projectionFailure } from "./result.js";
+import {
+  wasmProfileGenerationIsLive,
+  wasmViewMatchesProfileGeneration,
+  type WasmProfileCorrelatedView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
+
+const PROJECTION_PROFILE_GENERATIONS = new WeakMap<
+  BaseDocumentProjection,
+  WasmProfileGenerationView
+>();
 
 /**
  * Dependency-free structural view of the flattened semantic Wasm projection.
@@ -9,11 +24,14 @@ import { projectionFailure } from "./result.js";
  * Generated Wasm classes satisfy this contract without becoming a package
  * dependency. The view is owned and consumed by this adapter.
  */
-export interface SemanticProjectionView {
+export interface SemanticProjectionView extends WasmProfileCorrelatedView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   /** Validated schema name. */
   readonly schemaName: string;
   /** Validated schema version. */
   readonly schemaVersion: number;
+  /** Exact durable fingerprint of the compiled schema. */
+  readonly schemaFingerprint: string;
   /** Snapshot lineage. */
   readonly snapshotLineage: string;
   /** Canonical unsigned-decimal snapshot revision. */
@@ -49,7 +67,8 @@ export type SemanticProjectionImpact = "none" | "textContainers" | "rootSplice" 
  * The result projection can be taken exactly once. This adapter consumes both
  * the update and its taken result projection.
  */
-export interface SemanticProjectionUpdateView {
+export interface SemanticProjectionUpdateView extends WasmProfileCorrelatedView {
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
   /** Expected base lineage. */
   readonly baseLineage: string;
   /** Expected base revision. */
@@ -86,7 +105,12 @@ export interface SemanticProjectionUpdateView {
  */
 export function consumeSemanticProjection(
   view: SemanticProjectionView,
+  generation: WasmProfileGenerationView,
+  expectedSchemaFingerprint: string,
 ): BrowserProjectionResult<BaseDocumentProjection> {
+  if ((view as unknown) === generation) {
+    return projectionFailure("projection.invalid_shape");
+  }
   const cleanup = snapshotGeneratedCleanup(view);
   const asynchronous = containGeneratedThenable(view);
   if (cleanup === null) {
@@ -98,7 +122,7 @@ export function consumeSemanticProjection(
   try {
     result = asynchronous
       ? projectionFailure("projection.invalid_shape")
-      : readSemanticProjection(view);
+      : readProfiledSemanticProjection(view, generation, expectedSchemaFingerprint);
   } catch {
     result = projectionFailure("projection.invalid_shape");
   } finally {
@@ -121,9 +145,11 @@ export function consumeSemanticProjection(
 export function consumeSemanticProjectionUpdate(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView,
+  expectedSchemaFingerprint: string,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
-  const protectedSet = snapshotProtectedHandles(protectedHandles);
+  const protectedSet = snapshotProtectedHandles(protectedHandles, generation);
   if (protectedSet === null || protectedSet.has(view)) {
     return projectionFailure("projection.invalid_update");
   }
@@ -135,6 +161,8 @@ export function consumeSemanticProjectionUpdate(
   return consumeClaimedSemanticProjectionUpdate(
     base,
     view,
+    generation,
+    expectedSchemaFingerprint,
     cleanup,
     protectedSet,
     asynchronous,
@@ -146,24 +174,53 @@ export function consumeSemanticProjectionUpdateWithCleanup(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
   cleanup: () => unknown,
+  generation: WasmProfileGenerationView,
+  expectedSchemaFingerprint: string,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProjectionResult<BaseProjectionUpdate> {
-  const protectedSet = snapshotProtectedHandles(protectedHandles);
+  const protectedSet = snapshotProtectedHandles(protectedHandles, generation);
   if (protectedSet === null || protectedSet.has(view)) {
     return projectionFailure("projection.invalid_update");
   }
   return consumeClaimedSemanticProjectionUpdate(
     base,
     view,
+    generation,
+    expectedSchemaFingerprint,
     cleanup,
     protectedSet,
     containGeneratedThenable(view),
   );
 }
 
+/** Whether a consumed projection belongs to one exact process-local profile. @internal */
+export function projectionMatchesProfileGeneration(
+  projection: BaseDocumentProjection,
+  generation: WasmProfileGenerationView,
+): boolean {
+  return PROJECTION_PROFILE_GENERATIONS.get(projection) === generation;
+}
+
+/** Associates an already validated browser projection with an opaque profile. @internal */
+export function associateProjectionWithProfileGeneration(
+  projection: BaseDocumentProjection,
+  generation: WasmProfileGenerationView,
+): void {
+  if (!isOwnedProjection(projection) || !wasmProfileGenerationIsLive(generation)) {
+    throw new TypeError("projection profile association is invalid");
+  }
+  const prior = PROJECTION_PROFILE_GENERATIONS.get(projection);
+  if (prior !== undefined && prior !== generation) {
+    throw new TypeError("projection already belongs to another profile generation");
+  }
+  PROJECTION_PROFILE_GENERATIONS.set(projection, generation);
+}
+
 function consumeClaimedSemanticProjectionUpdate(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView,
+  expectedSchemaFingerprint: string,
   cleanup: () => unknown,
   protectedHandles: ReadonlySet<object>,
   asynchronous: boolean,
@@ -174,7 +231,13 @@ function consumeClaimedSemanticProjectionUpdate(
   try {
     result = asynchronous
       ? projectionFailure("projection.invalid_update")
-      : readSemanticProjectionUpdate(base, view, protectedHandles);
+      : readProfiledSemanticProjectionUpdate(
+          base,
+          view,
+          generation,
+          expectedSchemaFingerprint,
+          protectedHandles,
+        );
   } catch {
     result = projectionFailure("projection.invalid_update");
   } finally {
@@ -246,12 +309,16 @@ function containGeneratedSettlement(value: unknown): void {
 
 function snapshotProtectedHandles(
   values: readonly unknown[],
+  required?: unknown,
 ): ReadonlySet<object> | null {
   try {
     if (!Array.isArray(values)) return null;
     const length = values.length;
     if (!Number.isSafeInteger(length) || length < 0 || length > 64) return null;
     const output = new Set<object>();
+    if ((typeof required === "object" && required !== null) || typeof required === "function") {
+      output.add(required);
+    }
     for (let index = 0; index < length; index += 1) {
       const descriptor = Reflect.getOwnPropertyDescriptor(values, String(index));
       if (descriptor === undefined || !("value" in descriptor)) return null;
@@ -264,6 +331,24 @@ function snapshotProtectedHandles(
   } catch {
     return null;
   }
+}
+
+function readProfiledSemanticProjection(
+  view: SemanticProjectionView,
+  generation: WasmProfileGenerationView,
+  expectedSchemaFingerprint: string,
+): BrowserProjectionResult<BaseDocumentProjection> {
+  if (
+    !wasmProfileGenerationIsLive(generation) ||
+    !wasmViewMatchesProfileGeneration(view, generation) ||
+    !isSchemaFingerprint(expectedSchemaFingerprint) ||
+    view.schemaFingerprint !== expectedSchemaFingerprint
+  ) {
+    return projectionFailure("projection.invalid_shape");
+  }
+  const result = readSemanticProjection(view);
+  if (result.ok) PROJECTION_PROFILE_GENERATIONS.set(result.value, generation);
+  return result;
 }
 
 function readSemanticProjection(
@@ -393,13 +478,18 @@ function readSemanticProjection(
   return BaseDocumentProjection.create(input);
 }
 
-function readSemanticProjectionUpdate(
+function readProfiledSemanticProjectionUpdate(
   base: BaseDocumentProjection,
   view: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView,
+  expectedSchemaFingerprint: string,
   protectedHandles: ReadonlySet<object>,
 ): BrowserProjectionResult<BaseProjectionUpdate> {
   const affectedParagraphCount = view.affectedParagraphCount;
   if (
+    !wasmProfileGenerationIsLive(generation) ||
+    !projectionMatchesProfileGeneration(base, generation) ||
+    !wasmViewMatchesProfileGeneration(view, generation) ||
     !isSemanticProjectionUpdateView(view) ||
     view.baseLineage !== base.snapshot.lineage ||
     view.baseRevision !== base.snapshot.revision ||
@@ -425,7 +515,11 @@ function readSemanticProjectionUpdate(
   ) {
     return projectionFailure("projection.invalid_update");
   }
-  const projectionResult = consumeSemanticProjection(resultView);
+  const projectionResult = consumeSemanticProjection(
+    resultView,
+    generation,
+    expectedSchemaFingerprint,
+  );
   if (!projectionResult.ok) {
     return projectionFailure("projection.invalid_update");
   }
@@ -517,6 +611,10 @@ function isIndex(value: number): boolean {
   return Number.isSafeInteger(value) && value >= 0;
 }
 
+function isSchemaFingerprint(value: unknown): value is string {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
+}
+
 function isSemanticProjectionView(view: SemanticProjectionView): boolean {
   return (
     typeof view === "object" &&
@@ -527,7 +625,8 @@ function isSemanticProjectionView(view: SemanticProjectionView): boolean {
     typeof view.childAt === "function" &&
     typeof view.text === "function" &&
     typeof view.formatCount === "function" &&
-    typeof view.formatType === "function"
+    typeof view.formatType === "function" &&
+    typeof view.matchesProfileGeneration === "function"
   );
 }
 
@@ -536,6 +635,7 @@ function isSemanticProjectionUpdateView(view: SemanticProjectionUpdateView): boo
     typeof view === "object" &&
     view !== null &&
     typeof view.affectedParagraphIndex === "function" &&
-    typeof view.takeProjection === "function"
+    typeof view.takeProjection === "function" &&
+    typeof view.matchesProfileGeneration === "function"
   );
 }

@@ -1,6 +1,10 @@
 use std::fmt;
 
-use crate::{action::DisabledReason, state::SnapshotId, transaction::Commit};
+use crate::{
+    action::{ActionStateIndicator, DisabledReason},
+    state::SnapshotId,
+    transaction::Commit,
+};
 
 use super::{IntentBinding, IntentFallThrough, IntentId};
 
@@ -33,6 +37,8 @@ pub enum IntentExecutionOutcome {
         binding: IntentBinding,
         /// Exact expected-disabled reason.
         reason: DisabledReason,
+        /// Activation and optional typed value from the blocking evaluation.
+        indicator: ActionStateIndicator,
         /// Earlier disabled candidates in priority evaluation order.
         fallthroughs: Box<[IntentFallThrough]>,
     },
@@ -96,6 +102,15 @@ impl IntentExecutionOutcome {
         }
     }
 
+    /// Returns activation and optional typed value from a blocking evaluation.
+    #[must_use]
+    pub const fn blocked_indicator(&self) -> Option<&ActionStateIndicator> {
+        match self {
+            Self::Blocked { indicator, .. } => Some(indicator),
+            Self::Committed { .. } | Self::Unhandled { .. } => None,
+        }
+    }
+
     /// Returns disabled fallthroughs in priority evaluation order.
     #[must_use]
     pub const fn fallthroughs(&self) -> &[IntentFallThrough] {
@@ -127,14 +142,17 @@ impl fmt::Debug for IntentExecutionOutcome {
                 .field("snapshot", &commit.snapshot())
                 .field("fallthroughs", fallthroughs)
                 .finish_non_exhaustive(),
-            Self::Blocked { intent, base_snapshot, binding, reason, fallthroughs } => formatter
-                .debug_struct("BlockedIntentExecution")
-                .field("intent", intent)
-                .field("base_snapshot", base_snapshot)
-                .field("binding", binding)
-                .field("reason", reason)
-                .field("fallthroughs", fallthroughs)
-                .finish(),
+            Self::Blocked { intent, base_snapshot, binding, reason, indicator, fallthroughs } => {
+                formatter
+                    .debug_struct("BlockedIntentExecution")
+                    .field("intent", intent)
+                    .field("base_snapshot", base_snapshot)
+                    .field("binding", binding)
+                    .field("reason", reason)
+                    .field("indicator", indicator)
+                    .field("fallthroughs", fallthroughs)
+                    .finish()
+            }
             Self::Unhandled { intent, base_snapshot, fallthroughs } => formatter
                 .debug_struct("UnhandledIntentExecution")
                 .field("intent", intent)

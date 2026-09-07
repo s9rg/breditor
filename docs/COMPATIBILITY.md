@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.4` Rust boundary
+## Experimental `0.2.0-alpha.5` profile boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -185,22 +185,39 @@ the schema fingerprint. Custom actions, inputs, callbacks, cross-extension
 targets, shared/fallback routes, rendering, and toolbar UI are not included;
 native component APIs remain advanced bypasses.
 
-The alpha.4 npm version does not widen the browser product. Wasm ABI 2,
-`@breditor/browser`, browser validation and export, autosave, and the IndexedDB
-Session Checkpoint Profile continue to consume and emit V1 only. The Rust V2
-families are not accepted in the V1 IndexedDB slot, and a mismatch must not be
-replaced with fresh content. The profile generation is not yet carried by
-`EditorEngine`, observations, outcomes, or Wasm values. Profile-aware Wasm and
-browser persistence require their later explicit checkpoints and ABI
-generation.
+Alpha.5 carries the opaque process-local profile generation through
+profile-created Rust contexts, engines, observations, intent outcomes, and
+action-state caches. `CompiledProfileDescriptor` owns the durable schema
+binding, admitted format revisions, intent input/state contracts, and complete
+direct/routed/history action-state sources. Guarded intent execution consumes
+one routed preparation synchronously and returns committed, blocked, or
+unhandled provenance without rerunning the handler. The legacy checkpointed
+engine constructor explicitly retains Session Checkpoint V1; the separate V2
+constructor retains fingerprint-bearing V2 through every atomic candidate.
+
+Wasm ABI 3 adds strict bounded ABI-local profile bootstrap, reusable fresh and
+restore factories over Document V2 and Session Checkpoint V2, no-input intent
+execution, and opaque generation checks throughout the owned handle graph. The
+generation has no numeric, string, pointer, JSON, or persistent form. Legacy
+exact-base V1 Wasm factories remain available as an advanced compatibility
+path, but now also create internally profile-correlated engines.
+
+The supported alpha.5 browser remains exact-base-only. It requires the full
+initialized Wasm module, checks ABI `3` and exact runtime package version before
+reading the factory, verifies the built-in profile descriptor and generation,
+and rejects the former bare-factory and uncorrelated-restore seams. Browser
+validation/export, autosave, and the IndexedDB Session Checkpoint Profile still
+consume and emit V1. Rust/Wasm V2 profile records are not accepted in that V1
+slot, and a mismatch must not be replaced with fresh content. Extension render
+recipes and toolbar controls remain alpha.6 and alpha.7 work.
 
 ## Browser and Wasm pairing
 
 The supported official configuration uses exactly matching versions of
-`@breditor/browser` and `@breditor/wasm`. For `0.1.0`, the Wasm module reports
-transport ABI `2`. The browser checks the module's ABI before constructing an
-editor, and the generated module exposes its embedded Breditor version for
-diagnostics. ABI compatibility does not by itself make mismatched official
+`@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
+ABI `2`; the `0.2.0-alpha.5` pair reports ABI `3`. Alpha.5 checks both the exact
+ABI string and exact embedded package version before reading the generated
+engine factory. ABI compatibility alone never makes mismatched official
 package versions a supported pair.
 
 The minimal supported browser bootstrap surface of `@breditor/wasm` is the
@@ -230,13 +247,12 @@ initialize and inject the official module namespace itself. Optional does not
 mean that Wasm is unnecessary, nor that arbitrary generated modules are
 compatible.
 
-The root type also accepts a bare `BreditorBrowserWasmFactory` so tests and
-advanced hosts can inject a structural factory. The symbol, its two constructor
-calls, and the option arm remain source-compatible in `0.1.x`, but no custom
-factory is a supported runtime configuration: its returned values are
-deliberately `unknown`, and the complete engine/handle protocol lives under
-`@breditor/browser/advanced`. The supported application configuration is the
-initialized, exactly version-matched official module namespace.
+Through `0.1.x`, the root option type also accepted a bare structural factory
+for tests and advanced hosts. Alpha.5 removes that option arm: the supported
+root configuration is now only the initialized, exactly version-matched
+official module namespace. `BreditorBrowserWasmFactory` remains an advanced
+descriptive type for that namespace's nested generated class; it is not a
+standalone bootstrap ingress or a custom-runtime conformance promise.
 
 ## Browser support evidence
 
@@ -282,10 +298,10 @@ no `0.1.x` compatibility promise:
 - every export from `@breditor/browser/advanced`, including renderer,
   projection, DOM-selection, command-queue, event, composition, clipboard,
   action-state adapter, and persistence assembly contracts;
-- custom or bare-factory runtime implementations passed through the
-  `BreditorBrowserWasmFactory` escape hatch; only the root symbol and its
-  minimal source-level call shape are frozen, not a structural conformance
-  protocol for the `unknown` results;
+- the advanced `BreditorBrowserWasmFactory` descriptive type and any custom or
+  bare-factory runtime implementation; alpha.5 no longer accepts such a value
+  in the root editor options, and no structural conformance protocol is
+  promised for it;
 - raw generated `@breditor/wasm` classes, methods, handles, TypeScript glue,
   synchronous initialization, binary import, and ownership details, apart from
   the no-argument default initializer and module namespace/probes needed by the

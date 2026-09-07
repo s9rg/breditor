@@ -62,10 +62,10 @@ import {
 import {
   bootstrapWasmEngine,
   type WasmBootstrappedEngineView,
-  type WasmEngineBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
 } from "./wasm_engine_bootstrap.js";
 import type { BrowserDocumentJsonReadResult } from "./wasm_document_json.js";
+import type { WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
 
 /** Maximum independent subscribers retained by one high-level editor. */
 export const MAX_BROWSER_EDITOR_SUBSCRIBERS = 64;
@@ -92,12 +92,7 @@ export interface BreditorBrowserToolbarOptions {
   readonly manifest?: ToolbarManifest;
 }
 
-/**
- * Advanced bare-factory ingress validated at runtime.
- *
- * The returned generated-handle protocol is intentionally not a root API;
- * supported applications pass the initialized official module namespace.
- */
+/** Generated engine factory carried by the initialized official module. */
 export interface BreditorBrowserWasmFactory {
   fromDocumentJson(
     lineageId: string,
@@ -133,10 +128,9 @@ export interface BreditorBrowserEditorOptions {
   /** Accessible name installed as `aria-label` on the editing host. */
   readonly label: string;
   /**
-   * Initialized official module namespace, or an advanced bare-factory escape
-   * hatch whose returned structural protocol is not a supported root contract.
+   * Initialized, exactly version-paired official Wasm module namespace.
    */
-  readonly wasm: BreditorBrowserWasmModule | BreditorBrowserWasmFactory;
+  readonly wasm: BreditorBrowserWasmModule;
   /** Used only when persistence is disabled or its exact slot is empty. */
   readonly initialDocument: BreditorBrowserInitialDocument;
   readonly keyboard: KeyboardTranslationPolicy;
@@ -282,7 +276,7 @@ interface AbortSignalIntrinsics {
 interface NormalizedOptions {
   readonly host: HTMLElement;
   readonly label: string;
-  readonly wasm: WasmEngineBootstrapModuleView | WasmEngineBootstrapFactoryView;
+  readonly wasm: WasmEngineBootstrapModuleView;
   readonly initialDocument: BreditorBrowserInitialDocument;
   readonly keyboard: KeyboardTranslationPolicy;
   readonly toolbar:
@@ -475,6 +469,7 @@ export class BreditorBrowserEditor {
     let hostAttributes: readonly HostAttributeSnapshot[] | undefined;
     let storage: IndexedDbSessionCheckpointStore | undefined;
     let engine: WasmBootstrappedEngineView | undefined;
+    let profileGeneration: WasmProfileGenerationView | undefined;
     let observation:
       ReturnType<WasmBootstrappedEngineView["observation"]> | undefined;
     let renderer: BreditorDomRenderer | undefined;
@@ -551,6 +546,7 @@ export class BreditorBrowserEditor {
         );
       }
       engine = bootstrap.engine;
+      profileGeneration = bootstrap.profileGeneration;
       observation = bootstrap.observation;
 
       const capturedHostAttributes = snapshotHostAttributes(normalized.host);
@@ -576,11 +572,14 @@ export class BreditorBrowserEditor {
       rendered = initialRender.value.rendered;
       selectionBridge = new BreditorDomSelectionBridge();
       adapter = new BreditorWasmCommandAdapter(engine, observation, {
+        profileGeneration,
+        profileDescriptor: bootstrap.profileDescriptor,
         renderer,
         rendered,
         selectionBridge,
       });
       observation = undefined;
+      profileGeneration = undefined;
       rendered = undefined;
       const contentReadPorts = contentReadPortsForAdapter(adapter);
       if (contentReadPorts === undefined) {
@@ -676,6 +675,7 @@ export class BreditorBrowserEditor {
           }
           bestEffortIntrinsic(selectionBridge, SELECTION_BRIDGE_DISPOSE);
           if (observation !== undefined) bestEffortFree(observation);
+          if (profileGeneration !== undefined) bestEffortFree(profileGeneration);
           if (engine !== undefined) bestEffortFree(engine);
           bestEffortIntrinsic(storage, STORAGE_CLOSE);
           if (hostAttributes !== undefined) {
@@ -1289,8 +1289,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       label,
       // The public high-level shape deliberately returns `unknown`; the
       // bootstrap below performs the complete generated-view validation.
-      wasm: wasm as unknown as
-        WasmEngineBootstrapModuleView | WasmEngineBootstrapFactoryView,
+      wasm: wasm as unknown as WasmEngineBootstrapModuleView,
       initialDocument,
       keyboard: Object.freeze({
         editing: keyboard.editing,

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{session::SessionHistoryStatus, state::SnapshotId};
+use crate::{profile::CompiledProfileGeneration, session::SessionHistoryStatus, state::SnapshotId};
 
 use super::instance_id::EditorEngineInstanceId;
 
@@ -31,6 +31,7 @@ use super::instance_id::EditorEngineInstanceId;
 /// ```
 #[derive(Clone, Eq, PartialEq)]
 pub struct EditorEngineObservation {
+    profile_generation: Option<CompiledProfileGeneration>,
     instance: EditorEngineInstanceId,
     snapshot: SnapshotId,
     history: SessionHistoryStatus,
@@ -38,11 +39,19 @@ pub struct EditorEngineObservation {
 
 impl EditorEngineObservation {
     pub(super) const fn new(
+        profile_generation: Option<CompiledProfileGeneration>,
         instance: EditorEngineInstanceId,
         snapshot: SnapshotId,
         history: SessionHistoryStatus,
     ) -> Self {
-        Self { instance, snapshot, history }
+        Self { profile_generation, instance, snapshot, history }
+    }
+
+    /// Returns the correlated compiled-profile generation, when the engine was
+    /// created through the profile-aware constructor.
+    #[must_use]
+    pub const fn profile_generation(&self) -> Option<&CompiledProfileGeneration> {
+        self.profile_generation.as_ref()
     }
 
     pub(super) const fn instance(&self) -> &EditorEngineInstanceId {
@@ -66,6 +75,7 @@ impl fmt::Debug for EditorEngineObservation {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("EditorEngineObservation")
+            .field("profile_generation", &self.profile_generation)
             .field("instance", &self.instance)
             .field("snapshot", &self.snapshot)
             .field("history", &self.history)

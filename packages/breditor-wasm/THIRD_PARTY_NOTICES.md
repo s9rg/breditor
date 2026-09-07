@@ -64,6 +64,7 @@ build and is byte-locked by the release check.
 - `breditor-core@workspace -> thiserror@2.0.20 [normal]`
 - `breditor-core@workspace -> unicode-segmentation@1.13.3 [normal]`
 - `breditor-wasm@workspace -> breditor-core@workspace [normal]`
+- `breditor-wasm@workspace -> serde@1.0.229 [normal]`
 - `breditor-wasm@workspace -> serde_json@1.0.151 [normal]`
 - `breditor-wasm@workspace -> wasm-bindgen@0.2.127 [normal]`
 - `crypto-common@0.2.2 -> hybrid-array@0.4.14 [normal]`

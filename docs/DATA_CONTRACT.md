@@ -7,8 +7,9 @@ The complete fingerprint-bearing V2 record graph was implemented as the
 experimental Rust-only `0.2.0-alpha.2` boundary. `0.2.0-alpha.3` adds the sealed
 base-text schema compiler and generic property-free inline-format behavior;
 `0.2.0-alpha.4` compiles manifest-owned toggle bundles into one immutable Rust
-editor profile. None of these checkpoints widens a V1 codec, the browser
-product, its IndexedDB profile, or Wasm ABI 2.
+editor profile. `0.2.0-alpha.5` carries that profile through the guarded engine
+and Wasm ABI 3, including explicit V2 fresh/restore factories; it does not
+widen a V1 codec or the base-only browser/IndexedDB product.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1` and `2`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -217,9 +218,11 @@ The following remain deliberately unimplemented:
 - property-bearing formats, arbitrary structural schema kinds, custom extension
   actions or inputs, callback planners, cross-extension toggle targets, shared
   toggle routes, and fallback toggle routing;
-- propagation of `CompiledProfileGeneration` through `EditorEngine`, Rust/Wasm
-  observations and outcomes, or ABI 2; native registry/router/engine APIs remain
-  advanced bypasses outside compiled-profile correlation;
+- serialization, scalar exposure, or cross-compilation equality for
+  `CompiledProfileGeneration`; native registry/router/engine APIs remain
+  advanced bypasses outside compiled-profile correlation, while compiled-profile
+  factories carry one opaque generation through Rust/Wasm observations and
+  outcomes;
 - asynchronous action-state delivery, dynamic catalog registration,
   presentation plugin lifecycle, generalized keymaps, and durable registry
   manifests (the browser now has a synchronous last-good state store and a
@@ -1305,8 +1308,8 @@ caller contract violation that no process-local core can globally detect.
 revision zero, a committed state transition consumes one successor revision,
 and an unchanged transaction consumes none. Transaction-request V1 and
 editor-state V1 encode the full `u64` as a canonical decimal string rather than
-a lossy JavaScript number. A future Wasm adapter must preserve that same
-fixed-width value and string boundary.
+a lossy JavaScript number. The Wasm adapter preserves that same fixed-width
+value and exposes revisions only through the canonical decimal-string boundary.
 
 Pending formats are an explicit typing override. `None` means derive formatting
 from context, while `Some(empty)` explicitly means unformatted. An override is
@@ -1548,7 +1551,8 @@ Typed action inputs carry a namespaced contract plus a nonzero independent
 version. Their `ActionValue` payload is a canonical immutable JSON-shaped tree:
 null, Boolean, JavaScript-safe integer, string, array, or lexically ordered
 object. Construction rejects duplicate/invalid object keys and fixes these
-budgets before a future Wasm codec exists:
+budgets before any future generic `ActionValue` Wasm codec exists. ABI 3
+deliberately exposes no generic `ActionValue` ingress:
 
 - maximum container depth: 16;
 - maximum values in the complete tree: 1,024;
@@ -1744,10 +1748,34 @@ exact `ExtensionSet`, compiled schema, generated `ActionRegistry`,
 Every successful compilation mints a fresh opaque process-local
 `CompiledProfileGeneration`, even when the semantic inputs are equal. This is a
 container correlation identity, not a schema fingerprint or executable-code
-hash, and it is not persisted. In alpha.4 it is not yet carried or checked by
-`EditorEngine`, action/intent observations or outcomes, or Wasm handles; alpha.5
-adds that transport. The existing public native component and engine APIs remain
-advanced bypasses and do not gain the compiled profile's correlation guarantee.
+hash, and it is not persisted. Alpha.5 carries it in profile-created
+`EditorContext`, `EditorEngine`, guarded observations and intent outcomes, and
+profile-owned action-state caches/observations. Profile-generation mismatch is
+checked before engine-instance, snapshot, and history mismatch. The existing
+public unprofiled native component and engine APIs remain advanced bypasses and
+do not gain the compiled profile's correlation guarantee.
+
+`CompiledProfileDescriptor` is an owned immutable view of the same generation.
+It lists the durable schema selector and fingerprint, all admitted
+inline-format kinds and persisted revisions, all intent input/state contracts,
+and all action-state contracts together with their complete direct action,
+routed intent, or history-direction source. Collections and binary lookup APIs
+use canonical lexical identity order. The descriptor contains no executable
+handler or presentation callback.
+
+`EditorEngine::execute_intent` checks the complete observation, uses only its
+owned profile router, routes and consumes one cached prepared action inside the
+synchronous call, and returns the authoritative successor observation. Its
+committed, blocked, and unhandled receipts retain intent/binding/fallthrough
+provenance; blocked receipts also retain the disabled reason and evaluated
+indicator. No prepared route escapes and no action handler is rerun.
+
+`CheckpointedEditorEngine` seals its wire generation at construction. The
+legacy `try_new` path encodes Session Checkpoint V1 and therefore admits only
+the exact base schema. `try_new_v2` encodes fingerprint-bearing Session
+Checkpoint V2, including when the compiled profile is the trusted base
+definition. Every private mutation candidate uses the already selected codec
+before publication; the generation never changes implicitly.
 
 All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
@@ -2015,9 +2043,11 @@ queue, or plugin revocation handle. Native activation, mixed, and read-domain
 claims remain trusted handler semantics because native handlers receive the
 complete state; a narrow declaration that omits a dependency can make reuse
 stale. Untrusted native or Wasm extensions therefore need a restricted state
-view, disabled cross-refresh reuse, or a separate isolation boundary. There is
-still no subscription/backpressure protocol, composite projector, durable
-action-state codec, panic/trap isolation, or Wasm ABI.
+view, disabled cross-refresh reuse, or a separate isolation boundary. Wasm ABI
+3 exposes profile-correlated guarded action-state snapshots and deltas, while
+subscription delivery remains a browser-store concern. There is still no
+backpressure protocol, composite projector, durable action-state codec, or
+panic/trap isolation for third-party code.
 
 ## Session publication and bounded linear history
 
@@ -2094,21 +2124,19 @@ reuse this stack.
 
 ## Guarded EditorEngine facade
 
-`EditorEngine` is the intended product-facing owner immediately inside a
-future Wasm boundary. It contains exactly one `EditorSession` and one immutable
-`ActionRegistry`. `new` accepts an application-composed registry;
-`try_with_base_actions` installs the compiled-in base actions. `state`,
-`session`, and `action_registry` expose shared observations for rendering,
-checkpointing, and independently composed action-state catalogs. `into_parts`
-consumes the engine and is the only way to regain its owned components. No
-method lends `&mut EditorSession`.
-
-Alpha.4 does not change that owner or its observation shape.
-`CompiledEditorProfile` can supply its generated registry to native code, but
-the engine does not own or expose the profile container, router, catalog, or
-`CompiledProfileGeneration`, and no engine observation or outcome checks that
-generation. Using the public engine/component constructors directly remains an
-advanced bypass. Alpha.5 adds the profile-correlated engine/Wasm boundary.
+`EditorEngine` is the product-facing synchronous owner immediately inside the
+Wasm boundary. The advanced unprofiled `new` and `try_with_base_actions`
+constructors retain exactly one `EditorSession` plus one immutable
+`ActionRegistry`. Alpha.5's `try_with_compiled_profile` instead owns the exact
+`CompiledEditorProfile`, which co-owns its registry, intent router,
+action-state catalog, descriptor, schema, and opaque generation. The engine
+exposes immutable session/state/registry observations plus its optional router,
+descriptor, and generation; guarded intent execution remains internal. Its
+observations and outcomes carry that generation, and admission checks it before
+engine-instance, snapshot, or history identity. `into_parts` deliberately
+drops profile authority and is the only way to regain the session and registry.
+No method lends `&mut EditorSession`. Using unprofiled public constructors or
+independently composed component APIs remains an advanced bypass.
 
 Every mutation accepts `&EditorEngineObservation` and first compares its opaque
 live-engine identity, then its `SnapshotId` and `SessionHistoryStatus`, with the

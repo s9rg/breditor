@@ -21,7 +21,9 @@ mod engine_result;
 mod error;
 mod from_document_json;
 mod from_session_checkpoint_json;
+mod intent;
 mod observation;
+mod profile;
 mod projection;
 mod read_observation;
 mod selection;
@@ -36,7 +38,12 @@ pub use command_result::BreditorCommandResult;
 pub use engine::BreditorEngine;
 pub use engine_result::BreditorEngineResult;
 pub use error::BreditorError;
+pub use intent::BreditorIntentResult;
 pub use observation::BreditorObservation;
+pub use profile::{
+    BreditorCompiledProfile, BreditorCompiledProfileDescriptor, BreditorCompiledProfileResult,
+    BreditorProfileGeneration,
+};
 pub use projection::{BreditorProjection, BreditorProjectionResult, BreditorProjectionUpdate};
 pub use selection::{BreditorSelection, BreditorSelectionResult};
 pub use string_result::BreditorStringResult;

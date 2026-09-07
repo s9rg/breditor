@@ -54,14 +54,27 @@ Bold, Undo, and Redo state entries remain present.
 
 The resulting `CompiledEditorProfile` co-owns the `ExtensionSet`, compiled
 schema, action registry, intent router, and action-state catalog and mints a
-fresh opaque process-local generation on every successful compilation. That
-generation is currently container-local: `EditorEngine`, its observations and
-outcomes, and Wasm ABI 2 do not carry it until alpha.5. The declaration bundle
-contains no callbacks, custom action input, renderer, or toolbar metadata, and
-does not enter the durable schema fingerprint. Existing native registry,
-router, and engine constructors remain advanced bypasses. The browser remains
-V1-only; profile-aware rendering and the supported toolbar arrive at alpha.6
-and alpha.7 respectively. See the
+fresh opaque process-local generation on every successful compilation.
+
+Version `0.2.0-alpha.5` carries that generation in profile-created
+`EditorContext`, `EditorEngine`, engine observations, synchronous intent
+outcomes, and profile-owned action-state caches and observations. Generation
+admission precedes engine-instance, snapshot, and history checks. The owned
+`CompiledProfileDescriptor` canonically lists the durable schema binding,
+every inline-format revision, every intent input/state contract, and every
+action-state contract with its direct, routed, or history source. Guarded
+intent execution routes and consumes one cached prepared action without
+rerunning a handler and preserves committed, blocked, or unhandled provenance.
+`CheckpointedEditorEngine::try_new` explicitly retains legacy Session
+Checkpoint V1, while `try_new_v2` explicitly retains fingerprint-bearing V2
+through every atomic candidate mutation.
+
+The declaration bundle still contains no callback, custom action input,
+renderer, or toolbar metadata and does not enter the durable schema
+fingerprint. Existing native registry, router, and unprofiled engine
+constructors remain advanced bypasses. Wasm ABI 3 now transports the compiled
+profile, but the supported browser remains base-only; profile-aware rendering
+and the supported toolbar arrive at alpha.6 and alpha.7 respectively. See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
 [schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and
@@ -145,16 +158,15 @@ replacement fragments, preserving the retained boundary text as two distinct
 paragraphs without a delete/split intermediate.
 Operation records retain exact optimistic guards and pass checked constructors
 plus active-context limits, but deliberately carry no snapshot, ordering,
-selection, metadata, deduplication identity, or transaction boundary. The crate
-is intentionally smaller than the eventual editor runtime and has no
-action-state subscription/delivery layer, presentation manifest, browser
-scheduler,
-profile-generation propagation through `EditorEngine` or Wasm, formatting
-attributes, log storage and tail-wide recovery orchestration,
-checkpoint/log atomic replacement, storage-generation publication or initial
-scope provisioning, executable append I/O, process-restart append
-reconstruction,
-collaboration transform, or Wasm adapter yet.
+selection, metadata, deduplication identity, or transaction boundary. The core
+stays platform-independent: it has no action-state subscription/delivery
+layer, presentation manifest, DOM or browser scheduler, property-bearing
+format attributes, log-storage I/O, checkpoint/log atomic replacement,
+storage-generation publication or initial scope provisioning, process-restart
+append reconstruction, or collaboration transform. Alpha.5 does propagate a
+compiled-profile generation through `EditorEngine`; the separate
+`breditor-wasm` crate transports that profile and its guarded observations
+without putting JavaScript or Wasm dependencies in this crate.
 The intentionally narrow browser release promise is tracked separately in
 [`docs/V0_1_SCOPE.md`](../../docs/V0_1_SCOPE.md).
 
@@ -732,8 +744,9 @@ commit. Payload-bearing sources are omitted from engine `Debug`.
 exists yet, and checked undo/redo conversion is still a fallible step after
 session publication. `LocalLogEntry` separately requires session/generation,
 sequence, and retry identities. A later log coordinator must reserve those and
-close conversion before publication. This facade adds no Wasm ABI, DOM/event
-adapter, subscription scheduler, or persistence I/O.
+close conversion before publication. The core facade itself adds no Wasm ABI,
+DOM/event adapter, subscription scheduler, or persistence I/O; those remain in
+the separate Wasm and browser packages.
 
 Version `0.0.49` adds `delete-forward`, `delete-selection`, and
 `insert-plain-text` to the base action generation. Directional deletion uses

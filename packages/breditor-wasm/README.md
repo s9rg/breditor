@@ -9,11 +9,11 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-This alpha.4 checkpoint is currently unpublished. After publication, the
+This alpha.5 checkpoint is currently unpublished. After publication, the
 registry package can be installed with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.4
+npm install @breditor/wasm@0.2.0-alpha.5
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -43,30 +43,39 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the `0.1.x` API compatibility promise; official
 browser/Wasm packages are supported only as an exact same-version pair with ABI
-generation `2`.
+generation `3`.
 
-Version `0.2.0-alpha.4` does not expose the Rust core's compiled editor profile,
-manifest-owned toggle bundles, or process-local profile generation through
-Wasm. This package still accepts and emits the exact base-only Document V1 and
-Session Checkpoint V1 browser shapes under ABI generation 2; profile bootstrap
-and generation-correlated observations are reserved for Wasm ABI 3 in alpha.5.
+Version `0.2.0-alpha.5` adds strict bounded ABI-local profile bootstrap,
+reusable `BreditorCompiledProfile` factories over Document V2 and Session
+Checkpoint V2, a canonical owned descriptor, opaque generation handles, and
+`executeNoInputIntent`. Engines, observations, command and intent results,
+projections and updates, selections, and action-state values expose generation
+matching without revealing a scalar identity. The existing exact-base Document
+V1 and Session Checkpoint V1 `BreditorEngine` factories remain an advanced
+compatibility path; they now create trusted-profile-correlated engines but do
+not auto-detect or convert wire generations.
 
 ## Reproducible build
 
 From the repository root:
 
 ```sh
+npm ci
 WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run check:wasm-package
 ```
 
 The build requires the repository's pinned Rust toolchain, the locked Cargo
-graph, the `wasm32-unknown-unknown` target, and exactly `wasm-bindgen 0.2.127`.
-Generation occurs in an isolated directory before the package `dist` directory
-is replaced. The check compares the generated declaration byte-for-byte with
-the reviewed Rust ABI declaration, verifies the exact reachable normal/build
-dependency graph and license metadata, verifies required third-party notice
-bytes, verifies that two clean builds produce the same bytes, and initializes
-the built module in Node.js.
+graph, the `wasm32-unknown-unknown` target, exactly `wasm-bindgen 0.2.127`, and
+the lockfile-installed `rolldown 1.2.7`. Cargo uses the dedicated
+size-oriented `wasm-release` profile; `wasm-bindgen` removes name and producer
+sections; Rolldown deterministically minifies the JavaScript glue while
+preserving its TypeScript declaration link. Generation occurs in an isolated
+directory before the package `dist` directory is replaced. The check compares
+the generated declaration byte-for-byte with the reviewed Rust ABI
+declaration, verifies the exact reachable normal/build dependency graph and
+license metadata, verifies required third-party notice bytes, verifies that two
+clean builds produce the same bytes, and initializes the built module in
+Node.js.
 
 Use `npm run smoke:packages` to pack both public workspace packages, install the
 tarballs in a clean temporary consumer, import and initialize them, type-check

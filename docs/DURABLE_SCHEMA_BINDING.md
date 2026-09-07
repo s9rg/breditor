@@ -1,7 +1,9 @@
 # Durable schema binding contract
 
-Status: implemented Rust-core contract through `0.2.0-alpha.4`; browser and
-Wasm integration remains deliberately deferred
+Status: implemented Rust-core contract through `0.2.0-alpha.5`; Wasm ABI 3
+provides explicit V2 profile factories; the supported browser already persists
+the exact-base V1 session, while profile-aware V2 browser persistence remains
+deliberately deferred
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.
@@ -123,10 +125,12 @@ current, predecessor, and candidate bytes only after their complete binding and
 canonical checks succeed. A failed candidate remains separate from the current
 selection, and a failed compare-and-swap never promotes it.
 
-The browser and Wasm ABI 2 remain V1-only during `alpha.4`. Browser persistence
-does not accept V2 early, reuse the V1 IndexedDB slot, or fall back to fresh
-content after a mismatch. Profile-aware Wasm and browser persistence arrive in
-their later scheduled checkpoints.
+Wasm ABI 3 adds explicit compiled-profile factories over Document V2 and
+Session Checkpoint V2 during alpha.5. Its legacy exact-base factory remains an
+explicit V1 path. The supported base-only browser persistence layer still does
+not accept V2, reuse the V1 IndexedDB slot, or fall back to fresh content after
+a mismatch; profile-aware browser persistence arrives with the rendering
+checkpoint.
 
 V2 storage support stops at checked prepare, encode, decode, and selected-value
 normalization. It does not enter the existing `Prepared` -> `Uncertain`
@@ -172,7 +176,7 @@ document cannot directly mint a new persistence root. This narrower source
 contract makes history/session reset observable and prevents a document-only
 helper from being mistaken for persistence migration.
 
-## Deliberate alpha.4 limits
+## Deliberate alpha.5 limits
 
 - The public schema compiler remains
   `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
@@ -195,12 +199,13 @@ helper from being mistaken for persistence migration.
   `breditor/*`. Custom actions, callbacks, inputs, cross-extension targets,
   shared identities, and fallback routes remain unavailable.
 - Every successful profile compilation mints a fresh opaque process-local
-  generation, but alpha.4 keeps it on the profile container. `EditorEngine`,
-  observations, outcomes, and Wasm do not carry it until alpha.5. Existing
-  native constructors remain advanced bypasses.
-- Wasm ABI 2, browser validators, autosave, IndexedDB, and npm consumer fixtures
-  continue to consume and emit exact-base V1 only. Rendering and toolbar support
-  remain alpha.6 and alpha.7 work.
+  generation. Alpha.5 carries it through profile-created Rust engine/state
+  observations and Wasm handles, but never serializes or exposes it as a
+  scalar. Existing unprofiled native constructors remain advanced bypasses.
+- Wasm ABI 3 profile factories use V2. The supported browser validators,
+  autosave, IndexedDB, and npm consumer fixture continue to use the exact-base
+  V1 product path. Rendering and toolbar support remain alpha.6 and alpha.7
+  work.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

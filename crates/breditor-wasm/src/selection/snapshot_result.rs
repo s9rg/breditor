@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::BreditorError;
+use breditor_core::profile::CompiledProfileGeneration;
+
+use crate::{BreditorError, BreditorProfileGeneration};
 
 use super::BreditorSelection;
 
@@ -9,23 +11,37 @@ use super::BreditorSelection;
 /// A successful selection can be taken exactly once.
 #[wasm_bindgen]
 pub struct BreditorSelectionResult {
+    generation: CompiledProfileGeneration,
     selection: Option<BreditorSelection>,
     error: Option<BreditorError>,
     succeeded: bool,
 }
 
 impl BreditorSelectionResult {
-    pub(crate) const fn success(selection: BreditorSelection) -> Self {
-        Self { selection: Some(selection), error: None, succeeded: true }
+    pub(crate) const fn success(
+        generation: CompiledProfileGeneration,
+        selection: BreditorSelection,
+    ) -> Self {
+        Self { generation, selection: Some(selection), error: None, succeeded: true }
     }
 
-    pub(crate) const fn from_error(error: BreditorError) -> Self {
-        Self { selection: None, error: Some(error), succeeded: false }
+    pub(crate) const fn from_error(
+        generation: CompiledProfileGeneration,
+        error: BreditorError,
+    ) -> Self {
+        Self { generation, selection: None, error: Some(error), succeeded: false }
     }
 }
 
 #[wasm_bindgen]
 impl BreditorSelectionResult {
+    /// Checks the result's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns `selection`, `taken`, or `error`.
     #[must_use]
     #[wasm_bindgen(getter, unchecked_return_type = "BreditorSelectionResultStatus")]

@@ -24,6 +24,7 @@ import type {
   SemanticProjectionUpdateView,
   SemanticProjectionView,
 } from "./wasm_projection_adapter.js";
+import { associateProjectionWithProfileGeneration } from "./wasm_projection_adapter.js";
 import type { SemanticSelectionView } from "./wasm_selection_adapter.js";
 import {
   isOwnedBrowserSessionCheckpointReadResult,
@@ -40,8 +41,9 @@ import {
   type WasmActionStatesResultView,
 } from "./wasm_action_state_adapter.js";
 import {
-  BreditorWasmCommandAdapter,
+  BreditorWasmCommandAdapter as RawBreditorWasmCommandAdapter,
   MAX_WASM_CORE_COMMIT_OBSERVERS,
+  type BreditorWasmCommandAdapterOptions,
   type WasmCommandEngineView,
   type WasmCommandErrorView,
   type WasmCommandObservationView,
@@ -49,6 +51,77 @@ import {
   type WasmCommandSequenceOutcome,
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
+import type {
+  BrowserCompiledProfileDescriptor,
+  WasmCompiledProfileDescriptorView,
+  WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
+import { consumeWasmCompiledProfileDescriptor } from "./wasm_profile_descriptor.js";
+
+const TEST_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
+  matches(other) {
+    return other === TEST_PROFILE_GENERATION;
+  },
+  free: vi.fn(),
+};
+const matchesTestProfile = (generation: WasmProfileGenerationView): boolean =>
+  generation === TEST_PROFILE_GENERATION;
+const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
+  const noEntry = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "breditor/base",
+    schemaVersion: 1,
+    schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
+    formatCount: 0,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
+    formatKind: noEntry,
+    formatRevision: noEntry,
+    intentId: noEntry,
+    intentInputKind: noEntry,
+    intentInputContractName: noEntry,
+    intentInputContractVersion: noEntry,
+    intentActivationContract: noEntry,
+    intentValueContractName: noEntry,
+    intentValueContractVersion: noEntry,
+    actionStateId: noEntry,
+    actionStateSourceKind: noEntry,
+    actionStateSourceActionId: noEntry,
+    actionStateSourceIntentId: noEntry,
+    actionStateHistoryDirection: noEntry,
+    actionStateActivationContract: noEntry,
+    actionStateValueContractName: noEntry,
+    actionStateValueContractVersion: noEntry,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(
+    TEST_PROFILE_GENERATION,
+    view,
+  );
+  if (!result.ok) throw new Error("test profile descriptor was rejected");
+  return result.descriptor;
+})();
+
+class BreditorWasmCommandAdapter extends RawBreditorWasmCommandAdapter {
+  constructor(
+    engine: WasmCommandEngineView,
+    observation: WasmCommandObservationView,
+    options: Omit<
+      BreditorWasmCommandAdapterOptions,
+      "profileGeneration" | "profileDescriptor"
+    >,
+  ) {
+    super(engine, observation, {
+      ...options,
+      profileGeneration: TEST_PROFILE_GENERATION,
+      profileDescriptor: TEST_PROFILE_DESCRIPTOR,
+    });
+  }
+}
 
 interface ProjectionFixture {
   readonly projection: BaseDocumentProjection;
@@ -301,6 +374,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const aliased: WasmActionStatesResultView = {
       status: "full",
       error: undefined,
+      matchesProfileGeneration: matchesTestProfile,
       takeSnapshot: () => initial as unknown as WasmActionStateSnapshotView,
       free: resultFree,
     };
@@ -539,6 +613,7 @@ describe("BreditorWasmCommandAdapter", () => {
       disabledReasonCode: "breditor/not-enabled",
       activation: "inactive",
       error: undefined,
+      matchesProfileGeneration: matchesTestProfile,
       observation: () => successor,
       projectionUpdate: () => undefined,
       free: originalFree,
@@ -574,6 +649,42 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
   });
 
+  it("faults and releases a command result from another profile generation", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const result = commandResult({
+      status: "disabled",
+      successor: observation(0),
+      disabledActionId: "breditor/toggle-strong",
+      disabledReasonCode: "breditor/not-enabled",
+      activation: "inactive",
+    });
+    Object.assign(result.view, { matchesProfileGeneration: () => false });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ noInputAction: [result.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        noInputActionRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "toolbar", detail: "foreign-profile" },
+          "breditor/toggle-strong",
+        ),
+      ),
+    ).toThrow(/invalid or aliased/u);
+    expect(result.free).toHaveBeenCalledOnce();
+    expect(adapter.state).toBe("faulted");
+    adapter.dispose();
+  });
+
   it("retains the initial observation cleanup captured before engine inspection", () => {
     const base = projectionFixture(0, "a");
     const originalFree = vi.fn();
@@ -581,6 +692,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const initial: WasmCommandObservationView = {
       snapshotLineage: "adapter-tests",
       snapshotRevision: "0",
+      matchesProfileGeneration: matchesTestProfile,
       free: originalFree,
     };
     const engine = engineQueues({});
@@ -608,6 +720,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const initial: WasmCommandObservationView = {
       snapshotLineage: "adapter-tests",
       snapshotRevision: "0",
+      matchesProfileGeneration: matchesTestProfile,
       free: vi.fn(() => {
         throw undefined;
       }),
@@ -649,6 +762,7 @@ describe("BreditorWasmCommandAdapter", () => {
       disabledReasonCode: undefined,
       activation: undefined,
       error,
+      matchesProfileGeneration: matchesTestProfile,
       observation: () => {
         Object.assign(error, { free: replacementFree });
         return undefined;
@@ -690,6 +804,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const successor: WasmCommandObservationView = {
       snapshotLineage: "adapter-tests",
       snapshotRevision: "0",
+      matchesProfileGeneration: matchesTestProfile,
       free: originalFree,
     };
     const result = commandResult({ status: "unchanged", successor });
@@ -746,6 +861,7 @@ describe("BreditorWasmCommandAdapter", () => {
             disabledReasonCode: undefined,
             activation: undefined,
             error: error?.view,
+            matchesProfileGeneration: matchesTestProfile,
             observation: () => undefined,
             projectionUpdate: () => undefined,
             free: resultFree,
@@ -758,6 +874,7 @@ describe("BreditorWasmCommandAdapter", () => {
               disabledReasonCode: "breditor/not-enabled",
               activation: "inactive",
               error: undefined,
+              matchesProfileGeneration: matchesTestProfile,
               observation: () => successor?.view,
               projectionUpdate: () => undefined,
               free: resultFree,
@@ -769,6 +886,7 @@ describe("BreditorWasmCommandAdapter", () => {
               disabledReasonCode: undefined,
               activation: undefined,
               error: undefined,
+              matchesProfileGeneration: matchesTestProfile,
               observation: () => observation(1),
               projectionUpdate: () => update?.view,
               free: resultFree,
@@ -819,6 +937,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const engineSelection: WasmSelectionResultView = {
       status: "selection",
       error: undefined,
+      matchesProfileGeneration: matchesTestProfile,
       takeSelection: () => selected.view,
       free: selectionResultFree,
     };
@@ -1467,6 +1586,7 @@ describe("BreditorWasmCommandAdapter", () => {
       disabledReasonCode: undefined,
       activation: undefined,
       error: undefined,
+      matchesProfileGeneration: matchesTestProfile,
       observation: () => aliasedResult as unknown as WasmCommandObservationView,
       projectionUpdate: () => undefined,
       free,
@@ -1897,6 +2017,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const hostileSelection = Object.defineProperties(
       {
         error: undefined,
+        matchesProfileGeneration: matchesTestProfile,
         takeSelection: () => undefined,
         free: selectionFree,
       },
@@ -2404,6 +2525,10 @@ function projection(revision: number, text: string): BaseDocumentProjection {
     paragraphs: [{ runs: [{ text, strong: false }] }],
   });
   if (!result.ok) throw new Error(result.error.code);
+  associateProjectionWithProfileGeneration(
+    result.value,
+    TEST_PROFILE_GENERATION,
+  );
   return result.value;
 }
 
@@ -2431,6 +2556,8 @@ function observation(revision: number): TrackedObservation {
   return {
     snapshotLineage: "adapter-tests",
     snapshotRevision: String(revision),
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     free: vi.fn(),
   };
 }
@@ -2484,6 +2611,8 @@ function commandResult(input: Readonly<{
       disabledReasonCode: input.disabledReasonCode,
       activation: input.activation,
       error: undefined,
+      matchesProfileGeneration: (generation) =>
+        generation === TEST_PROFILE_GENERATION,
       observation: () => input.successor,
       projectionUpdate: () => input.update,
       free,
@@ -2516,6 +2645,8 @@ function commandError(code: string) {
     disabledReasonCode: undefined,
     activation: undefined,
     error,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     observation: () => undefined,
     projectionUpdate: () => undefined,
     free,
@@ -2540,6 +2671,8 @@ function projectionUpdate(
     oldChildEnd: undefined,
     newChildStart: undefined,
     newChildEnd: undefined,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     affectedParagraphIndex: (index) => index === 0 ? 0 : undefined,
     takeProjection: () => {
       if (projectionTaken) return undefined;
@@ -2556,6 +2689,9 @@ function projectionView(documentProjection: BaseDocumentProjection): SemanticPro
   return {
     schemaName: "breditor/base",
     schemaVersion: 1,
+    schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     snapshotLineage: documentProjection.snapshot.lineage,
     snapshotRevision: documentProjection.snapshot.revision,
     nodeCount: 3,
@@ -2595,6 +2731,8 @@ function selectionView(revision: number, offset: number): SemanticSelectionView 
     focusOffset: offset,
     focusAffinity: "before",
     rangeOrder: "collapsed",
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     free: vi.fn(),
   };
 }
@@ -2605,6 +2743,8 @@ function selectionResult(view: SemanticSelectionView) {
   const result: WasmSelectionResultView = {
     status: "selection",
     error: undefined,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     takeSelection: () => {
       if (taken) return undefined;
       taken = true;
@@ -2631,6 +2771,8 @@ function emptyActionStateResult(revision: number) {
   const snapshot: WasmActionStateSnapshotView = {
     snapshotLineage: "adapter-tests",
     snapshotRevision: String(revision),
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     entryCount: 0,
     changedCount: 0,
     entryId: () => undefined,
@@ -2649,6 +2791,8 @@ function emptyActionStateResult(revision: number) {
   const view: WasmActionStatesResultView = {
     status: "full",
     error: undefined,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     takeSnapshot: () => {
       if (taken) return undefined;
       taken = true;
@@ -2709,6 +2853,8 @@ function engineQueues(input: Readonly<{
     return value;
   };
   return {
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
     actionStates: () => take(input.actionStates, "actionStates"),
     sessionCheckpointJson: () =>
       take(input.sessionCheckpoints, "sessionCheckpointJson"),

@@ -57,11 +57,14 @@ fn set_range_selection_with_admission(
     admit: impl FnOnce(&breditor_core::document::Document) -> Result<RangeSelection, BreditorError>,
 ) -> BreditorCommandResult {
     if let Err(error) = engine.inner.check_observation(expected.inner()) {
-        return BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error));
+        return BreditorCommandResult::from_error(
+            engine,
+            BreditorError::checkpointed_engine(&error),
+        );
     }
     let selection = match admit(engine.inner.state().document()) {
         Ok(selection) => selection,
-        Err(error) => return BreditorCommandResult::from_error(error),
+        Err(error) => return BreditorCommandResult::from_error(engine, error),
     };
     publish_range_selection(engine, expected, selection)
 }
@@ -72,8 +75,12 @@ fn publish_range_selection(
     selection: RangeSelection,
 ) -> BreditorCommandResult {
     match engine.inner.set_selection(expected.inner(), Some(selection.into())) {
-        Ok(event) => BreditorCommandResult::from_optional_event(event, engine.inner.observation()),
-        Err(error) => BreditorCommandResult::from_error(BreditorError::checkpointed_engine(&error)),
+        Ok(event) => {
+            BreditorCommandResult::from_optional_event(engine, event, engine.inner.observation())
+        }
+        Err(error) => {
+            BreditorCommandResult::from_error(engine, BreditorError::checkpointed_engine(&error))
+        }
     }
 }
 

@@ -1,26 +1,31 @@
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use crate::{
-    action::{ActionRegistry, ActionStateCatalog, routing::IntentRouter},
+    action::{ActionRegistry, ActionStateCache, ActionStateCatalog, routing::IntentRouter},
     extension::ExtensionSet,
-    schema::{CompiledSchema, SchemaId},
+    schema::{CompiledSchema, DocumentLimits, SchemaId},
+    state::EditorContext,
 };
 
-use super::{CompiledProfileGeneration, ProfileCompilationError, compiler};
+use super::{
+    CompiledProfileDescriptor, CompiledProfileGeneration, ProfileCompilationError, compiler,
+};
 
 /// One immutable, all-or-nothing compiled editor semantic profile.
 ///
 /// The profile owns the exact resolved manifest set, sealed schema, generated
 /// action and intent graph, observable state catalog, and process-local
 /// generation created by one compilation. Its components cannot be replaced or
-/// assembled independently through this API.
+/// assembled independently through this API. Clones share every catalog and
+/// descriptor allocation, keeping guarded prepublication candidates constant-
+/// time with respect to profile size.
 #[derive(Clone)]
 pub struct CompiledEditorProfile {
     extensions: ExtensionSet,
     schema: CompiledSchema,
     router: IntentRouter,
     action_states: ActionStateCatalog,
-    generation: CompiledProfileGeneration,
+    descriptor: Arc<CompiledProfileDescriptor>,
 }
 
 impl CompiledEditorProfile {
@@ -44,19 +49,34 @@ impl CompiledEditorProfile {
         compiler::compile_base_text_profile(schema_id, extensions)
     }
 
-    pub(super) fn from_compilation(
+    /// Compiles the exact trusted Breditor base profile.
+    ///
+    /// Unlike the extension-facing compiler, this factory is allowed to use
+    /// the reserved `breditor/base` schema and core-owned identities. Every
+    /// call creates a fresh process-local profile generation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ProfileCompilationError`] if the compiled-in action, routing,
+    /// or observable-state declarations ever violate their frozen contracts.
+    pub fn try_compile_breditor_base() -> Result<Self, ProfileCompilationError> {
+        compiler::compile_breditor_base_profile()
+    }
+
+    pub(crate) fn from_compilation(
         extensions: ExtensionSet,
         schema: CompiledSchema,
         router: IntentRouter,
         action_states: ActionStateCatalog,
     ) -> Self {
-        Self {
-            extensions,
-            schema,
-            router,
-            action_states,
-            generation: CompiledProfileGeneration::fresh(),
-        }
+        let generation = CompiledProfileGeneration::fresh();
+        let descriptor = Arc::new(CompiledProfileDescriptor::from_compilation(
+            &schema,
+            &router,
+            &action_states,
+            generation,
+        ));
+        Self { extensions, schema, router, action_states, descriptor }
     }
 
     /// Returns the complete resolved extension set used for compilation.
@@ -89,10 +109,36 @@ impl CompiledEditorProfile {
         &self.action_states
     }
 
+    /// Creates an execution context carrying this exact schema proof and
+    /// process-local profile generation.
+    #[must_use]
+    pub fn editor_context(&self, limits: DocumentLimits) -> EditorContext {
+        EditorContext::with_profile_generation(
+            self.schema.clone(),
+            limits,
+            self.generation().clone(),
+        )
+    }
+
+    /// Creates an empty action-state cache bound to this exact generation.
+    #[must_use]
+    pub fn action_state_cache(&self) -> ActionStateCache {
+        ActionStateCache::with_profile_generation(
+            self.action_states.clone(),
+            self.generation().clone(),
+        )
+    }
+
+    /// Returns the complete immutable owned profile descriptor.
+    #[must_use]
+    pub fn descriptor(&self) -> &CompiledProfileDescriptor {
+        self.descriptor.as_ref()
+    }
+
     /// Returns this profile container's opaque process-local generation.
     #[must_use]
-    pub const fn generation(&self) -> &CompiledProfileGeneration {
-        &self.generation
+    pub fn generation(&self) -> &CompiledProfileGeneration {
+        self.descriptor.generation()
     }
 }
 
@@ -105,7 +151,24 @@ impl fmt::Debug for CompiledEditorProfile {
             .field("action_count", &self.action_registry().len())
             .field("intent_count", &self.router.intent_count())
             .field("action_state_count", &self.action_states.len())
-            .field("generation", &self.generation)
+            .field("generation", self.generation())
             .finish_non_exhaustive()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use super::CompiledEditorProfile;
+
+    #[test]
+    fn clones_share_the_immutable_descriptor_allocation()
+    -> Result<(), crate::profile::ProfileCompilationError> {
+        let profile = CompiledEditorProfile::try_compile_breditor_base()?;
+        let clone = profile.clone();
+
+        assert!(Arc::ptr_eq(&profile.descriptor, &clone.descriptor));
+        Ok(())
     }
 }

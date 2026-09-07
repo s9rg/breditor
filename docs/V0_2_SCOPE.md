@@ -1,7 +1,7 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` through `0.2.0-alpha.4` Rust foundations are
-complete
+Status: in progress; the `0.1.1` through `0.2.0-alpha.5` engine/Wasm
+foundations are complete
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -61,10 +61,12 @@ startup yet can change labels or styling across editor reconstruction without
 forcing document migration. CSS may change live without changing the checked
 contribution set.
 
-Through alpha.4 that process-local generation identifies only the immutable
-Rust `CompiledEditorProfile` container. `EditorEngine`, its observations and
-outcomes, and Wasm values do not carry or check it yet; alpha.5 adds that
-correlation at the engine/Wasm boundary.
+Alpha.5 carries that process-local generation through profile-created Rust
+contexts, engines, observations, intent outcomes, and action-state caches, and
+through the corresponding Wasm engine, descriptor, observation, projection,
+selection, action-state, command, and intent handles. The generation remains an
+opaque allocation identity with no numeric, string, pointer, JSON, or durable
+representation. Browser presentation identity remains separate.
 
 Rust remains the authority for the AST, compiled schema, selection, action
 evaluation, primitive operations, transactions, history, replay, and durable
@@ -205,7 +207,7 @@ when review finds a correctness boundary; later features are not claimed early.
    listing admitted format identities, intent/input contracts, and state/value
    contracts. Regenerate declarations, enforce exact package pairing, and run
    the real Wasm runner tests. Runtime generation, durable schema identity, and
-   browser presentation identity remain distinct.
+   browser presentation identity remain distinct. Complete.
 7. `0.2.0-alpha.6`: complete profile-aware base-text inline-format browser
    support: projection and updates, declarative rendering and DOM-drift checks,
    point mapping, composition reconciliation, safe copy serialization,

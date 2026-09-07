@@ -1,5 +1,7 @@
-use breditor_core::transaction::Commit;
+use breditor_core::{profile::CompiledProfileGeneration, transaction::Commit};
 use wasm_bindgen::prelude::wasm_bindgen;
+
+use crate::BreditorProfileGeneration;
 
 use super::{BreditorProjection, impact::ProjectionImpact};
 
@@ -10,6 +12,7 @@ use super::{BreditorProjection, impact::ProjectionImpact};
 /// their rendered base or DOM shape does not match this update.
 #[wasm_bindgen]
 pub struct BreditorProjectionUpdate {
+    generation: CompiledProfileGeneration,
     base_lineage: String,
     base_revision: String,
     result_lineage: String,
@@ -19,20 +22,28 @@ pub struct BreditorProjectionUpdate {
 }
 
 impl BreditorProjectionUpdate {
-    pub(crate) fn from_commit(commit: &Commit) -> Self {
+    pub(crate) fn from_commit(generation: CompiledProfileGeneration, commit: &Commit) -> Self {
         Self {
+            generation: generation.clone(),
             base_lineage: commit.base_snapshot().lineage().as_str().to_owned(),
             base_revision: commit.base_revision().get().to_string(),
             result_lineage: commit.snapshot().lineage().as_str().to_owned(),
             result_revision: commit.revision().get().to_string(),
             impact: super::impact::classify(commit),
-            projection: Some(BreditorProjection::from_state(commit.after())),
+            projection: Some(BreditorProjection::from_state(generation, commit.after())),
         }
     }
 }
 
 #[wasm_bindgen]
 impl BreditorProjectionUpdate {
+    /// Checks the update's opaque process-local profile identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = matchesProfileGeneration)]
+    pub fn matches_profile_generation(&self, generation: &BreditorProfileGeneration) -> bool {
+        self.generation == generation.inner
+    }
+
     /// Returns the source snapshot lineage.
     #[must_use]
     #[wasm_bindgen(getter, js_name = baseLineage)]

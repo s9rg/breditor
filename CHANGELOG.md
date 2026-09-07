@@ -4,6 +4,76 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.5 - 2026-09-07
+
+This unpublished checkpoint carries one immutable compiled semantic profile
+through the guarded Rust engine and the new Wasm ABI 3 boundary. It does not
+yet render extension formats or expose extension toolbar controls in the
+supported browser editor; those remain alpha.6 and alpha.7 work.
+
+### Profile-correlated Rust engine
+
+- Added the opaque compiled-profile generation to profile-created
+  `EditorContext`, `EditorEngine`, engine observations and intent outcomes,
+  and profile-owned action-state caches and observations. Guard checks reject
+  another profile generation before engine instance, snapshot, or history
+  mismatch and leave the authoritative owner unchanged.
+- Added an owned, canonical `CompiledProfileDescriptor` containing the durable
+  schema binding, every admitted inline-format kind and persisted revision,
+  every intent input/state contract, and every action-state contract plus its
+  complete direct, routed, or history source. Binary lookup APIs use the same
+  lexical order as enumeration, and guarded command candidates share the
+  immutable descriptor allocation instead of copying its bounded catalogs.
+- Added guarded synchronous intent execution. Routing and the selected prepared
+  action are consumed exactly once inside the engine; committed, blocked, and
+  unhandled receipts retain route provenance, disabled fallthroughs, blocked
+  reason and indicator data, and the authoritative successor observation.
+- Made the checkpoint generation an explicit construction policy. The legacy
+  constructor remains Session Checkpoint V1, while `try_new_v2` retains
+  fingerprint-bearing Session Checkpoint V2 across every atomic candidate
+  mutation—even for the exact built-in base profile.
+
+### Wasm ABI 3
+
+- Added strict, bounded `breditor/profile-bootstrap` version 1 JSON and a
+  reusable `BreditorCompiledProfile` owner. It can create any number of fresh
+  or restored engines from Document V2 and Session Checkpoint V2 without being
+  consumed; equivalent recompilation preserves the schema fingerprint but
+  mints a fresh opaque runtime generation.
+- Added owned Wasm generation and descriptor handles plus generation checks on
+  engines, observations, projections and updates, action-state reads, selection
+  reads, command results, and semantic-intent results. The generation has no
+  number, string, pointer, JSON, or persistence representation.
+- Added `executeNoInputIntent`. The result distinguishes `committed`,
+  `blocked`, `unhandled`, and `error`, retains binding and fallthrough
+  provenance, exposes blocked reason/indicator data, emits Commit V2 and a
+  profile-correlated projection update for commits, and returns the successor
+  observation. Generic `ActionValue` JSON ingress remains intentionally absent.
+- Retained the exact base-only Document V1 and Session Checkpoint V1 factories
+  as an advanced compatibility path, but correlated their engines to the
+  trusted built-in profile. All new profile factories are V2-only; neither path
+  auto-detects or silently converts a wire generation.
+- Added a dedicated size-oriented `wasm-release` Cargo profile and a pinned,
+  deterministic generated-glue minification step. Native release optimization
+  remains unchanged, and the larger ABI 3 surface stays within the existing
+  Wasm binary, gzip, JavaScript glue, and npm-tarball ceilings.
+
+### Browser boundary hardening
+
+- The official browser bootstrap now requires an initialized module namespace,
+  checks ABI exactly `"3"` and runtime package version exactly
+  `"0.2.0-alpha.5"` before reading the engine factory, and rejects the former
+  bare-factory shortcut.
+- Bootstrap consumes and validates the opaque profile generation and complete
+  descriptor, requires the exact built-in base profile at this checkpoint, and
+  checks every initial and later observation, projection, selection,
+  action-state, and command result against that generation. The standalone
+  uncorrelated restore seam was removed in favor of the one guarded bootstrap.
+- Extension rendering and extension toolbar execution are still deliberately
+  unavailable. The supported browser continues to render the exact base
+  profile while ABI 3 establishes the correlation needed by alpha.6 and
+  alpha.7.
+
 ## 0.2.0-alpha.4 - 2026-09-07
 
 This Rust-core checkpoint compiles the first complete semantic profile around
