@@ -3,12 +3,31 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_CLIPBOARD_FRAGMENT_HTML_UTF16,
   MAX_CLIPBOARD_FRAGMENT_HTML_UTF8,
+  MAX_CLIPBOARD_FRAGMENT_FORMAT_WRAPPERS,
   MAX_CLIPBOARD_FRAGMENT_TEXT_UTF16,
   MAX_CLIPBOARD_FRAGMENT_TEXT_UTF8,
   serializeClipboardSelection,
 } from "./clipboard_fragment.js";
-import { BaseDocumentProjection } from "./projection.js";
+import {
+  BaseDocumentProjection,
+  bindProjectionPresentation,
+  createProfiledDocumentProjection,
+} from "./projection.js";
 import { BaseRangeSelection } from "./selection.js";
+import {
+  compileBrowserPresentation,
+  type BrowserCompiledPresentation,
+} from "./compiled_browser_presentation.js";
+import {
+  createInlineFormatRenderManifest,
+  type InlineFormatRenderManifest,
+} from "./inline_format_render_manifest.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type BrowserCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 type Point =
   | Readonly<{
@@ -149,6 +168,160 @@ describe("serializeClipboardSelection", () => {
       },
     });
   });
+
+  it("requires and serializes the exact profile presentation", () => {
+    const fixture = createProfiledFixture(
+      ["breditor/strong", "example/emphasis", "example/highlight"],
+      [
+        {
+          formatKind: "example/highlight",
+          element: "span",
+          classes: ["highlight"],
+          before: ["breditor/strong"],
+        },
+        {
+          formatKind: "breditor/strong",
+          element: "strong",
+          before: ["example/emphasis"],
+        },
+        {
+          formatKind: "example/emphasis",
+          element: "em",
+          classes: ["zeta", "emphasis"],
+        },
+      ],
+      [
+        [
+          {
+            text: "nested<&",
+            formats: [
+              "breditor/strong",
+              "example/emphasis",
+              "example/highlight",
+            ],
+          },
+          { text: " plain", formats: [] },
+        ],
+      ],
+    );
+    const selection = makeSelection(
+      fixture.projection,
+      childrenPoint(0, 0, "after"),
+      childrenPoint(0, 2, "before"),
+    );
+    const siblingPresentation = compileBrowserPresentation(
+      fixture.generation,
+      fixture.descriptor,
+      fixture.manifest,
+    );
+
+    expect(serializeClipboardSelection(selection)).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.fragment.invalid_selection" },
+    });
+    expect(
+      serializeClipboardSelection(selection, siblingPresentation),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.fragment.invalid_selection" },
+    });
+    let forgedReads = 0;
+    const forged = new Proxy({}, {
+      get: () => {
+        forgedReads += 1;
+        throw new Error("must not inspect a forged presentation");
+      },
+    }) as BrowserCompiledPresentation;
+    expect(serializeClipboardSelection(selection, forged)).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.fragment.invalid_selection" },
+    });
+    expect(forgedReads).toBe(0);
+    expect(
+      serializeClipboardSelection(selection, fixture.presentation),
+    ).toEqual({
+      ok: true,
+      value: {
+        plainText: "nested<& plain",
+        html:
+          '<p><span class="highlight"><strong><em class="emphasis zeta">nested&lt;&amp;</em></strong></span> plain</p>',
+      },
+    });
+  });
+
+  it("serializes the full 32-format per-run bound in render order", () => {
+    const formatKinds = Array.from(
+      { length: 32 },
+      (_, index) => `example/f${String(index).padStart(2, "0")}`,
+    );
+    const fixture = createProfiledFixture(
+      formatKinds,
+      formatKinds.map((formatKind, index) => ({
+        formatKind,
+        element: "span",
+        classes: [`f${String(index).padStart(2, "0")}`],
+      })),
+      [[{ text: "x", formats: formatKinds }]],
+    );
+    const selection = makeSelection(
+      fixture.projection,
+      childrenPoint(0, 0, "after"),
+      childrenPoint(0, 1, "before"),
+    );
+
+    const result = serializeClipboardSelection(selection, fixture.presentation);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("32-format serialization failed");
+    expect(result.value.html).toBe(
+      `<p>${formatKinds
+        .map((_kind, index) =>
+          `<span class="f${String(index).padStart(2, "0")}">`,
+        )
+        .join("")}x${"</span>".repeat(32)}</p>`,
+    );
+  });
+
+  it(
+    "fails closed when total wrapper amplification exceeds its fixed bound",
+    { timeout: 10_000 },
+    () => {
+      const formatKinds = Array.from(
+        { length: 32 },
+        (_, index) => `example/f${String(index).padStart(2, "0")}`,
+      );
+      const runCount = 6_350;
+      const runs = Array.from({ length: runCount }, (_, index) => ({
+        text: "x",
+        formats: index % 2 === 0 ? formatKinds : formatKinds.slice(0, -1),
+      }));
+      const wrapperCount = runs.reduce(
+        (count, run) => count + run.formats.length,
+        0,
+      );
+      expect(wrapperCount).toBe(MAX_CLIPBOARD_FRAGMENT_FORMAT_WRAPPERS + 25);
+      const fixture = createProfiledFixture(
+        formatKinds,
+        formatKinds.map((formatKind, index) => ({
+          formatKind,
+          element: "span",
+          classes: [`f${String(index).padStart(2, "0")}`],
+        })),
+        [runs],
+      );
+      const selection = makeSelection(
+        fixture.projection,
+        childrenPoint(0, 0, "after"),
+        childrenPoint(0, runCount, "before"),
+      );
+
+      expect(
+        serializeClipboardSelection(selection, fixture.presentation),
+      ).toMatchObject({
+        ok: false,
+        error: { code: "clipboard.fragment.resource_limit" },
+      });
+    },
+  );
 
   it("rejects every tokenizer-control and Unicode noncharacter scalar", () => {
     const forbidden = new Set<number>([0, 0x0b]);
@@ -295,4 +468,101 @@ function childrenPoint(
     childIndex,
     affinity,
   });
+}
+
+const PROFILE_FINGERPRINT =
+  "sha256:2123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+class TestProfileGeneration implements WasmProfileGenerationView {
+  matches(other: WasmProfileGenerationView): boolean {
+    return other === this;
+  }
+
+  free(): void {}
+}
+
+function createProfiledFixture(
+  formatKinds: readonly string[],
+  recipes: readonly unknown[],
+  paragraphs: readonly (readonly Readonly<{
+    text: string;
+    formats: readonly string[];
+  }>[])[],
+): Readonly<{
+  generation: WasmProfileGenerationView;
+  descriptor: BrowserCompiledProfileDescriptor;
+  manifest: InlineFormatRenderManifest;
+  presentation: BrowserCompiledPresentation;
+  projection: BaseDocumentProjection;
+}> {
+  const generation = new TestProfileGeneration();
+  const descriptor = ownedProfileDescriptor(generation, formatKinds);
+  const manifest = createInlineFormatRenderManifest({ recipes: [...recipes] });
+  const presentation = compileBrowserPresentation(
+    generation,
+    descriptor,
+    manifest,
+  );
+  const projection = createProfiledDocumentProjection(
+    {
+      schema: {
+        name: descriptor.schema.name,
+        version: descriptor.schema.version,
+        fingerprint: descriptor.schema.fingerprint,
+      },
+      snapshot: { lineage: "clipboard-fragment-profile", revision: "0" },
+      paragraphs: paragraphs.map((runs) => ({ runs })),
+    },
+    generation,
+    descriptor,
+  );
+  if (!projection.ok) throw new Error("profiled projection fixture failed");
+  if (!bindProjectionPresentation(projection.value, presentation)) {
+    throw new Error("profiled presentation fixture failed");
+  }
+  return Object.freeze({
+    generation,
+    descriptor,
+    manifest,
+    presentation,
+    projection: projection.value,
+  });
+}
+
+function ownedProfileDescriptor(
+  generation: WasmProfileGenerationView,
+  formatKinds: readonly string[],
+): BrowserCompiledProfileDescriptor {
+  const absent = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    formatCount: formatKinds.length,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    formatKind: (index) => formatKinds[index],
+    formatRevision: (index) =>
+      index >= 0 && index < formatKinds.length ? 1 : undefined,
+    intentId: absent,
+    intentInputKind: absent,
+    intentInputContractName: absent,
+    intentInputContractVersion: absent,
+    intentActivationContract: absent,
+    intentValueContractName: absent,
+    intentValueContractVersion: absent,
+    actionStateId: absent,
+    actionStateSourceKind: absent,
+    actionStateSourceActionId: absent,
+    actionStateSourceIntentId: absent,
+    actionStateHistoryDirection: absent,
+    actionStateActivationContract: absent,
+    actionStateValueContractName: absent,
+    actionStateValueContractVersion: absent,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!result.ok) throw new Error("profile descriptor fixture was rejected");
+  return result.descriptor;
 }

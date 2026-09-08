@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.5` profile boundary
+## Experimental `0.2.0-alpha.6` profile boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -202,20 +202,22 @@ generation has no numeric, string, pointer, JSON, or persistent form. Legacy
 exact-base V1 Wasm factories remain available as an advanced compatibility
 path, but now also create internally profile-correlated engines.
 
-The supported alpha.5 browser remains exact-base-only. It requires the full
-initialized Wasm module, checks ABI `3` and exact runtime package version before
-reading the factory, verifies the built-in profile descriptor and generation,
-and rejects the former bare-factory and uncorrelated-restore seams. Browser
-validation/export, autosave, and the IndexedDB Session Checkpoint Profile still
-consume and emit V1. Rust/Wasm V2 profile records are not accepted in that V1
-slot, and a mismatch must not be replaced with fresh content. Extension render
-recipes and toolbar controls remain alpha.6 and alpha.7 work.
+Alpha.6 extends the supported browser owner to compiled semantic profiles. It
+accepts explicit Document and Session Checkpoint V2 only when a semantic
+profile is supplied, consumes the exact descriptor/generation, requires a
+callback-free safe render manifest with complete format coverage, and carries
+property-free formats through DOM rendering, point mapping, composition, copy,
+plain-text paste, and canonical export. Profile-aware IndexedDB selects an
+exact fingerprint or caller slot before payload validation and never replaces
+mismatched evidence. Omitted profile and scope retain the unprofiled base V1
+projection, export, legacy `"current"` record, and `<strong>`/`<b>` HTML paste
+compatibility. Intent toolbar execution remains alpha.7 work.
 
 ## Browser and Wasm pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; the `0.2.0-alpha.5` pair reports ABI `3`. Alpha.5 checks both the exact
+ABI `2`; the `0.2.0-alpha.6` pair reports ABI `3`. Alpha.6 checks both the exact
 ABI string and exact embedded package version before reading the generated
 engine factory. ABI compatibility alone never makes mismatched official
 package versions a supported pair.
@@ -265,8 +267,9 @@ older `0.1.x` patch after a newer patch is available.
 The matrix exercises real package-built pages. ASCII typing plus Backspace and
 Delete use Playwright's real keyboard input path; non-BMP Unicode insertion and
 scalar deletion use programmatically dispatched `beforeinput` events.
-Composition events are synthetic, and clipboard capability is an event-provided
-test double. These tests do not prove operating-system IME behavior, mobile
+Composition events are synthetic. Clipboard coverage constructs and dispatches
+the browser's real `ClipboardEvent` with a real synchronous `DataTransfer`
+capability. These tests do not prove operating-system IME behavior, mobile
 virtual keyboards, browser-chrome clipboard permissions, or the async Clipboard
 API. One representative Safari/macOS accessibility-tree audit provides
 evidence for roles, names, values, and state transitions in that environment

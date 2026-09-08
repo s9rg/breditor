@@ -9,7 +9,19 @@ import {
   type BaseDocumentProjection,
   type BaseParagraphProjection,
   isOwnedProjection,
+  projectionPresentation,
 } from "./projection.js";
+import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
+import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
+import {
+  nativeAttributeNames,
+  nativeChildNodes,
+  nativeElementLocalName,
+  nativeGetAttribute,
+  nativeHtmlHostFacts,
+  nativeNodeType,
+  nativeNodeValue,
+} from "./html_host.js";
 import {
   type BaseRangeSelection,
   isOwnedBaseRangeSelection,
@@ -54,8 +66,6 @@ interface TextAccumulator {
   utf8Length: number;
 }
 
-const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
-
 /**
  * Extracts one replacement from a temporary native-composition DOM lease.
  *
@@ -92,8 +102,12 @@ export function reconcileCompositionDom(
     if (baseParagraph === undefined) {
       return compositionFailure("composition.dom.invalid_input");
     }
+    const presentation = projectionPresentation(projection);
+    if (projection.schema.fingerprint !== undefined && presentation === undefined) {
+      return compositionFailure("composition.dom.invalid_input");
+    }
 
-    const hostChildren = host.childNodes;
+    const hostChildren = nativeChildNodes(host);
     if (hostChildren.length !== projection.paragraphs.length) {
       return compositionFailure("composition.dom.invalid_structure");
     }
@@ -115,13 +129,18 @@ export function reconcileCompositionDom(
         );
       }
       if (index === paragraphIndex) {
-        const target = extractTargetText(paragraphNode, budget);
+        const target = extractTargetText(paragraphNode, budget, presentation);
         if (!target.ok) {
           return compositionFailure(scanFailureCode(target.reason));
         }
         observedTargetText = target.text;
       } else {
-        const failure = validateCanonicalParagraph(paragraphNode, paragraph, budget);
+        const failure = validateCanonicalParagraph(
+          paragraphNode,
+          paragraph,
+          budget,
+          presentation,
+        );
         if (failure !== null) {
           return compositionFailure(scanFailureCode(failure));
         }
@@ -177,8 +196,9 @@ export function reconcileCompositionDom(
 function extractTargetText(
   paragraph: Element,
   budget: ScanBudget,
+  presentation: BrowserCompiledPresentation | undefined,
 ): TargetTextResult {
-  const children = paragraph.childNodes;
+  const children = nativeChildNodes(paragraph);
   if (children.length === 0) {
     return Object.freeze({ ok: true, text: "" });
   }
@@ -187,7 +207,7 @@ function extractTargetText(
     if (
       only !== undefined &&
       isPropertyFreeHtmlElement(only, "br") &&
-      only.childNodes.length === 0
+      nativeChildNodes(only).length === 0
     ) {
       return consumeNode(budget)
         ? Object.freeze({ ok: true, text: "" })
@@ -205,26 +225,23 @@ function extractTargetText(
     if (child === undefined || !consumeNode(budget)) {
       return Object.freeze({ ok: false, reason: "resourceLimit" });
     }
-    if (child.nodeType === 3) {
+    if (nativeNodeType(child) === 3) {
       const failure = appendTextNode(child, accumulator);
       if (failure !== null) {
         return Object.freeze({ ok: false, reason: failure });
       }
       continue;
     }
-    if (!isPropertyFreeHtmlElement(child, "strong")) {
+    const leafChildren = knownWrapperLeafChildren(child, budget, presentation);
+    if (leafChildren === null) {
       return Object.freeze({ ok: false, reason: "invalidStructure" });
     }
-    const strongChildren = child.childNodes;
-    if (strongChildren.length === 0) {
-      return Object.freeze({ ok: false, reason: "invalidStructure" });
-    }
-    for (let strongIndex = 0; strongIndex < strongChildren.length; strongIndex += 1) {
-      const text = strongChildren[strongIndex];
+    for (let leafIndex = 0; leafIndex < leafChildren.length; leafIndex += 1) {
+      const text = leafChildren[leafIndex];
       if (text === undefined || !consumeNode(budget)) {
         return Object.freeze({ ok: false, reason: "resourceLimit" });
       }
-      if (text.nodeType !== 3) {
+      if (nativeNodeType(text) !== 3) {
         return Object.freeze({ ok: false, reason: "invalidStructure" });
       }
       const failure = appendTextNode(text, accumulator);
@@ -240,7 +257,7 @@ function appendTextNode(
   node: Node,
   accumulator: TextAccumulator,
 ): DomScanFailure | null {
-  const text = node.nodeValue;
+  const text = nativeNodeValue(node);
   if (typeof text !== "string") {
     return "invalidStructure";
   }
@@ -262,8 +279,9 @@ function validateCanonicalParagraph(
   paragraphNode: Element,
   paragraph: BaseParagraphProjection,
   budget: ScanBudget,
+  presentation: BrowserCompiledPresentation | undefined,
 ): DomScanFailure | null {
-  const children = paragraphNode.childNodes;
+  const children = nativeChildNodes(paragraphNode);
   if (paragraph.runs.length === 0) {
     const child = children[0];
     if (
@@ -275,7 +293,8 @@ function validateCanonicalParagraph(
         ? "resourceLimit"
         : "invalidStructure";
     }
-    return isPropertyFreeHtmlElement(child, "br") && child.childNodes.length === 0
+    return isPropertyFreeHtmlElement(child, "br") &&
+        nativeChildNodes(child).length === 0
       ? null
       : "invalidStructure";
   }
@@ -290,29 +309,107 @@ function validateCanonicalParagraph(
         ? "resourceLimit"
         : "invalidStructure";
     }
-    if (!run.strong) {
-      if (child.nodeType !== 3 || child.nodeValue !== run.text) {
-        return "invalidStructure";
+    const recipes = recipesForFormats(run.formats, presentation);
+    if (recipes === null) return "invalidStructure";
+    let current = child;
+    for (const recipe of recipes) {
+      const currentChildren = nativeChildNodes(current);
+      if (
+        !recipeElementMatches(current, recipe) ||
+        currentChildren.length !== 1 ||
+        currentChildren[0] === undefined ||
+        !consumeNode(budget)
+      ) {
+        return budget.nodes > MAX_COMPOSITION_DOM_NODES
+          ? "resourceLimit"
+          : "invalidStructure";
       }
-      continue;
+      current = currentChildren[0];
     }
-    if (
-      !isPropertyFreeHtmlElement(child, "strong") ||
-      child.childNodes.length !== 1
-    ) {
-      return "invalidStructure";
-    }
-    const text = child.childNodes[0];
-    if (text === undefined || !consumeNode(budget)) {
-      return budget.nodes > MAX_COMPOSITION_DOM_NODES
-        ? "resourceLimit"
-        : "invalidStructure";
-    }
-    if (text.nodeType !== 3 || text.nodeValue !== run.text) {
+    if (nativeNodeType(current) !== 3 || nativeNodeValue(current) !== run.text) {
       return "invalidStructure";
     }
   }
   return null;
+}
+
+const LEGACY_STRONG_RECIPE: InlineFormatRenderRecipe = Object.freeze({
+  formatKind: "breditor/strong",
+  element: "strong",
+  classes: Object.freeze([]),
+  before: Object.freeze([]),
+  after: Object.freeze([]),
+});
+
+function recipesForFormats(
+  formats: readonly string[],
+  presentation: BrowserCompiledPresentation | undefined,
+): readonly InlineFormatRenderRecipe[] | null {
+  if (presentation === undefined) {
+    if (formats.length === 0) return Object.freeze([]);
+    return formats.length === 1 && formats[0] === "breditor/strong"
+      ? Object.freeze([LEGACY_STRONG_RECIPE])
+      : null;
+  }
+  const selected = new Set(formats);
+  const recipes = presentation.recipesOuterToInner.filter((recipe) =>
+    selected.has(recipe.formatKind)
+  );
+  return recipes.length === formats.length ? recipes : null;
+}
+
+function knownWrapperLeafChildren(
+  outer: Node,
+  budget: ScanBudget,
+  presentation: BrowserCompiledPresentation | undefined,
+): readonly ChildNode[] | null {
+  const known = presentation?.recipesOuterToInner ?? [LEGACY_STRONG_RECIPE];
+  let current = outer;
+  let previousOrder = -1;
+  for (let depth = 0; depth < 32; depth += 1) {
+    const order = known.findIndex((recipe) => recipeElementMatches(current, recipe));
+    if (order <= previousOrder) return null;
+    previousOrder = order;
+    const children = nativeChildNodes(current);
+    if (children.length === 0) return null;
+    let allText = true;
+    for (let index = 0; index < children.length; index += 1) {
+      const child = children[index];
+      if (child === undefined || nativeNodeType(child) !== 3) {
+        allText = false;
+        break;
+      }
+    }
+    if (allText) return children;
+    if (
+      children.length !== 1 ||
+      children[0] === undefined ||
+      nativeNodeType(children[0]) !== 1 ||
+      !consumeNode(budget)
+    ) {
+      return null;
+    }
+    current = children[0];
+  }
+  return null;
+}
+
+function recipeElementMatches(
+  node: Node,
+  recipe: InlineFormatRenderRecipe,
+): node is Element {
+  const facts = nativeHtmlHostFacts(node);
+  if (
+    facts === undefined ||
+    nativeElementLocalName(facts.element) !== recipe.element
+  ) {
+    return false;
+  }
+  const attributeNames = nativeAttributeNames(facts.element);
+  if (recipe.classes.length === 0) return attributeNames.length === 0;
+  return attributeNames.length === 1 &&
+    attributeNames[0] === "class" &&
+    nativeGetAttribute(facts.element, "class") === recipe.classes.join(" ");
 }
 
 function consumeNode(budget: ScanBudget): boolean {
@@ -321,23 +418,15 @@ function consumeNode(budget: ScanBudget): boolean {
 }
 
 function isUsableConnectedHost(value: unknown): value is HTMLElement {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as Node).nodeType === 1 &&
-    (value as Element).namespaceURI === HTML_NAMESPACE &&
-    (value as Node).ownerDocument !== null &&
-    (value as Node).isConnected === true
-  );
+  const facts = nativeHtmlHostFacts(value);
+  return facts !== undefined && facts.isConnected;
 }
 
 function isPropertyFreeHtmlElement(node: Node, localName: string): node is Element {
-  return (
-    node.nodeType === 1 &&
-    (node as Element).namespaceURI === HTML_NAMESPACE &&
-    (node as Element).localName === localName &&
-    (node as Element).attributes.length === 0
-  );
+  const facts = nativeHtmlHostFacts(node);
+  return facts !== undefined &&
+    nativeElementLocalName(facts.element) === localName &&
+    nativeAttributeNames(facts.element).length === 0;
 }
 
 function scanFailureCode(

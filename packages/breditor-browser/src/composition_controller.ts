@@ -31,6 +31,13 @@ import {
 import { reconcileCompositionDom } from "./dom_composition_reconcile.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
+  preventDomEventDefault,
+  readDomEventBase,
+  readDomInputTargetRanges,
+  readDomKeyboardEvent,
+} from "./dom_event_intrinsics.js";
+import { nativeHtmlHostFacts } from "./html_host.js";
+import {
   isOwnedRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
@@ -55,6 +62,7 @@ import {
   type WasmCommandSequenceOutcome,
   type WasmCompositionLeaseRestoreOutcome,
 } from "./wasm_command_adapter.js";
+import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
 /** A completed, non-queued Rust composition delivery. */
 export interface CompositionCommandSubmission {
@@ -162,15 +170,12 @@ interface LateInputReceipt {
   readonly delivery: EditorDeliveryToken;
 }
 
-type EventTargetSnapshot =
-  | Readonly<{ ok: true; target: EventTarget | null }>
-  | Readonly<{ ok: false }>;
-
 type TargetRangeSnapshot =
   | Readonly<{ ok: true; range: AbstractRange }>
   | Readonly<{ ok: false }>;
 
 type KeySnapshot = Readonly<{
+  target: EventTarget | null;
   key: string;
   code: string;
   isComposing: boolean;
@@ -267,20 +272,25 @@ export class BreditorCompositionController {
     if (this.#state.phase === "disposed") {
       return recovery("disposed");
     }
+    const base = readDomEventBase(event);
+    if (
+      base === null ||
+      (base.type !== "compositionstart" &&
+        base.type !== "compositionupdate" &&
+        base.type !== "compositionend")
+    ) {
+      return this.#invalidEvent(false);
+    }
+    const admission = base.type === "compositionstart" && this.#state.phase === "idle"
+      ? this.#admitIdleTarget(base.target)
+      : this.#admitActiveTarget(base.target);
+    if (admission !== null) return admission;
     const snapshot = snapshotNativeCompositionEvent(event);
     if (!snapshot.ok) {
       return this.#invalidEvent(snapshot.error.code === "composition.invalid_text");
     }
-    const target = snapshotEventTarget(event);
-    if (!target.ok) {
-      return this.#invalidEvent(false);
-    }
 
     if (snapshot.value.type === "compositionstart") {
-      const admission = this.#state.phase === "idle"
-        ? this.#admitIdleTarget(target.target)
-        : this.#admitActiveTarget(target.target);
-      if (admission !== null) return admission;
       if (snapshot.value.defaultPrevented) return ignored("alreadyDefaultPrevented");
       if (this.#state.phase === "idle") {
         const started = this.#start("start");
@@ -307,8 +317,6 @@ export class BreditorCompositionController {
       return this.#quarantine("invalidTransition");
     }
 
-    const admission = this.#admitActiveTarget(target.target);
-    if (admission !== null) return admission;
     if (snapshot.value.defaultPrevented) return ignored("alreadyDefaultPrevented");
     if (this.#active === undefined) return recovery("orphanInput");
     if (
@@ -332,6 +340,14 @@ export class BreditorCompositionController {
   /** Front-routes only composition-related beforeinput before native mutation. */
   handleBeforeInput(event: unknown): CompositionControllerDisposition {
     if (this.#state.phase === "disposed") return recovery("disposed");
+    const base = readDomEventBase(event);
+    if (base === null || base.type !== "beforeinput") {
+      return this.#invalidEvent(false);
+    }
+    if (this.active) {
+      const admission = this.#admitActiveTarget(base.target);
+      if (admission !== null) return admission;
+    }
     const snapshot = snapshotNativeCompositionInput(event);
     if (!snapshot.ok) {
       return this.#invalidEvent(snapshot.error.code === "composition.invalid_text");
@@ -343,17 +359,14 @@ export class BreditorCompositionController {
       (this.active || snapshot.value.isComposing);
     if (inputType === null && !quirk) {
       if (!this.active) {
-        this.#invalidateLateInputForOwnedIdleEvent(event);
+        this.#invalidateLateInputForOwnedIdleTarget(base.target);
         return ignored("notComposition");
       }
       this.#preventInvalidBeforeInput(event, snapshot.value);
       return this.#quarantine("unexpectedMutation");
     }
-    const target = snapshotEventTarget(event);
-    if (!target.ok) return this.#invalidEvent(false);
-
     if (this.#state.phase === "idle") {
-      const admission = this.#admitIdleTarget(target.target);
+      const admission = this.#admitIdleTarget(base.target);
       if (admission !== null) return admission;
       if (snapshot.value.defaultPrevented) return ignored("alreadyDefaultPrevented");
       const started = this.#start("implicitStart");
@@ -362,8 +375,6 @@ export class BreditorCompositionController {
         return started;
       }
     } else {
-      const admission = this.#admitActiveTarget(target.target);
-      if (admission !== null) return admission;
       if (snapshot.value.defaultPrevented) return ignored("alreadyDefaultPrevented");
     }
 
@@ -395,6 +406,12 @@ export class BreditorCompositionController {
   /** Front-routes composition input and consumes at most one late terminal echo. */
   handleInput(event: unknown): CompositionControllerDisposition {
     if (this.#state.phase === "disposed") return recovery("disposed");
+    const base = readDomEventBase(event);
+    if (base === null || base.type !== "input") return this.#invalidEvent(false);
+    if (this.active) {
+      const admission = this.#admitActiveTarget(base.target);
+      if (admission !== null) return admission;
+    }
     const snapshot = snapshotNativeCompositionInput(event);
     if (!snapshot.ok) {
       return this.#invalidEvent(snapshot.error.code === "composition.invalid_text");
@@ -409,11 +426,8 @@ export class BreditorCompositionController {
         ? this.#quarantine("unexpectedMutation")
         : ignored("notComposition");
     }
-    const target = snapshotEventTarget(event);
-    if (!target.ok) return this.#invalidEvent(false);
-
     if (this.#state.phase === "idle") {
-      const admission = this.#admitIdleTarget(target.target);
+      const admission = this.#admitIdleTarget(base.target);
       if (admission !== null) return admission;
       if (snapshot.value.defaultPrevented) return ignored("alreadyDefaultPrevented");
       const evidence = compositionInputEvidence(snapshot.value, quirk);
@@ -432,8 +446,6 @@ export class BreditorCompositionController {
       return recovery("orphanInput");
     }
 
-    const admission = this.#admitActiveTarget(target.target);
-    if (admission !== null) return admission;
     if (snapshot.value.defaultPrevented) return ignored("alreadyDefaultPrevented");
     if (this.#state.phase !== "mutating" && this.#state.phase !== "ending") {
       return this.#quarantine("unexpectedMutation");
@@ -451,13 +463,12 @@ export class BreditorCompositionController {
   handleKeyDown(event: unknown): CompositionControllerDisposition {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const key = snapshotKeyDown(event);
-    const target = snapshotEventTarget(event);
-    if (key === null || !target.ok) return this.#invalidEvent(false);
+    if (key === null) return this.#invalidEvent(false);
     if (this.#state.phase === "idle") {
-      this.#invalidateLateInputForOwnedIdleEvent(event);
+      this.#invalidateLateInputForOwnedIdleTarget(key.target);
       return ignored("inactive");
     }
-    const admission = this.#admitActiveTarget(target.target);
+    const admission = this.#admitActiveTarget(key.target);
     if (admission !== null) return admission;
     if (key.defaultPrevented) return ignored("alreadyDefaultPrevented");
     if (this.#state.phase !== "ending") return native(this.#state.phase);
@@ -522,7 +533,7 @@ export class BreditorCompositionController {
     let selected: BaseRangeSelection;
     let delivery: EditorDeliveryToken;
     try {
-      if (!rendered.host.isConnected || !rendered.current || !rendered.validateCanonicalDom()) {
+      if (!hostConnected(rendered.host) || !rendered.current || !rendered.validateCanonicalDom()) {
         return recovery("staleBase");
       }
       const observed = this.#adapter.selectionBridge.read(rendered);
@@ -679,7 +690,7 @@ export class BreditorCompositionController {
     if (active === undefined || this.#state.phase !== "settling") {
       return this.#quarantine("invalidTransition");
     }
-    if (!active.token.host.isConnected) return this.#quarantine("staleBase");
+    if (!hostConnected(active.token.host)) return this.#quarantine("staleBase");
     const reconciled = reconcileCompositionDom(
       active.token.host,
       active.token.projection,
@@ -878,15 +889,13 @@ export class BreditorCompositionController {
     return this.#resumeIsCurrent(receipt);
   }
 
-  #invalidateLateInputForOwnedIdleEvent(event: unknown): void {
+  #invalidateLateInputForOwnedIdleTarget(target: EventTarget | null): void {
     if (this.#state.phase !== "idle" || this.#lateInput === undefined) return;
-    const target = snapshotEventTarget(event);
-    if (!target.ok) return;
     try {
       const rendered = this.#adapter.rendered;
       if (
         hostConnected(rendered.host) &&
-        classifyDomEventOwnership(rendered.host, target.target) === "owned"
+        classifyDomEventOwnership(rendered.host, target) === "owned"
       ) {
         this.#lateInput = undefined;
       }
@@ -948,14 +957,7 @@ export class BreditorCompositionController {
 
   #preventNativeEvent(event: unknown, cancelable: boolean): void {
     if (!cancelable) return;
-    try {
-      const preventDefault = (event as Readonly<{ preventDefault?: unknown }>).preventDefault;
-      if (typeof preventDefault === "function") {
-        Reflect.apply(preventDefault, event, []);
-      }
-    } catch {
-      // Deferred recovery remains authoritative if cancellation is unavailable.
-    }
+    preventDomEventDefault(event);
   }
 
   #restoreForRecovery(active: ActiveSession): CompositionControllerResume | undefined {
@@ -1017,90 +1019,44 @@ function compositionInputEvidence(
   });
 }
 
-function snapshotEventTarget(event: unknown): EventTargetSnapshot {
-  try {
-    if (typeof event !== "object" || event === null) return Object.freeze({ ok: false });
-    const target = (event as Readonly<{ target?: unknown }>).target;
-    return target === null || typeof target === "object"
-      ? Object.freeze({ ok: true, target: target as EventTarget | null })
-      : Object.freeze({ ok: false });
-  } catch {
-    return Object.freeze({ ok: false });
-  }
-}
-
 function snapshotSingleTargetRange(event: unknown): TargetRangeSnapshot {
-  try {
-    if (typeof event !== "object" || event === null) return Object.freeze({ ok: false });
-    const native = event as Readonly<{ getTargetRanges?: unknown }>;
-    const reader = native.getTargetRanges;
-    if (typeof reader !== "function") return Object.freeze({ ok: false });
-    const ranges: unknown = Reflect.apply(reader, event, []);
-    if (!Array.isArray(ranges) || ranges.length !== 1) {
-      return Object.freeze({ ok: false });
-    }
-    const descriptor = Object.getOwnPropertyDescriptor(ranges, "0");
-    return descriptor !== undefined && "value" in descriptor
-      ? Object.freeze({ ok: true, range: descriptor.value as AbstractRange })
-      : Object.freeze({ ok: false });
-  } catch {
-    return Object.freeze({ ok: false });
-  }
+  const read = readDomInputTargetRanges(event);
+  if (!read.ok) return Object.freeze({ ok: false });
+  const ranges = snapshotOwnDataArray(read.value, 1);
+  return ranges?.length === 1
+    ? Object.freeze({ ok: true, range: ranges[0] as AbstractRange })
+    : Object.freeze({ ok: false });
 }
 
 function snapshotKeyDown(event: unknown): KeySnapshot | null {
-  try {
-    if (typeof event !== "object" || event === null) return null;
-    const native = event as Readonly<Record<string, unknown>>;
-    const type = native["type"];
-    const key = native["key"];
-    const code = native["code"];
-    const isComposing = native["isComposing"];
-    const keyCode = native["keyCode"];
-    const defaultPrevented = native["defaultPrevented"];
-    return type === "keydown" &&
-      typeof key === "string" &&
-      typeof code === "string" &&
-      typeof isComposing === "boolean" &&
-      Number.isSafeInteger(keyCode) &&
-      typeof defaultPrevented === "boolean"
-      ? Object.freeze({
-          key,
-          code,
-          isComposing,
-          keyCode: keyCode as number,
-          defaultPrevented,
-        })
-      : null;
-  } catch {
-    return null;
-  }
+  const base = readDomEventBase(event);
+  const key = readDomKeyboardEvent(event);
+  return base !== null &&
+    key !== null &&
+    base.source === key.source &&
+    base.type === "keydown"
+    ? Object.freeze({
+        target: base.target,
+        key: key.key,
+        code: key.code,
+        isComposing: key.isComposing,
+        keyCode: key.keyCode,
+        defaultPrevented: base.defaultPrevented,
+      })
+    : null;
 }
 
 function snapshotBasicEvent(
   event: unknown,
   expectedType: string,
 ): Readonly<{ target: EventTarget | null; defaultPrevented: boolean }> | null {
-  try {
-    if (typeof event !== "object" || event === null) return null;
-    const native = event as Readonly<Record<string, unknown>>;
-    const type = native["type"];
-    const target = native["target"];
-    const defaultPrevented = native["defaultPrevented"];
-    if (
-      type !== expectedType ||
-      (target !== null && typeof target !== "object") ||
-      typeof defaultPrevented !== "boolean"
-    ) {
-      return null;
-    }
-    return Object.freeze({
-      target: target as EventTarget | null,
-      defaultPrevented,
-    });
-  } catch {
-    return null;
-  }
+  const snapshot = readDomEventBase(event);
+  return snapshot?.type === expectedType
+    ? Object.freeze({
+        target: snapshot.target,
+        defaultPrevented: snapshot.defaultPrevented,
+      })
+    : null;
 }
 
 function ownershipDisposition(
@@ -1114,7 +1070,7 @@ function ownershipDisposition(
 
 function hostConnected(host: HTMLElement): boolean {
   try {
-    return host.isConnected === true;
+    return nativeHtmlHostFacts(host)?.isConnected === true;
   } catch {
     return false;
   }

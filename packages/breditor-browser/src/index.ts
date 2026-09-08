@@ -13,6 +13,7 @@ export {
   type BreditorBrowserEditorOpenResult,
   type BreditorBrowserEditorOptions,
   type BreditorBrowserEditorPersistenceOptions,
+  type BreditorBrowserEditorPersistenceScope,
   type BreditorBrowserEditorPersistenceResult,
   type BreditorBrowserEditorPersistenceStatus,
   type BreditorBrowserEditorSnapshot,
@@ -20,6 +21,7 @@ export {
   type BreditorBrowserEditorSubscriber,
   type BreditorBrowserDocumentSnapshot,
   type BreditorBrowserInitialDocument,
+  type BreditorBrowserSemanticProfileOptions,
   type BreditorBrowserToolbarOptions,
   type BreditorBrowserWasmModule,
 } from "./browser_editor.js";
@@ -29,7 +31,24 @@ export {
   BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY,
+  MAX_WASM_PROFILE_BOOTSTRAP_JSON_BYTES,
 } from "./wasm_engine_bootstrap.js";
+
+/** Callback-free inline-format presentation declarations. */
+export {
+  DEFAULT_INLINE_FORMAT_RENDER_MANIFEST,
+  INLINE_FORMAT_RENDER_ELEMENTS,
+  MAX_INLINE_FORMAT_RENDER_CLASSES_PER_RECIPE,
+  MAX_INLINE_FORMAT_RENDER_CLASS_TOKEN_ASCII,
+  MAX_INLINE_FORMAT_RENDER_FORMAT_KIND_ASCII,
+  MAX_INLINE_FORMAT_RENDER_ORDER_REFERENCES,
+  MAX_INLINE_FORMAT_RENDER_ORDER_REFERENCES_PER_RECIPE,
+  MAX_INLINE_FORMAT_RENDER_RECIPES,
+  createInlineFormatRenderManifest,
+  type InlineFormatRenderElement,
+  type InlineFormatRenderManifest,
+  type InlineFormatRenderRecipe,
+} from "./inline_format_render_manifest.js";
 
 /** Declarative toolbar extension surface. */
 export {

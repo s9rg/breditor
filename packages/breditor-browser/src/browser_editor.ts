@@ -13,10 +13,21 @@ import {
   BreditorDomRenderer,
   type RenderedProjection,
 } from "./dom_renderer.js";
+import {
+  compileBrowserPresentation,
+  type BrowserCompiledPresentation,
+} from "./compiled_browser_presentation.js";
+import {
+  DEFAULT_INLINE_FORMAT_RENDER_MANIFEST,
+  isOwnedInlineFormatRenderManifest,
+  type InlineFormatRenderManifest,
+} from "./inline_format_render_manifest.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
 import {
   IndexedDbSessionCheckpointStore,
+  MAX_SESSION_CHECKPOINT_SLOT_ASCII_BYTES,
   type IndexedDbSessionCheckpointCasToken,
+  type IndexedDbSessionCheckpointBinding,
   type IndexedDbSessionCheckpointLoadResult,
 } from "./indexeddb_session_checkpoint.js";
 import {
@@ -28,7 +39,9 @@ import {
   nativeHasAttribute,
   nativeHtmlHostFacts,
   nativeOwnerDocument,
+  nativeParentElement,
   nativeRemoveAttribute,
+  nativeRemoveElement,
   nativeReplaceChildren,
   nativeSetAttribute,
 } from "./html_host.js";
@@ -60,12 +73,18 @@ import {
   type WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
 import {
+  BREDITOR_BASE_SCHEMA_FINGERPRINT,
   bootstrapWasmEngine,
+  preflightWasmSemanticProfile,
   type WasmBootstrappedEngineView,
+  type WasmCompiledProfileBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
 } from "./wasm_engine_bootstrap.js";
 import type { BrowserDocumentJsonReadResult } from "./wasm_document_json.js";
-import type { WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
+import type {
+  BrowserCompiledProfileDescriptor,
+  WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 /** Maximum independent subscribers retained by one high-level editor. */
 export const MAX_BROWSER_EDITOR_SUBSCRIBERS = 64;
@@ -105,16 +124,30 @@ export interface BreditorBrowserWasmFactory {
 /** Initialized generated module namespace accepted with ABI/version probes. */
 export interface BreditorBrowserWasmModule {
   readonly BreditorEngine: BreditorBrowserWasmFactory;
+  /** Required only when `semanticProfile` is supplied. */
+  readonly BreditorCompiledProfile?: WasmCompiledProfileBootstrapFactoryView;
   breditorWasmAbiVersion(): string;
   breditorVersion(): string;
 }
 
-/** Atomic one-slot persistence configuration for the first browser release. */
+/** Strict compiled-profile bootstrap selected before any document is decoded. */
+export interface BreditorBrowserSemanticProfileOptions {
+  readonly bootstrapJson: string;
+}
+
+/** Stable choice of the IndexedDB key used by one editor profile. */
+export type BreditorBrowserEditorPersistenceScope =
+  | Readonly<{ kind: "schemaFingerprint" }>
+  | Readonly<{ kind: "slot"; name: string }>;
+
+/** Atomic profile-bound persistence configuration. */
 export interface BreditorBrowserEditorPersistenceOptions {
   readonly indexedDB: IDBFactory;
   readonly crypto: Pick<SubtleCrypto, "digest">;
   /** Progress callback for a blocked IndexedDB open; failures are contained. */
   readonly onBlocked?: () => void;
+  /** Defaults to legacy `current` for V1 and the schema fingerprint for V2. */
+  readonly scope?: BreditorBrowserEditorPersistenceScope;
   readonly autosave?: SessionCheckpointAutosaveOptions;
 }
 
@@ -133,6 +166,10 @@ export interface BreditorBrowserEditorOptions {
   readonly wasm: BreditorBrowserWasmModule;
   /** Used only when persistence is disabled or its exact slot is empty. */
   readonly initialDocument: BreditorBrowserInitialDocument;
+  /** Optional custom semantic profile; its documents/checkpoints use V2. */
+  readonly semanticProfile?: BreditorBrowserSemanticProfileOptions;
+  /** Exact callback-free render coverage for the selected semantic profile. */
+  readonly rendering?: InlineFormatRenderManifest;
   readonly keyboard: KeyboardTranslationPolicy;
   readonly toolbar?: BreditorBrowserToolbarOptions;
   readonly persistence?: BreditorBrowserEditorPersistenceOptions;
@@ -189,6 +226,7 @@ export interface BreditorBrowserEditorOpenError {
     | "browser_editor.aborted"
     | "browser_editor.persistence_load_failed"
     | "browser_editor.engine_bootstrap_failed"
+    | "browser_editor.presentation_invalid"
     | "browser_editor.initial_render_failed"
     | "browser_editor.initial_selection_failed"
     | "browser_editor.action_state_failed"
@@ -278,6 +316,8 @@ interface NormalizedOptions {
   readonly label: string;
   readonly wasm: WasmEngineBootstrapModuleView;
   readonly initialDocument: BreditorBrowserInitialDocument;
+  readonly semanticProfile: BreditorBrowserSemanticProfileOptions | undefined;
+  readonly rendering: InlineFormatRenderManifest;
   readonly keyboard: KeyboardTranslationPolicy;
   readonly toolbar:
     | Readonly<{
@@ -304,6 +344,8 @@ interface SubscriberSlot {
 interface RuntimeResources {
   readonly host: HTMLElement;
   readonly hostAttributes: readonly HostAttributeSnapshot[];
+  readonly installedHostAttributes: readonly HostAttributeSnapshot[];
+  readonly installedHostChildren: readonly HTMLElement[];
   readonly engine: WasmBootstrappedEngineView;
   readonly adapter: BreditorWasmCommandAdapter;
   readonly contentReadPorts: Readonly<WasmContentReadPorts>;
@@ -387,6 +429,8 @@ const SELECTION_BRIDGE_DISPOSE = BreditorDomSelectionBridge.prototype.dispose;
 const STORAGE_CLOSE = IndexedDbSessionCheckpointStore.prototype.close;
 const AUTOSAVE_DISPOSE = BreditorSessionCheckpointAutosave.prototype.dispose;
 const TOOLBAR_DISPOSE = BreditorToolbar.prototype.dispose;
+const TOOLBAR_VALIDATE_CANONICAL_DOM =
+  BreditorToolbar.prototype.validateCanonicalDom;
 const ADAPTER_DISPOSE = BreditorWasmCommandAdapter.prototype.dispose;
 
 /**
@@ -401,6 +445,8 @@ export class BreditorBrowserEditor {
   readonly #ownership = Object.freeze({});
   readonly #host: HTMLElement;
   readonly #hostAttributes: readonly HostAttributeSnapshot[];
+  readonly #installedHostAttributes: readonly HostAttributeSnapshot[];
+  readonly #installedHostChildren: readonly HTMLElement[];
   readonly #engine: WasmBootstrappedEngineView;
   readonly #adapter: BreditorWasmCommandAdapter;
   readonly #readDocumentJson: BreditorWasmCommandAdapter["documentJsonReadPort"]["read"];
@@ -428,6 +474,8 @@ export class BreditorBrowserEditor {
   #notificationScheduled = false;
   #physicalDisposeScheduled = false;
   #physicallyDisposed = false;
+  #startupRollback = false;
+  #preserveHostDomOnDisposal = false;
   #terminalSubscribers: readonly SubscriberSlot[] = Object.freeze([]);
 
   private constructor(token: object, resources: RuntimeResources) {
@@ -438,6 +486,8 @@ export class BreditorBrowserEditor {
     }
     this.#host = resources.host;
     this.#hostAttributes = resources.hostAttributes;
+    this.#installedHostAttributes = resources.installedHostAttributes;
+    this.#installedHostChildren = resources.installedHostChildren;
     this.#engine = resources.engine;
     this.#adapter = resources.adapter;
     this.#readDocumentJson = resources.contentReadPorts.documentJson.read;
@@ -467,12 +517,15 @@ export class BreditorBrowserEditor {
     const reservation = Object.freeze({});
     EDITOR_HOSTS.set(normalized.host, reservation);
     let hostAttributes: readonly HostAttributeSnapshot[] | undefined;
+    let installedHostAttributes: readonly HostAttributeSnapshot[] | undefined;
+    let installedHostChildren: readonly HTMLElement[] | undefined;
     let storage: IndexedDbSessionCheckpointStore | undefined;
     let engine: WasmBootstrappedEngineView | undefined;
     let profileGeneration: WasmProfileGenerationView | undefined;
     let observation:
       ReturnType<WasmBootstrappedEngineView["observation"]> | undefined;
     let renderer: BreditorDomRenderer | undefined;
+    let presentation: BrowserCompiledPresentation | undefined;
     let rendered: RenderedProjection | undefined;
     let selectionBridge: BreditorDomSelectionBridge | undefined;
     let adapter: BreditorWasmCommandAdapter | undefined;
@@ -482,6 +535,9 @@ export class BreditorBrowserEditor {
       | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
       | undefined;
     let editor: BreditorBrowserEditor | undefined;
+    let preflightProfileDescriptor:
+      | BrowserCompiledProfileDescriptor
+      | undefined;
     let transferred = false;
 
     try {
@@ -491,7 +547,31 @@ export class BreditorBrowserEditor {
 
       let loaded: IndexedDbSessionCheckpointLoadResult | undefined;
       if (normalized.persistence !== undefined) {
-        storage = new IndexedDbSessionCheckpointStore(normalized.persistence);
+        if (normalized.semanticProfile !== undefined) {
+          const preflight = preflightWasmSemanticProfile(
+            normalized.wasm,
+            normalized.semanticProfile,
+          );
+          if (!preflight.ok) {
+            return openFailure(
+              "browser_editor.engine_bootstrap_failed",
+              preflight.error.code,
+            );
+          }
+          preflightProfileDescriptor = preflight.profileDescriptor;
+        }
+        const binding = persistenceBinding(
+          normalized.persistence.scope,
+          preflightProfileDescriptor,
+        );
+        storage = new IndexedDbSessionCheckpointStore({
+          indexedDB: normalized.persistence.indexedDB,
+          crypto: normalized.persistence.crypto,
+          ...(normalized.persistence.onBlocked === undefined
+            ? {}
+            : { onBlocked: normalized.persistence.onBlocked }),
+          ...(binding === undefined ? {} : { binding }),
+        });
         const load = await loadUntilAbort(storage, normalized.signal);
         if (load.kind === "aborted") {
           return openFailure("browser_editor.aborted");
@@ -531,12 +611,18 @@ export class BreditorBrowserEditor {
           ? Object.freeze({
               kind: "sessionCheckpoint" as const,
               checkpointJson: loaded.checkpointJson,
+              ...(normalized.semanticProfile === undefined
+                ? {}
+                : { semanticProfile: normalized.semanticProfile }),
             })
           : Object.freeze({
               kind: "document" as const,
               lineageId: normalized.initialDocument.lineageId,
               documentJson: normalized.initialDocument.documentJson,
               historyCapacity: normalized.initialDocument.historyCapacity,
+              ...(normalized.semanticProfile === undefined
+                ? {}
+                : { semanticProfile: normalized.semanticProfile }),
             }),
       );
       if (!bootstrap.ok) {
@@ -548,17 +634,64 @@ export class BreditorBrowserEditor {
       engine = bootstrap.engine;
       profileGeneration = bootstrap.profileGeneration;
       observation = bootstrap.observation;
+      if (
+        preflightProfileDescriptor !== undefined &&
+        (bootstrap.durableMode !== "v2" ||
+          !profileDurableBindingsEqual(
+            preflightProfileDescriptor,
+            bootstrap.profileDescriptor,
+          ))
+      ) {
+        return openFailure(
+          "browser_editor.engine_bootstrap_failed",
+          "engine_bootstrap.profile_changed_after_preflight",
+        );
+      }
+      if (bootstrap.durableMode === "v2") {
+        try {
+          presentation = compileBrowserPresentation(
+            profileGeneration,
+            bootstrap.profileDescriptor,
+            normalized.rendering,
+          );
+        } catch {
+          return openFailure("browser_editor.presentation_invalid");
+        }
+      }
+
+      // Generated module/profile methods can synchronously reenter application
+      // code just as IndexedDB can yield to it. Never overwrite a mount changed
+      // during bootstrap or presentation correlation.
+      if (
+        EDITOR_HOSTS.get(normalized.host) !== reservation ||
+        !usableEmptyEditorHost(normalized.host) ||
+        (normalized.toolbar !== undefined &&
+          !usableEmptyToolbarHost(normalized.toolbar.host))
+      ) {
+        return openFailure("browser_editor.setup_failed");
+      }
 
       const capturedHostAttributes = snapshotHostAttributes(normalized.host);
       if (capturedHostAttributes === null) {
         return openFailure("browser_editor.setup_failed");
       }
       hostAttributes = capturedHostAttributes;
+      installedHostAttributes = expectedInstalledHostAttributes(normalized);
       if (!installHostAttributes(normalized)) {
         return openFailure("browser_editor.setup_failed");
       }
+      // Customized built-in hosts can synchronously react to attribute writes.
+      // Never let the renderer overwrite DOM installed by such a reaction.
+      if (
+        EDITOR_HOSTS.get(normalized.host) !== reservation ||
+        !usableEmptyEditorHost(normalized.host) ||
+        (normalized.toolbar !== undefined &&
+          !usableEmptyToolbarHost(normalized.toolbar.host))
+      ) {
+        return openFailure("browser_editor.setup_failed");
+      }
 
-      renderer = new BreditorDomRenderer();
+      renderer = new BreditorDomRenderer(presentation);
       const initialRender = renderer.render(
         normalized.host,
         bootstrap.projection,
@@ -570,8 +703,13 @@ export class BreditorBrowserEditor {
         );
       }
       rendered = initialRender.value.rendered;
+      installedHostChildren = snapshotRenderedHostChildren(rendered) ?? undefined;
+      if (installedHostChildren === undefined) {
+        return openFailure("browser_editor.setup_failed");
+      }
       selectionBridge = new BreditorDomSelectionBridge();
       adapter = new BreditorWasmCommandAdapter(engine, observation, {
+        durableMode: bootstrap.durableMode,
         profileGeneration,
         profileDescriptor: bootstrap.profileDescriptor,
         renderer,
@@ -587,11 +725,20 @@ export class BreditorBrowserEditor {
       }
 
       const restored = adapter.restoreCanonicalRender();
+      const restoredHostChildren = snapshotRenderedHostChildren(adapter.rendered);
+      if (restoredHostChildren !== null) {
+        installedHostChildren = restoredHostChildren;
+      }
       if (!restored.ok) {
         return openFailure(
           "browser_editor.initial_selection_failed",
           initialSelectionCauseCode(restored.reason),
         );
+      }
+      installedHostChildren = snapshotRenderedHostChildren(adapter.rendered) ??
+        undefined;
+      if (installedHostChildren === undefined) {
+        return openFailure("browser_editor.setup_failed");
       }
 
       actionStore = new BreditorActionStateStore(adapter.actionStateReadPort);
@@ -606,6 +753,21 @@ export class BreditorBrowserEditor {
             ? initialActions.error.code
             : initialActions.reason,
         );
+      }
+
+      // Action-state generation is the last startup step allowed to invoke
+      // Wasm-facing getters. Re-prove both reserved mounts and the exact
+      // canonical render before any live owner can escape.
+      if (
+        !startupRenderIsCanonical(
+          normalized,
+          reservation,
+          renderer,
+          adapter,
+          true,
+        )
+      ) {
+        return openFailure("browser_editor.setup_failed");
       }
 
       queue = new BreditorCommandQueue(adapter.commandExecutor, {
@@ -626,6 +788,8 @@ export class BreditorBrowserEditor {
       editor = new BreditorBrowserEditor(BROWSER_EDITOR_CONSTRUCTION, {
         host: normalized.host,
         hostAttributes,
+        installedHostAttributes,
+        installedHostChildren,
         engine,
         adapter,
         contentReadPorts,
@@ -635,9 +799,31 @@ export class BreditorBrowserEditor {
         storage,
         autosave,
       });
+      if (
+        !startupRenderIsCanonical(
+          normalized,
+          reservation,
+          renderer,
+          adapter,
+          true,
+        )
+      ) {
+        return openFailure("browser_editor.setup_failed");
+      }
       EDITOR_HOSTS.set(normalized.host, editor.#ownership);
       editor.#installCoreObservers();
       if (normalized.toolbar !== undefined) {
+        if (
+          !startupRenderIsCanonical(
+            normalized,
+            editor.#ownership,
+            renderer,
+            adapter,
+            true,
+          )
+        ) {
+          return openFailure("browser_editor.setup_failed");
+        }
         editor.#installToolbar(
           normalized.toolbar.host,
           normalized.toolbar.manifest,
@@ -645,8 +831,19 @@ export class BreditorBrowserEditor {
       }
       editor.#installRouter(normalized.keyboard, normalized.scheduleTask);
       if (normalized.signal?.isAborted() === true) {
-        editor.#dispose();
         return openFailure("browser_editor.aborted");
+      }
+      if (
+        !startupRenderIsCanonical(
+          normalized,
+          editor.#ownership,
+          renderer,
+          adapter,
+          false,
+          editor.#toolbar,
+        )
+      ) {
+        return openFailure("browser_editor.setup_failed");
       }
 
       transferred = true;
@@ -656,8 +853,14 @@ export class BreditorBrowserEditor {
     } finally {
       if (!transferred) {
         if (editor !== undefined) {
-          editor.#dispose();
+          editor.#disposeForStartupRollback();
         } else {
+          // Remove only the exact projection nodes installed by this startup,
+          // before generated `free()` callbacks can add application content.
+          removeInstalledHostChildren(
+            normalized.host,
+            installedHostChildren ?? Object.freeze([]),
+          );
           bestEffortIntrinsic(autosave, AUTOSAVE_DISPOSE);
           bestEffortIntrinsic(queue, QUEUE_DISPOSE);
           bestEffortIntrinsic(actionStore, ACTION_STORE_DISPOSE);
@@ -679,8 +882,15 @@ export class BreditorBrowserEditor {
           if (engine !== undefined) bestEffortFree(engine);
           bestEffortIntrinsic(storage, STORAGE_CLOSE);
           if (hostAttributes !== undefined) {
-            clearOwnedHost(normalized.host);
-            restoreHostAttributes(normalized.host, hostAttributes);
+            if (installedHostAttributes === undefined) {
+              restoreHostAttributes(normalized.host, hostAttributes);
+            } else {
+              restoreHostAttributesIfUnchanged(
+                normalized.host,
+                hostAttributes,
+                installedHostAttributes,
+              );
+            }
           }
         }
         if (EDITOR_HOSTS.get(normalized.host) === reservation) {
@@ -708,9 +918,10 @@ export class BreditorBrowserEditor {
   /**
    * Copies authoritative content without exposing engine state or Wasm handles.
    *
-   * `documentJson` is the lossless canonical Document V1 record. `plainText`
-   * joins semantic paragraphs with LF and strips formatting; it never reads
-   * mutable DOM text. Busy composition/delivery/read leases fail benignly.
+   * `documentJson` is the lossless canonical Document V1 or profile-bound V2
+   * record selected at bootstrap. `plainText` joins semantic paragraphs with
+   * LF and strips formatting; it never reads mutable DOM text. Busy
+   * composition/delivery/read leases fail benignly.
    */
   exportContent(
     format: "documentJson",
@@ -861,6 +1072,15 @@ export class BreditorBrowserEditor {
     this.#dispose();
   }
 
+  #disposeForStartupRollback(): void {
+    this.#startupRollback = true;
+    // Remove exact installed nodes before any generated cleanup callback can
+    // add foreign content. Everything added from this point onward survives.
+    removeInstalledHostChildren(this.#host, this.#installedHostChildren);
+    this.#preserveHostDomOnDisposal = true;
+    this.#dispose();
+  }
+
   #dispose(): void {
     if (this.#status.phase === "disposed") return;
     this.#status = DISPOSED_STATUS;
@@ -922,8 +1142,18 @@ export class BreditorBrowserEditor {
     }
     bestEffortIntrinsic(this.#storage, STORAGE_CLOSE);
     this.#snapshot = this.#readSnapshot();
-    clearOwnedHost(this.#host);
-    restoreHostAttributes(this.#host, this.#hostAttributes);
+    if (!this.#preserveHostDomOnDisposal) {
+      clearOwnedHost(this.#host);
+    }
+    if (this.#startupRollback) {
+      restoreHostAttributesIfUnchanged(
+        this.#host,
+        this.#hostAttributes,
+        this.#installedHostAttributes,
+      );
+    } else {
+      restoreHostAttributes(this.#host, this.#hostAttributes);
+    }
     if (EDITOR_HOSTS.get(this.#host) === this.#ownership) {
       EDITOR_HOSTS.delete(this.#host);
     }
@@ -1227,6 +1457,8 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const label = options.label;
     const wasm = options.wasm;
     const initial = options.initialDocument;
+    const semanticProfile = options.semanticProfile;
+    const rendering = options.rendering;
     const keyboard = options.keyboard;
     const toolbar = options.toolbar;
     const persistence = options.persistence;
@@ -1242,6 +1474,11 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       !wellFormedUtf16(label) ||
       !objectLike(wasm) ||
       !objectLike(initial) ||
+      (semanticProfile !== undefined &&
+        (!objectLike(semanticProfile) ||
+          typeof semanticProfile.bootstrapJson !== "string")) ||
+      (rendering !== undefined && semanticProfile === undefined) ||
+      (rendering !== undefined && !isOwnedInlineFormatRenderManifest(rendering)) ||
       !validKeyboardPolicy(keyboard) ||
       typeof spellcheck !== "boolean" ||
       (scheduleTask !== undefined && typeof scheduleTask !== "function")
@@ -1253,6 +1490,9 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       documentJson: initial.documentJson,
       historyCapacity: initial.historyCapacity,
     });
+    const normalizedSemanticProfile = semanticProfile === undefined
+      ? undefined
+      : Object.freeze({ bootstrapJson: semanticProfile.bootstrapJson });
     let normalizedToolbar: NormalizedOptions["toolbar"];
     if (toolbar !== undefined) {
       if (
@@ -1271,6 +1511,8 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       BreditorBrowserEditorPersistenceOptions | undefined;
     if (persistence !== undefined) {
       if (!objectLike(persistence)) return null;
+      const scope = normalizePersistenceScope(persistence.scope);
+      if (scope === null) return null;
       normalizedPersistence = Object.freeze({
         indexedDB: persistence.indexedDB,
         crypto: persistence.crypto,
@@ -1280,6 +1522,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
         ...(persistence.autosave === undefined
           ? {}
           : { autosave: persistence.autosave }),
+        ...(scope === undefined ? {} : { scope }),
       });
     }
     const normalizedSignal = normalizeAbortSignal(signal);
@@ -1291,6 +1534,8 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       // bootstrap below performs the complete generated-view validation.
       wasm: wasm as unknown as WasmEngineBootstrapModuleView,
       initialDocument,
+      semanticProfile: normalizedSemanticProfile,
+      rendering: rendering ?? DEFAULT_INLINE_FORMAT_RENDER_MANIFEST,
       keyboard: Object.freeze({
         editing: keyboard.editing,
         primaryModifier: keyboard.primaryModifier,
@@ -1305,6 +1550,59 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
   } catch {
     return null;
   }
+}
+
+function normalizePersistenceScope(
+  value: unknown,
+): BreditorBrowserEditorPersistenceScope | null | undefined {
+  if (value === undefined) return undefined;
+  if (!objectLike(value)) return null;
+  const scope = value as Partial<BreditorBrowserEditorPersistenceScope> & {
+    readonly name?: unknown;
+  };
+  if (scope.kind === "schemaFingerprint") {
+    return Object.freeze({ kind: "schemaFingerprint" });
+  }
+  if (
+    scope.kind === "slot" &&
+    typeof scope.name === "string" &&
+    scope.name.length <= MAX_SESSION_CHECKPOINT_SLOT_ASCII_BYTES &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(scope.name)
+  ) {
+    return Object.freeze({ kind: "slot", name: scope.name });
+  }
+  return null;
+}
+
+function persistenceBinding(
+  scope: BreditorBrowserEditorPersistenceScope | undefined,
+  profileDescriptor: BrowserCompiledProfileDescriptor | undefined,
+): IndexedDbSessionCheckpointBinding | undefined {
+  if (scope === undefined && profileDescriptor === undefined) return undefined;
+  const schemaFingerprint = profileDescriptor?.schema.fingerprint ??
+    BREDITOR_BASE_SCHEMA_FINGERPRINT;
+  const slot = scope?.kind === "slot" ? scope.name : schemaFingerprint;
+  return Object.freeze({
+    slot,
+    schemaFingerprint,
+    checkpointFormatVersion: profileDescriptor === undefined ? 1 : 2,
+  });
+}
+
+function profileDurableBindingsEqual(
+  left: BrowserCompiledProfileDescriptor,
+  right: BrowserCompiledProfileDescriptor,
+): boolean {
+  return left.schema.name === right.schema.name &&
+    left.schema.version === right.schema.version &&
+    left.schema.fingerprint === right.schema.fingerprint &&
+    left.formats.length === right.formats.length &&
+    left.formats.every((format, index) => {
+      const other = right.formats[index];
+      return other !== undefined &&
+        format.kind === other.kind &&
+        format.revision === other.revision;
+    });
 }
 
 function normalizeAbortSignal(
@@ -1468,6 +1766,70 @@ function usableEmptyToolbarHost(value: unknown): value is HTMLElement {
   }
 }
 
+function snapshotRenderedHostChildren(
+  rendered: RenderedProjection,
+): readonly HTMLElement[] | null {
+  try {
+    const elements: HTMLElement[] = [];
+    for (
+      let index = 0;
+      index < rendered.projection.paragraphs.length;
+      index += 1
+    ) {
+      const child = rendered.nodeForAstPath(Object.freeze([index]));
+      const facts = nativeHtmlHostFacts(child);
+      if (facts === undefined || facts.tagName !== "P") return null;
+      elements.push(facts.element);
+    }
+    return Object.freeze(elements);
+  } catch {
+    return null;
+  }
+}
+
+function removeInstalledHostChildren(
+  host: HTMLElement,
+  children: readonly HTMLElement[],
+): void {
+  for (const child of children) {
+    try {
+      if (nativeParentElement(child) === host) nativeRemoveElement(child);
+    } catch {
+      // Rollback never broadens an exact-node removal after a DOM failure.
+    }
+  }
+}
+
+function startupRenderIsCanonical(
+  options: NormalizedOptions,
+  owner: object,
+  renderer: BreditorDomRenderer,
+  adapter: BreditorWasmCommandAdapter,
+  requireEmptyToolbar: boolean,
+  toolbar?: BreditorToolbar,
+): boolean {
+  try {
+    const facts = nativeHtmlHostFacts(options.host);
+    return (
+      EDITOR_HOSTS.get(options.host) === owner &&
+      facts !== undefined &&
+      facts.isConnected &&
+      isSafeFlowContainerHost(options.host) &&
+      installedHostAttributesMatch(options) &&
+      renderer.owns(adapter.rendered) &&
+      (requireEmptyToolbar
+        ? options.toolbar === undefined ||
+          usableEmptyToolbarHost(options.toolbar.host)
+        : options.toolbar === undefined
+          ? toolbar === undefined
+          : toolbar !== undefined &&
+            Reflect.apply(TOOLBAR_VALIDATE_CANONICAL_DOM, toolbar, []) === true)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function validKeyboardPolicy(
   value: unknown,
 ): value is KeyboardTranslationPolicy {
@@ -1516,21 +1878,45 @@ function installHostAttributes(options: NormalizedOptions): boolean {
       options.spellcheck ? "true" : "false",
     );
     nativeSetAttribute(options.host, "data-breditor-editor-root", "");
-    return (
-      !nativeHasAttribute(options.host, "inert") &&
-      nativeGetAttribute(options.host, "contenteditable") === "true" &&
-      nativeGetAttribute(options.host, "role") === "textbox" &&
-      nativeGetAttribute(options.host, "aria-label") === options.label &&
-      nativeGetAttribute(options.host, "aria-multiline") === "true" &&
-      nativeGetAttribute(options.host, "aria-disabled") === "false" &&
-      nativeGetAttribute(options.host, "spellcheck") ===
-        (options.spellcheck ? "true" : "false") &&
-      nativeHasAttribute(options.host, "data-breditor-editor-root") &&
-      nativeGetAttribute(options.host, "data-breditor-editor-root") === ""
-    );
+    return installedHostAttributesMatch(options);
   } catch {
     return false;
   }
+}
+
+function installedHostAttributesMatch(options: NormalizedOptions): boolean {
+  return (
+    !nativeHasAttribute(options.host, "inert") &&
+    nativeGetAttribute(options.host, "contenteditable") === "true" &&
+    nativeGetAttribute(options.host, "role") === "textbox" &&
+    nativeGetAttribute(options.host, "aria-label") === options.label &&
+    nativeGetAttribute(options.host, "aria-multiline") === "true" &&
+    nativeGetAttribute(options.host, "aria-disabled") === "false" &&
+    nativeGetAttribute(options.host, "spellcheck") ===
+      (options.spellcheck ? "true" : "false") &&
+    nativeHasAttribute(options.host, "data-breditor-editor-root") &&
+    nativeGetAttribute(options.host, "data-breditor-editor-root") === ""
+  );
+}
+
+function expectedInstalledHostAttributes(
+  options: NormalizedOptions,
+): readonly HostAttributeSnapshot[] {
+  const values: Readonly<Record<string, string | null>> = Object.freeze({
+    contenteditable: "true",
+    role: "textbox",
+    "aria-label": options.label,
+    "aria-multiline": "true",
+    "aria-disabled": "false",
+    spellcheck: options.spellcheck ? "true" : "false",
+    inert: null,
+    "data-breditor-editor-root": "",
+  });
+  return Object.freeze(
+    EDITOR_ATTRIBUTES.map((name) =>
+      Object.freeze({ name, value: values[name] ?? null }),
+    ),
+  );
 }
 
 function restoreHostAttributes(
@@ -1543,6 +1929,31 @@ function restoreHostAttributes(
       else nativeSetAttribute(host, attribute.name, attribute.value);
     } catch {
       // Disposal is terminal even if application DOM hooks throw.
+    }
+  }
+}
+
+function restoreHostAttributesIfUnchanged(
+  host: HTMLElement,
+  original: readonly HostAttributeSnapshot[],
+  installed: readonly HostAttributeSnapshot[],
+): void {
+  const installedByName = new Map(
+    installed.map((attribute) => [attribute.name, attribute.value] as const),
+  );
+  for (const attribute of original) {
+    try {
+      if (
+        !installedByName.has(attribute.name) ||
+        nativeGetAttribute(host, attribute.name) !==
+          installedByName.get(attribute.name)
+      ) {
+        continue;
+      }
+      if (attribute.value === null) nativeRemoveAttribute(host, attribute.name);
+      else nativeSetAttribute(host, attribute.name, attribute.value);
+    } catch {
+      // Startup rollback never overwrites an attribute it cannot still own.
     }
   }
 }
@@ -1704,6 +2115,8 @@ const OPEN_ERROR_MESSAGES: Readonly<
     "The persisted session checkpoint could not be loaded safely.",
   "browser_editor.engine_bootstrap_failed":
     "The Rust editor engine could not be initialized safely.",
+  "browser_editor.presentation_invalid":
+    "The browser render manifest does not exactly match the compiled profile.",
   "browser_editor.initial_render_failed":
     "The initial semantic document could not be projected into the editing host.",
   "browser_editor.initial_selection_failed":

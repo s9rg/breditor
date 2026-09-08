@@ -9,11 +9,11 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-This alpha.5 checkpoint is currently unpublished. After publication, the
+This alpha.6 checkpoint is currently unpublished. After publication, the
 registry package can be installed with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.5
+npm install @breditor/wasm@0.2.0-alpha.6
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -45,7 +45,7 @@ advanced boundary outside the `0.1.x` API compatibility promise; official
 browser/Wasm packages are supported only as an exact same-version pair with ABI
 generation `3`.
 
-Version `0.2.0-alpha.5` adds strict bounded ABI-local profile bootstrap,
+Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
 Checkpoint V2, a canonical owned descriptor, opaque generation handles, and
 `executeNoInputIntent`. Engines, observations, command and intent results,

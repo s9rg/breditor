@@ -7,6 +7,10 @@ import {
 } from "parse5";
 
 import { browserCommandTextIsAdmissible } from "./editor_command.js";
+import {
+  isOwnedBrowserCompiledPresentation,
+  type BrowserCompiledPresentation,
+} from "./compiled_browser_presentation.js";
 
 /** Maximum UTF-16 code units read from one `text/html` clipboard item. */
 export const MAX_CLIPBOARD_HTML_SOURCE_UTF16 = 2 * 1024 * 1024;
@@ -19,6 +23,13 @@ export const MAX_CLIPBOARD_HTML_NODES = 65_536;
 
 /** Maximum admitted depth: fragment -> p -> strong/b -> text. */
 export const MAX_CLIPBOARD_HTML_DEPTH = 3;
+
+/** Maximum semantic format wrappers admitted around one profiled text run. */
+export const MAX_CLIPBOARD_HTML_FORMATS_PER_RUN = 32;
+
+/** Maximum profiled depth: fragment -> p -> 32 wrappers -> text. */
+export const MAX_CLIPBOARD_HTML_PROFILE_DEPTH =
+  MAX_CLIPBOARD_HTML_FORMATS_PER_RUN + 2;
 
 /** Maximum source blocks and normalized plain-text paragraphs. */
 export const MAX_CLIPBOARD_HTML_PARAGRAPHS = 10_000;
@@ -50,6 +61,16 @@ interface AdmissionBudget {
   paragraphs: number;
 }
 
+interface InlineWrapperAdmission {
+  readonly formatKind: string;
+  readonly order: number;
+}
+
+interface InlineAdmission {
+  readonly maximumFormatsPerRun: number;
+  readonly wrappersBySignature: ReadonlyMap<string, InlineWrapperAdmission>;
+}
+
 type ParagraphResult =
   | Readonly<{ ok: true; value: string }>
   | Readonly<{ ok: false; code: ClipboardHtmlErrorCode }>;
@@ -61,7 +82,7 @@ const PARSE_ABORT = Symbol("Breditor clipboard HTML parse abort");
 // can materialize an unbounded transient tree.
 const MAX_PARSE_CONSTRUCTED_NODES = MAX_CLIPBOARD_HTML_NODES + 32;
 const MAX_PARSE_TREE_MUTATIONS = MAX_CLIPBOARD_HTML_NODES * 4 + 128;
-const MAX_PARSE_OPEN_ELEMENTS = MAX_CLIPBOARD_HTML_DEPTH + 8;
+const MAX_PARSE_OPEN_ELEMENTS = MAX_CLIPBOARD_HTML_PROFILE_DEPTH + 8;
 
 const ERROR_MESSAGES: Readonly<Record<ClipboardHtmlErrorCode, string>> =
   Object.freeze({
@@ -83,12 +104,16 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardHtmlErrorCode, string>> =
  * any text is published:
  *
  * - direct HTML-namespace, attribute-free `<p>` blocks;
- * - non-empty direct text runs and attribute-free `<strong>` or `<b>` runs;
+ * - non-empty direct text runs and attribute-free `<strong>` or `<b>` runs
+ *   when the optional presentation is omitted;
+ * - otherwise, exact tag/class signatures from one owned presentation in its
+ *   canonical outer-to-inner order;
  * - an empty paragraph represented by either no children or one sole `<br>`;
  * - optionally, exact `StartFragment` and `EndFragment` comments surrounding
  *   all top-level paragraphs.
  *
- * Adjacent runs with the same strong state are rejected as noncanonical.
+ * Adjacent runs with the same complete format set are rejected as
+ * noncanonical.
  * Paragraphs are flattened with LF separators, and strong markup deliberately
  * carries no formatting into the current plain-text insertion action.
  *
@@ -98,7 +123,12 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardHtmlErrorCode, string>> =
  */
 export function parseClipboardHtmlToPlainText(
   source: unknown,
+  presentation?: BrowserCompiledPresentation,
 ): ClipboardHtmlParseResult {
+  const inlineAdmission = createInlineAdmission(presentation);
+  if (inlineAdmission === null) {
+    return failure("clipboard.html.invalid_source");
+  }
   if (typeof source !== "string" || source.length === 0) {
     return failure("clipboard.html.invalid_source");
   }
@@ -150,7 +180,7 @@ export function parseClipboardHtmlToPlainText(
   }
 
   try {
-    const admitted = admitFragment(fragment);
+    const admitted = admitFragment(fragment, inlineAdmission);
     if (
       admitted.ok &&
       characterCount(admitted.value, 0x0d) !== controlCharacterReferences
@@ -282,6 +312,7 @@ function createBoundedTreeAdapter(
 
 function admitFragment(
   fragment: DefaultTreeAdapterTypes.DocumentFragment,
+  inlineAdmission: InlineAdmission,
 ): ClipboardHtmlParseResult {
   const budget: AdmissionBudget = { nodes: 1, paragraphs: 0 };
   if (fragment.childNodes.length + budget.nodes > MAX_CLIPBOARD_HTML_NODES) {
@@ -296,7 +327,7 @@ function admitFragment(
 
   const paragraphs: string[] = [];
   for (const node of content.value) {
-    const paragraph = admitParagraph(node, budget);
+    const paragraph = admitParagraph(node, budget, inlineAdmission);
     if (!paragraph.ok) return failure(paragraph.code);
     paragraphs.push(paragraph.value);
   }
@@ -345,7 +376,11 @@ function unwrapFragmentComments(
   return Object.freeze({ ok: true, value: nodes.slice(1, -1) });
 }
 
-function admitParagraph(node: ChildNode, budget: AdmissionBudget): ParagraphResult {
+function admitParagraph(
+  node: ChildNode,
+  budget: AdmissionBudget,
+  inlineAdmission: InlineAdmission,
+): ParagraphResult {
   if (!consumeNodes(budget, 1)) return paragraphFailure("clipboard.html.resource_limit");
   if (!isExactElement(node, "p")) {
     return paragraphFailure("clipboard.html.unsupported_structure");
@@ -367,14 +402,14 @@ function admitParagraph(node: ChildNode, budget: AdmissionBudget): ParagraphResu
   }
 
   const chunks: string[] = [];
-  let previousStrong: boolean | undefined;
+  let previousFormats: string | undefined;
   for (const child of children) {
-    const run = admitInlineRun(child, budget);
+    const run = admitInlineRun(child, budget, inlineAdmission);
     if (!run.ok) return run;
-    if (previousStrong === run.strong) {
+    if (previousFormats === run.formatKey) {
       return paragraphFailure("clipboard.html.unsupported_structure");
     }
-    previousStrong = run.strong;
+    previousFormats = run.formatKey;
     chunks.push(run.text);
   }
   return Object.freeze({ ok: true, value: chunks.join("") });
@@ -383,53 +418,145 @@ function admitParagraph(node: ChildNode, budget: AdmissionBudget): ParagraphResu
 function admitInlineRun(
   node: ChildNode,
   budget: AdmissionBudget,
+  inlineAdmission: InlineAdmission,
 ):
-  | Readonly<{ ok: true; text: string; strong: boolean }>
+  | Readonly<{ ok: true; text: string; formatKey: string }>
   | Readonly<{ ok: false; code: ClipboardHtmlErrorCode }> {
+  let current: ChildNode = node;
+  let priorOrder = -1;
+  const formats: string[] = [];
+  while (!isTextNode(current)) {
+    if (!consumeNodes(budget, 1)) {
+      return Object.freeze({ ok: false, code: "clipboard.html.resource_limit" });
+    }
+    if (!isHtmlElement(current)) {
+      return Object.freeze({
+        ok: false,
+        code: "clipboard.html.unsupported_structure",
+      });
+    }
+    const wrapper = wrapperAdmission(current, inlineAdmission);
+    if (
+      wrapper === undefined ||
+      wrapper.order <= priorOrder ||
+      current.childNodes.length !== 1
+    ) {
+      return Object.freeze({
+        ok: false,
+        code: "clipboard.html.unsupported_structure",
+      });
+    }
+    if (formats.length >= inlineAdmission.maximumFormatsPerRun) {
+      return Object.freeze({ ok: false, code: "clipboard.html.resource_limit" });
+    }
+    formats.push(wrapper.formatKind);
+    priorOrder = wrapper.order;
+    const child = current.childNodes[0];
+    if (child === undefined) {
+      return Object.freeze({
+        ok: false,
+        code: "clipboard.html.unsupported_structure",
+      });
+    }
+    current = child;
+  }
+
   if (!consumeNodes(budget, 1)) {
     return Object.freeze({ ok: false, code: "clipboard.html.resource_limit" });
   }
-  if (isTextNode(node)) {
-    return validText(node)
-      ? Object.freeze({ ok: true, text: node.value, strong: false })
-      : Object.freeze({
-          ok: false,
-          code: "clipboard.html.unsupported_structure",
-        });
-  }
-  if (!isExactElement(node, "strong") && !isExactElement(node, "b")) {
-    return Object.freeze({
-      ok: false,
-      code: "clipboard.html.unsupported_structure",
-    });
-  }
-  if (node.childNodes.length !== 1 || !isTextNode(node.childNodes[0])) {
-    return Object.freeze({
-      ok: false,
-      code: "clipboard.html.unsupported_structure",
-    });
-  }
-  if (!consumeNodes(budget, 1)) {
-    return Object.freeze({ ok: false, code: "clipboard.html.resource_limit" });
-  }
-  const text = node.childNodes[0];
-  return validText(text)
-    ? Object.freeze({ ok: true, text: text.value, strong: true })
+  return validText(current)
+    ? Object.freeze({
+        ok: true,
+        text: current.value,
+        formatKey: formats.join("\u0000"),
+      })
     : Object.freeze({
         ok: false,
         code: "clipboard.html.unsupported_structure",
       });
 }
 
+function createInlineAdmission(
+  presentation: BrowserCompiledPresentation | undefined,
+): InlineAdmission | null {
+  if (presentation === undefined) {
+    const strong = Object.freeze({ formatKind: "breditor/strong", order: 0 });
+    return Object.freeze({
+      maximumFormatsPerRun: 1,
+      wrappersBySignature: new Map<string, InlineWrapperAdmission>([
+        ["strong\u0000", strong],
+        ["b\u0000", strong],
+      ]),
+    });
+  }
+  if (!isOwnedBrowserCompiledPresentation(presentation)) return null;
+  const wrappersBySignature = new Map<string, InlineWrapperAdmission>();
+  for (
+    let order = 0;
+    order < presentation.recipesOuterToInner.length;
+    order += 1
+  ) {
+    const recipe = presentation.recipesOuterToInner[order];
+    if (recipe === undefined) return null;
+    const signature = `${recipe.element}\u0000${recipe.classes.join(" ")}`;
+    if (wrappersBySignature.has(signature)) return null;
+    wrappersBySignature.set(
+      signature,
+      Object.freeze({ formatKind: recipe.formatKind, order }),
+    );
+  }
+  return Object.freeze({
+    maximumFormatsPerRun: Math.min(
+      MAX_CLIPBOARD_HTML_FORMATS_PER_RUN,
+      presentation.recipesOuterToInner.length,
+    ),
+    wrappersBySignature,
+  });
+}
+
+function wrapperAdmission(
+  node: ChildNode,
+  inlineAdmission: InlineAdmission,
+): InlineWrapperAdmission | undefined {
+  if (!isHtmlElement(node)) return undefined;
+  const classValue = exactClassAttributeValue(node);
+  return classValue === null
+    ? undefined
+    : inlineAdmission.wrappersBySignature.get(
+        `${node.tagName}\u0000${classValue}`,
+      );
+}
+
+function exactClassAttributeValue(node: Element): string | null {
+  if (node.attrs.length === 0) return "";
+  const attribute = node.attrs[0];
+  if (
+    node.attrs.length !== 1 ||
+    attribute === undefined ||
+    attribute.name !== "class" ||
+    attribute.prefix !== undefined ||
+    attribute.namespace !== undefined
+  ) {
+    return null;
+  }
+  return attribute.value;
+}
+
 function isExactElement(node: ChildNode | undefined, tagName: string): node is Element {
   return (
-    node !== undefined &&
+    isHtmlElement(node) &&
     node.nodeName === tagName &&
-    "tagName" in node &&
     node.tagName === tagName &&
-    node.namespaceURI === HTML_NAMESPACE &&
     node.attrs.length === 0
   );
+}
+
+function isHtmlElement(node: ChildNode | undefined): node is Element {
+  return node !== undefined &&
+    "tagName" in node &&
+    typeof node.tagName === "string" &&
+    node.nodeName === node.tagName &&
+    node.namespaceURI === HTML_NAMESPACE;
 }
 
 function isCommentNode(

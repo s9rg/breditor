@@ -3,6 +3,18 @@ import {
   isOwnedRenderedProjection,
 } from "./dom_renderer.js";
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
+import {
+  nativeAbstractRangeFacts,
+  nativeContainsNode,
+  nativeDocumentCreateRange,
+  nativeHtmlHostFacts,
+  nativeIsConnected,
+  nativeOwnerDocument,
+  nativeRangeFacts,
+  nativeRangeIntersectsNode,
+  nativeRangeSetEnd,
+  nativeRangeSetStart,
+} from "./html_host.js";
 import type {
   BrowserSelectionErrorCode,
   BrowserSelectionResult,
@@ -102,12 +114,8 @@ function captureDomRange(range: AbstractRange): DomRangeSnapshotResult {
     return { ok: false, code: "selection.dom_read_failed" };
   }
   try {
-    // Each native property is intentionally read exactly once. A live Range may
-    // continue changing after this point without changing this normalization.
-    const startContainer = range.startContainer;
-    const startOffset = range.startOffset;
-    const endContainer = range.endContainer;
-    const endOffset = range.endOffset;
+    const { startContainer, startOffset, endContainer, endOffset } =
+      nativeAbstractRangeFacts(range);
     if (
       !isNodeLike(startContainer) ||
       !isNodeLike(endContainer) ||
@@ -130,10 +138,14 @@ function validateDomRangeOwnershipAndOrder(
   snapshot: DomRangeSnapshot,
 ): DomRangePreflight {
   try {
-    const document = host.ownerDocument;
+    const hostFacts = nativeHtmlHostFacts(host);
+    if (hostFacts === undefined) {
+      return { ok: false, code: "selection.dom_read_failed" };
+    }
+    const document = hostFacts.ownerDocument;
     if (
-      snapshot.startContainer.ownerDocument !== document ||
-      snapshot.endContainer.ownerDocument !== document
+      nativeOwnerDocument(snapshot.startContainer) !== document ||
+      nativeOwnerDocument(snapshot.endContainer) !== document
     ) {
       return { ok: false, code: "selection.ambiguous_dom_point" };
     }
@@ -144,23 +156,23 @@ function validateDomRangeOwnershipAndOrder(
       return { ok: false, code: "selection.crosses_host" };
     }
     if (
-      !host.isConnected ||
-      !snapshot.startContainer.isConnected ||
-      !snapshot.endContainer.isConnected
+      !hostFacts.isConnected ||
+      !nativeIsConnected(snapshot.startContainer) ||
+      !nativeIsConnected(snapshot.endContainer)
     ) {
       return { ok: false, code: "selection.ambiguous_dom_point" };
     }
 
-    const normalized = document.createRange();
-    normalized.setStart(snapshot.startContainer, snapshot.startOffset);
-    normalized.setEnd(snapshot.endContainer, snapshot.endOffset);
+    const normalized = nativeDocumentCreateRange(document);
+    nativeRangeSetStart(normalized, snapshot.startContainer, snapshot.startOffset);
+    nativeRangeSetEnd(normalized, snapshot.endContainer, snapshot.endOffset);
     if (!rangeMatchesSnapshot(normalized, snapshot)) {
       // Setting an end before a start collapses a native Range. Requiring all
       // four fields to survive also rejects malformed node-specific offsets.
       return { ok: false, code: "selection.dom_read_failed" };
     }
     if (!startInside) {
-      return normalized.intersectsNode(host)
+      return nativeRangeIntersectsNode(normalized, host)
         ? { ok: false, code: "selection.crosses_host" }
         : { ok: false, code: "selection.ambiguous_dom_point" };
     }
@@ -171,16 +183,17 @@ function validateDomRangeOwnershipAndOrder(
 }
 
 function rangeMatchesSnapshot(range: Range, snapshot: DomRangeSnapshot): boolean {
+  const facts = nativeRangeFacts(range);
   return (
-    range.startContainer === snapshot.startContainer &&
-    range.startOffset === snapshot.startOffset &&
-    range.endContainer === snapshot.endContainer &&
-    range.endOffset === snapshot.endOffset
+    facts.startContainer === snapshot.startContainer &&
+    facts.startOffset === snapshot.startOffset &&
+    facts.endContainer === snapshot.endContainer &&
+    facts.endOffset === snapshot.endOffset
   );
 }
 
 function nodeIsInsideHost(host: HTMLElement, node: Node): boolean {
-  return node === host || host.contains(node);
+  return nativeContainsNode(host, node);
 }
 
 function isNodeLike(value: unknown): value is Node {

@@ -15,6 +15,20 @@ import {
 import { parseClipboardHtmlToPlainText } from "./clipboard_html.js";
 import { classifyDomEventOwnership } from "./dom_event_ownership.js";
 import {
+  clearDomDataTransferData,
+  preventDomEventDefault,
+  readDomClipboardData,
+  readDomDataTransferData,
+  readDomDataTransferTypes,
+  readDomEventBase,
+  readDomEventStatus,
+  readDomInputEvent,
+  setDomDataTransferData,
+  type DomEventBaseSnapshot,
+  type DomEventSource,
+} from "./dom_event_intrinsics.js";
+import { nativeHtmlHostFacts } from "./html_host.js";
+import {
   isOwnedRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
@@ -28,10 +42,17 @@ import {
   isOwnedBaseRangeSelection,
   type BaseRangeSelection,
 } from "./selection.js";
+import {
+  projectionMatchesBrowserPresentation,
+  projectionPresentation,
+  projectionProfileDescriptor,
+} from "./projection.js";
+import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
 import type {
   BreditorWasmCommandAdapter,
   WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
+import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
 /** Native clipboard operation owned by this controller. */
 export type ClipboardControllerOperation = "copy" | "cut" | "paste";
@@ -150,17 +171,27 @@ interface AdapterSurface {
 interface CanonicalBase {
   readonly rendered: RenderedProjection;
   readonly delivery: EditorDeliveryToken;
+  readonly presentation: BrowserCompiledPresentation | undefined;
 }
 
 type EventIdentitySnapshot =
-  | Readonly<{ status: "matched"; target: EventTarget | null }>
+  | Readonly<{
+      status: "matched";
+      target: EventTarget | null;
+      base: DomEventBaseSnapshot;
+    }>
   | Readonly<{ status: "matchedInvalid" }>
   | Readonly<{ status: "mismatch" }>;
 
 interface CancelableEventSnapshot {
+  readonly source: DomEventSource;
   readonly cancelable: boolean;
   readonly defaultPrevented: boolean;
-  readonly preventDefault: (this: object) => void;
+}
+
+interface ClipboardCapability {
+  readonly source: DomEventSource;
+  readonly value: object;
 }
 
 interface EchoReceipt {
@@ -441,16 +472,7 @@ export class BreditorClipboardController {
         "invalidEvent",
       );
     }
-    const cancelable = readCancelableEvent(event);
-    if (cancelable === null) {
-      return this.#blindCancelFailure(
-        operation,
-        event,
-        base,
-        mutable,
-        "invalidEvent",
-      );
-    }
+    const cancelable = identity.base;
     if (!this.#baseIsCurrent(base)) {
       return this.#cancelFailure(
         operation,
@@ -504,7 +526,10 @@ export class BreditorClipboardController {
       );
     }
 
-    const serialized = serializeClipboardSelection(selection);
+    const serialized = serializeClipboardSelection(
+      selection,
+      base.presentation,
+    );
     if (!serialized.ok) {
       return this.#cancelFailure(
         operation,
@@ -515,7 +540,7 @@ export class BreditorClipboardController {
         "invalidSelection",
       );
     }
-    const clipboardData = readClipboardData(event);
+    const clipboardData = readClipboardData(event, identity.base.source);
     if (clipboardData === null || !this.#baseIsCurrent(base)) {
       return this.#cancelFailure(
         operation,
@@ -580,7 +605,7 @@ export class BreditorClipboardController {
     selection: EditorSelectionSync,
     mutable: MutableProgress,
   ): LeasedOutcome {
-    const clipboardData = readClipboardData(event);
+    const clipboardData = readClipboardData(event, cancelable.source);
     if (clipboardData === null || !this.#baseIsCurrent(base)) {
       return this.#cancelFailure(
         "paste",
@@ -631,29 +656,18 @@ export class BreditorClipboardController {
   }
 
   #readPastePayload(
-    clipboardData: object,
+    clipboardData: ClipboardCapability,
     base: CanonicalBase,
     mutable: MutableProgress,
   ):
     | Readonly<{ ok: true; source: "plain" | "html"; text: string }>
     | Readonly<{ ok: false; reason: ClipboardControllerFailureReason }> {
-    let types: readonly string[] | null;
-    let getData: unknown;
-    try {
-      types = snapshotMimeTypes(
-        Reflect.get(clipboardData, "types", clipboardData),
-      );
-      getData = Reflect.get(clipboardData, "getData", clipboardData);
-    } catch {
-      mutable.clipboard = "readAttempted";
-      return Object.freeze({ ok: false, reason: "clipboardReadFailed" });
-    }
+    const typesRead = readDomDataTransferTypes(clipboardData.value);
+    const types = typesRead.ok && typesRead.source === clipboardData.source
+      ? snapshotMimeTypes(typesRead.value)
+      : null;
     mutable.clipboard = "readAttempted";
-    if (
-      types === null ||
-      typeof getData !== "function" ||
-      !this.#baseIsCurrent(base)
-    ) {
+    if (types === null || !this.#baseIsCurrent(base)) {
       return Object.freeze({
         ok: false,
         reason: this.#baseIsCurrent(base)
@@ -670,14 +684,14 @@ export class BreditorClipboardController {
       });
     }
     const source = hasPlain ? "plain" as const : "html" as const;
-    let value: unknown;
-    try {
-      value = Reflect.apply(getData, clipboardData, [
-        source === "plain" ? PLAIN_TEXT_MIME : HTML_MIME,
-      ]);
-    } catch {
+    const dataRead = readDomDataTransferData(
+      clipboardData.value,
+      source === "plain" ? PLAIN_TEXT_MIME : HTML_MIME,
+    );
+    if (!dataRead.ok || dataRead.source !== clipboardData.source) {
       return Object.freeze({ ok: false, reason: "clipboardReadFailed" });
     }
+    const value = dataRead.value;
     if (!this.#baseIsCurrent(base)) {
       return Object.freeze({ ok: false, reason: "staleBase" });
     }
@@ -690,58 +704,48 @@ export class BreditorClipboardController {
     if (source === "plain") {
       return Object.freeze({ ok: true, source, text: value });
     }
-    const parsed = parseClipboardHtmlToPlainText(value);
+    const parsed = parseClipboardHtmlToPlainText(value, base.presentation);
     return parsed.ok
       ? Object.freeze({ ok: true, source, text: parsed.value })
       : Object.freeze({ ok: false, reason: "invalidHtml" });
   }
 
   #writeClipboardRepresentations(
-    clipboardData: object,
+    clipboardData: ClipboardCapability,
     plainText: string,
     html: string,
     base: CanonicalBase,
     mutable: MutableProgress,
   ): boolean {
-    let clearData: unknown;
-    let setData: unknown;
-    try {
-      clearData = Reflect.get(clipboardData, "clearData", clipboardData);
-      setData = Reflect.get(clipboardData, "setData", clipboardData);
-    } catch {
-      mutable.clipboard = "writeUncertain";
-      return false;
-    }
-    if (
-      typeof clearData !== "function" ||
-      typeof setData !== "function" ||
-      !this.#baseIsCurrent(base)
-    ) {
-      return false;
-    }
-    try {
-      Reflect.apply(clearData, clipboardData, []);
-      mutable.clipboard = "cleared";
-    } catch {
-      mutable.clipboard = "writeUncertain";
-      return false;
-    }
     if (!this.#baseIsCurrent(base)) return false;
-    try {
-      Reflect.apply(setData, clipboardData, [PLAIN_TEXT_MIME, plainText]);
-      mutable.clipboard = "plainWritten";
-    } catch {
+    const cleared = clearDomDataTransferData(clipboardData.value);
+    if (!cleared.ok || cleared.source !== clipboardData.source) {
       mutable.clipboard = "writeUncertain";
       return false;
     }
+    mutable.clipboard = "cleared";
     if (!this.#baseIsCurrent(base)) return false;
-    try {
-      Reflect.apply(setData, clipboardData, [HTML_MIME, html]);
-      mutable.clipboard = "representationsWritten";
-    } catch {
+    const plainWritten = setDomDataTransferData(
+      clipboardData.value,
+      PLAIN_TEXT_MIME,
+      plainText,
+    );
+    if (!plainWritten.ok || plainWritten.source !== clipboardData.source) {
       mutable.clipboard = "writeUncertain";
       return false;
     }
+    mutable.clipboard = "plainWritten";
+    if (!this.#baseIsCurrent(base)) return false;
+    const htmlWritten = setDomDataTransferData(
+      clipboardData.value,
+      HTML_MIME,
+      html,
+    );
+    if (!htmlWritten.ok || htmlWritten.source !== clipboardData.source) {
+      mutable.clipboard = "writeUncertain";
+      return false;
+    }
+    mutable.clipboard = "representationsWritten";
     return this.#baseIsCurrent(base);
   }
 
@@ -851,7 +855,7 @@ export class BreditorClipboardController {
         "invalidEvent",
       );
     }
-    const input = readClipboardInputDetails(event);
+    const input = readClipboardInputDetails(event, identity.base);
     if (input === null) {
       const operation = this.#receipt?.operation ?? "paste";
       this.#receipt = undefined;
@@ -958,7 +962,7 @@ export class BreditorClipboardController {
     if (ownership === "outsideHost" || ownership === "nestedControl") {
       return simpleOutcome(ignored("paste", ownership, false));
     }
-    const input = readClipboardInputDetails(event);
+    const input = readClipboardInputDetails(event, identity.base);
     if (ownership !== "owned" || input === null) {
       this.#receipt = undefined;
       return simpleOutcome(
@@ -1028,28 +1032,9 @@ export class BreditorClipboardController {
     mutable: MutableProgress,
     reason: ClipboardControllerFailureReason,
   ): LeasedOutcome {
-    let defaultPrevented = false;
-    let confirmed = false;
-    try {
-      if (typeof event !== "object" || event === null) {
-        throw new TypeError("event unavailable");
-      }
-      const initial = Reflect.get(event, "defaultPrevented", event);
-      if (initial === true) {
-        confirmed = true;
-        defaultPrevented = true;
-      } else {
-        const preventDefault = Reflect.get(event, "preventDefault", event);
-        if (typeof preventDefault !== "function") {
-          throw new TypeError("event cancellation unavailable");
-        }
-        Reflect.apply(preventDefault, event, []);
-        defaultPrevented = Reflect.get(event, "defaultPrevented", event) === true;
-        confirmed = defaultPrevented;
-      }
-    } catch {
-      confirmed = false;
-    }
+    const cancellation = preventDomEventDefault(event);
+    const defaultPrevented = cancellation.defaultPrevented;
+    const confirmed = cancellation.ok;
     mutable.cancellation = confirmed ? "confirmed" : "failed";
     if (!this.#baseIsCurrent(base)) {
       return simpleOutcome(
@@ -1085,24 +1070,13 @@ export class BreditorClipboardController {
         stale: !this.#baseIsCurrent(base),
       });
     }
-    let observed = false;
-    try {
-      Reflect.apply(snapshot.preventDefault, event as object, []);
-      const current = this.#baseIsCurrent(base);
-      const value = Reflect.get(event as object, "defaultPrevented", event as object);
-      observed = value === true;
-      return Object.freeze({
-        confirmed: observed,
-        defaultPrevented: observed,
-        stale: !current || !this.#baseIsCurrent(base),
-      });
-    } catch {
-      return Object.freeze({
-        confirmed: false,
-        defaultPrevented: observed,
-        stale: !this.#baseIsCurrent(base),
-      });
-    }
+    const cancellation = preventDomEventDefault(event);
+    const current = this.#baseIsCurrent(base);
+    return Object.freeze({
+      confirmed: cancellation.ok,
+      defaultPrevented: cancellation.defaultPrevented,
+      stale: !current || !this.#baseIsCurrent(base),
+    });
   }
 
   #captureCanonicalBase(): CanonicalBase | null {
@@ -1111,15 +1085,22 @@ export class BreditorClipboardController {
       const rendered = this.#adapter.rendered;
       if (
         !isOwnedRenderedProjection(rendered) ||
-        !rendered.host.isConnected ||
+        !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
       ) {
         return null;
       }
+      const presentation = projectionPresentation(rendered.projection);
+      if (
+        projectionProfileDescriptor(rendered.projection) !== undefined &&
+        presentation === undefined
+      ) {
+        return null;
+      }
       const delivery = this.#adapter.deliveryToken();
       if (!this.#adapter.acceptsDeliveryToken(delivery)) return null;
-      const base = Object.freeze({ rendered, delivery });
+      const base = Object.freeze({ rendered, delivery, presentation });
       return this.#baseIsCurrent(base) ? base : null;
     } catch {
       return null;
@@ -1158,14 +1139,23 @@ export class BreditorClipboardController {
         !this.#disposed &&
         this.#adapter.state === "live" &&
         this.#adapter.rendered === base.rendered &&
-        base.rendered.host.isConnected &&
+        hostIsNativelyConnected(base.rendered.host) &&
         base.rendered.current &&
         base.rendered.validateCanonicalDom() &&
+        this.#basePresentationIsCurrent(base) &&
         this.#adapter.acceptsDeliveryToken(base.delivery)
       );
     } catch {
       return false;
     }
+  }
+
+  #basePresentationIsCurrent(base: CanonicalBase): boolean {
+    const projection = base.rendered.projection;
+    return base.presentation === undefined
+      ? projectionProfileDescriptor(projection) === undefined &&
+          projectionPresentation(projection) === undefined
+      : projectionMatchesBrowserPresentation(projection, base.presentation);
   }
 
   #freshReceiptCandidate(
@@ -1177,7 +1167,7 @@ export class BreditorClipboardController {
       if (
         result.rendered !== rendered ||
         !isOwnedRenderedProjection(rendered) ||
-        !rendered.host.isConnected ||
+        !hostIsNativelyConnected(rendered.host) ||
         !rendered.current ||
         !rendered.validateCanonicalDom()
       ) {
@@ -1200,7 +1190,7 @@ export class BreditorClipboardController {
         !this.#disposed &&
         this.#adapter.state === "live" &&
         this.#adapter.rendered === receipt.rendered &&
-        receipt.rendered.host.isConnected &&
+        hostIsNativelyConnected(receipt.rendered.host) &&
         receipt.rendered.current &&
         receipt.rendered.validateCanonicalDom() &&
         this.#adapter.acceptsDeliveryToken(receipt.delivery)
@@ -1211,6 +1201,10 @@ export class BreditorClipboardController {
   }
 }
 
+function hostIsNativelyConnected(host: HTMLElement): boolean {
+  return nativeHtmlHostFacts(host)?.isConnected === true;
+}
+
 function readExpectedEventIdentity(
   event: unknown,
   expectedType: string,
@@ -1218,104 +1212,70 @@ function readExpectedEventIdentity(
   if (typeof event !== "object" || event === null) {
     return Object.freeze({ status: "mismatch" });
   }
-  let type: unknown;
-  try {
-    type = Reflect.get(event, "type", event);
-  } catch {
+  const status = readDomEventStatus(event);
+  if (status === null || status.type !== expectedType) {
     return Object.freeze({ status: "mismatch" });
   }
-  if (type !== expectedType) {
-    return Object.freeze({ status: "mismatch" });
-  }
-  try {
-    const target = Reflect.get(event, "target", event);
-    return target === null || typeof target === "object"
-      ? Object.freeze({
-          status: "matched" as const,
-          target: target as EventTarget | null,
-        })
-      : Object.freeze({ status: "matchedInvalid" as const });
-  } catch {
+  const base = readDomEventBase(event);
+  if (base === null || base.source !== status.source) {
     return Object.freeze({ status: "matchedInvalid" });
   }
+  return Object.freeze({
+    status: "matched" as const,
+    target: base.target,
+    base,
+  });
 }
 
-function readCancelableEvent(event: unknown): CancelableEventSnapshot | null {
-  try {
-    if (typeof event !== "object" || event === null) return null;
-    const cancelable = Reflect.get(event, "cancelable", event);
-    const defaultPrevented = Reflect.get(event, "defaultPrevented", event);
-    const preventDefault = Reflect.get(event, "preventDefault", event);
-    return typeof cancelable === "boolean" &&
-      typeof defaultPrevented === "boolean" &&
-      typeof preventDefault === "function"
-      ? Object.freeze({ cancelable, defaultPrevented, preventDefault })
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function readClipboardData(event: unknown): object | null {
-  try {
-    if (typeof event !== "object" || event === null) return null;
-    const clipboardData = Reflect.get(event, "clipboardData", event);
-    return typeof clipboardData === "object" && clipboardData !== null
-      ? clipboardData
-      : null;
-  } catch {
-    return null;
-  }
+function readClipboardData(
+  event: unknown,
+  source: DomEventSource,
+): ClipboardCapability | null {
+  const read = readDomClipboardData(event);
+  return read !== null &&
+    read.source === source &&
+    typeof read.clipboardData === "object" &&
+    read.clipboardData !== null
+    ? Object.freeze({ source, value: read.clipboardData })
+    : null;
 }
 
 function readClipboardInputDetails(
   event: unknown,
+  base: DomEventBaseSnapshot,
 ): (CancelableEventSnapshot & Readonly<{
   inputType: string;
   isComposing: boolean;
 }>) | null {
-  const cancelable = readCancelableEvent(event);
-  if (cancelable === null) return null;
-  try {
-    const native = event as object;
-    const inputType = Reflect.get(native, "inputType", native);
-    const isComposing = Reflect.get(native, "isComposing", native);
-    return typeof inputType === "string" && typeof isComposing === "boolean"
-      ? Object.freeze({ ...cancelable, inputType, isComposing })
-      : null;
-  } catch {
-    return null;
-  }
+  const input = readDomInputEvent(event);
+  return input !== null && input.source === base.source
+    ? Object.freeze({
+        source: base.source,
+        cancelable: base.cancelable,
+        defaultPrevented: base.defaultPrevented,
+        inputType: input.inputType,
+        isComposing: input.isComposing,
+      })
+    : null;
 }
 
 function snapshotMimeTypes(value: unknown): readonly string[] | null {
-  try {
-    if (typeof value !== "object" || value === null) return null;
-    const length = Reflect.get(value, "length", value);
+  const snapshot = snapshotOwnDataArray(value, MAX_CLIPBOARD_MIME_TYPES);
+  if (snapshot === null) return null;
+  const types: string[] = [];
+  for (let index = 0; index < snapshot.length; index += 1) {
+    const type = snapshot[index];
     if (
-      !Number.isSafeInteger(length) ||
-      (length as number) < 0 ||
-      (length as number) > MAX_CLIPBOARD_MIME_TYPES
+      typeof type !== "string" ||
+      type.length === 0 ||
+      type.length > MAX_CLIPBOARD_MIME_TYPE_UTF16 ||
+      type.includes("\0")
     ) {
       return null;
     }
-    const types: string[] = [];
-    for (let index = 0; index < (length as number); index += 1) {
-      const type = Reflect.get(value, String(index), value);
-      if (
-        typeof type !== "string" ||
-        type.length === 0 ||
-        type.length > MAX_CLIPBOARD_MIME_TYPE_UTF16 ||
-        type.includes("\0")
-      ) {
-        return null;
-      }
-      types.push(asciiLowercase(type));
-    }
-    return Object.freeze(types);
-  } catch {
-    return null;
+    types.push(asciiLowercase(type));
   }
+  return Object.freeze(types);
 }
 
 function asciiLowercase(value: string): string {

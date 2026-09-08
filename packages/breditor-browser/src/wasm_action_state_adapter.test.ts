@@ -498,6 +498,29 @@ describe("Wasm action-state adapter", () => {
     expect(resultView.freeCalls).toBe(0);
   });
 
+  it("does not invoke a hostile protected-list length getter", () => {
+    const lengthRead = vi.fn(() => {
+      throw new Error("must not read length");
+    });
+    const protectedHandles = new Proxy<unknown[]>([], {
+      get(target, property, receiver) {
+        if (property === "length") return lengthRead();
+        return Reflect.get(target, property, receiver);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "length") throw new Error("unprovable length");
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const resultView = new FakeResult("taken", undefined);
+
+    expect(
+      consumeWasmActionStates(EXPECTED, resultView, protectedHandles).ok,
+    ).toBe(false);
+    expect(lengthRead).not.toHaveBeenCalled();
+    expect(resultView.freeCalls).toBe(0);
+  });
+
   it("captures cleanup before hostile expected and nested getters mutate it", async () => {
     const outerFree = vi.fn();
     const poisonedOuterFree = vi.fn();

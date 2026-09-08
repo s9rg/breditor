@@ -1,7 +1,8 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` through `0.2.0-alpha.5` engine/Wasm
-foundations are implemented and later stages remain planned
+Status: decision freeze; the `0.1.1` through `0.2.0-alpha.6` engine, Wasm, and
+profile-aware browser foundations are implemented and later stages remain
+planned
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -495,9 +496,9 @@ an intent route, and contribute presentation metadata. It cannot inject an
 arbitrary Rust or JavaScript handler into evaluation.
 
 The alpha.4 semantic bundle stops before presentation: it contains no label,
-icon, shortcut, renderer recipe, or toolbar placement. Profile-aware browser
-rendering and the supported intent-driven toolbar remain alpha.6 and alpha.7
-work.
+icon, shortcut, renderer recipe, or toolbar placement. Alpha.6 adds a separate
+callback-free browser render manifest for complete format coverage; the
+supported intent-driven toolbar remains alpha.7 work.
 
 Action, intent, route, and contribution ownership collisions fail. Intent
 fallback order is part of the compiled semantic profile; toolbar placement is
@@ -579,8 +580,9 @@ The supported `0.2.0` ABI path is Wasm ABI 3. Alpha.5 carries a compiled profile
 and its opaque generation through Rust-owned engines and Wasm handles. New
 profile factories explicitly accept Document V2 or Session Checkpoint V2; the
 legacy exact-base factory remains a separate V1 compatibility path. The
-supported browser consumes ABI 3 but deliberately admits only the exact
-built-in base descriptor until profile-aware rendering lands in alpha.6.
+supported alpha.6 browser consumes ABI 3 and admits either the exact built-in
+base descriptor or one completely correlated compiled-profile descriptor plus
+callback-free browser presentation.
 
 The ABI 3 boundary:
 
@@ -819,6 +821,7 @@ earlier or skip a gate.
   plain-text projection, canonical export correlation, and
   schema-fingerprint- or caller-slot-scoped persistence mismatch that never
   overwrites retained evidence.
+- Complete.
 
 ### 0.2.0-alpha.7 — supported browser intent and toolbar path
 

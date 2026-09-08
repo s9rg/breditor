@@ -1,10 +1,12 @@
 # Schema fingerprint contract
 
 Status: compiler identity, strict public parser, durable binding, the complete
-Rust-core V2 record graph, and the sealed base-text extension compiler are
-implemented through `0.2.0-alpha.5`, including immutable compiled semantic
-profiles whose action/intent/state declarations remain outside this digest and
-whose separate runtime generation now crosses the engine/Wasm boundary.
+Rust-core V2 record graph, the sealed base-text extension compiler, and the
+profile-aware browser persistence selector are implemented through
+`0.2.0-alpha.6`. Immutable compiled semantic profiles keep action/intent/state
+and browser-presentation declarations outside this digest; their separate
+runtime generation crosses the engine/Wasm/browser boundary without being
+serialized.
 
 `SchemaFingerprint` is the durable identity of one complete compiled content
 language. It lets Breditor distinguish schemas that share a human-readable
@@ -139,7 +141,8 @@ generation-locked nesting, as specified by the
 [durable schema binding contract](DURABLE_SCHEMA_BINDING.md). Legacy V1 records
 remain byte-for-byte unchanged and bound to the exact built-in base definition.
 Wasm ABI 3 exposes explicit profile factories that consume and emit V2. The
-legacy built-in Wasm factories and the supported base-only browser persistence
-path continue to use V1 during alpha.5. Every V1 record remains
+legacy built-in Wasm factories and unprofiled browser persistence path continue
+to use V1. The alpha.6 profiled browser path selects an exact V2 fingerprint
+binding before reading stored payload bytes. Every V1 record remains
 exact-`breditor/base@1`-only; the runtime profile generation never enters this
 digest or any wire record.

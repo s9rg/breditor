@@ -6,10 +6,34 @@ import {
   textRunAstPath,
 } from "./ast_path.js";
 import {
+  bindProjectionPresentation,
   type BaseDocumentProjection,
   type BaseParagraphProjection,
+  type BaseTextRunProjection,
   isOwnedProjection,
+  projectionPresentation,
 } from "./projection.js";
+import {
+  browserPresentationRecipeForFormat,
+  isOwnedBrowserCompiledPresentation,
+  type BrowserCompiledPresentation,
+} from "./compiled_browser_presentation.js";
+import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
+import {
+  nativeAttributeNames,
+  nativeChildNodes,
+  nativeDocumentDefaultView,
+  nativeElementLocalName,
+  nativeGetAttribute,
+  nativeHtmlHostFacts,
+  nativeNodeType,
+  nativeNodeValue,
+  nativeOwnerDocument,
+  nativeParentElement,
+  nativeParentNode,
+  nativeRemoveElement,
+  nativeReplaceChildren,
+} from "./html_host.js";
 import {
   type BaseProjectionUpdate,
   type FullProjectionReason,
@@ -24,6 +48,9 @@ export type ProjectionRenderMode = "full" | "incremental";
 
 /** Why a successful update could not reuse its prior paragraph DOM. */
 export type ProjectionFallbackReason = FullProjectionReason | "domDrift";
+
+/** Maximum host, paragraph, text, placeholder, and wrapper nodes in one render. */
+export const MAX_RENDERED_PROJECTION_DOM_NODES = 262_144;
 
 /**
  * Snapshot- and generation-bound DOM/AST mapping returned by the renderer.
@@ -103,6 +130,7 @@ const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 const RENDERED_HANDLES = new WeakSet<RenderedProjectionHandle>();
 const HOST_OWNERS = new WeakMap<HTMLElement, HostOwnership>();
 const DOM_COMPOSITION_LEASES = new WeakMap<object, DomCompositionLeaseRecord>();
+const ACTIVE_HOST_OPERATIONS = new WeakSet<HTMLElement>();
 
 type RenderedProjectionState = "canonical" | "composition" | "inactive";
 
@@ -112,6 +140,7 @@ class RenderedProjectionHandle implements RenderedProjection {
   readonly host: HTMLElement;
   readonly #astToDom: Map<string, Node>;
   readonly #domToAst: WeakMap<Node, AstPath>;
+  readonly #presentation: BrowserCompiledPresentation | undefined;
   #state: RenderedProjectionState = "canonical";
   #observer: MutationObserver | undefined;
 
@@ -120,12 +149,14 @@ class RenderedProjectionHandle implements RenderedProjection {
     projection: BaseDocumentProjection,
     rendererGeneration: bigint,
     maps: ProjectionMaps,
+    presentation: BrowserCompiledPresentation | undefined,
   ) {
     this.host = host;
     this.projection = projection;
     this.rendererGeneration = rendererGeneration;
     this.#astToDom = maps.astToDom;
     this.#domToAst = maps.domToAst;
+    this.#presentation = presentation;
     RENDERED_HANDLES.add(this);
     Object.freeze(this);
   }
@@ -196,6 +227,15 @@ class RenderedProjectionHandle implements RenderedProjection {
     return this.#astToDom.get(`root/${paragraphIndex}`);
   }
 
+  canonicalDomMatches(): boolean {
+    if (this.#state !== "canonical") return false;
+    try {
+      return this.#canonicalDomAndMapsMatch();
+    } catch {
+      return false;
+    }
+  }
+
   beginCompositionLease(): boolean {
     if (this.#state !== "canonical") {
       return false;
@@ -217,6 +257,7 @@ class RenderedProjectionHandle implements RenderedProjection {
   }
 
   #canonicalDomAndMapsMatch(): boolean {
+    const hostChildren = nativeChildNodes(this.host);
     if (
       this.#astToDom.size !==
         1 +
@@ -224,7 +265,7 @@ class RenderedProjectionHandle implements RenderedProjection {
           this.projection.paragraphs.reduce((count, paragraph) => count + paragraph.runs.length, 0) ||
       this.#astToDom.get("root") !== this.host ||
       astPathKey(this.#domToAst.get(this.host) ?? Object.freeze([-1])) !== "root" ||
-      this.host.childNodes.length !== this.projection.paragraphs.length
+      hostChildren.length !== this.projection.paragraphs.length
     ) {
       return false;
     }
@@ -234,19 +275,20 @@ class RenderedProjectionHandle implements RenderedProjection {
       paragraphIndex += 1
     ) {
       const projection = this.projection.paragraphs[paragraphIndex];
-      const paragraph = this.host.childNodes[paragraphIndex];
+      const paragraph = hostChildren[paragraphIndex];
       const paragraphKey = `root/${paragraphIndex}`;
       if (
         projection === undefined ||
         !isHtmlParagraph(paragraph) ||
-        !paragraphDomMatches(paragraph, projection) ||
+        !paragraphDomMatches(paragraph, projection, this.#presentation) ||
         this.#astToDom.get(paragraphKey) !== paragraph ||
         astPathKey(this.#domToAst.get(paragraph) ?? Object.freeze([-1])) !== paragraphKey
       ) {
         return false;
       }
+      const paragraphChildren = nativeChildNodes(paragraph);
       if (projection.runs.length === 0) {
-        const placeholder = paragraph.childNodes[0];
+        const placeholder = paragraphChildren[0];
         if (placeholder === undefined || this.#domToAst.get(placeholder) !== undefined) {
           return false;
         }
@@ -254,17 +296,17 @@ class RenderedProjectionHandle implements RenderedProjection {
       }
       for (let runIndex = 0; runIndex < projection.runs.length; runIndex += 1) {
         const run = projection.runs[runIndex];
-        const child = paragraph.childNodes[runIndex];
+        const child = paragraphChildren[runIndex];
         if (run === undefined || child === undefined) {
           return false;
         }
-        const text = run.strong ? child.childNodes[0] : child;
+        const text = textNodeForRunDom(child, run, this.#presentation);
         const textKey = `root/${paragraphIndex}/${runIndex}`;
         if (
           text === undefined ||
           this.#astToDom.get(textKey) !== text ||
           astPathKey(this.#domToAst.get(text) ?? Object.freeze([-1])) !== textKey ||
-          (run.strong && this.#domToAst.get(child) !== undefined)
+          !wrappersAreUnmapped(child, text, this.#domToAst)
         ) {
           return false;
         }
@@ -276,7 +318,11 @@ class RenderedProjectionHandle implements RenderedProjection {
   observe(rendererToken: symbol): void {
     let observer: MutationObserver | undefined;
     try {
-      const Observer = this.host.ownerDocument.defaultView?.MutationObserver;
+      const ownerDocument = nativeOwnerDocument(this.host);
+      const defaultView = ownerDocument === null
+        ? null
+        : nativeDocumentDefaultView(ownerDocument);
+      const Observer = defaultView?.MutationObserver;
       if (Observer === undefined) {
         return;
       }
@@ -336,7 +382,22 @@ Object.freeze(RenderedProjectionHandle.prototype);
 /** Deterministic renderer for the Breditor base-schema semantic projection. */
 export class BreditorDomRenderer {
   readonly #rendererToken = Symbol("BreditorDomRenderer instance");
+  readonly #presentation: BrowserCompiledPresentation | undefined;
   #generation = 0n;
+
+  /**
+   * Creates a renderer for either legacy base projections or one exact checked
+   * compiled-profile presentation. A renderer never switches presentation.
+   */
+  constructor(presentation?: BrowserCompiledPresentation) {
+    if (
+      presentation !== undefined &&
+      !isOwnedBrowserCompiledPresentation(presentation)
+    ) {
+      throw new TypeError("browser renderer presentation is invalid");
+    }
+    this.#presentation = presentation;
+  }
 
   /** Proves that this renderer owns one exact current canonical handle. */
   owns(rendered: unknown): rendered is RenderedProjection {
@@ -366,7 +427,11 @@ export class BreditorDomRenderer {
    * @internal
    */
   beginCompositionDomLease(rendered: RenderedProjection): DomCompositionLease | null {
-    if (!this.owns(rendered) || !isOwnedRenderedProjection(rendered)) {
+    if (
+      !isOwnedRenderedProjection(rendered) ||
+      ACTIVE_HOST_OPERATIONS.has(rendered.host) ||
+      !this.owns(rendered)
+    ) {
       return null;
     }
     const ownership = HOST_OWNERS.get(rendered.host);
@@ -431,44 +496,79 @@ export class BreditorDomRenderer {
     if (record === null) {
       return projectionFailure("renderer.foreign_or_stale_render");
     }
-    if (!isOwnedProjection(projection)) {
-      return projectionFailure("projection.invalid_shape");
-    }
-
-    // Build the replacement tree while the lease is still recoverable. This
-    // work is detached from the host, so constructor failures must not strand
-    // the yielded handle in an unowned composition state.
-    let prepared: PreparedDom;
-    try {
-      prepared = buildFullProjection(record.handle.host, projection);
-    } catch {
+    const host = record.handle.host;
+    if (!beginHostOperation(host)) {
       return projectionFailure("renderer.dom_write_failed");
     }
-
-    // Detached DOM constructors are application-replaceable and may reenter.
-    // Re-prove the exact lease immediately before spending it.
-    if (this.#liveCompositionLeaseRecord(lease) !== record) {
-      return projectionFailure("renderer.foreign_or_stale_render");
-    }
-    record.active = false;
-
-    let installed: BrowserProjectionResult<ProjectionRenderOutcome>;
     try {
-      installed = this.#install(record.handle.host, projection, prepared, "full");
-    } catch {
-      this.#invalidateCompositionLeaseRecord(record);
-      return projectionFailure("renderer.dom_write_failed");
+      const installGuard = this.#snapshotInstallGuard(host);
+      if (installGuard === null) {
+        return projectionFailure("renderer.dom_write_failed");
+      }
+      if (!isOwnedProjection(projection)) {
+        return projectionFailure("projection.invalid_shape");
+      }
+      if (!this.#bindProjectionPresentation(projection)) {
+        return projectionFailure("projection.invalid_shape");
+      }
+      if (!renderFitsDomBudget(projection)) {
+        return projectionFailure("projection.resource_limit");
+      }
+
+      // Build the replacement tree while the lease is still recoverable. This
+      // work is detached from the host, so constructor failures must not strand
+      // the yielded handle in an unowned composition state.
+      let prepared: PreparedDom;
+      try {
+        prepared = buildFullProjection(host, projection, this.#presentation);
+      } catch {
+        if (!installGuard()) {
+          this.#invalidateCompositionLeaseRecord(record);
+        }
+        return projectionFailure("renderer.dom_write_failed");
+      }
+
+      // Detached DOM constructors are application-replaceable and may reenter.
+      // Re-prove the exact lease and the pre-build host sequence immediately
+      // before spending it.
+      if (
+        this.#liveCompositionLeaseRecord(lease) !== record ||
+        !installGuard()
+      ) {
+        this.#invalidateCompositionLeaseRecord(record);
+        return projectionFailure("renderer.dom_write_failed");
+      }
+
+      let installed: BrowserProjectionResult<ProjectionRenderOutcome>;
+      try {
+        installed = this.#install(
+          host,
+          projection,
+          prepared,
+          "full",
+          undefined,
+          () =>
+            this.#liveCompositionLeaseRecord(lease) === record &&
+            installGuard(),
+        );
+      } catch {
+        this.#invalidateCompositionLeaseRecord(record);
+        return projectionFailure("renderer.dom_write_failed");
+      }
+      record.active = false;
+      if (!installed.ok) {
+        this.#invalidateCompositionLeaseRecord(record);
+      }
+      return installed;
+    } finally {
+      endHostOperation(host);
     }
-    if (!installed.ok) {
-      this.#invalidateCompositionLeaseRecord(record);
-    }
-    return installed;
   }
 
   /** Invalidates and releases one exact composition lease. @internal */
   discardCompositionDomLease(lease: DomCompositionLease): boolean {
     const record = this.#liveCompositionLeaseRecord(lease);
-    if (record === null) {
+    if (record === null || ACTIVE_HOST_OPERATIONS.has(record.handle.host)) {
       return false;
     }
     this.#invalidateCompositionLeaseRecord(record);
@@ -486,19 +586,46 @@ export class BreditorDomRenderer {
     host: HTMLElement,
     projection: BaseDocumentProjection,
   ): BrowserProjectionResult<ProjectionRenderOutcome> {
-    if (!isUsableHost(host)) {
+    if (typeof host !== "object" || host === null) {
       return projectionFailure("renderer.invalid_host");
     }
-    if (!isOwnedProjection(projection)) {
-      return projectionFailure("projection.invalid_shape");
-    }
-    let prepared: PreparedDom;
-    try {
-      prepared = buildFullProjection(host, projection);
-    } catch {
+    if (!beginHostOperation(host)) {
       return projectionFailure("renderer.dom_write_failed");
     }
-    return this.#install(host, projection, prepared, "full");
+    try {
+      const installGuard = this.#snapshotInstallGuard(host);
+      if (installGuard === null) {
+        return projectionFailure("renderer.dom_write_failed");
+      }
+      if (!isUsableHost(host)) {
+        return projectionFailure("renderer.invalid_host");
+      }
+      if (!isOwnedProjection(projection)) {
+        return projectionFailure("projection.invalid_shape");
+      }
+      if (!this.#bindProjectionPresentation(projection)) {
+        return projectionFailure("projection.invalid_shape");
+      }
+      if (!renderFitsDomBudget(projection)) {
+        return projectionFailure("projection.resource_limit");
+      }
+      let prepared: PreparedDom;
+      try {
+        prepared = buildFullProjection(host, projection, this.#presentation);
+      } catch {
+        return projectionFailure("renderer.dom_write_failed");
+      }
+      return this.#install(
+        host,
+        projection,
+        prepared,
+        "full",
+        undefined,
+        installGuard,
+      );
+    } finally {
+      endHostOperation(host);
+    }
   }
 
   /**
@@ -518,57 +645,98 @@ export class BreditorDomRenderer {
     if (!isOwnedRenderedProjection(rendered)) {
       return projectionFailure("renderer.foreign_or_stale_render");
     }
-    const ownership = HOST_OWNERS.get(rendered.host);
-    if (
-      !rendered.current ||
-      ownership?.rendererToken !== this.#rendererToken ||
-      ownership.handle !== rendered ||
-      update.base !== rendered.projection
-    ) {
-      return projectionFailure("renderer.foreign_or_stale_render");
+    const host = rendered.host;
+    if (!beginHostOperation(host)) {
+      return projectionFailure("renderer.dom_write_failed");
     }
-    const plan = verifiedUpdatePlan(update);
-    if (plan === undefined) {
-      return projectionFailure("projection.invalid_update");
-    }
-
-    if (plan.kind === "full") {
-      let prepared: PreparedDom;
-      try {
-        prepared = buildFullProjection(rendered.host, update.result);
-      } catch {
+    try {
+      const ownership = HOST_OWNERS.get(host);
+      if (
+        !rendered.current ||
+        ownership?.rendererToken !== this.#rendererToken ||
+        ownership.handle !== rendered ||
+        update.base !== rendered.projection
+      ) {
+        return projectionFailure("renderer.foreign_or_stale_render");
+      }
+      const installGuard = this.#snapshotInstallGuard(host);
+      if (installGuard === null) {
         return projectionFailure("renderer.dom_write_failed");
+      }
+      const plan = verifiedUpdatePlan(update);
+      if (plan === undefined) {
+        return projectionFailure("projection.invalid_update");
+      }
+      if (!this.#bindProjectionPresentation(update.result)) {
+        return projectionFailure("projection.invalid_update");
+      }
+      if (!renderFitsDomBudget(update.result)) {
+        return projectionFailure("projection.resource_limit");
+      }
+
+      if (plan.kind === "full") {
+        let prepared: PreparedDom;
+        try {
+          prepared = buildFullProjection(host, update.result, this.#presentation);
+        } catch {
+          return projectionFailure("renderer.dom_write_failed");
+        }
+        return this.#install(
+          host,
+          update.result,
+          prepared,
+          "full",
+          plan.reason,
+          installGuard,
+        );
+      }
+
+      let prepared: PreparedDom | null;
+      try {
+        prepared = buildIncrementalProjection(
+          rendered,
+          update.result,
+          plan.paragraphs,
+          this.#presentation,
+        );
+      } catch {
+        prepared = null;
+      }
+      if (prepared === null) {
+        let fallback: PreparedDom;
+        try {
+          fallback = buildFullProjection(host, update.result, this.#presentation);
+        } catch {
+          return projectionFailure("renderer.dom_write_failed");
+        }
+        return this.#install(
+          host,
+          update.result,
+          fallback,
+          "full",
+          "domDrift",
+          installGuard,
+        );
       }
       return this.#install(
-        rendered.host,
+        host,
         update.result,
         prepared,
-        "full",
-        plan.reason,
+        "incremental",
+        undefined,
+        installGuard,
       );
+    } finally {
+      endHostOperation(host);
     }
-
-    let prepared: PreparedDom | null;
-    try {
-      prepared = buildIncrementalProjection(rendered, update.result, plan.paragraphs);
-    } catch {
-      prepared = null;
-    }
-    if (prepared === null) {
-      let fallback: PreparedDom;
-      try {
-        fallback = buildFullProjection(rendered.host, update.result);
-      } catch {
-        return projectionFailure("renderer.dom_write_failed");
-      }
-      return this.#install(rendered.host, update.result, fallback, "full", "domDrift");
-    }
-    return this.#install(rendered.host, update.result, prepared, "incremental");
   }
 
   /** Invalidates a current handle without changing its host DOM. */
   release(rendered: RenderedProjection): boolean {
     if (!isOwnedRenderedProjection(rendered)) {
+      return false;
+    }
+    if (ACTIVE_HOST_OPERATIONS.has(rendered.host)) {
       return false;
     }
     const ownership = HOST_OWNERS.get(rendered.host);
@@ -582,6 +750,14 @@ export class BreditorDomRenderer {
     HOST_OWNERS.delete(rendered.host);
     rendered.invalidate();
     return true;
+  }
+
+  #bindProjectionPresentation(projection: BaseDocumentProjection): boolean {
+    const associated = projectionPresentation(projection);
+    if (this.#presentation === undefined) {
+      return associated === undefined && projection.schema.fingerprint === undefined;
+    }
+    return bindProjectionPresentation(projection, this.#presentation);
   }
 
   #liveCompositionLeaseRecord(
@@ -609,56 +785,141 @@ export class BreditorDomRenderer {
     record.handle.invalidate();
   }
 
+  #snapshotInstallGuard(
+    host: HTMLElement,
+  ): (() => boolean) | null {
+    try {
+      // Establish the application-owned baseline before consulting any
+      // replaceable host or document property. Reentrant getters can then only
+      // invalidate this transaction; their DOM cannot become its baseline.
+      const children = nativeChildNodes(host);
+      // Deliberately probe the replaceable public view only after the native
+      // baseline exists. Its value is never trusted, while any synchronous
+      // getter side effect is caught by the returned native sequence proof.
+      void host.childNodes;
+      const ownership = HOST_OWNERS.get(host);
+      const requiredCanonical = ownership?.handle.canonicalDomMatches() === true
+        ? ownership.handle
+        : undefined;
+      return () =>
+        HOST_OWNERS.get(host) === ownership &&
+        sameNodeSequence(host, children) &&
+        (requiredCanonical === undefined || requiredCanonical.canonicalDomMatches());
+    } catch {
+      return null;
+    }
+  }
+
   #install(
     host: HTMLElement,
     projection: BaseDocumentProjection,
     prepared: PreparedDom,
     mode: ProjectionRenderMode,
     fallbackReason?: ProjectionFallbackReason,
+    installGuard?: () => boolean,
   ): BrowserProjectionResult<ProjectionRenderOutcome> {
     const prior = HOST_OWNERS.get(host)?.handle;
-    const priorChildren = prepared.refreshes.map((refresh) => ({
-      paragraph: refresh.paragraph,
-      children: Array.from(refresh.paragraph.childNodes),
-    }));
+    let priorHostChildren: readonly ChildNode[];
+    let priorChildren: Array<{
+      readonly paragraph: HTMLParagraphElement;
+      readonly children: readonly ChildNode[];
+    }>;
+    try {
+      priorHostChildren = nativeChildNodes(host);
+      priorChildren = prepared.refreshes.map((refresh) => ({
+        paragraph: refresh.paragraph,
+        children: nativeChildNodes(refresh.paragraph),
+      }));
+    } catch {
+      prior?.invalidate();
+      if (HOST_OWNERS.get(host)?.handle === prior) {
+        HOST_OWNERS.delete(host);
+      }
+      return projectionFailure("renderer.dom_write_failed");
+    }
+    if (installGuard !== undefined && !installGuard()) {
+      prior?.invalidate();
+      if (HOST_OWNERS.get(host)?.handle === prior) {
+        HOST_OWNERS.delete(host);
+      }
+      return projectionFailure("renderer.dom_write_failed");
+    }
     let appliedRefreshes = 0;
     try {
       for (const refresh of prepared.refreshes) {
-        refresh.paragraph.replaceChildren(...refresh.children);
         appliedRefreshes += 1;
+        refresh.paragraph.replaceChildren(...refresh.children);
+      }
+      if (
+        prepared.refreshes.length !== 0 &&
+        !sameNodeSequence(host, priorHostChildren)
+      ) {
+        throw new TypeError("A paragraph refresh changed the host topology.");
       }
       if (!sameChildren(host, prepared.paragraphs)) {
         host.replaceChildren(...prepared.paragraphs);
       }
     } catch {
-      for (let index = appliedRefreshes - 1; index >= 0; index -= 1) {
-        const priorRefresh = priorChildren[index];
-        try {
-          priorRefresh?.paragraph.replaceChildren(...(priorRefresh.children ?? []));
-        } catch {
-          // The handle is invalidated below because DOM state is now uncertain.
-        }
-      }
+      rollbackInstalledProjection(
+        host,
+        prepared,
+        priorHostChildren,
+        priorChildren,
+        appliedRefreshes,
+      );
       prior?.invalidate();
-      HOST_OWNERS.delete(host);
+      if (HOST_OWNERS.get(host)?.handle === prior) {
+        HOST_OWNERS.delete(host);
+      }
       return projectionFailure("renderer.dom_write_failed");
     }
 
     prior?.invalidate();
-    this.#generation += 1n;
-    const handle = new RenderedProjectionHandle(
-      host,
-      projection,
-      this.#generation,
-      prepared,
-    );
-    HOST_OWNERS.set(host, { rendererToken: this.#rendererToken, handle });
-    handle.observe(this.#rendererToken);
-    const outcome: ProjectionRenderOutcome =
-      fallbackReason === undefined
-        ? Object.freeze({ rendered: handle, mode })
-        : Object.freeze({ rendered: handle, mode, fallbackReason });
-    return projectionSuccess(outcome);
+    let handle: RenderedProjectionHandle | undefined;
+    try {
+      this.#generation += 1n;
+      handle = new RenderedProjectionHandle(
+        host,
+        projection,
+        this.#generation,
+        prepared,
+        this.#presentation,
+      );
+      HOST_OWNERS.set(host, { rendererToken: this.#rendererToken, handle });
+      handle.observe(this.#rendererToken);
+      if (!handle.validateCanonicalDom()) {
+        if (HOST_OWNERS.get(host)?.handle === handle) {
+          HOST_OWNERS.delete(host);
+        }
+        handle.invalidate();
+        rollbackInstalledProjection(
+          host,
+          prepared,
+          priorHostChildren,
+          priorChildren,
+          appliedRefreshes,
+        );
+        return projectionFailure("renderer.dom_write_failed");
+      }
+      const outcome: ProjectionRenderOutcome =
+        fallbackReason === undefined
+          ? Object.freeze({ rendered: handle, mode })
+          : Object.freeze({ rendered: handle, mode, fallbackReason });
+      return projectionSuccess(outcome);
+    } catch {
+      if (handle !== undefined && HOST_OWNERS.get(host)?.handle === handle) {
+        HOST_OWNERS.delete(host);
+      }
+      handle?.invalidate();
+      rollbackInstalledProjection(
+        host,
+        prepared,
+        priorHostChildren,
+        priorChildren,
+        appliedRefreshes,
+      );
+      return projectionFailure("renderer.dom_write_failed");
+    }
   }
 }
 
@@ -675,14 +936,11 @@ export function isOwnedRenderedProjection(
 
 function isUsableHost(host: HTMLElement): boolean {
   try {
+    const facts = nativeHtmlHostFacts(host);
     return (
-      typeof host === "object" &&
-      host !== null &&
-      host.nodeType === 1 &&
-      host.namespaceURI === HTML_NAMESPACE &&
-      host.ownerDocument !== null &&
-      typeof host.ownerDocument.createElement === "function" &&
-      typeof host.ownerDocument.createElementNS === "function" &&
+      facts !== undefined &&
+      typeof facts.ownerDocument.createElement === "function" &&
+      typeof facts.ownerDocument.createElementNS === "function" &&
       typeof host.replaceChildren === "function"
     );
   } catch {
@@ -690,13 +948,28 @@ function isUsableHost(host: HTMLElement): boolean {
   }
 }
 
+function beginHostOperation(host: HTMLElement): boolean {
+  if (ACTIVE_HOST_OPERATIONS.has(host)) return false;
+  ACTIVE_HOST_OPERATIONS.add(host);
+  return true;
+}
+
+function endHostOperation(host: HTMLElement): void {
+  ACTIVE_HOST_OPERATIONS.delete(host);
+}
+
 function buildFullProjection(
   host: HTMLElement,
   projection: BaseDocumentProjection,
+  presentation: BrowserCompiledPresentation | undefined,
 ): PreparedDom {
+  const ownerDocument = nativeOwnerDocument(host);
+  if (ownerDocument === null) {
+    throw new TypeError("The render host has no owner document.");
+  }
   const maps = createMaps(host);
   const paragraphs = projection.paragraphs.map((paragraph, paragraphIndex) =>
-    buildParagraph(host.ownerDocument, paragraph, paragraphIndex, maps),
+    buildParagraph(ownerDocument, paragraph, paragraphIndex, maps, presentation),
   );
   return {
     ...maps,
@@ -713,7 +986,10 @@ function buildIncrementalProjection(
     newIndex: number;
     content: "preserve" | "refresh";
   }>[],
+  presentation: BrowserCompiledPresentation | undefined,
 ): PreparedDom | null {
+  const ownerDocument = nativeOwnerDocument(rendered.host);
+  if (ownerDocument === null) return null;
   const reusable = new Map<
     number,
     { readonly node: HTMLParagraphElement; readonly content: "preserve" | "refresh" }
@@ -724,7 +1000,7 @@ function buildIncrementalProjection(
     if (
       !isHtmlParagraph(node) ||
       oldParagraph === undefined ||
-      !paragraphDomMatches(node, oldParagraph) ||
+      !paragraphDomMatches(node, oldParagraph, presentation) ||
       reusable.has(pair.newIndex)
     ) {
       return null;
@@ -742,20 +1018,35 @@ function buildIncrementalProjection(
     }
     const retained = reusable.get(newIndex);
     if (retained === undefined) {
-      paragraphs.push(buildParagraph(rendered.host.ownerDocument, paragraph, newIndex, maps));
+      paragraphs.push(
+        buildParagraph(
+          ownerDocument,
+          paragraph,
+          newIndex,
+          maps,
+          presentation,
+        ),
+      );
     } else {
       if (retained.content === "preserve") {
-        if (!mapExistingParagraph(retained.node, paragraph, newIndex, maps)) {
+        if (!mapExistingParagraph(
+          retained.node,
+          paragraph,
+          newIndex,
+          maps,
+          presentation,
+        )) {
           return null;
         }
       } else {
         const paragraphPath = paragraphAstPath(newIndex);
         mapNode(retained.node, paragraphPath, maps.astToDom, maps.domToAst, true);
         const children = buildParagraphChildren(
-          rendered.host.ownerDocument,
+          ownerDocument,
           paragraph,
           newIndex,
           maps,
+          presentation,
         );
         refreshes.push(Object.freeze({ paragraph: retained.node, children }));
       }
@@ -781,11 +1072,20 @@ function buildParagraph(
   paragraph: BaseParagraphProjection,
   paragraphIndex: number,
   maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined,
 ): HTMLParagraphElement {
   const element = createHtmlElement(document, "p", "P");
   const paragraphPath = paragraphAstPath(paragraphIndex);
   mapNode(element, paragraphPath, maps.astToDom, maps.domToAst, true);
-  element.append(...buildParagraphChildren(document, paragraph, paragraphIndex, maps));
+  element.append(
+    ...buildParagraphChildren(
+      document,
+      paragraph,
+      paragraphIndex,
+      maps,
+      presentation,
+    ),
+  );
   return element;
 }
 
@@ -794,6 +1094,7 @@ function buildParagraphChildren(
   paragraph: BaseParagraphProjection,
   paragraphIndex: number,
   maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined,
 ): readonly Node[] {
   if (paragraph.runs.length === 0) {
     const placeholder = createHtmlElement(document, "br", "BR");
@@ -801,14 +1102,18 @@ function buildParagraphChildren(
   }
   const children = paragraph.runs.map((run, runIndex): Node => {
     const path = textRunAstPath(paragraphIndex, runIndex);
-    const text = document.createTextNode(run.text);
+    const text = createTextNode(document, run.text);
     mapNode(text, path, maps.astToDom, maps.domToAst, true);
-    if (run.strong) {
-      const strong = createHtmlElement(document, "strong", "STRONG");
-      strong.append(text);
-      return strong;
+    const recipes = recipesForRun(run.formats, presentation);
+    let child: Node = text;
+    for (let recipeIndex = recipes.length - 1; recipeIndex >= 0; recipeIndex -= 1) {
+      const recipe = recipes[recipeIndex];
+      if (recipe === undefined) throw new TypeError("render recipe is unavailable");
+      const wrapper = createRecipeElement(document, recipe);
+      wrapper.append(child);
+      child = wrapper;
     }
-    return text;
+    return child;
   });
   return Object.freeze(children);
 }
@@ -816,36 +1121,30 @@ function buildParagraphChildren(
 function paragraphDomMatches(
   paragraphNode: HTMLParagraphElement,
   paragraph: BaseParagraphProjection,
+  presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
-  if (!isHtmlParagraph(paragraphNode) || paragraphNode.attributes.length !== 0) {
+  if (
+    !isHtmlParagraph(paragraphNode) ||
+    nativeAttributeNames(paragraphNode).length !== 0
+  ) {
     return false;
   }
+  const children = nativeChildNodes(paragraphNode);
   if (paragraph.runs.length === 0) {
-    const child = paragraphNode.childNodes[0];
+    const child = children[0];
     return (
-      paragraphNode.childNodes.length === 1 &&
+      children.length === 1 &&
       isHtmlElementNamed(child, "BR") &&
-      child.attributes.length === 0 &&
-      child.childNodes.length === 0
+      nativeAttributeNames(child).length === 0 &&
+      nativeChildNodes(child).length === 0
     );
   }
-  if (paragraphNode.childNodes.length !== paragraph.runs.length) {
+  if (children.length !== paragraph.runs.length) {
     return false;
   }
   return paragraph.runs.every((run, runIndex) => {
-    const child = paragraphNode.childNodes[runIndex];
-    if (run.strong) {
-      if (
-        !isHtmlElementNamed(child, "STRONG") ||
-        child.attributes.length !== 0 ||
-        child.childNodes.length !== 1
-      ) {
-        return false;
-      }
-      const text = child.childNodes[0];
-      return text?.nodeType === 3 && text.nodeValue === run.text;
-    }
-    return child?.nodeType === 3 && child.nodeValue === run.text;
+    const child = children[runIndex];
+    return child !== undefined && runDomMatches(child, run.text, run.formats, presentation);
   });
 }
 
@@ -854,8 +1153,9 @@ function mapExistingParagraph(
   paragraph: BaseParagraphProjection,
   paragraphIndex: number,
   maps: ProjectionMaps,
+  presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
-  if (!paragraphDomMatches(paragraphNode, paragraph)) {
+  if (!paragraphDomMatches(paragraphNode, paragraph, presentation)) {
     return false;
   }
   const paragraphPath = paragraphAstPath(paragraphIndex);
@@ -863,22 +1163,169 @@ function mapExistingParagraph(
   if (paragraph.runs.length === 0) {
     return true;
   }
+  const children = nativeChildNodes(paragraphNode);
   paragraph.runs.forEach((run, runIndex) => {
     const path = textRunAstPath(paragraphIndex, runIndex);
-    const child = paragraphNode.childNodes[runIndex];
+    const child = children[runIndex];
     if (child === undefined) {
       return;
     }
-    if (run.strong) {
-      const text = child.childNodes[0];
-      if (text !== undefined) {
-        mapNode(text, path, maps.astToDom, maps.domToAst, true);
-      }
-    } else {
-      mapNode(child, path, maps.astToDom, maps.domToAst, true);
+    const text = textNodeForRunDom(child, run, presentation);
+    if (text !== undefined) {
+      mapNode(text, path, maps.astToDom, maps.domToAst, true);
     }
   });
   return true;
+}
+
+const LEGACY_STRONG_RECIPE: InlineFormatRenderRecipe = Object.freeze({
+  formatKind: "breditor/strong",
+  element: "strong",
+  classes: Object.freeze([]),
+  before: Object.freeze([]),
+  after: Object.freeze([]),
+});
+
+function recipesForRun(
+  formats: readonly string[],
+  presentation: BrowserCompiledPresentation | undefined,
+): readonly InlineFormatRenderRecipe[] {
+  if (presentation === undefined) {
+    if (formats.length === 0) return Object.freeze([]);
+    if (formats.length === 1 && formats[0] === "breditor/strong") {
+      return Object.freeze([LEGACY_STRONG_RECIPE]);
+    }
+    throw new TypeError("legacy renderer received an unsupported format");
+  }
+  const selected = new Set(formats);
+  const recipes = presentation.recipesOuterToInner.filter((recipe) =>
+    selected.has(recipe.formatKind)
+  );
+  if (recipes.length !== formats.length) {
+    throw new TypeError("profile renderer is missing a format recipe");
+  }
+  for (const format of formats) {
+    if (browserPresentationRecipeForFormat(presentation, format) === undefined) {
+      throw new TypeError("profile renderer received an unsupported format");
+    }
+  }
+  return recipes;
+}
+
+function createRecipeElement(
+  document: Document,
+  recipe: InlineFormatRenderRecipe,
+): HTMLElement {
+  const element = document.createElementNS(HTML_NAMESPACE, recipe.element);
+  if (
+    !isFreshHtmlElement(document, element, recipe.element.toUpperCase())
+  ) {
+    throw new TypeError("The host document did not create the requested HTML element.");
+  }
+  if (recipe.classes.length !== 0) {
+    element.setAttribute("class", recipe.classes.join(" "));
+  }
+  if (!recipeElementMatches(element, recipe)) {
+    throw new TypeError("The host document did not retain the requested render recipe.");
+  }
+  return element;
+}
+
+function runDomMatches(
+  outer: Node,
+  textValue: string,
+  formats: readonly string[],
+  presentation: BrowserCompiledPresentation | undefined,
+): boolean {
+  let recipes: readonly InlineFormatRenderRecipe[];
+  try {
+    recipes = recipesForRun(formats, presentation);
+  } catch {
+    return false;
+  }
+  let current: Node = outer;
+  for (const recipe of recipes) {
+    const children = nativeChildNodes(current);
+    if (
+      !recipeElementMatches(current, recipe) ||
+      children.length !== 1 ||
+      children[0] === undefined
+    ) {
+      return false;
+    }
+    current = children[0];
+  }
+  return nativeNodeType(current) === 3 && nativeNodeValue(current) === textValue;
+}
+
+function textNodeForRunDom(
+  outer: Node,
+  run: BaseTextRunProjection,
+  presentation: BrowserCompiledPresentation | undefined,
+): Text | undefined {
+  let recipes: readonly InlineFormatRenderRecipe[];
+  try {
+    recipes = recipesForRun(run.formats, presentation);
+  } catch {
+    return undefined;
+  }
+  let current: Node = outer;
+  for (const recipe of recipes) {
+    const children = nativeChildNodes(current);
+    if (
+      !recipeElementMatches(current, recipe) ||
+      children.length !== 1 ||
+      children[0] === undefined
+    ) {
+      return undefined;
+    }
+    current = children[0];
+  }
+  return nativeNodeType(current) === 3 && nativeNodeValue(current) === run.text
+    ? (current as Text)
+    : undefined;
+}
+
+function recipeElementMatches(
+  node: Node,
+  recipe: InlineFormatRenderRecipe,
+): node is HTMLElement {
+  if (!isHtmlElementNamed(node, recipe.element.toUpperCase())) return false;
+  const attributeNames = nativeAttributeNames(node);
+  if (recipe.classes.length === 0) return attributeNames.length === 0;
+  return attributeNames.length === 1 &&
+    attributeNames[0] === "class" &&
+    nativeGetAttribute(node, "class") === recipe.classes.join(" ");
+}
+
+function wrappersAreUnmapped(
+  outer: Node,
+  text: Node | undefined,
+  domToAst: WeakMap<Node, AstPath>,
+): boolean {
+  if (text === undefined) return false;
+  let current: Node | null = outer;
+  while (current !== text) {
+    if (domToAst.get(current) !== undefined) return false;
+    current = nativeChildNodes(current)[0] ?? null;
+    if (current === null) return false;
+  }
+  return true;
+}
+
+function renderFitsDomBudget(projection: BaseDocumentProjection): boolean {
+  let nodes = 1 + projection.paragraphs.length;
+  for (const paragraph of projection.paragraphs) {
+    if (paragraph.runs.length === 0) {
+      nodes += 1;
+    } else {
+      for (const run of paragraph.runs) {
+        nodes += 1 + run.formats.length;
+        if (nodes > MAX_RENDERED_PROJECTION_DOM_NODES) return false;
+      }
+    }
+  }
+  return nodes <= MAX_RENDERED_PROJECTION_DOM_NODES;
 }
 
 function mapNode(
@@ -903,12 +1350,10 @@ function isHtmlParagraph(node: Node | undefined): node is HTMLParagraphElement {
 }
 
 function isHtmlElementNamed(node: Node | undefined, tagName: string): node is HTMLElement {
-  return (
-    node !== undefined &&
-    node.nodeType === 1 &&
-    (node as Element).namespaceURI === HTML_NAMESPACE &&
-    (node as Element).localName === tagName.toLowerCase()
-  );
+  if (node === undefined) return false;
+  const facts = nativeHtmlHostFacts(node);
+  return facts !== undefined &&
+    nativeElementLocalName(facts.element) === tagName.toLowerCase();
 }
 
 function createHtmlElement<K extends keyof HTMLElementTagNameMap>(
@@ -917,15 +1362,84 @@ function createHtmlElement<K extends keyof HTMLElementTagNameMap>(
   expectedTagName: string,
 ): HTMLElementTagNameMap[K] {
   const element = document.createElementNS(HTML_NAMESPACE, localName);
-  if (!isHtmlElementNamed(element, expectedTagName)) {
+  if (!isFreshHtmlElement(document, element, expectedTagName)) {
     throw new TypeError("The host document did not create the requested HTML element.");
   }
   return element as HTMLElementTagNameMap[K];
 }
 
+function createTextNode(document: Document, text: string): Text {
+  const node = document.createTextNode(text);
+  if (
+    nativeNodeType(node) !== 3 ||
+    nativeOwnerDocument(node) !== document ||
+    nativeParentNode(node) !== null ||
+    nativeNodeValue(node) !== text ||
+    nativeChildNodes(node).length !== 0
+  ) {
+    throw new TypeError("The host document did not create the requested text node.");
+  }
+  return node;
+}
+
+function isFreshHtmlElement(
+  document: Document,
+  node: Node | undefined,
+  tagName: string,
+): node is HTMLElement {
+  return isHtmlElementNamed(node, tagName) &&
+    nativeOwnerDocument(node) === document &&
+    nativeParentNode(node) === null &&
+    nativeAttributeNames(node).length === 0 &&
+    nativeChildNodes(node).length === 0;
+}
+
 function sameChildren(host: HTMLElement, paragraphs: readonly HTMLParagraphElement[]): boolean {
-  if (host.childNodes.length !== paragraphs.length) {
+  const children = nativeChildNodes(host);
+  if (children.length !== paragraphs.length) {
     return false;
   }
-  return paragraphs.every((paragraph, index) => host.childNodes[index] === paragraph);
+  return paragraphs.every((paragraph, index) => children[index] === paragraph);
+}
+
+function sameNodeSequence(
+  host: HTMLElement,
+  children: readonly ChildNode[],
+): boolean {
+  const current = nativeChildNodes(host);
+  if (current.length !== children.length) return false;
+  return children.every((child, index) => current[index] === child);
+}
+
+function rollbackInstalledProjection(
+  host: HTMLElement,
+  prepared: PreparedDom,
+  priorHostChildren: readonly ChildNode[],
+  priorParagraphChildren: readonly Readonly<{
+    readonly paragraph: HTMLParagraphElement;
+    readonly children: readonly ChildNode[];
+  }>[],
+  appliedRefreshes: number,
+): void {
+  for (let index = appliedRefreshes - 1; index >= 0; index -= 1) {
+    const prior = priorParagraphChildren[index];
+    try {
+      if (prior !== undefined) {
+        nativeReplaceChildren(prior.paragraph, ...prior.children);
+      }
+    } catch {
+      // Exact new-node removal below remains independent.
+    }
+  }
+  const priorNodes = new Set(priorHostChildren);
+  for (const paragraph of prepared.paragraphs) {
+    if (priorNodes.has(paragraph)) continue;
+    try {
+      if (nativeParentElement(paragraph) === host) {
+        nativeRemoveElement(paragraph);
+      }
+    } catch {
+      // Never broaden rollback beyond one exact prepared paragraph identity.
+    }
+  }
 }

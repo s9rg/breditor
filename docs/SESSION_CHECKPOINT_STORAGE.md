@@ -1,20 +1,24 @@
 # IndexedDB session-checkpoint storage
 
-Status: supported by the optional public `0.1.0` autosave path; IndexedDB
-Checkpoint Profile V1 is the stable `0.1.x` storage profile, while direct
-store/autosave assembly remains an advanced integration surface
+Status: supported by the optional public `0.1.0` autosave path; the exact
+`"current"` V1 record remains the stable `0.1.x` profile. The current alpha.6
+implementation adds an explicit profile-bound V2 outer record and scoped slots
+without changing the legacy bytes. Direct store/autosave assembly remains an
+advanced integration surface.
 
 Profile identifier: `breditor/indexeddb-session-checkpoint`
 
-Profile version: `1`
+Physical storage-profile version: `1` (record envelopes are explicitly versioned
+`1` and `2`)
 
 Database: `breditor-session-checkpoint-v1`, version `1`
 
-This is Breditor's small, executable browser autosave profile. It stores one
-complete Rust `SessionCheckpoint` for one local editor slot. It is deliberately
+This is Breditor's small, executable browser autosave profile. One store owner
+is bound to one slot and stores one complete Rust `SessionCheckpoint` there.
+Different exact slots can coexist in the same object store. It is deliberately
 separate from [`INDEXEDDB_STORAGE_PROFILE.md`](INDEXEDDB_STORAGE_PROFILE.md):
 that document specifies a multi-generation local log, while this profile is a
-single atomic replacement with compare-and-swap conflict detection.
+per-slot atomic replacement with compare-and-swap conflict detection.
 
 The Rust checkpoint remains authoritative for document, selection, pending
 formats, undo, redo, and history merge behavior. JavaScript owns IndexedDB
@@ -23,13 +27,16 @@ verification. IndexedDB records and handles never cross into Rust.
 
 ## Exact database shape
 
-Version 1 has exactly one object store:
+The physical database version remains 1 and has exactly one object store:
 
 - name: `checkpoints`;
 - out-of-line keys (`keyPath === null`);
 - `autoIncrement === false`;
-- no indexes; and
-- at most one record, under the exact key `"current"`.
+- no indexes.
+
+The stable `0.1.x` mode has at most one record, under the exact key
+`"current"`. Alpha.6 profile-bound mode may retain one record under each exact
+selected slot; it never scans or treats the set of slots as a document registry.
 
 A stored record is a closed object with these own data properties and no
 others:
@@ -46,6 +53,32 @@ others:
 }
 ```
 
+Alpha.6's profile-bound outer record has exact version `2` and adds the binding
+that was selected before the load:
+
+```json
+{
+  "format": "breditor/indexeddb-session-checkpoint",
+  "formatVersion": 2,
+  "slot": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "schemaFingerprint": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "checkpointFormatVersion": 2,
+  "generation": "1",
+  "checkpointUtf8Bytes": 123,
+  "checkpointSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "checkpointJson": "{...canonical Session Checkpoint V2 JSON...}"
+}
+```
+
+Outer record version and inner checkpoint version are independent fields. An
+explicitly scoped base-profile store uses outer version 2 with
+`checkpointFormatVersion: 1`; an extension profile uses checkpoint version 2.
+A slot is 1 through 128 ASCII bytes, begins with an ASCII letter or digit, and
+then permits letters, digits, `.`, `_`, `:`, and `-`. The schema fingerprint is
+the canonical `sha256:` form. The binding is exact: slot, fingerprint, and
+checkpoint format version all participate in record admission and token
+ownership.
+
 `generation` is a canonical nonzero decimal `u64` storage counter. It is not a
 document revision, snapshot lineage, checkpoint version, lock, timestamp, or
 writer identity. `checkpointUtf8Bytes` is the exact UTF-8 length and cannot
@@ -58,12 +91,52 @@ current Wasm engine's default `EditorContext`. The separate 64 MiB session
 retained-text limit measures aggregate logical history boundaries and does not
 widen the serialized checkpoint ceiling.
 
-The adapter rejects extra records, a missing `"current"` record with nonzero
-count, extra or missing own record members, accessors used in place of required
-data members, wrong types or constants, noncanonical or exhausted generations,
-unsafe byte counts, invalid digest spelling, UTF-8 length mismatch, and digest
-mismatch. Inherited properties cannot satisfy required members. The adapter
-does not delete, repair, or overwrite corrupt evidence.
+Within its selected slot, the adapter rejects duplicate topology, extra or
+missing own record members, accessors used in place of required data members,
+wrong types or constants, noncanonical or exhausted generations, unsafe byte
+counts, invalid digest spelling, UTF-8 length mismatch, and digest mismatch.
+Inherited properties cannot satisfy required members. Records in other slots
+are untouched. The adapter does not delete, repair, migrate on mismatch, or
+overwrite corrupt evidence.
+
+## Profile binding and startup preflight
+
+The high-level browser owner resolves storage before reading a checkpoint:
+
+- no semantic profile and no explicit scope preserves the exact legacy
+  `"current"`/outer-V1/Checkpoint-V1 contract;
+- `{ kind: "schemaFingerprint" }` uses the active schema fingerprint as the
+  slot;
+- `{ kind: "slot", name }` uses that exact caller-owned slot; and
+- a semantic profile defaults to its schema-fingerprint slot even when no
+  scope option is supplied.
+
+The fingerprint default is profile-scoped, not document-scoped: documents and
+lineages using the same schema share one slot, and a valid stored lineage wins
+over `initialDocument`. Applications opening more than one same-schema document
+must assign a distinct `{ kind: "slot", name }` to each persistence owner.
+
+For a semantic profile, startup synchronously compiles and consumes the
+bootstrap JSON before opening IndexedDB. That preflight returns only a deeply
+frozen, handle-free compiled-profile descriptor and releases every generated
+profile, descriptor, and generation handle. Storage is then bound to that
+descriptor's fingerprint and Checkpoint V2 before `load()`. A record under the
+selected key with a different binding returns
+`session_checkpoint.binding_mismatch` before digest verification and without a
+CAS token, fallback load, deletion, repair, or write.
+
+After the asynchronous load, startup compiles the profile again to construct
+the engine. The final schema name, version, fingerprint, and complete ordered
+format kind/revision catalog must exactly match the preflight result before
+rendering or autosave begins. The double compilation is intentional: generated
+profile authority never survives across the async IndexedDB boundary. It is a
+bounded startup-cost limitation, not a second durable identity.
+
+An explicitly bound base `"current"`/base-fingerprint/Checkpoint-V1 owner can
+read the legacy outer-V1 record. Its next successful compare-and-swap writes the
+profile-bound outer-V2 form. No other implicit migration or slot fallback is
+performed. Checkpoint V1 bindings accept only the built-in base fingerprint;
+custom schema fingerprints require Checkpoint V2.
 
 ## Opening and schema attestation
 
@@ -84,8 +157,9 @@ created transactions settle through their own terminal events.
 
 ## Load and compare-and-swap token
 
-One `readonly` transaction enqueues `count()` and `get("current")` and evaluates
-both from the same transaction snapshot. A successful load is published only
+One `readonly` transaction enqueues `count(selectedSlot)` and
+`get(selectedSlot)` and evaluates both from the same transaction snapshot. A
+successful load is published only
 after the transaction's `complete` event. It returns either validated record
 data or observed absence plus an opaque token whose private binding contains
 this store instance and either exact observed absence or the complete validated
@@ -96,29 +170,31 @@ becomes stale; the newly returned token binds the successor. A definitely
 failed attempt does not itself consume the token, although another writer may
 make it stale.
 
-Outer record validation, UTF-8 measurement, and SHA-256 verification happen
-before the checkpoint text is handed to
-`BreditorEngine.fromSessionCheckpointJson()`. Rust then performs its own strict,
-bounded, canonical Session Checkpoint V1 decode. A Rust rejection is surfaced
-without installing a partial engine or changing the stored record.
+Outer record and binding validation, UTF-8 measurement, and SHA-256 verification
+happen before the checkpoint text is handed to the already selected generated
+engine factory. Rust then performs its own strict, bounded, canonical Session
+Checkpoint V1 or V2 decode under that compiled schema. The mode is never inferred
+from payload contents and a V2 failure is never retried as V1. A Rust rejection
+is surfaced without installing a partial engine or changing the stored record.
 
 ## Atomic save
 
 Encoding, UTF-8 admission, and SHA-256 computation finish before a write
 transaction begins. One `readwrite` transaction first requests strict
-durability and synchronously enqueues `count()` and `get("current")`. A browser
+durability and synchronously enqueues `count(selectedSlot)` and
+`get(selectedSlot)`. A browser
 that rejects only the durability-options overload with `TypeError` or
 `NotSupportedError` is retried with the standard `readwrite` overload; other
 transaction-creation failures are reported. In request callbacks,
 while the transaction is active, the adapter:
 
-1. checks singleton topology and validates the current record;
-2. compares exact current absence or the complete validated current record,
+1. checks one-record topology at that slot and validates the selected record;
+2. compares exact selected-slot absence or the complete validated selected record,
    including generation, byte count, digest, and checkpoint JSON, with the
    token's private expected binding;
 3. proves that the precomputed next nonzero `u64` generation is the exact
    successor of that matched record;
-4. enqueues one `put()` of the complete replacement record; and
+4. enqueues one `put()` of the complete replacement under the selected key; and
 5. waits for the transaction's `complete` event.
 
 There is no promise, timer, digest operation, or application callback between
@@ -236,9 +312,14 @@ not treated as reliable storage completion.
 
 ## Honest limits
 
-- This profile stores one local slot and one complete replacement. It has no
-  append log, multi-document registry, merge, collaboration, conflict
+- Each store owner addresses one local slot and one complete replacement.
+  Several explicit slots can coexist, but there is no enumeration API,
+  multi-document registry, append log, merge, collaboration, conflict
   resolution, rollback protection, or cross-device synchronization.
+- Profile selection compiles the semantic bootstrap twice when IndexedDB is
+  enabled: once before load for a handle-free durable binding, then again for
+  the live engine. This favors authority/lifetime safety over minimum startup
+  CPU and allocation cost.
 - IndexedDB storage starts as best effort. A browser, user, or site-data policy
   can evict or clear it, and quota can reject a write. Persistent-storage
   permission is a separate host product decision.

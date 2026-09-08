@@ -74,13 +74,13 @@ const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
     schemaName: "breditor/base",
     schemaVersion: 1,
     schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
-    formatCount: 0,
+    formatCount: 1,
     intentCount: 0,
     actionStateCount: 0,
     matchesProfileGeneration: (generation) =>
       generation === TEST_PROFILE_GENERATION,
-    formatKind: noEntry,
-    formatRevision: noEntry,
+    formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
+    formatRevision: (index) => index === 0 ? 1 : undefined,
     intentId: noEntry,
     intentInputKind: noEntry,
     intentInputContractName: noEntry,
@@ -2154,6 +2154,46 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(adapter.acceptsDeliveryToken(restored.delivery)).toBe(true);
     expect(initial.free).not.toHaveBeenCalled();
     expect(() => adapter.restoreCompositionLease(lease)).toThrow(/live/u);
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it("begins composition from native host facts despite hostile own shadows", () => {
+    const base = projectionFixture(0, "abc");
+    const selected = selection(base.projection, 1);
+    const initial = observation(0);
+    const adapter = new BreditorWasmCommandAdapter(engineQueues({}), initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    const delivery = adapter.deliveryToken();
+    const ownerDocument = base.host.ownerDocument;
+    const isConnectedShadow = vi.fn(() => true);
+    const ownerDocumentShadow = vi.fn(() => {
+      throw new Error("own ownerDocument must not be read");
+    });
+    const defaultViewShadow = vi.fn(() => {
+      throw new Error("own defaultView must not be read");
+    });
+    Object.defineProperties(base.host, {
+      isConnected: { configurable: true, get: isConnectedShadow },
+      ownerDocument: { configurable: true, get: ownerDocumentShadow },
+    });
+    Object.defineProperty(ownerDocument, "defaultView", {
+      configurable: true,
+      get: defaultViewShadow,
+    });
+
+    const lease = adapter.beginCompositionLease(delivery, selected, 8n);
+
+    expect(lease.host).toBe(base.host);
+    expect(isConnectedShadow).not.toHaveBeenCalled();
+    expect(ownerDocumentShadow).not.toHaveBeenCalled();
+    expect(defaultViewShadow).not.toHaveBeenCalled();
+    expect(Reflect.deleteProperty(base.host, "isConnected")).toBe(true);
+    expect(Reflect.deleteProperty(base.host, "ownerDocument")).toBe(true);
+    expect(Reflect.deleteProperty(ownerDocument, "defaultView")).toBe(true);
     adapter.dispose();
     expect(initial.free).toHaveBeenCalledOnce();
   });

@@ -606,6 +606,45 @@ describe("BreditorCompositionController", () => {
     expect(disconnected.controller.phase).toBe("quarantined");
   });
 
+  it("admits active-event ownership before inspecting ordinary input payloads", () => {
+    const fixture = setup(selection(1));
+    start(fixture);
+    const outside = document.createElement("input");
+    document.body.append(outside);
+    const inputTypeRead = vi.fn(() => {
+      throw new Error("foreign payload must not be read");
+    });
+    const foreign = (type: "beforeinput" | "input") => ({
+      type,
+      target: outside,
+      cancelable: type === "beforeinput",
+      defaultPrevented: false,
+      get inputType(): never {
+        return inputTypeRead();
+      },
+      get data(): never {
+        throw new Error("foreign data must not be read");
+      },
+      get isComposing(): never {
+        throw new Error("foreign composition flag must not be read");
+      },
+      preventDefault(): never {
+        throw new Error("foreign event must not be canceled");
+      },
+    });
+
+    expect(fixture.controller.handleBeforeInput(foreign("beforeinput"))).toEqual({
+      kind: "ignored",
+      reason: "outsideHost",
+    });
+    expect(fixture.controller.handleInput(foreign("input"))).toEqual({
+      kind: "ignored",
+      reason: "outsideHost",
+    });
+    expect(inputTypeRead).not.toHaveBeenCalled();
+    expect(fixture.controller.phase).toBe("leased");
+  });
+
   it("handles queue rejection, executor failure, and reentrant ordinary work", () => {
     const rejected = setup(selection(1));
     const rejectedPort = openCommandQueueLeasePort(
@@ -1293,11 +1332,18 @@ function keyEvent(target: EventTarget, key: string): Readonly<Record<string, unk
   return Object.freeze({
     type: "keydown",
     target,
+    cancelable: true,
     key,
     code: key,
+    altKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
+    repeat: false,
     isComposing: false,
     keyCode: 13,
     defaultPrevented: false,
+    getModifierState: () => false,
   });
 }
 
@@ -1305,5 +1351,10 @@ function basicEvent(
   type: "blur",
   target: EventTarget,
 ): Readonly<Record<string, unknown>> {
-  return Object.freeze({ type, target, defaultPrevented: false });
+  return Object.freeze({
+    type,
+    target,
+    cancelable: false,
+    defaultPrevented: false,
+  });
 }

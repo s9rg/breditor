@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { BreditorBrowserEventController } from "./browser_event_controller.js";
 import { BreditorCommandQueue } from "./command_queue.js";
@@ -27,6 +27,14 @@ interface Fixture {
 }
 
 const TEST_TOKEN_AUTHORITY = Symbol("browser-event-tests");
+const TEST_TARGET_RANGES = new WeakMap<
+  InputEvent,
+  readonly AbstractRange[]
+>();
+const ORIGINAL_GET_TARGET_RANGES = Object.getOwnPropertyDescriptor(
+  InputEvent.prototype,
+  "getTargetRanges",
+);
 const TEST_DELIVERY_AUTHORITY = issueEditorDeliveryAuthority((token) => {
   try {
     const candidate = token as EditorDeliveryToken;
@@ -38,6 +46,27 @@ const TEST_DELIVERY_AUTHORITY = issueEditorDeliveryAuthority((token) => {
     );
   } catch {
     return false;
+  }
+});
+
+beforeAll(() => {
+  Object.defineProperty(InputEvent.prototype, "getTargetRanges", {
+    configurable: true,
+    value(this: InputEvent): readonly AbstractRange[] {
+      return TEST_TARGET_RANGES.get(this) ?? Object.freeze([]);
+    },
+  });
+});
+
+afterAll(() => {
+  if (ORIGINAL_GET_TARGET_RANGES === undefined) {
+    Reflect.deleteProperty(InputEvent.prototype, "getTargetRanges");
+  } else {
+    Object.defineProperty(
+      InputEvent.prototype,
+      "getTargetRanges",
+      ORIGINAL_GET_TARGET_RANGES,
+    );
   }
 });
 
@@ -640,6 +669,166 @@ describe("BreditorBrowserEventController", () => {
     });
   });
 
+  it("uses native InputEvent facts and cancellation below own and local shadows", () => {
+    for (const placement of ["own", "prototype"] as const) {
+      const fixture = createFixture();
+      installCollapsedDomSelection(fixture.host, 2);
+      const delivered: EditorCommandRequest[] = [];
+      const controller = createController(fixture.bridge, delivered);
+      const event = inputEvent("beforeinput", "insertText", "x", []);
+      const outside = document.createElement("button");
+      document.body.append(outside);
+      const shadow = installEventShadows(
+        event,
+        {
+          type: "input",
+          target: outside,
+          cancelable: false,
+          defaultPrevented: true,
+          inputType: "deleteWordBackward",
+          data: "attacker",
+          isComposing: true,
+        },
+        {
+          getTargetRanges: () => Object.freeze([{}, {}]),
+          preventDefault: () => undefined,
+        },
+        placement,
+      );
+
+      let disposition;
+      try {
+        disposition = dispatchAs(
+          fixture.host,
+          "beforeinput",
+          event,
+          (observed) =>
+            controller.handleBeforeInput(
+              observed as InputEvent,
+              fixture.rendered,
+              fixture.delivery,
+            ),
+        );
+      } finally {
+        shadow.restore();
+      }
+
+      expect(disposition?.kind).toBe("handled");
+      expect(shadow.accessCount()).toBe(0);
+      expect(event.defaultPrevented).toBe(true);
+      expect(delivered).toHaveLength(1);
+      expect(delivered[0]?.command).toEqual({
+        kind: "action",
+        actionId: "breditor/insert-text",
+        input: { kind: "string", value: "x" },
+      });
+    }
+  });
+
+  it("uses native KeyboardEvent fields below own and local shadows", () => {
+    for (const placement of ["own", "prototype"] as const) {
+      const fixture = createFixture();
+      installCollapsedDomSelection(fixture.host, 2);
+      const delivered: EditorCommandRequest[] = [];
+      const controller = createController(fixture.bridge, delivered);
+      const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "b",
+        code: "KeyB",
+        ctrlKey: true,
+      });
+      const outside = document.createElement("button");
+      document.body.append(outside);
+      const shadow = installEventShadows(
+        event,
+        {
+          type: "input",
+          target: outside,
+          cancelable: false,
+          defaultPrevented: true,
+          key: "x",
+          code: "KeyX",
+          altKey: true,
+          ctrlKey: false,
+          metaKey: true,
+          shiftKey: true,
+          repeat: true,
+          isComposing: true,
+          keyCode: 229,
+        },
+        {
+          getModifierState: () => true,
+          preventDefault: () => undefined,
+        },
+        placement,
+      );
+
+      let disposition;
+      try {
+        disposition = dispatchAs(
+          fixture.host,
+          "keydown",
+          event,
+          (observed) =>
+            controller.handleKeyDown(
+              observed as KeyboardEvent,
+              fixture.rendered,
+              fixture.delivery,
+            ),
+        );
+      } finally {
+        shadow.restore();
+      }
+
+      expect(disposition?.kind).toBe("handled");
+      expect(shadow.accessCount()).toBe(0);
+      expect(event.defaultPrevented).toBe(true);
+      expect(delivered).toHaveLength(1);
+      expect(delivered[0]?.command).toMatchObject({
+        kind: "action",
+        actionId: "breditor/toggle-strong",
+      });
+    }
+  });
+
+  it("does not let a generic Event imitate an InputEvent", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const event = new Event("beforeinput", {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperties(event, {
+      inputType: { configurable: true, value: "insertText" },
+      data: { configurable: true, value: "x" },
+      isComposing: { configurable: true, value: false },
+      getTargetRanges: { configurable: true, value: () => [] },
+    });
+
+    const disposition = dispatchAs(
+      fixture.host,
+      "beforeinput",
+      event,
+      (observed) =>
+        controller.handleBeforeInput(
+          observed as InputEvent,
+          fixture.rendered,
+          fixture.delivery,
+        ),
+    );
+
+    expect(disposition).toEqual({
+      kind: "blocked",
+      defaultPrevented: true,
+      reason: "invalidEvent",
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(0);
+  });
+
   it("queue-routes real selection changes and ignores exact programmatic echoes", () => {
     const fixture = createFixture();
     const delivered: EditorCommandRequest[] = [];
@@ -829,10 +1018,7 @@ function inputEvent(
     data,
   });
   if (ranges !== undefined) {
-    Object.defineProperty(event, "getTargetRanges", {
-      configurable: true,
-      value: () => ranges,
-    });
+    TEST_TARGET_RANGES.set(event, ranges);
   }
   return event;
 }
@@ -855,6 +1041,71 @@ function dispatch<TResult>(
     throw new Error("test event was not observed");
   }
   return result;
+}
+
+function dispatchAs<TResult>(
+  target: Element,
+  type: string,
+  event: Event,
+  callback: (event: Event) => TResult,
+): TResult {
+  let result: TResult | undefined;
+  target.addEventListener(
+    type,
+    (observed) => {
+      result = callback(observed);
+    },
+    { once: true },
+  );
+  target.dispatchEvent(event);
+  if (result === undefined) {
+    throw new Error("test event was not observed");
+  }
+  return result;
+}
+
+function installEventShadows(
+  event: Event,
+  fields: Readonly<Record<string, unknown>>,
+  methods: Readonly<Record<string, (...args: readonly unknown[]) => unknown>>,
+  placement: "own" | "prototype",
+): Readonly<{ accessCount: () => number; restore: () => void }> {
+  let accesses = 0;
+  const originalPrototype = Object.getPrototypeOf(event) as object;
+  const target = placement === "own" ? event : Object.create(originalPrototype) as object;
+  for (const [name, value] of Object.entries(fields)) {
+    Object.defineProperty(target, name, {
+      configurable: true,
+      get() {
+        accesses += 1;
+        return value;
+      },
+    });
+  }
+  for (const [name, method] of Object.entries(methods)) {
+    Object.defineProperty(target, name, {
+      configurable: true,
+      value(...args: readonly unknown[]) {
+        accesses += 1;
+        return method(...args);
+      },
+    });
+  }
+  if (placement === "prototype") {
+    Object.setPrototypeOf(event, target);
+  }
+  return Object.freeze({
+    accessCount: () => accesses,
+    restore: () => {
+      if (placement === "prototype") {
+        Object.setPrototypeOf(event, originalPrototype);
+        return;
+      }
+      for (const name of [...Object.keys(fields), ...Object.keys(methods)]) {
+        Reflect.deleteProperty(event, name);
+      }
+    },
+  });
 }
 
 function installCollapsedDomSelection(host: HTMLElement, offset: number): void {

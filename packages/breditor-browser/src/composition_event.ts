@@ -1,5 +1,10 @@
 import type { CompositionResult } from "./composition_result.js";
 import { compositionFailure, compositionSuccess } from "./composition_result.js";
+import {
+  readDomCompositionEventData,
+  readDomEventStatus,
+  readDomInputEvent,
+} from "./dom_event_intrinsics.js";
 
 /** Maximum composed-text size measured in DOM-compatible UTF-16 code units. */
 export const MAX_COMPOSITION_TEXT_UTF16 = 65_536;
@@ -87,14 +92,17 @@ export function snapshotNativeCompositionEvent(
   event: unknown,
 ): CompositionResult<NativeCompositionEventSnapshot> {
   try {
-    if (typeof event !== "object" || event === null) {
+    const status = readDomEventStatus(event);
+    const composition = readDomCompositionEventData(event);
+    if (
+      status === null ||
+      composition === null ||
+      status.source !== composition.source
+    ) {
       return compositionFailure("composition.invalid_event");
     }
-    const native = event as Readonly<Record<string, unknown>>;
-    const type = native["type"];
-    const data = native["data"];
-    const cancelable = native["cancelable"];
-    const defaultPrevented = native["defaultPrevented"];
+    const { type, cancelable, defaultPrevented } = status;
+    const { data } = composition;
     if (
       !isNativeCompositionEventType(type) ||
       typeof data !== "string" ||
@@ -128,16 +136,13 @@ export function snapshotNativeCompositionInput(
   event: unknown,
 ): CompositionResult<NativeCompositionInputSnapshot> {
   try {
-    if (typeof event !== "object" || event === null) {
+    const base = readDomEventStatus(event);
+    const input = readDomInputEvent(event);
+    if (base === null || input === null || base.source !== input.source) {
       return compositionFailure("composition.invalid_event");
     }
-    const native = event as Readonly<Record<string, unknown>>;
-    const type = native["type"];
-    const inputType = native["inputType"];
-    const data = native["data"];
-    const isComposing = native["isComposing"];
-    const cancelable = native["cancelable"];
-    const defaultPrevented = native["defaultPrevented"];
+    const { type, cancelable, defaultPrevented } = base;
+    const { inputType, data, isComposing } = input;
     if (
       (type !== "beforeinput" && type !== "input") ||
       typeof inputType !== "string" ||

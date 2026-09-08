@@ -1,6 +1,7 @@
 # Breditor browser runtime
 
-Status: supported public `0.1.0` startup, lifecycle, and content-egress contract
+Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
+extended by the unpublished experimental `0.2.0-alpha.6` compiled-profile path
 
 `BreditorBrowserEditor` is the recommended application boundary for the
 `0.1.0` browser release. It assembles the generated Rust/Wasm engine, typed
@@ -125,6 +126,13 @@ host integration; their generated handle protocol is not a compatibility
 promise. Applications should install matching versions of `@breditor/browser`
 and `@breditor/wasm`.
 
+The experimental Alpha.6 root path adds `semanticProfile: { bootstrapJson }`, a
+matching Document V2 or Session Checkpoint V2 source, and an exact callback-free
+`rendering` manifest. The presentation must cover every format in the compiled
+profile descriptor. Without `semanticProfile`, the stable exact-base Document
+V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
+sniffs or falls back between wire generations.
+
 An optional `AbortSignal` cancels startup only. It closes an in-progress storage
 load and prevents an opened result from escaping, but it is not retained as the
 editor's lifetime signal. Call `dispose()` on an editor that has already opened.
@@ -243,6 +251,18 @@ Nested form controls and nested editing hosts retain their native behavior.
 Event admission is limited to the connected light-DOM host; it does not use a
 composed path to cross shadow boundaries.
 
+In Alpha.6, genuine `Event`, `InputEvent`, `KeyboardEvent`,
+`CompositionEvent`, `ClipboardEvent`, and `MouseEvent` facts are read through
+brand-checked methods and getters from the realm's platform prototype chain.
+Own and intermediate-prototype shadows are ignored, a generic `Event` cannot
+impersonate a specialized interface, and cancellation uses the native
+`Event.prototype.preventDefault` path. `InputEvent` target ranges are copied
+from a bounded dense descriptor-backed array and their `AbstractRange`, `Range`,
+or `StaticRange` endpoints are read through the corresponding native brands.
+These defenses are not a same-origin sandbox: direct structural calls through
+the advanced controllers and replacement of the realm's actual platform globals
+or prototypes remain host-trusted integration behavior.
+
 ## Rust AST authority
 
 The Rust `EditorEngine` is the sole document, selection, action, transaction,
@@ -264,7 +284,8 @@ one-paragraph DOM lease, but its DOM is only bounded settlement evidence. The
 authoritative Rust projection is restored before the final insertion, deletion,
 or cancellation boundary is submitted. Clipboard copy serializes the semantic
 selection rather than arbitrary DOM, and pasted HTML is reduced through the
-closed base-schema allowlist before a Rust plain-text insertion.
+closed legacy-base or exact compiled-presentation allowlist before a Rust
+plain-text insertion.
 
 No ProseMirror, Lexical, Tiptap, CKEditor, DOM-operation, or plugin protocol is
 implemented. Those projects are design references only; Breditor's AST,
@@ -273,11 +294,16 @@ positions, actions, history, and persistence formats are independent contracts.
 ## Persistence and flush
 
 When configured, startup opens the fixed
-`breditor-session-checkpoint-v1` database and the single `current` slot. A load
-requires exactly one schema-valid record and verifies its declared UTF-8 size
-and SHA-256 digest before giving its checkpoint to Rust for strict decode and
-replay proof. Corrupt, incompatible, oversized, or inaccessible storage fails
-startup; it is never silently discarded or replaced by `initialDocument`.
+`breditor-session-checkpoint-v1` database. The stable `0.1.x` path selects its
+single legacy `current` outer-V1 record. Alpha.6 may instead bind one outer-V2
+record to an exact schema-fingerprint-derived or caller-named slot and to
+Checkpoint V1 or V2 before reading its payload. Different slots may coexist but
+do not form a registry. A load requires exactly one schema-valid record at its
+selected slot and verifies its declared UTF-8 size and SHA-256 digest before
+giving its checkpoint to Rust for strict decode and replay proof. Corrupt,
+incompatible, mismatched, oversized, or inaccessible storage fails startup; it
+is never silently discarded, repaired, retried as another generation, or
+replaced by `initialDocument`.
 
 Every validated Rust successor marks a private dirty epoch, including a commit
 whose later DOM publication fails. Autosave defaults to a 250 ms trailing quiet
@@ -382,25 +408,27 @@ const text = editor.exportContent("plainText");
 
 A success is a deeply frozen
 `{ ok: true, format, value, utf8Bytes, snapshot }` record. `documentJson`
-returns the exact canonical `breditor/document@1` encoding produced by the Rust
-core, including formatting. `plainText` is derived from the validated semantic
-projection rather than DOM `textContent`: it concatenates runs, removes strong
-formatting, joins adjacent paragraphs with one LF, retains empty paragraphs,
+returns the exact canonical Rust encoding selected at bootstrap: Document V1
+for the stable legacy exact-base path or fingerprint-bearing Document V2 for an
+Alpha.6 semantic profile. `plainText` is derived from the validated semantic
+projection rather than DOM `textContent`: it concatenates runs, removes every
+inline format, joins adjacent paragraphs with one LF, retains empty paragraphs,
 and does not append a synthetic LF after the final paragraph.
 
 The API does not export HTML, editor state, a session checkpoint, selection,
 pending formatting, undo/redo history, transaction records, or raw commands.
-Those distinctions matter: Document V1 is lossless document content, while a
-Session Checkpoint V1 is the private local-durability representation that can
-retain deleted text in history.
+Those distinctions matter: Document V1 or V2 is lossless document content,
+while the correspondingly selected Session Checkpoint V1 or V2 is the private
+local-durability representation that can retain deleted text in history.
 
-Document V1 deliberately has no embedded snapshot. Correlation therefore uses
+Neither document generation embeds a snapshot. Correlation therefore uses
 three proofs: the generated Rust method receives the adapter's exact observation;
-the browser validates the returned base-schema tree against the current owned
-projection, including paragraph/run text and strong formatting; and the
+the browser validates the selected wire generation, schema binding, complete
+format catalog, and returned AST against the current owned projection; and the
 high-level owner checks that the adapter snapshot was unchanged across the
-synchronous read. A custom structural factory cannot substitute a different
-valid base document without failing the boundary comparison.
+synchronous read. A V2 rejection is never retried as V1, and a custom structural
+factory cannot substitute a different valid document without failing the
+boundary comparison.
 
 The high-level API collapses every structural core rejection to the fixed,
 payload-free `content_export.core_rejected` failure. Granular official Rust
@@ -523,6 +551,16 @@ The `0.1.0` runtime is deliberately a small local notes/form editor:
   and content export in Chromium, Firefox, and WebKit through Playwright. This
   desktop automation is not a broad mobile-IME or assistive-technology support
   claim; those still need dedicated device and user-agent coverage.
+
+The unpublished Alpha.6 path deliberately widens only the sealed base-text
+seams above: a compiled profile may add property-free inline formats, exact
+callback-free wrapper recipes, Document/Session Checkpoint V2, and scoped
+profile-bound persistence. Composition accepts only canonical known wrappers
+and strips them back to plain replacement text; paste likewise transports no
+source formatting. It still has no property-bearing links, arbitrary nodes,
+extension callbacks, rich paste, collaboration, selective undo, or dynamic
+extension lifecycle. These prerelease additions do not alter the stable
+`0.1.x` promises listed above.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

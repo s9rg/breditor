@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-alpha.5` packaged boundary contract; ABI generation `3` is authoritative
+Status: `0.2.0-alpha.6` packaged boundary contract; ABI generation `3` is authoritative
 for the matching official browser/Wasm packages, while direct raw-handle use is
 an intentionally narrow, advanced, and experimental integration surface
 
@@ -13,7 +13,7 @@ import-time dependency on their concrete classes. A clean temporary consumer
 installs both npm tarballs, initializes the real Wasm module, imports the
 browser entry point, and type-checks without workspace paths.
 
-`@breditor/browser@0.2.0-alpha.5` and `@breditor/wasm@0.2.0-alpha.5` are
+`@breditor/browser@0.2.0-alpha.6` and `@breditor/wasm@0.2.0-alpha.6` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
 are not the high-level browser compatibility surface.
@@ -408,7 +408,8 @@ views; callers should consume one and promptly free it.
 
 No projection method emits HTML, DOM nodes, persisted JSON, entity identity, or
 a generic extension-renderer instruction. The reviewed TypeScript adapter owns
-base-schema interpretation and safe DOM construction. See
+exact-base or compiled-profile-descriptor interpretation and safe DOM
+construction. See
 [`DOM_PROJECTION.md`](DOM_PROJECTION.md).
 
 Retained results are deliberately independent: an engine survives freeing the
@@ -431,6 +432,20 @@ property lookup, moves with an adopted observation or nested semantic view.
 Aliases of a protected owner are rejected without inspecting or freeing them;
 all other claimed handles are released exactly once even when a sibling getter
 mutates or removes their public `free` property.
+
+Caller-owned arrays used to enumerate protected handles are copied through at
+most 64 dense own data descriptors. Sparse arrays, indexed or length accessors,
+custom own iterators, over-limit inputs, and descriptor failures reject before
+handle ownership changes; the adapter does not execute indexed getters or the
+iteration protocol. A JavaScript `Proxy` can still execute its own descriptor
+traps, so advanced structural adapters and caller mutation remain host-trusted.
+
+The browser's native-event boundary is likewise outside the Rust ABI. Alpha.6
+reads branded `Event`-family, `DataTransfer`, and `AbstractRange`/`Range`/
+`StaticRange` facts and methods from the realm's platform prototype chain,
+ignoring own and intermediate-prototype shadows. Direct structural controller
+calls and replacement of the realm's actual platform globals or prototypes are
+trusted integration behavior rather than a sandbox guarantee.
 
 ## Representation and resource limits
 

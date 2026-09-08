@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type BrowserCompiledProfileDescriptor,
   type BrowserProjectionResult,
   type SemanticProjectionImpact,
   type SemanticProjectionUpdateView,
   type SemanticProjectionView,
   consumeSemanticProjection as consumeSemanticProjectionRaw,
   consumeSemanticProjectionUpdate as consumeSemanticProjectionUpdateRaw,
+  consumeWasmCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
   type WasmProfileGenerationView,
 } from "./advanced.js";
 
@@ -28,17 +31,36 @@ type FlatNode =
     };
 
 class FakeProjectionView implements SemanticProjectionView {
-  readonly schemaName = "breditor/base";
-  readonly schemaVersion = 1;
-  readonly schemaFingerprint = TEST_SCHEMA_FINGERPRINT;
+  readonly schemaName: string;
+  readonly schemaVersion: number;
+  readonly schemaFingerprint: string;
   readonly snapshotLineage = "adapter-tests";
   readonly snapshotRevision: string;
   readonly rootIndex = 0;
   readonly nodes: readonly FlatNode[];
   freeCalls = 0;
 
-  constructor(revision: string, paragraphs: readonly (readonly Readonly<{ text: string; strong: boolean }>[])[]) {
+  constructor(
+    revision: string,
+    paragraphs: readonly (readonly Readonly<{
+      text: string;
+      strong: boolean;
+      formats?: readonly string[];
+    }>[])[],
+    schema: Readonly<{
+      name: string;
+      version: number;
+      fingerprint: string;
+    }> = {
+      name: "breditor/base",
+      version: 1,
+      fingerprint: TEST_SCHEMA_FINGERPRINT,
+    },
+  ) {
     this.snapshotRevision = revision;
+    this.schemaName = schema.name;
+    this.schemaVersion = schema.version;
+    this.schemaFingerprint = schema.fingerprint;
     const nodes: FlatNode[] = [
       { kind: "element", elementType: "breditor/document", children: [] },
     ];
@@ -53,7 +75,7 @@ class FakeProjectionView implements SemanticProjectionView {
         nodes.push({
           kind: "text",
           text: run.text,
-          formats: run.strong ? ["breditor/strong"] : [],
+          formats: run.formats ?? (run.strong ? ["breditor/strong"] : []),
         });
       }
       nodes[paragraphIndex] = {
@@ -209,7 +231,95 @@ function valueOf<T>(result: BrowserProjectionResult<T>): T {
   return result.value;
 }
 
+function ownedProfileDescriptor(
+  formats: readonly string[],
+  generation: WasmProfileGenerationView = TEST_PROFILE_GENERATION,
+): BrowserCompiledProfileDescriptor {
+  const absent = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
+    formatCount: formats.length,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    formatKind: (index) => formats[index],
+    formatRevision: (index) =>
+      index >= 0 && index < formats.length ? 1 : undefined,
+    intentId: absent,
+    intentInputKind: absent,
+    intentInputContractName: absent,
+    intentInputContractVersion: absent,
+    intentActivationContract: absent,
+    intentValueContractName: absent,
+    intentValueContractVersion: absent,
+    actionStateId: absent,
+    actionStateSourceKind: absent,
+    actionStateSourceActionId: absent,
+    actionStateSourceIntentId: absent,
+    actionStateHistoryDirection: absent,
+    actionStateActivationContract: absent,
+    actionStateValueContractName: absent,
+    actionStateValueContractVersion: absent,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(
+    generation,
+    view,
+  );
+  if (!result.ok) throw new Error("test profile descriptor was rejected");
+  return result.descriptor;
+}
+
 describe("Wasm semantic projection adapter", () => {
+  it("consumes profile formats against the exact owned descriptor", () => {
+    const descriptor = ownedProfileDescriptor([
+      "breditor/strong",
+      "example/highlight",
+    ]);
+    const baseView = new FakeProjectionView("0", [[
+      {
+        text: "mixed",
+        strong: true,
+        formats: ["breditor/strong", "example/highlight"],
+      },
+    ]], descriptor.schema);
+    const base = valueOf(consumeSemanticProjectionRaw(
+      baseView,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ));
+
+    expect(base.schema).toEqual(descriptor.schema);
+    expect(base.paragraphs[0]?.runs[0]?.formats).toEqual([
+      "breditor/strong",
+      "example/highlight",
+    ]);
+    expect(base.paragraphs[0]?.runs[0]?.strong).toBe(true);
+
+    const resultView = new FakeProjectionView("1", [[
+      { text: "plain", strong: false, formats: ["example/highlight"] },
+    ]], descriptor.schema);
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "textContainers",
+      affected: [0],
+      projection: resultView,
+    });
+    const update = valueOf(consumeSemanticProjectionUpdateRaw(
+      base,
+      updateView,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ));
+    expect(update.result.paragraphs[0]?.runs[0]?.formats).toEqual([
+      "example/highlight",
+    ]);
+    expect(update.result.paragraphs[0]?.runs[0]?.strong).toBe(false);
+  });
+
   it("rejects projections and updates from another profile generation", () => {
     const foreignGeneration: WasmProfileGenerationView = {
       matches(other) { return other === foreignGeneration; },
@@ -243,6 +353,28 @@ describe("Wasm semantic projection adapter", () => {
     expect(updateView.freeCalls).toBe(1);
   });
 
+  it("rejects an owned descriptor minted by a different live generation", () => {
+    const foreignGeneration: WasmProfileGenerationView = {
+      matches(other) { return other === foreignGeneration; },
+      free: vi.fn(),
+    };
+    const descriptor = ownedProfileDescriptor(
+      ["breditor/strong"],
+      foreignGeneration,
+    );
+    const view = new FakeProjectionView("0", [[{
+      text: "x",
+      strong: true,
+    }]], descriptor.schema);
+
+    expect(consumeSemanticProjectionRaw(
+      view,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    )).toMatchObject({ ok: false });
+    expect(view.freeCalls).toBe(1);
+  });
+
   it("consumes an exact flattened preorder view without parsing JSON", () => {
     const view = new FakeProjectionView("0", [
       [{ text: "plain", strong: false }, { text: "strong", strong: true }],
@@ -271,6 +403,35 @@ describe("Wasm semantic projection adapter", () => {
     expect(consumeSemanticProjection(view).ok).toBe(true);
     expect(view.freeCalls).toBe(1);
     expect(replacementFree).not.toHaveBeenCalled();
+  });
+
+  it("rejects same-handle reentry without double-freeing the outer owner", () => {
+    const view = new FakeProjectionView("0", [[{ text: "plain", strong: false }]]);
+    let nested: BrowserProjectionResult<import("./projection.js").BaseDocumentProjection> |
+      undefined;
+    const fingerprint = view.schemaFingerprint;
+    Object.defineProperty(view, "schemaFingerprint", {
+      configurable: true,
+      get() {
+        nested = consumeSemanticProjection(view);
+        return fingerprint;
+      },
+    });
+
+    expect(consumeSemanticProjection(view).ok).toBe(true);
+    expect(nested).toMatchObject({ ok: false });
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("contains thenables returned by generated scalar methods", async () => {
+    const view = new FakeProjectionView("0", [[{ text: "plain", strong: false }]]);
+    view.nodeKind = (() => Promise.reject(
+      new Error("generated scalar rejection must be contained"),
+    )) as unknown as SemanticProjectionView["nodeKind"];
+
+    expect(consumeSemanticProjection(view).ok).toBe(false);
+    expect(view.freeCalls).toBe(1);
+    await Promise.resolve();
   });
 
   it("fails closed and frees a view with a non-preorder child index", () => {
@@ -438,6 +599,39 @@ describe("Wasm semantic projection adapter", () => {
     expect(
       consumeSemanticProjectionUpdate(base, updateView, protectedHandles).ok,
     ).toBe(false);
+    expect(updateView.freeCalls).toBe(0);
+    expect(protectedProjection.freeCalls).toBe(0);
+  });
+
+  it("never reads a hostile protected-list length before rejecting its ownership snapshot", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const protectedProjection = new FakeProjectionView("1", [[]]);
+    const updateView = new FakeUpdateView({
+      baseRevision: "0",
+      resultRevision: "1",
+      impact: "root",
+      projection: protectedProjection,
+    });
+    const lengthRead = vi.fn(() => {
+      throw new Error("hostile length getter");
+    });
+    const protectedHandles = new Proxy([protectedProjection], {
+      get(target, property, receiver) {
+        if (property === "length") return lengthRead();
+        return Reflect.get(target, property, receiver);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "length") {
+          throw new Error("hostile ownership descriptor");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+
+    expect(
+      consumeSemanticProjectionUpdate(base, updateView, protectedHandles).ok,
+    ).toBe(false);
+    expect(lengthRead).not.toHaveBeenCalled();
     expect(updateView.freeCalls).toBe(0);
     expect(protectedProjection.freeCalls).toBe(0);
   });

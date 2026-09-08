@@ -3,6 +3,13 @@ import type {
   BaseTextRunProjection,
 } from "./projection.js";
 import {
+  projectionMatchesBrowserPresentation,
+  projectionPresentation,
+  projectionProfileDescriptor,
+} from "./projection.js";
+import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
+import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
+import {
   isOwnedBaseRangeSelection,
   spatialPositionForPoint,
   type BaseRangeSelection,
@@ -19,13 +26,17 @@ export const MAX_CLIPBOARD_FRAGMENT_TEXT_UTF8 = 8 * 1024 * 1024 + 9_999;
  * Fixed ceiling for escaped HTML copied from one bounded base projection.
  *
  * The source projection admits at most 8 MiB of text and 100,000 nodes. This
- * larger ceiling covers worst-case five-character escaping plus the closed
- * paragraph/strong wrapper vocabulary without making the result unbounded.
+ * independent ceiling bounds worst-case five-character text escaping and
+ * checked recipe markup. A format-heavy selection may hit it before the text
+ * ceiling; no recipe vocabulary is allowed to make allocation unbounded.
  */
 export const MAX_CLIPBOARD_FRAGMENT_HTML_UTF16 = 64 * 1024 * 1024;
 
 /** UTF-8 companion to {@link MAX_CLIPBOARD_FRAGMENT_HTML_UTF16}. */
 export const MAX_CLIPBOARD_FRAGMENT_HTML_UTF8 = 64 * 1024 * 1024;
+
+/** Maximum total semantic wrappers emitted by one clipboard serialization. */
+export const MAX_CLIPBOARD_FRAGMENT_FORMAT_WRAPPERS = 200_000;
 
 /** Stable, payload-redacted selection serialization failures. */
 export type ClipboardFragmentErrorCode =
@@ -44,7 +55,7 @@ export interface ClipboardFragmentError {
 export interface ClipboardFragmentSerialization {
   /** Selected paragraph text joined with LF separators. */
   readonly plainText: string;
-  /** Escaped, attribute-free `<p>`/`<strong>`/`<br>` fragment HTML. */
+  /** Escaped `<p>`/`<br>` HTML with only checked inline recipe wrappers. */
   readonly html: string;
 }
 
@@ -85,11 +96,23 @@ const HTML_ESCAPE: Readonly<Record<string, string>> = Object.freeze({
   "'": "&#39;",
   "\r": "&#13;",
 });
+const EMPTY_STRINGS: readonly string[] = Object.freeze([]);
+const LEGACY_STRONG_RECIPE: InlineFormatRenderRecipe = Object.freeze({
+  formatKind: "breditor/strong",
+  element: "strong",
+  classes: EMPTY_STRINGS,
+  before: EMPTY_STRINGS,
+  after: EMPTY_STRINGS,
+});
+const LEGACY_STRONG_RECIPES: readonly InlineFormatRenderRecipe[] =
+  Object.freeze([LEGACY_STRONG_RECIPE]);
+const EMPTY_RECIPES: readonly InlineFormatRenderRecipe[] = Object.freeze([]);
 
-// A bounded base projection contains at most 100,000 nodes and about 8 MiB of
-// text. Closed wrappers add fewer than four chunks per node; block encoding can
-// add at most one partial block per run plus 129 full blocks. Keep that combined
-// allocation property executable instead of relying only on final string size.
+// A bounded base projection contains at most 100,000 AST nodes and about 8 MiB
+// of text. Profiled runs can add two chunks per format wrapper; block encoding
+// adds at most one partial block per run plus 129 full blocks. Keep that
+// combined allocation property executable instead of relying only on final
+// string size.
 const MAX_SERIALIZATION_CHUNKS = 500_000;
 
 // Bounding the temporary piece array is as important as bounding the final
@@ -110,9 +133,14 @@ const HTML_ESCAPE_SOURCE_BLOCK_UTF16 = 64 * 1024;
  *
  * The HTML vocabulary is intentionally closed. Caller text is emitted only
  * through escaping, never as markup, and no DOM or HTML parser is involved.
+ * Omitting `presentation` retains the exact legacy strong-only encoding for an
+ * unprofiled base projection. A profile-bound projection requires its exact
+ * renderer-bound presentation; a missing, foreign, or forged presentation
+ * fails without emitting selected content.
  */
 export function serializeClipboardSelection(
   selection: unknown,
+  presentation?: BrowserCompiledPresentation,
 ): ClipboardFragmentSerializationResult {
   if (!isOwnedBaseRangeSelection(selection)) {
     return failure("clipboard.fragment.invalid_selection");
@@ -122,7 +150,7 @@ export function serializeClipboardSelection(
   }
 
   try {
-    return serializeOwnedSelection(selection);
+    return serializeOwnedSelection(selection, presentation);
   } catch {
     return failure("clipboard.fragment.invalid_selection");
   }
@@ -130,6 +158,7 @@ export function serializeClipboardSelection(
 
 function serializeOwnedSelection(
   selection: BaseRangeSelection,
+  candidatePresentation: BrowserCompiledPresentation | undefined,
 ): ClipboardFragmentSerializationResult {
   const startPoint = selection.order === "backward" ? selection.focus : selection.anchor;
   const endPoint = selection.order === "backward" ? selection.anchor : selection.focus;
@@ -144,6 +173,13 @@ function serializeOwnedSelection(
   ) {
     return failure("clipboard.fragment.invalid_selection");
   }
+  const presentation = resolveProjectionPresentation(
+    selection.projection,
+    candidatePresentation,
+  );
+  if (presentation === null) {
+    return failure("clipboard.fragment.invalid_selection");
+  }
 
   const plainChunks: string[] = [];
   const htmlChunks: string[] = [];
@@ -153,6 +189,7 @@ function serializeOwnedSelection(
     htmlUtf16: 0,
     htmlUtf8: 0,
   };
+  let formatWrapperCount = 0;
 
   for (
     let paragraphIndex = start.paragraphIndex;
@@ -204,14 +241,32 @@ function serializeOwnedSelection(
         if (!appendPlain(plainChunks, budget, run.text)) {
           return failure("clipboard.fragment.resource_limit");
         }
-        if (run.strong && !appendHtml(htmlChunks, budget, "<strong>")) {
+        const recipes = recipesForRun(run, presentation);
+        if (recipes === null) {
+          return failure("clipboard.fragment.invalid_selection");
+        }
+        formatWrapperCount += recipes.length;
+        if (
+          formatWrapperCount > MAX_CLIPBOARD_FRAGMENT_FORMAT_WRAPPERS
+        ) {
           return failure("clipboard.fragment.resource_limit");
+        }
+        for (const recipe of recipes) {
+          if (!appendHtml(htmlChunks, budget, openingWrapper(recipe))) {
+            return failure("clipboard.fragment.resource_limit");
+          }
         }
         if (!appendEscapedHtml(htmlChunks, budget, run.text)) {
           return failure("clipboard.fragment.resource_limit");
         }
-        if (run.strong && !appendHtml(htmlChunks, budget, "</strong>")) {
-          return failure("clipboard.fragment.resource_limit");
+        for (let index = recipes.length - 1; index >= 0; index -= 1) {
+          const recipe = recipes[index];
+          if (
+            recipe === undefined ||
+            !appendHtml(htmlChunks, budget, `</${recipe.element}>`)
+          ) {
+            return failure("clipboard.fragment.resource_limit");
+          }
         }
       }
     }
@@ -244,6 +299,56 @@ function spatialPoint(
     : { paragraphIndex: position.paragraphIndex, utf16Offset: position.utf16Offset };
 }
 
+function resolveProjectionPresentation(
+  projection: BaseDocumentProjection,
+  candidate: BrowserCompiledPresentation | undefined,
+): BrowserCompiledPresentation | undefined | null {
+  const bound = projectionPresentation(projection);
+  if (bound === undefined) {
+    return projectionProfileDescriptor(projection) === undefined &&
+      candidate === undefined
+      ? undefined
+      : null;
+  }
+  return candidate !== undefined &&
+    projectionMatchesBrowserPresentation(projection, candidate)
+    ? candidate
+    : null;
+}
+
+function recipesForRun(
+  run: BaseTextRunProjection,
+  presentation: BrowserCompiledPresentation | undefined,
+): readonly InlineFormatRenderRecipe[] | null {
+  if (presentation === undefined) {
+    if (
+      run.strong !== (run.formats.length === 1) ||
+      (run.strong && run.formats[0] !== "breditor/strong") ||
+      (!run.strong && run.formats.length !== 0)
+    ) {
+      return null;
+    }
+    return run.strong ? LEGACY_STRONG_RECIPES : EMPTY_RECIPES;
+  }
+
+  if (run.strong !== run.formats.includes("breditor/strong")) return null;
+  const active = new Set(run.formats);
+  const recipes: InlineFormatRenderRecipe[] = [];
+  for (const recipe of presentation.recipesOuterToInner) {
+    if (active.has(recipe.formatKind)) recipes.push(recipe);
+  }
+  return recipes.length === run.formats.length
+    ? Object.freeze(recipes)
+    : null;
+}
+
+function openingWrapper(recipe: InlineFormatRenderRecipe): string {
+  const classAttribute = recipe.classes.length === 0
+    ? ""
+    : ` class="${recipe.classes.join(" ")}"`;
+  return `<${recipe.element}${classAttribute}>`;
+}
+
 function sliceParagraphRuns(
   runs: readonly BaseTextRunProjection[],
   rangeStart: number,
@@ -260,7 +365,11 @@ function sliceParagraphRuns(
       if (text.length === 0 || unicodeScalarUtf8Length(text) === null) {
         return null;
       }
-      selected.push(Object.freeze({ text, strong: run.strong }));
+      selected.push(Object.freeze({
+        text,
+        strong: run.strong,
+        formats: run.formats,
+      }));
     }
     runStart = runEnd;
   }

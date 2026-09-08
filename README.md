@@ -11,8 +11,9 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.2.0-alpha.5` checkpoint carries the immutable compiled editor
-profile through the guarded Rust engine and Wasm ABI 3. Profile-created engine
+The current alpha.6 implementation carries the immutable compiled editor
+profile through the guarded Rust engine, Wasm ABI 3, and the browser projection
+boundary. Profile-created engine
 contexts, observations, intent outcomes, action-state snapshots, projections,
 selection reads, and command results all share one opaque process-local
 generation that has no scalar or wire representation. An owned canonical
@@ -21,11 +22,15 @@ intent contracts, and complete action-state sources. Strict bounded profile
 bootstrap can create fresh or restored V2 engines, and synchronous no-input
 intent execution retains commit, blocked, or unhandled route provenance without
 rerunning a handler. Legacy exact-base V1 Wasm factories remain available as an
-advanced compatibility path, while official browser bootstrap now requires an
-exact `@breditor/browser@0.2.0-alpha.5` / `@breditor/wasm@0.2.0-alpha.5` pair,
-ABI `3`, and the exact built-in profile descriptor before opening content. The
-supported browser still renders only the built-in base profile; extension
-render recipes and intent toolbar controls arrive in alpha.6 and alpha.7. The
+advanced compatibility path. The browser now consumes arbitrary admitted
+property-free format sets, compiles an exact callback-free render manifest,
+checks DOM drift/selection/composition against that presentation, produces
+semantic safe-copy HTML, strips formatting on paste, validates V1/V2 canonical
+export, and binds IndexedDB to a schema fingerprint or caller slot without
+overwriting mismatched evidence. Intent toolbar controls arrive in alpha.7.
+Fingerprint-default persistence is profile-scoped rather than document-scoped;
+hosts with multiple same-schema documents must provide distinct caller slots.
+Alpha.6 has passed its final audit and release gates and remains unpublished. The
 decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
@@ -143,20 +148,23 @@ The implementation includes:
   only after its complete canonical session checkpoint encodes, plus a generic
   no-DOM semantic Wasm projection with conservative commit invalidation; and
 - a framework-neutral `@breditor/browser` package that consumes that
-  projection without JSON, creates a closed safe DOM vocabulary, maintains
-  snapshot-local AST/DOM maps, retains proved paragraph identity, and rebuilds
-  conservatively on broad impact or DOM drift, plus exact range/target mapping,
+  projection without JSON, creates a closed safe DOM vocabulary from a checked
+  format-recipe graph, maintains snapshot-local AST/DOM maps, retains proved
+  paragraph identity, and rebuilds conservatively on broad impact or DOM drift,
+  plus exact wrapper-aware range/target mapping,
   a bounded non-recursive command FIFO, deliberate `beforeinput` and keyboard
   translation, event-echo suppression, queue-routed document selection
   changes, and an observation/render-owning Wasm command adapter, plus an
   exact queue/renderer composition lease that
   reconciles one paragraph-local native IME replacement back through Rust, and
-  guarded semantic copy/cut/paste with a bounded base-subset HTML allowlist,
+  guarded semantic copy/cut/paste with profile-aware safe HTML output, exact
+  wrapper admission, and formatting-stripping plain-text ingress,
   plus handle-free guarded action-state refresh, a last-good subscription
   store, and a bounded manifest-driven native-button toolbar whose commands
   preserve semantic selection and re-enter the same FIFO, plus synchronous,
-  snapshot-correlated canonical-document and semantic plain-text exports that
-  never treat the DOM as content;
+  snapshot-correlated mode-selected canonical Document V1/V2 and semantic
+  plain-text exports, plus schema-fingerprint/caller-slot IndexedDB binding that
+  never treats the DOM or storage envelope as content;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -165,10 +173,11 @@ The implementation includes:
   failures return the unchanged log owner.
 
 The supported `0.1.0` product is intentionally small, not a general document
-processor. The experimental alpha.4 Rust path adds generic property-free
-format kinds and sealed manifest-owned toggle action/intent/state compilation;
-it does not add format attributes, arbitrary nodes, custom actions or inputs,
-callbacks, cross-extension/shared/fallback toggle routing, or browser rendering.
+processor. The alpha.6 path adds generic property-free format kinds and sealed
+manifest-owned toggle action/intent/state compilation through browser
+projection and rendering. It does not add format attributes, arbitrary nodes,
+custom actions or inputs, callbacks, or cross-extension/shared/fallback toggle
+routing.
 One manifest and one complete profile can each contribute at most 255 toggles;
 every target is owned by that manifest, each typed ID is profile-unique in its
 namespace, and extension semantic IDs cannot use `breditor/*`.
@@ -929,6 +938,27 @@ router, guarded action-state store, optional toolbar, and optional autosave as
 one all-or-nothing lifetime. Runtime status is immutable and observable;
 native-router, queue, reconciliation, toolbar-dispatch, and toolbar-presentation
 uncertainty fault editing closed without discarding a validated Rust commit.
+
+The alpha.6 implementation extends that owner to the sealed base-text profile.
+The browser projection remains an AST view—document, paragraph, nonempty text
+run, and canonical property-free format set—not a DOM tree or another editor's
+model. A render manifest must cover the compiled descriptor exactly and uses
+only fixed inert wrapper elements, checked class tokens, and an acyclic
+outer-to-inner order. The resulting presentation identity stays separate from
+the durable schema fingerprint and the opaque compiled-profile generation.
+Rendering, incremental reuse, DOM-drift checks, wrapper-boundary selection,
+paragraph-local composition, semantic copy, and V1/V2 document export all
+recheck those correlations. Paste always reduces its preferred plain text or
+strictly admitted profile HTML to one plain-text Rust action.
+
+Profile-aware persistence selects a fingerprint-derived or caller-named slot
+before reading IndexedDB. Startup compiles and releases the profile once to get
+trusted handle-free storage metadata, then recompiles it after the asynchronous
+load for the live engine and compares both schema identities. This accepted
+double-compilation cost prevents generated Wasm authority from crossing the
+async boundary. A different fingerprint/checkpoint generation at the selected
+slot fails non-destructively; it is never retried as another codec or
+overwritten.
 
 Breditor is dual-licensed under `MIT OR Apache-2.0`; the Rust manifests and both npm
 packages carry the same SPDX expression and every package tarball contains both

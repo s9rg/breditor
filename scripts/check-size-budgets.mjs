@@ -11,7 +11,7 @@ const budgets = Object.freeze([
     actual: sumFiles("packages/breditor-browser/dist", (name) =>
       name.endsWith(".js"),
     ),
-    maximum: 800_000,
+    maximum: 825_000,
   }),
   Object.freeze({
     label: "browser declarations",
@@ -30,16 +30,16 @@ const budgets = Object.freeze([
     "packages/breditor-wasm/dist/breditor_wasm.js",
     100_000,
   ),
-  matchedFileBudget(
+  matchedFilesBudget(
     "reference application JavaScript",
     "examples/react/dist/assets",
-    (name) => name.startsWith("index-") && name.endsWith(".js"),
-    700_000,
+    (name) => name.endsWith(".js"),
+    725_000,
   ),
-  matchedGzipBudget(
+  matchedFilesGzipBudget(
     "reference application JavaScript (gzip)",
     "examples/react/dist/assets",
-    (name) => name.startsWith("index-") && name.endsWith(".js"),
+    (name) => name.endsWith(".js"),
     200_000,
   ),
   matchedFileBudget(
@@ -107,12 +107,41 @@ function matchedFileBudget(label, directory, accepts, maximum) {
   return fileBudget(label, path, maximum);
 }
 
+function matchedFilesBudget(label, directory, accepts, maximum) {
+  return Object.freeze({
+    label,
+    actual: sumFiles(directory, accepts),
+    maximum,
+  });
+}
+
 function matchedGzipBudget(label, directory, accepts, maximum) {
   const path = oneMatchedFile(directory, accepts);
   return Object.freeze({
     label,
     actual: gzipSync(readFileSync(join(repository, path)), { level: 9 })
       .byteLength,
+    maximum,
+  });
+}
+
+function matchedFilesGzipBudget(label, directory, accepts, maximum) {
+  const absolute = join(repository, directory);
+  const paths = descendantFiles(absolute).filter((path) =>
+    accepts(relative(absolute, path)),
+  );
+  if (paths.length === 0) {
+    throw new Error(
+      `no size-budget inputs found in ${relative(repository, absolute)}`,
+    );
+  }
+  return Object.freeze({
+    label,
+    actual: paths.reduce(
+      (total, path) =>
+        total + gzipSync(readFileSync(path), { level: 9 }).byteLength,
+      0,
+    ),
     maximum,
   });
 }

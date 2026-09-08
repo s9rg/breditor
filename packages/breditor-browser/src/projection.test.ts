@@ -81,6 +81,35 @@ describe("BaseDocumentProjection", () => {
     expect(BaseDocumentProjection.create(accessor).ok).toBe(false);
   });
 
+  it("rejects sparse, accessor-backed, and extended boundary arrays", () => {
+    const sparseParagraphs = new Array<unknown>(1);
+    expect(BaseDocumentProjection.create({
+      schema: { name: "breditor/base", version: 1 },
+      snapshot: { lineage: "strict-arrays", revision: "0" },
+      paragraphs: sparseParagraphs,
+    }).ok).toBe(false);
+
+    const accessorRuns: unknown[] = [{ runs: [] }];
+    Object.defineProperty(accessorRuns, "0", {
+      configurable: true,
+      enumerable: true,
+      get: () => ({ runs: [] }),
+    });
+    expect(BaseDocumentProjection.create({
+      schema: { name: "breditor/base", version: 1 },
+      snapshot: { lineage: "strict-arrays", revision: "0" },
+      paragraphs: accessorRuns,
+    }).ok).toBe(false);
+
+    const extendedRuns: unknown[] = [];
+    Object.defineProperty(extendedRuns, "hidden", { value: true });
+    expect(BaseDocumentProjection.create({
+      schema: { name: "breditor/base", version: 1 },
+      snapshot: { lineage: "strict-arrays", revision: "0" },
+      paragraphs: [{ runs: extendedRuns }],
+    }).ok).toBe(false);
+  });
+
   it("rejects oversized revision and text before expensive semantic scans", () => {
     const oversizedRevision = projection("1".repeat(21), [[]]);
     expect(oversizedRevision.ok).toBe(false);

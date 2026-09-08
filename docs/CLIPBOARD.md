@@ -1,6 +1,7 @@
 # Breditor clipboard contract
 
-Status: supported by the public `0.1.0` runtime for the closed base schema;
+Status: supported by the public `0.1.0` runtime for the closed base schema and
+extended by the experimental `0.2.0-alpha.6` compiled-profile browser path;
 direct controller construction remains an advanced integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and
@@ -34,9 +35,19 @@ a change is detected by the next base check and produces a partial-state
 reconciliation result. The callback proves a connected, current, canonical
 light-DOM render, captures one exact semantic range through the adapter-owned
 selection bridge, and revalidates the base around each effectful clipboard
-read, write, cancellation, and command boundary. Some adjacent property
-snapshots occur before one revalidation, so hostile same-origin getters remain
-part of the host-trusted surface rather than a security sandbox.
+read, write, cancellation, and command boundary.
+
+For a genuine `ClipboardEvent`, Alpha.6 reads `clipboardData` through the
+brand-checked realm prototype and reads or mutates a branded `DataTransfer`
+through its native `types`, `getData`, `clearData`, and `setData` members. Event
+cancellation likewise uses the native `Event` method and getter. Own and
+intermediate-prototype shadows are ignored, a generic `Event` cannot impersonate
+a `ClipboardEvent`, and advertised MIME types are copied from at most 64 dense
+own data elements without executing indexed accessors or a custom iterator. The
+advanced controller retains a structural path for explicit host-trusted
+fixtures. These checks are not a same-origin sandbox: the adapter wiring and
+replacement of the realm's actual platform globals or prototypes remain trusted
+integration behavior.
 
 The closed sequences are:
 
@@ -75,9 +86,13 @@ only for slicing. UTF-16 offsets remain the browser/core position currency and
 must already be valid Unicode-scalar boundaries.
 
 The plain representation joins selected paragraph slices with LF. The HTML
-representation uses only attribute-free `<p>`, `<strong>`, and sole empty
-paragraph `<br>` elements. Caller text is escaped, including carriage return
-as `&#13;`. Scalars which strict HTML tokenization reports as controls or
+representation uses only attribute-free `<p>` blocks, sole empty-paragraph
+`<br>` elements, and the exact canonical wrapper chain from the projection's
+checked browser presentation. In the legacy unprofiled path that chain is only
+attribute-free `<strong>`; a profiled path may use `code`, `em`, `mark`, `s`,
+`span`, `strong`, `sub`, `sup`, or `u` with only the recipe's exact canonical
+class value. Caller text is escaped, including carriage return as `&#13;`.
+Scalars which strict HTML tokenization reports as controls or
 noncharacters are not representable in the paired HTML form: U+0000,
 U+0001–U+0008, U+000B, U+000E–U+001F, U+007F–U+009F, U+FDD0–U+FDEF, and each
 plane's U+nFFFE/U+nFFFF reject the complete dual-format operation. A selection
@@ -87,13 +102,14 @@ and two empty paragraphs.
 The browser clipboard is first cleared, then `text/plain` is written, then
 `text/html`. Failure at any step blocks cut deletion. This ordering gives
 external consumers a broadly interoperable representation while preserving
-the supported strong-mark structure for consumers that accept HTML.
+the selected semantic format structure for consumers that accept HTML.
 
 Serialization is bounded by the already bounded base projection plus explicit
 output ceilings:
 
 - plain text: 8 MiB plus 9,999 UTF-16 code units and the same UTF-8-byte bound;
 - escaped HTML: 64 MiB in both UTF-16 code units and UTF-8 bytes; and
+- semantic format wrappers: 200,000 across the complete selection; and
 - no ill-formed UTF-16, tokenizer-control scalar, or Unicode noncharacter in
   the selected HTML representation.
 
@@ -119,14 +135,19 @@ HTML is parsed with `parse5` without creating browser DOM nodes. The complete
 repaired fragment must fit this closed allowlist:
 
 - direct HTML-namespace, attribute-free `<p>` blocks;
-- non-empty direct text runs and attribute-free `<strong>` or `<b>` runs;
+- non-empty direct text runs and, for the unprofiled path, one attribute-free
+  `<strong>` or `<b>` wrapper;
+- for a profiled path, only exact tag/class signatures from its checked
+  presentation in canonical outer-to-inner order, with at most 32 wrappers per
+  run;
 - an empty paragraph with no children or one sole attribute-free `<br>`; and
 - optionally, exact `StartFragment` and `EndFragment` comments surrounding all
   paragraphs.
 
-Surviving attributes, styles, links, scripts, images, lists, tables, headings,
-unknown elements, foreign namespaces, nested formatting, extra comments, and
-adjacent runs with the same strong state are rejected. Parser errors are
+Surviving attributes beyond one exact recipe class, styles, links, scripts,
+images, lists, tables, headings, unknown elements, foreign namespaces,
+noncanonical wrapper nesting, extra comments, and adjacent runs with the same
+complete format set are rejected. Parser errors are
 rejected except for the precisely audited control-character references emitted
 by Breditor's own carriage-return serializer. The allowlist is applied to
 parse5's repaired tree, not to a newly invented HTML source grammar. Source
@@ -141,8 +162,9 @@ accepts one plain string in the insertion context; mixed clipboard formatting
 cannot be represented honestly by that action yet.
 
 HTML admission limits are 2 MiB of source in both UTF-16 and UTF-8, 65,536
-inspected nodes, depth three (`fragment -> p -> strong/b -> text`), 10,000
-paragraphs, and the shared 65,536-unit/byte command result limit. Empty final
+inspected nodes, legacy depth three, profiled depth 34
+(`fragment -> p -> 32 wrappers -> text`), 10,000 paragraphs, and the shared
+65,536-unit/byte command result limit. Empty final
 text is rejected, while multiple empty paragraphs can produce a meaningful LF
 sequence. An instrumented parse5 tree adapter also aborts during construction
 when transient nodes, repair mutations, or the open-element stack cross fixed
@@ -189,7 +211,7 @@ required and callers must use the adapter's canonical recovery path.
 
 ## Deliberate limitations
 
-The `0.0.55` contract does not provide the asynchronous Clipboard API,
+The alpha.6 contract does not provide the asynchronous Clipboard API,
 permission prompts, programmatic clipboard buttons, files, images, URI lists,
 custom internal MIME, rich mixed-format paste, source application metadata,
 cross-block structure beyond direct paragraphs, shadow/composed ownership,

@@ -4,6 +4,7 @@ import {
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
 
 /** Maximum entries admitted by the browser action-state boundary. */
 export const MAX_BROWSER_ACTION_STATE_ENTRIES = 512;
@@ -897,20 +898,9 @@ function objectSet(
   values: readonly unknown[],
   required?: unknown,
 ): ReadonlySet<object> {
-  if (!Array.isArray(values) || values.length > 64) {
-    throw new TypeError("invalid protected-handle list");
-  }
-  const output = new Set<object>();
-  if (objectLike(required)) output.add(required);
-  for (let index = 0; index < values.length; index += 1) {
-    const descriptor = Reflect.getOwnPropertyDescriptor(values, String(index));
-    if (descriptor === undefined || !("value" in descriptor)) {
-      throw new TypeError("invalid protected-handle entry");
-    }
-    const value = descriptor.value as unknown;
-    if (objectLike(value)) output.add(value);
-  }
-  return output;
+  const snapshot = snapshotProtectedHandleArray(values, required);
+  if (snapshot === null) throw new TypeError("invalid protected-handle list");
+  return snapshot;
 }
 
 function objectLike(value: unknown): value is object {

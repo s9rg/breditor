@@ -163,6 +163,11 @@ declare global {
   }
 }
 
+const INPUT_TARGET_RANGES = new WeakMap<
+  InputEvent,
+  readonly AbstractRange[]
+>();
+
 const editorHost = requiredElement("editor");
 const toolbarHost = requiredElement("toolbar");
 const status = requiredElement("status");
@@ -180,6 +185,9 @@ async function start(): Promise<void> {
   requireBrowserCapability(typeof window.getSelection === "function", "Selection");
   requireBrowserCapability(typeof InputEvent === "function", "InputEvent");
   requireBrowserCapability(typeof CompositionEvent === "function", "CompositionEvent");
+  requireBrowserCapability(typeof ClipboardEvent === "function", "ClipboardEvent");
+  requireBrowserCapability(typeof DataTransfer === "function", "DataTransfer");
+  installInputTargetRangeFixture();
 
   await initializeWasm();
   const result = await openBreditorBrowserEditor({
@@ -892,11 +900,39 @@ function inputEvent(
     inputType,
     isComposing,
   });
-  Object.defineProperty(event, "getTargetRanges", {
-    configurable: true,
-    value: () => ranges,
-  });
+  INPUT_TARGET_RANGES.set(event, Object.freeze([...ranges]));
   return event;
+}
+
+/**
+ * Supplies synthetic target ranges through the realm interface that owns the
+ * native method. Product code intentionally ignores event-local method
+ * shadows, so browser fixtures must model the platform at this boundary.
+ */
+function installInputTargetRangeFixture(): void {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    InputEvent.prototype,
+    "getTargetRanges",
+  );
+  if (
+    descriptor === undefined ||
+    typeof descriptor.value !== "function" ||
+    descriptor.configurable !== true
+  ) {
+    throw new Error("InputEvent target-range fixture cannot be installed");
+  }
+  const nativeGetTargetRanges = descriptor.value as (
+    this: InputEvent,
+  ) => readonly AbstractRange[];
+  Object.defineProperty(InputEvent.prototype, "getTargetRanges", {
+    ...descriptor,
+    value(this: InputEvent): readonly AbstractRange[] {
+      return (
+        INPUT_TARGET_RANGES.get(this) ??
+        Reflect.apply(nativeGetTargetRanges, this, [])
+      );
+    },
+  });
 }
 
 function dispatchInput(
@@ -963,33 +999,26 @@ function dispatchClipboard(
   operation: "copy" | "cut" | "paste",
   payload: ClipboardPayload,
 ): ClipboardDispatchResult {
-  const values = new Map<string, string>();
-  if (payload.plainText !== undefined) values.set("text/plain", payload.plainText);
-  if (payload.html !== undefined) values.set("text/html", payload.html);
-  const transfer = {
-    get types(): string[] {
-      return Array.from(values.keys());
-    },
-    clearData(type?: string): void {
-      if (type === undefined) values.clear();
-      else values.delete(type);
-    },
-    getData(type: string): string {
-      return values.get(type) ?? "";
-    },
-    setData(type: string, value: string): void {
-      values.set(type, value);
-    },
-  };
-  const event = new Event(operation, {
+  const transfer = new DataTransfer();
+  if (payload.plainText !== undefined) {
+    transfer.setData("text/plain", payload.plainText);
+  }
+  if (payload.html !== undefined) transfer.setData("text/html", payload.html);
+  const event = new ClipboardEvent(operation, {
     bubbles: true,
     cancelable: true,
     composed: true,
+    clipboardData: transfer,
   });
-  Object.defineProperty(event, "clipboardData", {
-    configurable: true,
-    value: transfer,
-  });
+  const eventTransfer = event.clipboardData ?? transfer;
+  if (eventTransfer !== transfer) {
+    if (payload.plainText !== undefined) {
+      eventTransfer.setData("text/plain", payload.plainText);
+    }
+    if (payload.html !== undefined) {
+      eventTransfer.setData("text/html", payload.html);
+    }
+  }
   editorHost.dispatchEvent(event);
 
   if (event.defaultPrevented && operation !== "copy") {
@@ -997,9 +1026,10 @@ function dispatchClipboard(
     dispatchInput("beforeinput", inputType, null, false, []);
     dispatchInput("input", inputType, null, false, []);
   }
+  const observedTransfer = event.clipboardData ?? eventTransfer;
   return Object.freeze({
     defaultPrevented: event.defaultPrevented,
-    plainText: values.get("text/plain") ?? "",
-    html: values.get("text/html") ?? "",
+    plainText: observedTransfer.getData("text/plain"),
+    html: observedTransfer.getData("text/html"),
   });
 }

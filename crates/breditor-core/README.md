@@ -72,9 +72,9 @@ through every atomic candidate mutation.
 The declaration bundle still contains no callback, custom action input,
 renderer, or toolbar metadata and does not enter the durable schema
 fingerprint. Existing native registry, router, and unprofiled engine
-constructors remain advanced bypasses. Wasm ABI 3 now transports the compiled
-profile, but the supported browser remains base-only; profile-aware rendering
-and the supported toolbar arrive at alpha.6 and alpha.7 respectively. See the
+constructors remain advanced bypasses. Wasm ABI 3 transports the compiled
+profile, and alpha.6 adds the separate callback-free profile-aware browser
+renderer; the supported intent toolbar arrives at alpha.7. See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
 [schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and

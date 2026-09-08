@@ -1,7 +1,8 @@
 # Breditor `0.2.0` scope
 
 Status: in progress; the `0.1.1` through `0.2.0-alpha.5` engine/Wasm
-foundations are complete
+foundations are complete, and the `0.2.0-alpha.6` profile-aware browser path is
+implemented and passing its release gates
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -68,6 +69,15 @@ selection, action-state, command, and intent handles. The generation remains an
 opaque allocation identity with no numeric, string, pointer, JSON, or durable
 representation. Browser presentation identity remains separate.
 
+Alpha.6 consumes that correlated Wasm view as a disposable browser AST
+projection. Each text run exposes the canonical set of admitted property-free
+format kinds, while the durable JSON document, DOM, and clipboard HTML remain
+separate representations. A checked browser presentation binds one complete
+format recipe manifest to one live compiled-profile generation and descriptor;
+projection updates, renderer ownership, point mapping, composition
+reconciliation, clipboard serialization, and canonical export all retain that
+correlation.
+
 Rust remains the authority for the AST, compiled schema, selection, action
 evaluation, primitive operations, transactions, history, replay, and durable
 codecs. The browser owns the DOM projection, browser events, focus, composition,
@@ -110,6 +120,15 @@ dynamically link arbitrary third-party Rust after it has been built.
   depends on extension installation order or one global priority number.
 - Browser render contributions for the `0.2.0` subset are declarative recipes
   over a fixed safe element/attribute vocabulary. They are not DOM callbacks.
+- Every admitted format has exactly one render recipe. Missing, extra,
+  duplicate-signature, cyclic, or generation-mismatched recipes fail startup;
+  lexical format identity breaks unconstrained ordering ties.
+- The DOM is disposable projection state. DOM drift, unknown wrappers,
+  noncanonical wrapper order, or profile mismatch cannot become canonical AST
+  content.
+- Profile persistence selects its checkpoint generation and exact durable
+  schema binding before inspecting stored bytes. A mismatch returns an error
+  without deleting, repairing, migrating, or overwriting the retained record.
 - All manifest, schema, action, plan, projection, and toolbar collections have
   explicit count, depth, edge, and byte limits where applicable.
 - Unknown schema types, persisted revisions, intent contracts, and schema
@@ -153,6 +172,14 @@ serialization and deterministic stripping on paste; preserving rich fragments
 on copy-to-paste would require a separately bounded semantic-fragment codec and
 action and is deferred unless an alpha checkpoint explicitly adds that entire
 path.
+
+When a semantic profile and IndexedDB are both enabled, browser startup first
+compiles and fully releases the profile solely to obtain trusted, handle-free
+schema metadata for storage selection. It compiles the same bootstrap JSON a
+second time to create the engine after the asynchronous load, then compares the
+two schema identities before autosave can start. This deliberate double
+compilation avoids retaining generated Wasm authority across an async storage
+boundary; its startup cost is an accepted alpha.6 limitation.
 
 ## Checkpoint sequence
 
@@ -214,6 +241,7 @@ when review finds a correctness boundary; later features are not claimed early.
    deterministic removal of source formatting on paste, plain-text projection,
    canonical export correlation, and schema-fingerprint- or caller-slot-scoped
    persistence mismatch handling that never overwrites retained evidence.
+   Complete.
 8. `0.2.0-alpha.7`: supported browser `executeIntent` and intent-based toggle-
    button toolbar surface with startup validation of intent/state contracts.
    Concrete action dispatch remains an advanced policy bypass; extension

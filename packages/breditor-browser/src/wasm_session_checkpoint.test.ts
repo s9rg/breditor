@@ -4,11 +4,26 @@ import {
   MAX_BROWSER_SESSION_CHECKPOINT_JSON_BYTES,
   consumeWasmSessionCheckpoint,
   isOwnedBrowserSessionCheckpointReadResult,
+  sessionCheckpointJsonMatchesDurableContract,
   type WasmSessionCheckpointErrorView,
   type WasmSessionCheckpointStringResultView,
 } from "./wasm_session_checkpoint.js";
+import type { WasmDurableJsonContract } from "./wasm_document_json.js";
 
 const EXPECTED = Object.freeze({ lineage: "checkpoint-tests", revision: "7" });
+const PROFILE_FINGERPRINT = `sha256:${"4".repeat(64)}`;
+const V2_CONTRACT: WasmDurableJsonContract = Object.freeze({
+  mode: "v2",
+  schema: Object.freeze({
+    name: "example/rich-document",
+    version: 3,
+    fingerprint: PROFILE_FINGERPRINT,
+  }),
+  formats: Object.freeze([
+    Object.freeze({ kind: "breditor/strong", revision: 1 }),
+    Object.freeze({ kind: "example/highlight", revision: 2 }),
+  ]),
+});
 
 class FakeError implements WasmSessionCheckpointErrorView {
   freeCalls = 0;
@@ -64,6 +79,145 @@ describe("Wasm session-checkpoint adapter", () => {
     expect(result.ok && Object.isFrozen(result.checkpoint.snapshot)).toBe(true);
     expect(view.takeCalls).toBe(1);
     expect(view.freeCalls).toBe(1);
+  });
+
+  it("admits an explicitly selected, exactly bound Session Checkpoint V2", () => {
+    const json = checkpointV2Json();
+    const view = new FakeStringResult("value", json);
+
+    expect(sessionCheckpointJsonMatchesDurableContract(json, V2_CONTRACT)).toBe(
+      new TextEncoder().encode(json).byteLength,
+    );
+    expect(sessionCheckpointJsonMatchesDurableContract(checkpointJson(), V2_CONTRACT))
+      .toBeNull();
+    expect(
+      consumeWasmSessionCheckpoint(EXPECTED, view, [], V2_CONTRACT),
+    ).toMatchObject({
+      ok: true,
+      checkpoint: { checkpointJson: json, snapshot: EXPECTED },
+    });
+    expect(view.freeCalls).toBe(1);
+
+    const defaultMode = new FakeStringResult("value", json);
+    expect(consumeWasmSessionCheckpoint(EXPECTED, defaultMode).ok).toBe(false);
+    expect(defaultMode.freeCalls).toBe(1);
+  });
+
+  it("rejects non-canonical caller-owned V2 format arrays without invoking them", () => {
+    const accessorReads = vi.fn();
+    const iteratorReads = vi.fn();
+    const overCapIndexReads = vi.fn();
+    const sparse = new Array<unknown>(2);
+    Object.defineProperty(sparse, "0", {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: V2_CONTRACT.formats[0],
+    });
+    const accessorBacked: unknown[] = [V2_CONTRACT.formats[0], undefined];
+    Object.defineProperty(accessorBacked, "1", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        accessorReads();
+        return V2_CONTRACT.formats[1];
+      },
+    });
+    const overCap = new Proxy(new Array<unknown>(257).fill(undefined), {
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "0") {
+          overCapIndexReads();
+          throw new Error("must reject the length before reading entries");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const iteratorPoisoned: unknown[] = [
+      V2_CONTRACT.formats[0],
+      V2_CONTRACT.formats[1],
+    ];
+    Object.defineProperty(iteratorPoisoned, Symbol.iterator, {
+      configurable: true,
+      get: () => {
+        iteratorReads();
+        throw new Error("must not read the caller iterator");
+      },
+    });
+
+    const encoded = checkpointV2Json();
+    for (const formats of [sparse, accessorBacked, overCap, iteratorPoisoned]) {
+      const contract = {
+        mode: "v2",
+        schema: V2_CONTRACT.schema,
+        formats,
+      } as unknown as WasmDurableJsonContract;
+      expect(sessionCheckpointJsonMatchesDurableContract(encoded, contract)).toBeNull();
+      const view = new FakeStringResult("value", encoded);
+      expect(consumeWasmSessionCheckpoint(EXPECTED, view, [], contract).ok)
+        .toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+    expect(accessorReads).not.toHaveBeenCalled();
+    expect(iteratorReads).not.toHaveBeenCalled();
+    expect(overCapIndexReads).not.toHaveBeenCalled();
+  });
+
+  it("rejects mixed generations and every mismatched V2 schema binding", () => {
+    const valid = JSON.parse(checkpointV2Json()) as Record<string, unknown>;
+    const historyBase = valid["historyBase"] as Record<string, unknown>;
+    const document = historyBase["document"] as Record<string, unknown>;
+    const documentRoot = document["root"] as Record<string, unknown>;
+    const paragraph = (documentRoot["children"] as Array<Record<string, unknown>>)[0];
+    if (paragraph === undefined) throw new Error("missing paragraph");
+    const malformed = [
+      JSON.stringify({ ...valid, schemaFingerprint: `sha256:${"5".repeat(64)}` }),
+      JSON.stringify({
+        ...valid,
+        historyBase: { ...historyBase, schemaFingerprint: `sha256:${"5".repeat(64)}` },
+      }),
+      JSON.stringify({
+        ...valid,
+        historyBase: { ...historyBase, formatVersion: 1 },
+      }),
+      JSON.stringify({
+        ...valid,
+        historyBase: {
+          ...historyBase,
+          document: { ...document, formatVersion: 1 },
+        },
+      }),
+      JSON.stringify({
+        ...valid,
+        historyBase: {
+          ...historyBase,
+          document: {
+            ...document,
+            root: {
+              ...documentRoot,
+              children: [{
+                ...paragraph,
+                children: [{
+                  kind: "text",
+                  text: "hello",
+                  formats: [{ type: "example/unknown", properties: {} }],
+                }],
+              }],
+            },
+          },
+        },
+      }),
+      JSON.stringify({ ...valid, unexpected: true }),
+      ` ${checkpointV2Json()}`,
+    ];
+
+    for (const encoded of malformed) {
+      expect(sessionCheckpointJsonMatchesDurableContract(encoded, V2_CONTRACT))
+        .toBeNull();
+      const view = new FakeStringResult("value", encoded);
+      expect(consumeWasmSessionCheckpoint(EXPECTED, view, [], V2_CONTRACT).ok)
+        .toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
   });
 
   it("copies a payload-redacted core failure and releases both handles", () => {
@@ -296,6 +450,54 @@ describe("Wasm session-checkpoint adapter", () => {
     expect(view.freeCalls).toBe(0);
   });
 
+  it("rejects sparse, accessor-backed, over-cap, and iterator-poisoned handle arrays", () => {
+    const accessorReads = vi.fn();
+    const iteratorReads = vi.fn();
+    const overCapIndexReads = vi.fn();
+    const sparse = new Array<unknown>(1);
+    const accessorBacked: unknown[] = [undefined];
+    Object.defineProperty(accessorBacked, "0", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        accessorReads();
+        return undefined;
+      },
+    });
+    const overCap = new Proxy(new Array<unknown>(65).fill(undefined), {
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "0") {
+          overCapIndexReads();
+          throw new Error("must reject the length before reading entries");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const iteratorPoisoned: unknown[] = [undefined];
+    Object.defineProperty(iteratorPoisoned, Symbol.iterator, {
+      configurable: true,
+      get: () => {
+        iteratorReads();
+        throw new Error("must not read the caller iterator");
+      },
+    });
+
+    for (const protectedHandles of [
+      sparse,
+      accessorBacked,
+      overCap,
+      iteratorPoisoned,
+    ]) {
+      const view = new FakeStringResult("value", checkpointJson());
+      expect(consumeWasmSessionCheckpoint(EXPECTED, view, protectedHandles).ok)
+        .toBe(false);
+      expect(view.freeCalls).toBe(0);
+    }
+    expect(accessorReads).not.toHaveBeenCalled();
+    expect(iteratorReads).not.toHaveBeenCalled();
+    expect(overCapIndexReads).not.toHaveBeenCalled();
+  });
+
   it("turns cleanup failure into a boundary failure", () => {
     const view = {
       status: "value",
@@ -354,6 +556,53 @@ function checkpointJson(extra = ""): string {
       formatVersion: 1,
       snapshot: { lineage: EXPECTED.lineage, revision: "0" },
       extra,
+    },
+    currentRevision: EXPECTED.revision,
+    historyCapacity: 10,
+    cursor: 0,
+    entries: [],
+    openMergeGroup: null,
+  });
+}
+
+function checkpointV2Json(): string {
+  const document = {
+    format: "breditor/document",
+    formatVersion: 2,
+    schema: { name: "example/rich-document", version: 3 },
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: [{
+        kind: "element",
+        type: "breditor/paragraph",
+        entityId: null,
+        properties: {},
+        children: [{
+          kind: "text",
+          text: "hello",
+          formats: [{ type: "example/highlight", properties: {} }],
+        }],
+      }],
+    },
+  };
+  return JSON.stringify({
+    format: "breditor/session-checkpoint",
+    formatVersion: 2,
+    schema: { name: "example/rich-document", version: 3 },
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    historyBase: {
+      format: "breditor/editor-state",
+      formatVersion: 2,
+      schema: { name: "example/rich-document", version: 3 },
+      schemaFingerprint: PROFILE_FINGERPRINT,
+      snapshot: { lineage: EXPECTED.lineage, revision: "0" },
+      document,
+      selection: null,
+      pendingFormats: null,
     },
     currentRevision: EXPECTED.revision,
     historyCapacity: 10,

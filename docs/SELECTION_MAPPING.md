@@ -1,7 +1,8 @@
 # Breditor selection mapping contract
 
-Status: supported inside the public `0.1.0` runtime for the closed base schema;
-direct mapping and controller construction remains advanced and experimental
+Status: supported inside the public `0.1.0` runtime for the closed base schema
+and extended by the experimental `0.2.0-alpha.6` compiled-profile path; direct
+mapping and controller construction remains advanced and experimental
 
 The Rust editor state owns the semantic selection. A browser `Selection` is a
 temporary presentation of that value over one exact DOM projection, and a DOM
@@ -90,24 +91,28 @@ An exact semantic echo is an unchanged command. A real semantic selection
 change publishes a state-only selection event, clears pending typing formats,
 closes the open merge group, and creates no content-history entry.
 
-## Closed base-schema DOM mapping
+## Base-text DOM mapping
 
-The initial mapper accepts only a current canonical `breditor/base@1` render.
+The mapper accepts only a current canonical legacy `breditor/base@1` render or
+an alpha.6 base-text projection bound to one exact compiled presentation.
 The renderer's exact AST-backed DOM nodes are the host, each `<p>`, and each
-text node. `<strong>` and empty-paragraph `<br>` elements are projection-only
-artifacts and never acquire fake AST paths.
+text node. Inline presentation wrappers and empty-paragraph `<br>` elements are
+projection-only artifacts and never acquire fake AST paths.
 
 ### AST to DOM
 
 - A text point maps to its exact DOM Text node and the same UTF-16 offset.
 - A paragraph children point maps to the `<p>` and its child boundary. Each
   semantic run occupies exactly one direct DOM child, whether that child is a
-  Text node or a `<strong>` wrapper.
+  Text node or the outermost presentation wrapper.
 - The sole children boundary of an empty paragraph maps canonically to offset
   zero in its `<p>`, not into the placeholder `<br>`.
 - Root children points are invalid base range endpoints and are not emitted.
 
-Programmatic installation preserves anchor/focus direction. An exact caret
+Programmatic installation reads the real document/selection/range through
+brand-checked native realm intrinsics, ignoring own or host-local prototype
+shadows. Writes are serialized per owner document and preserve anchor/focus
+direction. An exact caret
 whose DOM anchor and focus are the same container and offset is installed with
 `Range`, `removeAllRanges`, and `addRange`; this avoids WebKit transiently
 exposing new anchor/focus fields with an old `getRangeAt(0)` after an owned DOM
@@ -127,8 +132,8 @@ positions:
 - a `<p>` child boundary maps to that paragraph's children boundary;
 - offset zero or one around the sole `<br>` in an empty paragraph maps to the
   single semantic children boundary;
-- offset zero or one in a canonical `<strong>` maps respectively to the start
-  or end of its sole mapped Text child;
+- offset zero or one in any wrapper of a canonical presentation chain maps
+  respectively to the start or end of its sole mapped Text descendant;
 - offset zero in the host maps to the start of the first paragraph, and the
   final host offset maps to the end of the last paragraph, so browser
   select-all can be represented without legalizing root endpoints; and
@@ -204,8 +209,8 @@ out-of-memory.
 
 ## Known limits
 
-- Only the closed base-schema directional range exists. Node, grid, table,
-  multi-range, remote-cursor, and collaborative selections are outside `0.1`.
+- Only the base-text directional range exists. Node, grid, table, multi-range,
+  remote-cursor, and collaborative selections remain outside alpha.6.
 - Only a single DOM Range inside one light-DOM host is accepted. Cross-host,
   cross-shadow-root, and browser-specific multi-range selections fail closed.
 - Affinity has no native DOM representation; only deterministic reconstruction
@@ -227,8 +232,8 @@ The release tests must establish at least these laws:
 1. forward, backward, and collapsed selections retain anchor/focus direction;
 2. text boundaries before and after a non-BMP scalar round-trip, while the
    surrogate midpoint rejects without mutation;
-3. unformatted and strong text endpoints map to the exact same semantic point
-   shapes;
+3. unformatted, legacy strong, and arbitrarily nested compiled-format wrapper
+   endpoints map to the exact same semantic point shapes;
 4. empty paragraph, paragraph children, and select-all exterior host positions
    normalize deterministically;
 5. stale observations, stale renderer generations, foreign handles, multiple

@@ -2,6 +2,7 @@ import {
   isOwnedRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
+import { nativeHtmlHostFacts } from "./html_host.js";
 import {
   isOwnedProjection,
   type BaseDocumentProjection,
@@ -241,10 +242,10 @@ function renderIsLiveAndCanonical(rendered: unknown): rendered is RenderedProjec
     return (
       isOwnedRenderedProjection(rendered) &&
       rendered.current &&
-      rendered.host.isConnected &&
+      nativeHtmlHostFacts(rendered.host)?.isConnected === true &&
       rendered.validateCanonicalDom() === true &&
       rendered.current &&
-      rendered.host.isConnected
+      nativeHtmlHostFacts(rendered.host)?.isConnected === true
     );
   } catch {
     return false;
@@ -255,7 +256,7 @@ function renderHostIsConnected(rendered: unknown): rendered is RenderedProjectio
   try {
     return (
       isOwnedRenderedProjection(rendered) &&
-      rendered.host.isConnected
+      nativeHtmlHostFacts(rendered.host)?.isConnected === true
     );
   } catch {
     return false;

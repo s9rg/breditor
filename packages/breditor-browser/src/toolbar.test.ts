@@ -65,6 +65,132 @@ describe("BreditorToolbar", () => {
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
     expect(buttons[1]?.hasAttribute("aria-pressed")).toBe(false);
     expect(buttons[2]?.hasAttribute("aria-pressed")).toBe(false);
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+
+    const foreignSibling = document.createElement("span");
+    host.append(foreignSibling);
+    expect(toolbar.validateCanonicalDom()).toBe(false);
+    foreignSibling.remove();
+
+    const foreignChild = document.createElement("span");
+    toolbar.element.append(foreignChild);
+    expect(toolbar.validateCanonicalDom()).toBe(false);
+    foreignChild.remove();
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+
+    toolbar.dispose();
+  });
+
+  it("uses native topology and attribute facts despite forged toolbar shadows", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch: vi.fn(completedDispatch) },
+    );
+    const canonicalHostChildren = Object.freeze([toolbar.element]);
+    const canonicalRootChildren = Object.freeze(
+      Array.from(toolbar.element.childNodes),
+    );
+    const nativeHostChildList = host.childNodes;
+    const nativeRootChildList = toolbar.element.childNodes;
+    const foreignSibling = document.createElement("aside");
+    const foreignChild = document.createElement("span");
+    host.append(foreignSibling);
+    toolbar.element.append(foreignChild);
+    toolbar.element.setAttribute("data-application", "preserve");
+    const hostChildNodes = vi.fn(() => canonicalHostChildren);
+    const rootChildNodes = vi.fn(() => canonicalRootChildren);
+    const rootAttributes = vi.fn(() => Object.freeze({ length: 4 }));
+    const hostIterator = vi.fn(function* () {
+      yield toolbar.element;
+    });
+    const rootIterator = vi.fn(function* () {
+      yield* canonicalRootChildren;
+    });
+    Object.defineProperty(nativeHostChildList, Symbol.iterator, {
+      configurable: true,
+      value: hostIterator,
+    });
+    Object.defineProperty(nativeRootChildList, Symbol.iterator, {
+      configurable: true,
+      value: rootIterator,
+    });
+    Object.defineProperty(host, "childNodes", {
+      configurable: true,
+      get: hostChildNodes,
+    });
+    Object.defineProperties(toolbar.element, {
+      childNodes: { configurable: true, get: rootChildNodes },
+      attributes: { configurable: true, get: rootAttributes },
+    });
+
+    try {
+      expect(toolbar.validateCanonicalDom()).toBe(false);
+      expect(hostChildNodes).not.toHaveBeenCalled();
+      expect(rootChildNodes).not.toHaveBeenCalled();
+      expect(rootAttributes).not.toHaveBeenCalled();
+      expect(hostIterator).not.toHaveBeenCalled();
+      expect(rootIterator).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(nativeHostChildList, Symbol.iterator);
+      Reflect.deleteProperty(nativeRootChildList, Symbol.iterator);
+      Reflect.deleteProperty(host, "childNodes");
+      Reflect.deleteProperty(toolbar.element, "childNodes");
+      Reflect.deleteProperty(toolbar.element, "attributes");
+      toolbar.dispose();
+      foreignSibling.remove();
+    }
+  });
+
+  it("rejects same-button semantic and accessibility drift", () => {
+    const host = mountHost();
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch: completedDispatch },
+    );
+    const bold = toolbarButtons(host)[0];
+    if (bold === undefined) throw new Error("missing Bold toolbar button");
+
+    const expectRejectedUntilRestored = (
+      mutate: () => void,
+      restore: () => void,
+    ): void => {
+      mutate();
+      expect(toolbar.validateCanonicalDom()).toBe(false);
+      restore();
+      expect(toolbar.validateCanonicalDom()).toBe(true);
+    };
+
+    expectRejectedUntilRestored(
+      () => {
+        bold.textContent = "Forged";
+      },
+      () => {
+        bold.textContent = "Bold";
+      },
+    );
+    for (const [name, forged, canonical] of [
+      ["type", "submit", "button"],
+      ["aria-label", "Forged", "Bold"],
+      ["aria-disabled", "true", "false"],
+      ["aria-pressed", "mixed", "false"],
+      ["tabindex", "-1", "0"],
+      ["data-breditor-state-id", "forged/control", BASE_TOOLBAR_STATE_IDS.bold],
+    ] as const) {
+      expectRejectedUntilRestored(
+        () => bold.setAttribute(name, forged),
+        () => bold.setAttribute(name, canonical),
+      );
+    }
+    expectRejectedUntilRestored(
+      () => bold.setAttribute("data-application", "forged"),
+      () => bold.removeAttribute("data-application"),
+    );
 
     toolbar.dispose();
   });
@@ -361,6 +487,52 @@ describe("BreditorToolbar", () => {
     });
     bold.dispatchEvent(contextPointer);
     expect(contextPointer.defaultPrevented).toBe(false);
+    toolbar.dispose();
+  });
+
+  it("uses native toolbar event facts and cancellation below own shadows", () => {
+    const host = mountHost();
+    const dispatch = vi.fn(completedDispatch);
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch },
+    );
+    const bold = toolbarButtons(host)[0]!;
+    const event = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
+    const shadow = vi.fn(() => {
+      throw new Error("own event shadow must not run");
+    });
+    for (const name of ["type", "target", "button", "defaultPrevented"]) {
+      Object.defineProperty(event, name, {
+        configurable: true,
+        get: shadow,
+      });
+    }
+    Object.defineProperty(event, "preventDefault", {
+      configurable: true,
+      value: shadow,
+    });
+
+    expect(() => bold.dispatchEvent(event)).not.toThrow();
+    for (const name of [
+      "type",
+      "target",
+      "button",
+      "defaultPrevented",
+      "preventDefault",
+    ]) {
+      Reflect.deleteProperty(event, name);
+    }
+    expect(shadow).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(toolbar.state).toBe("live");
     toolbar.dispose();
   });
 

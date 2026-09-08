@@ -6,12 +6,82 @@ import {
   documentJsonUtf8Bytes,
   documentJsonMatchesProjection,
   isOwnedBrowserDocumentJsonReadResult,
+  type WasmDurableJsonContract,
   type WasmDocumentJsonErrorView,
   type WasmDocumentJsonStringResultView,
 } from "./wasm_document_json.js";
-import { BaseDocumentProjection } from "./projection.js";
+import {
+  BaseDocumentProjection,
+  createProfiledDocumentProjection,
+} from "./projection.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 const EXPECTED = Object.freeze({ lineage: "document-export-tests", revision: "7" });
+const PROFILE_FINGERPRINT = `sha256:${"2".repeat(64)}`;
+const V2_CONTRACT: WasmDurableJsonContract = Object.freeze({
+  mode: "v2",
+  schema: Object.freeze({
+    name: "example/rich-document",
+    version: 3,
+    fingerprint: PROFILE_FINGERPRINT,
+  }),
+  formats: Object.freeze([
+    Object.freeze({ kind: "breditor/strong", revision: 1 }),
+    Object.freeze({ kind: "example/highlight", revision: 2 }),
+  ]),
+});
+
+class FakeProfileGeneration implements WasmProfileGenerationView {
+  matches(other: WasmProfileGenerationView): boolean {
+    return other === this;
+  }
+
+  free(): void {}
+}
+
+class FakeProfileDescriptor implements WasmCompiledProfileDescriptorView {
+  readonly schemaName = "example/rich-document";
+  readonly schemaVersion = 3;
+  readonly schemaFingerprint = PROFILE_FINGERPRINT;
+  readonly formatCount = 2;
+  readonly intentCount = 0;
+  readonly actionStateCount = 0;
+
+  constructor(readonly generation: WasmProfileGenerationView) {}
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === this.generation;
+  }
+
+  formatKind(index: number): string | undefined {
+    return ["breditor/strong", "example/highlight"][index];
+  }
+
+  formatRevision(index: number): number | undefined {
+    return [1, 2][index];
+  }
+
+  intentId(): undefined { return undefined; }
+  intentInputKind(): undefined { return undefined; }
+  intentInputContractName(): undefined { return undefined; }
+  intentInputContractVersion(): undefined { return undefined; }
+  intentActivationContract(): undefined { return undefined; }
+  intentValueContractName(): undefined { return undefined; }
+  intentValueContractVersion(): undefined { return undefined; }
+  actionStateId(): undefined { return undefined; }
+  actionStateSourceKind(): undefined { return undefined; }
+  actionStateSourceActionId(): undefined { return undefined; }
+  actionStateSourceIntentId(): undefined { return undefined; }
+  actionStateHistoryDirection(): undefined { return undefined; }
+  actionStateActivationContract(): undefined { return undefined; }
+  actionStateValueContractName(): undefined { return undefined; }
+  actionStateValueContractVersion(): undefined { return undefined; }
+  free(): void {}
+}
 
 class FakeError implements WasmDocumentJsonErrorView {
   freeCalls = 0;
@@ -143,6 +213,182 @@ describe("Wasm Document V1 export boundary", () => {
     ).toBe(false);
   });
 
+  it("admits only the explicitly selected compiled-profile Document V2 contract", () => {
+    const valid = documentV2Json([
+      paragraph([
+        formattedRun("A", ["breditor/strong"]),
+        formattedRun("B", ["example/highlight"]),
+      ]),
+    ]);
+    const parsed = JSON.parse(valid) as Record<string, unknown>;
+    const root = parsed["root"] as Record<string, unknown>;
+    const firstParagraph = (root["children"] as Array<Record<string, unknown>>)[0];
+    if (firstParagraph === undefined) throw new Error("missing paragraph");
+    const malformed = [
+      documentJson([paragraph([])]),
+      JSON.stringify({ ...parsed, formatVersion: 1 }),
+      JSON.stringify({ ...parsed, schemaFingerprint: `sha256:${"3".repeat(64)}` }),
+      JSON.stringify({ ...parsed, schema: { name: "example/other", version: 3 } }),
+      JSON.stringify({ ...parsed, extra: true }),
+      JSON.stringify({
+        ...parsed,
+        root: {
+          ...root,
+          children: [paragraph([formattedRun("A", ["example/unknown"])])],
+        },
+      }),
+      JSON.stringify({
+        ...parsed,
+        root: {
+          ...root,
+          children: [paragraph([{
+            kind: "text",
+            text: "A",
+            formats: [
+              { type: "example/highlight", properties: {} },
+              { type: "breditor/strong", properties: {} },
+            ],
+          }])],
+        },
+      }),
+      JSON.stringify({
+        ...parsed,
+        root: {
+          ...root,
+          children: [paragraph([{
+            kind: "text",
+            text: "A",
+            formats: [{ type: "example/highlight", properties: { color: "yellow" } }],
+          }])],
+        },
+      }),
+      JSON.stringify({
+        ...parsed,
+        root: {
+          ...root,
+          children: [paragraph([
+            formattedRun("A", ["breditor/strong"]),
+            formattedRun("B", ["breditor/strong"]),
+          ])],
+        },
+      }),
+      ` ${valid}`,
+    ];
+
+    expect(documentJsonUtf8Bytes(valid, V2_CONTRACT)).toBe(
+      new TextEncoder().encode(valid).byteLength,
+    );
+    expect(documentJsonUtf8Bytes(valid)).toBeNull();
+    for (const value of malformed) {
+      expect(documentJsonUtf8Bytes(value, V2_CONTRACT)).toBeNull();
+    }
+
+    const view = new FakeStringResult("value", valid);
+    expect(consumeWasmDocumentJson(EXPECTED, view, [], V2_CONTRACT)).toMatchObject({
+      ok: true,
+      document: { documentJson: valid },
+    });
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("rejects non-canonical caller-owned V2 format arrays without invoking them", () => {
+    const accessorReads = vi.fn();
+    const iteratorReads = vi.fn();
+    const overCapIndexReads = vi.fn();
+    const sparse = new Array<unknown>(2);
+    Object.defineProperty(sparse, "0", {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: V2_CONTRACT.formats[0],
+    });
+    const accessorBacked: unknown[] = [V2_CONTRACT.formats[0], undefined];
+    Object.defineProperty(accessorBacked, "1", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        accessorReads();
+        return V2_CONTRACT.formats[1];
+      },
+    });
+    const overCap = new Proxy(new Array<unknown>(257).fill(undefined), {
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "0") {
+          overCapIndexReads();
+          throw new Error("must reject the length before reading entries");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const iteratorPoisoned: unknown[] = [
+      V2_CONTRACT.formats[0],
+      V2_CONTRACT.formats[1],
+    ];
+    Object.defineProperty(iteratorPoisoned, Symbol.iterator, {
+      configurable: true,
+      get: () => {
+        iteratorReads();
+        throw new Error("must not read the caller iterator");
+      },
+    });
+
+    const encoded = documentV2Json([paragraph([
+      formattedRun("A", ["example/highlight"]),
+    ])]);
+    for (const formats of [sparse, accessorBacked, overCap, iteratorPoisoned]) {
+      const contract = {
+        mode: "v2",
+        schema: V2_CONTRACT.schema,
+        formats,
+      } as unknown as WasmDurableJsonContract;
+      expect(documentJsonUtf8Bytes(encoded, contract)).toBeNull();
+      const view = new FakeStringResult("value", encoded);
+      expect(consumeWasmDocumentJson(EXPECTED, view, [], contract).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+    expect(accessorReads).not.toHaveBeenCalled();
+    expect(iteratorReads).not.toHaveBeenCalled();
+    expect(overCapIndexReads).not.toHaveBeenCalled();
+  });
+
+  it("correlates every V2 text and format exactly to an owned profiled projection", () => {
+    const generation = new FakeProfileGeneration();
+    const consumedDescriptor = consumeWasmCompiledProfileDescriptor(
+      generation,
+      new FakeProfileDescriptor(generation),
+    );
+    if (!consumedDescriptor.ok) throw new Error(consumedDescriptor.error.code);
+    const projected = createProfiledDocumentProjection({
+      schema: {
+        name: "example/rich-document",
+        version: 3,
+        fingerprint: PROFILE_FINGERPRINT,
+      },
+      snapshot: EXPECTED,
+      paragraphs: [{
+        runs: [
+          { text: "A", formats: ["breditor/strong"] },
+          { text: "B", formats: ["example/highlight"] },
+        ],
+      }],
+    }, generation, consumedDescriptor.descriptor);
+    if (!projected.ok) throw new Error(projected.error.code);
+
+    const exact = documentV2Json([paragraph([
+      formattedRun("A", ["breditor/strong"]),
+      formattedRun("B", ["example/highlight"]),
+    ])]);
+    const differentFormats = documentV2Json([paragraph([
+      formattedRun("A", ["example/highlight"]),
+      formattedRun("B", ["breditor/strong"]),
+    ])]);
+    expect(documentJsonMatchesProjection(exact, projected.value, V2_CONTRACT)).toBe(true);
+    expect(
+      documentJsonMatchesProjection(differentFormats, projected.value, V2_CONTRACT),
+    ).toBe(false);
+    expect(documentJsonMatchesProjection(exact, projected.value)).toBe(false);
+  });
+
   it("collapses a structural core failure to fixed payload-free data and releases both handles", () => {
     const error = new FakeError(
       "codec.private_document_title",
@@ -156,7 +402,7 @@ describe("Wasm Document V1 export boundary", () => {
       error: {
         kind: "core",
         code: "document_json.core_rejected",
-        message: "The Rust editor core could not export Document V1.",
+        message: "The Rust editor core could not export the active Document format.",
       },
     });
     expect(JSON.stringify(result)).not.toContain("private");
@@ -244,6 +490,53 @@ describe("Wasm Document V1 export boundary", () => {
     expect(duplicate.freeCalls).toBe(1);
   });
 
+  it("rejects non-canonical protected-handle arrays before accepting ownership", () => {
+    const accessorReads = vi.fn();
+    const iteratorReads = vi.fn();
+    const overCapIndexReads = vi.fn();
+    const sparse = new Array<unknown>(1);
+    const accessorBacked: unknown[] = [undefined];
+    Object.defineProperty(accessorBacked, "0", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        accessorReads();
+        return undefined;
+      },
+    });
+    const overCap = new Proxy(new Array<unknown>(65).fill(undefined), {
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "0") {
+          overCapIndexReads();
+          throw new Error("must reject the length before reading entries");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const iteratorPoisoned: unknown[] = [undefined];
+    Object.defineProperty(iteratorPoisoned, Symbol.iterator, {
+      configurable: true,
+      get: () => {
+        iteratorReads();
+        throw new Error("must not read the caller iterator");
+      },
+    });
+
+    for (const protectedHandles of [
+      sparse,
+      accessorBacked,
+      overCap,
+      iteratorPoisoned,
+    ]) {
+      const view = new FakeStringResult("value", documentJson([paragraph([])]));
+      expect(consumeWasmDocumentJson(EXPECTED, view, protectedHandles).ok).toBe(false);
+      expect(view.freeCalls).toBe(0);
+    }
+    expect(accessorReads).not.toHaveBeenCalled();
+    expect(iteratorReads).not.toHaveBeenCalled();
+    expect(overCapIndexReads).not.toHaveBeenCalled();
+  });
+
   it("invalidates provisional bytes when cleanup throws, returns a value, or rejects", async () => {
     const values: unknown[] = [
       () => {
@@ -279,6 +572,22 @@ function documentJson(paragraphs: readonly unknown[]): string {
   });
 }
 
+function documentV2Json(paragraphs: readonly unknown[]): string {
+  return JSON.stringify({
+    format: "breditor/document",
+    formatVersion: 2,
+    schema: { name: "example/rich-document", version: 3 },
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: paragraphs,
+    },
+  });
+}
+
 function paragraph(children: readonly unknown[]): unknown {
   return {
     kind: "element",
@@ -294,5 +603,13 @@ function run(text: string, strong: boolean): unknown {
     kind: "text",
     text,
     formats: strong ? [{ type: "breditor/strong", properties: {} }] : [],
+  };
+}
+
+function formattedRun(text: string, formats: readonly string[]): unknown {
+  return {
+    kind: "text",
+    text,
+    formats: formats.map((type) => ({ type, properties: {} })),
   };
 }

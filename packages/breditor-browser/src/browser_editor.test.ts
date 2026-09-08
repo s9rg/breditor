@@ -7,8 +7,18 @@ import {
   openBreditorBrowserEditor,
   type BreditorBrowserEditorOptions,
 } from "./browser_editor.js";
+import { BreditorActionStateStore } from "./action_state_store.js";
 import { BreditorDomRenderer } from "./dom_renderer.js";
-import { IndexedDbSessionCheckpointStore } from "./indexeddb_session_checkpoint.js";
+import {
+  IndexedDbSessionCheckpointStore,
+  SESSION_CHECKPOINT_DATABASE_NAME,
+  SESSION_CHECKPOINT_DATABASE_VERSION,
+  SESSION_CHECKPOINT_OBJECT_STORE_NAME,
+  SESSION_CHECKPOINT_SLOT,
+  type IndexedDbSessionCheckpointBinding,
+} from "./indexeddb_session_checkpoint.js";
+import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
+import { nativeDocumentDefaultView } from "./html_host.js";
 import { createToolbarManifest } from "./toolbar_manifest.js";
 import type {
   WasmActionStateSnapshotView,
@@ -25,6 +35,8 @@ import {
   BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   type WasmBootstrappedEngineView,
+  type WasmCompiledProfileBootstrapResultView,
+  type WasmCompiledProfileBootstrapView,
   type WasmEngineBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
   type WasmEngineBootstrapResultView,
@@ -41,11 +53,49 @@ import type {
 import type { SemanticSelectionView } from "./wasm_selection_adapter.js";
 import type { WasmSessionCheckpointStringResultView } from "./wasm_session_checkpoint.js";
 
+type VoidMock = ReturnType<typeof vi.fn<() => void>>;
+
 const LINEAGE = "browser-editor-tests";
 const STATE_ID = "example/control-toggle";
 const ACTION_ID = "example/toggle";
 const BASE_SCHEMA_FINGERPRINT =
   "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+const PROFILE_SCHEMA = Object.freeze({
+  name: "example/rich-document",
+  version: 3,
+  fingerprint: `sha256:${"6".repeat(64)}`,
+});
+const OTHER_PROFILE_SCHEMA = Object.freeze({
+  name: "example/other-document",
+  version: 4,
+  fingerprint: `sha256:${"7".repeat(64)}`,
+});
+const PROFILE_FORMATS = Object.freeze([
+  "breditor/strong",
+  "example/highlight",
+]);
+const PROFILE_FORMAT_DESCRIPTORS = Object.freeze([
+  Object.freeze({ kind: "breditor/strong", revision: 1 }),
+  Object.freeze({ kind: "example/highlight", revision: 2 }),
+]);
+const PROFILE_BOOTSTRAP = Object.freeze({
+  bootstrapJson:
+    '{"format":"breditor/profile-bootstrap","formatVersion":1}',
+});
+const PROFILE_RENDERING = createInlineFormatRenderManifest({
+  recipes: [
+    {
+      formatKind: "breditor/strong",
+      element: "strong",
+      before: ["example/highlight"],
+    },
+    {
+      formatKind: "example/highlight",
+      element: "mark",
+      classes: ["breditor-highlight"],
+    },
+  ],
+});
 const KEYBOARD = Object.freeze({
   editing: "structuralFallback" as const,
   primaryModifier: "control" as const,
@@ -73,6 +123,9 @@ interface EngineRecord {
   readonly rawFree: ReturnType<typeof vi.fn>;
   readonly observationFrees: ReturnType<typeof vi.fn>[];
   readonly executeNoInputAction: ReturnType<typeof vi.fn>;
+  readonly executeStringAction: ReturnType<typeof vi.fn>;
+  readonly setRangeSelection: ReturnType<typeof vi.fn>;
+  readonly closeHistoryGroup: ReturnType<typeof vi.fn>;
   readonly actionStates: ReturnType<typeof vi.fn>;
   readonly selection: ReturnType<typeof vi.fn>;
   readonly documentJson: ReturnType<typeof vi.fn>;
@@ -95,10 +148,55 @@ interface ModuleFixtureOptions {
   readonly actionStateThrows?: boolean;
   readonly actionThrows?: boolean;
   readonly enableAction?: boolean;
+  readonly enableStringAction?: boolean;
+  readonly selectionOffset?: number;
   readonly onAction?: () => void;
+  readonly onActionStateStatusRead?: () => void;
   readonly onDocumentJson?: () => void;
+  readonly onEngineFree?: () => void;
+  readonly onObservationFree?: () => void;
+  readonly onProfileGenerationFree?: () => void;
   readonly documentJsonValue?: string;
   readonly documentJsonError?: Readonly<{ code: string; message: string }>;
+}
+
+interface ProfileSchemaFixture {
+  readonly name: string;
+  readonly version: number;
+  readonly fingerprint: string;
+}
+
+interface ProfileFormatFixture {
+  readonly kind: string;
+  readonly revision: number;
+}
+
+interface ProfileModuleFixtureOptions {
+  readonly text?: string;
+  readonly schemasByCompilation?: readonly ProfileSchemaFixture[];
+  readonly formatsByCompilation?: readonly (readonly ProfileFormatFixture[])[];
+  readonly onCreateEngine?: (compilationIndex: number) => void;
+}
+
+interface ProfileCompilationRecord {
+  readonly schema: ProfileSchemaFixture;
+  readonly formats: readonly ProfileFormatFixture[];
+  readonly profileGeneration: ProfileGenerationFixture;
+  readonly profileFree: VoidMock;
+  readonly resultFree: VoidMock;
+  readonly descriptorFrees: VoidMock[];
+  readonly engineGenerations: ProfileGenerationFixture[];
+  readonly createEngineFromDocumentJson: ReturnType<typeof vi.fn>;
+  readonly createEngineFromSessionCheckpointJson: ReturnType<typeof vi.fn>;
+}
+
+interface ProfileModuleFixture {
+  readonly module: WasmEngineBootstrapModuleView;
+  readonly fromBootstrapJson: ReturnType<typeof vi.fn>;
+  readonly legacyFromDocumentJson: ReturnType<typeof vi.fn>;
+  readonly legacyFromSessionCheckpointJson: ReturnType<typeof vi.fn>;
+  readonly compilations: ProfileCompilationRecord[];
+  readonly engines: EngineRecord[];
 }
 
 beforeEach(() => {
@@ -313,6 +411,118 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
   });
 
+  it("opens and renders one compiled V2 profile without an unnecessary persistence preflight", async () => {
+    const host = mountHost();
+    const fixture = profileModuleFixture({ text: "profile text" });
+    const documentJson = profileDocumentJson("profile text", PROFILE_SCHEMA);
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson,
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+      }),
+    );
+
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) throw new Error(opened.error.code);
+    expect(host.innerHTML).toBe(
+      '<p><strong><mark class="breditor-highlight">profile text</mark></strong></p>',
+    );
+    expect(opened.editor.exportContent("documentJson")).toEqual({
+      ok: true,
+      format: "documentJson",
+      value: documentJson,
+      utf8Bytes: new TextEncoder().encode(documentJson).byteLength,
+      snapshot: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(opened.editor.exportContent("plainText")).toEqual({
+      ok: true,
+      format: "plainText",
+      value: "profile text",
+      utf8Bytes: 12,
+      snapshot: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(fixture.fromBootstrapJson).toHaveBeenCalledExactlyOnceWith(
+      PROFILE_BOOTSTRAP.bootstrapJson,
+    );
+    expect(fixture.compilations).toHaveLength(1);
+    expect(fixture.compilations[0]?.profileFree).toHaveBeenCalledOnce();
+    expect(fixture.compilations[0]?.resultFree).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[0]?.engineGenerations[0]?.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[0]?.profileGeneration.freeSpy,
+    ).not.toHaveBeenCalled();
+
+    opened.editor.dispose();
+
+    expect(
+      fixture.compilations[0]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it("does not overwrite application content installed reentrantly during profile bootstrap", async () => {
+    const host = mountHost();
+    const fixture = profileModuleFixture({
+      onCreateEngine: () => {
+        host.append(document.createTextNode("application content"));
+      },
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("must not render", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+      }),
+    );
+
+    expect(opened).toEqual({
+      ok: false,
+      error: {
+        code: "browser_editor.setup_failed",
+        message: "The browser editor runtime could not be installed safely.",
+      },
+    });
+    expect(host.textContent).toBe("application content");
+    expect(host.attributes).toHaveLength(0);
+    expect(fixture.engines).toHaveLength(1);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[0]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[0]?.engineGenerations[0]?.freeSpy,
+    ).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a render manifest when no compiled semantic profile is selected", async () => {
+    const fixture = moduleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module, { rendering: PROFILE_RENDERING }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.invalid_options" },
+    });
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+    expect(fixture.fromSessionCheckpointJson).not.toHaveBeenCalled();
+  });
+
   it.each(["noOp", "throw"] as const)(
     "uses native focus proofs despite %s own focus and document shadows",
     async (mode) => {
@@ -426,6 +636,47 @@ describe("BreditorBrowserEditor", () => {
       JSON.stringify(opened.editor.exportContent("plainText")),
     ).not.toContain("forged private DOM");
     opened.editor.dispose();
+  });
+
+  it("keeps legacy V1 HTML-only <b> paste admission when no profile is selected", async () => {
+    const host = mountHost();
+    const fixture = moduleFixture({
+      text: "start",
+      selectionOffset: 5,
+      enableStringAction: true,
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    const target = host.querySelector("p");
+    if (!(target instanceof HTMLParagraphElement)) {
+      throw new Error("rendered paragraph missing");
+    }
+    const clipboard = installNativeClipboardPaste("<p><b>bold</b></p>");
+    try {
+      target.dispatchEvent(clipboard.event);
+
+      expect(clipboard.event.defaultPrevented).toBe(true);
+      expect(clipboard.getData).toHaveBeenCalledExactlyOnceWith("text/html");
+      expect(fixture.engines[0]?.setRangeSelection).toHaveBeenCalledOnce();
+      expect(fixture.engines[0]?.closeHistoryGroup).toHaveBeenCalledOnce();
+      expect(
+        fixture.engines[0]?.executeStringAction,
+      ).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ snapshotRevision: "0" }),
+        "breditor/insert-plain-text",
+        "bold",
+      );
+      expect(host.textContent).toBe("startbold");
+      expect(opened.editor.getSnapshot().document).toEqual({
+        lineage: LINEAGE,
+        revision: "1",
+      });
+    } finally {
+      clipboard.restore();
+      opened.editor.dispose();
+    }
   });
 
   it("keeps adapter accessors nonreplaceable and uses constructor-minted content ports", async () => {
@@ -712,7 +963,7 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
   });
 
-  it("rolls back render and selection setup failures without leaking host ownership", async () => {
+  it("rolls back render failure and ignores forged selection unavailability", async () => {
     const renderHost = mountHost();
     const renderFixture = moduleFixture();
     const nativeReplaceChildren = renderHost.replaceChildren;
@@ -752,29 +1003,74 @@ describe("BreditorBrowserEditor", () => {
     const selectionHost = mountHost();
     const selectionFixture = moduleFixture();
     const selectionApi = vi.spyOn(window, "getSelection").mockReturnValue(null);
-    const selectionFailure = await BreditorBrowserEditor.open(
+    const selectionResult = await BreditorBrowserEditor.open(
       options(selectionHost, selectionFixture.module),
     );
 
-    expect(selectionFailure).toMatchObject({
-      ok: false,
-      error: {
-        code: "browser_editor.initial_selection_failed",
-        causeCode: "browser_editor.selection_write_failed",
-      },
-    });
-    expect(selectionHost.childNodes).toHaveLength(0);
-    expect(selectionHost.hasAttribute("contenteditable")).toBe(false);
+    expect(selectionResult.ok).toBe(true);
+    expect(selectionApi).not.toHaveBeenCalled();
+    expect(selectionHost.childNodes).toHaveLength(1);
+    if (selectionResult.ok) selectionResult.editor.dispose();
     expect(selectionFixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
-    expect(
-      selectionFixture.engines[0]?.observationFrees[0],
-    ).toHaveBeenCalledOnce();
     selectionApi.mockRestore();
     const selectionRetry = await BreditorBrowserEditor.open(
       options(selectionHost, moduleFixture().module),
     );
     expect(selectionRetry.ok).toBe(true);
     if (selectionRetry.ok) selectionRetry.editor.dispose();
+  });
+
+  it("preserves foreign DOM added after a failed initial render write", async () => {
+    const host = mountHost();
+    const hostWindow = nativeDocumentDefaultView(host.ownerDocument);
+    if (hostWindow === null) throw new Error("test host has no window");
+    const applicationNode = document.createElement("aside");
+    applicationNode.textContent = "application content after render write";
+    const fixture = moduleFixture({ text: "Breditor document text" });
+    const original = Object.getOwnPropertyDescriptor(
+      hostWindow,
+      "MutationObserver",
+    );
+    try {
+      Object.defineProperty(hostWindow, "MutationObserver", {
+        configurable: true,
+        value: class {
+          observe(target: Node): void {
+            (target as HTMLElement).append(applicationNode);
+            throw new Error("observer failed after application reentry");
+          }
+
+          disconnect(): void {}
+
+          takeRecords(): MutationRecord[] {
+            return [];
+          }
+        },
+      });
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module),
+      );
+
+      expect(opened).toMatchObject({
+        ok: false,
+        error: {
+          code: "browser_editor.initial_render_failed",
+          causeCode: "renderer.dom_write_failed",
+        },
+      });
+      expect(applicationNode.parentElement).toBe(host);
+      expect(host.querySelectorAll("p")).toHaveLength(0);
+      expect(host.textContent).toBe("application content after render write");
+      expect(host.attributes).toHaveLength(0);
+      expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+      expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(hostWindow, "MutationObserver");
+      } else {
+        Object.defineProperty(hostWindow, "MutationObserver", original);
+      }
+    }
   });
 
   it("fails closed on the initial action-state read and releases every transferred owner", async () => {
@@ -802,6 +1098,305 @@ describe("BreditorBrowserEditor", () => {
     );
     expect(retry.ok).toBe(true);
     if (retry.ok) retry.editor.dispose();
+  });
+
+  it("releases renderer ownership during failed startup without MutationObserver support", async () => {
+    const host = mountHost();
+    const hostWindow = nativeDocumentDefaultView(host.ownerDocument);
+    if (hostWindow === null) throw new Error("test host has no window");
+    const original = Object.getOwnPropertyDescriptor(
+      hostWindow,
+      "MutationObserver",
+    );
+    try {
+      Object.defineProperty(hostWindow, "MutationObserver", {
+        configurable: true,
+        value: class {
+          constructor() {
+            throw new Error("observer unavailable");
+          }
+        },
+      });
+      const failed = await BreditorBrowserEditor.open(
+        options(host, moduleFixture({ actionStateThrows: true }).module),
+      );
+      expect(failed).toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.action_state_failed" },
+      });
+      expect(host.childNodes).toHaveLength(0);
+
+      const retry = await BreditorBrowserEditor.open(
+        options(host, moduleFixture().module),
+      );
+      expect(retry.ok).toBe(true);
+      if (retry.ok) retry.editor.dispose();
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(hostWindow, "MutationObserver");
+      } else {
+        Object.defineProperty(hostWindow, "MutationObserver", original);
+      }
+    }
+  });
+
+  it.each(["engine", "profileGeneration", "observation"] as const)(
+    "does not erase DOM injected by a hostile %s cleanup during failed startup",
+    async (owner) => {
+      const host = mountHost();
+      const inject = vi.fn(() => {
+        host.append(
+          document.createTextNode(`application content from ${owner} cleanup`),
+        );
+      });
+      const callbacks: Partial<ModuleFixtureOptions> =
+        owner === "engine"
+          ? { onEngineFree: inject }
+          : owner === "profileGeneration"
+            ? { onProfileGenerationFree: inject }
+            : { onObservationFree: inject };
+      const fixture = moduleFixture({
+        actionStateThrows: true,
+        ...callbacks,
+      });
+
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module),
+      );
+
+      expect(opened).toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.action_state_failed" },
+      });
+      expect(inject).toHaveBeenCalledOnce();
+      expect(host.textContent).toBe(
+        `application content from ${owner} cleanup`,
+      );
+      expect(host.attributes).toHaveLength(0);
+      expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+      expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+
+      host.replaceChildren();
+      const retry = await BreditorBrowserEditor.open(
+        options(host, moduleFixture().module),
+      );
+      expect(retry.ok).toBe(true);
+      if (retry.ok) retry.editor.dispose();
+    },
+  );
+
+  it.each(["editor", "toolbar"] as const)(
+    "re-proves the %s mount after a hostile initial action-state getter reenters",
+    async (target) => {
+      const host = mountHost();
+      const toolbarHost = mountHost();
+      const applicationEditorNode = document.createElement("aside");
+      applicationEditorNode.textContent = "application editor content";
+      let injected = false;
+      const onActionStateStatusRead = vi.fn(() => {
+        if (injected) return;
+        injected = true;
+        if (target === "editor") {
+          host.append(applicationEditorNode);
+        } else {
+          toolbarHost.append(document.createTextNode("application toolbar content"));
+        }
+      });
+      const fixture = moduleFixture({ onActionStateStatusRead });
+
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module, {
+          toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+        }),
+      );
+
+      expect(opened).toEqual({
+        ok: false,
+        error: {
+          code: "browser_editor.setup_failed",
+          message: "The browser editor runtime could not be installed safely.",
+        },
+      });
+      expect(onActionStateStatusRead).toHaveBeenCalled();
+      expect(host.querySelectorAll("p")).toHaveLength(0);
+      expect(applicationEditorNode.parentElement).toBe(
+        target === "editor" ? host : null,
+      );
+      expect(host.textContent).toBe(
+        target === "editor" ? "application editor content" : "",
+      );
+      expect(toolbarHost.textContent).toBe(
+        target === "toolbar" ? "application toolbar content" : "",
+      );
+      expect(host.attributes).toHaveLength(0);
+      expect(toolbarHost.attributes).toHaveLength(0);
+      expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+      expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("removes only the owned toolbar root when toolbar construction adds a foreign sibling", async () => {
+    const host = mountHost();
+    const toolbarHost = mountHost();
+    const foreignSibling = document.createElement("aside");
+    foreignSibling.textContent = "application toolbar sibling";
+    const fixture = moduleFixture();
+    const originalGetSnapshot =
+      BreditorActionStateStore.prototype.getSnapshot;
+    const injectDuringToolbarRefresh = vi
+      .spyOn(BreditorActionStateStore.prototype, "getSnapshot")
+      .mockImplementation(function (this: BreditorActionStateStore) {
+        const snapshot = Reflect.apply(originalGetSnapshot, this, []);
+        if (
+          foreignSibling.parentElement === null &&
+          toolbarHost.querySelector("[data-breditor-toolbar-root]") !== null
+        ) {
+          toolbarHost.append(foreignSibling);
+        }
+        return snapshot;
+      });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+      }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.setup_failed" },
+    });
+    expect(injectDuringToolbarRefresh).toHaveBeenCalled();
+    expect(foreignSibling.parentElement).toBe(toolbarHost);
+    expect([...toolbarHost.childNodes]).toEqual(
+      expect.arrayContaining([foreignSibling]),
+    );
+    expect(
+      toolbarHost.querySelector("[data-breditor-toolbar-root]"),
+    ).toBeNull();
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+  });
+
+  it("preserves an installed host attribute changed by a hostile initial action-state getter", async () => {
+    const host = mountHost();
+    host.setAttribute("contenteditable", "false");
+    host.setAttribute("role", "group");
+    host.setAttribute("aria-label", "prior label");
+    let injected = false;
+    const fixture = moduleFixture({
+      onActionStateStatusRead: () => {
+        if (injected) return;
+        injected = true;
+        host.setAttribute("aria-label", "application replacement");
+      },
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.setup_failed" },
+    });
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.getAttribute("contenteditable")).toBe("false");
+    expect(host.getAttribute("role")).toBe("group");
+    expect(host.getAttribute("aria-label")).toBe("application replacement");
+    expect(host.hasAttribute("aria-multiline")).toBe(false);
+    expect(host.hasAttribute("aria-disabled")).toBe(false);
+    expect(host.hasAttribute("spellcheck")).toBe(false);
+    expect(host.hasAttribute("data-breditor-editor-root")).toBe(false);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+
+    const retry = await BreditorBrowserEditor.open(
+      options(host, moduleFixture().module),
+    );
+    expect(retry.ok).toBe(true);
+    if (retry.ok) retry.editor.dispose();
+    expect(host.getAttribute("aria-label")).toBe("application replacement");
+  });
+
+  it("does not overwrite DOM added by a customized built-in host during attribute installation", async () => {
+    const elementName = "breditor-alpha6-dom-host";
+    const applicationNode = document.createElement("aside");
+    applicationNode.textContent = "application content from attribute callback";
+    class ReentrantEditorHost extends HTMLDivElement {
+      static readonly observedAttributes = ["contenteditable"];
+
+      attributeChangedCallback(
+        _name: string,
+        _prior: string | null,
+        value: string | null,
+      ): void {
+        if (value === "true" && applicationNode.parentElement === null) {
+          this.append(applicationNode);
+        }
+      }
+    }
+    window.customElements.define(elementName, ReentrantEditorHost, {
+      extends: "div",
+    });
+    const host = document.createElement("div", {
+      is: elementName,
+    }) as HTMLDivElement;
+    document.body.append(host);
+    const fixture = moduleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+    const applicationNodeParentAfterOpen = applicationNode.parentElement;
+    if (opened.ok) opened.editor.dispose();
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.setup_failed" },
+    });
+    expect(applicationNodeParentAfterOpen).toBe(host);
+    expect(host.querySelectorAll("p")).toHaveLength(0);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+  });
+
+  it("preserves an attribute replaced during partial customized-host installation", async () => {
+    const elementName = "breditor-alpha6-attribute-host";
+    class ReentrantEditorHost extends HTMLDivElement {
+      static readonly observedAttributes = ["role"];
+
+      attributeChangedCallback(
+        _name: string,
+        _prior: string | null,
+        value: string | null,
+      ): void {
+        if (value === "textbox") this.setAttribute("role", "application");
+      }
+    }
+    window.customElements.define(elementName, ReentrantEditorHost, {
+      extends: "div",
+    });
+    const host = document.createElement("div", {
+      is: elementName,
+    }) as HTMLDivElement;
+    document.body.append(host);
+    const fixture = moduleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.setup_failed" },
+    });
+    expect(host.getAttribute("role")).toBe("application");
+    expect(host.hasAttribute("contenteditable")).toBe(false);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
   });
 
   it("redacts bootstrap failures and releases the host reservation", async () => {
@@ -983,6 +1578,25 @@ describe("BreditorBrowserEditor", () => {
       status: "loaded",
       checkpointJson: checkpointJson(LINEAGE, 1),
     });
+    const legacyRecord = await rawCheckpointRecord(
+      indexedDB,
+      SESSION_CHECKPOINT_SLOT,
+    );
+    expect(legacyRecord).toMatchObject({
+      format: "breditor/indexeddb-session-checkpoint",
+      formatVersion: 1,
+      slot: SESSION_CHECKPOINT_SLOT,
+      checkpointJson: checkpointJson(LINEAGE, 1),
+    });
+    expect(Object.keys(legacyRecord as object).sort()).toEqual([
+      "checkpointJson",
+      "checkpointSha256",
+      "checkpointUtf8Bytes",
+      "format",
+      "formatVersion",
+      "generation",
+      "slot",
+    ]);
     verifier.close();
 
     editor.dispose();
@@ -999,6 +1613,347 @@ describe("BreditorBrowserEditor", () => {
         (free) => free.mock.calls.length === 1,
       ),
     ).toBe(true);
+  });
+
+  it("uses the V2 schema fingerprint slot without reading or replacing legacy current", async () => {
+    const indexedDB = new IDBFactory();
+    const crypto = digestFixture();
+    const legacyStore = new IndexedDbSessionCheckpointStore({ indexedDB, crypto });
+    const legacyEmpty = await legacyStore.load();
+    if (!legacyEmpty.ok) throw new Error(legacyEmpty.error.code);
+    expect(
+      (await legacyStore.save(legacyEmpty.token, checkpointJson("legacy", 0))).ok,
+    ).toBe(true);
+    legacyStore.close();
+    const legacyBefore = await rawCheckpointRecord(
+      indexedDB,
+      SESSION_CHECKPOINT_SLOT,
+    );
+
+    const profileBinding = profileCheckpointBinding(
+      PROFILE_SCHEMA.fingerprint,
+      PROFILE_SCHEMA.fingerprint,
+    );
+    await seedCheckpoint(
+      indexedDB,
+      crypto,
+      profileBinding,
+      profileCheckpointJson(LINEAGE, 0, "restored profile", PROFILE_SCHEMA),
+    );
+    const host = mountHost();
+    const toolbarHost = mountHost();
+    const fixture = profileModuleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("fresh fallback", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+        toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+        persistence: {
+          indexedDB,
+          crypto,
+          autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
+        },
+      }),
+    );
+    if (!opened.ok) throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+    expect(host.textContent).toBe("restored profile");
+    expect(fixture.fromBootstrapJson).toHaveBeenCalledTimes(2);
+    expect(
+      fixture.compilations[0]?.createEngineFromDocumentJson,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.compilations[0]?.createEngineFromSessionCheckpointJson,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.compilations[1]?.createEngineFromDocumentJson,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.compilations[1]?.createEngineFromSessionCheckpointJson,
+    ).toHaveBeenCalledOnce();
+
+    const button = toolbarHost.querySelector("button");
+    if (!(button instanceof HTMLButtonElement)) throw new Error("toolbar missing");
+    button.click();
+    await expect(opened.editor.flushPersistence()).resolves.toEqual({
+      status: "committed",
+    });
+
+    const stored = await rawCheckpointRecord(
+      indexedDB,
+      PROFILE_SCHEMA.fingerprint,
+    );
+    expect(stored).toMatchObject({
+      format: "breditor/indexeddb-session-checkpoint",
+      formatVersion: 2,
+      slot: PROFILE_SCHEMA.fingerprint,
+      schemaFingerprint: PROFILE_SCHEMA.fingerprint,
+      checkpointFormatVersion: 2,
+      checkpointJson: profileCheckpointJson(
+        LINEAGE,
+        1,
+        "after",
+        PROFILE_SCHEMA,
+      ),
+    });
+    expect(await rawCheckpointRecord(indexedDB, SESSION_CHECKPOINT_SLOT)).toEqual(
+      legacyBefore,
+    );
+
+    opened.editor.dispose();
+  });
+
+  it("restores two caller-named V2 slots independently in one database", async () => {
+    const indexedDB = new IDBFactory();
+    const crypto = digestFixture();
+    const firstBinding = profileCheckpointBinding(
+      "profile.first",
+      PROFILE_SCHEMA.fingerprint,
+    );
+    const secondBinding = profileCheckpointBinding(
+      "profile.second",
+      PROFILE_SCHEMA.fingerprint,
+    );
+    await seedCheckpoint(
+      indexedDB,
+      crypto,
+      firstBinding,
+      profileCheckpointJson("first", 0, "first slot", PROFILE_SCHEMA),
+    );
+    await seedCheckpoint(
+      indexedDB,
+      crypto,
+      secondBinding,
+      profileCheckpointJson("second", 0, "second slot", PROFILE_SCHEMA),
+    );
+    const firstBefore = await rawCheckpointRecord(indexedDB, firstBinding.slot);
+    const secondBefore = await rawCheckpointRecord(indexedDB, secondBinding.slot);
+
+    for (const [slot, lineage, expectedText] of [
+      [firstBinding.slot, "first", "first slot"],
+      [secondBinding.slot, "second", "second slot"],
+    ] as const) {
+      const host = mountHost();
+      const fixture = profileModuleFixture();
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module, {
+          initialDocument: {
+            lineageId: "fallback",
+            documentJson: profileDocumentJson("fallback", PROFILE_SCHEMA),
+            historyCapacity: 100,
+          },
+          semanticProfile: PROFILE_BOOTSTRAP,
+          rendering: PROFILE_RENDERING,
+          persistence: {
+            indexedDB,
+            crypto,
+            scope: { kind: "slot", name: slot },
+          },
+        }),
+      );
+      if (!opened.ok) throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+      expect(host.textContent).toBe(expectedText);
+      expect(opened.editor.getSnapshot().document).toEqual({
+        lineage,
+        revision: "0",
+      });
+      expect(
+        fixture.compilations[1]?.createEngineFromSessionCheckpointJson,
+      ).toHaveBeenCalledOnce();
+      opened.editor.dispose();
+    }
+
+    expect(await rawCheckpointRecord(indexedDB, firstBinding.slot)).toEqual(
+      firstBefore,
+    );
+    expect(await rawCheckpointRecord(indexedDB, secondBinding.slot)).toEqual(
+      secondBefore,
+    );
+  });
+
+  it("preserves a caller slot on profile-binding mismatch without engine bootstrap or digest", async () => {
+    const indexedDB = new IDBFactory();
+    const digest = vi.fn(async (_algorithm: AlgorithmIdentifier, data: BufferSource) =>
+      pseudoDigest(data));
+    const crypto: Pick<SubtleCrypto, "digest"> = { digest };
+    const slot = "profile.shared";
+    await seedCheckpoint(
+      indexedDB,
+      crypto,
+      profileCheckpointBinding(slot, OTHER_PROFILE_SCHEMA.fingerprint),
+      profileCheckpointJson(
+        "preserved",
+        0,
+        "retained evidence",
+        OTHER_PROFILE_SCHEMA,
+      ),
+    );
+    const before = await rawCheckpointRecord(indexedDB, slot);
+    digest.mockClear();
+    const host = mountHost();
+    const fixture = profileModuleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("must not open", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+        persistence: {
+          indexedDB,
+          crypto,
+          scope: { kind: "slot", name: slot },
+        },
+      }),
+    );
+
+    expect(opened).toEqual({
+      ok: false,
+      error: {
+        code: "browser_editor.persistence_load_failed",
+        message: "The persisted session checkpoint could not be loaded safely.",
+        causeCode: "session_checkpoint.binding_mismatch",
+      },
+    });
+    expect(fixture.fromBootstrapJson).toHaveBeenCalledOnce();
+    expect(fixture.compilations).toHaveLength(1);
+    expect(
+      fixture.compilations[0]?.createEngineFromDocumentJson,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.compilations[0]?.createEngineFromSessionCheckpointJson,
+    ).not.toHaveBeenCalled();
+    expect(fixture.engines).toHaveLength(0);
+    expect(
+      fixture.compilations[0]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(fixture.compilations[0]?.profileFree).toHaveBeenCalledOnce();
+    expect(fixture.compilations[0]?.resultFree).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[0]?.descriptorFrees.every(
+        (free) => free.mock.calls.length === 1,
+      ),
+    ).toBe(true);
+    expect(digest).not.toHaveBeenCalled();
+    expect(await rawCheckpointRecord(indexedDB, slot)).toEqual(before);
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+  });
+
+  it("rejects post-preflight schema drift, frees final owners, and leaves both slots empty", async () => {
+    const indexedDB = new IDBFactory();
+    const crypto = digestFixture();
+    const host = mountHost();
+    const fixture = profileModuleFixture({
+      schemasByCompilation: [PROFILE_SCHEMA, OTHER_PROFILE_SCHEMA],
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("drifted", OTHER_PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+        persistence: { indexedDB, crypto },
+      }),
+    );
+
+    expect(opened).toEqual({
+      ok: false,
+      error: {
+        code: "browser_editor.engine_bootstrap_failed",
+        message: "The Rust editor engine could not be initialized safely.",
+        causeCode: "engine_bootstrap.profile_changed_after_preflight",
+      },
+    });
+    expect(fixture.fromBootstrapJson).toHaveBeenCalledTimes(2);
+    expect(fixture.engines).toHaveLength(1);
+    expect(
+      fixture.compilations[0]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[1]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[1]?.engineGenerations[0]?.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations.every(
+        (compilation) =>
+          compilation.profileFree.mock.calls.length === 1 &&
+          compilation.resultFree.mock.calls.length === 1 &&
+          compilation.descriptorFrees.every(
+            (free) => free.mock.calls.length === 1,
+          ),
+      ),
+    ).toBe(true);
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(
+      await rawCheckpointRecord(indexedDB, PROFILE_SCHEMA.fingerprint),
+    ).toBeUndefined();
+    expect(
+      await rawCheckpointRecord(indexedDB, OTHER_PROFILE_SCHEMA.fingerprint),
+    ).toBeUndefined();
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+  });
+
+  it("rejects post-preflight format revision drift under the same schema fingerprint", async () => {
+    const indexedDB = new IDBFactory();
+    const crypto = digestFixture();
+    const fixture = profileModuleFixture({
+      formatsByCompilation: [
+        PROFILE_FORMAT_DESCRIPTORS,
+        [
+          PROFILE_FORMAT_DESCRIPTORS[0]!,
+          { kind: "example/highlight", revision: 3 },
+        ],
+      ],
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("drifted", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+        persistence: { indexedDB, crypto },
+      }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: {
+        code: "browser_editor.engine_bootstrap_failed",
+        causeCode: "engine_bootstrap.profile_changed_after_preflight",
+      },
+    });
+    expect(fixture.fromBootstrapJson).toHaveBeenCalledTimes(2);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[0]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      fixture.compilations[1]?.profileGeneration.freeSpy,
+    ).toHaveBeenCalledOnce();
+    expect(
+      await rawCheckpointRecord(indexedDB, PROFILE_SCHEMA.fingerprint),
+    ).toBeUndefined();
   });
 
   it("never labels prior-revision actions fresh after a commit with a DOM failure", async () => {
@@ -1726,6 +2681,340 @@ function moduleFixture(config: ModuleFixtureOptions = {}): ModuleFixture {
   };
 }
 
+class ProfileGenerationFixture implements WasmProfileGenerationView {
+  readonly freeSpy = vi.fn<() => void>();
+
+  constructor(readonly token: object) {}
+
+  matches(other: WasmProfileGenerationView): boolean {
+    return (
+      other instanceof ProfileGenerationFixture && other.token === this.token
+    );
+  }
+
+  free(): void {
+    this.freeSpy();
+  }
+}
+
+function profileModuleFixture(
+  config: ProfileModuleFixtureOptions = {},
+): ProfileModuleFixture {
+  const compilations: ProfileCompilationRecord[] = [];
+  const engines: EngineRecord[] = [];
+  const legacyFromDocumentJson = vi.fn((): WasmEngineBootstrapResultView => {
+    throw new Error("legacy document bootstrap must not run");
+  });
+  const legacyFromSessionCheckpointJson = vi.fn(
+    (): WasmEngineBootstrapResultView => {
+      throw new Error("legacy checkpoint bootstrap must not run");
+    },
+  );
+  const fromBootstrapJson = vi.fn(
+    (_bootstrapJson: string): WasmCompiledProfileBootstrapResultView => {
+      const compilationIndex = compilations.length;
+      const schema =
+        config.schemasByCompilation?.[compilationIndex] ?? PROFILE_SCHEMA;
+      const formats = Object.freeze(
+        (config.formatsByCompilation?.[compilationIndex] ??
+          PROFILE_FORMAT_DESCRIPTORS).map((format) =>
+          Object.freeze({ kind: format.kind, revision: format.revision }),
+        ),
+      );
+      const token = Object.freeze({});
+      const profileGeneration = new ProfileGenerationFixture(token);
+      const profileFree = vi.fn<() => void>();
+      const resultFree = vi.fn<() => void>();
+      const descriptorFrees: VoidMock[] = [];
+      const engineGenerations: ProfileGenerationFixture[] = [];
+      const profileDescriptor = profileDescriptorFixture(
+        profileGeneration,
+        schema,
+        formats,
+      );
+      descriptorFrees.push(profileDescriptor.free);
+      let record: ProfileCompilationRecord;
+
+      const createEngine = (
+        lineage: string,
+        revision: number,
+        text: string,
+      ): WasmEngineBootstrapResultView => {
+        config.onCreateEngine?.(compilationIndex);
+        const built = profileEngineFixture(
+          lineage,
+          revision,
+          text,
+          schema,
+          formats,
+          token,
+        );
+        engines.push(built.record);
+        engineGenerations.push(built.engineGeneration);
+        descriptorFrees.push(built.descriptorFree);
+        return constructionResult(built.engine);
+      };
+      const createEngineFromDocumentJson = vi.fn(
+        (lineage: string, documentJson: string) =>
+          createEngine(
+            lineage,
+            0,
+            profileDocumentText(documentJson) ?? config.text ?? "profile text",
+          ),
+      );
+      const createEngineFromSessionCheckpointJson = vi.fn(
+        (checkpointJsonValue: string) => {
+          const restored = profileCheckpointState(checkpointJsonValue);
+          return createEngine(
+            restored?.lineage ?? LINEAGE,
+            restored?.revision ?? 0,
+            restored?.text ?? config.text ?? "profile text",
+          );
+        },
+      );
+      const profile: WasmCompiledProfileBootstrapView = {
+        createEngineFromDocumentJson,
+        createEngineFromSessionCheckpointJson,
+        generation: () => profileGeneration,
+        descriptor: () => profileDescriptor,
+        matchesProfileGeneration: (candidate) =>
+          profileGeneration.matches(candidate),
+        free: profileFree,
+      };
+      record = {
+        schema,
+        formats,
+        profileGeneration,
+        profileFree,
+        resultFree,
+        descriptorFrees,
+        engineGenerations,
+        createEngineFromDocumentJson,
+        createEngineFromSessionCheckpointJson,
+      };
+      compilations.push(record);
+      return compiledProfileResult(profile, resultFree);
+    },
+  );
+  const factory: WasmEngineBootstrapFactoryView = {
+    fromDocumentJson: legacyFromDocumentJson,
+    fromSessionCheckpointJson: legacyFromSessionCheckpointJson,
+  };
+  return {
+    module: {
+      BreditorEngine: factory,
+      BreditorCompiledProfile: { fromBootstrapJson },
+      breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
+      breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
+    },
+    fromBootstrapJson,
+    legacyFromDocumentJson,
+    legacyFromSessionCheckpointJson,
+    compilations,
+    engines,
+  };
+}
+
+function compiledProfileResult(
+  profile: WasmCompiledProfileBootstrapView,
+  free: VoidMock,
+): WasmCompiledProfileBootstrapResultView {
+  let taken = false;
+  return {
+    status: "profile",
+    error: undefined,
+    takeProfile: () => {
+      if (taken) return undefined;
+      taken = true;
+      return profile;
+    },
+    free,
+  };
+}
+
+function profileDescriptorFixture(
+  generation: WasmProfileGenerationView,
+  schema: ProfileSchemaFixture,
+  formats: readonly ProfileFormatFixture[],
+): WasmCompiledProfileDescriptorView & {
+  readonly free: VoidMock;
+} {
+  return {
+    schemaName: schema.name,
+    schemaVersion: schema.version,
+    schemaFingerprint: schema.fingerprint,
+    formatCount: formats.length,
+    intentCount: 0,
+    actionStateCount: 1,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    formatKind: (index) => formats[index]?.kind,
+    formatRevision: (index) => formats[index]?.revision,
+    intentId: () => undefined,
+    intentInputKind: () => undefined,
+    intentInputContractName: () => undefined,
+    intentInputContractVersion: () => undefined,
+    intentActivationContract: () => undefined,
+    intentValueContractName: () => undefined,
+    intentValueContractVersion: () => undefined,
+    actionStateId: (index) => (index === 0 ? STATE_ID : undefined),
+    actionStateSourceKind: (index) =>
+      index === 0 ? "direct" : undefined,
+    actionStateSourceActionId: (index) =>
+      index === 0 ? ACTION_ID : undefined,
+    actionStateSourceIntentId: () => undefined,
+    actionStateHistoryDirection: () => undefined,
+    actionStateActivationContract: (index) =>
+      index === 0 ? "tracked" : undefined,
+    actionStateValueContractName: () => undefined,
+    actionStateValueContractVersion: () => undefined,
+    free: vi.fn<() => void>(),
+  };
+}
+
+function profileEngineFixture(
+  lineage: string,
+  initialRevision: number,
+  initialText: string,
+  schema: ProfileSchemaFixture,
+  formats: readonly ProfileFormatFixture[],
+  token: object,
+): Readonly<{
+  engine: WasmBootstrappedEngineView;
+  record: EngineRecord;
+  engineGeneration: ProfileGenerationFixture;
+  descriptorFree: VoidMock;
+}> {
+  const engineGeneration = new ProfileGenerationFixture(token);
+  const descriptor = profileDescriptorFixture(
+    engineGeneration,
+    schema,
+    formats,
+  );
+  let revision = initialRevision;
+  let text = initialText;
+  let active = false;
+  const rawFree = vi.fn();
+  const observationFrees: ReturnType<typeof vi.fn>[] = [];
+  const makeObservation = (
+    snapshotRevision: number,
+  ): WasmCommandObservationView => {
+    const free = vi.fn();
+    observationFrees.push(free);
+    return {
+      snapshotLineage: lineage,
+      snapshotRevision: String(snapshotRevision),
+      matchesProfileGeneration: (candidate) =>
+        engineGeneration.matches(candidate),
+      free,
+    };
+  };
+  const initialObservation = makeObservation(revision);
+  const actionStates = vi.fn((expected: WasmCommandObservationView) =>
+    actionStatesResult(
+      lineage,
+      Number(expected.snapshotRevision),
+      true,
+      active,
+      engineGeneration,
+    ),
+  );
+  const selection = vi.fn((expected: WasmCommandObservationView) =>
+    selectionResult(
+      noneSelection(
+        lineage,
+        Number(expected.snapshotRevision),
+        engineGeneration,
+      ),
+      engineGeneration,
+    ),
+  );
+  const executeNoInputAction = vi.fn(
+    (expected: WasmCommandObservationView, actionId: string) => {
+      if (actionId !== ACTION_ID) throw new Error("unexpected profile action");
+      const baseRevision = Number(expected.snapshotRevision);
+      const successorRevision = baseRevision + 1;
+      const successor = makeObservation(successorRevision);
+      const baseText = text;
+      revision = successorRevision;
+      text = "after";
+      active = true;
+      return commandResult(
+        successor,
+        profileProjectionUpdate(
+          lineage,
+          baseRevision,
+          baseText,
+          successorRevision,
+          text,
+          schema,
+          formats,
+          engineGeneration,
+        ),
+        engineGeneration,
+      );
+    },
+  );
+  const executeStringAction = vi.fn(() => unexpected("executeStringAction"));
+  const setRangeSelection = vi.fn(() => unexpected("setRangeSelection"));
+  const closeHistoryGroup = vi.fn(() => unexpected("closeHistoryGroup"));
+  const documentJson = vi.fn((_expected: WasmCommandObservationView) =>
+    stringResult(profileDocumentJson(text, schema)),
+  );
+  const unexpected = (name: string): never => {
+    throw new Error(`unexpected ${name}`);
+  };
+  const engine: WasmBootstrappedEngineView = {
+    actionStates,
+    sessionCheckpointJson: vi.fn(() =>
+      stringResult(profileCheckpointJson(lineage, revision, text, schema)),
+    ),
+    documentJson,
+    clearSelection: vi.fn(() => unexpected("clearSelection")),
+    setRangeSelection,
+    selection,
+    executeNoInputAction,
+    executeStringAction,
+    undo: vi.fn(() => unexpected("undo")),
+    redo: vi.fn(() => unexpected("redo")),
+    closeHistoryGroup,
+    matchesProfileGeneration: (candidate) =>
+      engineGeneration.matches(candidate),
+    profileGeneration: vi.fn(() => engineGeneration),
+    profileDescriptor: vi.fn(() => descriptor),
+    observation: vi.fn(() => initialObservation),
+    projection: vi.fn(() =>
+      projectionReadResult(
+        profileProjectionView(
+          lineage,
+          revision,
+          text,
+          schema,
+          formats,
+          engineGeneration,
+        ),
+        engineGeneration,
+      ),
+    ),
+    free: rawFree,
+  };
+  return {
+    engine,
+    record: {
+      rawFree,
+      observationFrees,
+      executeNoInputAction,
+      executeStringAction,
+      setRangeSelection,
+      closeHistoryGroup,
+      actionStates,
+      selection,
+      documentJson,
+    },
+    engineGeneration,
+    descriptorFree: descriptor.free,
+  };
+}
+
 function engineFixture(
   lineage: string,
   initialRevision: number,
@@ -1736,17 +3025,17 @@ function engineFixture(
     matches(other): boolean {
       return other === generation;
     },
-    free: vi.fn(),
+    free: vi.fn(() => config.onProfileGenerationFree?.()),
   };
   let revision = initialRevision;
   let text = initialText;
   let active = false;
-  const rawFree = vi.fn();
+  const rawFree = vi.fn(() => config.onEngineFree?.());
   const observationFrees: ReturnType<typeof vi.fn>[] = [];
   const makeObservation = (
     snapshotRevision: number,
   ): WasmCommandObservationView => {
-    const free = vi.fn();
+    const free = vi.fn(() => config.onObservationFree?.());
     observationFrees.push(free);
     return {
       snapshotLineage: lineage,
@@ -1766,14 +3055,23 @@ function engineFixture(
       config.enableAction === true,
       active,
       generation,
+      config.onActionStateStatusRead,
     );
   });
-  const selection = vi.fn((expected: WasmCommandObservationView) =>
-    selectionResult(
-      noneSelection(lineage, Number(expected.snapshotRevision), generation),
+  const selection = vi.fn((expected: WasmCommandObservationView) => {
+    const snapshotRevision = Number(expected.snapshotRevision);
+    return selectionResult(
+      config.selectionOffset === undefined
+        ? noneSelection(lineage, snapshotRevision, generation)
+        : rangeSelection(
+            lineage,
+            snapshotRevision,
+            config.selectionOffset,
+            generation,
+          ),
       generation,
-    ),
-  );
+    );
+  });
   const executeNoInputAction = vi.fn(
     (expected: WasmCommandObservationView, actionId: string) => {
       if (config.actionThrows === true)
@@ -1813,19 +3111,64 @@ function engineFixture(
   const unexpected = (name: string): never => {
     throw new Error(`unexpected ${name}`);
   };
+  const setRangeSelection = vi.fn(() => {
+    if (config.enableStringAction !== true) {
+      return unexpected("setRangeSelection");
+    }
+    return unchangedCommandResult(makeObservation(revision), generation);
+  });
+  const closeHistoryGroup = vi.fn(() => {
+    if (config.enableStringAction !== true) {
+      return unexpected("closeHistoryGroup");
+    }
+    return unchangedCommandResult(makeObservation(revision), generation);
+  });
+  const executeStringAction = vi.fn(
+    (
+      expected: WasmCommandObservationView,
+      actionId: string,
+      value: string,
+    ) => {
+      if (
+        config.enableStringAction !== true ||
+        actionId !== "breditor/insert-plain-text"
+      ) {
+        return unexpected("executeStringAction");
+      }
+      const baseRevision = Number(expected.snapshotRevision);
+      const successorRevision = baseRevision + 1;
+      const successor = makeObservation(successorRevision);
+      const baseText = text;
+      const offset = Math.min(config.selectionOffset ?? text.length, text.length);
+      text = `${text.slice(0, offset)}${value}${text.slice(offset)}`;
+      revision = successorRevision;
+      return commandResult(
+        successor,
+        projectionUpdate(
+          lineage,
+          baseRevision,
+          baseText,
+          successorRevision,
+          text,
+          generation,
+        ),
+        generation,
+      );
+    },
+  );
   const engine: WasmBootstrappedEngineView = {
     actionStates,
     sessionCheckpointJson: vi.fn(() => checkpointResult(lineage, revision)),
     documentJson,
     clearSelection: vi.fn(() => unexpected("clearSelection")),
-    setRangeSelection: vi.fn(() => unexpected("setRangeSelection")),
+    setRangeSelection,
     selection,
     executeNoInputAction,
-    executeStringAction: vi.fn(() => unexpected("executeStringAction")),
+    executeStringAction,
     undo: vi.fn(() => unexpected("undo")),
     redo: vi.fn(() => unexpected("redo")),
-    closeHistoryGroup: vi.fn(() => unexpected("closeHistoryGroup")),
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    closeHistoryGroup,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     profileGeneration: vi.fn(() => generation),
     profileDescriptor: vi.fn(() => baseDescriptor(generation)),
     observation: vi.fn(() => initialObservation),
@@ -1843,6 +3186,9 @@ function engineFixture(
       rawFree,
       observationFrees,
       executeNoInputAction,
+      executeStringAction,
+      setRangeSelection,
+      closeHistoryGroup,
       actionStates,
       selection,
       documentJson,
@@ -1874,7 +3220,7 @@ function projectionReadResult(
   return {
     status: "projection",
     error: undefined,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     takeProjection: () => {
       if (taken) return undefined;
       taken = true;
@@ -1912,7 +3258,43 @@ function projectionView(
     text: (index) => (index === 2 ? text : undefined),
     formatCount: (index) => (index === 2 ? 0 : undefined),
     formatType: () => undefined,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    free: vi.fn(),
+  };
+}
+
+function profileProjectionView(
+  lineage: string,
+  revision: number,
+  text: string,
+  schema: ProfileSchemaFixture,
+  formats: readonly ProfileFormatFixture[],
+  generation: WasmProfileGenerationView,
+): SemanticProjectionView {
+  return {
+    schemaName: schema.name,
+    schemaVersion: schema.version,
+    schemaFingerprint: schema.fingerprint,
+    snapshotLineage: lineage,
+    snapshotRevision: String(revision),
+    nodeCount: 3,
+    rootIndex: 0,
+    nodeKind: (index) =>
+      index === 0 || index === 1 ? "element" : index === 2 ? "text" : undefined,
+    elementType: (index) =>
+      index === 0
+        ? "breditor/document"
+        : index === 1
+          ? "breditor/paragraph"
+          : undefined,
+    childCount: (index) => (index === 0 || index === 1 ? 1 : undefined),
+    childAt: (index, ordinal) =>
+      ordinal !== 0 ? undefined : index === 0 ? 1 : index === 1 ? 2 : undefined,
+    text: (index) => (index === 2 ? text : undefined),
+    formatCount: (index) => (index === 2 ? formats.length : undefined),
+    formatType: (index, ordinal) =>
+      index === 2 ? formats[ordinal]?.kind : undefined,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     free: vi.fn(),
   };
 }
@@ -1935,7 +3317,31 @@ function noneSelection(
     focusOffset: undefined,
     focusAffinity: undefined,
     rangeOrder: undefined,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    free: vi.fn(),
+  };
+}
+
+function rangeSelection(
+  lineage: string,
+  revision: number,
+  offset: number,
+  generation: WasmProfileGenerationView,
+): SemanticSelectionView {
+  return {
+    snapshotLineage: lineage,
+    snapshotRevision: String(revision),
+    kind: "range",
+    anchorPointKind: "text",
+    anchorNodeIndex: 2,
+    anchorOffset: offset,
+    anchorAffinity: "before",
+    focusPointKind: "text",
+    focusNodeIndex: 2,
+    focusOffset: offset,
+    focusAffinity: "before",
+    rangeOrder: "collapsed",
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     free: vi.fn(),
   };
 }
@@ -1948,7 +3354,7 @@ function selectionResult(
   return {
     status: "selection",
     error: undefined,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     takeSelection: () => {
       if (taken) return undefined;
       taken = true;
@@ -1964,11 +3370,12 @@ function actionStatesResult(
   enabled: boolean,
   active: boolean,
   generation: WasmProfileGenerationView,
+  onStatusRead?: () => void,
 ): WasmActionStatesResultView {
   let taken = false;
   const entryCount = enabled ? 1 : 0;
   const snapshot: WasmActionStateSnapshotView = {
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     snapshotLineage: lineage,
     snapshotRevision: String(revision),
     entryCount,
@@ -1986,10 +3393,10 @@ function actionStatesResult(
     changedId: (index) => (index === 0 && enabled ? STATE_ID : undefined),
     free: vi.fn(),
   };
-  return {
+  const result: WasmActionStatesResultView = {
     status: "full",
     error: undefined,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     takeSnapshot: () => {
       if (taken) return undefined;
       taken = true;
@@ -1997,6 +3404,17 @@ function actionStatesResult(
     },
     free: vi.fn(),
   };
+  if (onStatusRead !== undefined) {
+    Object.defineProperty(result, "status", {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        onStatusRead();
+        return "full" as const;
+      },
+    });
+  }
+  return result;
 }
 
 function absentStringResult(): WasmActionStateStringResultView {
@@ -2020,9 +3438,27 @@ function commandResult(
     disabledReasonCode: undefined,
     activation: undefined,
     error: undefined,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     observation: () => successor,
     projectionUpdate: () => update,
+    free: vi.fn(),
+  };
+}
+
+function unchangedCommandResult(
+  successor: WasmCommandObservationView,
+  generation: WasmProfileGenerationView,
+): WasmCommandResultView {
+  return {
+    status: "unchanged",
+    eventKind: undefined,
+    disabledActionId: undefined,
+    disabledReasonCode: undefined,
+    activation: undefined,
+    error: undefined,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    observation: () => successor,
+    projectionUpdate: () => undefined,
     free: vi.fn(),
   };
 }
@@ -2053,6 +3489,46 @@ function projectionUpdate(
       if (taken) return undefined;
       taken = true;
       return projectionView(lineage, resultRevision, resultText, generation);
+    },
+    free: vi.fn(),
+  };
+}
+
+function profileProjectionUpdate(
+  lineage: string,
+  baseRevision: number,
+  _baseText: string,
+  resultRevision: number,
+  resultText: string,
+  schema: ProfileSchemaFixture,
+  formats: readonly ProfileFormatFixture[],
+  generation: WasmProfileGenerationView,
+): SemanticProjectionUpdateView {
+  let taken = false;
+  return {
+    baseLineage: lineage,
+    baseRevision: String(baseRevision),
+    resultLineage: lineage,
+    resultRevision: String(resultRevision),
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    impact: "textContainers",
+    affectedParagraphCount: 1,
+    oldChildStart: undefined,
+    oldChildEnd: undefined,
+    newChildStart: undefined,
+    newChildEnd: undefined,
+    affectedParagraphIndex: (index) => (index === 0 ? 0 : undefined),
+    takeProjection: () => {
+      if (taken) return undefined;
+      taken = true;
+      return profileProjectionView(
+        lineage,
+        resultRevision,
+        resultText,
+        schema,
+        formats,
+        generation,
+      );
     },
     free: vi.fn(),
   };
@@ -2115,6 +3591,20 @@ function checkpointResult(
   };
 }
 
+function stringResult(value: string): WasmSessionCheckpointStringResultView {
+  let taken = false;
+  return {
+    status: "value",
+    error: undefined,
+    takeValue: () => {
+      if (taken) return undefined;
+      taken = true;
+      return value;
+    },
+    free: vi.fn(),
+  };
+}
+
 function documentResult(
   text: string,
   override?: string,
@@ -2171,6 +3661,114 @@ function documentJsonValue(text: string): string {
   });
 }
 
+function profileDocumentJson(
+  text: string,
+  schema: ProfileSchemaFixture,
+): string {
+  return JSON.stringify({
+    format: "breditor/document",
+    formatVersion: 2,
+    schema: { name: schema.name, version: schema.version },
+    schemaFingerprint: schema.fingerprint,
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: [
+        {
+          kind: "element",
+          type: "breditor/paragraph",
+          entityId: null,
+          properties: {},
+          children:
+            text.length === 0
+              ? []
+              : [
+                  {
+                    kind: "text",
+                    text,
+                    formats: PROFILE_FORMATS.map((type) => ({
+                      type,
+                      properties: {},
+                    })),
+                  },
+                ],
+        },
+      ],
+    },
+  });
+}
+
+function profileCheckpointJson(
+  lineage: string,
+  revision: number,
+  text: string,
+  schema: ProfileSchemaFixture,
+): string {
+  return JSON.stringify({
+    format: "breditor/session-checkpoint",
+    formatVersion: 2,
+    schema: { name: schema.name, version: schema.version },
+    schemaFingerprint: schema.fingerprint,
+    historyBase: {
+      format: "breditor/editor-state",
+      formatVersion: 2,
+      schema: { name: schema.name, version: schema.version },
+      schemaFingerprint: schema.fingerprint,
+      snapshot: { lineage, revision: "0" },
+      document: JSON.parse(profileDocumentJson(text, schema)) as unknown,
+      selection: null,
+      pendingFormats: null,
+    },
+    currentRevision: String(revision),
+    historyCapacity: 100,
+    cursor: 0,
+    entries: [],
+    openMergeGroup: null,
+  });
+}
+
+function profileDocumentText(value: string): string | undefined {
+  try {
+    const parsed = JSON.parse(value) as {
+      root?: { children?: { children?: { text?: unknown }[] }[] };
+    };
+    const paragraphs = parsed.root?.children;
+    if (!Array.isArray(paragraphs)) return undefined;
+    const runs = paragraphs[0]?.children;
+    if (!Array.isArray(runs)) return undefined;
+    const text = runs.map((run) => run.text).join("");
+    return typeof text === "string" ? text : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function profileCheckpointState(value: string):
+  | Readonly<{ lineage: string; revision: number; text: string }>
+  | undefined {
+  try {
+    const parsed = JSON.parse(value) as {
+      currentRevision?: unknown;
+      historyBase?: {
+        snapshot?: { lineage?: unknown };
+        document?: unknown;
+      };
+    };
+    const lineage = parsed.historyBase?.snapshot?.lineage;
+    const revision = Number(parsed.currentRevision);
+    const documentJson = JSON.stringify(parsed.historyBase?.document);
+    const text = profileDocumentText(documentJson);
+    return typeof lineage === "string" && Number.isSafeInteger(revision) &&
+        revision >= 0 && text !== undefined
+      ? { lineage, revision, text }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function checkpointJson(lineage: string, revision: number): string {
   return JSON.stringify({
     format: "breditor/session-checkpoint",
@@ -2186,6 +3784,148 @@ function checkpointJson(lineage: string, revision: number): string {
     entries: [],
     openMergeGroup: null,
   });
+}
+
+function profileCheckpointBinding(
+  slot: string,
+  schemaFingerprint: string,
+): IndexedDbSessionCheckpointBinding {
+  return Object.freeze({
+    slot,
+    schemaFingerprint,
+    checkpointFormatVersion: 2,
+  });
+}
+
+async function seedCheckpoint(
+  indexedDB: IDBFactory,
+  crypto: Pick<SubtleCrypto, "digest">,
+  binding: IndexedDbSessionCheckpointBinding,
+  checkpointJsonValue: string,
+): Promise<void> {
+  const store = new IndexedDbSessionCheckpointStore({
+    indexedDB,
+    crypto,
+    binding,
+  });
+  try {
+    const loaded = await store.load();
+    if (!loaded.ok) throw new Error(loaded.error.code);
+    const saved = await store.save(loaded.token, checkpointJsonValue);
+    if (!saved.ok) throw new Error(saved.error.code);
+  } finally {
+    store.close();
+  }
+}
+
+async function rawCheckpointRecord(
+  indexedDB: IDBFactory,
+  slot: string,
+): Promise<unknown> {
+  const openRequest = indexedDB.open(
+    SESSION_CHECKPOINT_DATABASE_NAME,
+    SESSION_CHECKPOINT_DATABASE_VERSION,
+  );
+  const database = await indexedDbRequest(openRequest);
+  try {
+    const transaction = database.transaction(
+      SESSION_CHECKPOINT_OBJECT_STORE_NAME,
+      "readonly",
+    );
+    const completed = indexedDbTransaction(transaction);
+    const value = await indexedDbRequest(
+      transaction.objectStore(SESSION_CHECKPOINT_OBJECT_STORE_NAME).get(slot),
+    );
+    await completed;
+    return value;
+  } finally {
+    database.close();
+  }
+}
+
+function indexedDbRequest<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed"));
+  });
+}
+
+function indexedDbTransaction(transaction: IDBTransaction): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () =>
+      reject(transaction.error ?? new Error("IndexedDB transaction aborted"));
+    transaction.onerror = () =>
+      reject(transaction.error ?? new Error("IndexedDB transaction failed"));
+  });
+}
+
+function installNativeClipboardPaste(html: string) {
+  const priorClipboardEvent = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "ClipboardEvent",
+  );
+  const priorDataTransfer = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "DataTransfer",
+  );
+  const transfers = new WeakSet<object>();
+  const eventTransfers = new WeakMap<object, object>();
+  const getData = vi.fn((type: string) => type === "text/html" ? html : "");
+
+  class PlatformDataTransfer {
+    constructor() {
+      transfers.add(this);
+    }
+
+    get types(): readonly string[] {
+      if (!transfers.has(this)) throw new TypeError("illegal invocation");
+      return Object.freeze(["text/html"]);
+    }
+
+    getData(type: string): string {
+      if (!transfers.has(this)) throw new TypeError("illegal invocation");
+      return getData(type);
+    }
+  }
+
+  class PlatformClipboardEvent extends Event {
+    constructor(type: string, transfer: object) {
+      super(type, { bubbles: true, cancelable: true });
+      eventTransfers.set(this, transfer);
+    }
+
+    get clipboardData(): object {
+      const transfer = eventTransfers.get(this);
+      if (transfer === undefined) throw new TypeError("illegal invocation");
+      return transfer;
+    }
+  }
+
+  Object.defineProperties(globalThis, {
+    DataTransfer: { configurable: true, value: PlatformDataTransfer },
+    ClipboardEvent: { configurable: true, value: PlatformClipboardEvent },
+  });
+  const event = new PlatformClipboardEvent("paste", new PlatformDataTransfer());
+  return Object.freeze({
+    event,
+    getData,
+    restore: () => {
+      restoreGlobalConstructor("ClipboardEvent", priorClipboardEvent);
+      restoreGlobalConstructor("DataTransfer", priorDataTransfer);
+    },
+  });
+}
+
+function restoreGlobalConstructor(
+  name: "ClipboardEvent" | "DataTransfer",
+  descriptor: PropertyDescriptor | undefined,
+): void {
+  if (descriptor === undefined) {
+    Reflect.deleteProperty(globalThis, name);
+  } else {
+    Object.defineProperty(globalThis, name, descriptor);
+  }
 }
 
 function digestFixture(): Pick<SubtleCrypto, "digest"> {

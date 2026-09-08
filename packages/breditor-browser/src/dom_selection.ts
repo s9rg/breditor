@@ -2,7 +2,33 @@ import {
   type RenderedProjection,
   isOwnedRenderedProjection,
 } from "./dom_renderer.js";
-import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
+import {
+  mapDomPointToBaseSelectionPoint,
+  soleMappedTextDescendant,
+} from "./dom_point_mapping.js";
+import {
+  nativeContainsNode,
+  nativeDocumentActiveElement,
+  nativeDocumentCreateRange,
+  nativeDocumentSelection,
+  nativeElementLocalName,
+  nativeHtmlHostFacts,
+  nativeNodeType,
+  nativeOwnerDocument,
+  nativeParentNode,
+  nativeRangeFacts,
+  nativeRangeIntersectsNode,
+  nativeRangeSetEnd,
+  nativeRangeSetStart,
+  nativeSelectionAddRange,
+  nativeSelectionCollapseAndExtend,
+  nativeSelectionFacts,
+  nativeSelectionGetRangeAt,
+  nativeSelectionRemoveAllRanges,
+  nativeSelectionSetBaseAndExtent,
+  nativeSelectionSupportsCollapseExtend,
+  nativeSelectionSupportsSetBaseAndExtent,
+} from "./html_host.js";
 import {
   BaseRangeSelection,
   type BaseEditorSelection,
@@ -106,7 +132,7 @@ type DomSelectionSnapshotResult =
       readonly incoherent?: DomSelectionRangeSnapshot;
     };
 
-const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
+const ACTIVE_SELECTION_WRITE_DOCUMENTS = new WeakSet<Document>();
 
 /**
  * Exact base-schema AST/DOM selection mapper with generation-bound echo control.
@@ -173,6 +199,9 @@ export class BreditorDomSelectionBridge {
       }
       if (ownership.value === "outsideHost") {
         this.#receipt = undefined;
+        if (!rendered.validateCanonicalDom()) {
+          return selectionFailure("selection.dom_drift");
+        }
         return selectionSuccess(
           Object.freeze({ kind: "unavailable", reason: "outsideHost", origin: "dom" }),
         );
@@ -262,6 +291,18 @@ export class BreditorDomSelectionBridge {
       this.#receipt = undefined;
       return selectionFailure("selection.snapshot_mismatch");
     }
+    let operationDocument: Document;
+    try {
+      operationDocument = requiredOwnerDocument(rendered.host);
+    } catch {
+      this.#receipt = undefined;
+      return selectionFailure("selection.dom_write_failed");
+    }
+    if (ACTIVE_SELECTION_WRITE_DOCUMENTS.has(operationDocument)) {
+      this.#receipt = undefined;
+      return selectionFailure("selection.dom_write_failed");
+    }
+    ACTIVE_SELECTION_WRITE_DOCUMENTS.add(operationDocument);
     try {
       const domSelection = selectionForRendered(rendered);
       if (domSelection === null) {
@@ -302,24 +343,24 @@ export class BreditorDomSelectionBridge {
         }
         if (ownership.value === "outsideHost") {
           this.#receipt = undefined;
+          if (!rendered.validateCanonicalDom()) {
+            return selectionFailure("selection.dom_drift");
+          }
           return selectionSuccess(
             Object.freeze({ kind: "none", rendererGeneration: rendered.rendererGeneration }),
           );
         }
         if (ownership.value === "insideHost") {
           try {
-            domSelection.removeAllRanges();
+            nativeSelectionRemoveAllRanges(domSelection);
           } catch {
             rollbackDomSelection(rendered.host, domSelection, prior);
             this.#receipt = undefined;
             return selectionFailure("selection.dom_write_failed");
           }
         }
-        if (
-          domSelection.rangeCount !== 0 ||
-          domSelection.anchorNode !== null ||
-          domSelection.focusNode !== null
-        ) {
+        const cleared = nativeSelectionFacts(domSelection);
+        if (cleared.rangeCount !== 0 || cleared.anchorNode !== null || cleared.focusNode !== null) {
           rollbackDomSelection(rendered.host, domSelection, prior);
           this.#receipt = undefined;
           return selectionFailure("selection.dom_write_failed");
@@ -346,8 +387,9 @@ export class BreditorDomSelectionBridge {
         this.#receipt = undefined;
         return selectionFailure("selection.invalid_point");
       }
-      const setBaseAndExtent = domSelection.setBaseAndExtent;
-      if (typeof setBaseAndExtent !== "function" && selection.order === "backward") {
+      const supportsSetBaseAndExtent =
+        nativeSelectionSupportsSetBaseAndExtent(domSelection);
+      if (!supportsSetBaseAndExtent && selection.order === "backward") {
         this.#receipt = undefined;
         return selectionFailure("selection.backward_unsupported");
       }
@@ -362,13 +404,13 @@ export class BreditorDomSelectionBridge {
           anchor.offset === focus.offset
         ) {
           installForwardRange(
-            rendered.host.ownerDocument,
+            requiredOwnerDocument(rendered.host),
             domSelection,
             anchor,
             focus,
           );
-        } else if (typeof setBaseAndExtent === "function") {
-          setBaseAndExtent.call(
+        } else if (supportsSetBaseAndExtent) {
+          nativeSelectionSetBaseAndExtent(
             domSelection,
             anchor.node,
             anchor.offset,
@@ -376,7 +418,12 @@ export class BreditorDomSelectionBridge {
             focus.offset,
           );
         } else {
-          installForwardRange(rendered.host.ownerDocument, domSelection, anchor, focus);
+          installForwardRange(
+            requiredOwnerDocument(rendered.host),
+            domSelection,
+            anchor,
+            focus,
+          );
         }
       } catch {
         rollbackDomSelection(rendered.host, domSelection, prior);
@@ -410,6 +457,8 @@ export class BreditorDomSelectionBridge {
     } catch {
       this.#receipt = undefined;
       return selectionFailure("selection.dom_write_failed");
+    } finally {
+      ACTIVE_SELECTION_WRITE_DOCUMENTS.delete(operationDocument);
     }
   }
 
@@ -434,12 +483,13 @@ export class BreditorDomSelectionBridge {
       return selectionFailure(preflight.code);
     }
     try {
-      const activeElement = rendered.host.ownerDocument.activeElement;
+      const ownerDocument = requiredOwnerDocument(rendered.host);
+      const activeElement = nativeDocumentActiveElement(ownerDocument);
       if (activeElement === null) {
         return selectionSuccess(Object.freeze({ kind: "unavailable" }));
       }
       const kind =
-        activeElement === rendered.host || rendered.host.contains(activeElement)
+        nodeIsInsideHost(rendered.host, activeElement)
           ? "withinHost"
           : "outsideHost";
       return selectionSuccess(Object.freeze({ kind, activeElement }));
@@ -498,23 +548,20 @@ function validateRenderedForSelection(rendered: RenderedProjection): RenderPrefl
 }
 
 function selectionForRendered(rendered: RenderedProjection): Selection | null {
-  const view = rendered.host.ownerDocument.defaultView;
-  if (view === null || typeof view.getSelection !== "function") {
-    return null;
-  }
-  return view.getSelection();
+  return nativeDocumentSelection(requiredOwnerDocument(rendered.host));
 }
 
 function captureDomSelection(selection: Selection): DomSelectionSnapshotResult {
-  const rangeCount = selection.rangeCount;
+  const facts = nativeSelectionFacts(selection);
+  const rangeCount = facts.rangeCount;
   if (!Number.isSafeInteger(rangeCount) || rangeCount < 0) {
     return { ok: false, code: "selection.dom_read_failed" };
   }
   if (rangeCount > 1) {
     return { ok: false, code: "selection.multirange_unsupported" };
   }
-  const anchorNode = selection.anchorNode;
-  const focusNode = selection.focusNode;
+  const anchorNode = facts.anchorNode;
+  const focusNode = facts.focusNode;
   if (rangeCount === 0) {
     return anchorNode === null && focusNode === null
       ? { ok: true, value: Object.freeze({ kind: "empty" }) }
@@ -523,13 +570,14 @@ function captureDomSelection(selection: Selection): DomSelectionSnapshotResult {
   if (anchorNode === null || focusNode === null) {
     return { ok: false, code: "selection.dom_read_failed" };
   }
-  const anchorOffset = selection.anchorOffset;
-  const focusOffset = selection.focusOffset;
-  const range = selection.getRangeAt(0);
-  const startNode = range.startContainer;
-  const startOffset = range.startOffset;
-  const endNode = range.endContainer;
-  const endOffset = range.endOffset;
+  const anchorOffset = facts.anchorOffset;
+  const focusOffset = facts.focusOffset;
+  const range = nativeSelectionGetRangeAt(selection, 0);
+  const rangeFacts = nativeRangeFacts(range);
+  const startNode = rangeFacts.startContainer;
+  const startOffset = rangeFacts.startOffset;
+  const endNode = rangeFacts.endContainer;
+  const endOffset = rangeFacts.endOffset;
   if (
     !isDomOffset(anchorOffset) ||
     !isDomOffset(focusOffset) ||
@@ -688,10 +736,10 @@ function selectionSnapshotOwnership(
     return { ok: true, value: "insideHost" };
   }
   try {
-    const range = host.ownerDocument.createRange();
-    range.setStart(snapshot.startNode, snapshot.startOffset);
-    range.setEnd(snapshot.endNode, snapshot.endOffset);
-    return range.intersectsNode(host)
+    const range = nativeDocumentCreateRange(requiredOwnerDocument(host));
+    nativeRangeSetStart(range, snapshot.startNode, snapshot.startOffset);
+    nativeRangeSetEnd(range, snapshot.endNode, snapshot.endOffset);
+    return nativeRangeIntersectsNode(range, host)
       ? { ok: false, code: "selection.crosses_host" }
       : { ok: true, value: "outsideHost" };
   } catch {
@@ -706,29 +754,30 @@ function rollbackDomSelection(
 ): void {
   try {
     if (snapshot === undefined || snapshot.kind === "empty") {
-      selection.removeAllRanges();
+      nativeSelectionRemoveAllRanges(selection);
     } else {
-      const setBaseAndExtent = selection.setBaseAndExtent;
-      if (typeof setBaseAndExtent === "function") {
-        setBaseAndExtent.call(
+      if (nativeSelectionSupportsSetBaseAndExtent(selection)) {
+        nativeSelectionSetBaseAndExtent(
           selection,
           snapshot.anchorNode,
           snapshot.anchorOffset,
           snapshot.focusNode,
           snapshot.focusOffset,
         );
-      } else if (
-        typeof selection.collapse === "function" &&
-        typeof selection.extend === "function"
-      ) {
-        selection.collapse(snapshot.anchorNode, snapshot.anchorOffset);
-        selection.extend(snapshot.focusNode, snapshot.focusOffset);
+      } else if (nativeSelectionSupportsCollapseExtend(selection)) {
+        nativeSelectionCollapseAndExtend(
+          selection,
+          snapshot.anchorNode,
+          snapshot.anchorOffset,
+          snapshot.focusNode,
+          snapshot.focusOffset,
+        );
       } else {
-        const range = host.ownerDocument.createRange();
-        range.setStart(snapshot.startNode, snapshot.startOffset);
-        range.setEnd(snapshot.endNode, snapshot.endOffset);
-        selection.removeAllRanges();
-        selection.addRange(range);
+        const range = nativeDocumentCreateRange(requiredOwnerDocument(host));
+        nativeRangeSetStart(range, snapshot.startNode, snapshot.startOffset);
+        nativeRangeSetEnd(range, snapshot.endNode, snapshot.endOffset);
+        nativeSelectionRemoveAllRanges(selection);
+        nativeSelectionAddRange(selection, range);
       }
     }
     if (domSelectionMatchesSnapshot(selection, snapshot)) {
@@ -738,13 +787,14 @@ function rollbackDomSelection(
     // Best effort continues below by removing a failed editor-owned result.
   }
   try {
-    const anchorNode = selection.anchorNode;
-    const focusNode = selection.focusNode;
+    const facts = nativeSelectionFacts(selection);
+    const anchorNode = facts.anchorNode;
+    const focusNode = facts.focusNode;
     if (
       (anchorNode !== null && nodeIsInsideHost(host, anchorNode)) ||
       (focusNode !== null && nodeIsInsideHost(host, focusNode))
     ) {
-      selection.removeAllRanges();
+      nativeSelectionRemoveAllRanges(selection);
     }
   } catch {
     // Hostile platform methods can make rollback impossible; core state is untouched.
@@ -755,19 +805,20 @@ function domSelectionMatchesSnapshot(
   selection: Selection,
   snapshot: DomSelectionSnapshot | undefined,
 ): boolean {
+  const facts = nativeSelectionFacts(selection);
   if (snapshot === undefined || snapshot.kind === "empty") {
     return (
-      selection.rangeCount === 0 &&
-      selection.anchorNode === null &&
-      selection.focusNode === null
+      facts.rangeCount === 0 &&
+      facts.anchorNode === null &&
+      facts.focusNode === null
     );
   }
   return (
-    selection.rangeCount === 1 &&
-    selection.anchorNode === snapshot.anchorNode &&
-    selection.anchorOffset === snapshot.anchorOffset &&
-    selection.focusNode === snapshot.focusNode &&
-    selection.focusOffset === snapshot.focusOffset
+    facts.rangeCount === 1 &&
+    facts.anchorNode === snapshot.anchorNode &&
+    facts.anchorOffset === snapshot.anchorOffset &&
+    facts.focusNode === snapshot.focusNode &&
+    facts.focusOffset === snapshot.focusOffset
   );
 }
 
@@ -781,12 +832,12 @@ function domPointForSemantic(
     return null;
   }
   if (point.kind === "text") {
-    return node.nodeType === 3 ? { node, offset: point.utf16Offset } : null;
+    return nativeNodeType(node) === 3 ? { node, offset: point.utf16Offset } : null;
   }
   const paragraphIndex = point.parentPath[0];
   const paragraph =
     paragraphIndex === undefined ? undefined : rendered.projection.paragraphs[paragraphIndex];
-  if (paragraph === undefined || node.nodeType !== 1) {
+  if (paragraph === undefined || nativeNodeType(node) !== 1) {
     return null;
   }
   return { node, offset: paragraph.runs.length === 0 ? 0 : point.childIndex };
@@ -798,19 +849,20 @@ function installForwardRange(
   anchor: DomPoint,
   focus: DomPoint,
 ): void {
-  const range = document.createRange();
-  range.setStart(anchor.node, anchor.offset);
-  range.setEnd(focus.node, focus.offset);
+  const range = nativeDocumentCreateRange(document);
+  nativeRangeSetStart(range, anchor.node, anchor.offset);
+  nativeRangeSetEnd(range, focus.node, focus.offset);
+  const facts = nativeRangeFacts(range);
   if (
-    range.startContainer !== anchor.node ||
-    range.startOffset !== anchor.offset ||
-    range.endContainer !== focus.node ||
-    range.endOffset !== focus.offset
+    facts.startContainer !== anchor.node ||
+    facts.startOffset !== anchor.offset ||
+    facts.endContainer !== focus.node ||
+    facts.endOffset !== focus.offset
   ) {
     throw new TypeError("Range cannot preserve the requested anchor and focus.");
   }
-  selection.removeAllRanges();
-  selection.addRange(range);
+  nativeSelectionRemoveAllRanges(selection);
+  nativeSelectionAddRange(selection, range);
 }
 
 function domRangeSignature(
@@ -843,48 +895,39 @@ function domContainerDescriptor(rendered: RenderedProjection, node: Node): strin
     }
     return null;
   }
-  if (isHtmlElementNamed(node, "STRONG")) {
-    const paragraph = node.parentNode;
-    const paragraphPath = paragraph === null ? null : rendered.astPathForDomNode(paragraph);
-    const paragraphIndex = paragraphPath?.[0];
-    const runIndex = paragraph === null ? -1 : indexOfChild(paragraph, node);
-    return paragraphPath !== null &&
-      paragraphPath.length === 1 &&
-      paragraphIndex !== undefined &&
-      runIndex >= 0
-      ? `strong:${paragraphIndex}:${runIndex}`
-      : null;
-  }
   if (isHtmlElementNamed(node, "BR")) {
-    const paragraph = node.parentNode;
+    const paragraph = nativeParentNode(node);
     const paragraphPath = paragraph === null ? null : rendered.astPathForDomNode(paragraph);
     const paragraphIndex = paragraphPath?.[0];
     return paragraphPath !== null && paragraphPath.length === 1 && paragraphIndex !== undefined
       ? `placeholder:${paragraphIndex}`
       : null;
   }
+  if (nativeNodeType(node) === 1) {
+    const mapped = soleMappedTextDescendant(rendered, node);
+    return mapped === null
+      ? null
+      : `wrapper:${mapped.path[0]}:${mapped.path[1]}:${mapped.wrapperDepth}`;
+  }
   return null;
 }
 
 function nodeIsInsideHost(host: HTMLElement, node: Node): boolean {
-  return node === host || host.contains(node);
+  return nativeContainsNode(host, node);
 }
 
-function indexOfChild(parent: Node, child: Node): number {
-  for (let index = 0; index < parent.childNodes.length; index += 1) {
-    if (parent.childNodes[index] === child) {
-      return index;
-    }
-  }
-  return -1;
-}
-
-function isHtmlElementNamed(node: Node, localName: "STRONG" | "BR"): node is HTMLElement {
+function isHtmlElementNamed(node: Node, localName: "BR"): node is HTMLElement {
+  const facts = nativeHtmlHostFacts(node);
   return (
-    node.nodeType === 1 &&
-    (node as Element).namespaceURI === HTML_NAMESPACE &&
-    (node as Element).localName === localName.toLowerCase()
+    facts !== undefined &&
+    nativeElementLocalName(facts.element) === localName.toLowerCase()
   );
+}
+
+function requiredOwnerDocument(node: Node): Document {
+  const ownerDocument = nativeOwnerDocument(node);
+  if (ownerDocument === null) throw new TypeError("DOM owner document is unavailable");
+  return ownerDocument;
 }
 
 function isDomOffset(value: unknown): value is number {

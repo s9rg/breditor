@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  browserCompiledProfileDescriptorMatchesGeneration,
   consumeWasmCompiledProfileDescriptor,
+  consumeWasmCompiledProfileDescriptorWithCleanup,
   isOwnedBrowserCompiledProfileDescriptor,
   wasmProfileGenerationIsLive,
   wasmViewMatchesProfileGeneration,
@@ -21,6 +23,27 @@ class Generation implements WasmProfileGenerationView {
 
   free(): void {
     this.freeCalls += 1;
+  }
+}
+
+class CorrelatedGeneration implements WasmProfileGenerationView {
+  #live = true;
+
+  constructor(readonly token: object = Object.freeze({})) {}
+
+  matches(other: WasmProfileGenerationView): boolean {
+    return this.#live &&
+      other instanceof CorrelatedGeneration &&
+      other.#live &&
+      other.token === this.token;
+  }
+
+  free(): void {
+    this.#live = false;
+  }
+
+  clone(): CorrelatedGeneration {
+    return new CorrelatedGeneration(this.token);
   }
 }
 
@@ -180,8 +203,147 @@ describe("compiled Wasm profile descriptor boundary", () => {
     expect(Object.isFrozen(result.descriptor.intents[0]?.input)).toBe(true);
     expect(Object.isFrozen(result.descriptor.actionStates[1]?.source)).toBe(true);
     expect(isOwnedBrowserCompiledProfileDescriptor(result.descriptor)).toBe(true);
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        result.descriptor,
+        generation,
+      ),
+    ).toBe(true);
     expect(view.freeCalls).toBe(1);
     expect(generation.freeCalls).toBe(0);
+  });
+
+  it("retains an opaque symmetric generation correlation in a private sidecar", () => {
+    const generation = new CorrelatedGeneration();
+    const view = new Descriptor(generation);
+    const result = consumeWasmCompiledProfileDescriptor(generation, view);
+    if (!result.ok) throw new Error("descriptor fixture was rejected");
+    const matchingClone = generation.clone();
+    const foreign = new CorrelatedGeneration();
+
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        result.descriptor,
+        matchingClone,
+      ),
+    ).toBe(true);
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        result.descriptor,
+        foreign,
+      ),
+    ).toBe(false);
+    expect(Reflect.ownKeys(result.descriptor)).toEqual([
+      "schema",
+      "formats",
+      "intents",
+      "actionStates",
+    ]);
+
+    generation.free();
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        result.descriptor,
+        matchingClone,
+      ),
+    ).toBe(false);
+  });
+
+  it("fails closed for forged, asymmetric, throwing, and asynchronous correlations", async () => {
+    const generation = new Generation();
+    const result = consumeWasmCompiledProfileDescriptor(
+      generation,
+      new Descriptor(generation),
+    );
+    if (!result.ok) throw new Error("descriptor fixture was rejected");
+
+    let forgedReads = 0;
+    const forgedDescriptor = new Proxy({}, {
+      get: () => {
+        forgedReads += 1;
+        throw new Error("must not inspect a foreign descriptor");
+      },
+    });
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        forgedDescriptor,
+        generation,
+      ),
+    ).toBe(false);
+    expect(forgedReads).toBe(0);
+
+    let asymmetric!: WasmProfileGenerationView;
+    const accepting: WasmProfileGenerationView = {
+      matches: (candidate) => candidate === accepting || candidate === asymmetric,
+      free: () => undefined,
+    };
+    asymmetric = {
+      matches: (candidate) => candidate === asymmetric,
+      free: () => undefined,
+    };
+    const asymmetricResult = consumeWasmCompiledProfileDescriptor(
+      accepting,
+      new Descriptor(accepting),
+    );
+    if (!asymmetricResult.ok) throw new Error("descriptor fixture was rejected");
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        asymmetricResult.descriptor,
+        asymmetric,
+      ),
+    ).toBe(false);
+
+    let throwing!: WasmProfileGenerationView;
+    const permitsThrowing: WasmProfileGenerationView = {
+      matches: (candidate) =>
+        candidate === permitsThrowing || candidate === throwing,
+      free: () => undefined,
+    };
+    throwing = {
+      matches: (candidate) => {
+        if (candidate === throwing) return true;
+        throw new Error("contained reverse comparison");
+      },
+      free: () => undefined,
+    };
+    const throwingResult = consumeWasmCompiledProfileDescriptor(
+      permitsThrowing,
+      new Descriptor(permitsThrowing),
+    );
+    if (!throwingResult.ok) throw new Error("descriptor fixture was rejected");
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        throwingResult.descriptor,
+        throwing,
+      ),
+    ).toBe(false);
+
+    let asynchronous!: WasmProfileGenerationView;
+    const permitsAsynchronous: WasmProfileGenerationView = {
+      matches: (candidate) =>
+        candidate === permitsAsynchronous || candidate === asynchronous,
+      free: () => undefined,
+    };
+    asynchronous = {
+      matches: (candidate) => candidate === asynchronous
+        ? true
+        : Promise.reject(
+            new Error("contained asynchronous reverse comparison"),
+          ) as unknown as boolean,
+      free: () => undefined,
+    };
+    const asynchronousResult = consumeWasmCompiledProfileDescriptor(
+      permitsAsynchronous,
+      new Descriptor(permitsAsynchronous),
+    );
+    if (!asynchronousResult.ok) throw new Error("descriptor fixture was rejected");
+    expect(
+      browserCompiledProfileDescriptorMatchesGeneration(
+        asynchronousResult.descriptor,
+        asynchronous,
+      ),
+    ).toBe(false);
+    await Promise.resolve();
   });
 
   it.each([
@@ -285,6 +447,53 @@ describe("compiled Wasm profile descriptor boundary", () => {
       consumeWasmCompiledProfileDescriptor(generation, second, protectedHandles).ok,
     ).toBe(true);
     expect(second.freeCalls).toBe(1);
+  });
+
+  it("does not invoke hostile array or Set facade reads before ownership", () => {
+    const generation = new Generation();
+    const lengthRead = vi.fn(() => {
+      throw new Error("must not read length");
+    });
+    const array = new Proxy<unknown[]>([], {
+      get(target, property, receiver) {
+        if (property === "length") return lengthRead();
+        return Reflect.get(target, property, receiver);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "length") throw new Error("unprovable length");
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    const arrayView = new Descriptor(generation);
+
+    expect(
+      consumeWasmCompiledProfileDescriptor(generation, arrayView, array).ok,
+    ).toBe(false);
+    expect(lengthRead).not.toHaveBeenCalled();
+    expect(arrayView.freeCalls).toBe(0);
+
+    const sizeRead = vi.fn(() => {
+      throw new Error("must not read size");
+    });
+    const setFacade = new Proxy(new Set<object>(), {
+      get(target, property, receiver) {
+        if (property === "size") return sizeRead();
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const setView = new Descriptor(generation);
+    const cleanup = vi.fn();
+    expect(
+      consumeWasmCompiledProfileDescriptorWithCleanup(
+        generation,
+        setView,
+        cleanup,
+        setFacade,
+      ).ok,
+    ).toBe(false);
+    expect(sizeRead).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(setView.freeCalls).toBe(0);
   });
 
   it("contains throwing or asynchronous generation comparisons", async () => {

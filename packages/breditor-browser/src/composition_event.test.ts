@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   MAX_COMPOSITION_INPUT_TYPE_UTF16,
@@ -119,6 +119,62 @@ describe("composition event snapshots", () => {
     });
     expect("target" in snapshot).toBe(false);
     expect(Object.isFrozen(snapshot)).toBe(true);
+  });
+
+  it("uses platform composition and input facts below own shadows", () => {
+    const compositionShadow = vi.fn(() => {
+      throw new Error("own composition field must not be read");
+    });
+    const nativeComposition = new CompositionEvent("compositionupdate", {
+      data: "文",
+    });
+    for (const name of ["type", "data", "cancelable", "defaultPrevented"]) {
+      Object.defineProperty(nativeComposition, name, {
+        configurable: true,
+        get: compositionShadow,
+      });
+    }
+    expect(valueOf(snapshotNativeCompositionEvent(nativeComposition))).toEqual({
+      kind: "compositionEvent",
+      type: "compositionupdate",
+      data: "文",
+      cancelable: false,
+      defaultPrevented: false,
+    });
+    expect(compositionShadow).not.toHaveBeenCalled();
+
+    const inputShadow = vi.fn(() => {
+      throw new Error("own input field must not be read");
+    });
+    const nativeInput = new InputEvent("beforeinput", {
+      inputType: "insertCompositionText",
+      data: "字",
+      isComposing: true,
+      cancelable: true,
+    });
+    for (const name of [
+      "type",
+      "inputType",
+      "data",
+      "isComposing",
+      "cancelable",
+      "defaultPrevented",
+    ]) {
+      Object.defineProperty(nativeInput, name, {
+        configurable: true,
+        get: inputShadow,
+      });
+    }
+    expect(valueOf(snapshotNativeCompositionInput(nativeInput))).toEqual({
+      kind: "inputEvent",
+      type: "beforeinput",
+      inputType: "insertCompositionText",
+      data: "字",
+      isComposing: true,
+      cancelable: true,
+      defaultPrevented: false,
+    });
+    expect(inputShadow).not.toHaveBeenCalled();
   });
 
   it("turns throwing accessors, proxies, and oversized fields into redacted failures", () => {

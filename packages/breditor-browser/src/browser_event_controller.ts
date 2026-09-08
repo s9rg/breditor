@@ -36,6 +36,15 @@ import {
   baseSelectionPointsEqual,
   type BaseRangeSelection,
 } from "./selection.js";
+import {
+  preventDomEventDefault,
+  readDomEventBase,
+  readDomInputEvent,
+  readDomInputTargetRanges,
+  readDomKeyboardEvent,
+  type DomEventBaseSnapshot,
+} from "./dom_event_intrinsics.js";
+import { snapshotOwnDataArray } from "./protected_handle_snapshot.js";
 
 interface KeyboardReceipt {
   readonly kind: "keyboard";
@@ -49,13 +58,7 @@ interface KeyboardReceipt {
   readonly rendererGeneration?: bigint;
 }
 
-interface EventBase {
-  readonly type: string;
-  readonly target: EventTarget | null;
-  readonly cancelable: boolean;
-  readonly defaultPrevented: boolean;
-  readonly preventDefault: (this: Event) => void;
-}
+type EventBase = DomEventBaseSnapshot;
 
 interface InputEventSnapshot {
   readonly inputType: string;
@@ -684,138 +687,87 @@ function validateTargetRangeForTranslation(
 }
 
 function readEventBase(event: unknown): EventBase | null {
-  try {
-    if ((typeof event !== "object" || event === null) && typeof event !== "function") {
-      return null;
-    }
-    const candidate = event as Event;
-    const type = candidate.type;
-    const target = candidate.target;
-    const cancelable = candidate.cancelable;
-    const defaultPrevented = candidate.defaultPrevented;
-    const preventDefault = candidate.preventDefault;
-    if (
-      typeof type !== "string" ||
-      type.length > 32 ||
-      (target !== null && typeof target !== "object") ||
-      typeof cancelable !== "boolean" ||
-      typeof defaultPrevented !== "boolean" ||
-      typeof preventDefault !== "function"
-    ) {
-      return null;
-    }
-    return Object.freeze({
-      type,
-      target,
-      cancelable,
-      defaultPrevented,
-      preventDefault,
-    });
-  } catch {
-    return null;
-  }
+  const snapshot = readDomEventBase(event);
+  return snapshot !== null && snapshot.type.length <= 32 ? snapshot : null;
 }
 
 function readInputEventSnapshot(event: unknown): InputEventSnapshot | null {
-  try {
-    const candidate = event as InputEvent;
-    const inputType = candidate.inputType;
-    const data = candidate.data;
-    const isComposing = candidate.isComposing;
-    if (
-      typeof inputType !== "string" ||
-      inputType.length > 256 ||
-      (typeof data !== "string" && data !== null) ||
-      (typeof data === "string" && data.length > MAX_BROWSER_COMMAND_TEXT_UTF16) ||
-      typeof isComposing !== "boolean"
-    ) {
-      return null;
-    }
-    return Object.freeze({ inputType, data, isComposing });
-  } catch {
+  const snapshot = readDomInputEvent(event);
+  if (
+    snapshot === null ||
+    snapshot.inputType.length > 256 ||
+    (typeof snapshot.data === "string" &&
+      snapshot.data.length > MAX_BROWSER_COMMAND_TEXT_UTF16)
+  ) {
     return null;
   }
+  return Object.freeze({
+    inputType: snapshot.inputType,
+    data: snapshot.data,
+    isComposing: snapshot.isComposing,
+  });
 }
 
 function readKeyboardSnapshot(event: unknown): KeyboardSnapshot | null {
-  try {
-    const candidate = event as KeyboardEvent;
-    const key = candidate.key;
-    const code = candidate.code;
-    const altKey = candidate.altKey;
-    const ctrlKey = candidate.ctrlKey;
-    const metaKey = candidate.metaKey;
-    const shiftKey = candidate.shiftKey;
-    const repeat = candidate.repeat;
-    const isComposing = candidate.isComposing;
-    const keyCode = candidate.keyCode;
-    const modifierReader = candidate.getModifierState;
-    if (typeof modifierReader !== "function") {
-      return null;
-    }
-    const altGraph = Reflect.apply(modifierReader, candidate, ["AltGraph"]);
-    if (
-      typeof key !== "string" ||
-      typeof code !== "string" ||
-      key.length > 128 ||
-      code.length > 128 ||
-      typeof altKey !== "boolean" ||
-      typeof ctrlKey !== "boolean" ||
-      typeof metaKey !== "boolean" ||
-      typeof shiftKey !== "boolean" ||
-      typeof repeat !== "boolean" ||
-      typeof isComposing !== "boolean" ||
-      !Number.isSafeInteger(keyCode) ||
-      typeof altGraph !== "boolean"
-    ) {
-      return null;
-    }
-    return Object.freeze({
-      key,
-      code,
-      altKey,
-      ctrlKey,
-      metaKey,
-      shiftKey,
-      repeat,
-      isComposing,
-      keyCode,
-      altGraph,
-    });
-  } catch {
+  const snapshot = readDomKeyboardEvent(event);
+  if (
+    snapshot === null ||
+    snapshot.key.length > 128 ||
+    snapshot.code.length > 128
+  ) {
     return null;
   }
+  return Object.freeze({
+    key: snapshot.key,
+    code: snapshot.code,
+    altKey: snapshot.altKey,
+    ctrlKey: snapshot.ctrlKey,
+    metaKey: snapshot.metaKey,
+    shiftKey: snapshot.shiftKey,
+    repeat: snapshot.repeat,
+    isComposing: snapshot.isComposing,
+    keyCode: snapshot.keyCode,
+    altGraph: snapshot.altGraph,
+  });
 }
 
 function readTargetRanges(event: unknown): TargetRangeSnapshot {
   try {
-    const candidate = event as InputEvent;
-    const reader = candidate.getTargetRanges;
-    if (typeof reader !== "function") {
+    const read = readDomInputTargetRanges(event);
+    if (!read.ok) {
       return Object.freeze({ ok: false });
     }
-    const ranges: unknown = Reflect.apply(reader, candidate, []);
-    if (!Array.isArray(ranges)) {
+    if (!Array.isArray(read.value)) {
       return Object.freeze({ ok: false });
     }
-    const length = ranges.length;
-    if (!Number.isSafeInteger(length) || length < 0) {
+    const lengthDescriptor = Reflect.getOwnPropertyDescriptor(
+      read.value,
+      "length",
+    );
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      typeof lengthDescriptor.value !== "number" ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      lengthDescriptor.value < 0
+    ) {
       return Object.freeze({ ok: false });
     }
+    const length = lengthDescriptor.value;
     if (length === 0) {
       return Object.freeze({ ok: true, count: 0 });
     }
     if (length > 1) {
       return Object.freeze({ ok: true, count: "multiple" });
     }
-    const descriptor = Object.getOwnPropertyDescriptor(ranges, "0");
-    if (descriptor === undefined || !("value" in descriptor)) {
+    const ranges = snapshotOwnDataArray(read.value, 1);
+    if (ranges === null) {
       return Object.freeze({ ok: false });
     }
     return Object.freeze({
       ok: true,
       count: 1,
-      range: descriptor.value as AbstractRange,
+      range: ranges[0] as AbstractRange,
     });
   } catch {
     return Object.freeze({ ok: false });
@@ -835,12 +787,14 @@ function cancelOwnedEvent<TResult>(
     });
   }
   try {
-    Reflect.apply(base.preventDefault, event, []);
-    const prevented = event.defaultPrevented;
-    if (prevented !== true) {
+    const cancellation = preventDomEventDefault(event);
+    if (!cancellation.ok) {
       return Object.freeze({
         ok: false,
-        disposition: reconcile<TResult>("preventDefaultFailed", false),
+        disposition: reconcile<TResult>(
+          "preventDefaultFailed",
+          cancellation.defaultPrevented,
+        ),
       });
     }
     return Object.freeze({ ok: true });

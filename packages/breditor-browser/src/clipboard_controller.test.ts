@@ -16,15 +16,29 @@ import {
   type EditorCommandRequest,
   type EditorDeliveryToken,
 } from "./editor_command.js";
-import { BaseDocumentProjection } from "./projection.js";
+import {
+  BaseDocumentProjection,
+  createProfiledDocumentProjection,
+} from "./projection.js";
 import { BaseRangeSelection } from "./selection.js";
+import {
+  compileBrowserPresentation,
+  type BrowserCompiledPresentation,
+} from "./compiled_browser_presentation.js";
+import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type BrowserCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 import type {
   BreditorWasmCommandAdapter,
   WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
 
 class FakeAdapter {
-  readonly renderer = new BreditorDomRenderer();
+  readonly renderer: BreditorDomRenderer;
   readonly selectionBridge = new BreditorDomSelectionBridge();
   readonly authority = Symbol("clipboard-controller-test");
   readonly requests: EditorCommandRequest[] = [];
@@ -64,7 +78,11 @@ class FakeAdapter {
     });
   };
 
-  constructor(readonly projection: BaseDocumentProjection) {
+  constructor(
+    readonly projection: BaseDocumentProjection,
+    presentation?: BrowserCompiledPresentation,
+  ) {
+    this.renderer = new BreditorDomRenderer(presentation);
     this.host = document.createElement("div");
     this.host.contentEditable = "true";
     document.body.append(this.host);
@@ -123,6 +141,7 @@ interface FakeCancelableEvent {
   readonly cancelable: boolean;
   readonly clipboardData?: object;
   readonly inputType?: string;
+  readonly data?: string | null;
   readonly isComposing?: boolean;
   readonly defaultPrevented: boolean;
   preventDefault(): void;
@@ -167,6 +186,185 @@ describe("BreditorClipboardController", () => {
     expect(fixture.adapter.requests).toEqual([]);
     expect(Object.isFrozen(result)).toBe(true);
     expect(JSON.stringify(result)).not.toContain("abc");
+  });
+
+  it("uses native ClipboardEvent and DataTransfer capabilities below own shadows", () => {
+    const priorClipboardEvent = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "ClipboardEvent",
+    );
+    const priorDataTransfer = Object.getOwnPropertyDescriptor(
+      globalThis,
+      "DataTransfer",
+    );
+    const transferState = new WeakMap<object, Map<string, string>>();
+    const eventTransfer = new WeakMap<object, object>();
+    const nativeCalls: string[] = [];
+
+    class PlatformDataTransfer {
+      constructor() {
+        transferState.set(this, new Map());
+      }
+
+      get types(): readonly string[] {
+        const values = transferState.get(this);
+        if (values === undefined) throw new TypeError("illegal invocation");
+        nativeCalls.push("types");
+        return Object.freeze([...values.keys()]);
+      }
+
+      clearData(type?: string): void {
+        const values = transferState.get(this);
+        if (values === undefined) throw new TypeError("illegal invocation");
+        nativeCalls.push("clear");
+        if (type === undefined) values.clear();
+        else values.delete(type);
+      }
+
+      getData(type: string): string {
+        const values = transferState.get(this);
+        if (values === undefined) throw new TypeError("illegal invocation");
+        nativeCalls.push(`get:${type}`);
+        return values.get(type) ?? "";
+      }
+
+      setData(type: string, value: string): void {
+        const values = transferState.get(this);
+        if (values === undefined) throw new TypeError("illegal invocation");
+        nativeCalls.push(`set:${type}`);
+        values.set(type, value);
+      }
+    }
+
+    class PlatformClipboardEvent extends Event {
+      constructor(type: string, transfer: object) {
+        super(type, { bubbles: true, cancelable: true });
+        eventTransfer.set(this, transfer);
+      }
+
+      get clipboardData(): object {
+        const transfer = eventTransfer.get(this);
+        if (transfer === undefined) throw new TypeError("illegal invocation");
+        return transfer;
+      }
+    }
+
+    Object.defineProperties(globalThis, {
+      DataTransfer: { configurable: true, value: PlatformDataTransfer },
+      ClipboardEvent: { configurable: true, value: PlatformClipboardEvent },
+    });
+    try {
+      const fixture = setup(0, 2);
+      const transfer = new PlatformDataTransfer();
+      const event = new PlatformClipboardEvent("cut", transfer);
+      const shadow = vi.fn(() => {
+        throw new Error("own browser capability shadow must not run");
+      });
+      for (const name of [
+        "type",
+        "target",
+        "cancelable",
+        "defaultPrevented",
+        "clipboardData",
+      ]) {
+        Object.defineProperty(event, name, {
+          configurable: true,
+          get: shadow,
+        });
+      }
+      Object.defineProperty(event, "preventDefault", {
+        configurable: true,
+        value: shadow,
+      });
+      Object.defineProperties(transfer, {
+        types: { configurable: true, get: shadow },
+        clearData: { configurable: true, value: shadow },
+        getData: { configurable: true, value: shadow },
+        setData: { configurable: true, value: shadow },
+      });
+      let result: ClipboardControllerDisposition | undefined;
+      fixture.target.addEventListener(
+        "cut",
+        (observed) => {
+          result = fixture.controller.handleCut(observed);
+        },
+        { once: true },
+      );
+
+      expect(fixture.target.dispatchEvent(event)).toBe(false);
+      expect(result).toMatchObject({
+        kind: "handled",
+        operation: "cut",
+        defaultPrevented: true,
+      });
+      expect(shadow).not.toHaveBeenCalled();
+      expect(nativeCalls).toEqual([
+        "types",
+        "clear",
+        "types",
+        "set:text/plain",
+        "types",
+        "set:text/html",
+      ]);
+      expect(transferState.get(transfer)).toEqual(new Map([
+        ["text/plain", "ab"],
+        ["text/html", "<p>ab</p>"],
+      ]));
+      expect(fixture.adapter.requests).toHaveLength(1);
+    } finally {
+      restoreGlobalConstructor("ClipboardEvent", priorClipboardEvent);
+      restoreGlobalConstructor("DataTransfer", priorDataTransfer);
+    }
+  });
+
+  it("uses the rendered profile presentation for safe copy and HTML-only plain paste", () => {
+    const fixture = profiledSetup(0, 3);
+    const copyTransfer = dataTransfer();
+
+    expect(
+      fixture.controller.handleCopy(
+        clipboardEvent("copy", fixture.target, copyTransfer),
+      ),
+    ).toMatchObject({ kind: "handled", operation: "copy" });
+    expect(copyTransfer.calls).toEqual([
+      "clear",
+      "set:text/plain:abc",
+      'set:text/html:<p><span class="highlight">abc</span></p>',
+    ]);
+
+    const pasteTransfer = dataTransfer({
+      types: ["text/html"],
+      values: {
+        "text/html": '<p><span class="highlight">pasted</span></p>',
+      },
+    });
+    expect(
+      fixture.controller.handlePaste(
+        clipboardEvent("paste", fixture.target, pasteTransfer),
+      ),
+    ).toMatchObject({ kind: "handled", operation: "paste" });
+    expect(fixture.adapter.requests[0]?.command).toEqual({
+      kind: "action",
+      actionId: "breditor/insert-plain-text",
+      input: { kind: "string", value: "pasted" },
+    });
+
+    const invalidTransfer = dataTransfer({
+      types: ["text/html"],
+      values: {
+        "text/html": '<p><span class="highlight" title="secret">x</span></p>',
+      },
+    });
+    expect(
+      fixture.controller.handlePaste(
+        clipboardEvent("paste", fixture.target, invalidTransfer),
+      ),
+    ).toMatchObject({
+      kind: "blocked",
+      operation: "paste",
+      reason: "invalidHtml",
+    });
+    expect(fixture.adapter.requests).toHaveLength(1);
   });
 
   it("writes both cut representations and confirms cancellation before deletion", () => {
@@ -505,6 +703,46 @@ describe("BreditorClipboardController", () => {
     expect(clipboardReads).toBe(0);
   });
 
+  it("rejects a detached host without consulting a forged connection shadow", () => {
+    const fixture = setup(0, 2);
+    const connectedShadow = vi.fn(() => true);
+    fixture.adapter.host.remove();
+    Object.defineProperty(fixture.adapter.host, "isConnected", {
+      configurable: true,
+      get: connectedShadow,
+    });
+    const event = clipboardEvent("copy", fixture.target, dataTransfer());
+
+    expect(fixture.controller.handleCopy(event)).toMatchObject({
+      kind: "reconcileRequired",
+      operation: "copy",
+      reason: "adapterUnavailable",
+      defaultPrevented: false,
+    });
+    expect(event.defaultPrevented).toBe(false);
+    expect(connectedShadow).not.toHaveBeenCalled();
+  });
+
+  it("rejects a detached host without consulting a forged connection shadow", () => {
+    const fixture = setup(0, 2);
+    const connectedShadow = vi.fn(() => true);
+    fixture.adapter.host.remove();
+    Object.defineProperty(fixture.adapter.host, "isConnected", {
+      configurable: true,
+      get: connectedShadow,
+    });
+    const event = clipboardEvent("copy", fixture.target, dataTransfer());
+
+    expect(fixture.controller.handleCopy(event)).toMatchObject({
+      kind: "reconcileRequired",
+      operation: "copy",
+      reason: "adapterUnavailable",
+      defaultPrevented: false,
+    });
+    expect(event.defaultPrevented).toBe(false);
+    expect(connectedShadow).not.toHaveBeenCalled();
+  });
+
   it("rechecks the base before ignoring a nonclipboard beforeinput snapshot", () => {
     const fixture = setup(2);
     let prevented = false;
@@ -533,7 +771,7 @@ describe("BreditorClipboardController", () => {
     expect(prevented).toBe(true);
   });
 
-  it("attempts cancellation after an owned event metadata trap", () => {
+  it("does not trust structural ownership after an event metadata trap", () => {
     const fixture = setup(0, 2);
     const event = clipboardEvent("cut", fixture.target, dataTransfer());
     Object.defineProperty(event, "cancelable", {
@@ -546,10 +784,10 @@ describe("BreditorClipboardController", () => {
       kind: "blocked",
       operation: "cut",
       reason: "invalidEvent",
-      defaultPrevented: true,
-      partial: { cancellation: "confirmed", command: "notAttempted" },
+      defaultPrevented: false,
+      partial: { cancellation: "notAttempted", command: "notAttempted" },
     });
-    expect(event.defaultPrevented).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it("does not hide partial effects when disposal is reentrant", () => {
@@ -832,6 +1070,7 @@ describe("BreditorClipboardController", () => {
     let prevented = false;
     const event = {
       type: "paste",
+      cancelable: true,
       get target(): never {
         throw new Error("hostile target");
       },
@@ -868,6 +1107,7 @@ describe("BreditorClipboardController", () => {
     let prevented = false;
     const event = {
       type: "beforeinput",
+      cancelable: true,
       get target(): never {
         throw new Error("hostile target");
       },
@@ -921,6 +1161,109 @@ function setup(start: number, end = start): Fixture {
     throw new Error("paragraph fixture failed");
   }
   return { adapter, queue, controller, target };
+}
+
+function profiledSetup(start: number, end = start): Fixture {
+  const generation = new ControllerProfileGeneration();
+  const descriptor = controllerProfileDescriptor(generation);
+  const manifest = createInlineFormatRenderManifest({
+    recipes: [
+      { formatKind: "breditor/strong", element: "strong" },
+      {
+        formatKind: "example/highlight",
+        element: "span",
+        classes: ["highlight"],
+        before: ["breditor/strong"],
+      },
+    ],
+  });
+  const presentation = compileBrowserPresentation(
+    generation,
+    descriptor,
+    manifest,
+  );
+  const projectionResult = createProfiledDocumentProjection(
+    {
+      schema: {
+        name: descriptor.schema.name,
+        version: descriptor.schema.version,
+        fingerprint: descriptor.schema.fingerprint,
+      },
+      snapshot: { lineage: "clipboard-controller-profile", revision: "1" },
+      paragraphs: [
+        { runs: [{ text: "abc", formats: ["example/highlight"] }] },
+      ],
+    },
+    generation,
+    descriptor,
+  );
+  if (!projectionResult.ok) throw new Error(projectionResult.error.code);
+  const adapter = new FakeAdapter(projectionResult.value, presentation);
+  const selected = selection(projectionResult.value, start, end);
+  if (!adapter.selectionBridge.write(adapter.rendered, selected).ok) {
+    throw new Error("profiled selection fixture failed");
+  }
+  const queue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(
+    adapter.commandExecutor,
+  );
+  const controller = new BreditorClipboardController(
+    queue,
+    adapter as unknown as BreditorWasmCommandAdapter,
+  );
+  const target = adapter.host.firstElementChild;
+  if (!(target instanceof HTMLParagraphElement)) {
+    throw new Error("profiled paragraph fixture failed");
+  }
+  return { adapter, queue, controller, target };
+}
+
+const CONTROLLER_PROFILE_FINGERPRINT =
+  "sha256:3123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+class ControllerProfileGeneration implements WasmProfileGenerationView {
+  matches(other: WasmProfileGenerationView): boolean {
+    return other === this;
+  }
+
+  free(): void {}
+}
+
+function controllerProfileDescriptor(
+  generation: WasmProfileGenerationView,
+): BrowserCompiledProfileDescriptor {
+  const formats = ["breditor/strong", "example/highlight"] as const;
+  const absent = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: CONTROLLER_PROFILE_FINGERPRINT,
+    formatCount: formats.length,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    formatKind: (index) => formats[index],
+    formatRevision: (index) =>
+      index >= 0 && index < formats.length ? 1 : undefined,
+    intentId: absent,
+    intentInputKind: absent,
+    intentInputContractName: absent,
+    intentInputContractVersion: absent,
+    intentActivationContract: absent,
+    intentValueContractName: absent,
+    intentValueContractVersion: absent,
+    actionStateId: absent,
+    actionStateSourceKind: absent,
+    actionStateSourceActionId: absent,
+    actionStateSourceIntentId: absent,
+    actionStateHistoryDirection: absent,
+    actionStateActivationContract: absent,
+    actionStateValueContractName: absent,
+    actionStateValueContractVersion: absent,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!result.ok) throw new Error("controller profile descriptor was rejected");
+  return result.descriptor;
 }
 
 function projection(): BaseDocumentProjection {
@@ -1031,6 +1374,7 @@ function inputEvent(
   return {
     type,
     inputType,
+    data: null,
     isComposing: false,
     target,
     cancelable,
@@ -1046,6 +1390,17 @@ function inputEvent(
 
 function expectRedacted(_value: ClipboardControllerDisposition): void {
   // Compile-time assertion: dispositions expose progress, never payload data.
+}
+
+function restoreGlobalConstructor(
+  name: "ClipboardEvent" | "DataTransfer",
+  descriptor: PropertyDescriptor | undefined,
+): void {
+  if (descriptor === undefined) {
+    Reflect.deleteProperty(globalThis, name);
+  } else {
+    Object.defineProperty(globalThis, name, descriptor);
+  }
 }
 
 void expectRedacted;

@@ -1,7 +1,8 @@
 # Breditor browser event pipeline
 
-Status: supported inside the public `0.1.0` runtime for the closed base schema;
-direct event-controller assembly remains an advanced integration surface
+Status: supported inside the public `0.1.0` runtime for the closed base schema
+and retained by the experimental `0.2.0-alpha.6` compiled-profile path; direct
+event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -60,6 +61,18 @@ does not use global platform sniffing and does not infer an operating system.
 A detached host is outside the admission boundary even when its old renderer
 handle and DOM subtree still exist.
 
+The supported listener path receives genuine platform events. Alpha.6 reads
+base `Event` facts and specialized `InputEvent`, `KeyboardEvent`,
+`CompositionEvent`, `ClipboardEvent`, and `MouseEvent` facts through
+brand-checked getters and methods from the realm's platform prototype chain.
+Own and intermediate-prototype shadows are ignored, a generic native `Event`
+cannot impersonate a specialized event, and cancellation calls the native
+`Event.prototype.preventDefault` method and confirms its native
+`defaultPrevented` result. A direct advanced-controller call may instead use the
+explicit structural path needed by host-trusted fixtures. This is not a
+same-origin sandbox: replacement of the realm's actual platform globals or
+prototypes remains host-trusted behavior.
+
 The host chooses a keyboard policy:
 
 - `beforeinputPrimary` leaves structural editing keys to `beforeinput`;
@@ -113,9 +126,12 @@ ambiguous point blocks the command; it is never reinterpreted as a request to
 clear semantic selection. Explicit selection absence exists only for trusted
 API integrations.
 
-`InputEvent.getTargetRanges()` is read synchronously and bounded to zero or one
-range. One range is normalized immediately into a directionless
-`BaseTargetRange`; no native range or endpoint is retained. The target is tied
+`InputEvent.getTargetRanges()` is invoked through the branded native method and
+its result is copied from at most one dense own-data array element without
+executing an indexed accessor or custom iterator. One branded `AbstractRange`,
+`Range`, or `StaticRange` is normalized immediately through native endpoint
+getters into a directionless `BaseTargetRange`; a structural look-alike cannot
+supply endpoints. No native range or endpoint is retained. The target is tied
 to the exact projection, renderer handle, and renderer generation.
 
 Replacement and ordinary range-targeting intents require the normalized target
@@ -363,10 +379,11 @@ Native `Event` and `DataTransfer` objects never enter a command or receipt. The
 admitted paste string deliberately becomes the bounded action payload and is
 therefore visible to the synchronous queue executor and any application queue
 observer. The ordinary controller delegates clipboard-shaped `beforeinput` and
-`input` signals with `clipboardOwns`; until the unified router exists,
-integrations must front-route those signals and actual clipboard events to the
-clipboard controller. See [the complete clipboard contract](CLIPBOARD.md) for
-formats, resource limits, failure states, and deliberately unsupported content.
+`input` signals with `clipboardOwns`. The high-level owner now front-routes those
+signals and actual clipboard events through the unified router; advanced
+integrations must preserve that precedence. See
+[the complete clipboard contract](CLIPBOARD.md) for formats, resource limits,
+failure states, and deliberately unsupported content.
 
 ## Atomicity and recovery limits
 

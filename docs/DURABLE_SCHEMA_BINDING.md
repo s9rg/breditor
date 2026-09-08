@@ -1,9 +1,8 @@
 # Durable schema binding contract
 
-Status: implemented Rust-core contract through `0.2.0-alpha.5`; Wasm ABI 3
-provides explicit V2 profile factories; the supported browser already persists
-the exact-base V1 session, while profile-aware V2 browser persistence remains
-deliberately deferred
+Status: implemented through `0.2.0-alpha.6`; Wasm ABI 3 provides explicit V2
+profile factories, and the supported browser selects exact-base V1 or
+profile-aware V2 persistence without sniffing or silently converting formats
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.
@@ -127,10 +126,12 @@ selection, and a failed compare-and-swap never promotes it.
 
 Wasm ABI 3 adds explicit compiled-profile factories over Document V2 and
 Session Checkpoint V2 during alpha.5. Its legacy exact-base factory remains an
-explicit V1 path. The supported base-only browser persistence layer still does
-not accept V2, reuse the V1 IndexedDB slot, or fall back to fresh content after
-a mismatch; profile-aware browser persistence arrives with the rendering
-checkpoint.
+explicit V1 path. Alpha.6 adds the corresponding browser persistence boundary:
+profile startup selects an exact schema-fingerprint or caller-provided slot and
+requires a V2 outer record before inspecting checkpoint bytes. The legacy
+unprofiled path retains the V1 `"current"` slot. Neither path falls back to
+fresh content after a mismatch, and a mismatch never repairs, deletes, or
+overwrites the retained record.
 
 V2 storage support stops at checked prepare, encode, decode, and selected-value
 normalization. It does not enter the existing `Prepared` -> `Uncertain`
@@ -176,7 +177,7 @@ document cannot directly mint a new persistence root. This narrower source
 contract makes history/session reset observable and prevents a document-only
 helper from being mistaken for persistence migration.
 
-## Deliberate alpha.5 limits
+## Deliberate alpha.6 limits
 
 - The public schema compiler remains
   `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
@@ -202,10 +203,12 @@ helper from being mistaken for persistence migration.
   generation. Alpha.5 carries it through profile-created Rust engine/state
   observations and Wasm handles, but never serializes or exposes it as a
   scalar. Existing unprofiled native constructors remain advanced bypasses.
-- Wasm ABI 3 profile factories use V2. The supported browser validators,
-  autosave, IndexedDB, and npm consumer fixture continue to use the exact-base
-  V1 product path. Rendering and toolbar support remain alpha.6 and alpha.7
-  work.
+- Wasm ABI 3 profile factories use V2. Alpha.6 browser validators, export,
+  autosave, and IndexedDB use V2 only with an exact compiled profile; the
+  unprofiled compatibility path remains exact-base V1. The default V2 slot is
+  schema-scoped rather than document-scoped, so applications opening multiple
+  documents under one schema must supply distinct caller slots. Intent-based
+  toolbar execution remains alpha.7 work.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

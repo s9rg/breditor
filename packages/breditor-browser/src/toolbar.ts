@@ -17,19 +17,31 @@ import {
   isSafeFlowContainerHost,
   nativeAddEventListener,
   nativeAppendChild,
+  nativeAttributeNames,
+  nativeChildNodes,
   nativeCreateHtmlElement,
   nativeDocumentActiveElement,
   nativeFocusHtmlElement,
   nativeGetAttribute,
   nativeHasAttribute,
   nativeHtmlHostFacts,
+  nativeNodeType,
+  nativeNodeValue,
   nativeOwnerDocument,
   nativeParentElement,
+  nativeParentNode,
   nativeRemoveAttribute,
   nativeRemoveElement,
   nativeRemoveEventListener,
+  nativeReplaceChildren,
   nativeSetAttribute,
 } from "./html_host.js";
+import {
+  preventDomEventDefault,
+  readDomEventBase,
+  readDomKeyboardEvent,
+  readDomMouseEvent,
+} from "./dom_event_intrinsics.js";
 
 /** Maximum entries inspected from one browser action-state snapshot. */
 export const MAX_TOOLBAR_STATE_ENTRIES = 512;
@@ -180,6 +192,7 @@ interface ButtonRecord {
   readonly onKeyDown: (event: KeyboardEvent) => void;
   readonly onClick: (event: MouseEvent) => void;
   enabled: boolean;
+  pressed: "false" | "true" | "mixed" | undefined;
 }
 
 interface NormalizedActionState {
@@ -324,6 +337,50 @@ export class BreditorToolbar {
     return this.#state;
   }
 
+  /** Proves the exact startup-owned toolbar DOM before its owner escapes. @internal */
+  validateCanonicalDom(): boolean {
+    if (this.#state !== "live") return false;
+    try {
+      const hostFacts = nativeHtmlHostFacts(this.#host);
+      const rootFacts = nativeHtmlHostFacts(this.#element);
+      const hostChildren = nativeChildNodes(this.#host);
+      const rootChildren = nativeChildNodes(this.#element);
+      const rootAttributeNames = nativeAttributeNames(this.#element);
+      return (
+        hostFacts !== undefined &&
+        hostFacts.isConnected &&
+        isSafeToolbarHost(this.#host) &&
+        rootFacts !== undefined &&
+        rootFacts.isConnected &&
+        rootFacts.ownerDocument === this.#ownerDocument &&
+        rootFacts.tagName === "DIV" &&
+        nativeParentElement(this.#element) === this.#host &&
+        hostChildren.length === 1 &&
+        hostChildren[0] === this.#element &&
+        rootAttributeNames.length === 4 &&
+        nativeHasAttribute(this.#element, "data-breditor-toolbar-root") &&
+        nativeGetAttribute(this.#element, "data-breditor-toolbar-root") === "" &&
+        nativeGetAttribute(this.#element, "role") === "toolbar" &&
+        nativeGetAttribute(this.#element, "aria-label") === this.#manifest.label &&
+        nativeGetAttribute(this.#element, "aria-orientation") === "horizontal" &&
+        rootChildren.length === this.#buttons.length &&
+        this.#buttons.every(
+          (record, index) =>
+            rootChildren[index] === record.button &&
+            isCanonicalToolbarButton(
+              record,
+              this.#element,
+              this.#ownerDocument,
+              index,
+              this.#activeIndex,
+            ),
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Subscribes to the single terminal lifecycle transition.
    *
@@ -379,8 +436,8 @@ export class BreditorToolbar {
       const declaration = this.#manifest.controls[index];
       if (declaration === undefined) continue;
       const button = nativeCreateHtmlElement(this.#ownerDocument, "button");
-      button.type = "button";
-      button.textContent = declaration.label;
+      nativeSetAttribute(button, "type", "button");
+      nativeReplaceChildren(button, declaration.label);
       nativeSetAttribute(button, "aria-label", declaration.label);
       nativeSetAttribute(button, "aria-disabled", "true");
       nativeSetAttribute(button, "tabindex", index === 0 ? "0" : "-1");
@@ -423,6 +480,7 @@ export class BreditorToolbar {
         onKeyDown,
         onClick,
         enabled: false,
+        pressed: declaration.activation === "tracked" ? "false" : undefined,
       });
       this.#buttons.push(record);
       nativeAddEventListener(button, "pointerdown", onPointerDown);
@@ -480,12 +538,14 @@ export class BreditorToolbar {
             ? "mixed"
             : "false";
       nativeSetAttribute(record.button, "aria-pressed", pressed);
+      record.pressed = pressed;
       contractMatches =
         entry?.activation === "inactive" ||
         entry?.activation === "active" ||
         entry?.activation === "mixed";
     } else {
       nativeRemoveAttribute(record.button, "aria-pressed");
+      record.pressed = undefined;
       contractMatches = entry?.activation === "stateless";
     }
     record.enabled =
@@ -500,16 +560,38 @@ export class BreditorToolbar {
   }
 
   #handlePointerDown(index: number, event: PointerEvent): void {
-    if (this.#state !== "live" || event.button !== 0) return;
-    event.preventDefault();
+    const snapshot = readDomMouseEvent(event);
+    if (
+      this.#state !== "live" ||
+      snapshot?.base.type !== "pointerdown" ||
+      snapshot.button !== 0 ||
+      snapshot.base.defaultPrevented
+    ) {
+      return;
+    }
+    if (!preventDomEventDefault(event).ok) {
+      this.#fault();
+      return;
+    }
     this.#setActiveIndex(index, false);
   }
 
   #handleMouseDown(index: number, event: MouseEvent): void {
-    if (this.#state !== "live" || event.button !== 0) return;
+    const snapshot = readDomMouseEvent(event);
+    if (
+      this.#state !== "live" ||
+      snapshot?.base.type !== "mousedown" ||
+      snapshot.button !== 0 ||
+      snapshot.base.defaultPrevented
+    ) {
+      return;
+    }
     // Pointer Events normally suppress this compatibility focus step already;
     // the mouse fallback covers older or synthetic hosts without moving focus.
-    event.preventDefault();
+    if (!preventDomEventDefault(event).ok) {
+      this.#fault();
+      return;
+    }
     this.#setActiveIndex(index, false);
   }
 
@@ -519,17 +601,23 @@ export class BreditorToolbar {
   }
 
   #handleKeyDown(index: number, event: KeyboardEvent): void {
+    const base = readDomEventBase(event);
+    const key = readDomKeyboardEvent(event);
     if (
       this.#state !== "live" ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey
+      base?.type !== "keydown" ||
+      key === null ||
+      base.source !== key.source ||
+      base.defaultPrevented ||
+      key.altKey ||
+      key.ctrlKey ||
+      key.metaKey ||
+      key.shiftKey
     ) {
       return;
     }
     let next: number | undefined;
-    switch (event.key) {
+    switch (key.key) {
       case "ArrowRight":
       case "ArrowDown":
         next = (index + 1) % this.#buttons.length;
@@ -547,7 +635,10 @@ export class BreditorToolbar {
       default:
         return;
     }
-    event.preventDefault();
+    if (!preventDomEventDefault(event).ok) {
+      this.#fault();
+      return;
+    }
     this.#setActiveIndex(next, true);
   }
 
@@ -586,7 +677,16 @@ export class BreditorToolbar {
   }
 
   #handleClick(record: ButtonRecord, event: MouseEvent): void {
-    event.preventDefault();
+    const snapshot = readDomMouseEvent(event);
+    if (snapshot?.base.type !== "click") {
+      if (this.#state === "live") this.#fault();
+      return;
+    }
+    if (snapshot.base.defaultPrevented) return;
+    if (!preventDomEventDefault(event).ok) {
+      this.#fault();
+      return;
+    }
     if (
       this.#state !== "live" ||
       !isMountedToolbarButton(record.button, this.#element)
@@ -702,6 +802,54 @@ function isMountedToolbarButton(
     facts !== undefined &&
     facts.isConnected &&
     nativeParentElement(button) === toolbarRoot
+  );
+}
+
+function isCanonicalToolbarButton(
+  record: ButtonRecord,
+  toolbarRoot: HTMLElement,
+  ownerDocument: Document,
+  index: number,
+  activeIndex: number,
+): boolean {
+  const { button, declaration } = record;
+  const facts = nativeHtmlHostFacts(button);
+  if (
+    facts === undefined ||
+    !facts.isConnected ||
+    facts.ownerDocument !== ownerDocument ||
+    facts.tagName !== "BUTTON" ||
+    nativeParentElement(button) !== toolbarRoot
+  ) {
+    return false;
+  }
+  const children = nativeChildNodes(button);
+  const expectedAttributeCount =
+    5 +
+    (declaration.group === undefined ? 0 : 1) +
+    (declaration.activation === "tracked" ? 1 : 0);
+  return (
+    children.length === 1 &&
+    nativeNodeType(children[0]!) === 3 &&
+    nativeNodeValue(children[0]!) === declaration.label &&
+    nativeParentNode(children[0]!) === button &&
+    nativeAttributeNames(button).length === expectedAttributeCount &&
+    nativeGetAttribute(button, "type") === "button" &&
+    nativeGetAttribute(button, "aria-label") === declaration.label &&
+    nativeGetAttribute(button, "aria-disabled") ===
+      (record.enabled ? "false" : "true") &&
+    nativeGetAttribute(button, "tabindex") ===
+      (index === activeIndex ? "0" : "-1") &&
+    nativeGetAttribute(button, "data-breditor-state-id") ===
+      declaration.stateId &&
+    (declaration.group === undefined
+      ? !nativeHasAttribute(button, "data-breditor-group")
+      : nativeGetAttribute(button, "data-breditor-group") ===
+        declaration.group) &&
+    (declaration.activation === "tracked"
+      ? record.pressed !== undefined &&
+        nativeGetAttribute(button, "aria-pressed") === record.pressed
+      : !nativeHasAttribute(button, "aria-pressed"))
   );
 }
 

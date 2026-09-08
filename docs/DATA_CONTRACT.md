@@ -8,8 +8,11 @@ experimental Rust-only `0.2.0-alpha.2` boundary. `0.2.0-alpha.3` adds the sealed
 base-text schema compiler and generic property-free inline-format behavior;
 `0.2.0-alpha.4` compiles manifest-owned toggle bundles into one immutable Rust
 editor profile. `0.2.0-alpha.5` carries that profile through the guarded engine
-and Wasm ABI 3, including explicit V2 fresh/restore factories; it does not
-widen a V1 codec or the base-only browser/IndexedDB product.
+and Wasm ABI 3, including explicit V2 fresh/restore factories. The current
+alpha.6 implementation consumes that existing Rust contract in a profile-aware
+browser AST/render/clipboard/export path and adds profile-bound IndexedDB outer
+records; it does not widen any Rust V1 or V2 codec. The alpha.6 implementation
+and release gates are complete.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1` and `2`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -5009,6 +5012,102 @@ there were no persistent node IDs, custom schema renderers, selection conversion
   composition, and clipboard additions. The full projection contract and limits are in
 [`DOM_PROJECTION.md`](DOM_PROJECTION.md).
 
+## Profile-aware browser AST projection (alpha.6)
+
+Alpha.6 widens the browser consumer, not the Rust AST or operation language.
+The consumed view is still one document, one or more direct-root paragraphs,
+and nonempty text runs. A profiled run carries its complete canonical lexical
+set of zero through 32 property-free format kinds; the legacy `strong` flag is
+only a compatibility projection of `breditor/strong`. The browser verifies the
+schema selector and fingerprint, every format against the compiled descriptor,
+the adjacent-run canonicality law, Unicode, snapshot, and existing document
+resource limits before minting an immutable projection.
+
+A profiled projection is privately correlated with the exact owned
+`CompiledProfileDescriptor` and live opaque profile generation that admitted
+it. An update must preserve that profile binding as well as lineage and exact
+successor revision. Descriptor equality by visible fields is not authority, and
+recompiling equal bootstrap JSON creates a new generation that cannot consume
+the old projection. The durable fingerprint, process-local profile generation,
+and browser presentation identity remain three separate contracts.
+
+Browser presentation is compiled all-or-nothing from one copied, frozen,
+callback-free render manifest. Every descriptor-admitted format requires
+exactly one recipe and no extra recipe is accepted. A recipe selects only
+`code`, `em`, `mark`, `s`, `span`, `strong`, `sub`, `sup`, or `u`; it may add up
+to eight canonical lowercase-ASCII class tokens and bounded `before`/`after`
+format references. Missing targets, cycles, self-order, duplicate relationships,
+and duplicate element/class signatures fail startup. A topological order
+determines outer-to-inner wrappers, with lexical format identity breaking
+unconstrained ties. Extension registration and object iteration order never
+decide DOM nesting.
+
+The renderer creates only paragraphs, text nodes, the exact compiled recipe
+wrappers, and empty-paragraph `<br>` placeholders. It preflights the complete
+262,144-node DOM amplification ceiling before mutation and never calls
+`innerHTML`. Only the host, paragraph, and text nodes have AST mappings;
+wrappers and placeholders are presentation artifacts. Exact wrapper tag, class
+set, order, sole-child shape, text, or paragraph drift invalidates retained DOM
+ownership. Incremental updates remain optional optimizations and can fall back
+to a complete render from the canonical projection.
+
+Selection maps a canonical wrapper boundary only through its bounded sole-child
+chain to the underlying semantic text start or end. It does not invent a path
+for a wrapper. Composition retains the existing one-range, one-paragraph lease:
+the target may temporarily contain text and exact known recipe wrappers in
+canonical order, but unknown elements, attributes, classes, wrapper order, or
+branching fail reconciliation. Accepted target wrappers are stripped to text
+before one existing Rust insertion/deletion action; the native DOM never
+becomes the AST. Every non-target paragraph and all unchanged target text must
+still match the authoritative projection.
+
+Copy and cut slice the semantic projection rather than reading DOM HTML.
+Profile-aware HTML uses escaped paragraph/text output plus the exact compiled
+element, class tokens, and wrapper order for each selected format. Paste gives
+advertised `text/plain` absolute precedence. Only when it is absent may the
+bounded parse5 path admit HTML whose repaired tree exactly matches the active
+presentation; even then, all wrappers are deterministically flattened and one
+plain-text action enters Rust. Source formatting is not transported, although
+the existing target pending/context-format rules still apply. There is no
+rich-fragment round trip. Copy may also exceed the much smaller one-action paste
+budget, so a successful Breditor copy is not promised to fit one Breditor paste.
+
+Canonical content export is selected before bytes are inspected. The legacy
+engine emits exact-base Document V1. A compiled semantic profile emits
+fingerprint-bearing Document V2 and the browser independently checks its schema,
+format catalog, AST semantics, and current projection. A V2 failure is never
+retried as V1. Plain-text export traverses the same owned projection and strips
+all formats. Neither export reads mutable DOM.
+
+Profile-aware IndexedDB uses a separately versioned outer record that binds one
+resolved slot, schema fingerprint, and Session Checkpoint generation. Omitted
+profile and scope preserve the exact legacy `"current"` outer-V1/Checkpoint-V1
+bytes. A semantic profile defaults to its fingerprint as slot; a host may
+instead choose a checked caller slot, and explicit base-profile scoping uses
+Checkpoint V1 in the outer-V2 record. Checkpoint V1 accepts only the built-in
+base fingerprint. Slots coexist without becoming a registry. The fingerprint
+default is not document-scoped: same-schema lineages share the slot and stored
+state wins, so multi-document hosts must provide distinct caller slots.
+
+Before any semantic-profile storage load, the browser compiles and fully
+releases the profile once to obtain a frozen handle-free descriptor. It selects
+the fingerprint/Checkpoint-V2 binding from that preflight, loads only that slot,
+then recompiles the same bootstrap for the live engine after the asynchronous
+boundary. Startup requires the final schema name, version, fingerprint, and
+complete ordered format kind/revision catalog to equal the preflight result
+before autosave begins. A binding mismatch returns no CAS token and performs no
+digest fallback, alternate-codec retry, deletion, repair, or write. The
+deliberate double compilation is a bounded startup cost chosen so no generated
+profile authority survives across IndexedDB.
+
+This remains a sealed base-text editor, not a general rich-document system.
+Links and other property-bearing formats, arbitrary node kinds, headings,
+lists, tables, images, embeds, format exclusions/normalizers, extension DOM or
+action callbacks, rich paste, collaboration, CRDT/OT rebasing, remote
+selections, and selective undo are not implemented. ProseMirror, Lexical,
+Tiptap, and CKEditor remain design examples only; none of their AST, position,
+transaction, plugin, step, or wire protocols is used.
+
 ## Guarded browser selection mapping (`0.0.52`)
 
 The Wasm boundary now reads semantic selection through a separate observation-
@@ -5171,9 +5270,9 @@ once and must remain in one paragraph. The renderer then temporarily makes its
 public handle non-current while retaining opaque host ownership. At settlement,
 all non-target paragraphs and unchanged text around the range must still match
 the authoritative projection; the target accepts only bounded Unicode text,
-property-free strong wrappers containing text, a bare empty paragraph, or one
-sole empty-paragraph placeholder. This is a strict replacement check, not a
-DOM-to-AST parser.
+the exact canonical property-free wrapper chains from the projection's checked
+browser presentation, a bare empty paragraph, or one sole empty-paragraph
+placeholder. This is a strict replacement check, not a DOM-to-AST parser.
 
 The adapter spends the lease, full-renders the retained authoritative projection,
 and restores the captured selection before the controller submits one existing
@@ -5210,23 +5309,27 @@ structurally checked JavaScript adapter surface is host-trusted until the
 high-level runtime encapsulates this wiring.
 
 Copy slices the directional selection's spatial extent directly from the
-branded base projection. Plain text joins paragraphs with LF; HTML uses only
-escaped text, attribute-free paragraphs and strong wrappers, and a sole `<br>`
-for an empty paragraph. Cut first clears the clipboard, writes `text/plain`,
-then writes `text/html`, and confirms native cancellation. Only after all four
-steps succeed can one `breditor/delete-selection` action with a `closeBefore`
-history boundary run. Copy performs no Rust command, and a collapsed cut cannot
-delete.
+branded projection. Plain text joins paragraphs with LF; HTML uses escaped
+text, attribute-free paragraphs, a sole `<br>` for an empty paragraph, and the
+exact canonical wrapper chain from the projection's checked browser
+presentation. The legacy unprofiled path emits only attribute-free `<strong>`.
+Cut first clears the clipboard, writes `text/plain`, then writes `text/html`,
+and confirms native cancellation. Only after all four steps succeed can one
+`breditor/delete-selection` action with a `closeBefore` history boundary run.
+Copy performs no Rust command, and a collapsed cut cannot delete.
 
 Paste treats advertised `text/plain` as authoritative and never falls back to
 HTML when that item is empty, invalid, oversized, or throws. HTML is read only
 when plain text is absent. parse5 constructs a non-DOM fragment whose complete
-repaired tree must contain only direct attribute-free `<p>` blocks, direct text
-or one-level attribute-free `<strong>`/`<b>` runs, and canonical empty
-paragraphs, with an optional exact fragment-comment pair. The admitted tree is
-flattened with LF and passed to one atomic `breditor/insert-plain-text` action
-with `closeBefore`; strong structure is deliberately not preserved because the
-current action cannot represent mixed clipboard formats.
+repaired tree must contain only direct attribute-free `<p>` blocks, direct text,
+canonical empty paragraphs, and either legacy one-level attribute-free
+`<strong>`/`<b>` runs or exact profiled wrapper chains from the checked
+presentation, with an optional exact fragment-comment pair. Profiled chains
+are bounded to 32 wrappers and must preserve canonical outer-to-inner ordering
+and exact tag/class signatures. The admitted tree is flattened with LF and
+passed to one atomic `breditor/insert-plain-text` action with `closeBefore`;
+format structure is deliberately not preserved because the current action
+cannot represent mixed clipboard formats.
 
 This is a repaired-tree policy, not a source-language sanitizer. Source wrappers
 or attributes which parse5 discards are absent from the tree that admission

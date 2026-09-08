@@ -2,9 +2,44 @@ import {
   isOwnedProjection,
   type BaseDocumentProjection,
 } from "./projection.js";
+import {
+  snapshotOwnDataArray,
+  snapshotProtectedHandleArray,
+} from "./protected_handle_snapshot.js";
 
 /** Maximum UTF-8 bytes admitted by the browser Document V1 export boundary. */
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
+
+/** Explicit durable codec selected before any document payload is inspected. */
+export type WasmDurableMode = "v1" | "v2";
+
+/** Exact schema selector and fingerprint required by a V2 durable codec. */
+export interface WasmDurableSchemaBinding {
+  readonly name: string;
+  readonly version: number;
+  readonly fingerprint: string;
+}
+
+/** One property-free inline format admitted by a compiled profile. */
+export interface WasmDurableFormatBinding {
+  readonly kind: string;
+  readonly revision: number;
+}
+
+/**
+ * Browser-side durable contract selected independently of payload contents.
+ *
+ * V1 is the exact built-in base contract. V2 requires the complete selector,
+ * fingerprint, and canonical format catalog copied from one compiled profile.
+ * @internal
+ */
+export type WasmDurableJsonContract =
+  | Readonly<{ readonly mode: "v1" }>
+  | Readonly<{
+      readonly mode: "v2";
+      readonly schema: WasmDurableSchemaBinding;
+      readonly formats: readonly WasmDurableFormatBinding[];
+    }>;
 
 /** Exact engine snapshot associated with one synchronous document capture. */
 export interface WasmDocumentJsonExpectedSnapshot {
@@ -27,7 +62,7 @@ export interface WasmDocumentJsonStringResultView {
   free(): void;
 }
 
-/** Bounded, handle-free Document V1 bytes and their exact engine snapshot. */
+/** Bounded, handle-free mode-selected Document bytes and their exact snapshot. */
 export interface BrowserDocumentJson {
   readonly documentJson: string;
   readonly documentUtf8Bytes: number;
@@ -37,7 +72,7 @@ export interface BrowserDocumentJson {
   }>;
 }
 
-/** Payload-redacted failure from a synchronous Document V1 capture. */
+/** Payload-redacted failure from a synchronous mode-selected Document capture. */
 export type BrowserDocumentJsonReadError =
   | Readonly<{
       kind: "boundary";
@@ -52,10 +87,10 @@ export type BrowserDocumentJsonReadError =
   | Readonly<{
       kind: "core";
       code: "document_json.core_rejected";
-      message: "The Rust editor core could not export Document V1.";
+      message: "The Rust editor core could not export the active Document format.";
     }>;
 
-/** Validated result of one synchronous Document V1 capture. */
+/** Validated result of one synchronous mode-selected Document capture. */
 export type BrowserDocumentJsonReadResult =
   | Readonly<{ ok: true; document: BrowserDocumentJson }>
   | Readonly<{ ok: false; error: BrowserDocumentJsonReadError }>;
@@ -85,7 +120,7 @@ const ADAPTER_UNAVAILABLE: BrowserDocumentJsonReadError = Object.freeze({
 const CORE_REJECTED: BrowserDocumentJsonReadError = Object.freeze({
   kind: "core",
   code: "document_json.core_rejected",
-  message: "The Rust editor core could not export Document V1.",
+  message: "The Rust editor core could not export the active Document format.",
 });
 
 const OWNED_READ_RESULTS = new WeakSet<object>();
@@ -102,6 +137,19 @@ const MAX_RUNS_PER_PARAGRAPH = 10_000;
 const MAX_NODES = 100_000;
 const MAX_TEXT_UTF8_BYTES = 1024 * 1024;
 const MAX_TOTAL_TEXT_UTF8_BYTES = 8 * 1024 * 1024;
+const MAX_PROFILE_FORMATS = 256;
+const MAX_FORMATS_PER_RUN = 32;
+const LEGACY_V1_CONTRACT: WasmDurableJsonContract = Object.freeze({ mode: "v1" });
+
+interface ResolvedDurableContract {
+  readonly mode: WasmDurableMode;
+  readonly schema: Readonly<{
+    name: string;
+    version: number;
+    fingerprint: string | undefined;
+  }>;
+  readonly formatKinds: ReadonlySet<string>;
+}
 
 interface OwnedHandle {
   readonly value: object;
@@ -115,7 +163,7 @@ interface HandleRegistry {
 }
 
 /**
- * Consumes one generated string result into exact, bounded Document V1 bytes.
+ * Consumes one generated string result into exact, bounded Document bytes.
  *
  * The outer result and every cloned error are freed exactly once after their
  * cleanup methods have been captured. Generated values are hostile: accessors
@@ -126,6 +174,7 @@ export function consumeWasmDocumentJson(
   expected: WasmDocumentJsonExpectedSnapshot,
   view: WasmDocumentJsonStringResultView,
   protectedHandles: readonly unknown[] = [],
+  contract: WasmDurableJsonContract = LEGACY_V1_CONTRACT,
 ): BrowserDocumentJsonReadResult {
   const registry: HandleRegistry = { handles: [], seen: new Set(), invalid: false };
   let protectedSet: ReadonlySet<object>;
@@ -136,7 +185,7 @@ export function consumeWasmDocumentJson(
   }
   let provisional: BrowserDocumentJsonReadResult = boundaryFailure();
   try {
-    provisional = readDocument(expected, view, registry, protectedSet);
+    provisional = readDocument(expected, view, registry, protectedSet, contract);
   } catch {
     provisional = boundaryFailure();
   }
@@ -160,8 +209,11 @@ export function invalidWasmDocumentJsonReadResult(): BrowserDocumentJsonReadResu
   return boundaryFailure();
 }
 
-/** Validates a canonical base-schema Document V1 string and returns its bytes. */
-export function documentJsonUtf8Bytes(value: unknown): number | null {
+/** Validates a canonical mode-selected Document string and returns its bytes. */
+export function documentJsonUtf8Bytes(
+  value: unknown,
+  contract: WasmDurableJsonContract = LEGACY_V1_CONTRACT,
+): number | null {
   if (
     typeof value !== "string" ||
     value.length === 0 ||
@@ -182,7 +234,8 @@ export function documentJsonUtf8Bytes(value: unknown): number | null {
   } catch {
     return null;
   }
-  return validBaseDocumentV1(parsed) ? utf8Bytes : null;
+  const resolved = readDurableContract(contract);
+  return resolved !== null && validDocument(parsed, resolved) ? utf8Bytes : null;
 }
 
 /**
@@ -194,8 +247,18 @@ export function documentJsonUtf8Bytes(value: unknown): number | null {
 export function documentJsonMatchesProjection(
   value: unknown,
   projection: BaseDocumentProjection,
+  contract: WasmDurableJsonContract = LEGACY_V1_CONTRACT,
 ): boolean {
-  if (!isOwnedProjection(projection) || documentJsonUtf8Bytes(value) === null) {
+  const resolved = readDurableContract(contract);
+  if (
+    !isOwnedProjection(projection) ||
+    resolved === null ||
+    documentJsonUtf8Bytes(value, contract) === null ||
+    projection.schema.name !== resolved.schema.name ||
+    projection.schema.version !== resolved.schema.version ||
+    (resolved.mode === "v2" &&
+      projection.schema.fingerprint !== resolved.schema.fingerprint)
+  ) {
     return false;
   }
   try {
@@ -212,12 +275,14 @@ export function documentJsonMatchesProjection(
       }
       for (let runIndex = 0; runIndex < documentRuns.length; runIndex += 1) {
         const run = documentRuns[runIndex] as Record<string, unknown>;
-        const formats = run["formats"] as unknown[];
+        const formats = run["formats"] as Array<Record<string, unknown>>;
         const projected = projectionRuns[runIndex];
         if (
           projected === undefined ||
           run["text"] !== projected.text ||
-          (formats.length === 1) !== projected.strong
+          formats.length !== projected.formats.length ||
+          formats.some((format, formatIndex) =>
+            format["type"] !== projected.formats[formatIndex])
         ) {
           return false;
         }
@@ -234,6 +299,7 @@ function readDocument(
   view: WasmDocumentJsonStringResultView,
   registry: HandleRegistry,
   protectedHandles: ReadonlySet<object>,
+  contract: WasmDurableJsonContract,
 ): BrowserDocumentJsonReadResult {
   if (!captureHandle(registry, view, protectedHandles)) {
     return boundaryFailure();
@@ -264,7 +330,7 @@ function readDocument(
     return boundaryFailure();
   }
 
-  const documentUtf8Bytes = documentJsonUtf8Bytes(rawValue);
+  const documentUtf8Bytes = documentJsonUtf8Bytes(rawValue, contract);
   if (documentUtf8Bytes === null) return boundaryFailure();
   const document: BrowserDocumentJson = Object.freeze({
     documentJson: rawValue,
@@ -330,20 +396,96 @@ function readOwnedError(
   }
 }
 
-function validBaseDocumentV1(value: unknown): boolean {
-  const envelope = exactJsonRecord(value, ["format", "formatVersion", "schema", "root"]);
+function readDurableContract(
+  value: WasmDurableJsonContract,
+): Readonly<{
+  mode: WasmDurableMode;
+  schema: WasmDurableSchemaBinding;
+  formatKinds: ReadonlySet<string>;
+}> | null {
+  try {
+    const v1 = exactJsonRecord(value, ["mode"]);
+    if (v1 !== null && v1["mode"] === "v1") {
+      return Object.freeze({
+        mode: "v1",
+        schema: Object.freeze({
+          name: "breditor/base",
+          version: 1,
+          fingerprint: "",
+        }),
+        formatKinds: new Set(["breditor/strong"]),
+      });
+    }
+
+    const v2 = exactJsonRecord(value, ["mode", "schema", "formats"]);
+    if (v2 === null || v2["mode"] !== "v2") return null;
+    const schema = exactJsonRecord(v2["schema"], ["name", "version", "fingerprint"]);
+    const formats = snapshotOwnDataArray(v2["formats"], MAX_PROFILE_FORMATS);
+    if (
+      schema === null ||
+      !isQualifiedName(schema["name"]) ||
+      !isPositiveU32(schema["version"]) ||
+      !isSchemaFingerprint(schema["fingerprint"]) ||
+      formats === null
+    ) {
+      return null;
+    }
+    const formatKinds = new Set<string>();
+    let prior = "";
+    for (let index = 0; index < formats.length; index += 1) {
+      const value = formats[index];
+      const format = exactJsonRecord(value, ["kind", "revision"]);
+      if (
+        format === null ||
+        !isQualifiedName(format["kind"]) ||
+        !isPositiveU32(format["revision"]) ||
+        format["kind"] <= prior
+      ) {
+        return null;
+      }
+      prior = format["kind"];
+      formatKinds.add(format["kind"]);
+    }
+    return Object.freeze({
+      mode: "v2",
+      schema: Object.freeze({
+        name: schema["name"],
+        version: schema["version"],
+        fingerprint: schema["fingerprint"],
+      }),
+      formatKinds,
+    });
+  } catch {
+    return null;
+  }
+}
+
+function validDocument(
+  value: unknown,
+  contract: Readonly<{
+    mode: WasmDurableMode;
+    schema: WasmDurableSchemaBinding;
+    formatKinds: ReadonlySet<string>;
+  }>,
+): boolean {
+  const expectedEnvelopeKeys = contract.mode === "v1"
+    ? ["format", "formatVersion", "schema", "root"]
+    : ["format", "formatVersion", "schema", "schemaFingerprint", "root"];
+  const envelope = exactJsonRecord(value, expectedEnvelopeKeys);
   if (
     envelope === null ||
     envelope["format"] !== "breditor/document" ||
-    envelope["formatVersion"] !== 1
+    envelope["formatVersion"] !== (contract.mode === "v1" ? 1 : 2) ||
+    (contract.mode === "v2" &&
+      envelope["schemaFingerprint"] !== contract.schema.fingerprint)
   ) {
     return false;
   }
   const schema = exactJsonRecord(envelope["schema"], ["name", "version"]);
   if (
     schema === null ||
-    schema["name"] !== "breditor/base" ||
-    schema["version"] !== 1
+    schema["name"] !== contract.schema.name ||
+    schema["version"] !== contract.schema.version
   ) {
     return false;
   }
@@ -391,7 +533,7 @@ function validBaseDocumentV1(value: unknown): boolean {
     nodes += paragraph["children"].length;
     if (nodes > MAX_NODES) return false;
 
-    let previousStrong: boolean | undefined;
+    let previousFormats: string | undefined;
     for (const rawRun of paragraph["children"]) {
       const run = exactJsonRecord(rawRun, ["kind", "text", "formats"]);
       if (
@@ -400,7 +542,8 @@ function validBaseDocumentV1(value: unknown): boolean {
         typeof run["text"] !== "string" ||
         run["text"].length === 0 ||
         !Array.isArray(run["formats"]) ||
-        run["formats"].length > 1
+        run["formats"].length > MAX_FORMATS_PER_RUN ||
+        run["formats"].length > contract.formatKinds.size
       ) {
         return false;
       }
@@ -409,23 +552,45 @@ function validBaseDocumentV1(value: unknown): boolean {
       totalTextBytes += textBytes;
       if (totalTextBytes > MAX_TOTAL_TEXT_UTF8_BYTES) return false;
 
-      let strong = false;
-      if (run["formats"].length === 1) {
-        const format = exactJsonRecord(run["formats"][0], ["type", "properties"]);
+      const formatKinds: string[] = [];
+      let priorFormat = "";
+      for (const rawFormat of run["formats"]) {
+        const format = exactJsonRecord(rawFormat, ["type", "properties"]);
         if (
           format === null ||
-          format["type"] !== "breditor/strong" ||
+          !isQualifiedName(format["type"]) ||
+          !contract.formatKinds.has(format["type"]) ||
+          format["type"] <= priorFormat ||
           !emptyJsonRecord(format["properties"])
         ) {
           return false;
         }
-        strong = true;
+        priorFormat = format["type"];
+        formatKinds.push(format["type"]);
       }
-      if (previousStrong === strong) return false;
-      previousStrong = strong;
+      const formatKey = formatKinds.join("\u0000");
+      if (previousFormats === formatKey) return false;
+      previousFormats = formatKey;
     }
   }
   return true;
+}
+
+function isQualifiedName(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= 128 &&
+    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+}
+
+function isPositiveU32(value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 4_294_967_295;
+}
+
+function isSchemaFingerprint(value: unknown): value is string {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
 }
 
 function exactJsonRecord(
@@ -519,8 +684,8 @@ function freeHandles(registry: HandleRegistry): boolean {
 }
 
 function objectSet(values: readonly unknown[]): ReadonlySet<object> {
-  const result = new Set<object>();
-  for (const value of values) if (objectLike(value)) result.add(value);
+  const result = snapshotProtectedHandleArray(values);
+  if (result === null) throw new TypeError("invalid protected-handle list");
   return result;
 }
 

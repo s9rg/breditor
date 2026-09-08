@@ -2,15 +2,35 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   BaseDocumentProjection,
+  BaseRangeSelection,
   BaseProjectionUpdate,
   BreditorDomRenderer,
-  type BrowserProjectionResult,
+  type BrowserCompiledProfileDescriptor,
   type ProjectionRenderOutcome,
+  compileBrowserPresentation,
+  consumeWasmCompiledProfileDescriptor,
+  createInlineFormatRenderManifest,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
 } from "./advanced.js";
+import { reconcileCompositionDom } from "./dom_composition_reconcile.js";
+import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
+import {
+  nativeChildNodes,
+  nativeNodeValue,
+  nativeParentNode,
+} from "./html_host.js";
+import { createProfiledDocumentProjection } from "./projection.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
-function valueOf<T>(result: BrowserProjectionResult<T>): T {
+function valueOf<T>(result:
+  | Readonly<{ ok: true; value: T }>
+  | Readonly<{
+      ok: false;
+      error: Readonly<{ code: string; message: string }>;
+    }>
+): T {
   if (!result.ok) {
     throw new Error(`${result.error.code}: ${result.error.message}`);
   }
@@ -37,6 +57,709 @@ function render(
 }
 
 describe("BreditorDomRenderer", () => {
+  it("renders canonical mixed profile formats and detects wrapper drift", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [
+      "breditor/strong",
+      "example/highlight",
+      "example/whisper",
+    ]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [
+          { formatKind: "example/whisper", element: "em", after: ["example/highlight"] },
+          { formatKind: "breditor/strong", element: "strong", before: ["example/highlight"] },
+          { formatKind: "example/highlight", element: "mark", classes: ["accent"] },
+        ],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: {
+        name: descriptor.schema.name,
+        version: descriptor.schema.version,
+        fingerprint: descriptor.schema.fingerprint,
+      },
+      snapshot: { lineage: "profile-dom-tests", revision: "0" },
+      paragraphs: [{
+        runs: [
+          {
+            text: "mixed",
+            formats: ["breditor/strong", "example/highlight", "example/whisper"],
+          },
+          { text: "plain", formats: [] },
+        ],
+      }],
+    }, generation, descriptor));
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer(presentation);
+
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+
+    expect(host.innerHTML).toBe(
+      '<p><strong><mark class="accent"><em>mixed</em></mark></strong>plain</p>',
+    );
+    const strong = host.querySelector("strong");
+    const mark = host.querySelector("mark");
+    const emphasis = host.querySelector("em");
+    const text = emphasis?.firstChild;
+    expect(rendered.nodeForAstPath([0, 0])).toBe(text);
+    expect(rendered.astPathForDomNode(strong as Node)).toBeNull();
+    expect(rendered.astPathForDomNode(mark as Node)).toBeNull();
+    expect(rendered.astPathForDomNode(emphasis as Node)).toBeNull();
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    expect(mapDomPointToBaseSelectionPoint(rendered, strong as Node, 0)).toMatchObject({
+      ok: true,
+      value: { kind: "text", textPath: [0, 0], utf16Offset: 0 },
+    });
+    expect(mapDomPointToBaseSelectionPoint(rendered, mark as Node, 1)).toMatchObject({
+      ok: true,
+      value: { kind: "text", textPath: [0, 0], utf16Offset: 5 },
+    });
+
+    mark?.setAttribute("class", "accent extra");
+    expect(rendered.validateCanonicalDom()).toBe(false);
+    expect(rendered.nodeForAstPath([0, 0])).toBeNull();
+  });
+
+  it("reuses canonical profile paragraphs under the exact presentation", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [
+      "breditor/strong",
+      "example/highlight",
+    ]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [
+          { formatKind: "breditor/strong", element: "strong" },
+          { formatKind: "example/highlight", element: "mark" },
+        ],
+      }),
+    );
+    const create = (revision: string, firstText: string) => valueOf(
+      createProfiledDocumentProjection({
+        schema: { ...descriptor.schema },
+        snapshot: { lineage: "profile-update-tests", revision },
+        paragraphs: [
+          { runs: [{
+            text: firstText,
+            formats: ["breditor/strong", "example/highlight"],
+          }] },
+          { runs: [{ text: "stable", formats: [] }] },
+        ],
+      }, generation, descriptor),
+    );
+    const base = create("0", "before");
+    const result = create("1", "after");
+    const update = valueOf(BaseProjectionUpdate.create({
+      base,
+      result,
+      impact: { kind: "textContainers", paragraphIndexes: [0] },
+    }));
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer(presentation);
+    const initial = valueOf(renderer.render(host, base));
+    const stableParagraph = host.childNodes[1];
+
+    const outcome = valueOf(renderer.update(initial.rendered, update));
+
+    expect(outcome.mode).toBe("incremental");
+    expect(host.innerHTML).toBe("<p><strong><mark>after</mark></strong></p><p>stable</p>");
+    expect(host.childNodes[1]).toBe(stableParagraph);
+    expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+  });
+
+  it("does not switch a projection between equal-profile presentation identities", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, ["example/highlight"]);
+    const first = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{ formatKind: "example/highlight", element: "mark" }],
+      }),
+    );
+    const second = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{ formatKind: "example/highlight", element: "em" }],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "presentation-identity-tests", revision: "0" },
+      paragraphs: [{ runs: [{ text: "x", formats: ["example/highlight"] }] }],
+    }, generation, descriptor));
+
+    expect(new BreditorDomRenderer(first).render(
+      document.createElement("div"),
+      profiled,
+    ).ok).toBe(true);
+    expect(new BreditorDomRenderer(second).render(
+      document.createElement("div"),
+      profiled,
+    )).toMatchObject({
+      ok: false,
+      error: { code: "projection.invalid_shape" },
+    });
+  });
+
+  it("rejects a profiled projection without its exact presentation", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, ["example/highlight"]);
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "profile-dom-tests", revision: "0" },
+      paragraphs: [{ runs: [{ text: "x", formats: ["example/highlight"] }] }],
+    }, generation, descriptor));
+    const host = document.createElement("div");
+
+    expect(new BreditorDomRenderer().render(host, profiled)).toMatchObject({
+      ok: false,
+      error: { code: "projection.invalid_shape" },
+    });
+    expect(host.childNodes).toHaveLength(0);
+  });
+
+  it("requires the descriptor's exact generation before projection construction", () => {
+    const descriptorGeneration = profileGeneration();
+    const foreignGeneration = profileGeneration();
+    const descriptor = ownedProfileDescriptor(
+      descriptorGeneration,
+      ["example/highlight"],
+    );
+
+    expect(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "profile-generation-tests", revision: "0" },
+      paragraphs: [{ runs: [{ text: "x", formats: ["example/highlight"] }] }],
+    }, foreignGeneration, descriptor)).toMatchObject({
+      ok: false,
+      error: { code: "projection.invalid_shape" },
+    });
+  });
+
+  it("reconciles composition through known profile wrappers and strips them", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [
+      "breditor/strong",
+      "example/highlight",
+    ]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [
+          { formatKind: "breditor/strong", element: "strong", before: ["example/highlight"] },
+          { formatKind: "example/highlight", element: "mark", classes: ["accent"] },
+        ],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "profile-composition-tests", revision: "0" },
+      paragraphs: [{
+        runs: [{
+          text: "abcdef",
+          formats: ["breditor/strong", "example/highlight"],
+        }],
+      }],
+    }, generation, descriptor));
+    const selection = valueOf(BaseRangeSelection.create(profiled, {
+      kind: "range",
+      anchor: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 2,
+        affinity: "after",
+      },
+      focus: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 4,
+        affinity: "before",
+      },
+    }));
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+    const lease = renderer.beginCompositionDomLease(rendered);
+    if (lease === null) throw new Error("expected composition lease");
+    const strong = document.createElement("strong");
+    const mark = document.createElement("mark");
+    mark.className = "accent";
+    mark.append(document.createTextNode("abXYef"));
+    strong.append(mark);
+    host.firstElementChild?.replaceChildren(strong);
+
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: true,
+      value: {
+        replacementStartUtf16: 2,
+        replacementEndUtf16: 4,
+        originalText: "cd",
+        text: "XY",
+      },
+    });
+
+    const unknown = document.createElement("span");
+    unknown.append(document.createTextNode("abXYef"));
+    host.firstElementChild?.replaceChildren(unknown);
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.invalid_structure" },
+    });
+
+    const reversedMark = document.createElement("mark");
+    reversedMark.className = "accent";
+    const reversedStrong = document.createElement("strong");
+    reversedStrong.append(document.createTextNode("abXYef"));
+    reversedMark.append(reversedStrong);
+    host.firstElementChild?.replaceChildren(reversedMark);
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.invalid_structure" },
+    });
+
+    const wrongClass = document.createElement("mark");
+    wrongClass.className = "other";
+    wrongClass.append(document.createTextNode("abXYef"));
+    host.firstElementChild?.replaceChildren(wrongClass);
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.invalid_structure" },
+    });
+    expect(renderer.discardCompositionDomLease(lease)).toBe(true);
+  });
+
+  it("blocks same-host renderer reentry from detached DOM constructors", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const originalCreateTextNode = host.ownerDocument.createTextNode.bind(
+      host.ownerDocument,
+    );
+    let nested: ReturnType<BreditorDomRenderer["render"]> | undefined;
+    let attempted = false;
+    const constructor = vi.spyOn(host.ownerDocument, "createTextNode")
+      .mockImplementation((text) => {
+        if (!attempted) {
+          attempted = true;
+          nested = renderer.render(
+            host,
+            projection(1, [[{ text: "nested", strong: false }]]),
+          );
+        }
+        return originalCreateTextNode(text);
+      });
+    try {
+      const outer = valueOf(renderer.render(
+        host,
+        projection(0, [[{ text: "outer", strong: false }]]),
+      ));
+      expect(nested).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(host.textContent).toBe("outer");
+      expect(outer.rendered.validateCanonicalDom()).toBe(true);
+    } finally {
+      constructor.mockRestore();
+    }
+  });
+
+  it.each(["nodeType", "ownerDocument"] as const)(
+    "ignores an own %s identity getter while admitting the native HTML host",
+    (propertyName) => {
+      const host = document.createElement("div");
+      const renderer = new BreditorDomRenderer();
+      const applicationContent = document.createElement("aside");
+      applicationContent.textContent = "application getter content";
+      const nativeValue = host[propertyName];
+      let getterReads = 0;
+      Object.defineProperty(host, propertyName, {
+        configurable: true,
+        get: () => {
+          getterReads += 1;
+          if (applicationContent.parentNode === null) {
+            host.append(applicationContent);
+          }
+          return nativeValue;
+        },
+      });
+
+      try {
+        const result = renderer.render(
+          host,
+          projection(0, [[{ text: "must not replace app content", strong: false }]]),
+        );
+        expect(result).toMatchObject({ ok: true });
+        const hostChildren = nativeChildNodes(host);
+        const paragraphChildren = nativeChildNodes(hostChildren[0] as Node);
+        expect(getterReads).toBe(0);
+        expect(hostChildren).toHaveLength(1);
+        expect(paragraphChildren).toHaveLength(1);
+        expect(nativeNodeValue(paragraphChildren[0] as Node)).toBe(
+          "must not replace app content",
+        );
+        expect(nativeParentNode(applicationContent)).toBeNull();
+      } finally {
+        Reflect.deleteProperty(host, propertyName);
+      }
+    },
+  );
+
+  it("does not let an own childNodes getter forge the pre-render child baseline", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const applicationContent = document.createElement("aside");
+    applicationContent.textContent = "application childNodes content";
+    const nativeChildNodes = host.childNodes;
+    let getterReads = 0;
+    Object.defineProperty(host, "childNodes", {
+      configurable: true,
+      get: () => {
+        getterReads += 1;
+        if (applicationContent.parentNode === null) {
+          host.append(applicationContent);
+        }
+        return nativeChildNodes;
+      },
+    });
+
+    try {
+      expect(renderer.render(
+        host,
+        projection(0, [[{ text: "must not survive", strong: false }]]),
+      )).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(getterReads).toBeGreaterThan(0);
+      expect(host.querySelectorAll("p")).toHaveLength(0);
+      expect(applicationContent.parentElement).toBe(host);
+      expect(host.textContent).toBe("application childNodes content");
+    } finally {
+      Reflect.deleteProperty(host, "childNodes");
+    }
+  });
+
+  it("rejects an SVG host whose own namespace shadow claims to be HTML", () => {
+    const host = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const prior = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    host.append(prior);
+    document.body.append(host);
+    const namespaceShadow = vi.fn(() => "http://www.w3.org/1999/xhtml");
+    Object.defineProperty(host, "namespaceURI", {
+      configurable: true,
+      get: namespaceShadow,
+    });
+
+    expect(
+      new BreditorDomRenderer().render(
+        host as unknown as HTMLElement,
+        projection(0, [[{ text: "must not install", strong: false }]]),
+      ),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "renderer.invalid_host" },
+    });
+    expect(namespaceShadow).not.toHaveBeenCalled();
+    expect(host.childNodes).toHaveLength(1);
+    expect(host.firstChild).toBe(prior);
+  });
+
+  it("snapshots update children before a forged canonical childNodes read", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "before", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const result = projection(1, [[{ text: "after", strong: true }]]);
+    const update = valueOf(BaseProjectionUpdate.create({
+      base,
+      result,
+      impact: { kind: "textContainers", paragraphIndexes: [0] },
+    }));
+    const forgedCanonicalChildren = Object.freeze(Array.from(host.childNodes));
+    const applicationContent = document.createElement("aside");
+    applicationContent.textContent = "application update getter content";
+    let getterReads = 0;
+    Object.defineProperty(host, "childNodes", {
+      configurable: true,
+      get: () => {
+        getterReads += 1;
+        if (applicationContent.parentNode === null) {
+          host.append(applicationContent);
+        }
+        return forgedCanonicalChildren;
+      },
+    });
+
+    try {
+      expect(renderer.update(initial.rendered, update)).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(getterReads).toBeGreaterThan(0);
+      expect(applicationContent.parentElement).toBe(host);
+      expect(host.querySelectorAll("p")).toHaveLength(1);
+      expect(host.textContent).toBe("beforeapplication update getter content");
+      expect(initial.rendered.current).toBe(false);
+      expect(renderer.owns(initial.rendered)).toBe(false);
+    } finally {
+      Reflect.deleteProperty(host, "childNodes");
+    }
+  });
+
+  it("does not erase top-level content inserted by a retained paragraph refresh", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "before", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const paragraph = host.querySelector("p");
+    if (!(paragraph instanceof HTMLParagraphElement)) {
+      throw new Error("expected rendered paragraph");
+    }
+    const result = projection(1, [[{ text: "after", strong: false }]]);
+    const update = valueOf(BaseProjectionUpdate.create({
+      base,
+      result,
+      impact: { kind: "textContainers", paragraphIndexes: [0] },
+    }));
+    const applicationContent = document.createElement("aside");
+    applicationContent.textContent = "application refresh content";
+    const nativeReplaceChildren = Element.prototype.replaceChildren;
+    const replace = vi.spyOn(paragraph, "replaceChildren").mockImplementation(
+      (...nodes: (Node | string)[]) => {
+        Reflect.apply(nativeReplaceChildren, paragraph, nodes);
+        if (applicationContent.parentNode === null) {
+          host.append(applicationContent);
+        }
+      },
+    );
+
+    try {
+      expect(renderer.update(initial.rendered, update)).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(applicationContent.parentElement).toBe(host);
+      expect(host.querySelectorAll("p")).toHaveLength(1);
+      expect(paragraph.textContent).toBe("before");
+      expect(host.textContent).toBe("beforeapplication refresh content");
+      expect(initial.rendered.current).toBe(false);
+      expect(renderer.owns(initial.rendered)).toBe(false);
+    } finally {
+      replace.mockRestore();
+    }
+  });
+
+  it("restores a retained paragraph when its write mutates then throws", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "before", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const paragraph = host.querySelector("p");
+    if (!(paragraph instanceof HTMLParagraphElement)) {
+      throw new Error("expected rendered paragraph");
+    }
+    const result = projection(1, [[{ text: "after", strong: false }]]);
+    const update = valueOf(BaseProjectionUpdate.create({
+      base,
+      result,
+      impact: { kind: "textContainers", paragraphIndexes: [0] },
+    }));
+    const nativeReplaceChildren = Element.prototype.replaceChildren;
+    const replace = vi.spyOn(paragraph, "replaceChildren").mockImplementation(
+      (...nodes: (Node | string)[]) => {
+        Reflect.apply(nativeReplaceChildren, paragraph, nodes);
+        throw new Error("retained write failed after mutation");
+      },
+    );
+
+    try {
+      expect(renderer.update(initial.rendered, update)).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(paragraph.textContent).toBe("before");
+      expect(host.firstChild).toBe(paragraph);
+      expect(initial.rendered.current).toBe(false);
+      expect(renderer.owns(initial.rendered)).toBe(false);
+    } finally {
+      replace.mockRestore();
+    }
+  });
+
+  it.each(["createElementNS", "createTextNode"] as const)(
+    "does not clobber host content changed by %s during an initial detached build",
+    (constructorName) => {
+      const host = document.createElement("div");
+      const renderer = new BreditorDomRenderer();
+      const applicationContent = document.createElement("aside");
+      applicationContent.textContent = "application initial content";
+      let mutated = false;
+      let restore: () => void;
+
+      if (constructorName === "createElementNS") {
+        const original = host.ownerDocument.createElementNS.bind(host.ownerDocument);
+        const constructor = vi.spyOn(host.ownerDocument, "createElementNS")
+          .mockImplementation((namespace, qualifiedName, options) => {
+            const element = original(namespace, qualifiedName, options);
+            if (!mutated) {
+              mutated = true;
+              host.replaceChildren(applicationContent);
+            }
+            return element;
+          });
+        restore = () => constructor.mockRestore();
+      } else {
+        const original = host.ownerDocument.createTextNode.bind(host.ownerDocument);
+        const constructor = vi.spyOn(host.ownerDocument, "createTextNode")
+          .mockImplementation((text) => {
+            const node = original(text);
+            if (!mutated) {
+              mutated = true;
+              host.replaceChildren(applicationContent);
+            }
+            return node;
+          });
+        restore = () => constructor.mockRestore();
+      }
+
+      try {
+        expect(renderer.render(
+          host,
+          projection(0, [[{ text: "canonical", strong: false }]]),
+        )).toMatchObject({
+          ok: false,
+          error: { code: "renderer.dom_write_failed" },
+        });
+        expect(mutated).toBe(true);
+        expect(host.childNodes).toHaveLength(1);
+        expect(host.firstChild).toBe(applicationContent);
+        expect(host.textContent).toBe("application initial content");
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  it.each(["createElementNS", "createTextNode"] as const)(
+    "invalidates an update without clobbering host content changed by %s during its detached build",
+    (constructorName) => {
+      const host = document.createElement("div");
+      const renderer = new BreditorDomRenderer();
+      const base = projection(0, [[{ text: "before", strong: false }]]);
+      const initial = valueOf(renderer.render(host, base));
+      const result = projection(1, [[{ text: "after", strong: true }]]);
+      const update = valueOf(BaseProjectionUpdate.create({
+        base,
+        result,
+        impact: { kind: "textContainers", paragraphIndexes: [0] },
+      }));
+      const applicationContent = document.createElement("aside");
+      applicationContent.textContent = "application update content";
+      let mutated = false;
+      let restore: () => void;
+
+      if (constructorName === "createElementNS") {
+        const original = host.ownerDocument.createElementNS.bind(host.ownerDocument);
+        const constructor = vi.spyOn(host.ownerDocument, "createElementNS")
+          .mockImplementation((namespace, qualifiedName, options) => {
+            const element = original(namespace, qualifiedName, options);
+            if (!mutated) {
+              mutated = true;
+              host.replaceChildren(applicationContent);
+            }
+            return element;
+          });
+        restore = () => constructor.mockRestore();
+      } else {
+        const original = host.ownerDocument.createTextNode.bind(host.ownerDocument);
+        const constructor = vi.spyOn(host.ownerDocument, "createTextNode")
+          .mockImplementation((text) => {
+            const node = original(text);
+            if (!mutated) {
+              mutated = true;
+              host.replaceChildren(applicationContent);
+            }
+            return node;
+          });
+        restore = () => constructor.mockRestore();
+      }
+
+      try {
+        expect(renderer.update(initial.rendered, update)).toMatchObject({
+          ok: false,
+          error: { code: "renderer.dom_write_failed" },
+        });
+        expect(mutated).toBe(true);
+        expect(host.childNodes).toHaveLength(1);
+        expect(host.firstChild).toBe(applicationContent);
+        expect(host.textContent).toBe("application update content");
+        expect(initial.rendered.current).toBe(false);
+        expect(initial.rendered.nodeForAstPath([])).toBeNull();
+        expect(renderer.owns(initial.rendered)).toBe(false);
+      } finally {
+        restore();
+      }
+    },
+  );
+
+  it("fails closed when a host write reports success without installing canonical DOM", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const replace = vi.spyOn(host, "replaceChildren").mockImplementation(() => undefined);
+    try {
+      expect(renderer.render(
+        host,
+        projection(0, [[{ text: "missing", strong: false }]]),
+      )).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(host.childNodes).toHaveLength(0);
+    } finally {
+      replace.mockRestore();
+    }
+  });
+
+  it("removes only newly installed paragraphs when a host write throws after mutation", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const applicationNode = document.createElement("aside");
+    applicationNode.textContent = "application content";
+    const nativeReplaceChildren = Element.prototype.replaceChildren;
+    const replace = vi.spyOn(host, "replaceChildren").mockImplementation(
+      (...nodes: (Node | string)[]) => {
+        Reflect.apply(nativeReplaceChildren, host, nodes);
+        host.append(applicationNode);
+        throw new Error("write failed after mutation");
+      },
+    );
+    try {
+      expect(
+        renderer.render(
+          host,
+          projection(0, [[{ text: "must not remain", strong: false }]]),
+        ),
+      ).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(applicationNode.parentElement).toBe(host);
+      expect(host.querySelectorAll("p")).toHaveLength(0);
+      expect(host.textContent).toBe("application content");
+    } finally {
+      replace.mockRestore();
+    }
+  });
+
   it("does not expose invariant-critical implementation helpers at runtime", () => {
     const surface = Object.getOwnPropertyNames(BreditorDomRenderer.prototype);
     expect(surface).not.toContain("liveCompositionLeaseRecord");
@@ -134,6 +857,27 @@ describe("BreditorDomRenderer", () => {
       } else {
         Object.defineProperty(window, "MutationObserver", original);
       }
+    }
+  });
+
+  it("bypasses an own defaultView shadow when installing observation", () => {
+    const host = document.createElement("div");
+    const ownerDocument = host.ownerDocument;
+    const defaultView = vi.fn(() => {
+      throw new Error("own defaultView shadow must not be read");
+    });
+    Object.defineProperty(ownerDocument, "defaultView", {
+      configurable: true,
+      get: defaultView,
+    });
+    try {
+      const renderer = new BreditorDomRenderer();
+      const outcome = valueOf(renderer.render(host, projection(0, [[]])));
+      expect(outcome.rendered.validateCanonicalDom()).toBe(true);
+      expect(defaultView).not.toHaveBeenCalled();
+      expect(renderer.release(outcome.rendered)).toBe(true);
+    } finally {
+      Reflect.deleteProperty(ownerDocument, "defaultView");
     }
   });
 
@@ -368,6 +1112,35 @@ describe("BreditorDomRenderer", () => {
     expect(outcome.rendered.nodeForAstPath([0])).toBeNull();
   });
 
+  it("synchronously rejects subtree drift hidden behind own DOM shadows", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const outcome = render(renderer, host, 0, [[{ text: "base", strong: false }]]);
+    const paragraph = host.querySelector("p");
+    if (!(paragraph instanceof HTMLParagraphElement)) {
+      throw new Error("expected rendered paragraph");
+    }
+    const forgedChildren = Object.freeze(Array.from(paragraph.childNodes));
+    paragraph.append(document.createTextNode("foreign"));
+    const childNodesShadow = vi.fn(() => forgedChildren);
+    const attributesShadow = vi.fn(() => Object.freeze({ length: 0 }));
+    Object.defineProperties(paragraph, {
+      childNodes: { configurable: true, get: childNodesShadow },
+      attributes: { configurable: true, get: attributesShadow },
+    });
+
+    try {
+      expect(outcome.rendered.validateCanonicalDom()).toBe(false);
+      expect(outcome.rendered.current).toBe(false);
+      expect(outcome.rendered.nodeForAstPath([0, 0])).toBeNull();
+      expect(childNodesShadow).not.toHaveBeenCalled();
+      expect(attributesShadow).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(paragraph, "childNodes");
+      Reflect.deleteProperty(paragraph, "attributes");
+    }
+  });
+
   it("leases exact renderer ownership across expected native composition DOM drift", async () => {
     const host = document.createElement("div");
     const renderer = new BreditorDomRenderer();
@@ -468,6 +1241,51 @@ describe("BreditorDomRenderer", () => {
     }
   });
 
+  it("does not absorb content inserted during composition restore construction", () => {
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer();
+    const base = projection(0, [[{ text: "base", strong: false }]]);
+    const initial = valueOf(renderer.render(host, base));
+    const lease = renderer.beginCompositionDomLease(initial.rendered);
+    if (lease === null) {
+      throw new Error("expected composition lease");
+    }
+    (host.firstChild as Element | null)?.replaceChildren(
+      document.createTextNode("native"),
+    );
+    const applicationContent = document.createElement("aside");
+    applicationContent.textContent = "application restore content";
+    const original = host.ownerDocument.createElementNS.bind(host.ownerDocument);
+    let mutated = false;
+    const constructor = vi.spyOn(host.ownerDocument, "createElementNS")
+      .mockImplementation((namespace, qualifiedName, options) => {
+        const element = original(namespace, qualifiedName, options);
+        if (!mutated) {
+          mutated = true;
+          host.append(applicationContent);
+        }
+        return element;
+      });
+
+    try {
+      expect(renderer.restoreCompositionDomLease(
+        lease,
+        projection(1, [[{ text: "committed", strong: false }]]),
+      )).toMatchObject({
+        ok: false,
+        error: { code: "renderer.dom_write_failed" },
+      });
+      expect(mutated).toBe(true);
+      expect(applicationContent.parentElement).toBe(host);
+      expect(host.querySelectorAll("p")).toHaveLength(1);
+      expect(host.textContent).toBe("nativeapplication restore content");
+      expect(renderer.ownsCompositionDomLease(lease, initial.rendered)).toBe(false);
+      expect(initial.rendered.current).toBe(false);
+    } finally {
+      constructor.mockRestore();
+    }
+  });
+
   it("invalidates host ownership when installation fails after spending a lease", () => {
     const host = document.createElement("div");
     const renderer = new BreditorDomRenderer();
@@ -551,3 +1369,54 @@ describe("BreditorDomRenderer", () => {
     expect(host.childNodes).toHaveLength(1);
   });
 });
+
+const PROFILE_FINGERPRINT =
+  "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+function profileGeneration(): WasmProfileGenerationView {
+  const generation: WasmProfileGenerationView = {
+    matches(candidate) {
+      return candidate === generation;
+    },
+    free() {},
+  };
+  return generation;
+}
+
+function ownedProfileDescriptor(
+  generation: WasmProfileGenerationView,
+  formats: readonly string[],
+): BrowserCompiledProfileDescriptor {
+  const absent = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    formatCount: formats.length,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    formatKind: (index) => formats[index],
+    formatRevision: (index) =>
+      index >= 0 && index < formats.length ? 1 : undefined,
+    intentId: absent,
+    intentInputKind: absent,
+    intentInputContractName: absent,
+    intentInputContractVersion: absent,
+    intentActivationContract: absent,
+    intentValueContractName: absent,
+    intentValueContractVersion: absent,
+    actionStateId: absent,
+    actionStateSourceKind: absent,
+    actionStateSourceActionId: absent,
+    actionStateSourceIntentId: absent,
+    actionStateHistoryDirection: absent,
+    actionStateActivationContract: absent,
+    actionStateValueContractName: absent,
+    actionStateValueContractVersion: absent,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!result.ok) throw new Error("test descriptor was rejected");
+  return result.descriptor;
+}

@@ -2,6 +2,7 @@ import {
   type BaseDocumentProjection,
   isOwnedProjection,
   paragraphsEqual,
+  projectionsShareProfileBinding,
   snapshotsEqual,
 } from "./projection.js";
 import type { BrowserProjectionResult } from "./result.js";
@@ -110,6 +111,10 @@ export class BaseProjectionUpdate {
       const base = record["base"];
       const result = record["result"];
       if (
+        base.schema.name !== result.schema.name ||
+        base.schema.version !== result.schema.version ||
+        base.schema.fingerprint !== result.schema.fingerprint ||
+        !projectionsShareProfileBinding(base, result) ||
         base.snapshot.lineage !== result.snapshot.lineage ||
         snapshotsEqual(base.snapshot, result.snapshot) ||
         BigInt(base.snapshot.revision) === 18_446_744_073_709_551_615n ||

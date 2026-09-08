@@ -1,3 +1,5 @@
+import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
+
 /** Maximum inline-format descriptors admitted by the browser ABI boundary. */
 export const MAX_BROWSER_PROFILE_FORMATS = 256;
 
@@ -126,6 +128,8 @@ const INVALID_DESCRIPTOR: BrowserProfileDescriptorError = Object.freeze({
   message: "The Wasm compiled-profile descriptor is invalid.",
 });
 const OWNED_DESCRIPTORS = new WeakSet<object>();
+const DESCRIPTOR_PROFILE_GENERATIONS =
+  new WeakMap<object, WasmProfileGenerationView>();
 
 const PROMISE_RESOLVE = Promise.resolve.bind(Promise);
 const PROMISE_THEN = Promise.prototype.then;
@@ -165,7 +169,7 @@ export function consumeWasmCompiledProfileDescriptor(
   view: WasmCompiledProfileDescriptorView,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProfileDescriptorResult {
-  const protectedSet = snapshotProtectedHandles(protectedHandles, generation);
+  const protectedSet = snapshotProtectedHandleArray(protectedHandles, generation);
   if (protectedSet === null || protectedSet.has(view)) return descriptorFailure();
   const cleanup = snapshotGeneratedCleanup(view);
   const asynchronous = containGeneratedThenable(view);
@@ -199,6 +203,15 @@ export function consumeWasmCompiledProfileDescriptorWithCleanup(
   } finally {
     if (!runGeneratedCleanup(cleanup)) result = descriptorFailure();
   }
+  if (
+    result.ok &&
+    !browserCompiledProfileDescriptorMatchesGeneration(
+      result.descriptor,
+      generation,
+    )
+  ) {
+    result = descriptorFailure();
+  }
   return result;
 }
 
@@ -222,7 +235,25 @@ export function wasmViewMatchesProfileGeneration(
 export function isOwnedBrowserCompiledProfileDescriptor(
   value: unknown,
 ): value is BrowserCompiledProfileDescriptor {
-  return objectLike(value) && OWNED_DESCRIPTORS.has(value);
+  return objectLike(value) &&
+    OWNED_DESCRIPTORS.has(value) &&
+    DESCRIPTOR_PROFILE_GENERATIONS.has(value);
+}
+
+/**
+ * Proves that owned descriptor metadata came from one matching live profile
+ * generation. Both opaque owners must affirm the relationship, so an
+ * asymmetric, dead, throwing, or asynchronous comparison fails closed.
+ * @internal
+ */
+export function browserCompiledProfileDescriptorMatchesGeneration(
+  descriptor: unknown,
+  generation: unknown,
+): descriptor is BrowserCompiledProfileDescriptor {
+  if (!isOwnedBrowserCompiledProfileDescriptor(descriptor)) return false;
+  const retainedGeneration = DESCRIPTOR_PROFILE_GENERATIONS.get(descriptor);
+  return retainedGeneration !== undefined &&
+    profileGenerationsMatchSymmetrically(retainedGeneration, generation);
 }
 
 /** Whether one opaque generation owner is live and self-consistent. */
@@ -297,8 +328,39 @@ function readDescriptor(
     intents: Object.freeze(intents),
     actionStates: Object.freeze(actionStates),
   });
+  DESCRIPTOR_PROFILE_GENERATIONS.set(descriptor, generation);
   OWNED_DESCRIPTORS.add(descriptor);
   return Object.freeze({ ok: true, descriptor });
+}
+
+function profileGenerationsMatchSymmetrically(
+  left: unknown,
+  right: unknown,
+): boolean {
+  if (
+    !wasmProfileGenerationIsLive(left) ||
+    !wasmProfileGenerationIsLive(right)
+  ) {
+    return false;
+  }
+  try {
+    const leftMatches = Reflect.get(left, "matches", left) as unknown;
+    const rightMatches = Reflect.get(right, "matches", right) as unknown;
+    if (
+      typeof leftMatches !== "function" ||
+      valueIsThenable(leftMatches) ||
+      typeof rightMatches !== "function" ||
+      valueIsThenable(rightMatches)
+    ) {
+      return false;
+    }
+    const forward = Reflect.apply(leftMatches, left, [right]) as unknown;
+    if (valueIsThenable(forward) || forward !== true) return false;
+    const reverse = Reflect.apply(rightMatches, right, [left]) as unknown;
+    return !valueIsThenable(reverse) && reverse === true;
+  } catch {
+    return false;
+  }
 }
 
 function readFormats(
@@ -545,38 +607,19 @@ function runGeneratedCleanup(cleanup: GeneratedCleanup): boolean {
   }
 }
 
-function snapshotProtectedHandles(
-  values: readonly unknown[],
-  required?: unknown,
-): ReadonlySet<object> | null {
-  try {
-    if (!Array.isArray(values) || values.length > 64) return null;
-    const result = new Set<object>();
-    if (objectLike(required)) result.add(required);
-    for (let index = 0; index < values.length; index += 1) {
-      const descriptor = Reflect.getOwnPropertyDescriptor(values, String(index));
-      if (descriptor === undefined || !("value" in descriptor)) return null;
-      const value = descriptor.value as unknown;
-      if (objectLike(value)) result.add(value);
-    }
-    return result;
-  } catch {
-    return null;
-  }
-}
-
 function normalizeProtectedHandles(
   values: readonly unknown[] | ReadonlySet<object>,
   required: unknown,
 ): ReadonlySet<object> | null {
-  if (!values || !(values instanceof Set)) {
-    return snapshotProtectedHandles(values as readonly unknown[], required);
-  }
   try {
-    if (values.size > 64) return null;
+    if (Array.isArray(values)) {
+      return snapshotProtectedHandleArray(values, required);
+    }
+    const size = Reflect.apply(SET_SIZE_GETTER, values, []);
+    if (!Number.isInteger(size) || size < 0 || size > 64) return null;
     const result = new Set<object>();
     if (objectLike(required)) result.add(required);
-    Reflect.apply(Set.prototype.forEach, values, [
+    Reflect.apply(SET_FOR_EACH, values, [
       (value: unknown): void => {
         if (objectLike(value)) result.add(value);
       },
@@ -586,6 +629,10 @@ function normalizeProtectedHandles(
     return null;
   }
 }
+
+const SET_SIZE_GETTER = Object.getOwnPropertyDescriptor(Set.prototype, "size")
+  ?.get as (this: Set<unknown>) => number;
+const SET_FOR_EACH = Set.prototype.forEach;
 
 function containGeneratedThenable(value: unknown): boolean {
   if (!objectLike(value)) return false;

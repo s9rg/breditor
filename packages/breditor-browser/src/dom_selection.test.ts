@@ -6,10 +6,18 @@ import {
   BaseRangeSelection,
   BreditorDomRenderer,
   BreditorDomSelectionBridge,
+  type BrowserCompiledProfileDescriptor,
   type BrowserProjectionResult,
   type BrowserSelectionResult,
   type ProjectionRenderOutcome,
+  compileBrowserPresentation,
+  consumeWasmCompiledProfileDescriptor,
+  createInlineFormatRenderManifest,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
 } from "./advanced.js";
+import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
+import { createProfiledDocumentProjection } from "./projection.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
 
@@ -240,6 +248,91 @@ describe("BreditorDomSelectionBridge", () => {
     expect(rendered.astPathForDomNode(strong)).toBeNull();
   });
 
+  it("normalizes extension wrapper edges and signs their exact wrapper depth", () => {
+    const generation = selectionProfileGeneration();
+    const descriptor = selectionProfileDescriptor(generation, ["example/emphasis"]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{ formatKind: "example/emphasis", element: "em" }],
+      }),
+    );
+    const documentProjection = projectionValue(
+      createProfiledDocumentProjection(
+        {
+          schema: { ...descriptor.schema },
+          snapshot: { lineage: "dom-selection-profile", revision: "0" },
+          paragraphs: [
+            { runs: [{ text: "styled", formats: ["example/emphasis"] }] },
+          ],
+        },
+        generation,
+        descriptor,
+      ),
+    );
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+    const rendered = projectionValue(renderer.render(host, documentProjection)).rendered;
+    const emphasis = host.querySelector("em");
+    if (emphasis === null) throw new Error("missing extension wrapper");
+
+    domSelection(host).setBaseAndExtent(emphasis, 0, emphasis, 1);
+    const observed = selectionValue(new BreditorDomSelectionBridge().read(rendered));
+
+    expect(observed.kind).toBe("range");
+    if (observed.kind === "range") {
+      expect(observed.selection.anchor).toMatchObject({
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 0,
+      });
+      expect(observed.selection.focus).toMatchObject({
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 6,
+      });
+    }
+  });
+
+  it("ignores forged wrapper children and forged host containment", () => {
+    const host = document.createElement("div");
+    const outsideWrapper = document.createElement("em");
+    const outsideText = document.createTextNode("outside");
+    outsideWrapper.append(outsideText);
+    document.body.append(host, outsideWrapper);
+    const renderer = new BreditorDomRenderer();
+    const { rendered } = render(renderer, host);
+    const mappedText = host.firstChild?.firstChild;
+    if (mappedText === undefined || mappedText === null) {
+      throw new Error("missing mapped text");
+    }
+    const childNodesShadow = vi.fn(() => [mappedText]);
+    const containsShadow = vi.fn(() => true);
+    Object.defineProperty(outsideWrapper, "childNodes", {
+      configurable: true,
+      get: childNodesShadow,
+    });
+    Object.defineProperty(host, "contains", {
+      configurable: true,
+      value: containsShadow,
+    });
+
+    expect(mapDomPointToBaseSelectionPoint(rendered, outsideWrapper, 0)).toEqual({
+      ok: false,
+      code: "selection.ambiguous_dom_point",
+    });
+    domSelection(host).setBaseAndExtent(outsideText, 0, outsideText, 1);
+    expect(selectionValue(new BreditorDomSelectionBridge().read(rendered))).toEqual({
+      kind: "unavailable",
+      reason: "outsideHost",
+      origin: "dom",
+    });
+    expect(childNodesShadow).not.toHaveBeenCalled();
+    expect(containsShadow).not.toHaveBeenCalled();
+  });
+
   it("normalizes every canonical empty-paragraph placeholder boundary", () => {
     const host = document.createElement("div");
     document.body.append(host);
@@ -464,7 +557,7 @@ describe("BreditorDomSelectionBridge", () => {
     });
   });
 
-  it("fails closed when a range crosses the host or a fake selection is multi-range", () => {
+  it("fails closed when a range crosses the host and ignores a fake Window selection", () => {
     const host = document.createElement("div");
     const outside = document.createTextNode("outside");
     document.body.append(host, outside);
@@ -492,18 +585,21 @@ describe("BreditorDomSelectionBridge", () => {
     if (view === null) {
       throw new Error("missing window");
     }
-    vi.spyOn(view, "getSelection").mockReturnValue({ rangeCount: 2 } as Selection);
+    const fakeSelection = vi
+      .spyOn(view, "getSelection")
+      .mockReturnValue({ rangeCount: 2 } as Selection);
     expect(new BreditorDomSelectionBridge().read(rendered)).toMatchObject({
       ok: false,
-      error: { code: "selection.multirange_unsupported" },
+      error: { code: "selection.crosses_host" },
     });
     expect(new BreditorDomSelectionBridge().write(rendered, null)).toMatchObject({
       ok: false,
-      error: { code: "selection.multirange_unsupported" },
+      error: { code: "selection.crosses_host" },
     });
+    expect(fakeSelection).not.toHaveBeenCalled();
   });
 
-  it("rejects fake anchor/focus data without one matching DOM Range", () => {
+  it("ignores coherent fake Selection facades returned by own document/window methods", () => {
     const host = document.createElement("div");
     const outside = document.createTextNode("outside");
     document.body.append(host, outside);
@@ -514,35 +610,64 @@ describe("BreditorDomSelectionBridge", () => {
     if (text === undefined || text === null || view === null) {
       throw new Error("missing test DOM");
     }
-    const missingRange = {
+    domSelection(host).setBaseAndExtent(text, 0, text, 1);
+    const fakeRange = document.createRange();
+    fakeRange.setStart(outside, 0);
+    fakeRange.setEnd(outside, 1);
+    const facade = {
       rangeCount: 1,
-      anchorNode: text,
+      anchorNode: outside,
       anchorOffset: 0,
-      focusNode: text,
+      focusNode: outside,
       focusOffset: 1,
+      getRangeAt: () => fakeRange,
     } as unknown as Selection;
-    vi.spyOn(view, "getSelection").mockReturnValue(missingRange);
-    expect(new BreditorDomSelectionBridge().read(rendered)).toMatchObject({
-      ok: false,
-      error: { code: "selection.dom_read_failed" },
-    });
-
-    vi.restoreAllMocks();
-    const outsideRange = document.createRange();
-    outsideRange.setStart(outside, 0);
-    outsideRange.setEnd(outside, 1);
-    const contradictory = {
-      ...missingRange,
-      getRangeAt: () => outsideRange,
-    } as Selection;
-    vi.spyOn(view, "getSelection").mockReturnValue(contradictory);
-    expect(new BreditorDomSelectionBridge().read(rendered)).toMatchObject({
-      ok: false,
-      error: { code: "selection.dom_read_failed" },
-    });
+    const windowGetter = vi.spyOn(view, "getSelection").mockReturnValue(facade);
+    const documentGetter = vi.fn(() => facade);
+    const defaultViewGetter = vi.fn(() => ({ getSelection: () => facade }));
+    const originalGetSelection = Object.getOwnPropertyDescriptor(document, "getSelection");
+    const originalDefaultView = Object.getOwnPropertyDescriptor(document, "defaultView");
+    try {
+      Object.defineProperty(document, "getSelection", {
+        configurable: true,
+        value: documentGetter,
+      });
+      Object.defineProperty(document, "defaultView", {
+        configurable: true,
+        get: defaultViewGetter,
+      });
+      const observed = selectionValue(new BreditorDomSelectionBridge().read(rendered));
+      expect(observed.kind).toBe("range");
+      if (observed.kind === "range") {
+        expect(observed.selection.anchor).toMatchObject({
+          kind: "text",
+          textPath: [0, 0],
+          utf16Offset: 0,
+        });
+        expect(observed.selection.focus).toMatchObject({
+          kind: "text",
+          textPath: [0, 0],
+          utf16Offset: 1,
+        });
+      }
+      expect(windowGetter).not.toHaveBeenCalled();
+      expect(documentGetter).not.toHaveBeenCalled();
+      expect(defaultViewGetter).not.toHaveBeenCalled();
+    } finally {
+      if (originalGetSelection === undefined) {
+        Reflect.deleteProperty(document, "getSelection");
+      } else {
+        Object.defineProperty(document, "getSelection", originalGetSelection);
+      }
+      if (originalDefaultView === undefined) {
+        Reflect.deleteProperty(document, "defaultView");
+      } else {
+        Object.defineProperty(document, "defaultView", originalDefaultView);
+      }
+    }
   });
 
-  it("replaces a transiently incoherent prior range only when all endpoints map inside the owned render", () => {
+  it("ignores an own getRangeAt shadow and installs against the native prior range", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -589,6 +714,7 @@ describe("BreditorDomSelectionBridge", () => {
       expect(browser.anchorOffset).toBe(1);
       expect(browser.focusNode).toBe(text);
       expect(browser.focusOffset).toBe(3);
+      expect(calls).toBe(0);
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(browser, "getRangeAt");
@@ -598,7 +724,7 @@ describe("BreditorDomSelectionBridge", () => {
     }
   });
 
-  it("refuses incoherent prior ranges with an outside or cross-host Range endpoint", () => {
+  it("ignores own Range and directional-method shadows during writes", () => {
     const host = document.createElement("div");
     const outside = document.createTextNode("outside");
     document.body.append(host, outside);
@@ -657,13 +783,12 @@ describe("BreditorDomSelectionBridge", () => {
           }) satisfies Selection["setBaseAndExtent"],
         });
 
-        expect(new BreditorDomSelectionBridge().write(rendered, desired)).toMatchObject({
-          ok: false,
-          error: { code: "selection.dom_read_failed" },
-        });
+        expect(new BreditorDomSelectionBridge().write(rendered, desired).ok).toBe(true);
         expect(writes).toBe(0);
         expect(browser.anchorNode).toBe(text);
-        expect(browser.anchorOffset).toBe(0);
+        expect(browser.anchorOffset).toBe(1);
+        expect(browser.focusNode).toBe(text);
+        expect(browser.focusOffset).toBe(3);
       }
     } finally {
       if (originalGet === undefined) {
@@ -839,7 +964,7 @@ describe("BreditorDomSelectionBridge", () => {
     });
   });
 
-  it("post-validates DOM changed by a hostile Selection setter and restores prior selection", () => {
+  it("ignores an own directional setter instead of entering hostile code", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -870,12 +995,13 @@ describe("BreditorDomSelectionBridge", () => {
         }) satisfies Selection["setBaseAndExtent"],
       });
 
-      expect(new BreditorDomSelectionBridge().write(rendered, semantic)).toMatchObject({
-        ok: false,
-        error: { code: "selection.dom_drift" },
-      });
-      expect(rendered.current).toBe(false);
-      expect(browser.rangeCount).toBe(0);
+      expect(new BreditorDomSelectionBridge().write(rendered, semantic).ok).toBe(true);
+      expect(rendered.current).toBe(true);
+      expect(host.firstElementChild?.hasAttribute("data-hostile")).toBe(false);
+      expect(browser.anchorNode).toBe(host.querySelector("strong")?.firstChild);
+      expect(browser.anchorOffset).toBe(2);
+      expect(browser.focusNode).toBe(host.firstChild?.firstChild);
+      expect(browser.focusOffset).toBe(1);
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(browser, "setBaseAndExtent");
@@ -885,7 +1011,180 @@ describe("BreditorDomSelectionBridge", () => {
     }
   });
 
-  it("post-validates a hostile clear and restores the previously owned range", () => {
+  it("selects platform intrinsics below local Document and Selection prototypes", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const browser = domSelection(host);
+    const text = host.firstChild?.firstChild;
+    if (text === undefined || text === null) throw new Error("missing text");
+    browser.setBaseAndExtent(text, 0, text, 0);
+    const semantic = semanticSelection(
+      documentProjection,
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 1,
+        affinity: "after",
+      },
+      {
+        kind: "text",
+        textPath: [0, 1],
+        utf16Offset: 2,
+        affinity: "after",
+      },
+    );
+    const selectionPrototype = Object.getPrototypeOf(browser) as object;
+    const documentPrototype = Object.getPrototypeOf(document) as object;
+    const selectionPoison = Object.create(selectionPrototype) as object;
+    const documentPoison = Object.create(documentPrototype) as object;
+    const poisonRead = vi.fn(() => null);
+    const poisonMethod = vi.fn(() => undefined);
+    const fakeRange = document.createRange();
+    Object.defineProperties(selectionPoison, {
+      rangeCount: { configurable: true, get: () => { poisonRead(); return 1; } },
+      anchorNode: { configurable: true, get: () => { poisonRead(); return text; } },
+      anchorOffset: { configurable: true, get: () => { poisonRead(); return 1; } },
+      focusNode: { configurable: true, get: () => { poisonRead(); return text; } },
+      focusOffset: { configurable: true, get: () => { poisonRead(); return 1; } },
+      getRangeAt: { configurable: true, value: () => { poisonMethod(); return fakeRange; } },
+      setBaseAndExtent: { configurable: true, value: poisonMethod },
+      removeAllRanges: { configurable: true, value: poisonMethod },
+      addRange: { configurable: true, value: poisonMethod },
+      collapse: { configurable: true, value: poisonMethod },
+      extend: { configurable: true, value: poisonMethod },
+    });
+    Object.defineProperties(documentPoison, {
+      defaultView: { configurable: true, get: () => { poisonRead(); return window; } },
+      getSelection: { configurable: true, value: () => { poisonMethod(); return browser; } },
+      createRange: { configurable: true, value: () => { poisonMethod(); return fakeRange; } },
+    });
+
+    let writeResult: ReturnType<BreditorDomSelectionBridge["write"]> | undefined;
+    try {
+      Object.setPrototypeOf(browser, selectionPoison);
+      Object.setPrototypeOf(document, documentPoison);
+      writeResult = new BreditorDomSelectionBridge().write(rendered, semantic);
+      expect(poisonRead).not.toHaveBeenCalled();
+      expect(poisonMethod).not.toHaveBeenCalled();
+    } finally {
+      Object.setPrototypeOf(document, documentPrototype);
+      Object.setPrototypeOf(browser, selectionPrototype);
+    }
+    expect(writeResult?.ok).toBe(true);
+    expect(browser.anchorNode).toBe(text);
+    expect(browser.anchorOffset).toBe(1);
+    expect(browser.focusNode).toBe(host.querySelector("strong")?.firstChild);
+    expect(browser.focusOffset).toBe(2);
+  });
+
+  it("does not enter an own setter capable of reentrant selection writes", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const browser = domSelection(host);
+    const text = host.firstChild?.firstChild;
+    if (text === undefined || text === null) throw new Error("missing text");
+    browser.setBaseAndExtent(text, 0, text, 0);
+    const bridge = new BreditorDomSelectionBridge();
+    const outer = semanticSelection(
+      documentProjection,
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 1,
+        affinity: "after",
+      },
+      {
+        kind: "text",
+        textPath: [0, 1],
+        utf16Offset: 1,
+        affinity: "after",
+      },
+    );
+    const nested = semanticSelection(
+      documentProjection,
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 3,
+        affinity: "before",
+      },
+      {
+        kind: "text",
+        textPath: [0, 1],
+        utf16Offset: 4,
+        affinity: "before",
+      },
+    );
+    const nativeSet = browser.setBaseAndExtent.bind(browser);
+    const original = Object.getOwnPropertyDescriptor(browser, "setBaseAndExtent");
+    let nestedResult: ReturnType<typeof bridge.write> | undefined;
+    try {
+      Object.defineProperty(browser, "setBaseAndExtent", {
+        configurable: true,
+        value: (() => {
+          Object.defineProperty(browser, "setBaseAndExtent", {
+            configurable: true,
+            value: nativeSet,
+          });
+          nestedResult = bridge.write(rendered, nested);
+        }) satisfies Selection["setBaseAndExtent"],
+      });
+
+      expect(bridge.write(rendered, outer).ok).toBe(true);
+      expect(nestedResult).toBeUndefined();
+      expect(browser.anchorNode).toBe(text);
+      expect(browser.anchorOffset).toBe(1);
+      expect(browser.focusNode).toBe(host.querySelector("strong")?.firstChild);
+      expect(browser.focusOffset).toBe(1);
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(browser, "setBaseAndExtent");
+      } else {
+        Object.defineProperty(browser, "setBaseAndExtent", original);
+      }
+    }
+  });
+
+  it("ignores an own document Range constructor during outside-host proof", () => {
+    const host = document.createElement("div");
+    const outside = document.createTextNode("outside");
+    document.body.append(host, outside);
+    const renderer = new BreditorDomRenderer();
+    const { rendered } = render(renderer, host);
+    domSelection(host).setBaseAndExtent(outside, 0, outside, 1);
+    const nativeCreateRange = document.createRange.bind(document);
+    const original = Object.getOwnPropertyDescriptor(document, "createRange");
+    try {
+      Object.defineProperty(document, "createRange", {
+        configurable: true,
+        value: (() => {
+          host.firstElementChild?.setAttribute("data-reentered", "true");
+          return nativeCreateRange();
+        }) satisfies Document["createRange"],
+      });
+
+      expect(selectionValue(new BreditorDomSelectionBridge().read(rendered))).toEqual({
+        kind: "unavailable",
+        reason: "outsideHost",
+        origin: "dom",
+      });
+      expect(host.firstElementChild?.hasAttribute("data-reentered")).toBe(false);
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(document, "createRange");
+      } else {
+        Object.defineProperty(document, "createRange", original);
+      }
+    }
+  });
+
+  it("ignores an own clear method and clears through the native Selection", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -906,15 +1205,12 @@ describe("BreditorDomSelectionBridge", () => {
           nativeRemove();
         }) satisfies Selection["removeAllRanges"],
       });
-      expect(new BreditorDomSelectionBridge().write(rendered, null)).toMatchObject({
-        ok: false,
-        error: { code: "selection.dom_drift" },
-      });
-      expect(rendered.current).toBe(false);
-      expect(browser.anchorNode).toBe(text);
-      expect(browser.anchorOffset).toBe(0);
-      expect(browser.focusNode).toBe(text);
-      expect(browser.focusOffset).toBe(1);
+      expect(new BreditorDomSelectionBridge().write(rendered, null).ok).toBe(true);
+      expect(rendered.current).toBe(true);
+      expect(host.firstElementChild?.hasAttribute("data-hostile-clear")).toBe(false);
+      expect(browser.rangeCount).toBe(0);
+      expect(browser.anchorNode).toBeNull();
+      expect(browser.focusNode).toBeNull();
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(browser, "removeAllRanges");
@@ -924,7 +1220,7 @@ describe("BreditorDomSelectionBridge", () => {
     }
   });
 
-  it("rolls back when endpoint verification detects a hostile directional rewrite", () => {
+  it("ignores an own directional rewrite and installs the requested endpoints", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -961,14 +1257,11 @@ describe("BreditorDomSelectionBridge", () => {
           nativeSet(focusNode, focusOffset, anchorNode, anchorOffset);
         }) satisfies Selection["setBaseAndExtent"],
       });
-      expect(new BreditorDomSelectionBridge().write(rendered, forward)).toMatchObject({
-        ok: false,
-        error: { code: "selection.dom_write_failed" },
-      });
+      expect(new BreditorDomSelectionBridge().write(rendered, forward).ok).toBe(true);
       expect(browser.anchorNode).toBe(priorNode);
-      expect(browser.anchorOffset).toBe(0);
-      expect(browser.focusNode).toBe(priorNode);
-      expect(browser.focusOffset).toBe(0);
+      expect(browser.anchorOffset).toBe(1);
+      expect(browser.focusNode).toBe(host.querySelector("strong")?.firstChild);
+      expect(browser.focusOffset).toBe(4);
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(browser, "setBaseAndExtent");
@@ -1024,7 +1317,7 @@ describe("BreditorDomSelectionBridge", () => {
     });
   });
 
-  it("fails before mutation when backward direction cannot be installed", () => {
+  it("does not let an own missing-method shadow hide native backward support", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -1057,12 +1350,11 @@ describe("BreditorDomSelectionBridge", () => {
         configurable: true,
         value: undefined,
       });
-      expect(new BreditorDomSelectionBridge().write(rendered, backward)).toMatchObject({
-        ok: false,
-        error: { code: "selection.backward_unsupported" },
-      });
-      expect(browser.anchorNode).toBe(beforeNode);
-      expect(browser.anchorOffset).toBe(0);
+      expect(new BreditorDomSelectionBridge().write(rendered, backward).ok).toBe(true);
+      expect(browser.anchorNode).toBe(host.querySelector("strong")?.firstChild);
+      expect(browser.anchorOffset).toBe(4);
+      expect(browser.focusNode).toBe(beforeNode);
+      expect(browser.focusOffset).toBe(0);
     } finally {
       if (original === undefined) {
         Reflect.deleteProperty(browser, "setBaseAndExtent");
@@ -1072,7 +1364,7 @@ describe("BreditorDomSelectionBridge", () => {
     }
   });
 
-  it("uses a native Range fallback for forward selection without setBaseAndExtent", () => {
+  it("ignores an own missing-method shadow for forward selection", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -1152,7 +1444,7 @@ describe("BreditorDomSelectionBridge", () => {
     }
   });
 
-  it("preflights both DOM orders of a semantically collapsed alias before Range fallback mutation", () => {
+  it("installs both directional DOM aliases of one collapsed semantic seam", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const renderer = new BreditorDomRenderer();
@@ -1194,12 +1486,11 @@ describe("BreditorDomSelectionBridge", () => {
         configurable: true,
         value: undefined,
       });
-      expect(new BreditorDomSelectionBridge().write(rendered, domBackwardAlias)).toMatchObject({
-        ok: false,
-        error: { code: "selection.dom_write_failed" },
-      });
-      expect(browser.anchorNode).toBe(priorNode);
+      expect(new BreditorDomSelectionBridge().write(rendered, domBackwardAlias).ok).toBe(true);
+      expect(browser.anchorNode).toBe(host.querySelector("strong")?.firstChild);
       expect(browser.anchorOffset).toBe(0);
+      expect(browser.focusNode).toBe(host.firstChild);
+      expect(browser.focusOffset).toBe(1);
 
       expect(new BreditorDomSelectionBridge().write(rendered, domForwardAlias).ok).toBe(true);
       expect(browser.anchorNode).toBe(host.firstChild);
@@ -1312,3 +1603,54 @@ describe("BreditorDomSelectionBridge", () => {
     });
   });
 });
+
+const SELECTION_PROFILE_FINGERPRINT =
+  "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+function selectionProfileGeneration(): WasmProfileGenerationView {
+  const generation: WasmProfileGenerationView = {
+    matches(candidate) {
+      return candidate === generation;
+    },
+    free() {},
+  };
+  return generation;
+}
+
+function selectionProfileDescriptor(
+  generation: WasmProfileGenerationView,
+  formats: readonly string[],
+): BrowserCompiledProfileDescriptor {
+  const absent = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: SELECTION_PROFILE_FINGERPRINT,
+    formatCount: formats.length,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    formatKind: (index) => formats[index],
+    formatRevision: (index) =>
+      index >= 0 && index < formats.length ? 1 : undefined,
+    intentId: absent,
+    intentInputKind: absent,
+    intentInputContractName: absent,
+    intentInputContractVersion: absent,
+    intentActivationContract: absent,
+    intentValueContractName: absent,
+    intentValueContractVersion: absent,
+    actionStateId: absent,
+    actionStateSourceKind: absent,
+    actionStateSourceActionId: absent,
+    actionStateSourceIntentId: absent,
+    actionStateHistoryDirection: absent,
+    actionStateActivationContract: absent,
+    actionStateValueContractName: absent,
+    actionStateValueContractVersion: absent,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!result.ok) throw new Error("test descriptor was rejected");
+  return result.descriptor;
+}

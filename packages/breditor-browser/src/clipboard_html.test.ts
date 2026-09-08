@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   MAX_CLIPBOARD_HTML_DEPTH,
+  MAX_CLIPBOARD_HTML_FORMATS_PER_RUN,
   MAX_CLIPBOARD_HTML_NODES,
   MAX_CLIPBOARD_HTML_PARAGRAPHS,
   MAX_CLIPBOARD_HTML_SOURCE_UTF16,
@@ -9,8 +10,23 @@ import {
   parseClipboardHtmlToPlainText,
 } from "./clipboard_html.js";
 import { serializeClipboardSelection } from "./clipboard_fragment.js";
-import { BaseDocumentProjection } from "./projection.js";
+import {
+  BaseDocumentProjection,
+  bindProjectionPresentation,
+  createProfiledDocumentProjection,
+} from "./projection.js";
 import { BaseRangeSelection } from "./selection.js";
+import {
+  compileBrowserPresentation,
+  type BrowserCompiledPresentation,
+} from "./compiled_browser_presentation.js";
+import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type BrowserCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 describe("parseClipboardHtmlToPlainText", () => {
   it("admits the closed paragraph/strong vocabulary and exact fragment markers", () => {
@@ -61,6 +77,146 @@ describe("parseClipboardHtmlToPlainText", () => {
       ok: true,
       value: serialized.value.plainText,
     });
+  });
+
+  it("round-trips exact profiled copy markup while discarding every format", () => {
+    const { generation, descriptor, presentation } = profiledPresentation();
+    const projectionResult = createProfiledDocumentProjection(
+      {
+        schema: {
+          name: descriptor.schema.name,
+          version: descriptor.schema.version,
+          fingerprint: descriptor.schema.fingerprint,
+        },
+        snapshot: { lineage: "clipboard-profile-roundtrip", revision: "0" },
+        paragraphs: [
+          {
+            runs: [
+              {
+                text: "nested<&",
+                formats: [
+                  "breditor/strong",
+                  "example/emphasis",
+                  "example/highlight",
+                ],
+              },
+              { text: " plain", formats: [] },
+            ],
+          },
+          { runs: [] },
+        ],
+      },
+      generation,
+      descriptor,
+    );
+    if (!projectionResult.ok) throw new Error("profiled projection fixture failed");
+    expect(bindProjectionPresentation(projectionResult.value, presentation)).toBe(true);
+    const selectionResult = BaseRangeSelection.create(projectionResult.value, {
+      kind: "range",
+      anchor: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 0,
+        affinity: "after",
+      },
+      focus: {
+        kind: "children",
+        parentPath: [1],
+        childIndex: 0,
+        affinity: "before",
+      },
+    });
+    if (!selectionResult.ok) throw new Error("profiled selection fixture failed");
+    const serialized = serializeClipboardSelection(
+      selectionResult.value,
+      presentation,
+    );
+    if (!serialized.ok) throw new Error("profiled serialization fixture failed");
+
+    expect(serialized.value.html).toBe(
+      '<p><span class="highlight"><strong><em class="emphasis">nested&lt;&amp;</em></strong></span> plain</p><p><br></p>',
+    );
+    expect(
+      parseClipboardHtmlToPlainText(serialized.value.html, presentation),
+    ).toEqual({ ok: true, value: serialized.value.plainText });
+    expect(parseClipboardHtmlToPlainText(serialized.value.html)).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.html.unsupported_structure" },
+    });
+  });
+
+  it.each([
+    '<p><span class="missing">x</span></p>',
+    '<p><span class="highlight extra">x</span></p>',
+    '<p><span class="highlight" title="x">x</span></p>',
+    '<p><span>x</span></p>',
+    '<p><em class="emphasis"><span class="highlight">x</span></em></p>',
+    '<p><span class="highlight"><span class="highlight">x</span></span></p>',
+    '<p><span class="highlight">x</span><span class="highlight">y</span></p>',
+    "<p><b>x</b></p>",
+  ])("rejects a noncanonical profiled wrapper chain: %s", (source) => {
+    const { presentation } = profiledPresentation();
+    expect(parseClipboardHtmlToPlainText(source, presentation)).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.html.unsupported_structure" },
+    });
+  });
+
+  it("accepts 32 canonical wrappers and rejects wrapper amplification plus one", () => {
+    const formatKinds = Array.from(
+      { length: MAX_CLIPBOARD_HTML_FORMATS_PER_RUN + 1 },
+      (_, index) => `example/f${String(index).padStart(2, "0")}`,
+    );
+    const { presentation } = presentationFor(
+      formatKinds,
+      formatKinds.map((formatKind, index) => ({
+        formatKind,
+        element: "span",
+        classes: [`f${String(index).padStart(2, "0")}`],
+      })),
+    );
+    const nested = (count: number): string => {
+      const openings = formatKinds
+        .slice(0, count)
+        .map((_kind, index) =>
+          `<span class="f${String(index).padStart(2, "0")}">`,
+        )
+        .join("");
+      return `<p>${openings}x${"</span>".repeat(count)}</p>`;
+    };
+
+    expect(
+      parseClipboardHtmlToPlainText(
+        nested(MAX_CLIPBOARD_HTML_FORMATS_PER_RUN),
+        presentation,
+      ),
+    ).toEqual({ ok: true, value: "x" });
+    expect(
+      parseClipboardHtmlToPlainText(
+        nested(MAX_CLIPBOARD_HTML_FORMATS_PER_RUN + 1),
+        presentation,
+      ),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.html.resource_limit" },
+    });
+  });
+
+  it("rejects a forged presentation without inspecting its fields", () => {
+    let reads = 0;
+    const presentation = new Proxy({}, {
+      get: () => {
+        reads += 1;
+        throw new Error("must not inspect forged presentation");
+      },
+    }) as BrowserCompiledPresentation;
+    expect(
+      parseClipboardHtmlToPlainText("<p>secret</p>", presentation),
+    ).toMatchObject({
+      ok: false,
+      error: { code: "clipboard.html.invalid_source" },
+    });
+    expect(reads).toBe(0);
   });
 
   it("normalizes literal source CR but preserves the serializer's numeric CR", () => {
@@ -276,3 +432,98 @@ describe("parseClipboardHtmlToPlainText", () => {
     },
   );
 });
+
+const PROFILE_FINGERPRINT =
+  "sha256:1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+class TestProfileGeneration implements WasmProfileGenerationView {
+  matches(other: WasmProfileGenerationView): boolean {
+    return other === this;
+  }
+
+  free(): void {}
+}
+
+function profiledPresentation(): Readonly<{
+  generation: WasmProfileGenerationView;
+  descriptor: BrowserCompiledProfileDescriptor;
+  presentation: BrowserCompiledPresentation;
+}> {
+  return presentationFor(
+    ["breditor/strong", "example/emphasis", "example/highlight"],
+    [
+      {
+        formatKind: "example/highlight",
+        element: "span",
+        classes: ["highlight"],
+        before: ["breditor/strong"],
+      },
+      {
+        formatKind: "breditor/strong",
+        element: "strong",
+        before: ["example/emphasis"],
+      },
+      {
+        formatKind: "example/emphasis",
+        element: "em",
+        classes: ["emphasis"],
+      },
+    ],
+  );
+}
+
+function presentationFor(
+  formatKinds: readonly string[],
+  recipes: readonly unknown[],
+): Readonly<{
+  generation: WasmProfileGenerationView;
+  descriptor: BrowserCompiledProfileDescriptor;
+  presentation: BrowserCompiledPresentation;
+}> {
+  const generation = new TestProfileGeneration();
+  const descriptor = ownedProfileDescriptor(generation, formatKinds);
+  const manifest = createInlineFormatRenderManifest({ recipes: [...recipes] });
+  return Object.freeze({
+    generation,
+    descriptor,
+    presentation: compileBrowserPresentation(generation, descriptor, manifest),
+  });
+}
+
+function ownedProfileDescriptor(
+  generation: WasmProfileGenerationView,
+  formatKinds: readonly string[],
+): BrowserCompiledProfileDescriptor {
+  const absent = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    formatCount: formatKinds.length,
+    intentCount: 0,
+    actionStateCount: 0,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    formatKind: (index) => formatKinds[index],
+    formatRevision: (index) =>
+      index >= 0 && index < formatKinds.length ? 1 : undefined,
+    intentId: absent,
+    intentInputKind: absent,
+    intentInputContractName: absent,
+    intentInputContractVersion: absent,
+    intentActivationContract: absent,
+    intentValueContractName: absent,
+    intentValueContractVersion: absent,
+    actionStateId: absent,
+    actionStateSourceKind: absent,
+    actionStateSourceActionId: absent,
+    actionStateSourceIntentId: absent,
+    actionStateHistoryDirection: absent,
+    actionStateActivationContract: absent,
+    actionStateValueContractName: absent,
+    actionStateValueContractVersion: absent,
+    free: () => undefined,
+  };
+  const result = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!result.ok) throw new Error("profile descriptor fixture was rejected");
+  return result.descriptor;
+}

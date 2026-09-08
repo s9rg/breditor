@@ -1,17 +1,19 @@
 # `@breditor/browser`
 
 `@breditor/browser` is Breditor's framework-neutral browser editing layer.
+ProseMirror, Lexical, Tiptap, and CKEditor are examples only; none of their AST,
+position, command, plugin, or wire protocols is adopted here.
 Version `0.1.0` freezes the supported high-level `BreditorBrowserEditor` owner
 and its explicit, snapshot-correlated Document V1 and plain-text egress. The
 owner boots the generated
-Rust/Wasm engine, renders the validated base-schema AST into disposable DOM,
+Rust/Wasm engine, renders a validated AST projection into disposable DOM,
 maps one directional selection, serializes ordinary browser intent, and owns a
 strict paragraph-local composition lease plus guarded copy/cut/paste without
 making the DOM or clipboard HTML an editor model. It also consumes guarded
 action-state snapshots, queue-routes real document selection changes, and
 renders an extensible accessible toolbar without making display state an
 execution capability. It also restores and atomically autosaves complete Rust
-session checkpoints through a strict single-slot IndexedDB profile.
+session checkpoints through a strict slot-bound IndexedDB profile.
 
 The owner installs the unified native-event router, action-state refresh,
 optional declarative toolbar, and optional atomic IndexedDB autosave as one
@@ -23,15 +25,19 @@ are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
 the corresponding TypeScript sources are not part of the package.
 
-The `0.2.0-alpha.5` package requires Wasm ABI 3 and an exact matching Wasm
+The current alpha.6 implementation requires Wasm ABI 3 and an exact matching Wasm
 package version before it reads the generated engine factory. Bootstrap owns
 and validates the compiled-profile generation and descriptor and checks every
 observation, projection, selection, action-state, and command result against
-that opaque generation. The former bare-factory and standalone restore seams
-are not accepted by the supported root API. Document V1, Session Checkpoint V1,
-the exact built-in base profile/projection, and the Bold/Undo/Redo toolbar remain
-the supported browser product. Profile-aware extension rendering and the
-supported intent toolbar remain scheduled for alpha.6 and alpha.7.
+that opaque generation. The browser can now open a compiled semantic profile,
+consume Document/Session Checkpoint V2, project every admitted property-free
+format, compile a callback-free render manifest, preserve those formats through
+DOM selection and composition reconciliation, copy them semantically, and bind
+autosave to the exact schema fingerprint. Paste remains intentionally
+plain-text. The intent-based extension toolbar remains scheduled for alpha.7.
+The former bare-factory and standalone restore seams are not accepted by the
+supported root API. Alpha.6 has passed its final audit and release gates and
+remains unpublished.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -41,11 +47,11 @@ root and the documented V1 browser formats carry that promise.
 
 ## Public runtime
 
-This alpha.5 checkpoint is currently unpublished. After publication, the
+This alpha.6 checkpoint is currently unpublished. After publication, the
 matching registry packages can be installed with:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.5 @breditor/wasm@0.2.0-alpha.5
+npm install @breditor/browser@0.2.0-alpha.6 @breditor/wasm@0.2.0-alpha.6
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -101,7 +107,12 @@ if (!result.ok) throw new Error(result.error.message);
 const editor = result.editor;
 ```
 
-The supported `0.2.0-alpha.5` configuration passes the initialized, exactly
+The alpha.6 format path adds `semanticProfile: { bootstrapJson }`, a matching
+Document V2, and an owned `rendering` value from
+`createInlineFormatRenderManifest`. It must cover every admitted format; recipes
+contain only a safe element, checked classes, and explicit ordering edges.
+
+The supported alpha.6 configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
 not admit a bare structural factory. Lower-level structural factory types exist
 only on the experimental advanced surface for adapter testing and host-side
@@ -117,9 +128,15 @@ editor retains at most 64 distinct subscriber functions, exposed as
 `initialDocument.lineageId` is 1 through 128 ASCII characters, starts with a
 letter or digit, and then permits letters, digits, `.`, `_`, `:`, and `-`.
 `historyCapacity` is a safe integer from 0 through 100, whose ceiling is exposed
-as `MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY`. `documentJson` must be a conforming
-`breditor/document@1` value. A valid stored checkpoint takes precedence over
-all three fresh-document fields.
+as `MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY`. Without `semanticProfile`,
+`documentJson` must be a conforming exact-base `breditor/document@1` value.
+With `semanticProfile`, it must be a fingerprint-matching
+`breditor/document@2` value. A valid stored checkpoint at the selected slot
+takes precedence over all three fresh-document fields.
+
+The default semantic-profile persistence slot is the schema fingerprint, not
+the document lineage. Same-schema documents therefore share that slot; give
+each document an explicit `{ kind: "slot", name }` when they must coexist.
 
 The keyboard policy is explicit and platform-independent.
 `beforeinputPrimary` leaves Backspace, Delete, and Enter to `beforeinput`, while
@@ -167,22 +184,27 @@ if (exported.ok) {
 }
 ```
 
-`documentJson` is the exact canonical, lossless `breditor/document@1` string
-encoded by Rust. `plainText` traverses the owned semantic projection, joins
-paragraphs with one LF, preserves empty paragraphs, strips strong formatting,
-and adds no trailing LF after the final paragraph. Both successes are deeply
-frozen `{ ok: true, format, value, utf8Bytes, snapshot }` records. Export never
-adds content to `getSnapshot()`, reads mutable DOM text, or exposes an editor
-state, checkpoint, history, HTML, or raw-command API.
+`documentJson` is the exact canonical, lossless Rust encoding selected at
+bootstrap: Document V1 for the legacy exact-base path or fingerprint-bearing
+Document V2 for a semantic profile. The browser independently checks the
+selected version, schema binding, complete property-free format catalog, AST
+contents, and current projection before returning it. `plainText` traverses the
+owned semantic projection, joins paragraphs with one LF, preserves empty
+paragraphs, strips every inline format, and adds no trailing LF after the final
+paragraph. Both successes are deeply frozen
+`{ ok: true, format, value, utf8Bytes, snapshot }` records. Export never adds
+content to `getSnapshot()`, reads mutable DOM text, or exposes an editor state,
+checkpoint, history, HTML, or raw-command API.
 
 Composition, command delivery, checkpoint/action reads, and another content
 read return the stable `content_export.busy` result. Disposed editors and an
 internally faulted adapter return `content_export.unavailable`. A faulted
 high-level owner may still export an already validated Rust document when its
-adapter remains trustworthy in `live` or `reconcile` state. Document V1 carries
-no snapshot field of its own: the boundary passes the exact observation to
-Rust, compares the returned base-document semantics to the current owned
-projection, and rechecks the adapter snapshot before returning bytes.
+adapter remains trustworthy in `live` or `reconcile` state. Neither Document
+generation carries a snapshot field of its own: the boundary passes the exact
+observation to Rust, compares the returned document semantics to the current
+profile-bound projection, and rechecks the adapter snapshot before returning
+bytes.
 High-level core rejections are deliberately collapsed to the fixed,
 payload-free `content_export.core_rejected` error. Applications needing the
 official granular Rust code must call the generated low-level Wasm API directly
@@ -193,22 +215,27 @@ and assume responsibility for its handles and lifecycle.
 The Rust/Wasm adapter supplies a flattened, typed semantic projection. The
 browser package consumes that view into a branded, deeply frozen
 `BaseDocumentProjection`; it never parses document, editor-state, or commit
-JSON. The adapter is structural and has no import-time dependency on generated
-Wasm classes. Consumed Wasm projection and update handles are deterministically
-freed on success and failure.
+JSON. A profile-aware projection is privately bound to the exact owned
+compiled-profile descriptor and opaque live generation that admitted it. The
+adapter is structural and has no import-time dependency on generated Wasm
+classes. Consumed Wasm projection and update handles are deterministically freed
+on success and failure.
 
 The accepted semantic shape is deliberately closed:
 
-- schema `breditor/base`, version `1`;
+- either exact `breditor/base@1` or the selector and fingerprint from the
+  compiled semantic profile;
 - one or more direct-root `breditor/paragraph` elements;
-- non-empty text leaves with either no format or one property-free
-  `breditor/strong` format; and
+- non-empty text leaves with canonical lexical sets of zero through 32
+  descriptor-admitted property-free formats; and
 - exact snapshot identity with a portable lineage and canonical decimal `u64`
   revision.
 
-Projection construction rechecks the base-schema shape, canonical adjacent-run
-law, Unicode scalar validity, and the Rust default node/text limits. It clones
-and freezes all accepted arrays and records.
+Projection construction rechecks the sealed base-text shape, descriptor/schema
+binding, format membership and order, canonical adjacent-run law, Unicode
+scalar validity, and the Rust default node/text limits. It clones and freezes
+all accepted arrays and records. Formats are AST semantics; wrapper tags and
+classes are browser presentation and never enter the projection.
 
 ## DOM contract
 
@@ -216,15 +243,25 @@ and freezes all accepted arrays and records.
 it creates only:
 
 - one `<p>` for each direct-root paragraph;
-- one `<strong>` around a strong text leaf;
+- zero or more exactly ordered recipe wrappers around a formatted text leaf;
 - one `<br>` placeholder inside an empty paragraph; and
 - DOM text nodes created with `createTextNode`.
+
+A compiled presentation requires exactly one recipe for every descriptor format
+and rejects missing, extra, cyclic, self-referential, duplicate-signature, or
+generation-mismatched input. Each wrapper is one inert element from `code`,
+`em`, `mark`, `s`, `span`, `strong`, `sub`, `sup`, or `u`, with only its exact
+canonical class-token set. `before` and `after` edges determine
+outer-to-inner nesting; unconstrained ties use lexical format identity, never
+extension installation or object iteration order. The renderer preflights the
+complete DOM amplification bound before mutating the host.
 
 The renderer never calls `innerHTML`, installs untrusted markup, or stores AST
 paths in `data-*` attributes. It does not modify the host's own attributes.
 Host, paragraph, and text nodes are the exact AST-backed mappings. Formatting
 wrappers and empty-paragraph placeholders are projection artifacts and are not
-reported as AST nodes.
+reported as AST nodes. Wrapper tag, class, order, arity, or unknown-node drift
+invalidates the canonical DOM just like text or paragraph drift.
 
 Each successful render returns an opaque `RenderedProjection` with a renderer
 generation and two private indexes: `WeakMap<Node, AstPath>` for DOM-to-AST
@@ -281,10 +318,10 @@ dependency on generated Wasm classes.
 
 `BreditorDomSelectionBridge` synchronously validates the complete canonical DOM
 before every read and write. It maps exact text and paragraph nodes, normalizes
-the fixed `<strong>` and empty `<br>` artifacts, and maps only the host's two
-exterior select-all boundaries. It preserves anchor/focus direction, refuses to
-silently reverse a backward range, and assigns the fixed boundary-derived
-affinity policy to genuinely new DOM input.
+canonical recipe-wrapper boundaries plus empty `<br>` artifacts, and maps only
+the host's two exterior select-all boundaries. A wrapper offset normalizes
+through its sole-child chain to semantic text start or end; wrappers receive no
+AST path. Direction and the fixed affinity policy remain explicit.
 
 A programmatic write records one renderer-generation-bound spatial signature;
 exactly one matching `selectionchange` echo can reuse the original semantic
@@ -364,11 +401,11 @@ general mobile-browser support.
 Settlement is scheduled after the native event task. A custom scheduler must
 synchronously enqueue and return `void`, but must not invoke the callback
 inline; commands themselves remain synchronous. Reconciliation accepts one
-target paragraph which is empty, contains only text and property-free
-`<strong>` structure, or uses one sole empty `<br>` placeholder, while every
-other paragraph and all text outside the target must still match the Rust
-projection. This temporary DOM is evidence only and is never installed as AST
-state.
+target paragraph which is empty, contains only text and exact known recipe
+wrappers in canonical nesting, or uses one sole empty `<br>` placeholder, while
+every other paragraph and all outside text must still match the projection.
+Unknown tags, classes, attributes, wrapper order, or branching fail closed.
+Temporary wrappers are stripped to replacement text and never become AST state.
 
 The adapter full-renders the authoritative base and restores the captured
 selection before one leased Rust submission. Insert and delete use
@@ -385,11 +422,12 @@ exact late terminal `input` echo.
 and their exact optional event echoes. It reserves the queue built from the
 exact adapter executor before reading an event, clipboard capability, or DOM
 selection. Copy slices the semantic projection, never DOM markup. Cut writes
-both `text/plain` and escaped attribute-free paragraph/strong HTML, confirms
+both `text/plain` and escaped HTML using the compiled recipe wrappers, confirms
 native cancellation, and only then submits one selection deletion. Paste gives
 advertised plain text precedence; HTML is considered only when plain is absent,
-then must pass a parse5-backed closed allowlist and is flattened for one atomic
-plain-text insertion.
+then must exactly match the active recipe allowlist. It is always flattened for
+one atomic plain-text insertion, so source formatting never enters the AST;
+the existing target pending/context-format rules still apply.
 
 The controller never retains an event, `DataTransfer`, clipboard payload, or
 generated handle. A command failure is never retried, and clipboard/core work
@@ -404,10 +442,12 @@ repository-only documentation link.
 
 Copy/cut output is bounded to 8 MiB plus 9,999 UTF-16 code units and the same
 UTF-8-byte count for plain text, and to 64 MiB in both measures for escaped
-HTML. Atomic plain-text paste accepts at most 65,536 UTF-16 code units and
-65,536 UTF-8 bytes. HTML-only paste accepts at most 2 MiB of source in each
-measure, then inspects at most 65,536 repaired nodes, depth 3, and 10,000
-paragraphs before producing the same 65,536-unit/byte plain-text result limit.
+HTML plus 200,000 emitted wrappers. Atomic plain-text paste accepts at most
+65,536 UTF-16 code units and 65,536 UTF-8 bytes. HTML-only paste accepts at
+most 2 MiB of source in each measure, then inspects at most 65,536 repaired
+nodes, 10,000 paragraphs, and either legacy depth 3 or profile depth 34 before
+producing the same 65,536-unit/byte plain-text result limit. Consequently a
+successful large copy is not guaranteed to fit one paste.
 Advertised `text/plain` always wins and a malformed, empty, throwing, or
 oversized preferred value fails closed without HTML fallback. Ill-formed
 Unicode fails closed. Because the operation publishes a paired HTML form,
@@ -467,19 +507,26 @@ matching state and executable command.
 
 ## Session checkpoint persistence
 
-`IndexedDbSessionCheckpointStore` owns one exact versioned database and one
-`"current"` record. A load returns either absence or a digest-verified complete
-checkpoint plus an opaque, store-bound compare-and-swap token. A save computes
+`IndexedDbSessionCheckpointStore` owns one exact database and one selected
+slot. Omitted binding preserves the legacy outer-V1 `"current"` record; an
+explicit binding uses an outer-V2 record carrying the slot, schema fingerprint,
+and Checkpoint V1/V2 generation. Fingerprint-derived and caller-named slots can
+coexist. A load returns absence or a digest-verified checkpoint plus an opaque,
+store/slot/binding-bound compare-and-swap token. A save computes
 the UTF-8 byte count and SHA-256 before opening its transaction, rechecks the
 complete prior record inside one `readwrite` transaction, installs one whole
 replacement, and reports success only from transaction completion. Conflicts,
-corruption, quota, schema/version mismatch, connection loss, generation
-exhaustion, and digest failure remain distinct payload-redacted outcomes.
+binding mismatch, corruption, quota, schema/version mismatch, connection loss,
+generation exhaustion, and digest failure remain distinct payload-redacted
+outcomes. Mismatch never deletes, repairs, falls back, or overwrites evidence.
 
 `bootstrapWasmEngine` strictly consumes the generated construction result for
-either a fresh Document V1 request or a restored Session Checkpoint V1 request.
-It transfers the new engine only after it verifies the exact
-ABI/package/profile contract and the Rust decoder accepts the complete source.
+fresh/restored V1 or compiled-profile V2 input. With a semantic profile and
+persistence, the owner first compiles and releases the profile to select its
+durable fingerprint before the async load, recompiles it for the live engine,
+and requires both schema identities to match before autosave. This deliberate
+double compilation avoids retaining generated authority across IndexedDB at a
+bounded startup cost.
 `BreditorSessionCheckpointAutosave` coalesces adopted core commits behind a
 250 ms trailing delay and, while capture is available, starts an attempt within
 2 s of continuous changes. Composition or another exclusive adapter lease can
@@ -526,16 +573,19 @@ backpressure; terminal adapter loss pauses autosave. See
 - The bundled toolbar catalog contains Bold, Undo, and Redo. A custom manifest
   can reorder or relabel controls, but dynamic JavaScript action/catalog
   registration and a packaged React wrapper are not included.
-- Checkpoint persistence is one best-effort local slot, not an append log,
-  multi-document registry, merge protocol, authenticated store, rollback
-  defense, or cross-device synchronization.
-- Clipboard support is limited to synchronous event `clipboardData`, plain
-  text, and the base paragraph/strong subset. There is no async Clipboard API,
-  custom internal MIME, files/images, or mixed-format rich paste.
-- No arbitrary elements, formats, properties, entity IDs, nested blocks, or
-  extension DOM renderers are accepted yet.
-- Public content egress is Document V1 or semantic plain text only. There is no
-  HTML serializer, editor-state/session-checkpoint export, streaming export,
+- Each checkpoint owner uses one best-effort local slot. Slots may coexist but
+  there is no registry, append log, merge, authentication, rollback defense, or
+  cross-device synchronization.
+- Clipboard uses synchronous event `clipboardData`; safe profile formatting is
+  copied, but every paste is plain-text. There is no async Clipboard API,
+  internal MIME, files/images, or rich paste.
+- Extensions add only property-free formats to the sealed paragraph/text AST.
+  There are no links or other format properties, arbitrary nodes, entities,
+  nested blocks, callbacks, or extension-owned DOM renderers.
+- History is local and linear; collaboration, CRDT/OT rebasing, remote
+  selections, and selective undo are absent.
+- Public content egress is mode-selected Document V1/V2 or semantic plain text.
+  There is no HTML serializer, editor-state/session-checkpoint export, streaming export,
   controlled-value callback, or implicit content payload in subscriptions.
 - DOM APIs do not provide an atomic transaction across several retained
   paragraphs. The renderer prepares and validates all replacement nodes first

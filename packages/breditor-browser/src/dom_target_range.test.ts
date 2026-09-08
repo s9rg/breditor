@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   BreditorDomRenderer,
@@ -148,7 +148,7 @@ describe("mapDomTargetRange", () => {
     });
   });
 
-  it("snapshots each live range boundary once", () => {
+  it("reads real StaticRange boundaries without consulting own or local shadows", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const { rendered } = render(new BreditorDomRenderer(), host);
@@ -156,33 +156,28 @@ describe("mapDomTargetRange", () => {
     if (text === undefined || text === null) {
       throw new Error("missing text");
     }
-    const reads = { startContainer: 0, startOffset: 0, endContainer: 0, endOffset: 0 };
-    const live = {
-      get startContainer() {
-        reads.startContainer += 1;
-        return text;
-      },
-      get startOffset() {
-        reads.startOffset += 1;
-        return 0;
-      },
-      get endContainer() {
-        reads.endContainer += 1;
-        return text;
-      },
-      get endOffset() {
-        reads.endOffset += 1;
-        return 1;
-      },
-    } as unknown as AbstractRange;
-
-    expect(mapDomTargetRange(rendered, live).ok).toBe(true);
-    expect(reads).toEqual({
-      startContainer: 1,
-      startOffset: 1,
-      endContainer: 1,
-      endOffset: 1,
+    const ownStart = vi.fn(() => {
+      throw new Error("own range getter must not run");
     });
+    const localEnd = vi.fn(() => {
+      throw new Error("local prototype getter must not run");
+    });
+    const range = staticRange(text, 0, text, 1);
+    Object.defineProperty(range, "startContainer", {
+      configurable: true,
+      get: ownStart,
+    });
+    const platformPrototype = Object.getPrototypeOf(range) as object;
+    const localPrototype = Object.create(platformPrototype) as object;
+    Object.defineProperty(localPrototype, "endContainer", {
+      configurable: true,
+      get: localEnd,
+    });
+    Object.setPrototypeOf(range, localPrototype);
+
+    expect(mapDomTargetRange(rendered, range).ok).toBe(true);
+    expect(ownStart).not.toHaveBeenCalled();
+    expect(localEnd).not.toHaveBeenCalled();
   });
 
   it("rejects surrogate midpoints and ambiguous internal host boundaries", () => {
@@ -235,6 +230,41 @@ describe("mapDomTargetRange", () => {
     });
   });
 
+  it("ignores forged ownership and connectivity facts on hosts and endpoints", () => {
+    const host = document.createElement("div");
+    const outside = document.createTextNode("outside");
+    document.body.append(host, outside);
+    const { rendered } = render(new BreditorDomRenderer(), host);
+    const text = host.firstChild?.firstChild;
+    if (text === undefined || text === null) throw new Error("missing text");
+    const containsShadow = vi.fn(() => true);
+    const hostConnectedShadow = vi.fn(() => false);
+    const endpointDocumentShadow = vi.fn(() => document);
+    const endpointConnectedShadow = vi.fn(() => true);
+    Object.defineProperty(host, "contains", {
+      configurable: true,
+      value: containsShadow,
+    });
+    Object.defineProperty(host, "isConnected", {
+      configurable: true,
+      get: hostConnectedShadow,
+    });
+    Object.defineProperties(outside, {
+      ownerDocument: { configurable: true, get: endpointDocumentShadow },
+      isConnected: { configurable: true, get: endpointConnectedShadow },
+    });
+
+    expect(mapDomTargetRange(rendered, staticRange(outside, 0, outside, 1))).toMatchObject({
+      ok: false,
+      error: { code: "selection.ambiguous_dom_point" },
+    });
+    expect(mapDomTargetRange(rendered, staticRange(text, 0, text, 1)).ok).toBe(true);
+    expect(containsShadow).not.toHaveBeenCalled();
+    expect(hostConnectedShadow).not.toHaveBeenCalled();
+    expect(endpointDocumentShadow).not.toHaveBeenCalled();
+    expect(endpointConnectedShadow).not.toHaveBeenCalled();
+  });
+
   it("rejects malformed and backward range snapshots without throwing", () => {
     const host = document.createElement("div");
     document.body.append(host);
@@ -277,7 +307,7 @@ describe("mapDomTargetRange", () => {
     });
   });
 
-  it("validates canonical DOM both before and after native range snapshotting", () => {
+  it("rejects preexisting drift and never runs structural range getters", () => {
     const driftedHost = document.createElement("div");
     document.body.append(driftedHost);
     const drifted = render(new BreditorDomRenderer(), driftedHost).rendered;
@@ -311,8 +341,9 @@ describe("mapDomTargetRange", () => {
     } as unknown as AbstractRange;
     expect(mapDomTargetRange(hostile, hostileRange)).toMatchObject({
       ok: false,
-      error: { code: "selection.dom_drift" },
+      error: { code: "selection.dom_read_failed" },
     });
+    expect(hostileHost.firstElementChild?.hasAttribute("data-hostile")).toBe(false);
   });
 
   it("rejects stale and foreign render handles before reading the range", () => {

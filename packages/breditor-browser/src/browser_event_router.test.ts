@@ -274,12 +274,36 @@ interface Fixture {
   readonly scheduler: TaskScheduler;
 }
 
+const TEST_TARGET_RANGES = new WeakMap<
+  InputEvent,
+  readonly AbstractRange[]
+>();
+const ORIGINAL_GET_TARGET_RANGES = Object.getOwnPropertyDescriptor(
+  InputEvent.prototype,
+  "getTargetRanges",
+);
+
 beforeEach(() => {
+  Object.defineProperty(InputEvent.prototype, "getTargetRanges", {
+    configurable: true,
+    value(this: InputEvent): readonly AbstractRange[] {
+      return TEST_TARGET_RANGES.get(this) ?? Object.freeze([]);
+    },
+  });
   document.body.replaceChildren();
   window.getSelection()?.removeAllRanges();
 });
 
 afterEach(() => {
+  if (ORIGINAL_GET_TARGET_RANGES === undefined) {
+    Reflect.deleteProperty(InputEvent.prototype, "getTargetRanges");
+  } else {
+    Object.defineProperty(
+      InputEvent.prototype,
+      "getTargetRanges",
+      ORIGINAL_GET_TARGET_RANGES,
+    );
+  }
   vi.restoreAllMocks();
 });
 
@@ -906,7 +930,7 @@ describe("BreditorBrowserEventRouter", () => {
     expect(notifications).toEqual([{ kind: "disposed" }]);
   });
 
-  it("bounds subscribers and contains hostile native event access", () => {
+  it("bounds subscribers and ignores hostile own native event shadows", () => {
     const fixture = setup();
     for (let index = 0; index < MAX_BROWSER_EVENT_ROUTER_SUBSCRIBERS; index += 1) {
       fixture.router.subscribe(() => index);
@@ -921,7 +945,8 @@ describe("BreditorBrowserEventRouter", () => {
     });
 
     expect(() => fixture.adapter.host.dispatchEvent(event)).not.toThrow();
-    expect(fixture.adapter.requests).toHaveLength(0);
+    expect(fixture.adapter.requests).toHaveLength(1);
+    expect(event.defaultPrevented).toBe(true);
     expect(fixture.router.status.kind).toMatch(/live|faulted/u);
     fixture.router.dispose();
   });
@@ -993,10 +1018,7 @@ function inputEvent(
     data,
     isComposing,
   });
-  Object.defineProperty(event, "getTargetRanges", {
-    configurable: true,
-    value: () => ranges,
-  });
+  TEST_TARGET_RANGES.set(event, ranges);
   return event;
 }
 

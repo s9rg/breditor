@@ -193,7 +193,17 @@ and End implement roving focus. Pointer down prevents the primary pointer from
 stealing the editor's DOM selection. A keyboard-activated synchronous command
 can cause browser selection restoration to focus the editing host, so the
 toolbar restores the exact activating button with `preventScroll` and faults
-closed if it cannot prove restoration. The `0.1.0` Playwright release matrix,
+closed if it cannot prove restoration.
+
+Alpha.6 reads genuine pointer/mouse/click and keyboard event facts through
+brand-checked `Event`, `MouseEvent`, and `KeyboardEvent` realm-prototype
+intrinsics and cancels through the native `Event` method. Own and
+intermediate-prototype shadows are ignored, and a generic native `Event` cannot
+impersonate a mouse or keyboard event. Direct structural event calls remain an
+advanced host-trusted fixture path; replacement of the realm's actual platform
+globals or prototypes is outside this defense.
+
+The `0.1.0` Playwright release matrix,
 introduced at checkpoint `0.0.59`, exercises this real-engine focus path in
 Chromium, Firefox, and WebKit; see the
 [browser support and accessibility gate](BROWSER_SUPPORT_AND_ACCESSIBILITY.md).

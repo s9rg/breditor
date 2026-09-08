@@ -1,22 +1,39 @@
-/** Exact IndexedDB database used by the single-checkpoint storage profile. */
+/** Exact IndexedDB database used by the session-checkpoint storage profile. */
 export const SESSION_CHECKPOINT_DATABASE_NAME = "breditor-session-checkpoint-v1";
 export const SESSION_CHECKPOINT_DATABASE_VERSION = 1;
 export const SESSION_CHECKPOINT_OBJECT_STORE_NAME = "checkpoints";
 export const SESSION_CHECKPOINT_SLOT = "current";
 export const MAX_SESSION_CHECKPOINT_UTF8_BYTES = 16 * 1_024 * 1_024;
+/** Maximum ASCII bytes in one resolved profile-aware storage slot. */
+export const MAX_SESSION_CHECKPOINT_SLOT_ASCII_BYTES = 128;
 
 const FORMAT = "breditor/indexeddb-session-checkpoint";
-const FORMAT_VERSION = 1;
+const LEGACY_RECORD_FORMAT_VERSION = 1;
+const PROFILE_RECORD_FORMAT_VERSION = 2;
+const BASE_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
 const MAX_U64 = 18_446_744_073_709_551_615n;
 const GENERATION = /^[1-9][0-9]*$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
-const RECORD_KEYS = Object.freeze([
+const SCHEMA_FINGERPRINT = /^sha256:[0-9a-f]{64}$/u;
+const SLOT = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u;
+const LEGACY_RECORD_KEYS = Object.freeze([
   "checkpointJson",
   "checkpointSha256",
   "checkpointUtf8Bytes",
   "format",
   "formatVersion",
   "generation",
+  "slot",
+]);
+const PROFILE_RECORD_KEYS = Object.freeze([
+  ...LEGACY_RECORD_KEYS,
+  "checkpointFormatVersion",
+  "schemaFingerprint",
+]);
+const BINDING_KEYS = Object.freeze([
+  "checkpointFormatVersion",
+  "schemaFingerprint",
   "slot",
 ]);
 
@@ -31,6 +48,7 @@ export type IndexedDbSessionCheckpointErrorCode =
   | "session_checkpoint.invalid_input"
   | "session_checkpoint.resource_limit"
   | "session_checkpoint.invalid_token"
+  | "session_checkpoint.binding_mismatch"
   | "session_checkpoint.version_unsupported"
   | "session_checkpoint.schema_mismatch"
   | "session_checkpoint.corrupt"
@@ -70,16 +88,28 @@ export type IndexedDbSessionCheckpointSaveResult =
     }>
   | Readonly<{ ok: false; error: IndexedDbSessionCheckpointError }>;
 
+/** Exact durable identity expected at one resolved IndexedDB slot. */
+export interface IndexedDbSessionCheckpointBinding {
+  readonly slot: string;
+  readonly schemaFingerprint: string;
+  readonly checkpointFormatVersion: 1 | 2;
+}
+
 export interface IndexedDbSessionCheckpointStoreOptions {
   readonly indexedDB: IDBFactory;
   readonly crypto: Pick<SubtleCrypto, "digest">;
+  /**
+   * Profile-aware slot and durable checkpoint identity. When omitted, the
+   * exact-base `current` V1 storage contract remains active.
+   */
+  readonly binding?: IndexedDbSessionCheckpointBinding;
   /** Progress callback; callback failures are contained. */
   readonly onBlocked?: () => void;
 }
 
-interface StoredRecord {
+interface LegacyStoredRecord {
   readonly format: typeof FORMAT;
-  readonly formatVersion: typeof FORMAT_VERSION;
+  readonly formatVersion: typeof LEGACY_RECORD_FORMAT_VERSION;
   readonly slot: typeof SESSION_CHECKPOINT_SLOT;
   readonly generation: string;
   readonly checkpointUtf8Bytes: number;
@@ -87,8 +117,52 @@ interface StoredRecord {
   readonly checkpointJson: string;
 }
 
+interface ProfileStoredRecord {
+  readonly format: typeof FORMAT;
+  readonly formatVersion: typeof PROFILE_RECORD_FORMAT_VERSION;
+  readonly slot: string;
+  readonly schemaFingerprint: string;
+  readonly checkpointFormatVersion: 1 | 2;
+  readonly generation: string;
+  readonly checkpointUtf8Bytes: number;
+  readonly checkpointSha256: string;
+  readonly checkpointJson: string;
+}
+
+type StoredRecord = LegacyStoredRecord | ProfileStoredRecord;
+
+interface LegacyStoredRecordHeader {
+  readonly format: typeof FORMAT;
+  readonly formatVersion: typeof LEGACY_RECORD_FORMAT_VERSION;
+  readonly slot: typeof SESSION_CHECKPOINT_SLOT;
+  readonly generation: unknown;
+  readonly checkpointUtf8Bytes: unknown;
+  readonly checkpointSha256: unknown;
+  readonly checkpointJson: unknown;
+}
+
+interface ProfileStoredRecordHeader {
+  readonly format: typeof FORMAT;
+  readonly formatVersion: typeof PROFILE_RECORD_FORMAT_VERSION;
+  readonly slot: string;
+  readonly schemaFingerprint: string;
+  readonly checkpointFormatVersion: 1 | 2;
+  readonly generation: unknown;
+  readonly checkpointUtf8Bytes: unknown;
+  readonly checkpointSha256: unknown;
+  readonly checkpointJson: unknown;
+}
+
+type StoredRecordHeader = LegacyStoredRecordHeader | ProfileStoredRecordHeader;
+
+interface ResolvedBinding extends IndexedDbSessionCheckpointBinding {
+  readonly legacy: boolean;
+}
+
 interface TokenState {
   readonly owner: object;
+  readonly binding: ResolvedBinding;
+  readonly slot: string;
   readonly expected: StoredRecord | null;
 }
 
@@ -119,6 +193,8 @@ const MESSAGES: Readonly<Record<IndexedDbSessionCheckpointErrorCode, string>> = 
   "session_checkpoint.resource_limit":
     "The session checkpoint exceeds the storage resource limit.",
   "session_checkpoint.invalid_token": "The session checkpoint comparison token is invalid.",
+  "session_checkpoint.binding_mismatch":
+    "The stored session checkpoint belongs to a different profile binding.",
   "session_checkpoint.version_unsupported":
     "The session checkpoint database version is not supported.",
   "session_checkpoint.schema_mismatch":
@@ -135,7 +211,7 @@ const MESSAGES: Readonly<Record<IndexedDbSessionCheckpointErrorCode, string>> = 
 });
 
 /**
- * Atomic, single-slot IndexedDB checkpoint owner.
+ * Atomic, slot-bound IndexedDB checkpoint owner.
  *
  * Reads use one readonly transaction. Saves precompute the UTF-8 bytes and
  * digest, then compare and replace inside one readwrite transaction. A save is
@@ -146,6 +222,7 @@ export class IndexedDbSessionCheckpointStore {
   readonly #digest: SubtleCrypto["digest"];
   readonly #cryptoReceiver: Pick<SubtleCrypto, "digest">;
   readonly #onBlocked: (() => void) | undefined;
+  readonly #binding: ResolvedBinding;
   readonly #owner = Object.freeze({});
   #database: IDBDatabase | undefined;
   #opening: Promise<ConnectionResult> | undefined;
@@ -157,12 +234,14 @@ export class IndexedDbSessionCheckpointStore {
     let digest: unknown;
     let open: unknown;
     let onBlocked: unknown;
+    let binding: unknown;
     try {
       factory = options.indexedDB;
       cryptoReceiver = options.crypto;
       open = factory.open;
       digest = cryptoReceiver.digest;
       onBlocked = options.onBlocked;
+      binding = options.binding;
     } catch {
       throw new TypeError("session checkpoint storage options are invalid");
     }
@@ -182,6 +261,11 @@ export class IndexedDbSessionCheckpointStore {
     this.#cryptoReceiver = cryptoReceiver;
     this.#digest = digest as SubtleCrypto["digest"];
     this.#onBlocked = onBlocked as (() => void) | undefined;
+    const resolvedBinding = resolveBinding(binding);
+    if (resolvedBinding === undefined) {
+      throw new TypeError("session checkpoint storage options are invalid");
+    }
+    this.#binding = resolvedBinding;
   }
 
   get closed(): boolean {
@@ -202,13 +286,13 @@ export class IndexedDbSessionCheckpointStore {
     }
   }
 
-  /** Reads and integrity-checks the complete single-slot state. */
+  /** Reads and integrity-checks the complete state at this owner's bound slot. */
   async load(): Promise<IndexedDbSessionCheckpointLoadResult> {
     const connection = await this.#connection();
     if (!connection.ok) return failure(connection.error);
     let raw: RawLoadResult;
     try {
-      raw = await readSlot(connection.database);
+      raw = await readSlot(connection.database, this.#binding.slot);
     } catch {
       return failure(error("session_checkpoint.connection"));
     }
@@ -222,7 +306,12 @@ export class IndexedDbSessionCheckpointStore {
       });
     }
     if (raw.count !== 1) return failure(error("session_checkpoint.corrupt"));
-    const record = parseRecord(raw.value);
+    const header = parseRecordHeader(raw.value);
+    if (header === undefined) return failure(error("session_checkpoint.corrupt"));
+    if (!recordMatchesBinding(header, this.#binding)) {
+      return failure(error("session_checkpoint.binding_mismatch"));
+    }
+    const record = validateStoredRecord(header);
     if (record === undefined) return failure(error("session_checkpoint.corrupt"));
     const digest = await this.#sha256(record.checkpointJson);
     if (!digest.ok) return failure(digest.error);
@@ -245,7 +334,12 @@ export class IndexedDbSessionCheckpointStore {
     checkpointJson: string,
   ): Promise<IndexedDbSessionCheckpointSaveResult> {
     const tokenState = objectLike(token) ? TOKEN_STATES.get(token) : undefined;
-    if (tokenState === undefined || tokenState.owner !== this.#owner) {
+    if (
+      tokenState === undefined ||
+      tokenState.owner !== this.#owner ||
+      tokenState.binding !== this.#binding ||
+      tokenState.slot !== this.#binding.slot
+    ) {
       return failure(error("session_checkpoint.invalid_token"));
     }
     if (this.closed) return failure(error("session_checkpoint.connection"));
@@ -258,20 +352,23 @@ export class IndexedDbSessionCheckpointStore {
     }
     const digest = await this.#sha256Bytes(encoded.bytes);
     if (!digest.ok) return failure(digest.error);
-    const next: StoredRecord = Object.freeze({
-      format: FORMAT,
-      formatVersion: FORMAT_VERSION,
-      slot: SESSION_CHECKPOINT_SLOT,
-      generation: (priorGeneration + 1n).toString(),
-      checkpointUtf8Bytes: encoded.bytes.byteLength,
-      checkpointSha256: digest.hex,
+    const next = createStoredRecord(
+      this.#binding,
+      (priorGeneration + 1n).toString(),
+      encoded.bytes.byteLength,
+      digest.hex,
       checkpointJson,
-    });
+    );
     const connection = await this.#connection();
     if (!connection.ok) return failure(connection.error);
     let saved: RawSaveResult;
     try {
-      saved = await compareAndSwap(connection.database, tokenState.expected, next);
+      saved = await compareAndSwap(
+        connection.database,
+        this.#binding.slot,
+        tokenState.expected,
+        next,
+      );
     } catch {
       return failure(error("session_checkpoint.connection"));
     }
@@ -285,7 +382,12 @@ export class IndexedDbSessionCheckpointStore {
 
   #mintToken(expected: StoredRecord | null): IndexedDbSessionCheckpointCasToken {
     const token = Object.freeze({});
-    TOKEN_STATES.set(token, { owner: this.#owner, expected });
+    TOKEN_STATES.set(token, {
+      owner: this.#owner,
+      binding: this.#binding,
+      slot: this.#binding.slot,
+      expected,
+    });
     return token as IndexedDbSessionCheckpointCasToken;
   }
 
@@ -419,7 +521,7 @@ export class IndexedDbSessionCheckpointStore {
           openedDatabase.onclose = () => {
             this.#invalidate(openedDatabase);
           };
-          const validation = validateSchema(openedDatabase);
+          const validation = validateSchema(openedDatabase, this.#binding.slot);
           Reflect.apply(PROMISE_THEN, validation, [
             (schemaError: IndexedDbSessionCheckpointError | undefined) => {
               try {
@@ -511,6 +613,63 @@ function installOpenRequestHandler(
   }
 }
 
+function resolveBinding(value: unknown): ResolvedBinding | undefined {
+  if (value === undefined) {
+    return Object.freeze({
+      slot: SESSION_CHECKPOINT_SLOT,
+      schemaFingerprint: BASE_SCHEMA_FINGERPRINT,
+      checkpointFormatVersion: 1,
+      legacy: true,
+    });
+  }
+  if (!objectLike(value) || Array.isArray(value)) return undefined;
+  let descriptors: PropertyDescriptorMap;
+  let keys: readonly PropertyKey[];
+  try {
+    descriptors = Object.getOwnPropertyDescriptors(value);
+    keys = Reflect.ownKeys(value);
+  } catch {
+    return undefined;
+  }
+  if (
+    keys.length !== BINDING_KEYS.length ||
+    keys.some((key) => typeof key !== "string" || !BINDING_KEYS.includes(key))
+  ) {
+    return undefined;
+  }
+  const field = (name: string): unknown => {
+    const descriptor = descriptors[name];
+    return descriptor !== undefined && "value" in descriptor ? descriptor.value : undefined;
+  };
+  const slot = field("slot");
+  const schemaFingerprint = field("schemaFingerprint");
+  const checkpointFormatVersion = field("checkpointFormatVersion");
+  if (
+    !validSlot(slot) ||
+    typeof schemaFingerprint !== "string" ||
+    !SCHEMA_FINGERPRINT.test(schemaFingerprint) ||
+    (checkpointFormatVersion !== 1 && checkpointFormatVersion !== 2) ||
+    (checkpointFormatVersion === 1 &&
+      schemaFingerprint !== BASE_SCHEMA_FINGERPRINT)
+  ) {
+    return undefined;
+  }
+  return Object.freeze({
+    slot,
+    schemaFingerprint,
+    checkpointFormatVersion,
+    legacy: false,
+  });
+}
+
+function validSlot(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= MAX_SESSION_CHECKPOINT_SLOT_ASCII_BYTES &&
+    SLOT.test(value)
+  );
+}
+
 function encodeCheckpoint(
   value: unknown,
 ):
@@ -552,7 +711,7 @@ function hasWellFormedUtf16(value: string): boolean {
   return true;
 }
 
-function parseRecord(value: unknown): StoredRecord | undefined {
+function parseRecordHeader(value: unknown): StoredRecordHeader | undefined {
   if (!objectLike(value)) return undefined;
   let descriptors: PropertyDescriptorMap;
   let keys: readonly PropertyKey[];
@@ -561,12 +720,6 @@ function parseRecord(value: unknown): StoredRecord | undefined {
     descriptors = Object.getOwnPropertyDescriptors(value);
     keys = Reflect.ownKeys(value);
   } catch {
-    return undefined;
-  }
-  if (
-    keys.length !== RECORD_KEYS.length ||
-    keys.some((key) => typeof key !== "string" || !RECORD_KEYS.includes(key))
-  ) {
     return undefined;
   }
   const field = (name: string): unknown => {
@@ -580,10 +733,65 @@ function parseRecord(value: unknown): StoredRecord | undefined {
   const checkpointUtf8Bytes = field("checkpointUtf8Bytes");
   const checkpointSha256 = field("checkpointSha256");
   const checkpointJson = field("checkpointJson");
+  const expectedKeys =
+    formatVersion === LEGACY_RECORD_FORMAT_VERSION
+      ? LEGACY_RECORD_KEYS
+      : formatVersion === PROFILE_RECORD_FORMAT_VERSION
+        ? PROFILE_RECORD_KEYS
+        : undefined;
   if (
+    expectedKeys === undefined ||
+    keys.length !== expectedKeys.length ||
+    keys.some((key) => typeof key !== "string" || !expectedKeys.includes(key)) ||
     format !== FORMAT ||
-    formatVersion !== FORMAT_VERSION ||
-    slot !== SESSION_CHECKPOINT_SLOT ||
+    !validSlot(slot)
+  ) {
+    return undefined;
+  }
+  if (formatVersion === LEGACY_RECORD_FORMAT_VERSION) {
+    if (slot !== SESSION_CHECKPOINT_SLOT) return undefined;
+    return Object.freeze({
+      format,
+      formatVersion,
+      slot,
+      generation,
+      checkpointUtf8Bytes,
+      checkpointSha256,
+      checkpointJson,
+    });
+  }
+  const schemaFingerprint = field("schemaFingerprint");
+  const checkpointFormatVersion = field("checkpointFormatVersion");
+  if (
+    typeof schemaFingerprint !== "string" ||
+    !SCHEMA_FINGERPRINT.test(schemaFingerprint) ||
+    (checkpointFormatVersion !== 1 && checkpointFormatVersion !== 2)
+  ) {
+    return undefined;
+  }
+  return Object.freeze({
+    format,
+    formatVersion: PROFILE_RECORD_FORMAT_VERSION,
+    slot,
+    schemaFingerprint,
+    checkpointFormatVersion: checkpointFormatVersion as 1 | 2,
+    generation,
+    checkpointUtf8Bytes,
+    checkpointSha256,
+    checkpointJson,
+  });
+}
+
+function validateStoredRecord(
+  header: StoredRecordHeader,
+): StoredRecord | undefined {
+  const {
+    generation,
+    checkpointUtf8Bytes,
+    checkpointSha256,
+    checkpointJson,
+  } = header;
+  if (
     typeof generation !== "string" ||
     generation.length > 20 ||
     !GENERATION.test(generation) ||
@@ -605,11 +813,26 @@ function parseRecord(value: unknown): StoredRecord | undefined {
   }
   if (parsedGeneration === 0n || parsedGeneration > MAX_U64) return undefined;
   const encoded = encodeCheckpoint(checkpointJson);
-  if (!encoded.ok || encoded.bytes.byteLength !== checkpointUtf8Bytes) return undefined;
+  if (!encoded.ok || encoded.bytes.byteLength !== checkpointUtf8Bytes) {
+    return undefined;
+  }
+  if (header.formatVersion === LEGACY_RECORD_FORMAT_VERSION) {
+    return Object.freeze({
+      format: header.format,
+      formatVersion: header.formatVersion,
+      slot: header.slot,
+      generation,
+      checkpointUtf8Bytes,
+      checkpointSha256,
+      checkpointJson,
+    });
+  }
   return Object.freeze({
-    format,
-    formatVersion,
-    slot,
+    format: header.format,
+    formatVersion: header.formatVersion,
+    slot: header.slot,
+    schemaFingerprint: header.schemaFingerprint,
+    checkpointFormatVersion: header.checkpointFormatVersion,
     generation,
     checkpointUtf8Bytes,
     checkpointSha256,
@@ -617,21 +840,93 @@ function parseRecord(value: unknown): StoredRecord | undefined {
   });
 }
 
+function parseRecord(value: unknown): StoredRecord | undefined {
+  const header = parseRecordHeader(value);
+  return header === undefined ? undefined : validateStoredRecord(header);
+}
+
+function createStoredRecord(
+  binding: ResolvedBinding,
+  generation: string,
+  checkpointUtf8Bytes: number,
+  checkpointSha256: string,
+  checkpointJson: string,
+): StoredRecord {
+  if (binding.legacy) {
+    return Object.freeze({
+      format: FORMAT,
+      formatVersion: LEGACY_RECORD_FORMAT_VERSION,
+      slot: SESSION_CHECKPOINT_SLOT,
+      generation,
+      checkpointUtf8Bytes,
+      checkpointSha256,
+      checkpointJson,
+    });
+  }
+  return Object.freeze({
+    format: FORMAT,
+    formatVersion: PROFILE_RECORD_FORMAT_VERSION,
+    slot: binding.slot,
+    schemaFingerprint: binding.schemaFingerprint,
+    checkpointFormatVersion: binding.checkpointFormatVersion,
+    generation,
+    checkpointUtf8Bytes,
+    checkpointSha256,
+    checkpointJson,
+  });
+}
+
+function recordMatchesBinding(
+  record: StoredRecordHeader,
+  binding: ResolvedBinding,
+): boolean {
+  if (record.formatVersion === LEGACY_RECORD_FORMAT_VERSION) {
+    return (
+      record.slot === SESSION_CHECKPOINT_SLOT &&
+      binding.slot === SESSION_CHECKPOINT_SLOT &&
+      binding.schemaFingerprint === BASE_SCHEMA_FINGERPRINT &&
+      binding.checkpointFormatVersion === 1
+    );
+  }
+  return (
+    !binding.legacy &&
+    record.slot === binding.slot &&
+    record.schemaFingerprint === binding.schemaFingerprint &&
+    record.checkpointFormatVersion === binding.checkpointFormatVersion
+  );
+}
+
 function recordsEqual(left: StoredRecord | null, right: StoredRecord | null): boolean {
   if (left === null || right === null) return left === right;
+  if (
+    left.format !== right.format ||
+    left.formatVersion !== right.formatVersion ||
+    left.slot !== right.slot ||
+    left.generation !== right.generation ||
+    left.checkpointUtf8Bytes !== right.checkpointUtf8Bytes ||
+    left.checkpointSha256 !== right.checkpointSha256 ||
+    left.checkpointJson !== right.checkpointJson
+  ) {
+    return false;
+  }
+  if (
+    left.formatVersion === PROFILE_RECORD_FORMAT_VERSION &&
+    right.formatVersion === PROFILE_RECORD_FORMAT_VERSION
+  ) {
+    return (
+      left.schemaFingerprint === right.schemaFingerprint &&
+      left.checkpointFormatVersion === right.checkpointFormatVersion
+    );
+  }
   return (
-    left.format === right.format &&
-    left.formatVersion === right.formatVersion &&
-    left.slot === right.slot &&
-    left.generation === right.generation &&
-    left.checkpointUtf8Bytes === right.checkpointUtf8Bytes &&
-    left.checkpointSha256 === right.checkpointSha256 &&
-    left.checkpointJson === right.checkpointJson
+    left.formatVersion === LEGACY_RECORD_FORMAT_VERSION &&
+    right.formatVersion === LEGACY_RECORD_FORMAT_VERSION
   );
 }
 
 async function validateSchema(
   database: IDBDatabase,
+  slot: string,
 ): Promise<IndexedDbSessionCheckpointError | undefined> {
   if (
     database.version !== SESSION_CHECKPOINT_DATABASE_VERSION ||
@@ -654,7 +949,7 @@ async function validateSchema(
         resolve(error("session_checkpoint.schema_mismatch"));
         return;
       }
-      countRequest = store.count();
+      countRequest = store.count(slot);
     } catch (cause) {
       resolve(classify(cause));
       return;
@@ -693,7 +988,7 @@ async function validateSchema(
   });
 }
 
-function readSlot(database: IDBDatabase): Promise<RawLoadResult> {
+function readSlot(database: IDBDatabase, slot: string): Promise<RawLoadResult> {
   return new Promise((resolve) => {
     let transaction: IDBTransaction;
     let countRequest: IDBRequest<number>;
@@ -703,8 +998,8 @@ function readSlot(database: IDBDatabase): Promise<RawLoadResult> {
     try {
       transaction = database.transaction(SESSION_CHECKPOINT_OBJECT_STORE_NAME, "readonly");
       const store = transaction.objectStore(SESSION_CHECKPOINT_OBJECT_STORE_NAME);
-      countRequest = store.count();
-      getRequest = store.get(SESSION_CHECKPOINT_SLOT);
+      countRequest = store.count(slot);
+      getRequest = store.get(slot);
     } catch (cause) {
       resolve(failure(classify(cause)));
       return;
@@ -749,6 +1044,7 @@ function readSlot(database: IDBDatabase): Promise<RawLoadResult> {
 
 function compareAndSwap(
   database: IDBDatabase,
+  slot: string,
   expected: StoredRecord | null,
   next: StoredRecord,
 ): Promise<RawSaveResult> {
@@ -808,8 +1104,8 @@ function compareAndSwap(
     }
     try {
       const store = transaction.objectStore(SESSION_CHECKPOINT_OBJECT_STORE_NAME);
-      countRequest = store.count();
-      getRequest = store.get(SESSION_CHECKPOINT_SLOT);
+      countRequest = store.count(slot);
+      getRequest = store.get(slot);
       countRequest.onerror = () => {
         try {
           if (requestError === undefined) requestError = countRequest.error;
@@ -853,7 +1149,7 @@ function compareAndSwap(
           }
           const put = transaction
             .objectStore(SESSION_CHECKPOINT_OBJECT_STORE_NAME)
-            .put(next, SESSION_CHECKPOINT_SLOT);
+            .put(next, slot);
           wrote = true;
           put.onerror = () => {
             putFailed = true;

@@ -6,6 +6,8 @@ export {
   type BaseParagraphProjection,
   type BaseProjectionSchema,
   type BaseTextRunProjection,
+  type CompiledProjectionSchema,
+  type ProjectionSchema,
   type ProjectionSnapshot,
 } from "./projection.js";
 export {
@@ -17,6 +19,7 @@ export {
 } from "./projection_update.js";
 export {
   BreditorDomRenderer,
+  MAX_RENDERED_PROJECTION_DOM_NODES,
   type ProjectionFallbackReason,
   type ProjectionRenderMode,
   type ProjectionRenderOutcome,
@@ -117,6 +120,7 @@ export {
   pasteInsertRequest,
 } from "./clipboard_command.js";
 export {
+  MAX_CLIPBOARD_FRAGMENT_FORMAT_WRAPPERS,
   MAX_CLIPBOARD_FRAGMENT_HTML_UTF16,
   MAX_CLIPBOARD_FRAGMENT_HTML_UTF8,
   MAX_CLIPBOARD_FRAGMENT_TEXT_UTF16,
@@ -128,9 +132,11 @@ export {
   type ClipboardFragmentSerializationResult,
 } from "./clipboard_fragment.js";
 export {
+  MAX_CLIPBOARD_HTML_FORMATS_PER_RUN,
   MAX_CLIPBOARD_HTML_DEPTH,
   MAX_CLIPBOARD_HTML_NODES,
   MAX_CLIPBOARD_HTML_PARAGRAPHS,
+  MAX_CLIPBOARD_HTML_PROFILE_DEPTH,
   MAX_CLIPBOARD_HTML_SOURCE_UTF16,
   MAX_CLIPBOARD_HTML_SOURCE_UTF8,
   parseClipboardHtmlToPlainText,
@@ -270,6 +276,10 @@ export {
   type BrowserDocumentJson,
   type BrowserDocumentJsonReadError,
   type BrowserDocumentJsonReadResult,
+  type WasmDurableFormatBinding,
+  type WasmDurableJsonContract,
+  type WasmDurableMode,
+  type WasmDurableSchemaBinding,
   type WasmDocumentJsonErrorView,
   type WasmDocumentJsonExpectedSnapshot,
   type WasmDocumentJsonReadPort,
@@ -285,12 +295,14 @@ export {
 } from "./projection_plain_text.js";
 export {
   IndexedDbSessionCheckpointStore,
+  MAX_SESSION_CHECKPOINT_SLOT_ASCII_BYTES,
   MAX_SESSION_CHECKPOINT_UTF8_BYTES,
   SESSION_CHECKPOINT_DATABASE_NAME,
   SESSION_CHECKPOINT_DATABASE_VERSION,
   SESSION_CHECKPOINT_OBJECT_STORE_NAME,
   SESSION_CHECKPOINT_SLOT,
   type IndexedDbSessionCheckpointCasToken,
+  type IndexedDbSessionCheckpointBinding,
   type IndexedDbSessionCheckpointError,
   type IndexedDbSessionCheckpointErrorCode,
   type IndexedDbSessionCheckpointLoadResult,
@@ -339,20 +351,28 @@ export {
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
 export {
+  BREDITOR_BASE_SCHEMA_FINGERPRINT,
   BREDITOR_BROWSER_PACKAGE_VERSION,
   BREDITOR_WASM_ABI_VERSION,
   MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY,
+  MAX_WASM_PROFILE_BOOTSTRAP_JSON_BYTES,
   bootstrapWasmEngine,
   isOwnedBrowserWasmEngineBootstrapResult,
+  preflightWasmSemanticProfile,
   type BrowserWasmEngineBootstrapError,
   type BrowserWasmEngineBootstrapResult,
+  type BrowserWasmSemanticProfilePreflightResult,
   type WasmBootstrappedEngineView,
+  type WasmCompiledProfileBootstrapFactoryView,
+  type WasmCompiledProfileBootstrapResultView,
+  type WasmCompiledProfileBootstrapView,
   type WasmDocumentBootstrapSource,
   type WasmEngineBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
   type WasmEngineBootstrapResultView,
   type WasmEngineBootstrapSource,
   type WasmProjectionReadResultView,
+  type WasmSemanticProfileBootstrapSource,
   type WasmSessionCheckpointBootstrapSource,
 } from "./wasm_engine_bootstrap.js";
 export {
@@ -377,6 +397,31 @@ export {
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 export {
+  DEFAULT_INLINE_FORMAT_RENDER_MANIFEST,
+  INLINE_FORMAT_RENDER_ELEMENTS,
+  MAX_INLINE_FORMAT_RENDER_CLASSES_PER_RECIPE,
+  MAX_INLINE_FORMAT_RENDER_CLASS_TOKEN_ASCII,
+  MAX_INLINE_FORMAT_RENDER_FORMAT_KIND_ASCII,
+  MAX_INLINE_FORMAT_RENDER_ORDER_REFERENCES,
+  MAX_INLINE_FORMAT_RENDER_ORDER_REFERENCES_PER_RECIPE,
+  MAX_INLINE_FORMAT_RENDER_RECIPES,
+  createInlineFormatRenderManifest,
+  isOwnedInlineFormatRenderManifest,
+  type InlineFormatRenderElement,
+  type InlineFormatRenderManifest,
+  type InlineFormatRenderRecipe,
+} from "./inline_format_render_manifest.js";
+export {
+  browserPresentationMatchesProfile,
+  browserPresentationOwnsIdentity,
+  browserPresentationRecipeForFormat,
+  compileBrowserPresentation,
+  isOwnedBrowserCompiledPresentation,
+  isOwnedBrowserPresentationIdentity,
+  type BrowserCompiledPresentation,
+  type BrowserPresentationIdentity,
+} from "./compiled_browser_presentation.js";
+export {
   BreditorBrowserEventRouter,
   MAX_BROWSER_EVENT_ROUTER_SUBSCRIBERS,
   type BrowserEventRouterFaultReason,
@@ -398,6 +443,7 @@ export {
   type BreditorBrowserEditorOpenResult,
   type BreditorBrowserEditorOptions,
   type BreditorBrowserEditorPersistenceOptions,
+  type BreditorBrowserEditorPersistenceScope,
   type BreditorBrowserEditorPersistenceResult,
   type BreditorBrowserEditorPersistenceStatus,
   type BreditorBrowserEditorSnapshot,
@@ -405,6 +451,7 @@ export {
   type BreditorBrowserEditorSubscriber,
   type BreditorBrowserDocumentSnapshot,
   type BreditorBrowserInitialDocument,
+  type BreditorBrowserSemanticProfileOptions,
   type BreditorBrowserToolbarOptions,
   type BreditorBrowserWasmFactory,
   type BreditorBrowserWasmModule,

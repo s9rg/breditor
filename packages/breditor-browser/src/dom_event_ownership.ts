@@ -1,3 +1,15 @@
+import {
+  nativeContainsNode,
+  nativeElementLocalName,
+  nativeHasAttribute,
+  nativeHtmlHostFacts,
+  nativeNodeType,
+  nativeOwnerDocument,
+  nativeParentNode,
+} from "./html_host.js";
+
+const MAX_EVENT_TARGET_ANCESTORS = 64;
+
 /** Closed ownership result for one light-DOM editor event target. @internal */
 export type DomEventOwnership =
   | "owned"
@@ -19,7 +31,11 @@ export function classifyDomEventOwnership(
   target: EventTarget | null,
 ): DomEventOwnership {
   try {
-    if (!host.isConnected) {
+    const hostFacts = nativeHtmlHostFacts(host);
+    if (hostFacts === undefined) {
+      return "invalid";
+    }
+    if (!hostFacts.isConnected) {
       return "outsideHost";
     }
     if (typeof target !== "object" || target === null) {
@@ -27,29 +43,32 @@ export function classifyDomEventOwnership(
     }
     const node = target as Node;
     if (
-      typeof node.nodeType !== "number" ||
-      node.ownerDocument !== host.ownerDocument ||
-      (node !== host && !host.contains(node))
+      nativeOwnerDocument(node) !== hostFacts.ownerDocument ||
+      !nativeContainsNode(host, node)
     ) {
       return "outsideHost";
     }
     let current: Node | null = node;
+    let traversed = 0;
     while (current !== null && current !== host) {
-      if (current.nodeType === 1) {
-        const element = current as Element;
-        const tag = element.tagName;
+      traversed += 1;
+      if (traversed > MAX_EVENT_TARGET_ANCESTORS) return "invalid";
+      if (nativeNodeType(current) === 1) {
+        const facts = nativeHtmlHostFacts(current);
+        if (facts === undefined) return "invalid";
+        const localName = nativeElementLocalName(facts.element);
         if (
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT" ||
-          tag === "OPTION" ||
-          tag === "BUTTON" ||
-          element.hasAttribute("contenteditable")
+          localName === "input" ||
+          localName === "textarea" ||
+          localName === "select" ||
+          localName === "option" ||
+          localName === "button" ||
+          nativeHasAttribute(facts.element, "contenteditable")
         ) {
           return "nestedControl";
         }
       }
-      current = current.parentNode;
+      current = nativeParentNode(current);
     }
     return current === host ? "owned" : "outsideHost";
   } catch {

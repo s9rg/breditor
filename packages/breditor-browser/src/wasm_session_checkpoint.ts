@@ -1,5 +1,20 @@
+import {
+  documentJsonUtf8Bytes,
+  type WasmDurableJsonContract,
+  type WasmDurableMode,
+  type WasmDurableSchemaBinding,
+} from "./wasm_document_json.js";
+import {
+  snapshotOwnDataArray,
+  snapshotProtectedHandleArray,
+} from "./protected_handle_snapshot.js";
+
 /** Maximum UTF-8 bytes admitted by the browser checkpoint boundary. */
 export const MAX_BROWSER_SESSION_CHECKPOINT_JSON_BYTES = 16_777_216;
+
+const LEGACY_DURABLE_CONTRACT: WasmDurableJsonContract = Object.freeze({
+  mode: "v1",
+});
 
 /** Exact engine snapshot associated with one synchronous checkpoint capture. */
 export interface WasmSessionCheckpointExpectedSnapshot {
@@ -7,43 +22,27 @@ export interface WasmSessionCheckpointExpectedSnapshot {
   readonly revision: string;
 }
 
+interface ValidatedCheckpointEnvelope {
+  readonly utf8Bytes: number;
+  readonly envelope: Record<string, unknown>;
+  readonly historyBase: Record<string, unknown>;
+}
+
 function validatedCheckpointBytes(
   value: string,
   expected: Readonly<{ lineage: string; revision: string }>,
+  contract: WasmDurableJsonContract,
 ): number | null {
-  const utf8Bytes = sessionCheckpointJsonUtf8Bytes(value);
-  if (utf8Bytes === null) return null;
-
-  let parsed: unknown;
-  try {
-    parsed = Reflect.apply(JSON_PARSE, JSON, [value]) as unknown;
-  } catch {
-    return null;
-  }
-  const envelope = exactJsonRecord(parsed, [
-    "format",
-    "formatVersion",
-    "historyBase",
-    "currentRevision",
-    "historyCapacity",
-    "cursor",
-    "entries",
-    "openMergeGroup",
-  ]);
+  const validated = validateCheckpointEnvelope(value, contract);
+  if (validated === null) return null;
+  const { envelope, historyBase, utf8Bytes } = validated;
   if (
-    envelope === null ||
-    envelope["format"] !== "breditor/session-checkpoint" ||
-    envelope["formatVersion"] !== 1 ||
     envelope["currentRevision"] !== expected.revision
   ) {
     return null;
   }
-  const historyBase = jsonRecord(envelope["historyBase"]);
   const historySnapshot = jsonRecord(historyBase?.["snapshot"]);
   if (
-    historyBase === null ||
-    historyBase["format"] !== "breditor/editor-state" ||
-    historyBase["formatVersion"] !== 1 ||
     historySnapshot === null ||
     historySnapshot["lineage"] !== expected.lineage ||
     historySnapshot["revision"] !== "0"
@@ -51,6 +50,20 @@ function validatedCheckpointBytes(
     return null;
   }
   return utf8Bytes;
+}
+
+/**
+ * Validates a checkpoint against an already selected durable contract.
+ *
+ * The mode is never inferred from the payload and a V2 mismatch is not retried
+ * as V1. This helper intentionally returns only a byte count. @internal
+ */
+export function sessionCheckpointJsonMatchesDurableContract(
+  value: unknown,
+  contract: WasmDurableJsonContract,
+): number | null {
+  if (typeof value !== "string") return null;
+  return validateCheckpointEnvelope(value, contract)?.utf8Bytes ?? null;
 }
 
 function readExpectedSnapshot(
@@ -127,7 +140,7 @@ export interface WasmSessionCheckpointStringResultView {
   free(): void;
 }
 
-/** Bounded, handle-free Session Checkpoint V1 bytes and their exact snapshot. */
+/** Bounded, handle-free mode-selected checkpoint bytes and exact snapshot. */
 export interface BrowserSessionCheckpoint {
   readonly checkpointJson: string;
   readonly checkpointUtf8Bytes: number;
@@ -200,9 +213,11 @@ const ADAPTER_UNAVAILABLE: BrowserSessionCheckpointReadError = Object.freeze({
 
 const OWNED_READ_RESULTS = new WeakSet<object>();
 const JSON_PARSE = JSON.parse;
+const JSON_STRINGIFY = JSON.stringify;
 const PROMISE_RESOLVE = Promise.resolve.bind(Promise);
 const PROMISE_CATCH = Promise.prototype.catch;
 const IGNORE_SETTLEMENT = (): undefined => undefined;
+const MAX_PROFILE_FORMATS = 256;
 
 interface OwnedHandle {
   readonly value: object;
@@ -220,8 +235,9 @@ interface HandleRegistry {
  *
  * Once the protected-owner list is successfully snapshotted, this function
  * accepts the outer result and frees it plus any cloned error exactly once on
- * every path. If that caller-owned list itself cannot be iterated, ownership of
- * `view` remains with the caller because a protected alias cannot be ruled out.
+ * every path. If that caller-owned list cannot be captured as a bounded dense
+ * own-data array, ownership of `view` remains with the caller because a
+ * protected alias cannot be ruled out.
  * Raw generated objects are hostile: accessors may throw, nested handles may
  * alias protected owners, and synchronous methods may return thenables.
  */
@@ -229,6 +245,7 @@ export function consumeWasmSessionCheckpoint(
   expected: WasmSessionCheckpointExpectedSnapshot,
   view: WasmSessionCheckpointStringResultView,
   protectedHandles: readonly unknown[] = [],
+  contract: WasmDurableJsonContract = LEGACY_DURABLE_CONTRACT,
 ): BrowserSessionCheckpointReadResult {
   const registry: HandleRegistry = { handles: [], seen: new Set(), invalid: false };
   let protectedSet: ReadonlySet<object>;
@@ -239,7 +256,7 @@ export function consumeWasmSessionCheckpoint(
   }
   let provisional: BrowserSessionCheckpointReadResult = boundaryFailure();
   try {
-    provisional = readCheckpoint(expected, view, registry, protectedSet);
+    provisional = readCheckpoint(expected, view, registry, protectedSet, contract);
   } catch {
     provisional = boundaryFailure();
   }
@@ -268,6 +285,7 @@ function readCheckpoint(
   view: WasmSessionCheckpointStringResultView,
   registry: HandleRegistry,
   protectedHandles: ReadonlySet<object>,
+  contract: WasmDurableJsonContract,
 ): BrowserSessionCheckpointReadResult {
   const captured = captureHandle(registry, view, protectedHandles);
   if (!captured) {
@@ -301,7 +319,11 @@ function readCheckpoint(
     return boundaryFailure();
   }
 
-  const checkpointUtf8Bytes = validatedCheckpointBytes(rawValue, snapshot);
+  const checkpointUtf8Bytes = validatedCheckpointBytes(
+    rawValue,
+    snapshot,
+    contract,
+  );
   if (checkpointUtf8Bytes === null) return boundaryFailure();
   const checkpoint: BrowserSessionCheckpoint = Object.freeze({
     checkpointJson: rawValue,
@@ -370,10 +392,8 @@ function freeHandles(registry: HandleRegistry): boolean {
 }
 
 function objectSet(values: readonly unknown[]): ReadonlySet<object> {
-  const result = new Set<object>();
-  for (const value of values) {
-    if (objectLike(value)) result.add(value);
-  }
+  const result = snapshotProtectedHandleArray(values);
+  if (result === null) throw new TypeError("invalid protected-handle list");
   return result;
 }
 
@@ -386,6 +406,209 @@ function boundaryFailure(): BrowserSessionCheckpointReadResult {
   return ownedResult(Object.freeze({ ok: false, error: INVALID_VIEW }));
 }
 
+function validateCheckpointEnvelope(
+  value: string,
+  contract: WasmDurableJsonContract,
+): ValidatedCheckpointEnvelope | null {
+  const utf8Bytes = sessionCheckpointJsonUtf8Bytes(value);
+  if (utf8Bytes === null) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = Reflect.apply(JSON_PARSE, JSON, [value]) as unknown;
+  } catch {
+    return null;
+  }
+  const binding = readDurableBinding(contract);
+  if (binding === null) return null;
+
+  const envelopeKeys = binding.mode === "v1"
+    ? [
+        "format",
+        "formatVersion",
+        "historyBase",
+        "currentRevision",
+        "historyCapacity",
+        "cursor",
+        "entries",
+        "openMergeGroup",
+      ]
+    : [
+        "format",
+        "formatVersion",
+        "schema",
+        "schemaFingerprint",
+        "historyBase",
+        "currentRevision",
+        "historyCapacity",
+        "cursor",
+        "entries",
+        "openMergeGroup",
+      ];
+  const envelope = exactJsonRecord(parsed, envelopeKeys);
+  if (
+    envelope === null ||
+    envelope["format"] !== "breditor/session-checkpoint" ||
+    envelope["formatVersion"] !== (binding.mode === "v1" ? 1 : 2) ||
+    typeof envelope["currentRevision"] !== "string" ||
+    !canonicalU64(envelope["currentRevision"])
+  ) {
+    return null;
+  }
+
+  const historyBase = jsonRecord(envelope["historyBase"]);
+  if (
+    historyBase === null ||
+    historyBase["format"] !== "breditor/editor-state" ||
+    historyBase["formatVersion"] !== (binding.mode === "v1" ? 1 : 2)
+  ) {
+    return null;
+  }
+  if (binding.mode === "v1") {
+    return Object.freeze({ utf8Bytes, envelope, historyBase });
+  }
+
+  if (
+    Reflect.apply(JSON_STRINGIFY, JSON, [parsed]) !== value ||
+    !schemaBindingMatches(
+      envelope["schema"],
+      envelope["schemaFingerprint"],
+      binding.schema,
+    )
+  ) {
+    return null;
+  }
+  const exactHistoryBase = exactJsonRecord(historyBase, [
+    "format",
+    "formatVersion",
+    "schema",
+    "schemaFingerprint",
+    "snapshot",
+    "document",
+    "selection",
+    "pendingFormats",
+  ]);
+  if (
+    exactHistoryBase === null ||
+    !schemaBindingMatches(
+      exactHistoryBase["schema"],
+      exactHistoryBase["schemaFingerprint"],
+      binding.schema,
+    )
+  ) {
+    return null;
+  }
+  const snapshot = exactJsonRecord(exactHistoryBase["snapshot"], [
+    "lineage",
+    "revision",
+  ]);
+  if (
+    snapshot === null ||
+    !validLineage(snapshot["lineage"]) ||
+    snapshot["revision"] !== "0"
+  ) {
+    return null;
+  }
+  let documentJson: unknown;
+  try {
+    documentJson = Reflect.apply(JSON_STRINGIFY, JSON, [
+      exactHistoryBase["document"],
+    ]) as unknown;
+  } catch {
+    return null;
+  }
+  if (
+    typeof documentJson !== "string" ||
+    documentJsonUtf8Bytes(documentJson, contract) === null
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    utf8Bytes,
+    envelope,
+    historyBase: exactHistoryBase,
+  });
+}
+
+function readDurableBinding(
+  contract: WasmDurableJsonContract,
+): Readonly<{
+  mode: WasmDurableMode;
+  schema: WasmDurableSchemaBinding | undefined;
+}> | null {
+  try {
+    const v1 = exactJsonRecord(contract, ["mode"]);
+    if (v1 !== null && v1["mode"] === "v1") {
+      return Object.freeze({ mode: "v1", schema: undefined });
+    }
+    const v2 = exactJsonRecord(contract, ["mode", "schema", "formats"]);
+    if (v2 === null || v2["mode"] !== "v2") {
+      return null;
+    }
+    const formats = snapshotOwnDataArray(v2["formats"], MAX_PROFILE_FORMATS);
+    const schema = exactJsonRecord(v2["schema"], [
+      "name",
+      "version",
+      "fingerprint",
+    ]);
+    if (
+      formats === null ||
+      schema === null ||
+      !isQualifiedName(schema["name"]) ||
+      !isPositiveU32(schema["version"]) ||
+      !isSchemaFingerprint(schema["fingerprint"])
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      mode: "v2",
+      schema: Object.freeze({
+        name: schema["name"],
+        version: schema["version"],
+        fingerprint: schema["fingerprint"],
+      }),
+    });
+  } catch {
+    return null;
+  }
+}
+
+function schemaBindingMatches(
+  schemaValue: unknown,
+  fingerprint: unknown,
+  expected: WasmDurableSchemaBinding | undefined,
+): boolean {
+  if (expected === undefined || fingerprint !== expected.fingerprint) return false;
+  const schema = exactJsonRecord(schemaValue, ["name", "version"]);
+  return schema !== null &&
+    schema["name"] === expected.name &&
+    schema["version"] === expected.version;
+}
+
+function validLineage(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 128 &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(value);
+}
+
+function isQualifiedName(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= 128 &&
+    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+}
+
+function isPositiveU32(value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 4_294_967_295;
+}
+
+function isSchemaFingerprint(value: unknown): value is string {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
+}
+
 function exactJsonRecord(
   value: unknown,
   expectedKeys: readonly string[],
@@ -393,11 +616,16 @@ function exactJsonRecord(
   const record = jsonRecord(value);
   if (record === null) return null;
   const keys = Object.keys(record);
-  if (
-    keys.length !== expectedKeys.length ||
-    expectedKeys.some((key) => !Object.hasOwn(record, key))
-  ) {
-    return null;
+  if (keys.length !== expectedKeys.length) return null;
+  for (let index = 0; index < expectedKeys.length; index += 1) {
+    const expected = expectedKeys[index];
+    if (
+      expected === undefined ||
+      keys[index] !== expected ||
+      !Object.hasOwn(record, expected)
+    ) {
+      return null;
+    }
   }
   return record;
 }

@@ -1,5 +1,13 @@
 import type { RenderedProjection } from "./dom_renderer.js";
 import {
+  nativeChildNodes,
+  nativeElementLocalName,
+  nativeHtmlHostFacts,
+  nativeNodeType,
+  nativeNodeValue,
+  nativeParentNode,
+} from "./html_host.js";
+import {
   type BaseSelectionPoint,
   isUnicodeScalarBoundary,
 } from "./selection.js";
@@ -9,8 +17,6 @@ import type { BrowserSelectionErrorCode } from "./selection_result.js";
 export type DomPointMappingResult =
   | Readonly<{ ok: true; value: BaseSelectionPoint }>
   | Readonly<{ ok: false; code: BrowserSelectionErrorCode }>;
-
-const HTML_NAMESPACE = "http://www.w3.org/1999/xhtml";
 
 /**
  * Applies the single DOM-boundary normalization policy shared by selections
@@ -68,7 +74,7 @@ export function mapDomPointToBaseSelectionPoint(
         paragraphIndex === undefined || runIndex === undefined
           ? undefined
           : rendered.projection.paragraphs[paragraphIndex]?.runs[runIndex];
-      if (run === undefined || node.nodeType !== 3 || offset > run.text.length) {
+      if (run === undefined || nativeNodeType(node) !== 3 || offset > run.text.length) {
         return { ok: false, code: "selection.ambiguous_dom_point" };
       }
       if (!isUnicodeScalarBoundary(run.text, offset)) {
@@ -114,32 +120,23 @@ export function mapDomPointToBaseSelectionPoint(
     return { ok: false, code: "selection.ambiguous_dom_point" };
   }
 
-  if (isHtmlElementNamed(node, "STRONG")) {
-    const paragraph = node.parentNode;
-    const paragraphPath = paragraph === null ? null : rendered.astPathForDomNode(paragraph);
-    if (
-      paragraph === null ||
-      paragraphPath === null ||
-      paragraphPath.length !== 1 ||
-      (offset !== 0 && offset !== 1)
-    ) {
+  if (
+    nativeNodeType(node) === 1 &&
+    !isHtmlElementNamed(node, "BR") &&
+    offset >= 0 &&
+    offset <= 1
+  ) {
+    const mappedText = soleMappedTextDescendant(rendered, node);
+    if (mappedText === null) {
       return { ok: false, code: "selection.ambiguous_dom_point" };
     }
-    const runIndex = indexOfChild(paragraph, node);
-    const paragraphIndex = paragraphPath[0];
-    const run =
-      paragraphIndex === undefined || runIndex < 0
-        ? undefined
-        : rendered.projection.paragraphs[paragraphIndex]?.runs[runIndex];
-    const text = node.childNodes[0];
-    if (
-      paragraphIndex === undefined ||
-      runIndex < 0 ||
-      run === undefined ||
-      !run.strong ||
-      text === undefined ||
-      text.nodeType !== 3
-    ) {
+    const { path, text } = mappedText;
+    const paragraphIndex = path[0];
+    const runIndex = path[1];
+    const run = paragraphIndex === undefined || runIndex === undefined
+      ? undefined
+      : rendered.projection.paragraphs[paragraphIndex]?.runs[runIndex];
+    if (run === undefined || nativeNodeValue(text) !== run.text) {
       return { ok: false, code: "selection.ambiguous_dom_point" };
     }
     const utf16Offset = offset === 0 ? 0 : run.text.length;
@@ -147,7 +144,7 @@ export function mapDomPointToBaseSelectionPoint(
       ok: true,
       value: Object.freeze({
         kind: "text",
-        textPath: Object.freeze([paragraphIndex, runIndex]),
+        textPath: path,
         utf16Offset,
         affinity: boundaryAffinity(utf16Offset, run.text.length),
       }),
@@ -155,7 +152,7 @@ export function mapDomPointToBaseSelectionPoint(
   }
 
   if (isHtmlElementNamed(node, "BR") && offset === 0) {
-    const paragraph = node.parentNode;
+    const paragraph = nativeParentNode(node);
     const paragraphPath = paragraph === null ? null : rendered.astPathForDomNode(paragraph);
     const paragraphIndex = paragraphPath?.[0];
     if (
@@ -180,20 +177,44 @@ export function mapDomPointToBaseSelectionPoint(
   return { ok: false, code: "selection.ambiguous_dom_point" };
 }
 
-function indexOfChild(parent: Node, child: Node): number {
-  for (let index = 0; index < parent.childNodes.length; index += 1) {
-    if (parent.childNodes[index] === child) {
-      return index;
+/** @internal Canonical one-child wrapper chain terminating in a mapped text. */
+export function soleMappedTextDescendant(
+  rendered: RenderedProjection,
+  wrapper: Node,
+): Readonly<{
+  path: readonly [number, number];
+  text: Text;
+  wrapperDepth: number;
+}> | null {
+  let current = wrapper;
+  for (let depth = 0; depth <= 32; depth += 1) {
+    const children = nativeChildNodes(current);
+    const child = children[0];
+    if (children.length !== 1 || child === undefined) {
+      return null;
     }
+    if (nativeParentNode(child) !== current) return null;
+    current = child;
+    const path = rendered.astPathForDomNode(current);
+    if (path !== null) {
+      return nativeNodeType(current) === 3 && path.length === 2
+        ? {
+            path: path as readonly [number, number],
+            text: current as Text,
+            wrapperDepth: depth + 1,
+          }
+        : null;
+    }
+    if (nativeNodeType(current) !== 1) return null;
   }
-  return -1;
+  return null;
 }
 
-function isHtmlElementNamed(node: Node, localName: "STRONG" | "BR"): node is HTMLElement {
+function isHtmlElementNamed(node: Node, localName: "BR"): node is HTMLElement {
+  const facts = nativeHtmlHostFacts(node);
   return (
-    node.nodeType === 1 &&
-    (node as Element).namespaceURI === HTML_NAMESPACE &&
-    (node as Element).localName === localName.toLowerCase()
+    facts !== undefined &&
+    nativeElementLocalName(facts.element) === localName.toLowerCase()
   );
 }
 

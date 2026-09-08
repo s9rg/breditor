@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   MAX_COMPOSITION_TEXT_UTF16,
@@ -266,6 +266,35 @@ describe("strict composition DOM reconciliation", () => {
       reconcileCompositionDom(fresh, base, textSelection(base, 0, 1, 1)),
       "composition.dom.invalid_structure",
     );
+  });
+
+  it("rejects actual target drift hidden behind own child and attribute shadows", () => {
+    const base = projection([[{ text: "abc", strong: false }]]);
+    const host = canonicalHost(base);
+    const paragraph = targetParagraph(host);
+    const unknown = document.createElement("aside");
+    unknown.textContent = "aXbc";
+    paragraph.replaceChildren(unknown);
+    const childNodesShadow = vi.fn(() =>
+      Object.freeze([document.createTextNode("aYbc")])
+    );
+    const attributesShadow = vi.fn(() => Object.freeze({ length: 0 }));
+    Object.defineProperties(paragraph, {
+      childNodes: { configurable: true, get: childNodesShadow },
+      attributes: { configurable: true, get: attributesShadow },
+    });
+
+    try {
+      expectFailure(
+        reconcileCompositionDom(host, base, textSelection(base, 0, 1, 1)),
+        "composition.dom.invalid_structure",
+      );
+      expect(childNodesShadow).not.toHaveBeenCalled();
+      expect(attributesShadow).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(paragraph, "childNodes");
+      Reflect.deleteProperty(paragraph, "attributes");
+    }
   });
 
   it("rejects target markup outside the closed fallback vocabulary", () => {

@@ -4,6 +4,82 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.6 - 2026-09-08
+
+This unpublished checkpoint completes the profile-aware base-text browser path.
+It renders every property-free inline format admitted by a compiled Rust
+profile, carries that meaning through selection, composition, clipboard,
+export, and persistence boundaries, and retains the exact-base V1 path without
+changing Wasm ABI 3.
+
+### Profile-aware browser presentation
+
+- Added an immutable callback-free inline-format render manifest with a closed
+  safe-element vocabulary, checked class tokens, exact format coverage, unique
+  DOM signatures, bounded ordering edges, deterministic topological order, and
+  a process-local presentation identity distinct from schema identity.
+- Extended semantic projections and updates with canonical lexical format sets
+  bound to the exact compiled-profile descriptor and opaque generation. The
+  legacy base projection remains unfingerprinted and compatible with the V1
+  renderer and `<strong>`/`<b>` HTML admission path.
+- Extended full and incremental DOM rendering, DOM-drift checks, AST/DOM point
+  mapping, and composition reconciliation across nested format wrappers. Safe
+  budgets cap projection nodes and wrappers, and hostile detached-DOM
+  constructor reentry cannot overwrite intervening application content.
+
+### Clipboard, export, and durable startup
+
+- Copy and cut now serialize escaped semantic HTML from the authoritative AST
+  using the exact compiled presentation. Paste keeps `text/plain` authoritative
+  and otherwise accepts only an exact bounded presentation-shaped HTML tree,
+  then deliberately strips source formatting before one Rust text action.
+- Added explicit, non-sniffed Document and Session Checkpoint V1/V2 browser
+  validators. Canonical JSON export is correlated with the current snapshot,
+  schema, fingerprint, complete format catalog, and semantic projection.
+- Added profile-aware IndexedDB slots and an outer-V2 record carrying the exact
+  schema fingerprint and checkpoint format. A handle-free profile preflight
+  selects the binding before stored payload validation or digest work; mismatch
+  preserves evidence and returns no CAS token, fallback, repair, or write.
+- Semantic profiles default to one slot per schema fingerprint; applications
+  with multiple same-schema documents must supply distinct caller slots. V1
+  bindings accept only the built-in base fingerprint.
+
+### Boundary and release hardening
+
+- Re-proved reserved editor and toolbar mounts after every synchronous generated
+  boundary. Failed startup removes only exact Breditor-owned DOM nodes before
+  hostile cleanup, preserves foreign siblings/replacements, and restores host
+  attributes only when their installed values still match.
+- Hardened the supported native-event path with brand-checked realm-prototype
+  reads and calls for the `Event` family, `DataTransfer`, and
+  `AbstractRange`/`Range`/`StaticRange`. Own and intermediate-prototype shadows
+  cannot forge event facts, specialized interfaces, cancellation, clipboard
+  methods, or range endpoints; advanced structural calls and mutation of the
+  realm's actual platform globals/prototypes remain host-trusted.
+- Copied generated-handle protection lists, target ranges, and clipboard MIME
+  types only through bounded dense own data descriptors. Sparse, accessor,
+  custom-iterator, over-limit, and failing-proxy inputs reject without executing
+  indexed getters or transferring handle ownership.
+- Split the browser TypeScript build into comment-free runtime emission and a
+  declaration-only documentation pass, retaining public `.d.ts` docs within the
+  existing package budgets. The reference application omits Vite's unused
+  module-preload polyfill, and the size gate now totals every emitted JavaScript
+  chunk rather than measuring only one named asset.
+- Recalibrated only the raw JavaScript ceilings from 800,000 to 825,000 browser
+  package bytes and from 700,000 to 725,000 reference-application bytes. The
+  final gated artifacts measure 812,022 and 708,638 raw bytes respectively;
+  declaration, gzip, Wasm, glue, and package ceilings were not raised.
+- Added adversarial coverage for descriptor/generation correlation, manifests,
+  projection updates, render drift/reentry, selection and composition wrappers,
+  clipboard limits, V1/V2 export, persistence mismatch ordering, startup
+  rollback, and scoped-slot coexistence.
+
+Known limits remain intentional: the semantic tree is still document,
+paragraph, and text only; formats are property-free; paste is plain-text;
+links, lists, tables, embeds, collaboration, rich-fragment transfer, extension
+keymaps, and supported intent toolbar dispatch are not yet included. The intent
+toolbar surface is the next alpha.7 checkpoint.
+
 ## 0.2.0-alpha.5 - 2026-09-07
 
 This unpublished checkpoint carries one immutable compiled semantic profile

@@ -5,7 +5,11 @@ import {
   BREDITOR_WASM_ABI_VERSION,
   bootstrapWasmEngine,
   isOwnedBrowserWasmEngineBootstrapResult,
+  preflightWasmSemanticProfile,
   type WasmBootstrappedEngineView,
+  type WasmCompiledProfileBootstrapFactoryView,
+  type WasmCompiledProfileBootstrapResultView,
+  type WasmCompiledProfileBootstrapView,
   type WasmEngineBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
   type WasmEngineBootstrapResultView,
@@ -27,8 +31,10 @@ const BASE_SCHEMA_FINGERPRINT =
 class FakeGeneration implements WasmProfileGenerationView {
   freeCalls = 0;
 
+  constructor(readonly token: object = {}) {}
+
   matches(other: WasmProfileGenerationView): boolean {
-    return other === this;
+    return other instanceof FakeGeneration && other.token === this.token;
   }
 
   free(): void {
@@ -37,18 +43,18 @@ class FakeGeneration implements WasmProfileGenerationView {
 }
 
 class FakeDescriptor implements WasmCompiledProfileDescriptorView {
-  readonly schemaName = "breditor/base";
-  readonly schemaVersion = 1;
-  readonly schemaFingerprint = BASE_SCHEMA_FINGERPRINT;
-  readonly formatCount = 1;
-  readonly intentCount = 0;
-  readonly actionStateCount = 3;
+  readonly schemaName: string = "breditor/base";
+  readonly schemaVersion: number = 1;
+  readonly schemaFingerprint: string = BASE_SCHEMA_FINGERPRINT;
+  readonly formatCount: number = 1;
+  readonly intentCount: number = 0;
+  readonly actionStateCount: number = 3;
   freeCalls = 0;
 
   constructor(readonly generation: WasmProfileGenerationView) {}
 
   matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
-    return generation === this.generation;
+    return this.generation.matches(generation);
   }
 
   formatKind(index: number): string | undefined {
@@ -101,6 +107,28 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
   }
 }
 
+class FakeSemanticDescriptor extends FakeDescriptor {
+  override readonly schemaName = "example/rich-document";
+  override readonly schemaVersion = 3;
+  override readonly schemaFingerprint = `sha256:${"6".repeat(64)}`;
+  override readonly formatCount = 2;
+  override readonly actionStateCount = 0;
+
+  override formatKind(index: number): string | undefined {
+    return ["breditor/strong", "example/highlight"][index];
+  }
+
+  override formatRevision(index: number): number | undefined {
+    return [1, 2][index];
+  }
+
+  override actionStateId(): undefined { return undefined; }
+  override actionStateSourceKind(): undefined { return undefined; }
+  override actionStateSourceActionId(): undefined { return undefined; }
+  override actionStateHistoryDirection(): undefined { return undefined; }
+  override actionStateActivationContract(): undefined { return undefined; }
+}
+
 class FakeError implements WasmSessionCheckpointErrorView {
   freeCalls = 0;
 
@@ -115,9 +143,9 @@ class FakeError implements WasmSessionCheckpointErrorView {
 }
 
 class FakeProjection implements SemanticProjectionView {
-  readonly schemaName = "breditor/base";
-  readonly schemaVersion = 1;
-  readonly schemaFingerprint = BASE_SCHEMA_FINGERPRINT;
+  readonly schemaName: string;
+  readonly schemaVersion: number;
+  readonly schemaFingerprint: string;
   readonly rootIndex = 0;
   readonly nodeCount = 3;
   freeCalls = 0;
@@ -127,10 +155,25 @@ class FakeProjection implements SemanticProjectionView {
     readonly snapshotRevision = "0",
     readonly contents = "hello",
     readonly generation: WasmProfileGenerationView = new FakeGeneration(),
-  ) {}
+    readonly profile: Readonly<{
+      schemaName: string;
+      schemaVersion: number;
+      schemaFingerprint: string;
+      formats: readonly string[];
+    }> = Object.freeze({
+      schemaName: "breditor/base",
+      schemaVersion: 1,
+      schemaFingerprint: BASE_SCHEMA_FINGERPRINT,
+      formats: Object.freeze([]),
+    }),
+  ) {
+    this.schemaName = profile.schemaName;
+    this.schemaVersion = profile.schemaVersion;
+    this.schemaFingerprint = profile.schemaFingerprint;
+  }
 
   matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
-    return generation === this.generation;
+    return this.generation.matches(generation);
   }
 
   nodeKind(index: number): "element" | "text" | undefined {
@@ -158,11 +201,11 @@ class FakeProjection implements SemanticProjectionView {
   }
 
   formatCount(index: number): number | undefined {
-    return index === 2 ? 0 : undefined;
+    return index === 2 ? this.profile.formats.length : undefined;
   }
 
-  formatType(): undefined {
-    return undefined;
+  formatType(index: number, ordinal: number): string | undefined {
+    return index === 2 ? this.profile.formats[ordinal] : undefined;
   }
 
   free(): void {
@@ -182,7 +225,7 @@ class FakeProjectionResult implements WasmProjectionReadResultView {
   ) {}
 
   matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
-    return generation === this.generation;
+    return this.generation.matches(generation);
   }
 
   takeProjection(): SemanticProjectionView | undefined {
@@ -219,6 +262,60 @@ class FakeConstructionResult implements WasmEngineBootstrapResultView {
   }
 }
 
+class FakeCompiledProfileResult implements WasmCompiledProfileBootstrapResultView {
+  freeCalls = 0;
+  takeCalls = 0;
+
+  constructor(
+    readonly status: "profile" | "taken" | "error",
+    private profileView: WasmCompiledProfileBootstrapView | undefined,
+    readonly error: WasmSessionCheckpointErrorView | undefined = undefined,
+  ) {}
+
+  takeProfile(): WasmCompiledProfileBootstrapView | undefined {
+    this.takeCalls += 1;
+    const profile = this.profileView;
+    this.profileView = undefined;
+    return profile;
+  }
+
+  free(): void {
+    this.freeCalls += 1;
+  }
+}
+
+class FakeCompiledProfile implements WasmCompiledProfileBootstrapView {
+  freeCalls = 0;
+  readonly createEngineFromDocumentJson = vi.fn();
+  readonly createEngineFromSessionCheckpointJson = vi.fn();
+
+  constructor(
+    readonly profileGeneration: FakeGeneration,
+    readonly profileDescriptor: FakeDescriptor,
+    documentResult?: WasmEngineBootstrapResultView,
+    checkpointResult?: WasmEngineBootstrapResultView,
+  ) {
+    this.createEngineFromDocumentJson.mockReturnValue(documentResult);
+    this.createEngineFromSessionCheckpointJson.mockReturnValue(checkpointResult);
+  }
+
+  generation(): WasmProfileGenerationView {
+    return this.profileGeneration;
+  }
+
+  descriptor(): WasmCompiledProfileDescriptorView {
+    return this.profileDescriptor;
+  }
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return this.profileGeneration.matches(generation);
+  }
+
+  free(): void {
+    this.freeCalls += 1;
+  }
+}
+
 interface EngineFixture {
   readonly engine: WasmBootstrappedEngineView;
   readonly engineFree: ReturnType<typeof vi.fn>;
@@ -234,17 +331,33 @@ interface EngineFixture {
 function engineFixture(
   lineage = "bootstrap-tests",
   revision = "0",
+  generation = new FakeGeneration(),
+  semantic = false,
 ): EngineFixture {
-  const generation = new FakeGeneration();
-  const descriptor = new FakeDescriptor(generation);
+  const descriptor = semantic
+    ? new FakeSemanticDescriptor(generation)
+    : new FakeDescriptor(generation);
   const observationFree = vi.fn();
   const observation: WasmCommandObservationView = {
     snapshotLineage: lineage,
     snapshotRevision: revision,
-    matchesProfileGeneration: (candidate) => candidate === generation,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
     free: observationFree,
   };
-  const projection = new FakeProjection(lineage, revision, "hello", generation);
+  const projection = new FakeProjection(
+    lineage,
+    revision,
+    "hello",
+    generation,
+    semantic
+      ? Object.freeze({
+          schemaName: "example/rich-document",
+          schemaVersion: 3,
+          schemaFingerprint: `sha256:${"6".repeat(64)}`,
+          formats: Object.freeze(["example/highlight"]),
+        })
+      : undefined,
+  );
   const projectionResult = new FakeProjectionResult(
     "projection",
     projection,
@@ -265,7 +378,7 @@ function engineFixture(
     redo: command,
     closeHistoryGroup: command,
     matchesProfileGeneration: (candidate: WasmProfileGenerationView) =>
-      candidate === generation,
+      generation.matches(candidate),
     profileGeneration: vi.fn(() => generation),
     profileDescriptor: vi.fn(() => descriptor),
     observation: vi.fn(() => observation),
@@ -295,9 +408,25 @@ function factoryReturning(result: WasmEngineBootstrapResultView) {
   return { factory, fromDocumentJson, fromSessionCheckpointJson };
 }
 
-function moduleFor(factory: WasmEngineBootstrapFactoryView): WasmEngineBootstrapModuleView {
+function compiledFactoryReturning(
+  result: WasmCompiledProfileBootstrapResultView,
+) {
+  const fromBootstrapJson = vi.fn(() => result);
+  const factory: WasmCompiledProfileBootstrapFactoryView = {
+    fromBootstrapJson,
+  };
+  return { factory, fromBootstrapJson };
+}
+
+function moduleFor(
+  factory: WasmEngineBootstrapFactoryView,
+  compiledProfile?: WasmCompiledProfileBootstrapFactoryView,
+): WasmEngineBootstrapModuleView {
   return {
     BreditorEngine: factory,
+    ...(compiledProfile === undefined
+      ? {}
+      : { BreditorCompiledProfile: compiledProfile }),
     breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
     breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
   };
@@ -315,6 +444,70 @@ const CHECKPOINT_SOURCE = Object.freeze({
   checkpointJson: "{}",
 });
 
+const SEMANTIC_PROFILE = Object.freeze({
+  bootstrapJson: "{\"format\":\"breditor/profile-bootstrap\",\"formatVersion\":1}",
+});
+
+const SEMANTIC_DOCUMENT_JSON = JSON.stringify({
+  format: "breditor/document",
+  formatVersion: 2,
+  schema: { name: "example/rich-document", version: 3 },
+  schemaFingerprint: `sha256:${"6".repeat(64)}`,
+  root: {
+    kind: "element",
+    type: "breditor/document",
+    entityId: null,
+    properties: {},
+    children: [{
+      kind: "element",
+      type: "breditor/paragraph",
+      entityId: null,
+      properties: {},
+      children: [{
+        kind: "text",
+        text: "hello",
+        formats: [{ type: "example/highlight", properties: {} }],
+      }],
+    }],
+  },
+});
+
+const SEMANTIC_DOCUMENT_SOURCE = Object.freeze({
+  kind: "document" as const,
+  lineageId: "bootstrap-tests",
+  documentJson: SEMANTIC_DOCUMENT_JSON,
+  historyCapacity: 100,
+  semanticProfile: SEMANTIC_PROFILE,
+});
+
+const SEMANTIC_CHECKPOINT_JSON = JSON.stringify({
+  format: "breditor/session-checkpoint",
+  formatVersion: 2,
+  schema: { name: "example/rich-document", version: 3 },
+  schemaFingerprint: `sha256:${"6".repeat(64)}`,
+  historyBase: {
+    format: "breditor/editor-state",
+    formatVersion: 2,
+    schema: { name: "example/rich-document", version: 3 },
+    schemaFingerprint: `sha256:${"6".repeat(64)}`,
+    snapshot: { lineage: "restored", revision: "0" },
+    document: JSON.parse(SEMANTIC_DOCUMENT_JSON) as unknown,
+    selection: null,
+    pendingFormats: null,
+  },
+  currentRevision: "42",
+  historyCapacity: 100,
+  cursor: 0,
+  entries: [],
+  openMergeGroup: null,
+});
+
+const SEMANTIC_CHECKPOINT_SOURCE = Object.freeze({
+  kind: "sessionCheckpoint" as const,
+  checkpointJson: SEMANTIC_CHECKPOINT_JSON,
+  semanticProfile: SEMANTIC_PROFILE,
+});
+
 describe("Wasm engine bootstrap", () => {
   it("constructs Document V1, consumes temporary handles, and transfers three owners", () => {
     const fixture = engineFixture();
@@ -323,7 +516,7 @@ describe("Wasm engine bootstrap", () => {
 
     const result = bootstrapWasmEngine(moduleFor(factory.factory), DOCUMENT_SOURCE);
 
-    expect(result.ok).toBe(true);
+    expect(result.ok, result.ok ? undefined : result.error.code).toBe(true);
     expect(isOwnedBrowserWasmEngineBootstrapResult(result)).toBe(true);
     expect(Object.isFrozen(result)).toBe(true);
     if (!result.ok) throw new Error("bootstrap failed");
@@ -366,7 +559,7 @@ describe("Wasm engine bootstrap", () => {
 
     const result = bootstrapWasmEngine(moduleFor(factory.factory), CHECKPOINT_SOURCE);
 
-    expect(result.ok).toBe(true);
+    expect(result.ok, result.ok ? undefined : result.error.code).toBe(true);
     expect(factory.fromSessionCheckpointJson).toHaveBeenCalledWith("{}");
     expect(factory.fromDocumentJson).not.toHaveBeenCalled();
     if (result.ok) {
@@ -378,6 +571,243 @@ describe("Wasm engine bootstrap", () => {
       result.profileGeneration.free();
       result.engine.free();
     }
+  });
+
+  it("compiles a non-base profile and constructs a fresh Document V2 engine", () => {
+    const token = {};
+    const profileGeneration = new FakeGeneration(token);
+    const engineGeneration = new FakeGeneration(token);
+    const fixture = engineFixture("bootstrap-tests", "0", engineGeneration, true);
+    const construction = new FakeConstructionResult("engine", fixture.engine);
+    const profileDescriptor = new FakeSemanticDescriptor(profileGeneration);
+    const profile = new FakeCompiledProfile(
+      profileGeneration,
+      profileDescriptor,
+      construction,
+    );
+    const compiledResult = new FakeCompiledProfileResult("profile", profile);
+    const compiledFactory = compiledFactoryReturning(compiledResult);
+    const legacyFactory = factoryReturning(
+      new FakeConstructionResult("error", undefined, new FakeError()),
+    );
+
+    const result = bootstrapWasmEngine(
+      moduleFor(legacyFactory.factory, compiledFactory.factory),
+      SEMANTIC_DOCUMENT_SOURCE,
+    );
+
+    expect(result.ok, result.ok ? undefined : result.error.code).toBe(true);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v2");
+    expect(result.profileGeneration).toBe(profileGeneration);
+    expect(result.profileDescriptor.schema).toEqual({
+      name: "example/rich-document",
+      version: 3,
+      fingerprint: `sha256:${"6".repeat(64)}`,
+    });
+    expect(result.projection.paragraphs[0]?.runs[0]).toMatchObject({
+      text: "hello",
+      strong: false,
+      formats: ["example/highlight"],
+    });
+    expect(compiledFactory.fromBootstrapJson).toHaveBeenCalledWith(
+      SEMANTIC_PROFILE.bootstrapJson,
+    );
+    expect(profile.createEngineFromDocumentJson).toHaveBeenCalledWith(
+      "bootstrap-tests",
+      SEMANTIC_DOCUMENT_JSON,
+      100,
+    );
+    expect(profile.createEngineFromSessionCheckpointJson).not.toHaveBeenCalled();
+    expect(legacyFactory.fromDocumentJson).not.toHaveBeenCalled();
+    expect(legacyFactory.fromSessionCheckpointJson).not.toHaveBeenCalled();
+    expect(compiledResult.freeCalls).toBe(1);
+    expect(profile.freeCalls).toBe(1);
+    expect(profileDescriptor.freeCalls).toBe(1);
+    expect(engineGeneration.freeCalls).toBe(1);
+    expect(profileGeneration.freeCalls).toBe(0);
+
+    result.observation.free();
+    result.profileGeneration.free();
+    result.engine.free();
+    expect(profileGeneration.freeCalls).toBe(1);
+  });
+
+  it("restores Session Checkpoint V2 only through its compiled profile", () => {
+    const token = {};
+    const profileGeneration = new FakeGeneration(token);
+    const engineGeneration = new FakeGeneration(token);
+    const fixture = engineFixture("restored", "42", engineGeneration, true);
+    const construction = new FakeConstructionResult("engine", fixture.engine);
+    const profile = new FakeCompiledProfile(
+      profileGeneration,
+      new FakeSemanticDescriptor(profileGeneration),
+      undefined,
+      construction,
+    );
+    const compiledFactory = compiledFactoryReturning(
+      new FakeCompiledProfileResult("profile", profile),
+    );
+
+    const result = bootstrapWasmEngine(
+      moduleFor(factoryReturning(construction).factory, compiledFactory.factory),
+      SEMANTIC_CHECKPOINT_SOURCE,
+    );
+
+    expect(result.ok, result.ok ? undefined : result.error.code).toBe(true);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v2");
+    expect(result.projection.snapshot).toEqual({ lineage: "restored", revision: "42" });
+    expect(profile.createEngineFromSessionCheckpointJson).toHaveBeenCalledWith(
+      SEMANTIC_CHECKPOINT_JSON,
+    );
+    expect(profile.createEngineFromDocumentJson).not.toHaveBeenCalled();
+    result.observation.free();
+    result.profileGeneration.free();
+    result.engine.free();
+  });
+
+  it("never sniffs or falls back when V2 content mismatches the compiled profile", () => {
+    const profileGeneration = new FakeGeneration();
+    const profile = new FakeCompiledProfile(
+      profileGeneration,
+      new FakeSemanticDescriptor(profileGeneration),
+    );
+    const compiledResult = new FakeCompiledProfileResult("profile", profile);
+    const compiledFactory = compiledFactoryReturning(compiledResult);
+    const legacy = factoryReturning(
+      new FakeConstructionResult("error", undefined, new FakeError()),
+    );
+    const source = Object.freeze({
+      ...DOCUMENT_SOURCE,
+      semanticProfile: SEMANTIC_PROFILE,
+    });
+
+    const result = bootstrapWasmEngine(
+      moduleFor(legacy.factory, compiledFactory.factory),
+      source,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "engine_bootstrap.invalid_request" },
+    });
+    expect(compiledFactory.fromBootstrapJson).toHaveBeenCalledOnce();
+    expect(profile.createEngineFromDocumentJson).not.toHaveBeenCalled();
+    expect(profile.createEngineFromSessionCheckpointJson).not.toHaveBeenCalled();
+    expect(legacy.fromDocumentJson).not.toHaveBeenCalled();
+    expect(profile.freeCalls).toBe(1);
+    expect(profileGeneration.freeCalls).toBe(1);
+  });
+
+  it("preflights handle-free metadata and releases every compiled-profile owner", () => {
+    const generation = new FakeGeneration();
+    const descriptor = new FakeSemanticDescriptor(generation);
+    const profile = new FakeCompiledProfile(generation, descriptor);
+    const compiledResult = new FakeCompiledProfileResult("profile", profile);
+    const compiledFactory = compiledFactoryReturning(compiledResult);
+    const legacyReads = vi.fn();
+    const module = {
+      BreditorCompiledProfile: compiledFactory.factory,
+      breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
+      breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
+    } as unknown as WasmEngineBootstrapModuleView;
+    Object.defineProperty(module, "BreditorEngine", {
+      get: () => {
+        legacyReads();
+        throw new Error("legacy factory must remain unread");
+      },
+    });
+
+    const result = preflightWasmSemanticProfile(module, SEMANTIC_PROFILE);
+
+    expect(result).toMatchObject({
+      ok: true,
+      profileDescriptor: {
+        schema: {
+          name: "example/rich-document",
+          version: 3,
+          fingerprint: `sha256:${"6".repeat(64)}`,
+        },
+      },
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(result.ok && Object.isFrozen(result.profileDescriptor)).toBe(true);
+    expect(legacyReads).not.toHaveBeenCalled();
+    expect(compiledResult.freeCalls).toBe(1);
+    expect(profile.freeCalls).toBe(1);
+    expect(descriptor.freeCalls).toBe(1);
+    expect(generation.freeCalls).toBe(1);
+  });
+
+  it("fails preflight when any temporary generated cleanup is not exact void", () => {
+    const generation = new FakeGeneration();
+    const descriptor = new FakeSemanticDescriptor(generation);
+    const profile = new FakeCompiledProfile(generation, descriptor);
+    const profileCleanup = vi.fn(() => 1);
+    Reflect.set(profile, "free", profileCleanup);
+    const compiledResult = new FakeCompiledProfileResult("profile", profile);
+    const compiledFactory = compiledFactoryReturning(compiledResult);
+
+    const result = preflightWasmSemanticProfile(
+      moduleFor(factoryReturning(
+        new FakeConstructionResult("error", undefined, new FakeError()),
+      ).factory, compiledFactory.factory),
+      SEMANTIC_PROFILE,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "engine_bootstrap.invalid_wasm_view" },
+    });
+    expect(profileCleanup).toHaveBeenCalledOnce();
+    expect(compiledResult.freeCalls).toBe(1);
+    expect(descriptor.freeCalls).toBe(1);
+    expect(generation.freeCalls).toBe(1);
+  });
+
+  it("bounds strict preflight sources before reading either generated factory", () => {
+    const compiledReads = vi.fn();
+    const legacyReads = vi.fn();
+    const module = {
+      breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
+      breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
+    } as unknown as WasmEngineBootstrapModuleView;
+    Object.defineProperties(module, {
+      BreditorEngine: {
+        get: () => {
+          legacyReads();
+          throw new Error("legacy factory must remain unread");
+        },
+      },
+      BreditorCompiledProfile: {
+        get: () => {
+          compiledReads();
+          throw new Error("compiled factory must remain unread");
+        },
+      },
+    });
+    const invalid = [
+      { bootstrapJson: "" },
+      { bootstrapJson: "\ud800" },
+      { bootstrapJson: "x".repeat(8 * 1024 * 1024 + 1) },
+      { bootstrapJson: "{}", extra: true },
+      { bootstrapJson: undefined },
+    ];
+
+    for (const source of invalid) {
+      expect(
+        preflightWasmSemanticProfile(
+          module,
+          source as unknown as typeof SEMANTIC_PROFILE,
+        ),
+      ).toMatchObject({
+        ok: false,
+        error: { code: "engine_bootstrap.invalid_request" },
+      });
+    }
+    expect(compiledReads).not.toHaveBeenCalled();
+    expect(legacyReads).not.toHaveBeenCalled();
   });
 
   it("requires exact module ABI and a valid release-version probe", () => {

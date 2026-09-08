@@ -1,7 +1,8 @@
 # Breditor DOM projection contract
 
-Status: supported inside the public `0.1.0` runtime for the closed base schema;
-direct adapter and renderer construction remains advanced and experimental
+Status: supported inside the public `0.1.0` runtime for the closed base schema
+and extended by the experimental `0.2.0-alpha.6` compiled-profile path; direct
+adapter and renderer construction remains advanced and experimental
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -19,7 +20,7 @@ lineage/revision. Its `u32` indexes and child edges are coordinates inside that
 one owned projection only. They are not persisted node IDs and do not promise
 identity across snapshots, reload, or a full render.
 
-The initial browser adapter accepts only `breditor/base@1`:
+The legacy browser adapter accepts only `breditor/base@1`:
 
 - one `breditor/document` root;
 - one or more direct-root `breditor/paragraph` elements;
@@ -31,25 +32,33 @@ resource limits, Unicode scalar validity, canonical adjacent-run structure,
 and snapshot syntax, and produces a deeply frozen browser projection. It has
 no import-time dependency on a generated Wasm module.
 
+The alpha.6 profile adapter instead requires one exact live compiled-profile
+generation and descriptor. It admits the same document/paragraph/text grammar
+with any canonical set of property-free inline formats listed by that
+descriptor, retains the schema fingerprint, and binds the projection to one
+checked browser presentation. It does not add arbitrary blocks, properties, or
+DOM callbacks.
+
 ## Safe DOM vocabulary
 
 The framework-neutral renderer creates elements only through
 `createElementNS` with the fixed HTML namespace, creates text through
 `createTextNode`, and installs them through child replacement. It never calls
-`innerHTML`, derives a tag name from AST data, or writes paths into attributes.
-The mapping is fixed:
+`innerHTML`, derives a tag name from document data, or writes paths into
+attributes. The structural mapping is fixed:
 
 - the semantic document root maps to the application-supplied host;
 - a paragraph maps to a property-free `<p>`;
 - an unformatted text leaf maps to a DOM `Text` node;
-- a strong text leaf maps to a DOM `Text` node inside a property-free
-  `<strong>`; and
+- a formatted text leaf maps to a DOM `Text` node inside the exact canonical
+  wrapper chain compiled from its presentation (legacy strong text uses one
+  property-free `<strong>`); and
 - an empty paragraph renders a projection-only `<br>` placeholder.
 
 Only the host, paragraph elements, and text nodes are exact AST-backed DOM
-nodes. `<strong>` wrappers and `<br>` placeholders deliberately have no exact
-AST path. A later selection mapper may interpret their DOM boundaries under a
-separate checked policy; it must not relabel them as AST nodes.
+nodes. Presentation wrappers and `<br>` placeholders deliberately have no
+exact AST path. A later selection mapper may interpret their DOM boundaries
+under a separate checked policy; it must not relabel them as AST nodes.
 
 Each successful renderer generation owns private path-to-node and node-to-path
 indexes. `NodePath` remains snapshot-local. A mapping handle is invalid after
@@ -87,10 +96,12 @@ a correctness dependency.
 The browser-facing Wasm engine is backed by `CheckpointedEditorEngine`. Every
 effective action, selection update, undo, redo, history-group close, and history
 clear runs on a private same-identity candidate. The candidate's complete
-canonical Session Checkpoint V1 is encoded before the owner and result event are
-published. A representation failure discards the candidate, returns a redacted
-structured error, and preserves the exact prior state, history identity,
-checkpoint bytes, and observation validity.
+canonical session checkpoint is encoded in the engine's sealed mode—Session
+Checkpoint V1 for the legacy exact-base factory or Session Checkpoint V2 for a
+compiled-profile factory—before the owner and result event are published. A
+representation failure discards the candidate, returns a redacted structured
+error, and preserves the exact prior state, history identity, checkpoint bytes,
+and observation validity.
 
 Consequently every committed browser-visible session is both directly
 renderable through the semantic projection and recoverable through the cached
@@ -109,9 +120,9 @@ optimizations; they may not weaken failure atomicity.
 
 ## Known limits
 
-- The renderer supports only the closed base schema. Arbitrary blocks, nested
-  structures, properties, entity IDs, custom formats, and extension renderers
-  are not accepted.
+- The renderer supports the base-text grammar and property-free inline-format
+  presentations only. Arbitrary blocks, structural nesting, format properties,
+  entity IDs, callbacks, and application-defined DOM renderers are not accepted.
 - There are no persistent per-node IDs. Exact DOM reuse is proved only for a
   particular predecessor/successor pair; equal-looking nodes after reload or a
   full rebuild have no continuity promise.

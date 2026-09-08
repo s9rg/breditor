@@ -26,7 +26,12 @@ import {
 } from "./dom_renderer.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
 import {
+  nativeDocumentDefaultView,
+  nativeHtmlHostFacts,
+} from "./html_host.js";
+import {
   isOwnedProjection,
+  projectionProfileDescriptor,
   type BaseDocumentProjection,
 } from "./projection.js";
 import {
@@ -72,6 +77,8 @@ import {
   invalidWasmDocumentJsonReadResult,
   unavailableWasmDocumentJsonReadResult,
   type BrowserDocumentJsonReadResult,
+  type WasmDurableJsonContract,
+  type WasmDurableMode,
   type WasmDocumentJsonReadPort,
   type WasmDocumentJsonStringResultView,
 } from "./wasm_document_json.js";
@@ -286,11 +293,19 @@ export type WasmCompositionLeaseRestoreOutcome =
 
 /** Constructor dependencies which must be shared with browser event admission. */
 export interface BreditorWasmCommandAdapterOptions {
+  /** Durable codec generation selected before any JSON payload is inspected. */
+  readonly durableMode?: WasmDurableMode;
   readonly profileGeneration: WasmProfileGenerationView;
   readonly profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly renderer: BreditorDomRenderer;
   readonly rendered: RenderedProjection;
   readonly selectionBridge: BreditorDomSelectionBridge;
+}
+
+interface ResolvedWasmCommandAdapterOptions
+  extends Omit<BreditorWasmCommandAdapterOptions, "durableMode"> {
+  readonly durableMode: WasmDurableMode;
+  readonly durableContract: WasmDurableJsonContract;
 }
 
 type AdapterState =
@@ -341,7 +356,9 @@ export class BreditorWasmCommandAdapter {
   readonly #engineOwner: WasmCommandEngineView;
   readonly #profileGeneration: WasmProfileGenerationView;
   readonly #profileGenerationCleanup: GeneratedHandleCleanup;
-  readonly #schemaFingerprint: string;
+  readonly #profileDescriptor: BrowserCompiledProfileDescriptor;
+  readonly #projectionProfile: string | BrowserCompiledProfileDescriptor;
+  readonly #durableContract: WasmDurableJsonContract;
   readonly #renderer: BreditorDomRenderer;
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #host: HTMLElement;
@@ -411,7 +428,15 @@ export class BreditorWasmCommandAdapter {
     ) {
       throw new TypeError("Wasm command adapter dependencies are invalid");
     }
+    const initialProjection = dependencies.rendered.projection;
+    const boundProjectionDescriptor = projectionProfileDescriptor(initialProjection);
+    const projectionProfile = boundProjectionDescriptor === dependencies.profileDescriptor
+      ? dependencies.profileDescriptor
+      : boundProjectionDescriptor === undefined && dependencies.durableMode === "v1"
+        ? dependencies.profileDescriptor.schema.fingerprint
+        : undefined;
     if (
+      projectionProfile === undefined ||
       !dependencies.renderer.owns(dependencies.rendered) ||
       !projectionMatchesProfileGeneration(
         dependencies.rendered.projection,
@@ -428,7 +453,9 @@ export class BreditorWasmCommandAdapter {
     this.#engineOwner = engine;
     this.#profileGeneration = profileGeneration;
     this.#profileGenerationCleanup = profileGenerationCleanup;
-    this.#schemaFingerprint = dependencies.profileDescriptor.schema.fingerprint;
+    this.#profileDescriptor = dependencies.profileDescriptor;
+    this.#projectionProfile = projectionProfile;
+    this.#durableContract = dependencies.durableContract;
     this.#observation = observation;
     this.#observationCleanup = observationCleanup;
     this.#snapshot = snapshot;
@@ -655,7 +682,7 @@ export class BreditorWasmCommandAdapter {
         observation,
         this.#engineOwner,
         this.#profileGeneration,
-      ]);
+      ], this.#durableContract);
     } catch {
       return invalidWasmSessionCheckpointReadResult();
     } finally {
@@ -692,11 +719,12 @@ export class BreditorWasmCommandAdapter {
         observation,
         this.#engineOwner,
         this.#profileGeneration,
-      ]);
+      ], this.#durableContract);
       return consumed.ok &&
         !documentJsonMatchesProjection(
           consumed.document.documentJson,
           this.#projection,
+          this.#durableContract,
         )
         ? invalidWasmDocumentJsonReadResult()
         : consumed;
@@ -1538,7 +1566,7 @@ export class BreditorWasmCommandAdapter {
       updateView,
       updateCleanup,
       this.#profileGeneration,
-      this.#schemaFingerprint,
+      this.#projectionProfile,
       protectedHandles,
     );
     if (!converted.ok) {
@@ -1854,14 +1882,23 @@ function invokeEngineCommand(
 
 function snapshotAdapterOptions(
   value: unknown,
-): BreditorWasmCommandAdapterOptions | null {
-  const record = readExactDataRecord(value, [
+): ResolvedWasmCommandAdapterOptions | null {
+  const legacyKeys = [
     "profileGeneration",
     "profileDescriptor",
     "renderer",
     "rendered",
     "selectionBridge",
-  ]);
+  ] as const;
+  let durableMode: WasmDurableMode = "v1";
+  let record = readExactDataRecord(value, [...legacyKeys, "durableMode"]);
+  if (record === null) {
+    record = readExactDataRecord(value, legacyKeys);
+  } else if (record["durableMode"] === "v1" || record["durableMode"] === "v2") {
+    durableMode = record["durableMode"];
+  } else {
+    return null;
+  }
   if (
     record === null ||
     !wasmProfileGenerationIsLive(record["profileGeneration"]) ||
@@ -1871,12 +1908,43 @@ function snapshotAdapterOptions(
   ) {
     return null;
   }
+  const durableContract = durableContractForProfile(
+    durableMode,
+    record["profileDescriptor"],
+  );
+  if (durableContract === null) return null;
   return Object.freeze({
+    durableMode,
+    durableContract,
     profileGeneration: record["profileGeneration"],
     profileDescriptor: record["profileDescriptor"],
     renderer: record["renderer"],
     rendered: record["rendered"] as RenderedProjection,
     selectionBridge: record["selectionBridge"],
+  });
+}
+
+const BASE_SCHEMA_FINGERPRINT =
+  "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+
+function durableContractForProfile(
+  mode: WasmDurableMode,
+  descriptor: BrowserCompiledProfileDescriptor,
+): WasmDurableJsonContract | null {
+  if (mode === "v1") {
+    return descriptor.schema.name === "breditor/base" &&
+      descriptor.schema.version === 1 &&
+      descriptor.schema.fingerprint === BASE_SCHEMA_FINGERPRINT &&
+      descriptor.formats.length === 1 &&
+      descriptor.formats[0]?.kind === "breditor/strong" &&
+      descriptor.formats[0]?.revision === 1
+      ? Object.freeze({ mode: "v1" })
+      : null;
+  }
+  return Object.freeze({
+    mode: "v2",
+    schema: descriptor.schema,
+    formats: descriptor.formats,
   });
 }
 
@@ -2250,7 +2318,11 @@ function isNonzeroU64(value: unknown): value is bigint {
 
 function hostIsConnected(host: HTMLElement): boolean {
   try {
-    return host.isConnected && host.ownerDocument.defaultView !== null;
+    const facts = nativeHtmlHostFacts(host);
+    return (
+      facts?.isConnected === true &&
+      nativeDocumentDefaultView(facts.ownerDocument) !== null
+    );
   } catch {
     return false;
   }

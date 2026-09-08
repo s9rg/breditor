@@ -1,4 +1,9 @@
 import type { BaseDocumentProjection } from "./projection.js";
+import {
+  documentJsonUtf8Bytes,
+  type WasmDurableJsonContract,
+  type WasmDurableMode,
+} from "./wasm_document_json.js";
 import type {
   WasmCommandEngineView,
   WasmCommandObservationView,
@@ -9,6 +14,7 @@ import {
 } from "./wasm_projection_adapter.js";
 import {
   sessionCheckpointJsonUtf8Bytes,
+  sessionCheckpointJsonMatchesDurableContract,
   type WasmSessionCheckpointErrorView,
 } from "./wasm_session_checkpoint.js";
 import {
@@ -25,12 +31,16 @@ import {
 export const BREDITOR_WASM_ABI_VERSION = "3" as const;
 
 /** Exact official Wasm package version paired with this browser build. */
-export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.2.0-alpha.5" as const;
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.2.0-alpha.6" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
 
-const BREDITOR_BASE_SCHEMA_FINGERPRINT =
+/** Maximum UTF-8 bytes admitted before compiled-profile bootstrap. */
+export const MAX_WASM_PROFILE_BOOTSTRAP_JSON_BYTES = 8 * 1024 * 1024;
+
+/** Exact schema fingerprint required by the built-in Document V1 profile. */
+export const BREDITOR_BASE_SCHEMA_FINGERPRINT =
   "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
 
 /** Generated projection-read result consumed during engine bootstrap. */
@@ -77,11 +87,49 @@ export interface WasmEngineBootstrapFactoryView {
   ): WasmEngineBootstrapResultView;
 }
 
+/** Reusable generated compiled-profile owner used only during bootstrap. */
+export interface WasmCompiledProfileBootstrapView
+  extends WasmProfileCorrelatedView {
+  createEngineFromDocumentJson(
+    lineageId: string,
+    documentJson: string,
+    historyCapacity: number,
+  ): WasmEngineBootstrapResultView;
+  createEngineFromSessionCheckpointJson(
+    checkpointJson: string,
+  ): WasmEngineBootstrapResultView;
+  generation(): WasmProfileGenerationView;
+  descriptor(): WasmCompiledProfileDescriptorView;
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
+  free(): void;
+}
+
+/** One-shot generated result returned by profile compilation. */
+export interface WasmCompiledProfileBootstrapResultView {
+  readonly status: "profile" | "taken" | "error";
+  readonly error: WasmSessionCheckpointErrorView | undefined;
+  takeProfile(): WasmCompiledProfileBootstrapView | undefined;
+  free(): void;
+}
+
+/** Static generated compiled-profile entrypoint exposed by the paired module. */
+export interface WasmCompiledProfileBootstrapFactoryView {
+  fromBootstrapJson(
+    bootstrapJson: string,
+  ): WasmCompiledProfileBootstrapResultView;
+}
+
 /** Structural generated module namespace with explicit compatibility probes. */
 export interface WasmEngineBootstrapModuleView {
   readonly BreditorEngine: WasmEngineBootstrapFactoryView;
+  readonly BreditorCompiledProfile?: WasmCompiledProfileBootstrapFactoryView;
   breditorWasmAbiVersion(): string;
   breditorVersion(): string;
+}
+
+/** Strict opt-in selector for compiled-profile V2 bootstrap. */
+export interface WasmSemanticProfileBootstrapSource {
+  readonly bootstrapJson: string;
 }
 
 /** Strict request for a history-free Document V1 engine. */
@@ -90,12 +138,14 @@ export interface WasmDocumentBootstrapSource {
   readonly lineageId: string;
   readonly documentJson: string;
   readonly historyCapacity: number;
+  readonly semanticProfile?: WasmSemanticProfileBootstrapSource;
 }
 
 /** Strict request for a replay-proved Session Checkpoint V1 engine. */
 export interface WasmSessionCheckpointBootstrapSource {
   readonly kind: "sessionCheckpoint";
   readonly checkpointJson: string;
+  readonly semanticProfile?: WasmSemanticProfileBootstrapSource;
 }
 
 /** Exactly one supported browser engine bootstrap source. */
@@ -129,10 +179,19 @@ export type BrowserWasmEngineBootstrapResult =
   | Readonly<{
       ok: true;
       engine: WasmBootstrappedEngineView;
+      durableMode: WasmDurableMode;
       profileGeneration: WasmProfileGenerationView;
       profileDescriptor: BrowserCompiledProfileDescriptor;
       observation: WasmCommandObservationView;
       projection: BaseDocumentProjection;
+    }>
+  | Readonly<{ ok: false; error: BrowserWasmEngineBootstrapError }>;
+
+/** Handle-free compiled-profile metadata preflighted before persistence load. */
+export type BrowserWasmSemanticProfilePreflightResult =
+  | Readonly<{
+      ok: true;
+      profileDescriptor: BrowserCompiledProfileDescriptor;
     }>
   | Readonly<{ ok: false; error: BrowserWasmEngineBootstrapError }>;
 
@@ -183,11 +242,29 @@ interface GeneratedHandleRegistry {
   invalid: boolean;
 }
 
-interface ResolvedFactory {
-  readonly factory: WasmEngineBootstrapFactoryView;
-  readonly fromDocumentJson: WasmEngineBootstrapFactoryView["fromDocumentJson"];
-  readonly fromSessionCheckpointJson: WasmEngineBootstrapFactoryView["fromSessionCheckpointJson"];
-  readonly protectedHandles: ReadonlySet<object>;
+type ResolvedFactory =
+  | Readonly<{
+      durableMode: "v1";
+      factory: WasmEngineBootstrapFactoryView;
+      fromDocumentJson: WasmEngineBootstrapFactoryView["fromDocumentJson"];
+      fromSessionCheckpointJson: WasmEngineBootstrapFactoryView["fromSessionCheckpointJson"];
+      protectedHandles: ReadonlySet<object>;
+    }>
+  | Readonly<{
+      durableMode: "v2";
+      factory: WasmCompiledProfileBootstrapFactoryView;
+      fromBootstrapJson: WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"];
+      protectedHandles: ReadonlySet<object>;
+    }>;
+
+interface CompiledProfileExpectation {
+  readonly profile: WasmCompiledProfileBootstrapView;
+  readonly generation: WasmProfileGenerationView;
+  readonly descriptor: BrowserCompiledProfileDescriptor;
+  readonly durableContract: WasmDurableJsonContract;
+  readonly matchesProfileGeneration: WasmCompiledProfileBootstrapView["matchesProfileGeneration"];
+  readonly createEngineFromDocumentJson: WasmCompiledProfileBootstrapView["createEngineFromDocumentJson"];
+  readonly createEngineFromSessionCheckpointJson: WasmCompiledProfileBootstrapView["createEngineFromSessionCheckpointJson"];
 }
 
 interface EngineMethodSnapshot {
@@ -233,7 +310,7 @@ export function bootstrapWasmEngine(
   const request = readSource(source);
   if (request === null) return failure(INVALID_REQUEST);
 
-  const resolved = resolveFactory(module);
+  const resolved = resolveFactory(module, request.semanticProfile !== undefined);
   if (!resolved.ok) return failure(resolved.error);
 
   const registry: GeneratedHandleRegistry = {
@@ -243,23 +320,55 @@ export function bootstrapWasmEngine(
   };
   let provisional: BrowserWasmEngineBootstrapResult = failure(INVALID_VIEW);
   try {
-    const rawResult = request.kind === "document"
-      ? Reflect.apply(resolved.value.fromDocumentJson, resolved.value.factory, [
-          request.lineageId,
-          request.documentJson,
-          request.historyCapacity,
-        ]) as unknown
-      : Reflect.apply(
-          resolved.value.fromSessionCheckpointJson,
-          resolved.value.factory,
-          [request.checkpointJson],
-        ) as unknown;
-    provisional = consumeConstructionResult(
-      rawResult,
-      request,
-      registry,
-      resolved.value.protectedHandles,
-    );
+    if (resolved.value.durableMode === "v1") {
+      const rawResult = request.kind === "document"
+        ? Reflect.apply(resolved.value.fromDocumentJson, resolved.value.factory, [
+            request.lineageId,
+            request.documentJson,
+            request.historyCapacity,
+          ]) as unknown
+        : Reflect.apply(
+            resolved.value.fromSessionCheckpointJson,
+            resolved.value.factory,
+            [request.checkpointJson],
+          ) as unknown;
+      provisional = consumeConstructionResult(
+        rawResult,
+        request,
+        registry,
+        resolved.value.protectedHandles,
+      );
+    } else {
+      const compiled = consumeCompiledProfile(
+        request.semanticProfile?.bootstrapJson,
+        resolved.value,
+        registry,
+      );
+      if (!compiled.ok) {
+        provisional = failure(compiled.error);
+      } else if (!sourceMatchesCompiledProfile(request, compiled.value.durableContract)) {
+        provisional = failure(INVALID_REQUEST);
+      } else {
+        const rawResult = request.kind === "document"
+          ? Reflect.apply(
+              compiled.value.createEngineFromDocumentJson,
+              compiled.value.profile,
+              [request.lineageId, request.documentJson, request.historyCapacity],
+            ) as unknown
+          : Reflect.apply(
+              compiled.value.createEngineFromSessionCheckpointJson,
+              compiled.value.profile,
+              [request.checkpointJson],
+            ) as unknown;
+        provisional = consumeConstructionResult(
+          rawResult,
+          request,
+          registry,
+          resolved.value.protectedHandles,
+          compiled.value,
+        );
+      }
+    }
   } catch {
     provisional = failure(INVALID_VIEW);
   }
@@ -300,6 +409,55 @@ export function bootstrapWasmEngine(
   return provisional;
 }
 
+/**
+ * Compiles and consumes one semantic profile solely to expose trusted metadata.
+ *
+ * Every generated result, profile, descriptor, and generation owner is released
+ * before return. The successful descriptor is deeply frozen and handle-free;
+ * callers intentionally compile the same bootstrap JSON again for engine
+ * construction rather than retaining a generated owner across an async load.
+ */
+export function preflightWasmSemanticProfile(
+  module: WasmEngineBootstrapModuleView,
+  source: WasmSemanticProfileBootstrapSource,
+): BrowserWasmSemanticProfilePreflightResult {
+  const normalized = readSemanticProfile(source);
+  if (normalized === null || normalized === undefined) {
+    return preflightFailure(INVALID_REQUEST);
+  }
+  const resolved = resolveFactory(module, true);
+  if (!resolved.ok) return preflightFailure(resolved.error);
+  if (resolved.value.durableMode !== "v2") {
+    return preflightFailure(INVALID_MODULE);
+  }
+
+  const registry: GeneratedHandleRegistry = {
+    cleanups: new Map(),
+    order: [],
+    invalid: false,
+  };
+  let provisional: BrowserWasmSemanticProfilePreflightResult =
+    preflightFailure(INVALID_VIEW);
+  try {
+    const compiled = consumeCompiledProfile(
+      normalized.bootstrapJson,
+      resolved.value,
+      registry,
+    );
+    provisional = compiled.ok
+      ? Object.freeze({
+          ok: true as const,
+          profileDescriptor: compiled.value.descriptor,
+        })
+      : preflightFailure(compiled.error);
+  } catch {
+    provisional = preflightFailure(INVALID_VIEW);
+  }
+  return releaseGeneratedHandles(registry, EMPTY_OBJECT_SET)
+    ? preflightFailure(INVALID_VIEW)
+    : provisional;
+}
+
 /** Whether a result was minted by this bootstrap module. @internal */
 export function isOwnedBrowserWasmEngineBootstrapResult(
   value: unknown,
@@ -307,11 +465,152 @@ export function isOwnedBrowserWasmEngineBootstrapResult(
   return objectLike(value) && OWNED_BOOTSTRAP_RESULTS.has(value);
 }
 
+function consumeCompiledProfile(
+  bootstrapJson: unknown,
+  resolved: Extract<ResolvedFactory, { durableMode: "v2" }>,
+  registry: GeneratedHandleRegistry,
+):
+  | Readonly<{ ok: true; value: CompiledProfileExpectation }>
+  | Readonly<{ ok: false; error: BrowserWasmEngineBootstrapError }> {
+  if (typeof bootstrapJson !== "string") {
+    return Object.freeze({ ok: false, error: INVALID_REQUEST });
+  }
+  const rawResult = Reflect.apply(
+    resolved.fromBootstrapJson,
+    resolved.factory,
+    [bootstrapJson],
+  ) as unknown;
+  if (!claimGeneratedHandle(registry, rawResult, resolved.protectedHandles)) {
+    return Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
+  const result = rawResult as WasmCompiledProfileBootstrapResultView;
+  const status = readScalar(result, "status");
+  const takeProfile = readMethod(result, "takeProfile");
+  if (status.invalid || takeProfile === null) {
+    return Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
+  const rawError = readScalar(result, "error");
+  if (rawError.invalid) return Object.freeze({ ok: false, error: INVALID_VIEW });
+  const error = readOwnedCoreError(
+    rawError.value,
+    registry,
+    resolved.protectedHandles,
+  );
+  if (registry.invalid) return Object.freeze({ ok: false, error: INVALID_VIEW });
+
+  const rawProfile = Reflect.apply(takeProfile, result, []) as unknown;
+  const profilePresent = rawProfile !== undefined;
+  if (
+    profilePresent &&
+    !claimGeneratedHandle(registry, rawProfile, resolved.protectedHandles)
+  ) {
+    return Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
+  if (status.value === "error") {
+    return !profilePresent && error !== null && error !== undefined
+      ? Object.freeze({ ok: false, error })
+      : Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
+  if (
+    status.value !== "profile" ||
+    error !== undefined ||
+    !objectLike(rawProfile)
+  ) {
+    return Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
+
+  const generation = readMethod(rawProfile, "generation");
+  const descriptor = readMethod(rawProfile, "descriptor");
+  const matchesProfileGeneration = readMethod(
+    rawProfile,
+    "matchesProfileGeneration",
+  );
+  const createEngineFromDocumentJson = readMethod(
+    rawProfile,
+    "createEngineFromDocumentJson",
+  );
+  const createEngineFromSessionCheckpointJson = readMethod(
+    rawProfile,
+    "createEngineFromSessionCheckpointJson",
+  );
+  if (
+    generation === null ||
+    descriptor === null ||
+    matchesProfileGeneration === null ||
+    createEngineFromDocumentJson === null ||
+    createEngineFromSessionCheckpointJson === null
+  ) {
+    return Object.freeze({ ok: false, error: INVALID_VIEW });
+  }
+
+  const rawGeneration = Reflect.apply(generation, rawProfile, []) as unknown;
+  if (
+    !claimGeneratedHandle(registry, rawGeneration, resolved.protectedHandles) ||
+    !wasmProfileGenerationIsLive(rawGeneration) ||
+    !wasmViewMatchesProfileGeneration(rawProfile, rawGeneration)
+  ) {
+    return Object.freeze({ ok: false, error: INVALID_GENERATION });
+  }
+  const rawDescriptor = Reflect.apply(descriptor, rawProfile, []) as unknown;
+  if (
+    !claimGeneratedHandle(registry, rawDescriptor, resolved.protectedHandles) ||
+    !objectLike(rawDescriptor)
+  ) {
+    return Object.freeze({ ok: false, error: INVALID_DESCRIPTOR });
+  }
+  const descriptorCleanup = takeGeneratedCleanup(registry, rawDescriptor);
+  if (descriptorCleanup === undefined) {
+    return Object.freeze({ ok: false, error: INVALID_DESCRIPTOR });
+  }
+  const descriptorResult = consumeWasmCompiledProfileDescriptorWithCleanup(
+    rawGeneration,
+    rawDescriptor as WasmCompiledProfileDescriptorView,
+    descriptorCleanup,
+    [rawProfile, rawGeneration],
+  );
+  if (!descriptorResult.ok) {
+    return Object.freeze({ ok: false, error: INVALID_DESCRIPTOR });
+  }
+  const durableContract: WasmDurableJsonContract = Object.freeze({
+    mode: "v2",
+    schema: descriptorResult.descriptor.schema,
+    formats: descriptorResult.descriptor.formats,
+  });
+  return Object.freeze({
+    ok: true,
+    value: Object.freeze({
+      profile: rawProfile as WasmCompiledProfileBootstrapView,
+      generation: rawGeneration,
+      descriptor: descriptorResult.descriptor,
+      durableContract,
+      matchesProfileGeneration:
+        matchesProfileGeneration as WasmCompiledProfileBootstrapView["matchesProfileGeneration"],
+      createEngineFromDocumentJson:
+        createEngineFromDocumentJson as WasmCompiledProfileBootstrapView["createEngineFromDocumentJson"],
+      createEngineFromSessionCheckpointJson:
+        createEngineFromSessionCheckpointJson as WasmCompiledProfileBootstrapView["createEngineFromSessionCheckpointJson"],
+    }),
+  });
+}
+
+function sourceMatchesCompiledProfile(
+  source: WasmEngineBootstrapSource,
+  contract: WasmDurableJsonContract,
+): boolean {
+  return source.kind === "document"
+    ? documentJsonUtf8Bytes(source.documentJson, contract) !== null
+    : sessionCheckpointJsonMatchesDurableContract(
+        source.checkpointJson,
+        contract,
+      ) !== null;
+}
+
 function consumeConstructionResult(
   rawResult: unknown,
   request: WasmEngineBootstrapSource,
   registry: GeneratedHandleRegistry,
   protectedHandles: ReadonlySet<object>,
+  compiledProfile?: CompiledProfileExpectation,
 ): BrowserWasmEngineBootstrapResult {
   if (!claimGeneratedHandle(registry, rawResult, protectedHandles)) {
     return failure(INVALID_VIEW);
@@ -364,7 +663,13 @@ function consumeConstructionResult(
   if (
     !claimGeneratedHandle(registry, rawGeneration, protectedHandles) ||
     !wasmProfileGenerationIsLive(rawGeneration) ||
-    !wasmViewMatchesProfileGeneration(rawEngine, rawGeneration)
+    !wasmViewMatchesProfileGeneration(rawEngine, rawGeneration) ||
+    (compiledProfile !== undefined &&
+      !compiledProfileMatchesEngine(
+        compiledProfile,
+        engineSnapshot,
+        rawGeneration,
+      ))
   ) {
     return failure(INVALID_GENERATION);
   }
@@ -388,12 +693,22 @@ function consumeConstructionResult(
     descriptorCleanup,
     [rawEngine, rawGeneration],
   );
+  if (!descriptorResult.ok) {
+    return failure(INVALID_DESCRIPTOR);
+  }
   if (
-    !descriptorResult.ok ||
-    !isExactBuiltInBaseDescriptor(descriptorResult.descriptor)
+    compiledProfile === undefined
+      ? !isExactBuiltInBaseDescriptor(descriptorResult.descriptor)
+      : !compiledProfileDescriptorsEqual(
+          descriptorResult.descriptor,
+          compiledProfile.descriptor,
+        )
   ) {
     return failure(INVALID_DESCRIPTOR);
   }
+
+  const activeGeneration = compiledProfile?.generation ?? rawGeneration;
+  const activeDescriptor = compiledProfile?.descriptor ?? descriptorResult.descriptor;
 
   const rawObservation = Reflect.apply(
     engineSnapshot.observation,
@@ -403,7 +718,7 @@ function consumeConstructionResult(
   if (
     !claimGeneratedHandle(registry, rawObservation, protectedHandles) ||
     !objectLike(rawObservation) ||
-    !wasmViewMatchesProfileGeneration(rawObservation, rawGeneration)
+    !wasmViewMatchesProfileGeneration(rawObservation, activeGeneration)
   ) {
     return failure(INVALID_VIEW);
   }
@@ -423,16 +738,18 @@ function consumeConstructionResult(
   const projectionResult = consumeProjectionRead(
     projectionRead,
     rawEngine,
-    rawGeneration,
+    activeGeneration,
     rawObservation,
     observationSnapshot,
-    descriptorResult.descriptor,
+    compiledProfile === undefined
+      ? BREDITOR_BASE_SCHEMA_FINGERPRINT
+      : activeDescriptor,
     registry,
     protectedHandles,
   );
   if (!projectionResult.ok) return failure(projectionResult.error);
 
-  if (!installProfileGenerationCleanup(rawGeneration, registry)) {
+  if (!installProfileGenerationCleanup(activeGeneration, registry)) {
     return failure(INVALID_GENERATION);
   }
   if (!installObservationCleanup(rawObservation, registry)) {
@@ -443,8 +760,9 @@ function consumeConstructionResult(
   const success = Object.freeze({
     ok: true as const,
     engine,
-    profileGeneration: rawGeneration,
-    profileDescriptor: descriptorResult.descriptor,
+    durableMode: compiledProfile === undefined ? "v1" as const : "v2" as const,
+    profileGeneration: activeGeneration,
+    profileDescriptor: activeDescriptor,
     observation: rawObservation as WasmCommandObservationView,
     projection: projectionResult.projection,
   });
@@ -458,7 +776,7 @@ function consumeProjectionRead(
   rawGeneration: WasmProfileGenerationView,
   rawObservation: object,
   expected: ObservationSnapshot,
-  descriptor: BrowserCompiledProfileDescriptor,
+  profile: string | BrowserCompiledProfileDescriptor,
   registry: GeneratedHandleRegistry,
   protectedHandles: ReadonlySet<object>,
 ):
@@ -519,7 +837,7 @@ function consumeProjectionRead(
   const consumed = consumeSemanticProjection(
     facade,
     rawGeneration,
-    descriptor.schema.fingerprint,
+    profile,
   );
   if (!consumed.ok) {
     return Object.freeze({ ok: false, error: INVALID_PROJECTION });
@@ -860,6 +1178,7 @@ function profileGenerationOwnerIsLive(owner: WasmProfileGenerationView): boolean
 
 function resolveFactory(
   value: unknown,
+  compiledProfile: boolean,
 ):
   | Readonly<{ ok: true; value: ResolvedFactory }>
   | Readonly<{ ok: false; error: BrowserWasmEngineBootstrapError }> {
@@ -890,10 +1209,34 @@ function resolveFactory(
       return Object.freeze({ ok: false, error: INCOMPATIBLE_VERSION });
     }
 
-    const factory = Reflect.get(candidate, "BreditorEngine", candidate) as unknown;
+    const factoryKey = compiledProfile
+      ? "BreditorCompiledProfile"
+      : "BreditorEngine";
+    const factory = Reflect.get(candidate, factoryKey, candidate) as unknown;
     if (!objectLike(factory) || containThenable(factory)) {
       return Object.freeze({ ok: false, error: INVALID_MODULE });
     }
+    const protectedHandles = new Set<object>([value, factory]);
+    if (compiledProfile) {
+      const structural = factory as WasmCompiledProfileBootstrapFactoryView;
+      const fromBootstrapJson = structural.fromBootstrapJson;
+      if (
+        typeof fromBootstrapJson !== "function" ||
+        valueIsThenable(fromBootstrapJson)
+      ) {
+        return Object.freeze({ ok: false, error: INVALID_MODULE });
+      }
+      return Object.freeze({
+        ok: true,
+        value: Object.freeze({
+          durableMode: "v2" as const,
+          factory: structural,
+          fromBootstrapJson,
+          protectedHandles,
+        }),
+      });
+    }
+
     const structural = factory as WasmEngineBootstrapFactoryView;
     const fromDocumentJson = structural.fromDocumentJson;
     const fromSessionCheckpointJson = structural.fromSessionCheckpointJson;
@@ -905,10 +1248,10 @@ function resolveFactory(
     ) {
       return Object.freeze({ ok: false, error: INVALID_MODULE });
     }
-    const protectedHandles = new Set<object>([value, factory]);
     return Object.freeze({
       ok: true,
       value: Object.freeze({
+        durableMode: "v1" as const,
         factory: structural,
         fromDocumentJson,
         fromSessionCheckpointJson,
@@ -921,11 +1264,24 @@ function resolveFactory(
 }
 
 function readSource(value: unknown): WasmEngineBootstrapSource | null {
-  const kind = exactRecord(value, ["kind", "lineageId", "documentJson", "historyCapacity"]);
-  if (kind !== null && kind["kind"] === "document") {
-    const lineageId = kind["lineageId"];
-    const documentJson = kind["documentJson"];
-    const historyCapacity = kind["historyCapacity"];
+  const document = exactRecord(value, [
+    "kind",
+    "lineageId",
+    "documentJson",
+    "historyCapacity",
+  ]) ?? exactRecord(value, [
+    "kind",
+    "lineageId",
+    "documentJson",
+    "historyCapacity",
+    "semanticProfile",
+  ]);
+  if (document !== null && document["kind"] === "document") {
+    const lineageId = document["lineageId"];
+    const documentJson = document["documentJson"];
+    const historyCapacity = document["historyCapacity"];
+    const semanticProfile = readSemanticProfile(document["semanticProfile"]);
+    const hasSemanticProfile = Object.hasOwn(document, "semanticProfile");
     if (
       typeof lineageId === "string" &&
       /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(lineageId) &&
@@ -935,29 +1291,79 @@ function readSource(value: unknown): WasmEngineBootstrapSource | null {
       typeof historyCapacity === "number" &&
       Number.isSafeInteger(historyCapacity) &&
       historyCapacity >= 0 &&
-      historyCapacity <= MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY
+      historyCapacity <= MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY &&
+      (hasSemanticProfile
+        ? semanticProfile !== null && semanticProfile !== undefined
+        : semanticProfile === undefined)
     ) {
-      return Object.freeze({
-        kind: "document",
-        lineageId,
-        documentJson,
-        historyCapacity,
-      });
+      if (semanticProfile === null) return null;
+      return semanticProfile === undefined
+        ? Object.freeze({
+            kind: "document",
+            lineageId,
+            documentJson,
+            historyCapacity,
+          })
+        : Object.freeze({
+            kind: "document",
+            lineageId,
+            documentJson,
+            historyCapacity,
+            semanticProfile,
+          });
     }
     return null;
   }
-  const checkpoint = exactRecord(value, ["kind", "checkpointJson"]);
+  const checkpoint = exactRecord(value, ["kind", "checkpointJson"]) ??
+    exactRecord(value, ["kind", "checkpointJson", "semanticProfile"]);
   if (
     checkpoint !== null &&
     checkpoint["kind"] === "sessionCheckpoint" &&
     sessionCheckpointJsonUtf8Bytes(checkpoint["checkpointJson"]) !== null
   ) {
-    return Object.freeze({
-      kind: "sessionCheckpoint",
-      checkpointJson: checkpoint["checkpointJson"] as string,
-    });
+    const semanticProfile = readSemanticProfile(checkpoint["semanticProfile"]);
+    const hasSemanticProfile = Object.hasOwn(checkpoint, "semanticProfile");
+    if (
+      hasSemanticProfile
+        ? semanticProfile === null || semanticProfile === undefined
+        : semanticProfile !== undefined
+    ) {
+      return null;
+    }
+    if (semanticProfile === null) return null;
+    return semanticProfile === undefined
+      ? Object.freeze({
+          kind: "sessionCheckpoint",
+          checkpointJson: checkpoint["checkpointJson"] as string,
+        })
+      : Object.freeze({
+          kind: "sessionCheckpoint",
+          checkpointJson: checkpoint["checkpointJson"] as string,
+          semanticProfile,
+        });
   }
   return null;
+}
+
+function readSemanticProfile(
+  value: unknown,
+): WasmSemanticProfileBootstrapSource | null | undefined {
+  if (value === undefined) return undefined;
+  const record = exactRecord(value, ["bootstrapJson"]);
+  if (record === null) return null;
+  const bootstrapJson = record["bootstrapJson"];
+  if (
+    typeof bootstrapJson !== "string" ||
+    bootstrapJson.length === 0 ||
+    bootstrapJson.length > MAX_WASM_PROFILE_BOOTSTRAP_JSON_BYTES ||
+    wellFormedUtf8Length(
+      bootstrapJson,
+      MAX_WASM_PROFILE_BOOTSTRAP_JSON_BYTES,
+    ) === null
+  ) {
+    return null;
+  }
+  return Object.freeze({ bootstrapJson });
 }
 
 function exactRecord(
@@ -1035,6 +1441,121 @@ function readObservation(value: object): ObservationSnapshot | null {
   } catch {
     return null;
   }
+}
+
+function compiledProfileMatchesEngine(
+  compiled: CompiledProfileExpectation,
+  engine: EngineMethodSnapshot,
+  engineGeneration: WasmProfileGenerationView,
+): boolean {
+  if (!wasmProfileGenerationIsLive(compiled.generation)) return false;
+  try {
+    const engineMatched = Reflect.apply(
+      engine.matchesProfileGeneration,
+      engine.raw,
+      [compiled.generation],
+    ) as unknown;
+    const profileMatched = Reflect.apply(
+      compiled.matchesProfileGeneration,
+      compiled.profile,
+      [engineGeneration],
+    ) as unknown;
+    const engineGenerationMatches = generationMatches(
+      engineGeneration,
+      compiled.generation,
+    );
+    const compiledGenerationMatches = generationMatches(
+      compiled.generation,
+      engineGeneration,
+    );
+    return !valueIsThenable(engineMatched) && engineMatched === true &&
+      !valueIsThenable(profileMatched) && profileMatched === true &&
+      engineGenerationMatches && compiledGenerationMatches;
+  } catch {
+    return false;
+  }
+}
+
+function generationMatches(
+  receiver: WasmProfileGenerationView,
+  other: WasmProfileGenerationView,
+): boolean {
+  const method = readMethod(receiver, "matches");
+  if (method === null) return false;
+  try {
+    const matched = Reflect.apply(method, receiver, [other]) as unknown;
+    return !valueIsThenable(matched) && matched === true;
+  } catch {
+    return false;
+  }
+}
+
+function compiledProfileDescriptorsEqual(
+  left: BrowserCompiledProfileDescriptor,
+  right: BrowserCompiledProfileDescriptor,
+): boolean {
+  return left.schema.name === right.schema.name &&
+    left.schema.version === right.schema.version &&
+    left.schema.fingerprint === right.schema.fingerprint &&
+    sameArray(left.formats, right.formats, (a, b) =>
+      a.kind === b.kind && a.revision === b.revision) &&
+    sameArray(left.intents, right.intents, (a, b) =>
+      a.id === b.id &&
+      a.input.kind === b.input.kind &&
+      (a.input.kind === "none"
+        ? b.input.kind === "none"
+        : b.input.kind === "typed" &&
+          valueContractsEqual(a.input.contract, b.input.contract)) &&
+      stateContractsEqual(a.state, b.state)) &&
+    sameArray(left.actionStates, right.actionStates, (a, b) =>
+      a.id === b.id &&
+      actionStateSourcesEqual(a.source, b.source) &&
+      stateContractsEqual(a.state, b.state));
+}
+
+function sameArray<T>(
+  left: readonly T[],
+  right: readonly T[],
+  equal: (left: T, right: T) => boolean,
+): boolean {
+  return left.length === right.length &&
+    left.every((value, index) => {
+      const other = right[index];
+      return other !== undefined && equal(value, other);
+    });
+}
+
+function valueContractsEqual(
+  left: Readonly<{ name: string; version: number }> | undefined,
+  right: Readonly<{ name: string; version: number }> | undefined,
+): boolean {
+  return left === undefined
+    ? right === undefined
+    : right !== undefined &&
+      left.name === right.name &&
+      left.version === right.version;
+}
+
+function stateContractsEqual(
+  left: BrowserCompiledProfileDescriptor["intents"][number]["state"],
+  right: BrowserCompiledProfileDescriptor["intents"][number]["state"],
+): boolean {
+  return left.activation === right.activation &&
+    valueContractsEqual(left.value, right.value);
+}
+
+function actionStateSourcesEqual(
+  left: BrowserCompiledProfileDescriptor["actionStates"][number]["source"],
+  right: BrowserCompiledProfileDescriptor["actionStates"][number]["source"],
+): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "direct") {
+    return right.kind === "direct" && left.actionId === right.actionId;
+  }
+  if (left.kind === "routed") {
+    return right.kind === "routed" && left.intentId === right.intentId;
+  }
+  return right.kind === "history" && left.direction === right.direction;
 }
 
 function isExactBuiltInBaseDescriptor(
@@ -1271,6 +1792,29 @@ function canonicalU64(value: string): boolean {
   }
 }
 
+function wellFormedUtf8Length(value: string, maximum: number): number | null {
+  let bytes = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const first = value.charCodeAt(index);
+    if (first <= 0x7f) {
+      bytes += 1;
+    } else if (first <= 0x7ff) {
+      bytes += 2;
+    } else if (first >= 0xd800 && first <= 0xdbff) {
+      const second = value.charCodeAt(index + 1);
+      if (!(second >= 0xdc00 && second <= 0xdfff)) return null;
+      bytes += 4;
+      index += 1;
+    } else if (first >= 0xdc00 && first <= 0xdfff) {
+      return null;
+    } else {
+      bytes += 3;
+    }
+    if (bytes > maximum) return null;
+  }
+  return bytes;
+}
+
 function boundaryError(
   code: Extract<BrowserWasmEngineBootstrapError, { kind: "boundary" }>["code"],
   message: string,
@@ -1284,6 +1828,12 @@ function failure(
   const result = Object.freeze({ ok: false as const, error });
   OWNED_BOOTSTRAP_RESULTS.add(result);
   return result;
+}
+
+function preflightFailure(
+  error: BrowserWasmEngineBootstrapError,
+): BrowserWasmSemanticProfilePreflightResult {
+  return Object.freeze({ ok: false as const, error });
 }
 
 const EMPTY_OBJECT_SET: ReadonlySet<object> = new Set<object>();

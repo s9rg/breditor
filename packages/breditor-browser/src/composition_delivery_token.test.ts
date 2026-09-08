@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as compositionDeliveryModule from "./composition_delivery_token.js";
 import {
@@ -143,6 +143,39 @@ describe("composition delivery token", () => {
 
     expect(openingMatches(token, fixture, 0n, 1n, authority)).toBe(false);
     expect(settlementMatches(token, fixture, 0n, 1n, authority)).toBe(false);
+  });
+
+  it("uses native connectivity when own host facts are shadowed", () => {
+    const connected = createFixture("connected-shadows", "0");
+    const authority = Symbol("composition-adapter");
+    const isConnectedShadow = vi.fn(() => {
+      throw new Error("own isConnected must not be read");
+    });
+    const ownerDocumentShadow = vi.fn(() => {
+      throw new Error("own ownerDocument must not be read");
+    });
+    Object.defineProperties(connected.host, {
+      isConnected: { configurable: true, get: isConnectedShadow },
+      ownerDocument: { configurable: true, get: ownerDocumentShadow },
+    });
+
+    const token = issue(connected, 0n, 1n, authority);
+
+    expect(openingMatches(token, connected, 0n, 1n, authority)).toBe(true);
+    expect(settlementMatches(token, connected, 0n, 1n, authority)).toBe(true);
+    expect(isConnectedShadow).not.toHaveBeenCalled();
+    expect(ownerDocumentShadow).not.toHaveBeenCalled();
+
+    const detached = createFixture("detached-shadows", "0");
+    const detachedToken = issue(detached, 0n, 2n, authority);
+    detached.host.remove();
+    Object.defineProperties(detached.host, {
+      isConnected: { configurable: true, value: true },
+      ownerDocument: { configurable: true, value: document },
+    });
+
+    expect(openingMatches(detachedToken, detached, 0n, 2n, authority)).toBe(false);
+    expect(settlementMatches(detachedToken, detached, 0n, 2n, authority)).toBe(false);
   });
 
   it("refuses issuance for mismatched selection, disconnected or noncanonical DOM, and invalid scalars", () => {
