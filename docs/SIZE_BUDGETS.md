@@ -1,6 +1,6 @@
 # Browser release size budgets
 
-Status: required `0.2.0-alpha.7` release gate
+Status: required `0.2.0-alpha.8` release gate
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -13,11 +13,14 @@ The current release ceilings are deliberately explicit:
 
 - all emitted `@breditor/browser` JavaScript: 860,000 bytes;
 - all emitted browser declarations: 235,000 bytes;
+- all emitted `@breditor/reference-highlight` JavaScript: 12,000 bytes;
+- all emitted reference Highlight declarations: 12,000 bytes;
 - generated Wasm binary: 1,500,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 225,000 bytes;
+- packed `@breditor/reference-highlight` tarball: 20,000 bytes;
 - packed `@breditor/wasm` tarball: 450,000 bytes;
-- reference-application JavaScript: 725,000 raw and 200,000 gzip bytes; and
+- reference-application JavaScript: 750,000 raw and 200,000 gzip bytes; and
 - reference-application Wasm: 1,500,000 raw and 400,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
@@ -46,6 +49,28 @@ catalog, and toolbar/profile admission code. The application, Wasm, glue,
 gzip, and package-tarball ceilings are unchanged; the gate still counts every
 emitted module recursively.
 
+Alpha.8 adds separate ceilings for the callback-free reference package rather
+than hiding it inside the browser allowance. Its clean package artifacts
+measured:
+
+- reference Highlight JavaScript: 8,088 bytes;
+- reference Highlight declarations: 7,880 bytes; and
+- packed `@breditor/reference-highlight` tarball: 9,430 bytes.
+
+The first two values recursively total every emitted `.js` or `.d.ts` file.
+The tarball value comes from the same lifecycle-disabled pack used by the clean
+three-package consumer gate. The 12,000/12,000/20,000-byte ceilings leave
+reviewable headroom without allowing a reference example to become an
+unbounded runtime or silently bundle another browser copy.
+
+A clean Alpha.8 rebuild of both the release candidate and the unchanged
+Alpha.7 tag with the lockfile-selected Node/Vite/Rolldown toolchain produced
+734,688 raw and 194,970 level-9-gzip application JavaScript bytes. The raw
+application ceiling therefore moves from 725,000 to 750,000 bytes; the gzip
+ceiling remains 200,000. The same-source tagged comparison produced the same
+734,688-byte output, so this recalibration is build-output headroom rather than
+reference-extension code being added to the React application.
+
 This includes the profile-aware projection path, descriptor-only bounded array
 admission, and brand-checked native Event-family, Selection,
 `AbstractRange`/`Range`/`StaticRange`, ClipboardEvent, and DataTransfer
@@ -65,10 +90,10 @@ separate declaration-only pass so public API documentation remains in the
 shipped `.d.ts` files. This keeps explanatory source and type documentation
 without charging applications or the package tarball for duplicate prose.
 
-The two packed-tarball ceilings run inside `npm run smoke:packages`, after an
-explicit browser build and two-build Wasm package check and before isolated
-installation. Packing disables lifecycle hooks so ambient npm configuration
-cannot turn those prerequisites into a stale-artifact pass.
+The three packed-tarball ceilings run inside `npm run smoke:packages`, after
+explicit browser/reference builds and the two-build Wasm package check and
+before isolated installation. Packing disables lifecycle hooks so ambient npm
+configuration cannot turn those prerequisites into a stale-artifact pass.
 
 Native release builds keep optimization level 3 and one code-generation unit
 without LTO. Shipped Wasm instead uses the dedicated `wasm-release` profile:

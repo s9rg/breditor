@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.7` profile boundary
+## Experimental `0.2.0-alpha.8` profile boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -227,14 +227,42 @@ remain advanced; public results are provenance-redacted and immediate-only.
 There is no typed public intent input, custom control kind, extension keymap, or
 custom `beforeinput` registration.
 
-## Browser and Wasm pairing
+Alpha.8 adds `@breditor/reference-highlight` as the package proof for that
+experimental boundary. Its supported surface is the package root only. It
+exports frozen IDs, ABI-local profile bootstrap data, the exact durable schema
+fingerprint, bounded fingerprint-bearing Document V2 helpers/fixtures, and
+browser-created render and toolbar manifests. Internal `dist/*` files are not
+separate compatibility entry points.
+
+The fixed reference contract uses schema `example/editor@1`, extension
+`example/highlight-extension@1`, property-free format
+`example/highlight@7`, action `example/toggle-highlight`, no-input intent
+`example/toggle-highlight-intent`, binding
+`example/toggle-highlight-binding`, state `example/highlight-control`, and
+fingerprint
+`sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`.
+The bootstrap value is configuration for ABI 3, not a stable general extension
+manifest wire protocol. The package's callback-free data prevents a browser
+callback from becoming Rust mutation authority; importing the package still
+executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
+
+## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; the `0.2.0-alpha.7` pair reports ABI `3`. The prerelease path checks both the exact
-ABI string and exact embedded package version before reading the generated
-engine factory. ABI compatibility alone never makes mismatched official
-package versions a supported pair.
+ABI `2`; the `0.2.0-alpha.8` pair reports ABI `3`. The prerelease path checks
+both the exact ABI string and exact embedded package version before reading the
+generated engine factory. ABI compatibility alone never makes mismatched
+official package versions a supported pair.
+
+The supported Alpha.8 reference configuration installs exactly
+`@breditor/browser@0.2.0-alpha.8`, `@breditor/wasm@0.2.0-alpha.8`, and
+`@breditor/reference-highlight@0.2.0-alpha.8`. The reference package declares
+the exact browser version as a peer dependency. Its render and toolbar
+manifests are branded by the `@breditor/browser` module instance that created
+them, so a duplicate, nested, or mismatched browser copy is not a compatible
+replacement. The clean consumer gate proves one peer instance and imports only
+the three package roots.
 
 The minimal supported browser bootstrap surface of `@breditor/wasm` is the
 package-root default asynchronous initializer called once with no argument in
@@ -291,6 +319,13 @@ only. VoiceOver
 was not enabled. Neither that audit nor the axe checks are a screen-reader,
 assistive-technology, mobile-browser, or WCAG conformance claim.
 
+Alpha.8 additionally runs the actual `@breditor/reference-highlight` package
+in Chromium, Firefox, and WebKit. That path covers Document V2 startup,
+Highlight intent/state/toolbar delivery, mixed Strong/Highlight nesting,
+undo/redo, export/copy, formatting-stripping paste, persistence flush/reload,
+restored history, and disposal. It does not broaden the desktop, synthetic-IME,
+clipboard-permission, mobile, or assistive-technology claims above.
+
 ## Dependency boundary
 
 HTML-only paste is parsed through direct dependency `parse5` `8.0.1`, then
@@ -334,7 +369,8 @@ no `0.1.x` compatibility promise:
   history stamps, delivery tokens, queue receipts, storage attempt IDs, writer
   epochs, replay tombstones, and other process-local identities; and
 - the repository's React example, benchmarks, test fixtures, build scripts,
-  internal size layout, and undocumented import paths.
+  internal size layout, undocumented import paths, and any direct
+  `@breditor/reference-highlight/dist/*` import.
 
 In particular, the advanced local-log and storage-generation work is not the
 supported IndexedDB Session Checkpoint Profile V1. Exported Rust proof types or

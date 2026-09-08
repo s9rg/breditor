@@ -49,13 +49,21 @@ trap cleanup EXIT
 
 readonly tarball_directory="${smoke_directory}/tarballs"
 readonly consumer_directory="${smoke_directory}/consumer"
-mkdir -p -- "${tarball_directory}" "${consumer_directory}"
+readonly reference_consumer_directory="${smoke_directory}/reference-consumer"
+mkdir -p -- \
+  "${tarball_directory}" \
+  "${consumer_directory}" \
+  "${reference_consumer_directory}"
 cp -R -- "${script_directory}/fixtures/npm-consumer/." "${consumer_directory}/"
+cp -R -- \
+  "${script_directory}/fixtures/reference-consumer/." \
+  "${reference_consumer_directory}/"
 
 printf 'smoke-npm-packages: building and checking workspace package artifacts\n'
 (
   cd -- "${repository_root}"
   "${npm_executable}" run build --workspace @breditor/browser
+  "${npm_executable}" run build --workspace @breditor/reference-highlight
   "${npm_executable}" run check --workspace @breditor/wasm
 )
 
@@ -70,11 +78,17 @@ printf 'smoke-npm-packages: packing explicitly verified artifacts with lifecycle
     --ignore-scripts \
     --workspace @breditor/wasm \
     --pack-destination "${tarball_directory}" >/dev/null
+  "${npm_executable}" pack \
+    --ignore-scripts \
+    --workspace @breditor/reference-highlight \
+    --pack-destination "${tarball_directory}" >/dev/null
 )
 
-readonly browser_tarball="${tarball_directory}/breditor-browser-0.2.0-alpha.7.tgz"
-readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.2.0-alpha.7.tgz"
+readonly browser_tarball="${tarball_directory}/breditor-browser-0.2.0-alpha.8.tgz"
+readonly reference_tarball="${tarball_directory}/breditor-reference-highlight-0.2.0-alpha.8.tgz"
+readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.2.0-alpha.8.tgz"
 [[ -f "${browser_tarball}" ]] || fail "missing @breditor/browser tarball"
+[[ -f "${reference_tarball}" ]] || fail "missing @breditor/reference-highlight tarball"
 [[ -f "${wasm_tarball}" ]] || fail "missing @breditor/wasm tarball"
 
 assert_archive_size() {
@@ -92,9 +106,10 @@ assert_archive_size() {
 }
 
 assert_archive_size "@breditor/browser" "${browser_tarball}" 225000
+assert_archive_size "@breditor/reference-highlight" "${reference_tarball}" 20000
 assert_archive_size "@breditor/wasm" "${wasm_tarball}" 450000
 
-for archive in "${browser_tarball}" "${wasm_tarball}"; do
+for archive in "${browser_tarball}" "${reference_tarball}" "${wasm_tarball}"; do
   tar -tzf "${archive}" package/LICENSE-MIT >/dev/null ||
     fail "${archive} does not contain LICENSE-MIT"
   tar -tzf "${archive}" package/LICENSE-APACHE >/dev/null ||
@@ -102,6 +117,9 @@ for archive in "${browser_tarball}" "${wasm_tarball}"; do
 done
 if tar -tzf "${browser_tarball}" | grep -E '\.d\.ts\.map$' >/dev/null; then
   fail "the browser tarball contains declaration maps whose sources are not shipped"
+fi
+if tar -tzf "${reference_tarball}" | grep -E '\.d\.ts\.map$' >/dev/null; then
+  fail "the reference tarball contains declaration maps whose sources are not shipped"
 fi
 tar -tzf "${wasm_tarball}" package/dist/breditor_wasm_bg.wasm >/dev/null ||
   fail "the Wasm tarball does not contain its module"
@@ -113,6 +131,15 @@ readonly wasm_package_listing="${smoke_directory}/wasm-package-files.txt"
 tar -tzf "${wasm_tarball}" | LC_ALL=C sort > "${wasm_package_listing}"
 if ! diff -u -- "${wasm_package_allowlist}" "${wasm_package_listing}"; then
   fail "the Wasm tarball file set differs from the reviewed allowlist"
+fi
+
+readonly reference_package_allowlist="${script_directory}/fixtures/reference-highlight-package-files.txt"
+[[ -f "${reference_package_allowlist}" ]] ||
+  fail "missing reference Highlight package file allowlist"
+readonly reference_package_listing="${smoke_directory}/reference-highlight-package-files.txt"
+tar -tzf "${reference_tarball}" | LC_ALL=C sort > "${reference_package_listing}"
+if ! diff -u -- "${reference_package_allowlist}" "${reference_package_listing}"; then
+  fail "the reference Highlight tarball file set differs from the reviewed allowlist"
 fi
 
 assert_archive_member_sha256() {
@@ -170,4 +197,27 @@ printf 'smoke-npm-packages: installing into an isolated consumer\n'
     "${consumer_directory}/bundle"
 )
 
-printf 'smoke-npm-packages: isolated import, typecheck, bundle, and real-browser initialization passed.\n'
+printf 'smoke-npm-packages: installing into a clean supported-root reference consumer\n'
+(
+  cd -- "${reference_consumer_directory}"
+  "${npm_executable}" install \
+    --no-audit \
+    --no-fund \
+    "${browser_tarball}" \
+    "${reference_tarball}" \
+    "${wasm_tarball}" >/dev/null
+  "${node_executable}" smoke.mjs
+  "${tsc_executable}" --project tsconfig.json
+  "${vite_executable}" build "${reference_consumer_directory}" \
+    --outDir "${reference_consumer_directory}/bundle" \
+    --emptyOutDir >/dev/null
+  [[ -f "${reference_consumer_directory}/bundle/index.html" ]] ||
+    fail "the clean reference consumer bundle has no entry HTML"
+  find "${reference_consumer_directory}/bundle" -type f -name '*.wasm' -print -quit |
+    grep -q . || fail "the clean reference consumer bundle has no Wasm asset"
+  "${node_executable}" \
+    "${script_directory}/check-reference-consumer-browser.mjs" \
+    "${reference_consumer_directory}/bundle"
+)
+
+printf 'smoke-npm-packages: isolated and clean-reference import, typecheck, bundle, and real-browser initialization passed.\n'

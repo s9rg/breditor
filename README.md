@@ -11,7 +11,7 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current alpha.7 implementation carries the immutable compiled editor
+The current Alpha.8 checkpoint retains Alpha.7's immutable compiled editor
 profile through the guarded Rust engine, Wasm ABI 3, and the browser projection
 boundary. Profile-created engine
 contexts, observations, intent outcomes, action-state snapshots, projections,
@@ -37,10 +37,25 @@ descriptor's exact routed intent/history, activation, and value contracts at
 startup; direct concrete-action controls remain an advanced runtime bypass.
 Every action-state refresh is also correlated against the descriptor's fixed
 ordered catalog before publication.
+Alpha.8 adds `@breditor/reference-highlight`, a callback-free package-root
+consumer of that complete path. It fixes schema `example/editor@1`, extension
+`example/highlight-extension@1`, property-free format
+`example/highlight@7`, action `example/toggle-highlight`, no-input intent
+`example/toggle-highlight-intent`, binding
+`example/toggle-highlight-binding`, state `example/highlight-control`, and
+fingerprint
+`sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`.
+An outside-repository consumer installs matching browser, Wasm, and reference
+tarballs, imports only their roots, proves the single exact browser peer,
+type-checks, bundles, and runs the real profile in Chromium. The same actual
+package runs through the Chromium, Firefox, and WebKit editing, history,
+clipboard, export, persistence-reload, and teardown matrix. Missing or extra
+render recipes and action-state entries, or an invalid toolbar intent/state
+contribution, fail before startup publishes host DOM.
 Fingerprint-default persistence is profile-scoped rather than document-scoped;
 hosts with multiple same-schema documents must provide distinct caller slots.
-Alpha.7 is complete and remains unpublished; Alpha.8 is the next consumer-proof
-and release-gate checkpoint. The
+Alpha.8 is complete and remains unpublished; `0.2.0-rc.1` is the next
+no-feature-widening release audit. The
 decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
@@ -190,9 +205,9 @@ The implementation includes:
   failures return the unchanged log owner.
 
 The supported `0.1.0` product is intentionally small, not a general document
-processor. The alpha.7 path adds generic property-free format kinds and sealed
-manifest-owned toggle action/intent/state compilation through browser
-projection, rendering, and intent-backed toggle buttons. It does not add format
+processor. The Alpha.8 path retains Alpha.7's generic property-free format
+kinds and sealed manifest-owned toggle action/intent/state compilation through
+browser projection, rendering, and intent-backed toggle buttons. It does not add format
 attributes, arbitrary nodes, custom actions, typed public intent inputs,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
@@ -989,18 +1004,21 @@ delivery, and reentrant calls return busy instead of becoming stale queued
 work. Public results omit concrete action and binding provenance; advanced
 adapter outcomes retain it for host-trusted integration.
 
-Breditor is dual-licensed under `MIT OR Apache-2.0`; the Rust manifests and both npm
-packages carry the same SPDX expression and every package tarball contains both
-license texts. `@breditor/wasm` is generated from the locked release build with
-exactly `wasm-bindgen 0.2.127`, exposes the reviewed ESM declaration and adjacent
-Wasm module, and is checked by real initialization. Both workspace packages
-clean their output before building. The browser build deliberately omits
+Breditor is dual-licensed under `MIT OR Apache-2.0`; the Rust manifests and all
+three npm packages carry the same SPDX expression and every package tarball
+contains both license texts. `@breditor/wasm` is generated from the locked
+release build with exactly `wasm-bindgen 0.2.127`, exposes the reviewed ESM declaration and adjacent
+Wasm module, and is checked by real initialization. All three distribution
+packages clean their output before building. The browser build deliberately omits
 declaration maps because its TypeScript sources are not shipped, avoiding dead
 `../src` links in the public tarball, and retains supporting declarations that
-occur in exported public method contracts. An isolated smoke test packs and
-installs both tarballs, imports and initializes them outside the workspace, and
-type-checks a consumer program. No npm publication is performed by these
-commands.
+occur in exported public method contracts. An isolated smoke test packs all
+three tarballs. Its clean reference consumer imports only
+`@breditor/browser`, `@breditor/wasm`, and `@breditor/reference-highlight`
+package roots, proves that every resolution stays in the consumer and that the
+reference package shares its exact browser peer, type-checks, bundles, and
+initializes the profile in real Chromium. No npm publication is performed by
+these commands.
 
 Version `0.0.59` is the release-candidate validation checkpoint. It adds
 `exportContent("documentJson")`, which obtains exact canonical,

@@ -148,6 +148,7 @@ interface ModuleFixtureOptions {
     text: string;
   }>;
   readonly actionStateThrows?: boolean;
+  readonly actionStateCatalogViolation?: "missing" | "extra";
   readonly actionThrows?: boolean;
   readonly intentOutcome?: "committed" | "blocked" | "unhandled" | "malformed";
   readonly enableAction?: boolean;
@@ -751,6 +752,104 @@ describe("BreditorBrowserEditor", () => {
     expect(toolbarHost.attributes).toHaveLength(0);
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
   });
+
+  it("rejects an extra toolbar intent/state contribution before mutating either host", async () => {
+    const host = mountHost();
+    const toolbarHost = mountHost();
+    const fixture = moduleFixture();
+    const extra = createToolbarManifest({
+      label: "Extra controls",
+      controls: [
+        {
+          kind: "button",
+          stateId: "example/highlight-control",
+          label: "Highlight",
+          activation: "tracked",
+          command: {
+            kind: "intent",
+            intentId: "example/toggle-highlight-intent",
+          },
+        },
+      ],
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        toolbar: { host: toolbarHost, manifest: extra },
+      }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.toolbar_profile_invalid" },
+    });
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+    expect(toolbarHost.childNodes).toHaveLength(0);
+    expect(toolbarHost.attributes).toHaveLength(0);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it.each(["missing", "extra"] as const)(
+    "rejects %s render-recipe coverage before mutating the editing host",
+    async (coverage) => {
+      const host = mountHost();
+      const fixture = profileModuleFixture({ text: "must not render" });
+      const rendering = createInlineFormatRenderManifest({
+        recipes: coverage === "missing"
+          ? [{ formatKind: "breditor/strong", element: "strong" }]
+          : [
+              {
+                formatKind: "breditor/strong",
+                element: "strong",
+                before: ["example/highlight"],
+              },
+              { formatKind: "example/highlight", element: "mark" },
+              { formatKind: "example/extra", element: "em" },
+            ],
+      });
+
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module, {
+          initialDocument: {
+            lineageId: LINEAGE,
+            documentJson: profileDocumentJson("must not render", PROFILE_SCHEMA),
+            historyCapacity: 100,
+          },
+          semanticProfile: PROFILE_BOOTSTRAP,
+          rendering,
+        }),
+      );
+
+      expect(opened).toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.presentation_invalid" },
+      });
+      expect(host.childNodes).toHaveLength(0);
+      expect(host.attributes).toHaveLength(0);
+      expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["missing", "extra"] as const)(
+    "rejects a %s initial action-state catalog before publishing the editor",
+    async (actionStateCatalogViolation) => {
+      const host = mountHost();
+      const fixture = moduleFixture({ actionStateCatalogViolation });
+
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module),
+      );
+
+      expect(opened).toMatchObject({
+        ok: false,
+        error: { code: "browser_editor.action_state_failed" },
+      });
+      expect(host.childNodes).toHaveLength(0);
+      expect(host.attributes).toHaveLength(0);
+      expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    },
+  );
 
   it("does not overwrite application content installed reentrantly during profile bootstrap", async () => {
     const host = mountHost();
@@ -3501,6 +3600,7 @@ function engineFixture(
       generation,
       config.onActionStateStatusRead,
       true,
+      config.actionStateCatalogViolation,
     );
   });
   const selection = vi.fn((expected: WasmCommandObservationView) => {
@@ -3864,12 +3964,18 @@ function actionStatesResult(
   generation: WasmProfileGenerationView,
   onStatusRead?: () => void,
   includeHistory = false,
+  catalogViolation?: "missing" | "extra",
 ): WasmActionStatesResultView {
   let taken = false;
-  const entryCount = includeHistory ? 3 : 1;
-  const ids = includeHistory
-    ? [STATE_ID, "breditor/control-redo", "breditor/control-undo"] as const
-    : [STATE_ID] as const;
+  const canonicalIds: readonly string[] = includeHistory
+    ? [STATE_ID, "breditor/control-redo", "breditor/control-undo"]
+    : [STATE_ID];
+  const ids: readonly string[] = catalogViolation === "missing"
+    ? canonicalIds.slice(0, -1)
+    : catalogViolation === "extra"
+      ? [...canonicalIds, "example/control-extra"]
+      : canonicalIds;
+  const entryCount = ids.length;
   const snapshot: WasmActionStateSnapshotView = {
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     snapshotLineage: lineage,
@@ -3898,7 +4004,7 @@ function actionStatesResult(
           ? "breditor/nothing-to-redo"
           : index === 2
             ? "breditor/nothing-to-undo"
-            : undefined,
+            : "breditor/not-enabled",
     entryValueStatus: (index) =>
       index < entryCount ? "unsupported" : undefined,
     entryValueContractName: () => undefined,

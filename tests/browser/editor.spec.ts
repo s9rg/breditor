@@ -550,6 +550,84 @@ test("toolbar keyboard navigation, names, focus, and pressed state are accessibl
   await expectVisibleOutline(bold);
 });
 
+test("the packaged reference Highlight profile survives the complete browser path", async ({
+  page,
+}) => {
+  const outcome = await page.evaluate(() => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("browser harness is unavailable");
+    return harness.probeReferenceHighlight();
+  });
+
+  expect(outcome).toMatchObject({
+    initialHtml: "<p>Cross-browser Highlight</p>",
+    stateId: "example/highlight-control",
+    initialPressed: "false",
+    intentStatus: "committed",
+    intentId: "example/toggle-highlight-intent",
+    highlightedHtml:
+      '<p><mark class="breditor-reference-highlight">Cross-browser Highlight</mark></p>',
+    highlightedPressed: "true",
+    mixedHtml:
+      '<p><strong><mark class="breditor-reference-highlight">Cross-browser Highlight</mark></strong></p>',
+    copiedPlainText: "Cross-browser Highlight",
+    undoHtml:
+      '<p><mark class="breditor-reference-highlight">Cross-browser Highlight</mark></p>',
+    redoHtml:
+      '<p><strong><mark class="breditor-reference-highlight">Cross-browser Highlight</mark></strong></p>',
+    unformattedHtml: "<p>Cross-browser Highlight</p>",
+    unformattedPressed: "false",
+    pasteDefaultPrevented: true,
+    pastedHtml: "<p>Pasted plain</p>",
+    flushStatus: "committed",
+    persistedHtml:
+      '<p><strong><mark class="breditor-reference-highlight">Pasted plain</mark></strong></p>',
+    firstPhaseBeforeDispose: "live",
+    firstPhaseAfterDispose: "disposed",
+    firstEditorEmptyAfterDispose: true,
+    firstToolbarEmptyAfterDispose: true,
+    restoredHtml:
+      '<p><strong><mark class="breditor-reference-highlight">Pasted plain</mark></strong></p>',
+    restoredHighlightPressed: "true",
+    restoredBoldPressed: "true",
+    restoredUndoHtml:
+      '<p><mark class="breditor-reference-highlight">Pasted plain</mark></p>',
+    restoredRedoHtml:
+      '<p><strong><mark class="breditor-reference-highlight">Pasted plain</mark></strong></p>',
+    restoredPhase: "live",
+    finalPhase: "disposed",
+    finalEditorEmpty: true,
+    finalToolbarEmpty: true,
+  });
+  expect(outcome.copiedHtml).toContain(
+    '<strong><mark class="breditor-reference-highlight">Cross-browser Highlight</mark></strong>',
+  );
+  expect(outcome.restoredDocument).toEqual(outcome.persistedDocument);
+
+  const mixed = JSON.parse(outcome.mixedDocumentJson) as {
+    formatVersion: unknown;
+    root: {
+      children: Array<{
+        children: Array<{ formats: Array<{ type: unknown; properties: unknown }> }>;
+      }>;
+    };
+  };
+  expect(mixed.formatVersion).toBe(2);
+  expect(mixed.root.children[0]?.children[0]?.formats).toEqual([
+    { type: "breditor/strong", properties: {} },
+    { type: "example/highlight", properties: {} },
+  ]);
+
+  const pasted = JSON.parse(outcome.pastedDocumentJson) as {
+    formatVersion: unknown;
+    schemaFingerprint: unknown;
+    root: { children: Array<{ children: Array<{ formats: unknown[] }> }> };
+  };
+  expect(pasted.formatVersion).toBe(2);
+  expect(pasted.schemaFingerprint).toMatch(/^sha256:[0-9a-f]{64}$/u);
+  expect(pasted.root.children[0]?.children[0]?.formats).toEqual([]);
+});
+
 test("axe finds no automatically detectable accessibility violations", async ({
   page,
 }) => {

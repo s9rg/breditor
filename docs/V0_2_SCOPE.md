@@ -1,8 +1,8 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` through `0.2.0-alpha.7` compiler, engine, Wasm,
-profile-aware browser, and supported intent/toolbar checkpoints are complete;
-`0.2.0-alpha.8` consumer proof and release gates are next
+Status: in progress; the `0.1.1` through `0.2.0-alpha.8` compiler, engine, Wasm,
+profile-aware browser, supported intent/toolbar, reference-package, and
+consumer-proof checkpoints are complete; `0.2.0-rc.1` release audit is next
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -89,6 +89,30 @@ matches the compiled descriptor. Complete action-state snapshots must match
 the descriptor's fixed ordered catalog and value contracts before publication.
 The public imperative result redacts concrete route provenance, while the
 advanced adapter retains it.
+
+Alpha.8 packages that complete path as `@breditor/reference-highlight`. Its
+fixed profile uses schema `example/editor@1`, extension
+`example/highlight-extension@1`, property-free format
+`example/highlight@7`, action `example/toggle-highlight`, no-input intent
+`example/toggle-highlight-intent`, binding
+`example/toggle-highlight-binding`, tracked state
+`example/highlight-control`, and durable schema fingerprint
+`sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`.
+The package exports inert bootstrap/document data and browser-created render
+and toolbar manifests from its package root; it does not add an executable
+semantic plugin seam.
+
+A clean consumer outside the repository installs exact
+`@breditor/browser@0.2.0-alpha.8`, `@breditor/wasm@0.2.0-alpha.8`, and
+`@breditor/reference-highlight@0.2.0-alpha.8` tarballs and imports only their
+package roots. It proves local module resolution and one shared exact browser
+peer, type-checks, bundles, initializes the real Wasm module, and opens the
+reference profile in Chromium. The actual package also runs in the repository's
+Chromium, Firefox, and WebKit matrix through intent/state/toolbar dispatch,
+mixed Strong/Highlight nesting, undo/redo, export/copy, plain paste, persistence
+flush/reload, restored history, and disposal. Separate startup fixtures reject
+missing or extra render recipes, catalog entries, and foreign toolbar
+intent/state declarations before publishing host DOM.
 
 Rust remains the authority for the AST, compiled schema, selection, action
 evaluation, primitive operations, transactions, history, replay, and durable
@@ -264,7 +288,7 @@ when review finds a correctness boundary; later features are not claimed early.
    or activation/value contracts after startup. Complete.
 9. `0.2.0-alpha.8`: reference extension package, consumer fixtures, missing and
    extra browser contribution tests, cross-browser matrix, compatibility and
-   limitation documentation, and size gates.
+   limitation documentation, and size gates. Complete.
 10. `0.2.0-rc.1`: complete release audit with no new feature widening.
 11. `0.2.0`: final shippability gates, release notes, clean consumer proof, and
     an honest limitations review.

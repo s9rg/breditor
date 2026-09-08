@@ -88,6 +88,11 @@ intent API. This changes no durable V1/V2 codec or schema fingerprint and adds
 no typed portable input, callback, custom action, keymap, or toolbar metadata
 to the Rust profile.
 
+Version `0.2.0-alpha.8` leaves these Rust contracts unchanged. It ships their
+exact `example/highlight@7` reference profile as a separate callback-free npm
+package and exercises the compiled core through clean consumer and cross-
+browser integration gates.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact

@@ -1,22 +1,28 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-alpha.7` packaged boundary contract; ABI generation `3` is authoritative
-for the matching official browser/Wasm packages, while direct raw-handle use is
-an intentionally narrow, advanced, and experimental integration surface
+Status: `0.2.0-alpha.8` packaged boundary contract; ABI generation `3` is
+authoritative for the matching official browser/Wasm packages, while direct
+raw-handle use is an intentionally narrow, advanced, and experimental
+integration surface
 
 The `publish = false` Rust crate remains a repository implementation artifact;
 it is not a crates.io release because its `breditor-core` dependency has no
 distribution source. Its reviewed `wasm-bindgen` output is now the publishable
 `@breditor/wasm` ESM workspace package. `@breditor/browser` is separately
 packaged and continues to consume structural generated views without an
-import-time dependency on their concrete classes. A clean temporary consumer
-installs both npm tarballs, initializes the real Wasm module, imports the
-browser entry point, and type-checks without workspace paths.
+import-time dependency on their concrete classes. Alpha.8 adds the separately
+packaged callback-free `@breditor/reference-highlight` proof. A clean temporary
+consumer installs all three npm tarballs, resolves only package-root imports
+inside its own `node_modules`, initializes the real Wasm module, type-checks,
+bundles, and opens the reference profile in Chromium without workspace paths.
 
-`@breditor/browser@0.2.0-alpha.7` and `@breditor/wasm@0.2.0-alpha.7` are
+`@breditor/browser@0.2.0-alpha.8` and `@breditor/wasm@0.2.0-alpha.8` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
-are not the high-level browser compatibility surface.
+are not the high-level browser compatibility surface. The reference package
+also has version `0.2.0-alpha.8` and declares the exact browser package as a
+peer so its branded presentation values are created by the same module instance
+that admits them.
 
 Alpha.5 carries the Rust core's compiled semantic profile through ABI 3. A
 strict bounded bootstrap request creates a reusable compiled-profile owner;
@@ -128,25 +134,33 @@ bootstrap shape is ABI-local configuration, not a durable manifest codec.
   "schema": { "name": "example/editor", "version": 1 },
   "extensions": [
     {
-      "id": { "name": "example/highlight", "version": 1 },
+      "id": { "name": "example/highlight-extension", "version": 1 },
       "dependencies": [],
       "conflicts": [],
       "inlineFormats": [
-        { "kind": "example/highlight", "revision": 1 }
+        { "kind": "example/highlight", "revision": 7 }
       ],
       "inlineFormatToggles": [
         {
           "formatKind": "example/highlight",
           "actionId": "example/toggle-highlight",
-          "intentId": "example/toggle-highlight",
-          "bindingId": "example/toggle-highlight-primary",
-          "actionStateId": "example/control-highlight"
+          "intentId": "example/toggle-highlight-intent",
+          "bindingId": "example/toggle-highlight-binding",
+          "actionStateId": "example/highlight-control"
         }
       ]
     }
   ]
 }
 ```
+
+That exact reference definition compiles to
+`sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`
+and is exported as inert data by `@breditor/reference-highlight`. Changing its
+schema selector, format identity/revision, or compiler contract requires a new
+fingerprint-bearing Document V2. Changing only labels, classes, or wrapper
+presentation does not. The bootstrap remains ABI-local configuration rather
+than a public durable manifest protocol.
 
 A successful result transfers one reusable `BreditorCompiledProfile` through
 `takeProfile()`. `generation()` returns an independently disposable opaque

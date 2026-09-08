@@ -4,6 +4,70 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.8 - 2026-09-08
+
+This unpublished checkpoint proves the complete narrow extension path from
+three installable package tarballs. It adds no new document, operation, or Wasm
+transport generation: ABI 3 and the V1/V2 durable formats remain unchanged.
+
+### Reference Highlight package
+
+- Added `@breditor/reference-highlight`, a callback-free package assembled
+  entirely from supported package-root APIs. It exports the exact profile
+  bootstrap, fingerprint-bound Document V2 fixtures, a complete render
+  manifest, and a Bold/Highlight/Undo/Redo toolbar manifest.
+- Fixed its semantic identities as schema `example/editor@1`, extension
+  `example/highlight-extension@1`, property-free format
+  `example/highlight@7`, action `example/toggle-highlight`, no-input intent
+  `example/toggle-highlight-intent`, binding
+  `example/toggle-highlight-binding`, and tracked state
+  `example/highlight-control`.
+- Recorded the exact durable schema fingerprint as
+  `sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`.
+  The package contains data and browser presentation declarations, not a
+  JavaScript mutation callback or dynamically loaded Rust/Wasm plugin.
+
+### External-consumer and browser proof
+
+- Extended the packaging gate to build and pack matching
+  `@breditor/browser`, `@breditor/wasm`, and
+  `@breditor/reference-highlight` tarballs. A clean consumer outside the
+  repository installs all three, proves that every import resolves inside its
+  own `node_modules` and that the reference presentation uses the consumer's
+  single browser peer, then type-checks, bundles with Vite, initializes real
+  Wasm, renders Highlight, exports V2 content, and disposes in Chromium.
+- Added high-level startup failures for missing and extra render recipes and
+  missing or extra initial action-state catalog entries. Invalid presentation
+  or catalog input is rejected before the editor host is mutated; an unknown
+  toolbar intent/state contribution is rejected before either host is mutated.
+- Ran the actual reference package through Chromium, Firefox, and WebKit. The
+  matrix covers V2 startup, Highlight intent/state/toolbar delivery, canonical
+  mixed Strong/Highlight nesting, undo/redo, canonical export and safe copy,
+  formatting-stripping paste, persistence flush/reload, restored history, and
+  teardown.
+
+### Release boundaries and budgets
+
+- Added reference-package ceilings of 12,000 emitted JavaScript bytes, 12,000
+  declaration bytes, and a 20,000-byte packed tarball. The Alpha.8 artifacts
+  measured 8,088 JavaScript bytes, 7,880 declaration bytes, and a 9,430-byte
+  tarball.
+- Recalibrated only the raw React reference-application ceiling from 725,000 to
+  750,000 bytes after clean Alpha.8 and unchanged tagged Alpha.7 sources both
+  rebuilt to 734,688 bytes with the current locked toolchain. The measured
+  level-9 gzip size is 194,970 bytes and its 200,000-byte ceiling is unchanged;
+  the reference extension is not imported by that application.
+- Kept exact prerelease pairing: the reference package has an exact
+  `@breditor/browser@0.2.0-alpha.8` peer, and supported use installs
+  `@breditor/browser@0.2.0-alpha.8`, `@breditor/wasm@0.2.0-alpha.8`, and
+  `@breditor/reference-highlight@0.2.0-alpha.8` together.
+- Documented the package/application trust boundary and the deliberately
+  deferred nodes, properties, callbacks, rich paste, typed intents, dynamic
+  lifecycle, collaboration, and plugin-ABI capabilities.
+
+Alpha.8 is complete. `0.2.0-rc.1` is next and is a release audit with no
+feature widening.
+
 ## 0.2.0-alpha.7 - 2026-09-08
 
 This unpublished checkpoint completes the supported synchronous semantic-

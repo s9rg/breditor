@@ -1,0 +1,44 @@
+{
+  "name": "@breditor/reference-highlight",
+  "version": "0.2.0-alpha.8",
+  "description": "Callback-free reference Highlight extension for Breditor",
+  "keywords": [
+    "rich-text-editor",
+    "breditor",
+    "extension",
+    "highlight"
+  ],
+  "author": "Breditor contributors",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "LICENSE",
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@breditor/browser": "0.2.0-alpha.8"
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/check-licenses.mjs && npm run clean && tsc -p tsconfig.json --declaration false --removeComments && tsc -p tsconfig.json --emitDeclarationOnly",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json"
+  }
+}

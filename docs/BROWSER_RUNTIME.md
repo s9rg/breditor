@@ -1,8 +1,8 @@
 # Breditor browser runtime
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
-extended by the unpublished experimental `0.2.0-alpha.7` compiled-profile and
-supported no-input intent/toolbar path
+extended by the unpublished experimental `0.2.0-alpha.8` compiled-profile,
+supported no-input intent/toolbar, and reference-package path
 
 `BreditorBrowserEditor` is the recommended application boundary for the
 `0.1.0` browser release. It assembles the generated Rust/Wasm engine, typed
@@ -128,7 +128,8 @@ host integration; their generated handle protocol is not a compatibility
 promise. Applications should install matching versions of `@breditor/browser`
 and `@breditor/wasm`.
 
-The experimental Alpha.7 root path adds `semanticProfile: { bootstrapJson }`, a
+The experimental Alpha.8 root path retains Alpha.7's
+`semanticProfile: { bootstrapJson }`, a
 matching Document V2 or Session Checkpoint V2 source, and an exact callback-free
 `rendering` manifest. The presentation must cover every format in the compiled
 profile descriptor. A supplied toolbar must also match descriptor-declared
@@ -137,6 +138,63 @@ action-state snapshot must repeat the descriptor's complete fixed catalog.
 Without `semanticProfile`, the stable exact-base Document
 V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
 sniffs or falls back between wire generations.
+
+`@breditor/reference-highlight` provides a complete callback-free profile from
+supported package roots. Install exactly matching Alpha.8 packages:
+
+```sh
+npm install @breditor/browser@0.2.0-alpha.8 \
+  @breditor/wasm@0.2.0-alpha.8 \
+  @breditor/reference-highlight@0.2.0-alpha.8
+```
+
+Then import only the package roots and pass the exported data to the ordinary
+open options:
+
+```ts
+import { openBreditorBrowserEditor } from "@breditor/browser";
+import {
+  REFERENCE_HIGHLIGHT_EMPTY_DOCUMENT_JSON,
+  REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
+  REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+} from "@breditor/reference-highlight";
+import initializeWasm, * as breditorWasm from "@breditor/wasm";
+
+const host = document.querySelector("#editor") as HTMLElement;
+const toolbarHost = document.querySelector("#toolbar") as HTMLElement;
+await initializeWasm();
+const opened = await openBreditorBrowserEditor({
+  host,
+  label: "Notes",
+  wasm: breditorWasm,
+  semanticProfile: {
+    bootstrapJson: REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+  },
+  initialDocument: {
+    lineageId: "notes-highlight",
+    documentJson: REFERENCE_HIGHLIGHT_EMPTY_DOCUMENT_JSON,
+    historyCapacity: 100,
+  },
+  rendering: REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
+  toolbar: { host: toolbarHost, manifest: REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST },
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+});
+```
+
+The reference profile's fixed IDs are schema `example/editor@1`, extension
+`example/highlight-extension@1`, format `example/highlight@7`, action
+`example/toggle-highlight`, intent `example/toggle-highlight-intent`, binding
+`example/toggle-highlight-binding`, and state `example/highlight-control`. Its
+durable fingerprint is
+`sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`.
+The reference package has an exact browser peer: its manifests must be created
+and admitted by the same root `@breditor/browser` module instance. A duplicate
+or nested browser copy fails that ownership contract.
 
 An optional `AbortSignal` cancels startup only. It closes an in-progress storage
 load and prevents an opened result from escaping, but it is not retained as the
@@ -560,6 +618,12 @@ command, dynamic manifest replacement, plugin unload, custom node renderer, or
 stable third-party Wasm plugin ABI in the supported surface. Direct concrete
 action toolbar declarations remain an advanced policy bypass.
 
+The high-level startup gate is all-or-nothing for presentation as well as
+semantic data. A missing or extra render recipe, missing or extra initial
+action-state catalog entry, or unknown/cross-wired toolbar intent/state fails
+before Breditor publishes editor or toolbar DOM. Alpha.8 exercises those cases
+directly rather than treating an eventual render fault as acceptable startup.
+
 ## Honest limitations
 
 The `0.1.0` runtime is deliberately a small local notes/form editor:
@@ -603,7 +667,7 @@ The `0.1.0` runtime is deliberately a small local notes/form editor:
   desktop automation is not a broad mobile-IME or assistive-technology support
   claim; those still need dedicated device and user-agent coverage.
 
-The unpublished Alpha.7 path deliberately widens only the sealed base-text
+The unpublished Alpha.8 path deliberately widens only the sealed base-text
 seams above: a compiled profile may add property-free inline formats, exact
 callback-free wrapper recipes, Document/Session Checkpoint V2, and scoped
 profile-bound persistence. Composition accepts only canonical known wrappers
@@ -613,6 +677,14 @@ extension callbacks, typed public intent inputs, custom toolbar controls or
 keymaps, rich paste, collaboration, selective undo, or dynamic extension
 lifecycle. These prerelease additions do not alter the stable
 `0.1.x` promises listed above.
+
+The reference package does not change those limits. It is trusted same-realm
+JavaScript that supplies frozen configuration and presentation values, not
+sandboxed code, a package-signature proof, or a dynamic Rust/Wasm plugin. The
+Alpha.8 Chromium/Firefox/WebKit matrix proves its Highlight intent/state/
+toolbar, mixed-format nesting, history, export/copy, plain paste, persistence
+reload, restored history, and teardown paths; it does not establish broad
+mobile, operating-system IME, or assistive-technology support.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

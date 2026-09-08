@@ -1,4 +1,11 @@
 import {
+  REFERENCE_HIGHLIGHT_IDS,
+  REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
+  REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+  createReferenceHighlightDocumentJson,
+} from "@breditor/reference-highlight";
+import {
   openBreditorBrowserEditor,
   type BreditorBrowserContentExportResult,
   type BreditorBrowserEditor,
@@ -118,6 +125,44 @@ interface AdoptedEditorHostProbeResult {
   readonly reopenPhase: string;
 }
 
+interface ReferenceHighlightProbeResult {
+  readonly initialHtml: string;
+  readonly stateId: string | null;
+  readonly initialPressed: string | null;
+  readonly intentStatus: string;
+  readonly intentId: string;
+  readonly highlightedHtml: string;
+  readonly highlightedPressed: string | null;
+  readonly mixedHtml: string;
+  readonly mixedDocumentJson: string;
+  readonly copiedPlainText: string;
+  readonly copiedHtml: string;
+  readonly undoHtml: string;
+  readonly redoHtml: string;
+  readonly unformattedHtml: string;
+  readonly unformattedPressed: string | null;
+  readonly pasteDefaultPrevented: boolean;
+  readonly pastedHtml: string;
+  readonly pastedDocumentJson: string;
+  readonly flushStatus: string;
+  readonly persistedHtml: string;
+  readonly persistedDocument: BreditorBrowserEditorSnapshot["document"];
+  readonly firstPhaseBeforeDispose: string;
+  readonly firstPhaseAfterDispose: string;
+  readonly firstEditorEmptyAfterDispose: boolean;
+  readonly firstToolbarEmptyAfterDispose: boolean;
+  readonly restoredHtml: string;
+  readonly restoredDocument: BreditorBrowserEditorSnapshot["document"];
+  readonly restoredHighlightPressed: string | null;
+  readonly restoredBoldPressed: string | null;
+  readonly restoredUndoHtml: string;
+  readonly restoredRedoHtml: string;
+  readonly restoredPhase: string;
+  readonly finalPhase: string;
+  readonly finalEditorEmpty: boolean;
+  readonly finalToolbarEmpty: boolean;
+}
+
 interface BreditorBrowserHarness {
   readonly phase: "ready";
   text(): string;
@@ -153,6 +198,7 @@ interface BreditorBrowserHarness {
     mode: MutationShadowMode,
   ): DetachedToolbarButtonShadowProbeResult;
   probeAdoptedEditorHost(): Promise<AdoptedEditorHostProbeResult>;
+  probeReferenceHighlight(): Promise<ReferenceHighlightProbeResult>;
   dispose(): void;
 }
 
@@ -248,6 +294,7 @@ async function start(): Promise<void> {
     probeDetachedToolbarButtonShadow: (mode: MutationShadowMode) =>
       probeDetachedToolbarButtonShadow(editor, mode),
     probeAdoptedEditorHost: () => probeAdoptedEditorHost(),
+    probeReferenceHighlight: () => probeReferenceHighlight(),
     dispose: () => {
       releaseStatus();
       editor.dispose();
@@ -256,6 +303,284 @@ async function start(): Promise<void> {
   };
   window.__breditorHarness = Object.freeze(harness);
   document.documentElement.dataset["breditorReady"] = "true";
+}
+
+async function probeReferenceHighlight(): Promise<ReferenceHighlightProbeResult> {
+  const host = document.createElement("div");
+  const toolbarHost = document.createElement("div");
+  document.body.append(toolbarHost, host);
+  let editor: BreditorBrowserEditor | undefined;
+  try {
+    const text = "Cross-browser Highlight";
+    const openReferenceEditor = (documentJson: string) =>
+      openBreditorBrowserEditor({
+        host,
+        label: "Reference Highlight probe",
+        wasm: breditorWasm,
+        initialDocument: {
+          lineageId: "browser-reference-highlight",
+          documentJson,
+          historyCapacity: 10,
+        },
+        semanticProfile: {
+          bootstrapJson: REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+        },
+        rendering: REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
+        keyboard: {
+          editing: "beforeinputPrimary",
+          primaryModifier: "control",
+          shortcuts: "enabled",
+        },
+        toolbar: {
+          host: toolbarHost,
+          manifest: REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+        },
+        persistence: {
+          indexedDB,
+          crypto: crypto.subtle,
+          scope: { kind: "slot", name: "browser.reference-highlight" },
+          autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
+        },
+      });
+    const opened = await openReferenceEditor(
+      createReferenceHighlightDocumentJson(text),
+    );
+    if (!opened.ok) {
+      throw new Error(`reference Highlight open failed: ${opened.error.code}`);
+    }
+    editor = opened.editor;
+
+    const highlight = requiredToolbarButton(toolbarHost, "Highlight");
+    const bold = requiredToolbarButton(toolbarHost, "Bold");
+    const undo = requiredToolbarButton(toolbarHost, "Undo");
+    const redo = requiredToolbarButton(toolbarHost, "Redo");
+
+    const initialHtml = host.innerHTML;
+    const initialPressed = highlight.getAttribute("aria-pressed");
+    await selectAllTextInHost(host);
+    await waitForProbe(
+      () =>
+        highlight.getAttribute("aria-disabled") === "false" &&
+        bold.getAttribute("aria-disabled") === "false",
+      "reference Highlight selection did not enable its toolbar control",
+    );
+
+    const intent = editor.executeIntent(REFERENCE_HIGHLIGHT_IDS.intentId);
+    await waitForProbe(
+      () => host.querySelector("mark.breditor-reference-highlight") !== null,
+      "reference Highlight intent did not render",
+    );
+    const highlightedHtml = host.innerHTML;
+    const highlightedPressed = highlight.getAttribute("aria-pressed");
+
+    bold.click();
+    await waitForProbe(
+      () => host.querySelector("strong > mark.breditor-reference-highlight") !== null,
+      "reference Highlight did not produce canonical mixed-format nesting",
+    );
+    const mixedHtml = host.innerHTML;
+    const mixedExport = editor.exportContent("documentJson");
+    if (!mixedExport.ok) {
+      throw new Error(`reference Highlight export failed: ${mixedExport.error.code}`);
+    }
+    await selectAllTextInHost(host);
+    const copied = dispatchClipboardAtHost(host, "copy", {});
+
+    undo.click();
+    await waitForProbe(
+      () => host.querySelector("mark") !== null && host.querySelector("strong") === null,
+      "reference Highlight undo did not remove strong",
+    );
+    const undoHtml = host.innerHTML;
+    redo.click();
+    await waitForProbe(
+      () => host.querySelector("strong > mark.breditor-reference-highlight") !== null,
+      "reference Highlight redo did not restore mixed formatting",
+    );
+    const redoHtml = host.innerHTML;
+
+    bold.click();
+    await waitForProbe(
+      () => host.querySelector("mark") !== null && host.querySelector("strong") === null,
+      "reference Highlight Bold control did not toggle off",
+    );
+    highlight.click();
+    await waitForProbe(
+      () =>
+        host.querySelector("mark") === null &&
+        highlight.getAttribute("aria-pressed") === "false",
+      "reference Highlight toolbar did not toggle the format off",
+    );
+    const unformattedHtml = host.innerHTML;
+    const unformattedPressed = highlight.getAttribute("aria-pressed");
+
+    await selectAllTextInHost(host);
+    const pasted = dispatchClipboardAtHost(host, "paste", {
+      html:
+        '<p><strong><mark class="breditor-reference-highlight">Pasted plain</mark></strong></p>',
+    });
+    await waitForProbe(
+      () =>
+        host.textContent === "Pasted plain" &&
+        host.querySelector("strong, mark") === null,
+      "reference Highlight paste retained source formatting",
+    );
+    const pastedHtml = host.innerHTML;
+    const pastedExport = editor.exportContent("documentJson");
+    if (!pastedExport.ok) {
+      throw new Error(`reference Highlight export failed: ${pastedExport.error.code}`);
+    }
+
+    await selectAllTextInHost(host);
+    highlight.click();
+    await waitForProbe(
+      () => host.querySelector("mark.breditor-reference-highlight") !== null,
+      "reference Highlight toolbar did not reapply highlight",
+    );
+    bold.click();
+    await waitForProbe(
+      () => host.querySelector("strong > mark.breditor-reference-highlight") !== null,
+      "reference Highlight toolbar did not restore mixed formatting",
+    );
+    const flush = await editor.flushPersistence();
+    const persistedHtml = host.innerHTML;
+    const persistedDocument = editor.getSnapshot().document;
+    const firstPhaseBeforeDispose = editor.getStatus().phase;
+    editor.dispose();
+    const firstPhaseAfterDispose = editor.getStatus().phase;
+    const firstEditorEmptyAfterDispose = host.childNodes.length === 0;
+    const firstToolbarEmptyAfterDispose = toolbarHost.childNodes.length === 0;
+    editor = undefined;
+
+    const reopened = await openReferenceEditor(
+      createReferenceHighlightDocumentJson("fallback must not open"),
+    );
+    if (!reopened.ok) {
+      throw new Error(`reference Highlight reopen failed: ${reopened.error.code}`);
+    }
+    editor = reopened.editor;
+    const restoredHighlight = requiredToolbarButton(toolbarHost, "Highlight");
+    const restoredBold = requiredToolbarButton(toolbarHost, "Bold");
+    const restoredUndo = requiredToolbarButton(toolbarHost, "Undo");
+    const restoredRedo = requiredToolbarButton(toolbarHost, "Redo");
+    const restoredHtml = host.innerHTML;
+    const restoredDocument = editor.getSnapshot().document;
+    const restoredHighlightPressed = restoredHighlight.getAttribute("aria-pressed");
+    const restoredBoldPressed = restoredBold.getAttribute("aria-pressed");
+
+    restoredUndo.click();
+    await waitForProbe(
+      () => host.querySelector("mark") !== null && host.querySelector("strong") === null,
+      "reference Highlight restored undo history was unavailable",
+    );
+    const restoredUndoHtml = host.innerHTML;
+    restoredRedo.click();
+    await waitForProbe(
+      () => host.querySelector("strong > mark.breditor-reference-highlight") !== null,
+      "reference Highlight restored redo history was unavailable",
+    );
+    const restoredRedoHtml = host.innerHTML;
+    const restoredPhase = editor.getStatus().phase;
+    editor.dispose();
+    const finalPhase = editor.getStatus().phase;
+
+    return Object.freeze({
+      initialHtml,
+      stateId: highlight.getAttribute("data-breditor-state-id"),
+      initialPressed,
+      intentStatus: intent.status,
+      intentId: intent.intentId,
+      highlightedHtml,
+      highlightedPressed,
+      mixedHtml,
+      mixedDocumentJson: mixedExport.value,
+      copiedPlainText: copied.plainText,
+      copiedHtml: copied.html,
+      undoHtml,
+      redoHtml,
+      unformattedHtml,
+      unformattedPressed,
+      pasteDefaultPrevented: pasted.defaultPrevented,
+      pastedHtml,
+      pastedDocumentJson: pastedExport.value,
+      flushStatus: flush.status,
+      persistedHtml,
+      persistedDocument,
+      firstPhaseBeforeDispose,
+      firstPhaseAfterDispose,
+      firstEditorEmptyAfterDispose,
+      firstToolbarEmptyAfterDispose,
+      restoredHtml,
+      restoredDocument,
+      restoredHighlightPressed,
+      restoredBoldPressed,
+      restoredUndoHtml,
+      restoredRedoHtml,
+      restoredPhase,
+      finalPhase,
+      finalEditorEmpty: host.childNodes.length === 0,
+      finalToolbarEmpty: toolbarHost.childNodes.length === 0,
+    });
+  } finally {
+    editor?.dispose();
+    window.getSelection()?.removeAllRanges();
+    host.remove();
+    toolbarHost.remove();
+  }
+}
+
+function requiredToolbarButton(
+  toolbar: HTMLElement,
+  label: string,
+): HTMLButtonElement {
+  const button = [...toolbar.querySelectorAll("button")].find(
+    (candidate) => candidate.textContent === label,
+  );
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(`reference Highlight ${label} button is unavailable`);
+  }
+  return button;
+}
+
+async function selectAllTextInHost(host: HTMLElement): Promise<void> {
+  const paragraph = host.querySelector("p");
+  const selection = window.getSelection();
+  if (
+    paragraph === null ||
+    selection === null ||
+    typeof selection.setBaseAndExtent !== "function"
+  ) {
+    throw new Error("reference Highlight selection is unavailable");
+  }
+  const iterator = document.createNodeIterator(paragraph, NodeFilter.SHOW_TEXT);
+  const text = iterator.nextNode();
+  if (!(text instanceof Text) || iterator.nextNode() !== null) {
+    throw new Error("reference Highlight expected one text leaf");
+  }
+  host.focus();
+  selection.setBaseAndExtent(text, 0, text, text.data.length);
+  document.dispatchEvent(new Event("selectionchange"));
+  await waitForProbe(
+    () =>
+      selection.rangeCount === 1 &&
+      selection.anchorNode !== null &&
+      selection.focusNode !== null &&
+      host.contains(selection.anchorNode) &&
+      host.contains(selection.focusNode) &&
+      selection.toString() === (host.textContent ?? ""),
+    "reference Highlight browser selection did not settle",
+  );
+}
+
+async function waitForProbe(
+  predicate: () => boolean,
+  failure: string,
+): Promise<void> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (predicate()) return;
+    await nextTask();
+  }
+  throw new Error(failure);
 }
 
 async function probeEditorHost(
@@ -999,6 +1324,14 @@ function dispatchClipboard(
   operation: "copy" | "cut" | "paste",
   payload: ClipboardPayload,
 ): ClipboardDispatchResult {
+  return dispatchClipboardAtHost(editorHost, operation, payload);
+}
+
+function dispatchClipboardAtHost(
+  target: HTMLElement,
+  operation: "copy" | "cut" | "paste",
+  payload: ClipboardPayload,
+): ClipboardDispatchResult {
   const transfer = new DataTransfer();
   if (payload.plainText !== undefined) {
     transfer.setData("text/plain", payload.plainText);
@@ -1019,12 +1352,12 @@ function dispatchClipboard(
       eventTransfer.setData("text/html", payload.html);
     }
   }
-  editorHost.dispatchEvent(event);
+  target.dispatchEvent(event);
 
   if (event.defaultPrevented && operation !== "copy") {
     const inputType = operation === "cut" ? "deleteByCut" : "insertFromPaste";
-    dispatchInput("beforeinput", inputType, null, false, []);
-    dispatchInput("input", inputType, null, false, []);
+    target.dispatchEvent(inputEvent("beforeinput", inputType, null, false, []));
+    target.dispatchEvent(inputEvent("input", inputType, null, false, []));
   }
   const observedTransfer = event.clipboardData ?? eventTransfer;
   return Object.freeze({

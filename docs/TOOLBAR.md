@@ -1,8 +1,8 @@
 # Breditor toolbar and action-state contract
 
 Status: supported by the public `0.1.0` runtime and extended by the complete
-`0.2.0-alpha.7` descriptor-validated intent toolbar; Alpha.8 cross-browser and
-consumer proof is next
+`0.2.0-alpha.8` descriptor-validated intent toolbar and reference-package
+consumer/cross-browser proof; `0.2.0-rc.1` audit is next
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -196,6 +196,16 @@ additional compiled property-free format toggle intents as native buttons. A
 manifest still cannot register behavior. The parser retains direct action
 declarations for advanced low-level toolbar construction, but the supported
 high-level editor rejects them as a policy bypass.
+
+Alpha.8's `@breditor/reference-highlight` package proves this through its root
+exported Bold, Highlight, Undo, and Redo manifest. Highlight names state
+`example/highlight-control` and no-input intent
+`example/toggle-highlight-intent`; the compiled descriptor binds those to
+`example/toggle-highlight` through `example/toggle-highlight-binding`. The
+package declares the exact browser version as a peer because toolbar and render
+manifests are branded by their creating browser module instance. Clean-consumer
+and Chromium/Firefox/WebKit tests exercise the actual package rather than an
+inline imitation.
 
 ## Accessible DOM behavior
 

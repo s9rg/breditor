@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packageDirectories = [
   join(repositoryRoot, "packages", "breditor-browser"),
+  join(repositoryRoot, "packages", "breditor-reference-highlight"),
   join(repositoryRoot, "packages", "breditor-wasm"),
 ];
 

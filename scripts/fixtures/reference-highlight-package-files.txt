@@ -1,0 +1,15 @@
+package/LICENSE
+package/LICENSE-APACHE
+package/LICENSE-MIT
+package/README.md
+package/dist/documents.d.ts
+package/dist/documents.js
+package/dist/ids.d.ts
+package/dist/ids.js
+package/dist/index.d.ts
+package/dist/index.js
+package/dist/presentation.d.ts
+package/dist/presentation.js
+package/dist/profile.d.ts
+package/dist/profile.js
+package/package.json

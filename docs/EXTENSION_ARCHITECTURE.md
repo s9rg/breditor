@@ -1,8 +1,8 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` through `0.2.0-alpha.7` compiler, engine,
-Wasm, profile-aware browser, and supported intent/toolbar checkpoints are
-complete; Alpha.8 consumer proof is next
+Status: decision freeze; the `0.1.1` through `0.2.0-alpha.8` compiler, engine,
+Wasm, profile-aware browser, supported intent/toolbar, reference-package, and
+consumer-proof checkpoints are complete; the `0.2.0-rc.1` audit is next
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -528,6 +528,18 @@ policy bypass. The supported expandable toolbar path uses semantic intents so a
 host can choose routes while compiling a new profile without coupling UI layout
 to action implementation.
 
+Alpha.8 ships one concrete package-level proof,
+`@breditor/reference-highlight`. It freezes schema `example/editor@1`,
+extension `example/highlight-extension@1`, property-free format
+`example/highlight@7`, action `example/toggle-highlight`, no-input intent
+`example/toggle-highlight-intent`, binding
+`example/toggle-highlight-binding`, and tracked state
+`example/highlight-control`. Its exact schema fingerprint is
+`sha256:374d5f058129ab8916d052866e37f3b3540dbb754ba560e55086415a3c58f741`.
+The package-root exports are immutable profile/document data plus render and
+toolbar manifests created by `@breditor/browser`; the package is not a dynamic
+semantic implementation or an executable extension lifecycle.
+
 ### 9. Editing projection, conversion, and persistence are different seams
 
 The editing DOM is a disposable projection of Rust-owned AST and selection.
@@ -599,11 +611,15 @@ The supported `0.2.0` ABI path is Wasm ABI 3. Alpha.5 carries a compiled profile
 and its opaque generation through Rust-owned engines and Wasm handles. New
 profile factories explicitly accept Document V2 or Session Checkpoint V2; the
 legacy exact-base factory remains a separate V1 compatibility path. The
-supported alpha.7 browser consumes ABI 3 and admits either the exact built-in
+supported Alpha.7 browser path consumes ABI 3 and admits either the exact built-in
 base descriptor or one completely correlated compiled-profile descriptor plus
 callback-free browser presentation. Alpha.7 does not change the ABI number or
 durable formats; it consumes the existing intent-result provenance through a
-public redaction boundary.
+public redaction boundary. Alpha.8 retains that same ABI and proves the path
+from three exact-version tarballs. `@breditor/reference-highlight` declares an
+exact `@breditor/browser` peer because render and toolbar manifests are branded
+by the browser module instance that creates and admits them; a nested or
+mismatched browser copy is not a supported substitute.
 
 The ABI 3 boundary:
 
@@ -704,6 +720,11 @@ These are product constraints, not implementation details to conceal:
   the extension path.
 - Breditor does not sandbox the host application or its non-extension browser
   code.
+- The reference package and any future browser presentation package execute as
+  trusted application-realm modules. Callback-free manifest values deny them a
+  mutation callback inside Rust, but package installation is not a sandbox or
+  provenance guarantee. Applications remain responsible for supply-chain and
+  same-realm trust.
 - Canonical JSON, editing DOM, clipboard conversion, and HTML export are
   different contracts. `0.2.0` makes no generic HTML compatibility promise.
 - Copy can serialize admitted formatting, but paste transports no source
@@ -744,18 +765,20 @@ generation is still neither durable nor scalar, and this checkpoint does not
 define custom action/input/callback seams, render order, safe recipes, or
 extension toolbar UI.
 
-The following choices remain for later checkpoints and may be settled without
+`0.2.0-alpha.6` settles deterministic inline renderer order through bounded
+`before`/`after` edges plus a lexical tie-break and settles the fixed safe
+wrapper/class vocabulary. `0.2.0-alpha.7` settles the supported no-input intent
+and native toggle-button toolbar path. `0.2.0-alpha.8` freezes the reference
+Highlight profile above and proves it from clean package-root-only consumers
+and the Chromium/Firefox/WebKit matrix. None of those checkpoints freezes the
+ABI-local profile bootstrap as a general durable extension-manifest codec.
+
+The following choice remains for a later release and may be settled without
 weakening the decisions above:
 
 1. **Future manifest wire shape.** A public durable JSON or binary codec is not required
    at `0.1.1`. If later exposed, freeze exact field names only after malformed,
    unknown, duplicate, missing, and over-limit fixtures pass.
-2. **Inline renderer order syntax.** Choose the smallest explicit
-   `before`/`after` declaration and stable fallback needed for deterministic DOM
-   nesting; it remains separate from semantic format-set order.
-3. **Safe render vocabulary.** Finalize the allowed element tokens, attribute
-   tokens, nesting edges, and CSS-class policy. Recipes remain bounded data and
-   never become executable callbacks.
 
 ## Checkpoint sequence
 
@@ -862,6 +885,7 @@ earlier or skip a gate.
 - Ship the reference extension package and clean consumer fixtures.
 - Complete missing/extra browser contribution tests, the cross-browser matrix,
   compatibility/limitation documentation, and size gates.
+- Complete.
 
 ### 0.2.0-rc.1 — release audit
 
@@ -920,7 +944,8 @@ In addition to the complete repository gates, `0.2.0` requires proof that:
   matches an admitted intent/input and state/value contract or browser
   construction fails; contributions contain no mutation callbacks, and every
   activation returns through live Rust intent evaluation;
-- a clean external consumer can install, type-check, bundle, and run the
-  reference extension using only public package entry points; and
+- a clean external consumer can install, type-check, bundle, and run the exact
+  browser/Wasm/reference tarball set using only their supported package-root
+  entry points and one shared browser module instance; and
 - documentation never describes another editor's contract as Breditor
   compatibility.

@@ -9,11 +9,11 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-This alpha.7 checkpoint is currently unpublished. After publication, the
+This alpha.8 checkpoint is currently unpublished. After publication, the
 registry package can be installed with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.7
+npm install @breditor/wasm@0.2.0-alpha.8
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -64,6 +64,10 @@ provenance to advanced handle-owning hosts. The supported high-level browser
 API consumes the same result but deliberately redacts concrete binding/action
 identities and admits only immediate synchronous delivery.
 
+Alpha.8 also leaves ABI generation 3 unchanged. It packages a callback-free
+reference Highlight profile outside the Wasm module and proves that profile
+through the exact-version browser/Wasm/reference tarball set.
+
 ## Reproducible build
 
 From the repository root:
@@ -86,10 +90,10 @@ license metadata, verifies required third-party notice bytes, verifies that two
 clean builds produce the same bytes, and initializes the built module in
 Node.js.
 
-Use `npm run smoke:packages` to pack both public workspace packages, install the
-tarballs in a clean temporary consumer, import and initialize them, type-check
-and production-bundle a consumer program without workspace resolution, and
-launch the tarball-only result in real Chromium. The command requires the
+Use `npm run smoke:packages` to pack all three public workspace packages,
+install the tarballs in clean temporary consumers, import and initialize them,
+type-check and production-bundle without workspace resolution, and launch both
+the base and reference-profile tarball-only results in real Chromium. The command requires the
 workspace dependencies, exact Wasm generator, and lockfile-selected Playwright
 Chromium executable:
 
