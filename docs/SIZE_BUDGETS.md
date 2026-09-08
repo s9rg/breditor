@@ -1,6 +1,6 @@
 # Browser release size budgets
 
-Status: required `0.2.0-alpha.8` release gate
+Status: required `0.2.0-rc.1` release gate
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React

@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-alpha.8` packaged boundary contract; ABI generation `3` is
+Status: `0.2.0-rc.1` packaged boundary contract; ABI generation `3` is
 authoritative for the matching official browser/Wasm packages, while direct
 raw-handle use is an intentionally narrow, advanced, and experimental
 integration surface
@@ -16,11 +16,11 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-`@breditor/browser@0.2.0-alpha.8` and `@breditor/wasm@0.2.0-alpha.8` are
+`@breditor/browser@0.2.0-rc.1` and `@breditor/wasm@0.2.0-rc.1` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
 are not the high-level browser compatibility surface. The reference package
-also has version `0.2.0-alpha.8` and declares the exact browser package as a
+also has version `0.2.0-rc.1` and declares the exact browser package as a
 peer so its branded presentation values are created by the same module instance
 that admits them.
 

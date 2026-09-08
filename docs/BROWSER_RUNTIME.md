@@ -1,8 +1,8 @@
 # Breditor browser runtime
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
-extended by the unpublished experimental `0.2.0-alpha.8` compiled-profile,
-supported no-input intent/toolbar, and reference-package path
+extended by the unpublished `0.2.0-rc.1` compiled-profile, supported no-input
+intent/toolbar, and reference-package path
 
 `BreditorBrowserEditor` is the recommended application boundary for the
 `0.1.0` browser release. It assembles the generated Rust/Wasm engine, typed
@@ -140,12 +140,12 @@ V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
 sniffs or falls back between wire generations.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
-supported package roots. Install exactly matching Alpha.8 packages:
+supported package roots. Install exactly matching release-candidate packages:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.8 \
-  @breditor/wasm@0.2.0-alpha.8 \
-  @breditor/reference-highlight@0.2.0-alpha.8
+npm install @breditor/browser@0.2.0-rc.1 \
+  @breditor/wasm@0.2.0-rc.1 \
+  @breditor/reference-highlight@0.2.0-rc.1
 ```
 
 Then import only the package roots and pass the exported data to the ordinary

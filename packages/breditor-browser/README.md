@@ -25,8 +25,9 @@ are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
 the corresponding TypeScript sources are not part of the package.
 
-The current alpha.8 implementation requires Wasm ABI 3 and an exact matching Wasm
-package version before it reads the generated engine factory. Bootstrap owns
+The current release-candidate implementation requires Wasm ABI 3 and an exact
+matching Wasm package version before it reads the generated engine factory.
+Bootstrap owns
 and validates the compiled-profile generation and descriptor and checks every
 observation, projection, selection, action-state, and command result against
 that opaque generation. The browser can now open a compiled semantic profile,
@@ -45,7 +46,7 @@ Alpha.8 adds the separately packaged callback-free
 `@breditor/reference-highlight` profile and proves its complete supported-root
 path in clean tarball and Chromium/Firefox/WebKit consumers. The former bare-
 factory and standalone restore seams are not accepted by the supported root
-API. Alpha.8 is complete and remains unpublished; the release audit is next.
+API. `0.2.0-rc.1` remains unpublished and is the no-feature-widening release audit.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -55,11 +56,11 @@ root and the documented V1 browser formats carry that promise.
 
 ## Public runtime
 
-This alpha.8 checkpoint is currently unpublished. After publication, the
+This release candidate is currently unpublished. After publication, the
 matching registry packages can be installed with:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.8 @breditor/wasm@0.2.0-alpha.8
+npm install @breditor/browser@0.2.0-rc.1 @breditor/wasm@0.2.0-rc.1
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -120,7 +121,7 @@ Document V2, and an owned `rendering` value from
 `createInlineFormatRenderManifest`. It must cover every admitted format; recipes
 contain only a safe element, checked classes, and explicit ordering edges.
 
-The supported alpha.8 configuration passes the initialized, exactly
+The supported release-candidate configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
 not admit a bare structural factory. Lower-level structural factory types exist
 only on the experimental advanced surface for adapter testing and host-side

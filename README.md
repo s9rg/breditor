@@ -11,7 +11,7 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current Alpha.8 checkpoint retains Alpha.7's immutable compiled editor
+The current `0.2.0-rc.1` candidate retains Alpha.8's immutable compiled editor
 profile through the guarded Rust engine, Wasm ABI 3, and the browser projection
 boundary. Profile-created engine
 contexts, observations, intent outcomes, action-state snapshots, projections,
@@ -54,8 +54,8 @@ render recipes and action-state entries, or an invalid toolbar intent/state
 contribution, fail before startup publishes host DOM.
 Fingerprint-default persistence is profile-scoped rather than document-scoped;
 hosts with multiple same-schema documents must provide distinct caller slots.
-Alpha.8 is complete and remains unpublished; `0.2.0-rc.1` is the next
-no-feature-widening release audit. The
+`0.2.0-rc.1` is complete and remains unpublished; final `0.2.0` shippability
+validation is next and will not widen the feature set. The
 decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector

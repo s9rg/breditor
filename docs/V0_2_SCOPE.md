@@ -1,8 +1,9 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` through `0.2.0-alpha.8` compiler, engine, Wasm,
-profile-aware browser, supported intent/toolbar, reference-package, and
-consumer-proof checkpoints are complete; `0.2.0-rc.1` release audit is next
+Status: in progress; the `0.1.1` through `0.2.0-rc.1` compiler, engine, Wasm,
+profile-aware browser, supported intent/toolbar, reference-package,
+consumer-proof, and release-audit checkpoints are complete; final `0.2.0`
+shippability validation is next
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -290,6 +291,7 @@ when review finds a correctness boundary; later features are not claimed early.
    extra browser contribution tests, cross-browser matrix, compatibility and
    limitation documentation, and size gates. Complete.
 10. `0.2.0-rc.1`: complete release audit with no new feature widening.
+    Complete.
 11. `0.2.0`: final shippability gates, release notes, clean consumer proof, and
     an honest limitations review.
 

@@ -1,8 +1,9 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` through `0.2.0-alpha.8` compiler, engine,
-Wasm, profile-aware browser, supported intent/toolbar, reference-package, and
-consumer-proof checkpoints are complete; the `0.2.0-rc.1` audit is next
+Status: decision freeze; the `0.1.1` through `0.2.0-rc.1` compiler, engine,
+Wasm, profile-aware browser, supported intent/toolbar, reference-package,
+consumer-proof, and release-audit checkpoints are complete; final `0.2.0`
+shippability validation is next
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -892,6 +893,7 @@ earlier or skip a gate.
 - Run the complete repository, mismatch, restore, replay, ordering, resource,
   browser, packaging, size, accessibility, and Wasm ownership gates.
 - Fix defects without widening the feature set.
+- Complete.
 
 ### 0.2.0 — shippable narrow extension foundation
 

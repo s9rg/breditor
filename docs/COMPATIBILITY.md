@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.8` profile boundary
+## Experimental `0.2.0-rc.1` profile boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -250,14 +250,14 @@ executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; the `0.2.0-alpha.8` pair reports ABI `3`. The prerelease path checks
+ABI `2`; the `0.2.0-rc.1` pair reports ABI `3`. The prerelease path checks
 both the exact ABI string and exact embedded package version before reading the
 generated engine factory. ABI compatibility alone never makes mismatched
 official package versions a supported pair.
 
-The supported Alpha.8 reference configuration installs exactly
-`@breditor/browser@0.2.0-alpha.8`, `@breditor/wasm@0.2.0-alpha.8`, and
-`@breditor/reference-highlight@0.2.0-alpha.8`. The reference package declares
+The supported release-candidate reference configuration installs exactly
+`@breditor/browser@0.2.0-rc.1`, `@breditor/wasm@0.2.0-rc.1`, and
+`@breditor/reference-highlight@0.2.0-rc.1`. The reference package declares
 the exact browser version as a peer dependency. Its render and toolbar
 manifests are branded by the `@breditor/browser` module instance that created
 them, so a duplicate, nested, or mismatched browser copy is not a compatible

@@ -9,11 +9,11 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-This alpha.8 checkpoint is currently unpublished. After publication, the
+This release candidate is currently unpublished. After publication, the
 registry package can be installed with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.8
+npm install @breditor/wasm@0.2.0-rc.1
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:

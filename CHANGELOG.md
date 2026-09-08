@@ -4,6 +4,58 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-rc.1 - 2026-09-08
+
+This unpublished release candidate freezes the complete Alpha.8 extension
+surface and performs the `0.2.0` release audit without adding a feature. The
+Rust implementation, schema compiler, action and intent semantics, V1/V2
+durable formats, reference profile identities and fingerprint, and Wasm ABI 3
+remain unchanged. The production delta is limited to exact release-candidate
+version surfaces and documentation.
+
+### Contract and package audit
+
+- Confirmed that Cargo and npm manifests, lockfiles, package peers, the browser
+  runtime version probe, examples, smoke fixtures, and tarball names all use
+  exact `0.2.0-rc.1` pairing. The reference package still resolves one shared
+  `@breditor/browser` peer and contains no bundled browser runtime.
+- Rechecked the reviewed ABI 3 declaration against its 202-signature baseline,
+  generated browser declarations, package-root exports, generated artifact
+  allowlists, license parity, the locked dependency graph, and third-party
+  notices. Apart from the required exported version literal, no unintended
+  wire, ABI, package-root export, or semantic-profile drift was found.
+- Completed independent scope, browser-runtime, and package/API audits with no
+  P0, P1, or P2 implementation finding. Historical Alpha.8 measurements and
+  exact consumer versions remain labeled as Alpha.8 evidence.
+
+### Complete release gates
+
+- Passed Rust formatting, all-target/all-feature workspace check, Clippy with
+  warnings denied, the complete native workspace test suite, and the Wasm
+  target check, lint, and 24 browser-run boundary tests.
+- Passed TypeScript checks and 869 browser, 9 reference-package, and 14 React
+  unit tests. All 48 real-browser tests passed in Chromium, Firefox, and WebKit,
+  including the actual packaged Highlight profile and accessibility checks.
+- Proved two byte-identical clean Wasm package builds, then packed all three
+  packages with lifecycle hooks disabled. Isolated legacy and supported-root
+  reference consumers imported, type-checked, production-bundled, initialized
+  real Wasm, and opened successfully in Chromium without workspace resolution.
+
+### Measured artifacts
+
+- Browser output: 848,847 JavaScript bytes, 225,619 declaration bytes, and a
+  210,732-byte tarball.
+- Reference Highlight output: 8,088 JavaScript bytes, 7,880 declaration bytes,
+  and a 9,436-byte tarball.
+- Wasm output: 1,224,768 binary bytes, 46,732 JavaScript-glue bytes, and a
+  428,417-byte tarball.
+- React reference output: 734,685 JavaScript bytes (194,968 gzip) and
+  1,224,768 Wasm bytes (362,021 gzip). Every existing ceiling passed and no
+  release-candidate budget was widened.
+
+`0.2.0-rc.1` is complete and remains unpublished. The final `0.2.0` checkpoint
+will repeat the shippability gates without speculative feature work.
+
 ## 0.2.0-alpha.8 - 2026-09-08
 
 This unpublished checkpoint proves the complete narrow extension path from
@@ -65,8 +117,8 @@ transport generation: ABI 3 and the V1/V2 durable formats remain unchanged.
   deferred nodes, properties, callbacks, rich paste, typed intents, dynamic
   lifecycle, collaboration, and plugin-ABI capabilities.
 
-Alpha.8 is complete. `0.2.0-rc.1` is next and is a release audit with no
-feature widening.
+Alpha.8 is complete. Its next checkpoint was the `0.2.0-rc.1` release audit
+with no feature widening.
 
 ## 0.2.0-alpha.7 - 2026-09-08
 

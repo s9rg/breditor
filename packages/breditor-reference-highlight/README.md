@@ -14,14 +14,14 @@ or adopt a ProseMirror, Lexical, Tiptap, or CKEditor protocol.
 
 ## Use
 
-This Alpha.8 package is currently unpublished. After publication, install one
+This release candidate is currently unpublished. After publication, install one
 exact browser/Wasm/reference set. The exact browser peer matters: browser
 manifests are owned by the module instance that checks them.
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.8 \
-  @breditor/wasm@0.2.0-alpha.8 \
-  @breditor/reference-highlight@0.2.0-alpha.8
+npm install @breditor/browser@0.2.0-rc.1 \
+  @breditor/wasm@0.2.0-rc.1 \
+  @breditor/reference-highlight@0.2.0-rc.1
 ```
 
 ```ts
