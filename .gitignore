@@ -4,3 +4,12 @@ node_modules/
 /packages/*/dist/
 /examples/*/dist/
 /coverage/
+
+# Local environment and credential material must never enter release commits.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
