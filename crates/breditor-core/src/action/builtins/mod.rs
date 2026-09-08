@@ -3,6 +3,7 @@
 mod delete_backward;
 mod delete_forward;
 mod delete_selection;
+mod format_strong;
 mod grapheme_boundary;
 mod insert_paragraph_break;
 mod insert_plain_text;
@@ -14,6 +15,11 @@ mod toggle_strong;
 pub use delete_backward::{DeleteBackwardAction, delete_backward_action_id};
 pub use delete_forward::{DeleteForwardAction, delete_forward_action_id};
 pub use delete_selection::{DeleteSelectionAction, delete_selection_action_id};
+pub use format_strong::{
+    FORMAT_STRONG_BINDING_NAME, FORMAT_STRONG_BINDING_PRIORITY, FORMAT_STRONG_INTENT_NAME,
+    format_strong_binding_id, format_strong_intent_binding, format_strong_intent_declaration,
+    format_strong_intent_id,
+};
 pub use grapheme_boundary::GRAPHEME_UNICODE_VERSION;
 pub use insert_paragraph_break::{InsertParagraphBreakAction, insert_paragraph_break_action_id};
 pub use insert_plain_text::{
@@ -35,7 +41,10 @@ pub use insert_text::{
 pub use toggle_inline_format::ToggleInlineFormatAction;
 pub use toggle_strong::{ToggleStrongAction, toggle_strong_action_id};
 
-use crate::action::{ActionRegistration, ActionRegistry, ActionRegistryError};
+use crate::action::{
+    ActionRegistration, ActionRegistry, ActionRegistryError,
+    routing::{IntentBinding, IntentDeclaration},
+};
 
 /// Returns all base action registrations without freezing a registry.
 ///
@@ -72,4 +81,24 @@ pub fn base_action_registrations() -> Vec<ActionRegistration> {
 /// so registry construction keeps the same fail-closed contract as extensions.
 pub fn base_action_registry() -> Result<ActionRegistry, ActionRegistryError> {
     ActionRegistry::try_new(base_action_registrations())
+}
+
+/// Returns every built-in semantic intent declaration without freezing a router.
+///
+/// Hosts compiling a base-text profile append extension declarations before
+/// constructing the immutable router. The returned declarations contain no
+/// browser event, shortcut, or presentation policy.
+#[must_use]
+pub fn base_intent_declarations() -> Vec<IntentDeclaration> {
+    vec![format_strong_intent_declaration()]
+}
+
+/// Returns every built-in semantic intent binding without freezing a router.
+///
+/// The binding targets an action in [`base_action_registrations`]. Hosts must
+/// freeze declarations, bindings, and the complete action registry together so
+/// identity and state-contract mismatches fail closed.
+#[must_use]
+pub fn base_intent_bindings() -> Vec<IntentBinding> {
+    vec![format_strong_intent_binding()]
 }

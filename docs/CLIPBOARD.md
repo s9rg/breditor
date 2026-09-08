@@ -1,7 +1,7 @@
 # Breditor clipboard contract
 
 Status: supported by the public `0.1.0` runtime for the closed base schema and
-extended by the experimental `0.2.0-alpha.6` compiled-profile browser path;
+extended by the experimental `0.2.0-alpha.7` compiled-profile browser path;
 direct controller construction remains an advanced integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and

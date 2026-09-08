@@ -1,8 +1,11 @@
 use crate::{
     action::{
-        Action, ActionInvocation, ActionRegistration, ActionRegistry, ActionStateCatalog,
-        ActionStateId, ActionStateRegistration, ActionStateSource,
-        builtins::{ToggleInlineFormatAction, base_action_registrations, toggle_strong_action_id},
+        Action, ActionRegistration, ActionRegistry, ActionStateCatalog, ActionStateId,
+        ActionStateRegistration, ActionStateSource,
+        builtins::{
+            ToggleInlineFormatAction, base_action_registrations, base_intent_bindings,
+            base_intent_declarations, format_strong_intent_id,
+        },
         routing::{
             BindingPriority, DisabledRouting, IntentBinding, IntentDeclaration, IntentInvocation,
             IntentRouter,
@@ -30,8 +33,8 @@ pub(super) fn compile_base_text_profile(
     validate_reserved_identities(&extensions)?;
 
     let mut actions = base_action_registrations();
-    let mut intents = Vec::new();
-    let mut bindings = Vec::new();
+    let mut intents = base_intent_declarations();
+    let mut bindings = base_intent_bindings();
     let mut action_states = base_action_state_registrations();
     for manifest in extensions.manifests() {
         for toggle in manifest.inline_format_toggles() {
@@ -70,7 +73,8 @@ pub(super) fn compile_breditor_base_profile()
     let extensions = ExtensionSet::empty();
     let schema = CompiledSchema::breditor_base();
     let actions = ActionRegistry::try_new(base_action_registrations())?;
-    let router = IntentRouter::try_new(actions, Vec::new(), Vec::new())?;
+    let router =
+        IntentRouter::try_new(actions, base_intent_declarations(), base_intent_bindings())?;
     let action_states =
         ActionStateCatalog::try_new_with_router(router.clone(), base_action_state_registrations())?;
     Ok(CompiledEditorProfile::from_compilation(extensions, schema, router, action_states))
@@ -248,7 +252,7 @@ fn base_action_state_registrations() -> Vec<ActionStateRegistration> {
             ActionStateId::from_qualified_name(QualifiedName::from_known_static(
                 "breditor/control-bold",
             )),
-            ActionStateSource::direct(ActionInvocation::without_input(toggle_strong_action_id())),
+            ActionStateSource::routed(IntentInvocation::without_input(format_strong_intent_id())),
         ),
         ActionStateRegistration::new(
             ActionStateId::from_qualified_name(QualifiedName::from_known_static(
@@ -281,6 +285,10 @@ mod tests {
         action::{
             ActionActivationContract, ActionId, ActionStateDescriptor, ActionStateId,
             ActionStateSource,
+            builtins::{
+                FORMAT_STRONG_BINDING_NAME, FORMAT_STRONG_BINDING_PRIORITY,
+                FORMAT_STRONG_INTENT_NAME, format_strong_binding_id, toggle_strong_action_id,
+            },
             routing::{BindingId, DisabledRouting, IntentId},
         },
         extension::{
@@ -371,23 +379,45 @@ mod tests {
     }
 
     #[test]
-    fn empty_profile_retains_base_actions_and_three_existing_state_entries() -> TestResult {
+    fn empty_extension_profile_includes_the_complete_builtin_strong_route() -> TestResult {
         let profile = CompiledEditorProfile::try_compile_base_text_profile(
             schema_id("example/empty-profile")?,
             extension_set(Vec::new())?,
         )?;
 
         assert_eq!(profile.action_registry().len(), base_action_registrations().len());
-        assert!(profile.intent_router().is_empty());
+        assert_eq!(profile.intent_router().intent_count(), 1);
+        assert_eq!(profile.intent_router().binding_count(), 1);
         assert_eq!(profile.action_state_catalog().len(), 3);
+
+        let strong_intent = format_strong_intent_id();
+        let declaration = profile
+            .intent_router()
+            .declaration(&strong_intent)
+            .ok_or_else(|| test_error("built-in strong intent is missing"))?;
+        assert_eq!(declaration.id().as_str(), FORMAT_STRONG_INTENT_NAME);
+        assert!(declaration.input_contract().is_none());
+        assert_eq!(
+            declaration.state_spec().contract().activation_contract(),
+            ActionActivationContract::Tracked,
+        );
+        let binding = profile
+            .intent_router()
+            .binding(&format_strong_binding_id())
+            .ok_or_else(|| test_error("built-in strong binding is missing"))?;
+        assert_eq!(binding.id().as_str(), FORMAT_STRONG_BINDING_NAME);
+        assert_eq!(binding.intent_id(), &strong_intent);
+        assert_eq!(binding.action_id(), &toggle_strong_action_id());
+        assert_eq!(binding.priority(), FORMAT_STRONG_BINDING_PRIORITY);
+        assert_eq!(binding.disabled_routing(), DisabledRouting::Block);
 
         let bold = ActionStateId::try_new("breditor/control-bold")?;
         let undo = ActionStateId::try_new("breditor/control-undo")?;
         let redo = ActionStateId::try_new("breditor/control-redo")?;
         assert!(matches!(
             profile.action_state_catalog().descriptor(&bold).map(ActionStateDescriptor::source),
-            Some(ActionStateSource::Direct(invocation))
-                if invocation.id() == &toggle_strong_action_id()
+            Some(ActionStateSource::Routed(invocation))
+                if invocation.id() == &strong_intent
         ));
         assert!(matches!(
             profile.action_state_catalog().descriptor(&undo).map(ActionStateDescriptor::source),
@@ -458,6 +488,8 @@ mod tests {
             Some(ActionStateSource::Routed(invocation)) if invocation.id() == &intent_id
         ));
         assert_eq!(profile.action_state_catalog().len(), 4);
+        assert_eq!(profile.intent_router().intent_count(), 2);
+        assert_eq!(profile.intent_router().binding_count(), 2);
         Ok(())
     }
 
@@ -492,7 +524,8 @@ mod tests {
         )?;
 
         assert!(profile.schema().is_property_free_inline_format(&format_kind));
-        assert!(profile.intent_router().is_empty());
+        assert_eq!(profile.intent_router().intent_count(), 1);
+        assert_eq!(profile.intent_router().binding_count(), 1);
         assert_eq!(profile.action_state_catalog().len(), 3);
         assert_eq!(profile.action_registry().len(), base_action_registrations().len());
         Ok(())
@@ -521,11 +554,11 @@ mod tests {
 
         assert_eq!(
             profile.intent_router().intent_count(),
-            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)?
+            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 1
         );
         assert_eq!(
             profile.intent_router().binding_count(),
-            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)?
+            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 1
         );
         assert_eq!(
             profile.action_state_catalog().len(),

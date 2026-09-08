@@ -8,11 +8,12 @@ experimental Rust-only `0.2.0-alpha.2` boundary. `0.2.0-alpha.3` adds the sealed
 base-text schema compiler and generic property-free inline-format behavior;
 `0.2.0-alpha.4` compiles manifest-owned toggle bundles into one immutable Rust
 editor profile. `0.2.0-alpha.5` carries that profile through the guarded engine
-and Wasm ABI 3, including explicit V2 fresh/restore factories. The current
-alpha.6 implementation consumes that existing Rust contract in a profile-aware
+and Wasm ABI 3, including explicit V2 fresh/restore factories. The Alpha.6
+implementation consumes that existing Rust contract in a profile-aware
 browser AST/render/clipboard/export path and adds profile-bound IndexedDB outer
-records; it does not widen any Rust V1 or V2 codec. The alpha.6 implementation
-and release gates are complete.
+records; it does not widen any Rust V1 or V2 codec. Alpha.7 adds the built-in
+strong-format intent route and the supported descriptor-validated browser
+intent/toolbar path without widening any Rust V1/V2 codec or Wasm ABI 3.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1` and `2`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -1163,7 +1164,9 @@ executable capability cache, or defines a durable action-state wire format.
 Version `0.0.56` exposes the existing Rust action-state abstraction without
 turning it into a durable protocol. Each Wasm engine constructs one frozen
 base catalog over its exact action registry and retains one synchronous cache.
-The fixed catalog observes Bold through the real `toggle-strong` action and
+The fixed catalog observes Bold through the no-input
+`breditor/format-strong` intent and its blocking route to the real
+`toggle-strong` action, and
 observes Undo/Redo through authoritative history preflight. A guarded read
 checks the complete engine/state/history observation before touching the cache
 and returns a disposable complete non-JSON snapshot plus a bounded changed-ID
@@ -1180,6 +1183,15 @@ re-enter the ordinary guarded command FIFO; real in-editor `selectionchange`
 observations use a dedicated selection-only request. These are application
 contracts, not executable preparations, dynamic Rust plugin registration, or a
 new durable wire format.
+
+At Alpha.7, the browser admits each successful action-state view only when its
+complete count and ordered IDs exactly equal the compiled descriptor and its
+resolved activation/value observations satisfy the declared contracts.
+Unsupported values correspond exactly to absent descriptor value contracts;
+supported observations repeat the exact name and version. Catalog drift fails
+before the last-good store can mutate. High-level toolbar controls are likewise
+validated as matching no-input intent/routed-state or history declarations.
+Direct action controls remain an advanced browser policy bypass.
 
 Version `0.0.57` adds an executable browser persistence profile without
 changing any Rust format. The observation-owning adapter strictly consumes one
@@ -1772,6 +1784,16 @@ synchronous call, and returns the authoritative successor observation. Its
 committed, blocked, and unhandled receipts retain intent/binding/fallthrough
 provenance; blocked receipts also retain the disabled reason and evaluated
 indicator. No prepared route escapes and no action handler is rerun.
+
+Alpha.7 makes `breditor/format-strong` a built-in tracked no-input declaration
+with the priority-zero blocking `breditor/format-strong-binding` to
+`breditor/toggle-strong`; both base and extension profiles contain it and Bold
+state observes it as a routed source. The supported browser consumes that
+route synchronously but redacts binding/action/fallthrough provenance from its
+public result. Its immediate-only queue lease rejects composition, active
+delivery/read, and reentrant calls as busy rather than retaining stale command
+authority. Typed public intent input, custom keymaps, and custom
+`beforeinput` rules remain absent.
 
 `CheckpointedEditorEngine` seals its wire generation at construction. The
 legacy `try_new` path encodes Session Checkpoint V1 and therefore admits only

@@ -38,6 +38,11 @@ export type EngineCommand =
       actionId: string;
       input: Readonly<{ kind: "string"; value: string }>;
     }>
+  | Readonly<{
+      kind: "intent";
+      intentId: string;
+      input: Readonly<{ kind: "none" }>;
+    }>
   | Readonly<{ kind: "selection"; operation: "synchronize" }>
   | Readonly<{ kind: "history"; operation: "undo" | "redo" }>
   | Readonly<{ kind: "control"; operation: "closeHistoryGroup" }>;
@@ -268,6 +273,11 @@ export const BASE_ACTION_IDS = Object.freeze({
   toggleStrong: "breditor/toggle-strong",
 } as const);
 
+/** Fixed built-in semantic intent IDs used by supported browser controls. */
+export const BASE_INTENT_IDS = Object.freeze({
+  formatStrong: "breditor/format-strong",
+} as const);
+
 /** Creates an immutable no-input action request for events, toolbars, or APIs. */
 export function noInputActionRequest(
   delivery: EditorDeliveryToken,
@@ -308,6 +318,31 @@ export function stringActionRequest(
     actionId,
     input: Object.freeze({ kind: "string", value }),
   });
+}
+
+/** Creates an immutable no-input semantic intent request. */
+export function noInputIntentRequest(
+  delivery: EditorDeliveryToken,
+  selection: EditorSelectionSync,
+  source: EditorCommandSource,
+  intentId: string,
+  history: EditorCommandRequirements["history"] = "preserve",
+): EngineCommandRequest {
+  const safeSource = requireSource(source);
+  requireQualifiedName(intentId, "intent ID");
+  requireHistory(history);
+  const safeDelivery = requireDelivery(delivery);
+  return freezeRequest(
+    safeDelivery,
+    requireSelection(selection, safeDelivery),
+    safeSource,
+    history,
+    {
+      kind: "intent",
+      intentId,
+      input: Object.freeze({ kind: "none" }),
+    },
+  );
 }
 
 /** Creates an immutable undo or redo request. */
@@ -449,6 +484,15 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
     }
     if (command.kind === "control") {
       return closeHistoryGroupRequest(delivery, selection, source);
+    }
+    if (command.kind === "intent") {
+      return noInputIntentRequest(
+        delivery,
+        selection,
+        source,
+        command.intentId,
+        history,
+      );
     }
     return command.input.kind === "none"
       ? noInputActionRequest(delivery, selection, source, command.actionId, history)
@@ -598,9 +642,12 @@ function snapshotSource(value: unknown): EditorCommandSource | null {
   return Object.freeze({ kind: source["kind"], detail: source["detail"] });
 }
 
-function requireQualifiedName(value: string): void {
+function requireQualifiedName(
+  value: string,
+  description = "action ID",
+): void {
   if (typeof value !== "string" || !isQualifiedName(value)) {
-    throw new TypeError("action ID is not a bounded qualified name");
+    throw new TypeError(`${description} is not a bounded qualified name`);
   }
 }
 
@@ -637,6 +684,22 @@ function snapshotEngineCommand(value: unknown): EngineCommand | null {
     history["operation"] === "closeHistoryGroup"
   ) {
     return Object.freeze({ kind: "control", operation: "closeHistoryGroup" });
+  }
+  const intent = readExactDataRecord(value, ["kind", "intentId", "input"]);
+  if (
+    intent !== null &&
+    intent["kind"] === "intent" &&
+    typeof intent["intentId"] === "string" &&
+    isQualifiedName(intent["intentId"])
+  ) {
+    const input = readExactDataRecord(intent["input"], ["kind"]);
+    if (input !== null && input["kind"] === "none") {
+      return Object.freeze({
+        kind: "intent",
+        intentId: intent["intentId"],
+        input: Object.freeze({ kind: "none" }),
+      });
+    }
   }
   const action = readExactDataRecord(value, ["kind", "actionId", "input"]);
   if (

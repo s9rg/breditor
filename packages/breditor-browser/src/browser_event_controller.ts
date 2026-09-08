@@ -824,6 +824,11 @@ function keyboardEchoInputTypes(request: EditorCommandRequest): readonly string[
   if (command.kind === "control") {
     return Object.freeze([]);
   }
+  if (command.kind === "intent") {
+    return command.intentId === "breditor/format-strong"
+      ? Object.freeze(["formatBold"])
+      : Object.freeze([]);
+  }
   if (command.kind !== "action") {
     return Object.freeze([]);
   }
@@ -851,6 +856,9 @@ function commandFingerprint(request: EditorCommandRequest): string {
   }
   if (command.kind === "selection") {
     return `selection:${command.operation}`;
+  }
+  if (command.kind === "intent") {
+    return `intent:${command.intentId}:none`;
   }
   return command.input.kind === "none"
     ? `action:${command.actionId}:none`

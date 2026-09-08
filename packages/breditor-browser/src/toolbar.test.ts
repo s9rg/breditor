@@ -756,7 +756,7 @@ describe("BreditorToolbar", () => {
     toolbar.dispose();
   });
 
-  it("maps declarative actions and history to exact preserve-selection requests", () => {
+  it("maps declarative intents, actions, and history to preserve-selection requests", () => {
     const delivery = toolbarDelivery();
     const bold = toolbarCommandRequest(delivery, {
       stateId: BASE_TOOLBAR_STATE_IDS.bold,
@@ -769,8 +769,8 @@ describe("BreditorToolbar", () => {
       source: { kind: "toolbar", detail: BASE_TOOLBAR_STATE_IDS.bold },
       requirements: { selection: "preserve", history: "closeBefore" },
       command: {
-        kind: "action",
-        actionId: "breditor/toggle-strong",
+        kind: "intent",
+        intentId: "breditor/format-strong",
         input: { kind: "none" },
       },
     });
@@ -820,6 +820,86 @@ describe("BreditorToolbar", () => {
         input: { kind: "string", value: "Hello" },
       },
     });
+  });
+
+  it("admits toolbar requests through own data only and contains hostile objects", () => {
+    const delivery = toolbarDelivery();
+    let reads = 0;
+    const accessorInvocation = Object.defineProperties({}, {
+      stateId: {
+        enumerable: true,
+        get() {
+          reads += 1;
+          return BASE_TOOLBAR_STATE_IDS.bold;
+        },
+      },
+      selection: { enumerable: true, value: "preserve" },
+      command: {
+        enumerable: true,
+        value: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+      },
+    });
+    expect(() =>
+      toolbarCommandRequest(
+        delivery,
+        accessorInvocation as ToolbarCommandInvocation,
+      ),
+    ).toThrow(/toolbar invocation/u);
+
+    const intent = Object.defineProperties({}, {
+      kind: { enumerable: true, value: "intent" },
+      intentId: {
+        enumerable: true,
+        get() {
+          reads += 1;
+          return "example/format-highlight";
+        },
+      },
+    });
+    expect(() =>
+      toolbarCommandRequest(delivery, {
+        stateId: "example/control-highlight",
+        selection: "preserve",
+        command: intent as ToolbarCommandInvocation["command"],
+      }),
+    ).toThrow(/toolbar invocation/u);
+    expect(reads).toBe(0);
+
+    expect(() =>
+      toolbarCommandRequest(delivery, {
+        stateId: BASE_TOOLBAR_STATE_IDS.bold,
+        selection: "preserve",
+        command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+        extra: true,
+      } as ToolbarCommandInvocation),
+    ).toThrow(/toolbar invocation/u);
+
+    const hostile = new Proxy(
+      {
+        stateId: BASE_TOOLBAR_STATE_IDS.bold,
+        selection: "preserve" as const,
+        command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+      },
+      {
+        ownKeys() {
+          throw new Error("hostile invocation");
+        },
+      },
+    );
+    expect(() => toolbarCommandRequest(delivery, hostile)).toThrow(
+      /toolbar invocation/u,
+    );
+
+    const inherited = Object.assign(
+      Object.create({ stateId: BASE_TOOLBAR_STATE_IDS.bold }),
+      {
+        selection: "preserve",
+        command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+      },
+    ) as ToolbarCommandInvocation;
+    expect(() => toolbarCommandRequest(delivery, inherited)).toThrow(
+      /toolbar invocation/u,
+    );
   });
 
   it("accepts only owned synchronous dispatch outcomes and fails closed on uncertainty", () => {

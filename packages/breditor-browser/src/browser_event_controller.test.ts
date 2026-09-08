@@ -167,8 +167,8 @@ describe("BreditorBrowserEventController", () => {
     });
     expect(delivered).toHaveLength(1);
     expect(delivered[0]?.command).toMatchObject({
-      kind: "action",
-      actionId: "breditor/toggle-strong",
+      kind: "intent",
+      intentId: "breditor/format-strong",
     });
   });
 
@@ -786,8 +786,8 @@ describe("BreditorBrowserEventController", () => {
       expect(event.defaultPrevented).toBe(true);
       expect(delivered).toHaveLength(1);
       expect(delivered[0]?.command).toMatchObject({
-        kind: "action",
-        actionId: "breditor/toggle-strong",
+        kind: "intent",
+        intentId: "breditor/format-strong",
       });
     }
   });

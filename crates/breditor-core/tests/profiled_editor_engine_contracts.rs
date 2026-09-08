@@ -8,7 +8,10 @@ use breditor_core::{
     action::{
         ActionActivation, ActionId, ActionInput, ActionInvocation, ActionStateCache, ActionStateId,
         ActionValue,
-        builtins::{insert_text_action_id, insert_text_input_contract, toggle_strong_action_id},
+        builtins::{
+            FORMAT_STRONG_INTENT_NAME, format_strong_intent_id, insert_text_action_id,
+            insert_text_input_contract, toggle_strong_action_id,
+        },
         routing::{BindingId, IntentExecutionOutcome, IntentId, IntentInvocation},
     },
     codec::{
@@ -191,10 +194,13 @@ fn descriptor_is_owned_canonical_and_complete() -> TestResult {
     assert!(descriptor.inline_format(&name("example/missing")?).is_none());
 
     let intents = descriptor.intents();
-    assert_eq!(intents.len(), 1);
-    assert_eq!(intents[0].id().as_str(), INTENT);
-    assert!(intents[0].input_contract().is_none());
-    assert!(intents[0].state_contract().supports_activation());
+    assert_eq!(intents.len(), 2);
+    assert_eq!(intents[0].id().as_str(), FORMAT_STRONG_INTENT_NAME);
+    assert_eq!(intents[1].id().as_str(), INTENT);
+    for intent in intents {
+        assert!(intent.input_contract().is_none());
+        assert!(intent.state_contract().supports_activation());
+    }
 
     let states = descriptor.action_states();
     assert_eq!(
@@ -208,8 +214,8 @@ fn descriptor_is_owned_canonical_and_complete() -> TestResult {
     );
     assert!(matches!(
         states[0].source(),
-        CompiledProfileActionStateSource::Direct(action)
-            if action == &toggle_strong_action_id()
+        CompiledProfileActionStateSource::Routed(intent)
+            if intent == &format_strong_intent_id()
     ));
     assert!(matches!(
         states[1].source(),
@@ -224,7 +230,7 @@ fn descriptor_is_owned_canonical_and_complete() -> TestResult {
         CompiledProfileActionStateSource::Routed(intent) if intent.as_str() == INTENT
     ));
     assert!(states[3].contract().supports_activation());
-    assert_eq!(descriptor.intent(&IntentId::try_new(INTENT)?), Some(&intents[0]),);
+    assert_eq!(descriptor.intent(&IntentId::try_new(INTENT)?), Some(&intents[1]),);
     assert_eq!(descriptor.action_state(&ActionStateId::try_new(ACTION_STATE)?), Some(&states[3]),);
     Ok(())
 }
@@ -330,6 +336,121 @@ fn typed_intent_commits_or_blocks_with_indicator_and_successor_observation() -> 
     ))?;
     assert_eq!(error.code(), EditorEngineErrorCode::IntentRouting);
     assert_eq!(blocked.observation(), expected);
+    Ok(())
+}
+
+#[test]
+fn exact_base_strong_intent_matches_direct_action_durable_bytes() -> TestResult {
+    const BASE_FINGERPRINT: &str =
+        "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+    let mut routed = profiled_engine(
+        CompiledEditorProfile::try_compile_breditor_base()?,
+        DocumentLimits::default(),
+        "base-strong-equivalence",
+        Some(selected_text()?),
+    )?;
+    let mut direct = profiled_engine(
+        CompiledEditorProfile::try_compile_breditor_base()?,
+        DocumentLimits::default(),
+        "base-strong-equivalence",
+        Some(selected_text()?),
+    )?;
+    assert_eq!(routed.state().context().schema().fingerprint().to_string(), BASE_FINGERPRINT);
+
+    let expected = routed.observation();
+    let outcome = routed
+        .execute_intent(&expected, &IntentInvocation::without_input(format_strong_intent_id()))?;
+    assert!(outcome.is_committed());
+    let binding = outcome
+        .execution()
+        .binding()
+        .ok_or_else(|| test_error("strong intent omitted its binding"))?;
+    assert_eq!(binding.intent_id(), &format_strong_intent_id());
+    assert_eq!(binding.action_id(), &toggle_strong_action_id());
+
+    let expected = direct.observation();
+    assert!(direct
+        .execute_action(
+            &expected,
+            &ActionInvocation::without_input(toggle_strong_action_id()),
+        )?
+        .event()
+        .is_some());
+
+    assert_eq!(routed.state().snapshot(), direct.state().snapshot());
+    assert_eq!(routed.state().document().root(), direct.state().document().root());
+    assert_eq!(routed.state().selection(), direct.state().selection());
+    assert_eq!(routed.state().pending_formats(), direct.state().pending_formats());
+    let routed_v1_bytes = SessionCheckpointJsonCodec::new(routed.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(routed.session())?;
+    let direct_v1_bytes = SessionCheckpointJsonCodec::new(direct.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(direct.session())?;
+    assert_eq!(routed_v1_bytes, direct_v1_bytes);
+    let routed_bytes = SessionCheckpointJsonCodecV2::new(routed.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(routed.session())?;
+    let direct_bytes = SessionCheckpointJsonCodecV2::new(direct.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(direct.session())?;
+    assert_eq!(routed_bytes, direct_bytes);
+    Ok(())
+}
+
+#[test]
+fn exact_base_strong_intent_matches_direct_action_at_a_collapsed_caret() -> TestResult {
+    let caret =
+        Point::Text { text_path: path(&[0, 0])?, utf16_offset: 1, affinity: Affinity::After };
+    let selection = Some(RangeSelection::new(caret.clone(), caret).into());
+    let mut routed = profiled_engine(
+        CompiledEditorProfile::try_compile_breditor_base()?,
+        DocumentLimits::default(),
+        "base-strong-caret-equivalence",
+        selection.clone(),
+    )?;
+    let mut direct = profiled_engine(
+        CompiledEditorProfile::try_compile_breditor_base()?,
+        DocumentLimits::default(),
+        "base-strong-caret-equivalence",
+        selection,
+    )?;
+
+    let expected = routed.observation();
+    let outcome = routed
+        .execute_intent(&expected, &IntentInvocation::without_input(format_strong_intent_id()))?;
+    assert!(outcome.is_committed());
+
+    let expected = direct.observation();
+    assert!(
+        direct
+            .execute_action(
+                &expected,
+                &ActionInvocation::without_input(toggle_strong_action_id()),
+            )?
+            .event()
+            .is_some()
+    );
+
+    assert_eq!(routed.state().snapshot(), direct.state().snapshot());
+    assert_eq!(routed.state().document().root(), direct.state().document().root());
+    assert_eq!(routed.state().selection(), direct.state().selection());
+    assert!(routed.state().pending_formats().is_some());
+    assert_eq!(routed.state().pending_formats(), direct.state().pending_formats());
+    let routed_v1_bytes = SessionCheckpointJsonCodec::new(routed.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(routed.session())?;
+    let direct_v1_bytes = SessionCheckpointJsonCodec::new(direct.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(direct.session())?;
+    assert_eq!(routed_v1_bytes, direct_v1_bytes);
+    let routed_v2_bytes = SessionCheckpointJsonCodecV2::new(routed.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(routed.session())?;
+    let direct_v2_bytes = SessionCheckpointJsonCodecV2::new(direct.state().context().clone())
+        .with_limits(SessionCheckpointLimits::default())
+        .encode(direct.session())?;
+    assert_eq!(routed_v2_bytes, direct_v2_bytes);
     Ok(())
 }
 
@@ -485,7 +606,13 @@ fn trusted_base_profile_can_use_fingerprint_bearing_session_checkpoint_v2() -> T
             .collect::<Vec<_>>(),
         vec![("breditor/strong", 1)],
     );
-    assert!(profile.descriptor().intents().is_empty());
+    assert_eq!(profile.descriptor().intents().len(), 1);
+    assert_eq!(profile.descriptor().intents()[0].id(), &format_strong_intent_id());
+    assert!(matches!(
+        profile.descriptor().action_states()[0].source(),
+        CompiledProfileActionStateSource::Routed(intent)
+            if intent == &format_strong_intent_id()
+    ));
     let context = profile.editor_context(DocumentLimits::default());
     let document =
         DocumentJsonCodec::new(profile.schema().clone()).decode(&support::document_json(&[

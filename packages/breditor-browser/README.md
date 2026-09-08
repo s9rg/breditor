@@ -25,7 +25,7 @@ are install-, import-, type-check-, production-bundle-, and real-browser tested
 without workspace links. Declaration maps are intentionally omitted because
 the corresponding TypeScript sources are not part of the package.
 
-The current alpha.6 implementation requires Wasm ABI 3 and an exact matching Wasm
+The current alpha.7 implementation requires Wasm ABI 3 and an exact matching Wasm
 package version before it reads the generated engine factory. Bootstrap owns
 and validates the compiled-profile generation and descriptor and checks every
 observation, projection, selection, action-state, and command result against
@@ -34,10 +34,16 @@ consume Document/Session Checkpoint V2, project every admitted property-free
 format, compile a callback-free render manifest, preserve those formats through
 DOM selection and composition reconciliation, copy them semantically, and bind
 autosave to the exact schema fingerprint. Paste remains intentionally
-plain-text. The intent-based extension toolbar remains scheduled for alpha.7.
+plain-text. Alpha.7 adds the supported synchronous no-input `executeIntent()`
+API and sends `formatBold`, primary-modifier+B, and the default Bold button
+through the built-in `breditor/format-strong` route. Supported toolbar controls
+must exactly match descriptor-declared no-input intent/routed-state or history
+contracts; direct action controls remain an advanced low-level bypass. Every
+action-state snapshot is checked against the descriptor's fixed catalog before
+publication.
 The former bare-factory and standalone restore seams are not accepted by the
-supported root API. Alpha.6 has passed its final audit and release gates and
-remains unpublished.
+supported root API. Alpha.7 is complete and remains unpublished; Alpha.8 is the
+next consumer-proof and release-gate checkpoint.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -47,11 +53,11 @@ root and the documented V1 browser formats carry that promise.
 
 ## Public runtime
 
-This alpha.6 checkpoint is currently unpublished. After publication, the
+This alpha.7 checkpoint is currently unpublished. After publication, the
 matching registry packages can be installed with:
 
 ```sh
-npm install @breditor/browser@0.2.0-alpha.6 @breditor/wasm@0.2.0-alpha.6
+npm install @breditor/browser@0.2.0-alpha.7 @breditor/wasm@0.2.0-alpha.7
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -107,12 +113,12 @@ if (!result.ok) throw new Error(result.error.message);
 const editor = result.editor;
 ```
 
-The alpha.6 format path adds `semanticProfile: { bootstrapJson }`, a matching
+The semantic-profile path adds `semanticProfile: { bootstrapJson }`, a matching
 Document V2, and an owned `rendering` value from
 `createInlineFormatRenderManifest`. It must cover every admitted format; recipes
 contain only a safe element, checked classes, and explicit ordering edges.
 
-The supported alpha.6 configuration passes the initialized, exactly
+The supported alpha.7 configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
 not admit a bare structural factory. Lower-level structural factory types exist
 only on the experimental advanced surface for adapter testing and host-side
@@ -143,6 +149,9 @@ The keyboard policy is explicit and platform-independent.
 `structuralFallback` may translate those three keys at `keydown`; text is never
 derived from `keydown`. `primaryModifier` chooses `control` or `meta` for
 shortcuts, and `shortcuts` enables or disables Breditor's shortcut translation.
+When shortcuts are enabled, primary-modifier+B and native `beforeinput`
+`formatBold` both invoke `breditor/format-strong`; neither hard-codes the
+concrete strong action at the supported browser boundary.
 
 The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
 `header`, `main`, `nav`, or `section`. The distinct toolbar host uses the same
@@ -168,12 +177,36 @@ toolbar root and restores the editing-host attributes installed by the owner.
 
 The Rust AST, selection, action state, history, and checkpoint remain
 authoritative. The editor exposes immutable status snapshots, bounded
-subscription, focus, explicit content export, persistence flush/retry, and
-idempotent disposal; it does not expose its engine, queue, observation,
+subscription, focus, synchronous no-input semantic-intent execution, explicit
+content export, persistence flush/retry, and idempotent disposal; it does not expose its engine, queue, observation,
 renderer, or delivery tokens.
 `initialDocument` is ignored when a valid stored session checkpoint exists.
 Call and await `flushPersistence()` before controlled navigation when saving
 matters, then call `dispose()`; disposal itself does not promise a save.
+
+The supported imperative command boundary is deliberately semantic and
+synchronous:
+
+```ts
+const outcome = editor.executeIntent("breditor/format-strong");
+if (outcome.status === "blocked") {
+  console.log(outcome.reasonCode, outcome.activation);
+}
+```
+
+`executeIntent()` accepts only an exact declared no-input intent from the
+editor's compiled profile. Invalid and unknown IDs, typed-input declarations,
+and non-live editors return a frozen `rejected` result; malformed or over-limit
+input is redacted to `intentId: ""`. Delivery acquires an
+immediate idle-queue lease: another command, authoritative read, reentrant
+call, or active composition returns `busy` instead of queuing work behind a
+base that may become stale. The lease is released before the call returns.
+Committed, blocked, and unhandled results always carry the authoritative
+document snapshot at settlement; a blocked result also carries the stable
+reason code and activation. Concrete action/binding identities and routing
+fallthroughs are intentionally redacted from this package-root API and remain
+visible only in the advanced adapter outcome. There is no typed public intent
+input or asynchronous intent API in Alpha.7.
 
 Content leaves the editor only through the synchronous, discriminated API:
 
@@ -343,8 +376,9 @@ type, not as a constructible value. Foreign, stale, forged, or spent tokens are
 rejected before cancellation and cannot consume keyboard or clipboard receipts.
 
 The recognized non-composition set covers text and multiline text insertion,
-paragraph insertion, backward/forward/selection deletion, strong formatting,
-undo, and redo. Unknown edit intents are blocked instead of approximated.
+paragraph insertion, backward/forward/selection deletion, strong formatting
+through `breditor/format-strong`, undo, and redo. Unknown edit intents are
+blocked instead of approximated.
 Keyboard input never supplies text; an explicit host policy selects
 `beforeinput`-primary behavior or the narrow Backspace/Delete/Enter fallback.
 AltGraph, dead keys, key code 229, and active composition are delegated to the
@@ -358,6 +392,10 @@ echoes, while `input` is only a postcondition and never executes a second
 command. A composition can reserve a completely idle queue for one
 never-queued settlement. Ordinary event, toolbar, API, observer, and reentrant
 submissions reject while the exact lease remains active.
+The package-root `executeIntent()` method uses a separate immediate queue lease:
+it succeeds only when the queue and adapter can complete the full request
+synchronously now. It never appends behind an active delivery, and a reentrant
+call observes `busy` rather than recursive execution.
 
 `BreditorWasmCommandAdapter` owns the exact observation, browser projection,
 renderer handle, selection bridge, and private one-use delivery epoch. One
@@ -471,7 +509,13 @@ high-level runtime encapsulates these pieces for ordinary consumers.
 The observation-owning command adapter exposes a handle-free action-state read
 port. It consumes and frees the generated result, complete snapshot, nested
 value results, and cloned errors internally, while protecting the adapter's
-live observation from aliasing. `BreditorActionStateStore` publishes only
+live observation from aliasing. Before publication, Alpha.7 requires the
+complete snapshot to match the owned compiled-profile descriptor's action-state
+count, ordered lexical IDs, activation contracts, and value contracts exactly.
+An unsupported value is accepted only for a descriptor entry with no value
+contract; supported values must repeat the exact name and version. Missing,
+extra, substituted, reordered, duplicate, or contract-drifted catalogs fail
+closed. `BreditorActionStateStore` publishes only
 validated complete snapshots, keeps the last good value on failure, and offers
 synchronous ordered subscriptions suitable for a command-queue observer. Each
 store compares complete snapshots locally; the engine-global full/delta/cache-hit
@@ -482,7 +526,7 @@ default manifest contains Bold, Undo, and Redo, but visible order, labels, and
 optional grouping keys are browser-owned. `createToolbarManifest` accepts a
 dense array of 1 through 64 own data controls. Toolbar/control labels are valid
 Unicode with non-whitespace content, no ASCII controls or DEL, at most 128
-UTF-16 code units, and at most 512 UTF-8 bytes. Unique state IDs and action IDs
+UTF-16 code units, and at most 512 UTF-8 bytes. Unique state, intent, and action IDs
 are at most 128 lowercase ASCII characters in `namespace/local-name` form.
 Optional groups are valid Unicode, trimmed, nonempty, control-free, and at most
 64 UTF-16 code units / 256 UTF-8 bytes. Nonempty string inputs are valid Unicode
@@ -500,10 +544,14 @@ with `toolbarCommandRequest` and sends them through the same queue; Rust
 revalidates every command against the current observation. The complete
 manifest contract is documented in `docs/TOOLBAR.md` in the repository.
 
-A custom manifest does not register behavior. The official `0.1.0` engine
-publishes matching state/command bindings only for Bold, Undo, and Redo;
-another control stays disabled unless the injected engine already exposes its
-matching state and executable command.
+A custom manifest does not register behavior. In the supported Alpha.7 editor,
+startup accepts an intent button only when its state ID names a descriptor
+entry routed from the same declared no-input intent, its tracked/stateless
+activation matches, and neither contract exposes a value. History buttons must
+name the descriptor's exact Undo or Redo source. A mismatch fails startup
+before a toolbar becomes live. The same manifest parser still understands
+concrete action commands for the advanced low-level toolbar, but the high-level
+runtime rejects those controls as policy bypasses.
 
 ## Session checkpoint persistence
 
@@ -570,9 +618,13 @@ backpressure; terminal adapter loss pauses autosave. See
 
 ## Current limitations
 
-- The bundled toolbar catalog contains Bold, Undo, and Redo. A custom manifest
-  can reorder or relabel controls, but dynamic JavaScript action/catalog
-  registration and a packaged React wrapper are not included.
+- The default toolbar contains Bold, Undo, and Redo. A compiled semantic
+  profile can contribute additional property-free format toggle intents and a
+  custom manifest can omit, reorder, relabel, group, or expose them as the same
+  native-button control kind. There are no typed public intent inputs, custom
+  controls, menus/selects, extension keymaps or `beforeinput` rules, dynamic
+  manifest replacement, JavaScript action/catalog registration, or packaged
+  React wrapper.
 - Each checkpoint owner uses one best-effort local slot. Slots may coexist but
   there is no registry, append log, merge, authentication, rollback defense, or
   cross-device synchronization.
@@ -611,7 +663,9 @@ backpressure; terminal adapter loss pauses autosave. See
   and content export in Chromium, Firefox, and WebKit through Playwright. This
   desktop automation is not a broad mobile-IME or assistive-technology support
   claim; those still need dedicated device and user-agent coverage.
-- Command execution is synchronous. Selection synchronization or a history
+- Command execution is synchronous. Public `executeIntent()` is immediate-only
+  and returns busy during composition, reads, active delivery, or reentrancy;
+  it does not enqueue a future command. Selection synchronization or a history
   boundary can publish before a later command error; queue fail-stop and
   canonical reconciliation are provided, but cross-stage rollback is not.
 

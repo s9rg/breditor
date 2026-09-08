@@ -1,6 +1,6 @@
 # Durable schema binding contract
 
-Status: implemented through `0.2.0-alpha.6`; Wasm ABI 3 provides explicit V2
+Status: implemented through `0.2.0-alpha.7`; Wasm ABI 3 provides explicit V2
 profile factories, and the supported browser selects exact-base V1 or
 profile-aware V2 persistence without sniffing or silently converting formats
 
@@ -208,7 +208,8 @@ helper from being mistaken for persistence migration.
   unprofiled compatibility path remains exact-base V1. The default V2 slot is
   schema-scoped rather than document-scoped, so applications opening multiple
   documents under one schema must supply distinct caller slots. Intent-based
-  toolbar execution remains alpha.7 work.
+  Alpha.7 intent/toolbar execution is process-local presentation and changes no
+  durable binding or record bytes.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

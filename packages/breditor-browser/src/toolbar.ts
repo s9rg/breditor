@@ -1,6 +1,7 @@
 import {
   createToolbarManifest,
   isOwnedToolbarManifest,
+  snapshotToolbarCommandDeclaration,
   type ToolbarCommandDeclaration,
   type ToolbarControlDeclaration,
   type ToolbarManifest,
@@ -8,6 +9,7 @@ import {
 import {
   historyRequest,
   noInputActionRequest,
+  noInputIntentRequest,
   preserveSelectionSync,
   stringActionRequest,
   type EditorDeliveryToken,
@@ -128,12 +130,10 @@ export function toolbarCommandRequest(
   delivery: EditorDeliveryToken,
   invocation: ToolbarCommandInvocation,
 ): EngineCommandRequest {
-  if (typeof invocation !== "object" || invocation === null) {
-    throw new TypeError("toolbar invocation is invalid");
-  }
-  const stateId = invocation.stateId;
-  const selection = invocation.selection;
-  const command = invocation.command;
+  const safeInvocation = snapshotToolbarInvocation(invocation);
+  const stateId = safeInvocation?.stateId;
+  const selection = safeInvocation?.selection;
+  const command = safeInvocation?.command;
   if (
     selection !== "preserve" ||
     typeof stateId !== "string" ||
@@ -146,6 +146,15 @@ export function toolbarCommandRequest(
   }
   const source = Object.freeze({ kind: "toolbar" as const, detail: stateId });
   const preserved = preserveSelectionSync();
+  if (command.kind === "intent") {
+    return noInputIntentRequest(
+      delivery,
+      preserved,
+      source,
+      command.intentId,
+      "closeBefore",
+    );
+  }
   if (command.kind === "history") {
     return historyRequest(delivery, preserved, source, command.operation);
   }
@@ -172,6 +181,47 @@ export function toolbarCommandRequest(
     );
   }
   throw new TypeError("toolbar command is invalid");
+}
+
+function snapshotToolbarInvocation(
+  value: unknown,
+): ToolbarCommandInvocation | null {
+  try {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return null;
+    }
+    const keys = Reflect.ownKeys(value);
+    const expected = ["stateId", "selection", "command"] as const;
+    if (
+      keys.length !== expected.length ||
+      keys.some(
+        (key) =>
+          typeof key !== "string" ||
+          !expected.some((expectedKey) => expectedKey === key),
+      )
+    ) {
+      return null;
+    }
+    const read = (key: (typeof expected)[number]): unknown => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined || !("value" in descriptor)) {
+        throw new TypeError("toolbar invocation field is invalid");
+      }
+      return descriptor.value;
+    };
+    const stateId = read("stateId");
+    const selection = read("selection");
+    if (typeof stateId !== "string" || selection !== "preserve") {
+      return null;
+    }
+    return Object.freeze({
+      stateId,
+      selection,
+      command: snapshotToolbarCommandDeclaration(read("command")),
+    });
+  } catch {
+    return null;
+  }
 }
 
 /** Observable lifecycle of one mounted toolbar. */

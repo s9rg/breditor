@@ -1,7 +1,8 @@
 # Breditor browser event pipeline
 
 Status: supported inside the public `0.1.0` runtime for the closed base schema
-and retained by the experimental `0.2.0-alpha.6` compiled-profile path; direct
+and retained by the experimental `0.2.0-alpha.7` compiled-profile and intent
+path; direct
 event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
@@ -26,7 +27,7 @@ native event
   -> bounded non-recursive FIFO
   -> guarded Rust selection synchronization
   -> optional history-group close
-  -> exactly one action, undo, or redo
+  -> exactly one semantic intent, action, undo, or redo
   -> consume exact semantic successor projection
   -> update canonical DOM + restore semantic selection
   -> handle-free notification
@@ -101,7 +102,8 @@ The `0.0.53` translator intentionally recognizes a narrow set:
 - `deleteContentBackward` -> `breditor/delete-backward`;
 - `deleteContentForward` -> `breditor/delete-forward`;
 - `deleteContent` -> `breditor/delete-selection`;
-- `formatBold` -> `breditor/toggle-strong`;
+- `formatBold` -> the no-input `breditor/format-strong` intent, whose frozen
+  blocking route selects `breditor/toggle-strong`;
 - `historyUndo` and `historyRedo` -> guarded history commands; and
 - `deleteByCut`, `insertFromPaste`, and `insertFromPasteAsQuotation` ->
   clipboard-echo classification only.
@@ -314,6 +316,13 @@ ordinary toolbar, API, event, observer, and reentrant submissions reject as
 never-queued settlement submission and remains held until canonical restoration
 and settlement or explicit recovery have completed.
 
+Alpha.7's public `executeIntent()` uses the same lease primitive for a separate
+immediate-only guarantee. It acquires only while the queue is idle and the
+adapter is live, submits one no-input intent synchronously, and releases before
+returning. Active delivery, authoritative reads, composition, and reentrant
+public calls return busy instead of enqueueing stale authority. An uncertain
+submission faults the high-level owner and is never retried.
+
 ## Wasm adapter ownership
 
 `BreditorWasmCommandAdapter` exclusively owns:
@@ -334,7 +343,7 @@ handle is checked for aliasing before ownership moves.
 
 The following successor laws are mandatory:
 
-- selection, action, undo, and redo commits retain the lineage and advance the
+- selection, action, intent, undo, and redo commits retain the lineage and advance the
   revision by exactly one, with an exact-base projection update whose result
   equals the successor observation;
 - an effective history-group close has the identical visible snapshot and no
@@ -342,6 +351,12 @@ The following successor laws are mandatory:
 - disabled and unchanged outcomes preserve the complete visible snapshot and
   expose no projection update; and
 - a disabled action reports the exact requested action identity.
+
+An intent outcome repeats its requested intent and exact routed provenance.
+The advanced adapter retains selected binding/action and fallthrough details;
+the package-root editor redacts those details to the requested intent,
+committed/blocked/unhandled status, authoritative document snapshot, and the
+stable blocked reason/activation when applicable.
 
 The adapter consumes and frees an update, converts it into a branded browser
 transition, renders it, reads the core's exact resulting selection, and restores

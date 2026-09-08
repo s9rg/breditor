@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MAX_BROWSER_ACTION_STATE_ENTRIES,
   MAX_BROWSER_ACTION_STATE_VALUE_JSON_BYTES,
+  correlateBrowserActionStatesWithProfileDescriptor,
   consumeWasmActionStates as consumeWasmActionStatesRaw,
   isOwnedBrowserActionStateReadResult,
   type BrowserActionStateActivation,
@@ -13,7 +14,12 @@ import {
   type WasmActionStateStringResultView,
   type WasmActionStatesResultView,
 } from "./wasm_action_state_adapter.js";
-import type { WasmProfileGenerationView } from "./wasm_profile_descriptor.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type BrowserCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
   matches(other) {
@@ -189,6 +195,70 @@ function statelessEntry(
     : { ...base, reasonCode: "breditor/not-available" };
 }
 
+interface FakeStateContract {
+  readonly id: string;
+  readonly activation: "stateless" | "tracked";
+  readonly value?: Readonly<{ name: string; version: number }>;
+}
+
+function compiledDescriptor(
+  declarations: readonly FakeStateContract[],
+): BrowserCompiledProfileDescriptor {
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "breditor/document",
+    schemaVersion: 1,
+    schemaFingerprint:
+      "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    formatCount: 0,
+    intentCount: 0,
+    actionStateCount: declarations.length,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
+    formatKind: () => undefined,
+    formatRevision: () => undefined,
+    intentId: () => undefined,
+    intentInputKind: () => undefined,
+    intentInputContractName: () => undefined,
+    intentInputContractVersion: () => undefined,
+    intentActivationContract: () => undefined,
+    intentValueContractName: () => undefined,
+    intentValueContractVersion: () => undefined,
+    actionStateId: (index) => declarations[index]?.id,
+    actionStateSourceKind: (index) =>
+      declarations[index] === undefined ? undefined : "direct",
+    actionStateSourceActionId: (index) =>
+      declarations[index] === undefined
+        ? undefined
+        : `breditor/action-${String(index).padStart(3, "0")}`,
+    actionStateSourceIntentId: () => undefined,
+    actionStateHistoryDirection: () => undefined,
+    actionStateActivationContract: (index) => declarations[index]?.activation,
+    actionStateValueContractName: (index) => declarations[index]?.value?.name,
+    actionStateValueContractVersion: (index) =>
+      declarations[index]?.value?.version,
+    free: vi.fn(),
+  };
+  const result = consumeWasmCompiledProfileDescriptor(
+    TEST_PROFILE_GENERATION,
+    view,
+  );
+  if (!result.ok) throw new Error("compiled descriptor fixture was rejected");
+  return result.descriptor;
+}
+
+function consumeFull(entries: readonly FakeEntry[]) {
+  return consumeWasmActionStates(
+    EXPECTED,
+    new FakeResult(
+      "full",
+      new FakeSnapshot(
+        entries,
+        entries.map((entry) => entry.id),
+      ),
+    ),
+  );
+}
+
 describe("Wasm action-state adapter", () => {
   it("rejects a result from another profile generation", () => {
     const foreignGeneration: WasmProfileGenerationView = {
@@ -264,6 +334,245 @@ describe("Wasm action-state adapter", () => {
     expect(snapshot.values.every((value) => value.freeCalls === 1)).toBe(true);
     expect(isOwnedBrowserActionStateReadResult(result)).toBe(true);
     expect(isOwnedBrowserActionStateReadResult({ ...result })).toBe(false);
+  });
+
+  it("admits an exact descriptor catalog by identity and passes owned failures through", () => {
+    const descriptor = compiledDescriptor([
+      {
+        id: "breditor/control-a",
+        activation: "tracked",
+        value: { name: "breditor/value-a", version: 2 },
+      },
+      { id: "breditor/control-b", activation: "stateless" },
+      {
+        id: "breditor/control-c",
+        activation: "tracked",
+        value: { name: "breditor/value-c", version: 1 },
+      },
+    ]);
+    const read = consumeFull([
+      {
+        id: "breditor/control-a",
+        status: "enabled",
+        activation: "active",
+        valueStatus: "uniform",
+        contractName: "breditor/value-a",
+        contractVersion: 2,
+        uniformJson: '"selected"',
+      },
+      statelessEntry("breditor/control-b"),
+      {
+        id: "breditor/control-c",
+        status: "disabled",
+        activation: "mixed",
+        reasonCode: "breditor/not-available",
+        valueStatus: "mixed",
+        contractName: "breditor/value-c",
+        contractVersion: 1,
+      },
+    ]);
+    if (!read.ok) throw new Error("action-state fixture failed");
+
+    expect(
+      correlateBrowserActionStatesWithProfileDescriptor(descriptor, read),
+    ).toBe(read);
+
+    const coreFailure = consumeWasmActionStates(
+      EXPECTED,
+      new FakeResult("error", undefined, new FakeError()),
+    );
+    expect(
+      correlateBrowserActionStatesWithProfileDescriptor(
+        descriptor,
+        coreFailure,
+      ),
+    ).toBe(coreFailure);
+  });
+
+  it("requires exact catalog cardinality, lexical identity, and state contracts", () => {
+    const descriptor = compiledDescriptor([
+      {
+        id: "breditor/control-a",
+        activation: "tracked",
+        value: { name: "breditor/value-a", version: 2 },
+      },
+      { id: "breditor/control-b", activation: "stateless" },
+    ]);
+    const tracked = (): FakeEntry => ({
+      id: "breditor/control-a",
+      status: "enabled",
+      activation: "active",
+      valueStatus: "unset",
+      contractName: "breditor/value-a",
+      contractVersion: 2,
+    });
+    const stateless = (): FakeEntry => statelessEntry("breditor/control-b");
+    const cases: readonly Readonly<{
+      name: string;
+      entries: readonly FakeEntry[];
+    }>[] = [
+      { name: "missing", entries: [tracked()] },
+      {
+        name: "extra",
+        entries: [tracked(), stateless(), statelessEntry("breditor/control-c")],
+      },
+      {
+        name: "different lexical identity",
+        entries: [tracked(), statelessEntry("breditor/control-c")],
+      },
+      {
+        name: "tracked declaration published as stateless",
+        entries: [{ ...tracked(), activation: "stateless" }, stateless()],
+      },
+      {
+        name: "stateless declaration published as tracked",
+        entries: [tracked(), { ...stateless(), activation: "inactive" }],
+      },
+      {
+        name: "required value published as unsupported",
+        entries: [
+          {
+            id: "breditor/control-a",
+            status: "enabled",
+            activation: "active",
+            valueStatus: "unsupported",
+          },
+          stateless(),
+        ],
+      },
+      {
+        name: "wrong value contract name",
+        entries: [
+          { ...tracked(), contractName: "breditor/value-other" },
+          stateless(),
+        ],
+      },
+      {
+        name: "wrong value contract version",
+        entries: [{ ...tracked(), contractVersion: 3 }, stateless()],
+      },
+      {
+        name: "unsupported declaration published with a value contract",
+        entries: [
+          tracked(),
+          {
+            ...stateless(),
+            valueStatus: "unset",
+            contractName: "breditor/value-b",
+            contractVersion: 1,
+          },
+        ],
+      },
+    ];
+
+    for (const testCase of cases) {
+      const read = consumeFull(testCase.entries);
+      expect(read.ok, testCase.name).toBe(true);
+      const correlated = correlateBrowserActionStatesWithProfileDescriptor(
+        descriptor,
+        read,
+      );
+      expect(correlated.ok, testCase.name).toBe(false);
+      expect(isOwnedBrowserActionStateReadResult(correlated)).toBe(true);
+      expect(correlated).toEqual({
+        ok: false,
+        error: {
+          kind: "boundary",
+          code: "action_state.invalid_wasm_view",
+          message: "The Wasm action-state view is invalid.",
+        },
+      });
+    }
+  });
+
+  it("admits every tracked activation and supported non-uniform value status", () => {
+    const descriptor = compiledDescriptor([
+      {
+        id: "breditor/control-a",
+        activation: "tracked",
+        value: { name: "breditor/value-a", version: 2 },
+      },
+    ]);
+    for (const activation of ["inactive", "active", "mixed"] as const) {
+      for (const valueStatus of ["unset", "mixed"] as const) {
+        const read = consumeFull([
+          {
+            id: "breditor/control-a",
+            status: "enabled",
+            activation,
+            valueStatus,
+            contractName: "breditor/value-a",
+            contractVersion: 2,
+          },
+        ]);
+        expect(
+          correlateBrowserActionStatesWithProfileDescriptor(descriptor, read),
+        ).toBe(read);
+      }
+    }
+  });
+
+  it("rejects forged catalogs without inspecting hostile inputs", () => {
+    const descriptor = compiledDescriptor([
+      { id: "breditor/control-a", activation: "stateless" },
+    ]);
+    const read = consumeFull([statelessEntry("breditor/control-a")]);
+    let descriptorReads = 0;
+    let resultReads = 0;
+    const hostileDescriptor = new Proxy(
+      {},
+      {
+        get: () => {
+          descriptorReads += 1;
+          throw new Error("must not inspect a foreign descriptor");
+        },
+      },
+    );
+    const hostileResult = new Proxy(
+      {},
+      {
+        get: () => {
+          resultReads += 1;
+          throw new Error("must not inspect a foreign read result");
+        },
+      },
+    );
+
+    expect(
+      correlateBrowserActionStatesWithProfileDescriptor(hostileDescriptor, read)
+        .ok,
+    ).toBe(false);
+    expect(
+      correlateBrowserActionStatesWithProfileDescriptor(
+        descriptor,
+        hostileResult,
+      ).ok,
+    ).toBe(false);
+    expect(descriptorReads).toBe(0);
+    expect(resultReads).toBe(0);
+  });
+
+  it("rejects duplicate and reordered raw entry IDs before catalog correlation", () => {
+    const descriptor = compiledDescriptor([
+      { id: "breditor/control-a", activation: "stateless" },
+      { id: "breditor/control-b", activation: "stateless" },
+    ]);
+    for (const entries of [
+      [
+        statelessEntry("breditor/control-b"),
+        statelessEntry("breditor/control-a"),
+      ],
+      [
+        statelessEntry("breditor/control-a"),
+        statelessEntry("breditor/control-a"),
+      ],
+    ]) {
+      const read = consumeFull(entries);
+      expect(read.ok).toBe(false);
+      expect(
+        correlateBrowserActionStatesWithProfileDescriptor(descriptor, read),
+      ).toBe(read);
+    }
   });
 
   it("admits canonical null, scalar, array, and object uniform values", () => {

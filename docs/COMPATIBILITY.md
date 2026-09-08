@@ -155,7 +155,7 @@ Wasm transport requires a new ABI number. A change crossing more than one of
 these boundaries must carry every applicable signal; silently changing meaning
 under the same application version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-alpha.6` profile boundary
+## Experimental `0.2.0-alpha.7` profile boundary
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -211,13 +211,27 @@ plain-text paste, and canonical export. Profile-aware IndexedDB selects an
 exact fingerprint or caller slot before payload validation and never replaces
 mismatched evidence. Omitted profile and scope retain the unprofiled base V1
 projection, export, legacy `"current"` record, and `<strong>`/`<b>` HTML paste
-compatibility. Intent toolbar execution remains alpha.7 work.
+compatibility. That Alpha.6 checkpoint did not yet expose intent toolbar
+execution.
+
+Alpha.7 completes that narrow browser intent path without changing ABI 3 or a
+durable format. Every compiled base profile now declares the tracked no-input
+`breditor/format-strong` intent and blocking route to
+`breditor/toggle-strong`; Bold state observes the route. Native Bold input,
+keyboard Bold, the default toolbar, and synchronous public `executeIntent()`
+share it. High-level toolbar startup admits only descriptor-matched no-input
+intent/routed-state or exact history controls, and every action-state snapshot
+must repeat the descriptor's fixed ordered catalog and activation/value
+contracts. Direct action controls and full binding/action route provenance
+remain advanced; public results are provenance-redacted and immediate-only.
+There is no typed public intent input, custom control kind, extension keymap, or
+custom `beforeinput` registration.
 
 ## Browser and Wasm pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; the `0.2.0-alpha.6` pair reports ABI `3`. Alpha.6 checks both the exact
+ABI `2`; the `0.2.0-alpha.7` pair reports ABI `3`. The prerelease path checks both the exact
 ABI string and exact embedded package version before reading the generated
 engine factory. ABI compatibility alone never makes mismatched official
 package versions a supported pair.

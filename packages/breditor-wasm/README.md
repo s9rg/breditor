@@ -9,11 +9,11 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-This alpha.6 checkpoint is currently unpublished. After publication, the
+This alpha.7 checkpoint is currently unpublished. After publication, the
 registry package can be installed with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-alpha.6
+npm install @breditor/wasm@0.2.0-alpha.7
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -54,6 +54,15 @@ matching without revealing a scalar identity. The existing exact-base Document
 V1 and Session Checkpoint V1 `BreditorEngine` factories remain an advanced
 compatibility path; they now create trusted-profile-correlated engines but do
 not auto-detect or convert wire generations.
+
+Alpha.7 does not change ABI generation 3. It adds the core-owned tracked,
+no-input `breditor/format-strong` declaration and priority-zero blocking route
+to `breditor/toggle-strong` to every compiled base profile, and makes
+`breditor/control-bold` observe that intent route. Raw
+`executeNoInputIntent()` results continue to expose exact binding/action route
+provenance to advanced handle-owning hosts. The supported high-level browser
+API consumes the same result but deliberately redacts concrete binding/action
+identities and admits only immediate synchronous delivery.
 
 ## Reproducible build
 

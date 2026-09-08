@@ -58,7 +58,10 @@ import {
   type SemanticSelectionView,
 } from "./wasm_selection_adapter.js";
 import {
+  correlateBrowserActionStatesWithProfileDescriptor,
   consumeWasmActionStates,
+  type BrowserActionStateActivation,
+  type BrowserActionStateValueStatus,
   type BrowserActionStateReadResult,
   type WasmActionStateReadPort,
   type WasmActionStatesResultView,
@@ -83,10 +86,12 @@ import {
   type WasmDocumentJsonStringResultView,
 } from "./wasm_document_json.js";
 import {
+  browserCompiledProfileDescriptorMatchesGeneration,
   isOwnedBrowserCompiledProfileDescriptor,
   wasmProfileGenerationIsLive,
   wasmViewMatchesProfileGeneration,
   type BrowserCompiledProfileDescriptor,
+  type BrowserProfileIntentDescriptor,
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
@@ -128,6 +133,34 @@ export interface WasmCommandResultView extends WasmProfileCorrelatedView {
   free(): void;
 }
 
+/** Structural subset of the generated semantic-intent route result. */
+export interface WasmIntentResultView extends WasmProfileCorrelatedView {
+  readonly status: "committed" | "blocked" | "unhandled" | "error";
+  readonly intentId: string | undefined;
+  readonly bindingId: string | undefined;
+  readonly actionId: string | undefined;
+  readonly bindingPriority: number | undefined;
+  readonly blockedReasonCode: string | undefined;
+  readonly blockedActivation: BrowserActionStateActivation | undefined;
+  readonly blockedValueStatus: BrowserActionStateValueStatus | undefined;
+  readonly blockedValueContractName: string | undefined;
+  readonly blockedValueContractVersion: number | undefined;
+  readonly fallthroughCount: number;
+  readonly error: WasmCommandErrorView | undefined;
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
+  observation(): WasmCommandObservationView | undefined;
+  projectionUpdate(): SemanticProjectionUpdateView | undefined;
+  blockedReasonDetailJson(): unknown;
+  blockedValueJson(): unknown;
+  commitJson(): unknown;
+  fallthroughBindingId(index: number): string | undefined;
+  fallthroughActionId(index: number): string | undefined;
+  fallthroughPriority(index: number): number | undefined;
+  fallthroughReasonCode(index: number): string | undefined;
+  fallthroughReasonDetailJson(index: number): unknown;
+  free(): void;
+}
+
 /** Structural subset of the generated selection-read result. */
 export interface WasmSelectionResultView extends WasmProfileCorrelatedView {
   readonly status: "selection" | "taken" | "error";
@@ -164,6 +197,10 @@ export interface WasmCommandEngineView extends WasmProfileCorrelatedView {
     expected: WasmCommandObservationView,
     actionId: string,
   ): WasmCommandResultView;
+  executeNoInputIntent(
+    expected: WasmCommandObservationView,
+    intentId: string,
+  ): WasmIntentResultView;
   executeStringAction(
     expected: WasmCommandObservationView,
     actionId: string,
@@ -196,7 +233,12 @@ export const MAX_WASM_CORE_COMMIT_OBSERVERS = 64;
 /** Handle-free fact emitted exactly once for every adopted Rust commit. */
 export interface WasmCoreCommit {
   readonly eventKind:
-    "selection" | "action" | "undo" | "redo" | "closeHistoryGroup";
+    | "selection"
+    | "action"
+    | "intent"
+    | "undo"
+    | "redo"
+    | "closeHistoryGroup";
   readonly snapshot: WasmCommandSnapshot;
 }
 
@@ -232,6 +274,20 @@ export interface WasmCommandRenderMetadata {
   readonly fallbackReason?: ProjectionFallbackReason;
 }
 
+/** One disabled candidate inspected before an intent route resolved. */
+export interface WasmIntentFallthrough {
+  readonly bindingId: string;
+  readonly actionId: string;
+  readonly priority: number;
+  readonly reasonCode: string;
+}
+
+/** Exact versioned value contract copied from a blocked route indicator. */
+export interface WasmIntentBlockedValueContract {
+  readonly name: string;
+  readonly version: number;
+}
+
 /** Normalized step outcome. No generated Wasm handle can escape here. */
 export type WasmCommandOutcome =
   | Readonly<{
@@ -241,10 +297,40 @@ export type WasmCommandOutcome =
       render: WasmCommandRenderMetadata | undefined;
     }>
   | Readonly<{
+      status: "committed";
+      eventKind: "intent";
+      intentId: string;
+      bindingId: string;
+      actionId: string;
+      bindingPriority: number;
+      fallthroughs: readonly WasmIntentFallthrough[];
+      snapshot: WasmCommandSnapshot;
+      render: WasmCommandRenderMetadata | undefined;
+    }>
+  | Readonly<{
       status: "disabled";
       actionId: string;
       reasonCode: string;
       activation: "stateless" | "inactive" | "active" | "mixed";
+      snapshot: WasmCommandSnapshot;
+    }>
+  | Readonly<{
+      status: "blocked";
+      intentId: string;
+      bindingId: string;
+      actionId: string;
+      bindingPriority: number;
+      reasonCode: string;
+      activation: BrowserActionStateActivation;
+      blockedValueStatus: BrowserActionStateValueStatus;
+      blockedValueContract: WasmIntentBlockedValueContract | undefined;
+      fallthroughs: readonly WasmIntentFallthrough[];
+      snapshot: WasmCommandSnapshot;
+    }>
+  | Readonly<{
+      status: "unhandled";
+      intentId: string;
+      fallthroughs: readonly WasmIntentFallthrough[];
       snapshot: WasmCommandSnapshot;
     }>
   | Readonly<{ status: "unchanged"; snapshot: WasmCommandSnapshot }>;
@@ -642,10 +728,13 @@ export class BreditorWasmCommandAdapter {
     this.#state = "readingActionState";
     try {
       const result = this.#engine.actionStates(observation);
-      return consumeWasmActionStates(expected, result, this.#profileGeneration, [
-        observation,
-        this.#engineOwner,
-      ]);
+      return correlateBrowserActionStatesWithProfileDescriptor(
+        this.#profileDescriptor,
+        consumeWasmActionStates(expected, result, this.#profileGeneration, [
+          observation,
+          this.#engineOwner,
+        ]),
+      );
     } catch {
       return undefined;
     } finally {
@@ -1135,20 +1224,16 @@ export class BreditorWasmCommandAdapter {
         );
       }
 
-      const expectedKind =
-        engineRequest.command.kind === "action"
-          ? "action"
-          : engineRequest.command.kind === "history"
-            ? engineRequest.command.operation
-            : "closeHistoryGroup";
-      const command = this.#executeOne(
-        (expected) =>
-          invokeEngineCommand(this.#engine, expected, engineRequest.command),
-        expectedKind,
-        engineRequest.command.kind === "action"
-          ? engineRequest.command.actionId
-          : undefined,
-      );
+      const command = engineRequest.command.kind === "intent"
+        ? this.#executeIntent(engineRequest.command.intentId)
+        : this.#executeOne(
+            (expected) =>
+              invokeEngineCommand(this.#engine, expected, engineRequest.command),
+            expectedEventKind(engineRequest.command),
+            engineRequest.command.kind === "action"
+              ? engineRequest.command.actionId
+              : undefined,
+          );
       this.#state = "live";
       return Object.freeze({
         status: "delivered",
@@ -1299,6 +1384,21 @@ export class BreditorWasmCommandAdapter {
     const observation = this.#requireObservation();
     const result = invoke(observation);
     return this.#consumeResult(result, expectedKind, expectedActionId);
+  }
+
+  #executeIntent(intentId: string): WasmCommandOutcome {
+    const declaration = declaredIntent(
+      this.#profileDescriptor,
+      intentId,
+    );
+    if (declaration === undefined || declaration.input.kind !== "none") {
+      throw new TypeError(
+        "intent command is not declared with a no-input contract",
+      );
+    }
+    const observation = this.#requireObservation();
+    const result = this.#engine.executeNoInputIntent(observation, intentId);
+    return this.#consumeIntentResult(result, declaration);
   }
 
   #consumeResult(
@@ -1535,6 +1635,312 @@ export class BreditorWasmCommandAdapter {
       successor = undefined;
       if (outcome.status === "committed") {
         this.#publishCoreCommit(outcome.eventKind, outcome.snapshot);
+      }
+      if (!cleanup.ok) {
+        this.#state = "faulted";
+        throw cleanup.error;
+      }
+      if (transition.domFailure) {
+        this.#state = "reconcile";
+        throw new DomReconciliationRequired();
+      }
+      return outcome;
+    } finally {
+      const cleanup = releaseGeneratedHandles(owned);
+      if (!cleanup.ok && this.#state === "executing") {
+        this.#state = "faulted";
+        throw cleanup.error;
+      }
+    }
+  }
+
+  #consumeIntentResult(
+    result: WasmIntentResultView,
+    declaration: BrowserProfileIntentDescriptor,
+  ): WasmCommandOutcome {
+    const previous = this.#requireObservation();
+    if (
+      (result as unknown) === previous ||
+      (result as unknown) === this.#engineOwner ||
+      (result as unknown) === this.#profileGeneration
+    ) {
+      throw new TypeError("Wasm intent result handle is invalid or aliased");
+    }
+    const owned = createGeneratedHandleRegistry();
+    const resultClaimed = claimGeneratedHandle(owned, result, [
+      previous,
+      this.#engineOwner,
+      this.#profileGeneration,
+    ]);
+    const resultAsynchronous = containGeneratedThenable(result);
+    if (
+      !resultClaimed ||
+      resultAsynchronous ||
+      !isIntentResultView(result) ||
+      !wasmViewMatchesProfileGeneration(result, this.#profileGeneration)
+    ) {
+      const cleanup = releaseGeneratedHandles(owned);
+      if (!cleanup.ok) throw cleanup.error;
+      throw new TypeError(
+        resultAsynchronous
+          ? "Wasm intent result handle is asynchronous"
+          : "Wasm intent result handle is invalid or aliased",
+      );
+    }
+
+    const protectedHandles = [
+      previous,
+      this.#engineOwner,
+      this.#profileGeneration,
+    ] as const;
+    let errorView: WasmCommandErrorView | undefined;
+    let copiedError: WasmCommandError | null | undefined;
+    let successor: WasmCommandObservationView | undefined;
+    let nextSnapshot: WasmCommandSnapshot | null | undefined;
+    let updateView: SemanticProjectionUpdateView | undefined;
+    try {
+      const status = result.status;
+      const intentId = result.intentId;
+      const bindingId = result.bindingId;
+      const actionId = result.actionId;
+      const bindingPriority = result.bindingPriority;
+      const blockedReasonCode = result.blockedReasonCode;
+      const blockedActivation = result.blockedActivation;
+      const blockedValueStatus = result.blockedValueStatus;
+      const blockedValueContractName = result.blockedValueContractName;
+      const blockedValueContractVersion = result.blockedValueContractVersion;
+      const fallthroughCount = result.fallthroughCount;
+      if (!generatedScalarsAreSynchronous([
+        status,
+        intentId,
+        bindingId,
+        actionId,
+        bindingPriority,
+        blockedReasonCode,
+        blockedActivation,
+        blockedValueStatus,
+        blockedValueContractName,
+        blockedValueContractVersion,
+        fallthroughCount,
+      ])) {
+        throw new TypeError("Wasm intent result scalars are asynchronous");
+      }
+      const fallthroughs = readIntentFallthroughs(result, fallthroughCount);
+
+      errorView = result.error;
+      if (errorView !== undefined) {
+        claimSynchronousGeneratedHandle(owned, errorView, protectedHandles);
+        copiedError = readError(errorView);
+      }
+      successor = result.observation();
+      if (successor !== undefined) {
+        claimSynchronousGeneratedHandle(owned, successor, protectedHandles);
+        nextSnapshot = wasmViewMatchesProfileGeneration(
+          successor,
+          this.#profileGeneration,
+        )
+          ? readObservationSnapshot(successor)
+          : null;
+      }
+      updateView = result.projectionUpdate();
+      if (updateView !== undefined) {
+        claimSynchronousGeneratedHandle(owned, updateView, protectedHandles);
+        if (!wasmViewMatchesProfileGeneration(updateView, this.#profileGeneration)) {
+          throw new TypeError(
+            "Wasm intent projection update has the wrong profile generation",
+          );
+        }
+      }
+
+      if (status === "error") {
+        if (
+          intentId !== undefined ||
+          bindingId !== undefined ||
+          actionId !== undefined ||
+          bindingPriority !== undefined ||
+          blockedReasonCode !== undefined ||
+          blockedActivation !== undefined ||
+          blockedValueStatus !== undefined ||
+          blockedValueContractName !== undefined ||
+          blockedValueContractVersion !== undefined ||
+          fallthroughs === null ||
+          fallthroughs.length !== 0 ||
+          successor !== undefined ||
+          updateView !== undefined ||
+          errorView === undefined
+        ) {
+          throw new TypeError("Wasm intent error result violated its exact shape");
+        }
+        if (copiedError === null || copiedError === undefined) {
+          throw new TypeError("Wasm intent error is invalid");
+        }
+        const cleanup = releaseGeneratedHandles(owned);
+        if (!cleanup.ok) throw cleanup.error;
+        if (copiedError.stale) this.#state = "faulted";
+        throw new KnownCommandRejection(copiedError);
+      }
+
+      if (
+        errorView !== undefined ||
+        successor === undefined ||
+        nextSnapshot === undefined ||
+        nextSnapshot === null ||
+        intentId !== declaration.id ||
+        fallthroughs === null
+      ) {
+        throw new TypeError("Wasm intent result violated its exact shape");
+      }
+
+      let transition: AppliedTransition = Object.freeze({
+        projection: this.#projection,
+        rendered: this.#rendered,
+        metadata: undefined,
+        domFailure: false,
+      });
+      let outcome: WasmCommandOutcome;
+      if (status === "committed") {
+        const selected = readSelectedIntentRoute(
+          bindingId,
+          actionId,
+          bindingPriority,
+          fallthroughs,
+        );
+        if (
+          selected === null ||
+          blockedReasonCode !== undefined ||
+          blockedActivation !== undefined ||
+          blockedValueStatus !== undefined ||
+          blockedValueContractName !== undefined ||
+          blockedValueContractVersion !== undefined ||
+          updateView === undefined ||
+          !committedSuccessorIsExact(this.#snapshot, nextSnapshot, "intent")
+        ) {
+          throw new TypeError(
+            "Wasm committed intent violated its correlation contract",
+          );
+        }
+        const ownedUpdate = updateView;
+        const updateCleanup = transferGeneratedHandle(owned, ownedUpdate);
+        if (updateCleanup === undefined) {
+          throw new TypeError(
+            "Wasm intent projection update ownership is unavailable",
+          );
+        }
+        updateView = undefined;
+        transition = this.#consumeAndRenderUpdate(
+          ownedUpdate,
+          updateCleanup,
+          successor,
+          nextSnapshot,
+          [
+            previous,
+            result,
+            successor,
+            this.#engineOwner,
+            this.#profileGeneration,
+          ],
+        );
+        outcome = Object.freeze({
+          status,
+          eventKind: "intent",
+          intentId,
+          bindingId: selected.bindingId,
+          actionId: selected.actionId,
+          bindingPriority: selected.bindingPriority,
+          fallthroughs,
+          snapshot: nextSnapshot,
+          render: transition.metadata,
+        });
+      } else if (status === "blocked") {
+        const selected = readSelectedIntentRoute(
+          bindingId,
+          actionId,
+          bindingPriority,
+          fallthroughs,
+        );
+        const blockedValue = readBlockedIntentValue(
+          declaration,
+          blockedValueStatus,
+          blockedValueContractName,
+          blockedValueContractVersion,
+        );
+        if (
+          selected === null ||
+          !isQualifiedNameValue(blockedReasonCode) ||
+          !intentActivationMatchesContract(
+            blockedActivation,
+            declaration.state.activation,
+          ) ||
+          blockedValue === null ||
+          updateView !== undefined ||
+          !snapshotsEqual(this.#snapshot, nextSnapshot)
+        ) {
+          throw new TypeError(
+            "Wasm blocked intent violated its correlation contract",
+          );
+        }
+        outcome = Object.freeze({
+          status,
+          intentId,
+          bindingId: selected.bindingId,
+          actionId: selected.actionId,
+          bindingPriority: selected.bindingPriority,
+          reasonCode: blockedReasonCode,
+          activation: blockedActivation,
+          blockedValueStatus: blockedValue.status,
+          blockedValueContract: blockedValue.contract,
+          fallthroughs,
+          snapshot: nextSnapshot,
+        });
+      } else if (status === "unhandled") {
+        if (
+          bindingId !== undefined ||
+          actionId !== undefined ||
+          bindingPriority !== undefined ||
+          blockedReasonCode !== undefined ||
+          blockedActivation !== undefined ||
+          blockedValueStatus !== undefined ||
+          blockedValueContractName !== undefined ||
+          blockedValueContractVersion !== undefined ||
+          updateView !== undefined ||
+          !snapshotsEqual(this.#snapshot, nextSnapshot)
+        ) {
+          throw new TypeError(
+            "Wasm unhandled intent violated its correlation contract",
+          );
+        }
+        outcome = Object.freeze({
+          status,
+          intentId,
+          fallthroughs,
+          snapshot: nextSnapshot,
+        });
+      } else {
+        throw new TypeError("Wasm intent status is invalid");
+      }
+
+      const successorCleanup = transferGeneratedHandle(owned, successor);
+      if (successorCleanup === undefined) {
+        throw new TypeError(
+          "Wasm intent successor observation ownership is unavailable",
+        );
+      }
+      let cleanup = releaseGeneratedHandles(owned);
+      const previousCleanup = this.#observationCleanup;
+      const previousRelease = previousCleanup === undefined
+        ? generatedCleanupFailure(
+            new TypeError("current observation ownership is unavailable"),
+          )
+        : runGeneratedHandleCleanup(previousCleanup);
+      if (cleanup.ok && !previousRelease.ok) cleanup = previousRelease;
+      this.#observation = successor;
+      this.#observationCleanup = successorCleanup;
+      this.#snapshot = nextSnapshot;
+      this.#projection = transition.projection;
+      this.#rendered = transition.rendered;
+      successor = undefined;
+      if (outcome.status === "committed") {
+        this.#publishCoreCommit("intent", outcome.snapshot);
       }
       if (!cleanup.ok) {
         this.#state = "faulted";
@@ -1871,6 +2277,9 @@ function invokeEngineCommand(
   if (command.kind === "control") {
     return engine.closeHistoryGroup(expected);
   }
+  if (command.kind === "intent") {
+    throw new TypeError("semantic intents use the intent result boundary");
+  }
   return command.input.kind === "none"
     ? engine.executeNoInputAction(expected, command.actionId)
     : engine.executeStringAction(
@@ -1878,6 +2287,24 @@ function invokeEngineCommand(
         command.actionId,
         command.input.value,
       );
+}
+
+function expectedEventKind(command: EngineCommand): ExpectedEventKind {
+  if (command.kind === "action") return "action";
+  if (command.kind === "history") return command.operation;
+  if (command.kind === "control") return "closeHistoryGroup";
+  throw new TypeError("command has no ordinary event-kind contract");
+}
+
+function declaredIntent(
+  descriptor: BrowserCompiledProfileDescriptor,
+  intentId: string,
+): BrowserProfileIntentDescriptor | undefined {
+  for (let index = 0; index < descriptor.intents.length; index += 1) {
+    const declaration = descriptor.intents[index];
+    if (declaration?.id === intentId) return declaration;
+  }
+  return undefined;
 }
 
 function snapshotAdapterOptions(
@@ -1903,6 +2330,10 @@ function snapshotAdapterOptions(
     record === null ||
     !wasmProfileGenerationIsLive(record["profileGeneration"]) ||
     !isAdapterProfileDescriptor(record["profileDescriptor"]) ||
+    !browserCompiledProfileDescriptorMatchesGeneration(
+      record["profileDescriptor"],
+      record["profileGeneration"],
+    ) ||
     !(record["renderer"] instanceof BreditorDomRenderer) ||
     !(record["selectionBridge"] instanceof BreditorDomSelectionBridge)
   ) {
@@ -1954,6 +2385,7 @@ function readObservationSnapshot(value: unknown): WasmCommandSnapshot | null {
     const lineage = observation.snapshotLineage;
     const revision = observation.snapshotRevision;
     if (
+      !generatedScalarsAreSynchronous([lineage, revision]) ||
       typeof lineage !== "string" ||
       lineage.length === 0 ||
       lineage.length > 128 ||
@@ -1980,6 +2412,7 @@ function readError(value: WasmCommandErrorView): WasmCommandError | null {
     const code = value.code;
     const message = value.message;
     if (
+      !generatedScalarsAreSynchronous([code, message]) ||
       typeof code !== "string" ||
       !isStableCode(code) ||
       typeof message !== "string" ||
@@ -2013,6 +2446,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     const setRangeSelection = receiver.setRangeSelection;
     const selection = receiver.selection;
     const executeNoInputAction = receiver.executeNoInputAction;
+    const executeNoInputIntent = receiver.executeNoInputIntent;
     const executeStringAction = receiver.executeStringAction;
     const undo = receiver.undo;
     const redo = receiver.redo;
@@ -2026,6 +2460,7 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
       typeof setRangeSelection !== "function" ||
       typeof selection !== "function" ||
       typeof executeNoInputAction !== "function" ||
+      typeof executeNoInputIntent !== "function" ||
       typeof executeStringAction !== "function" ||
       typeof undo !== "function" ||
       typeof redo !== "function" ||
@@ -2068,6 +2503,8 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
       selection: (expected) => Reflect.apply(selection, value, [expected]),
       executeNoInputAction: (expected, actionId) =>
         Reflect.apply(executeNoInputAction, value, [expected, actionId]),
+      executeNoInputIntent: (expected, intentId) =>
+        Reflect.apply(executeNoInputIntent, value, [expected, intentId]),
       executeStringAction: (expected, actionId, input) =>
         Reflect.apply(executeStringAction, value, [expected, actionId, input]),
       undo: (expected) => Reflect.apply(undo, value, [expected]),
@@ -2091,6 +2528,43 @@ function isCommandResultView(value: unknown): value is WasmCommandResultView {
       value !== null &&
       typeof result.observation === "function" &&
       typeof result.projectionUpdate === "function"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isIntentResultView(value: unknown): value is WasmIntentResultView {
+  try {
+    const result = value as Partial<WasmIntentResultView>;
+    const methods = [
+      result.matchesProfileGeneration,
+      result.observation,
+      result.projectionUpdate,
+      result.blockedReasonDetailJson,
+      result.blockedValueJson,
+      result.commitJson,
+      result.fallthroughBindingId,
+      result.fallthroughActionId,
+      result.fallthroughPriority,
+      result.fallthroughReasonCode,
+      result.fallthroughReasonDetailJson,
+    ];
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      generatedScalarsAreSynchronous(methods) &&
+      typeof result.matchesProfileGeneration === "function" &&
+      typeof result.observation === "function" &&
+      typeof result.projectionUpdate === "function" &&
+      typeof result.blockedReasonDetailJson === "function" &&
+      typeof result.blockedValueJson === "function" &&
+      typeof result.commitJson === "function" &&
+      typeof result.fallthroughBindingId === "function" &&
+      typeof result.fallthroughActionId === "function" &&
+      typeof result.fallthroughPriority === "function" &&
+      typeof result.fallthroughReasonCode === "function" &&
+      typeof result.fallthroughReasonDetailJson === "function"
     );
   } catch {
     return false;
@@ -2129,6 +2603,13 @@ function containGeneratedThenable(value: unknown): boolean {
   }
   if (then === undefined) return false;
   containObserverResult(value);
+  return true;
+}
+
+function generatedScalarsAreSynchronous(values: readonly unknown[]): boolean {
+  for (let index = 0; index < values.length; index += 1) {
+    if (containGeneratedThenable(values[index])) return false;
+  }
   return true;
 }
 
@@ -2256,7 +2737,7 @@ function releaseGeneratedHandles(
 function committedSuccessorIsExact(
   current: WasmCommandSnapshot,
   next: WasmCommandSnapshot,
-  expectedKind: ExpectedEventKind,
+  expectedKind: ExpectedEventKind | "intent",
 ): boolean {
   if (expectedKind === "closeHistoryGroup") {
     return snapshotsEqual(current, next);
@@ -2301,6 +2782,172 @@ function isActivation(
     value === "inactive" ||
     value === "active" ||
     value === "mixed"
+  );
+}
+
+const MAX_WASM_INTENT_FALLTHROUGHS = 256;
+
+interface SelectedIntentRoute {
+  readonly bindingId: string;
+  readonly actionId: string;
+  readonly bindingPriority: number;
+}
+
+function readIntentFallthroughs(
+  result: WasmIntentResultView,
+  count: unknown,
+): readonly WasmIntentFallthrough[] | null {
+  if (
+    typeof count !== "number" ||
+    !Number.isSafeInteger(count) ||
+    count < 0 ||
+    count > MAX_WASM_INTENT_FALLTHROUGHS
+  ) {
+    return null;
+  }
+  try {
+    const bindingIdAt = result.fallthroughBindingId;
+    const actionIdAt = result.fallthroughActionId;
+    const priorityAt = result.fallthroughPriority;
+    const reasonCodeAt = result.fallthroughReasonCode;
+    if (
+      typeof bindingIdAt !== "function" ||
+      typeof actionIdAt !== "function" ||
+      typeof priorityAt !== "function" ||
+      typeof reasonCodeAt !== "function"
+    ) {
+      return null;
+    }
+    const fallthroughs: WasmIntentFallthrough[] = [];
+    const bindingIds = new Set<string>();
+    const actionIds = new Set<string>();
+    let priorPriority: number | undefined;
+    for (let index = 0; index < count; index += 1) {
+      const bindingId = Reflect.apply(bindingIdAt, result, [index]) as unknown;
+      const actionId = Reflect.apply(actionIdAt, result, [index]) as unknown;
+      const priority = Reflect.apply(priorityAt, result, [index]) as unknown;
+      const reasonCode = Reflect.apply(reasonCodeAt, result, [index]) as unknown;
+      if (
+        !generatedScalarsAreSynchronous([
+          bindingId,
+          actionId,
+          priority,
+          reasonCode,
+        ]) ||
+        !isQualifiedNameValue(bindingId) ||
+        !isQualifiedNameValue(actionId) ||
+        !isI32(priority) ||
+        !isQualifiedNameValue(reasonCode) ||
+        bindingIds.has(bindingId) ||
+        actionIds.has(actionId) ||
+        (priorPriority !== undefined && priority >= priorPriority)
+      ) {
+        return null;
+      }
+      bindingIds.add(bindingId);
+      actionIds.add(actionId);
+      priorPriority = priority;
+      fallthroughs.push(Object.freeze({
+        bindingId,
+        actionId,
+        priority,
+        reasonCode,
+      }));
+    }
+    const sentinelBindingId = Reflect.apply(bindingIdAt, result, [count]) as unknown;
+    const sentinelActionId = Reflect.apply(actionIdAt, result, [count]) as unknown;
+    const sentinelPriority = Reflect.apply(priorityAt, result, [count]) as unknown;
+    const sentinelReasonCode = Reflect.apply(reasonCodeAt, result, [count]) as unknown;
+    if (
+      !generatedScalarsAreSynchronous([
+        sentinelBindingId,
+        sentinelActionId,
+        sentinelPriority,
+        sentinelReasonCode,
+      ]) ||
+      sentinelBindingId !== undefined ||
+      sentinelActionId !== undefined ||
+      sentinelPriority !== undefined ||
+      sentinelReasonCode !== undefined
+    ) {
+      return null;
+    }
+    return Object.freeze(fallthroughs);
+  } catch {
+    return null;
+  }
+}
+
+function readSelectedIntentRoute(
+  bindingId: unknown,
+  actionId: unknown,
+  bindingPriority: unknown,
+  fallthroughs: readonly WasmIntentFallthrough[],
+): Readonly<SelectedIntentRoute> | null {
+  if (
+    !isQualifiedNameValue(bindingId) ||
+    !isQualifiedNameValue(actionId) ||
+    !isI32(bindingPriority) ||
+    fallthroughs.length >= MAX_WASM_INTENT_FALLTHROUGHS ||
+    fallthroughs.some(
+      (item) => item.bindingId === bindingId || item.actionId === actionId,
+    ) ||
+    (fallthroughs.length > 0 &&
+      (fallthroughs[fallthroughs.length - 1]?.priority ?? bindingPriority) <=
+        bindingPriority)
+  ) {
+    return null;
+  }
+  return Object.freeze({ bindingId, actionId, bindingPriority });
+}
+
+function intentActivationMatchesContract(
+  activation: unknown,
+  contract: BrowserProfileIntentDescriptor["state"]["activation"],
+): activation is BrowserActionStateActivation {
+  return contract === "stateless"
+    ? activation === "stateless"
+    : activation === "inactive" || activation === "active" || activation === "mixed";
+}
+
+function readBlockedIntentValue(
+  declaration: BrowserProfileIntentDescriptor,
+  status: unknown,
+  name: unknown,
+  version: unknown,
+): Readonly<{
+  status: BrowserActionStateValueStatus;
+  contract: WasmIntentBlockedValueContract | undefined;
+}> | null {
+  const declared = declaration.state.value;
+  if (declared === undefined) {
+    return status === "unsupported" && name === undefined && version === undefined
+      ? Object.freeze({ status, contract: undefined })
+      : null;
+  }
+  if (
+    (status !== "unset" && status !== "uniform" && status !== "mixed") ||
+    name !== declared.name ||
+    version !== declared.version
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    status,
+    contract: Object.freeze({ name: declared.name, version: declared.version }),
+  });
+}
+
+function isQualifiedNameValue(value: unknown): value is string {
+  return typeof value === "string" && isQualifiedName(value);
+}
+
+function isI32(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= -2_147_483_648 &&
+    value <= 2_147_483_647
   );
 }
 

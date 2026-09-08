@@ -429,8 +429,8 @@ describe("BreditorBrowserEventRouter", () => {
     expect(before.defaultPrevented).toBe(true);
     expect(fixture.adapter.requests).toHaveLength(1);
     expect(fixture.adapter.requests[0]?.command).toMatchObject({
-      kind: "action",
-      actionId: "breditor/toggle-strong",
+      kind: "intent",
+      intentId: "breditor/format-strong",
     });
     expect(fixture.router.status).toEqual({ kind: "live" });
     fixture.router.dispose();

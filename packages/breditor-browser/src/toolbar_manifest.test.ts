@@ -21,10 +21,8 @@ describe("toolbar manifest", () => {
           label: "Bold",
           activation: "tracked",
           command: {
-            kind: "action",
-            actionId: "breditor/toggle-strong",
-            input: { kind: "none" },
-            history: "closeBefore",
+            kind: "intent",
+            intentId: "breditor/format-strong",
           },
         },
         {
@@ -132,6 +130,39 @@ describe("toolbar manifest", () => {
     expect(undeclaredReads).toBe(0);
   });
 
+  it("copies intent references without admitting policy or executable fields", () => {
+    const source = {
+      label: "Formats",
+      controls: [
+        {
+          kind: "button",
+          stateId: "example/control-highlight",
+          label: "Highlight",
+          activation: "tracked",
+          command: {
+            kind: "intent",
+            intentId: "example/format-highlight",
+            history: "preserve",
+            input: { kind: "none" },
+            execute: () => undefined,
+          },
+        },
+      ],
+    };
+
+    const manifest = createToolbarManifest(source);
+    source.controls[0]!.command.intentId = "example/changed";
+
+    expect(manifest.controls[0]?.command).toEqual({
+      kind: "intent",
+      intentId: "example/format-highlight",
+    });
+    expect(Object.isFrozen(manifest.controls[0]?.command)).toBe(true);
+    expect("history" in manifest.controls[0]!.command).toBe(false);
+    expect("input" in manifest.controls[0]!.command).toBe(false);
+    expect("execute" in manifest.controls[0]!.command).toBe(false);
+  });
+
   it("rejects retained-field accessors without executing them", () => {
     let reads = 0;
     const accessor = (value: unknown): PropertyDescriptor => ({
@@ -158,6 +189,13 @@ describe("toolbar manifest", () => {
     const historyCommand = { kind: "history" };
     Object.defineProperty(historyCommand, "operation", accessor("undo"));
 
+    const intentCommand = { kind: "intent" };
+    Object.defineProperty(
+      intentCommand,
+      "intentId",
+      accessor("example/format-highlight"),
+    );
+
     const actionInput = { kind: "string" };
     Object.defineProperty(actionInput, "value", accessor("text"));
 
@@ -180,6 +218,18 @@ describe("toolbar manifest", () => {
             label: "History",
             activation: "stateless",
             command: historyCommand,
+          },
+        ],
+      },
+      {
+        label: "Tools",
+        controls: [
+          {
+            kind: "button",
+            stateId: "example/control-intent",
+            label: "Intent",
+            activation: "tracked",
+            command: intentCommand,
           },
         ],
       },
@@ -359,6 +409,26 @@ describe("toolbar manifest", () => {
         controls: [historyControl("example/control-history", "History", "clear")],
       }),
     ).toThrow(TypeError);
+    for (const intentId of [
+      "missing-slash",
+      "Example/format-highlight",
+      "example/two/slashes",
+    ]) {
+      expect(() =>
+        createToolbarManifest({
+          label: "Tools",
+          controls: [
+            {
+              kind: "button",
+              stateId: "example/control-intent",
+              label: "Intent",
+              activation: "tracked",
+              command: { kind: "intent", intentId },
+            },
+          ],
+        }),
+      ).toThrow(TypeError);
+    }
     expect(() =>
       createToolbarManifest({
         label: "Tools",

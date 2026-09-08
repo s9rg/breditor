@@ -1,5 +1,8 @@
 import { measureBoundedUnicodeText } from "./composition_event.js";
-import { browserCommandTextIsAdmissible } from "./editor_command.js";
+import {
+  BASE_INTENT_IDS,
+  browserCommandTextIsAdmissible,
+} from "./editor_command.js";
 
 /** Minimum controls admitted by one presentation manifest. */
 export const MIN_TOOLBAR_CONTROLS = 1;
@@ -31,6 +34,7 @@ export const BASE_TOOLBAR_STATE_IDS = Object.freeze({
 
 /** A callback-free semantic command described by a toolbar control. */
 export type ToolbarCommandDeclaration =
+  | Readonly<{ kind: "intent"; intentId: string }>
   | Readonly<{
       kind: "action";
       actionId: string;
@@ -211,10 +215,8 @@ export const DEFAULT_TOOLBAR_MANIFEST: ToolbarManifest = createToolbarManifest({
       label: "Bold",
       activation: "tracked",
       command: {
-        kind: "action",
-        actionId: "breditor/toggle-strong",
-        input: { kind: "none" },
-        history: "closeBefore",
+        kind: "intent",
+        intentId: BASE_INTENT_IDS.formatStrong,
       },
     },
     {
@@ -247,6 +249,17 @@ function snapshotCommand(value: unknown): ToolbarCommandDeclaration {
       throw new TypeError("toolbar history operation is invalid");
     }
     return Object.freeze({ kind, operation });
+  }
+  if (kind === "intent") {
+    const intentId = requiredOwnDataProperty(
+      command,
+      "intentId",
+      "toolbar intent identity",
+    );
+    if (!validQualifiedName(intentId)) {
+      throw new TypeError("toolbar intent identity is invalid");
+    }
+    return Object.freeze({ kind, intentId });
   }
   if (kind !== "action") {
     throw new TypeError("toolbar command kind is invalid");
@@ -294,6 +307,13 @@ function snapshotCommand(value: unknown): ToolbarCommandDeclaration {
     throw new TypeError("toolbar action input is invalid");
   }
   return Object.freeze({ kind, actionId, input, history });
+}
+
+/** @internal Copies one callback-free command declaration for queue admission. */
+export function snapshotToolbarCommandDeclaration(
+  value: unknown,
+): ToolbarCommandDeclaration {
+  return snapshotCommand(value);
 }
 
 function snapshotRecord(value: unknown, description: string): object {

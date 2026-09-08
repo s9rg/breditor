@@ -340,7 +340,7 @@ mod tests {
         let profile = decode_compiled_profile(PROFILE)?;
         assert_eq!(profile.schema().id().name().as_str(), "example/editor");
         assert_eq!(profile.extensions().len(), 1);
-        assert_eq!(profile.intent_router().intent_count(), 1);
+        assert_eq!(profile.intent_router().intent_count(), 2);
         assert_eq!(profile.action_state_catalog().len(), 4);
         Ok(())
     }

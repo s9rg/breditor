@@ -59,6 +59,7 @@ const PROFILE_BOOTSTRAP_JSON: &str = r#"{
 }"#;
 
 const PROFILE_INTENT: &str = "example/toggle-highlight-intent";
+const BASE_FORMAT_STRONG_INTENT: &str = "breditor/format-strong";
 
 const PROJECTION_DOCUMENT_JSON: &str = r#"{
   "format":"breditor/document","formatVersion":1,
@@ -181,17 +182,33 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     assert_eq!(descriptor.format_kind(2), None);
     assert_eq!(descriptor.format_revision(2), None);
 
-    assert_eq!(descriptor.intent_count(), 1);
-    assert_eq!(descriptor.intent_id(0).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.intent_count(), 2);
+    assert_eq!(descriptor.intent_id(0).as_deref(), Some(BASE_FORMAT_STRONG_INTENT));
     assert_eq!(descriptor.intent_input_kind(0).as_deref(), Some("none"));
     assert_eq!(descriptor.intent_input_contract_name(0), None);
     assert_eq!(descriptor.intent_input_contract_version(0), None);
     assert_eq!(descriptor.intent_activation_contract(0).as_deref(), Some("tracked"));
     assert_eq!(descriptor.intent_value_contract_name(0), None);
     assert_eq!(descriptor.intent_value_contract_version(0), None);
-    assert_eq!(descriptor.intent_id(1), None);
+    assert_eq!(descriptor.intent_id(1).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.intent_input_kind(1).as_deref(), Some("none"));
+    assert_eq!(descriptor.intent_input_contract_name(1), None);
+    assert_eq!(descriptor.intent_input_contract_version(1), None);
+    assert_eq!(descriptor.intent_activation_contract(1).as_deref(), Some("tracked"));
+    assert_eq!(descriptor.intent_value_contract_name(1), None);
+    assert_eq!(descriptor.intent_value_contract_version(1), None);
+    assert_eq!(descriptor.intent_id(2), None);
 
     assert_eq!(descriptor.action_state_count(), 4);
+    assert_eq!(descriptor.action_state_id(0).as_deref(), Some("breditor/control-bold"));
+    assert_eq!(descriptor.action_state_source_kind(0).as_deref(), Some("routed"));
+    assert_eq!(descriptor.action_state_source_action_id(0), None);
+    assert_eq!(
+        descriptor.action_state_source_intent_id(0).as_deref(),
+        Some(BASE_FORMAT_STRONG_INTENT),
+    );
+    assert_eq!(descriptor.action_state_history_direction(0), None);
+    assert_eq!(descriptor.action_state_activation_contract(0).as_deref(), Some("tracked"));
     assert_eq!(descriptor.action_state_id(3).as_deref(), Some("example/highlight-control"));
     assert_eq!(descriptor.action_state_source_kind(3).as_deref(), Some("routed"));
     assert_eq!(descriptor.action_state_source_action_id(3), None);

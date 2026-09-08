@@ -29,6 +29,7 @@ import {
   BreditorWasmCommandAdapter,
   type WasmCommandObservationView,
   type WasmCommandResultView,
+  type WasmIntentResultView,
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
 import {
@@ -56,8 +57,10 @@ import type { WasmSessionCheckpointStringResultView } from "./wasm_session_check
 type VoidMock = ReturnType<typeof vi.fn<() => void>>;
 
 const LINEAGE = "browser-editor-tests";
-const STATE_ID = "example/control-toggle";
-const ACTION_ID = "example/toggle";
+const STATE_ID = "breditor/control-bold";
+const ACTION_ID = "breditor/toggle-strong";
+const INTENT_ID = "breditor/format-strong";
+const BINDING_ID = "breditor/format-strong-binding";
 const BASE_SCHEMA_FINGERPRINT =
   "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
 const PROFILE_SCHEMA = Object.freeze({
@@ -110,10 +113,8 @@ const TOOLBAR_MANIFEST = createToolbarManifest({
       label: "Toggle",
       activation: "tracked",
       command: {
-        kind: "action",
-        actionId: ACTION_ID,
-        input: { kind: "none" },
-        history: "preserve",
+        kind: "intent",
+        intentId: INTENT_ID,
       },
     },
   ],
@@ -123,6 +124,7 @@ interface EngineRecord {
   readonly rawFree: ReturnType<typeof vi.fn>;
   readonly observationFrees: ReturnType<typeof vi.fn>[];
   readonly executeNoInputAction: ReturnType<typeof vi.fn>;
+  readonly executeNoInputIntent: ReturnType<typeof vi.fn>;
   readonly executeStringAction: ReturnType<typeof vi.fn>;
   readonly setRangeSelection: ReturnType<typeof vi.fn>;
   readonly closeHistoryGroup: ReturnType<typeof vi.fn>;
@@ -147,6 +149,7 @@ interface ModuleFixtureOptions {
   }>;
   readonly actionStateThrows?: boolean;
   readonly actionThrows?: boolean;
+  readonly intentOutcome?: "committed" | "blocked" | "unhandled" | "malformed";
   readonly enableAction?: boolean;
   readonly enableStringAction?: boolean;
   readonly selectionOffset?: number;
@@ -175,6 +178,7 @@ interface ProfileModuleFixtureOptions {
   readonly text?: string;
   readonly schemasByCompilation?: readonly ProfileSchemaFixture[];
   readonly formatsByCompilation?: readonly (readonly ProfileFormatFixture[])[];
+  readonly intentInputKind?: "none" | "typed";
   readonly onCreateEngine?: (compilationIndex: number) => void;
 }
 
@@ -465,6 +469,286 @@ describe("BreditorBrowserEditor", () => {
     expect(
       fixture.compilations[0]?.profileGeneration.freeSpy,
     ).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it("executes a declared no-input intent synchronously with provenance-redacted immutable output", async () => {
+    const fixture = moduleFixture({ enableAction: true, text: "before" });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+
+    const result = opened.editor.executeIntent(INTENT_ID);
+
+    expect(result).toEqual({
+      status: "committed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.document)).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(BINDING_ID);
+    expect(JSON.stringify(result)).not.toContain(ACTION_ID);
+    expect(fixture.engines[0]?.closeHistoryGroup).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledWith(
+      expect.objectContaining({ snapshotRevision: "0" }),
+      INTENT_ID,
+    );
+    expect(opened.editor.getSnapshot().document).toEqual(result.document);
+    opened.editor.dispose();
+  });
+
+  it("preserves a committed intent result when disposal reenters its delivery", async () => {
+    let editor: BreditorBrowserEditor | undefined;
+    const fixture = moduleFixture({
+      enableAction: true,
+      text: "before",
+      onAction: () => editor?.dispose(),
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    editor = opened.editor;
+
+    const result = editor.executeIntent(INTENT_ID);
+
+    expect(result).toEqual({
+      status: "committed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(editor.getStatus()).toEqual({ phase: "disposed" });
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.rawFree).not.toHaveBeenCalled();
+    await settleMicrotasks();
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it("does not mask an uncertain intent submission when disposal reenters first", async () => {
+    let editor: BreditorBrowserEditor | undefined;
+    const fixture = moduleFixture({
+      enableAction: true,
+      onAction: () => {
+        editor?.dispose();
+        throw new Error("private uncertain delivery detail");
+      },
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    editor = opened.editor;
+
+    const result = editor.executeIntent(INTENT_ID);
+
+    expect(result).toEqual({
+      status: "failed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(JSON.stringify(result)).not.toContain("private uncertain");
+    expect(editor.getStatus()).toEqual({ phase: "disposed" });
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.rawFree).not.toHaveBeenCalled();
+    await settleMicrotasks();
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it.each(["blocked", "unhandled"] as const)(
+    "returns a redacted %s intent result without faulting or mutating",
+    async (intentOutcome) => {
+      const fixture = moduleFixture({ enableAction: true, intentOutcome });
+      const opened = await BreditorBrowserEditor.open(
+        options(mountHost(), fixture.module),
+      );
+      if (!opened.ok) throw new Error(opened.error.code);
+
+      const result = opened.editor.executeIntent(INTENT_ID);
+
+      expect(result).toEqual(
+        intentOutcome === "blocked"
+          ? {
+              status: "blocked",
+              intentId: INTENT_ID,
+              reasonCode: "breditor/no-selection",
+              activation: "inactive",
+              document: { lineage: LINEAGE, revision: "0" },
+            }
+          : {
+              status: "unhandled",
+              intentId: INTENT_ID,
+              document: { lineage: LINEAGE, revision: "0" },
+            },
+      );
+      expect(Object.isFrozen(result)).toBe(true);
+      expect(Object.isFrozen(result.document)).toBe(true);
+      expect(JSON.stringify(result)).not.toContain(BINDING_ID);
+      expect(JSON.stringify(result)).not.toContain(ACTION_ID);
+      expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+      expect(opened.editor.getSnapshot().document).toEqual({
+        lineage: LINEAGE,
+        revision: "0",
+      });
+      opened.editor.dispose();
+    },
+  );
+
+  it("distinguishes invalid, unknown, typed-input, and unavailable intent rejection", async () => {
+    const base = moduleFixture({ enableAction: true });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), base.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+
+    expect(opened.editor.executeIntent("x" as never)).toMatchObject({
+      status: "rejected",
+      intentId: "",
+      reason: "invalidIntent",
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(opened.editor.executeIntent(`x/${"a".repeat(256)}`)).toMatchObject({
+      status: "rejected",
+      intentId: "",
+      reason: "invalidIntent",
+    });
+    expect(opened.editor.executeIntent("example/unknown")).toMatchObject({
+      status: "rejected",
+      intentId: "example/unknown",
+      reason: "unknownIntent",
+    });
+    expect(base.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
+    opened.editor.dispose();
+    expect(opened.editor.executeIntent(INTENT_ID)).toMatchObject({
+      status: "rejected",
+      intentId: INTENT_ID,
+      reason: "unavailable",
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+
+    const profile = profileModuleFixture({ intentInputKind: "typed" });
+    const typed = await BreditorBrowserEditor.open(
+      options(mountHost(), profile.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("profile text", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+      }),
+    );
+    if (!typed.ok) throw new Error(`${typed.error.code}:${typed.error.causeCode}`);
+    expect(typed.editor.executeIntent(INTENT_ID)).toMatchObject({
+      status: "rejected",
+      intentId: INTENT_ID,
+      reason: "inputRequired",
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(profile.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
+    typed.editor.dispose();
+  });
+
+  it("rejects reentrant and authoritative-read intent admission as busy without queueing", async () => {
+    let editor: BreditorBrowserEditor | undefined;
+    let duringExecution: ReturnType<BreditorBrowserEditor["executeIntent"]> |
+      undefined;
+    let duringRead: ReturnType<BreditorBrowserEditor["executeIntent"]> |
+      undefined;
+    const fixture = moduleFixture({
+      enableAction: true,
+      onAction: () => {
+        duringExecution = editor?.executeIntent(INTENT_ID);
+      },
+      onDocumentJson: () => {
+        duringRead = editor?.executeIntent(INTENT_ID);
+      },
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    editor = opened.editor;
+
+    const committed = editor.executeIntent(INTENT_ID);
+    expect(committed.status).toBe("committed");
+    expect(duringExecution).toMatchObject({
+      status: "rejected",
+      reason: "busy",
+    });
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+
+    expect(editor.exportContent("documentJson")).toMatchObject({ ok: true });
+    expect(duringRead).toMatchObject({
+      status: "rejected",
+      reason: "busy",
+    });
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+    editor.dispose();
+  });
+
+  it("faults safely when an impossible intent result makes delivery uncertain", async () => {
+    const fixture = moduleFixture({
+      enableAction: true,
+      intentOutcome: "malformed",
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+
+    const result = opened.editor.executeIntent(INTENT_ID);
+
+    expect(result).toEqual({
+      status: "failed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(opened.editor.getStatus()).toEqual({
+      phase: "faulted",
+      reason: "queueUncertain",
+    });
+    opened.editor.dispose();
+  });
+
+  it("rejects a toolbar/profile contract mismatch before mutating either host", async () => {
+    const host = mountHost();
+    const toolbarHost = mountHost();
+    const fixture = moduleFixture();
+    const incompatible = createToolbarManifest({
+      label: "Incompatible",
+      controls: [
+        {
+          kind: "button",
+          stateId: STATE_ID,
+          label: "Concrete action",
+          activation: "tracked",
+          command: {
+            kind: "action",
+            actionId: ACTION_ID,
+            input: { kind: "none" },
+            history: "preserve",
+          },
+        },
+      ],
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        toolbar: { host: toolbarHost, manifest: incompatible },
+      }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.toolbar_profile_invalid" },
+    });
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+    expect(toolbarHost.childNodes).toHaveLength(0);
+    expect(toolbarHost.attributes).toHaveLength(0);
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
   });
 
@@ -1498,10 +1782,11 @@ describe("BreditorBrowserEditor", () => {
     expect(result.editor.getStatus()).toEqual({ phase: "live" });
     expect(result.editor.getSnapshot().document).toBe(before.document);
     expect(fixture.engines[0]?.executeNoInputAction).not.toHaveBeenCalled();
+    expect(fixture.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
     result.editor.dispose();
   });
 
-  it("dispatches an expandable toolbar action through the queue, updates projection/state, and flushes it", async () => {
+  it("dispatches an expandable toolbar intent through the queue, updates projection/state, and flushes it", async () => {
     const host = mountHost();
     const toolbarHost = mountHost();
     const fixture = moduleFixture({ enableAction: true, text: "before" });
@@ -1540,10 +1825,10 @@ describe("BreditorBrowserEditor", () => {
     await settleMicrotasks();
 
     expect(click.defaultPrevented).toBe(true);
-    expect(fixture.engines[0]?.executeNoInputAction).toHaveBeenCalledOnce();
-    expect(fixture.engines[0]?.executeNoInputAction).toHaveBeenCalledWith(
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledWith(
       expect.objectContaining({ snapshotRevision: "0" }),
-      ACTION_ID,
+      INTENT_ID,
     );
     expect(host.textContent).toBe("after");
     expect(editor.getSnapshot()).toMatchObject({
@@ -1554,6 +1839,16 @@ describe("BreditorBrowserEditor", () => {
         snapshot: { lineage: LINEAGE, revision: "1" },
         entries: [
           { id: STATE_ID, availability: "enabled", activation: "active" },
+          {
+            id: "breditor/control-redo",
+            availability: "disabled",
+            activation: "stateless",
+          },
+          {
+            id: "breditor/control-undo",
+            availability: "disabled",
+            activation: "stateless",
+          },
         ],
       },
       persistence: { phase: "scheduled", dirty: true },
@@ -1607,13 +1902,43 @@ describe("BreditorBrowserEditor", () => {
       phase: "disposed",
     });
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
-    expect(fixture.engines[0]?.observationFrees).toHaveLength(2);
+    expect(fixture.engines[0]?.observationFrees).toHaveLength(3);
     expect(
       fixture.engines[0]?.observationFrees.every(
         (free) => free.mock.calls.length === 1,
       ),
     ).toBe(true);
   });
+
+  it.each(["blocked", "unhandled"] as const)(
+    "treats a successfully delivered %s toolbar intent route as completed",
+    async (intentOutcome) => {
+      const host = mountHost();
+      const toolbarHost = mountHost();
+      const fixture = moduleFixture({ enableAction: true, intentOutcome });
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module, {
+          toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+        }),
+      );
+      if (!opened.ok) throw new Error(opened.error.code);
+      const button = toolbarHost.querySelector("button");
+      if (!(button instanceof HTMLButtonElement)) {
+        throw new Error("toolbar missing");
+      }
+
+      button.click();
+
+      expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+      expect(opened.editor.getSnapshot().document).toEqual({
+        lineage: LINEAGE,
+        revision: "0",
+      });
+      expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+      expect(toolbarHost.querySelector("button")).toBe(button);
+      opened.editor.dispose();
+    },
+  );
 
   it("uses the V2 schema fingerprint slot without reading or replacing legacy current", async () => {
     const indexedDB = new IDBFactory();
@@ -2058,7 +2383,86 @@ describe("BreditorBrowserEditor", () => {
       actionState: { status: "fresh" },
       actions: { snapshot: { lineage: LINEAGE, revision: "0" } },
     });
-    expect(fixture.engines[0]?.executeNoInputAction).not.toHaveBeenCalled();
+    expect(fixture.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
+    opened.editor.dispose();
+  });
+
+  it("rejects public intent delivery during composition and admits it after settlement", async () => {
+    const host = mountHost();
+    const scheduled: Array<() => void> = [];
+    const fixture = moduleFixture({
+      enableAction: true,
+      enableStringAction: true,
+      text: "before",
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        scheduleTask: (callback) => scheduled.push(callback),
+      }),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    const paragraph = host.firstElementChild;
+    const text = paragraph?.firstChild;
+    if (!(paragraph instanceof HTMLParagraphElement) || !(text instanceof Text)) {
+      throw new Error("composition fixture is unavailable");
+    }
+    const range = document.createRange();
+    range.setStart(text, 1);
+    range.setEnd(text, 1);
+    const selection = window.getSelection();
+    if (selection === null) throw new Error("DOM selection is unavailable");
+    selection.removeAllRanges();
+    selection.addRange(range);
+    paragraph.dispatchEvent(
+      new CompositionEvent("compositionstart", { bubbles: true, data: "" }),
+    );
+
+    expect(opened.editor.executeIntent(INTENT_ID)).toMatchObject({
+      status: "rejected",
+      reason: "busy",
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(fixture.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
+
+    paragraph.dispatchEvent(
+      new CompositionEvent("compositionend", { bubbles: true, data: "" }),
+    );
+    expect(scheduled).toHaveLength(1);
+    scheduled.shift()?.();
+
+    const afterSettlement = opened.editor.executeIntent(INTENT_ID);
+    expect(afterSettlement).toEqual({
+      status: "committed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
+    opened.editor.dispose();
+  });
+
+  it("reports intent admission as unavailable after reconciliation becomes required", async () => {
+    const fixture = moduleFixture({ enableAction: true });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    vi.spyOn(BreditorDomRenderer.prototype, "update").mockImplementationOnce(
+      () => {
+        throw new DOMException("private render failure", "InvalidStateError");
+      },
+    );
+
+    expect(opened.editor.executeIntent(INTENT_ID)).toMatchObject({
+      status: "failed",
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+
+    expect(opened.editor.executeIntent(INTENT_ID)).toMatchObject({
+      status: "rejected",
+      reason: "unavailable",
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
     opened.editor.dispose();
   });
 
@@ -2731,6 +3135,7 @@ function profileModuleFixture(
         profileGeneration,
         schema,
         formats,
+        config.intentInputKind,
       );
       descriptorFrees.push(profileDescriptor.free);
       let record: ProfileCompilationRecord;
@@ -2748,6 +3153,7 @@ function profileModuleFixture(
           schema,
           formats,
           token,
+          config.intentInputKind,
         );
         engines.push(built.record);
         engineGenerations.push(built.engineGeneration);
@@ -2836,6 +3242,7 @@ function profileDescriptorFixture(
   generation: WasmProfileGenerationView,
   schema: ProfileSchemaFixture,
   formats: readonly ProfileFormatFixture[],
+  intentInputKind: "none" | "typed" = "none",
 ): WasmCompiledProfileDescriptorView & {
   readonly free: VoidMock;
 } {
@@ -2844,24 +3251,29 @@ function profileDescriptorFixture(
     schemaVersion: schema.version,
     schemaFingerprint: schema.fingerprint,
     formatCount: formats.length,
-    intentCount: 0,
+    intentCount: 1,
     actionStateCount: 1,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     formatKind: (index) => formats[index]?.kind,
     formatRevision: (index) => formats[index]?.revision,
-    intentId: () => undefined,
-    intentInputKind: () => undefined,
-    intentInputContractName: () => undefined,
-    intentInputContractVersion: () => undefined,
-    intentActivationContract: () => undefined,
+    intentId: (index) => index === 0 ? INTENT_ID : undefined,
+    intentInputKind: (index) => index === 0 ? intentInputKind : undefined,
+    intentInputContractName: (index) =>
+      index === 0 && intentInputKind === "typed"
+        ? "example/intent-input"
+        : undefined,
+    intentInputContractVersion: (index) =>
+      index === 0 && intentInputKind === "typed" ? 1 : undefined,
+    intentActivationContract: (index) =>
+      index === 0 ? "tracked" : undefined,
     intentValueContractName: () => undefined,
     intentValueContractVersion: () => undefined,
     actionStateId: (index) => (index === 0 ? STATE_ID : undefined),
     actionStateSourceKind: (index) =>
-      index === 0 ? "direct" : undefined,
-    actionStateSourceActionId: (index) =>
-      index === 0 ? ACTION_ID : undefined,
-    actionStateSourceIntentId: () => undefined,
+      index === 0 ? "routed" : undefined,
+    actionStateSourceActionId: () => undefined,
+    actionStateSourceIntentId: (index) =>
+      index === 0 ? INTENT_ID : undefined,
     actionStateHistoryDirection: () => undefined,
     actionStateActivationContract: (index) =>
       index === 0 ? "tracked" : undefined,
@@ -2878,6 +3290,7 @@ function profileEngineFixture(
   schema: ProfileSchemaFixture,
   formats: readonly ProfileFormatFixture[],
   token: object,
+  intentInputKind: "none" | "typed" = "none",
 ): Readonly<{
   engine: WasmBootstrappedEngineView;
   record: EngineRecord;
@@ -2889,6 +3302,7 @@ function profileEngineFixture(
     engineGeneration,
     schema,
     formats,
+    intentInputKind,
   );
   let revision = initialRevision;
   let text = initialText;
@@ -2954,9 +3368,37 @@ function profileEngineFixture(
       );
     },
   );
+  const executeNoInputIntent = vi.fn(
+    (expected: WasmCommandObservationView, intentId: string) => {
+      if (intentId !== INTENT_ID) throw new Error("unexpected profile intent");
+      const baseRevision = Number(expected.snapshotRevision);
+      const successorRevision = baseRevision + 1;
+      const successor = makeObservation(successorRevision);
+      const baseText = text;
+      revision = successorRevision;
+      text = "after";
+      active = true;
+      return committedIntentResult(
+        successor,
+        profileProjectionUpdate(
+          lineage,
+          baseRevision,
+          baseText,
+          successorRevision,
+          text,
+          schema,
+          formats,
+          engineGeneration,
+        ),
+        engineGeneration,
+      );
+    },
+  );
   const executeStringAction = vi.fn(() => unexpected("executeStringAction"));
   const setRangeSelection = vi.fn(() => unexpected("setRangeSelection"));
-  const closeHistoryGroup = vi.fn(() => unexpected("closeHistoryGroup"));
+  const closeHistoryGroup = vi.fn(() =>
+    unchangedCommandResult(makeObservation(revision), engineGeneration)
+  );
   const documentJson = vi.fn((_expected: WasmCommandObservationView) =>
     stringResult(profileDocumentJson(text, schema)),
   );
@@ -2973,6 +3415,7 @@ function profileEngineFixture(
     setRangeSelection,
     selection,
     executeNoInputAction,
+    executeNoInputIntent,
     executeStringAction,
     undo: vi.fn(() => unexpected("undo")),
     redo: vi.fn(() => unexpected("redo")),
@@ -3003,6 +3446,7 @@ function profileEngineFixture(
       rawFree,
       observationFrees,
       executeNoInputAction,
+      executeNoInputIntent,
       executeStringAction,
       setRangeSelection,
       closeHistoryGroup,
@@ -3056,6 +3500,7 @@ function engineFixture(
       active,
       generation,
       config.onActionStateStatusRead,
+      true,
     );
   });
   const selection = vi.fn((expected: WasmCommandObservationView) => {
@@ -3102,6 +3547,54 @@ function engineFixture(
       );
     },
   );
+  const executeNoInputIntent = vi.fn(
+    (expected: WasmCommandObservationView, intentId: string) => {
+      if (config.actionThrows === true)
+        throw new Error("uncertain Wasm delivery");
+      if (config.enableAction !== true || intentId !== INTENT_ID) {
+        throw new Error("unexpected no-input intent");
+      }
+      config.onAction?.();
+      const baseRevision = Number(expected.snapshotRevision);
+      if (config.intentOutcome === "blocked") {
+        return blockedIntentResult(
+          makeObservation(baseRevision),
+          generation,
+        );
+      }
+      if (config.intentOutcome === "unhandled") {
+        return unhandledIntentResult(
+          makeObservation(baseRevision),
+          generation,
+        );
+      }
+      if (config.intentOutcome === "malformed") {
+        return {
+          ...unhandledIntentResult(makeObservation(baseRevision), generation),
+          intentId: "breditor/wrong-intent",
+        };
+      }
+      const successorRevision = baseRevision + 1;
+      const successor = makeObservation(successorRevision);
+      const baseText = text;
+      const nextText = "after";
+      revision = successorRevision;
+      text = nextText;
+      active = true;
+      return committedIntentResult(
+        successor,
+        projectionUpdate(
+          lineage,
+          baseRevision,
+          baseText,
+          successorRevision,
+          nextText,
+          generation,
+        ),
+        generation,
+      );
+    },
+  );
   const documentJson = vi.fn((_expected: WasmCommandObservationView) => {
     config.onDocumentJson?.();
     return config.documentJsonError === undefined
@@ -3117,12 +3610,9 @@ function engineFixture(
     }
     return unchangedCommandResult(makeObservation(revision), generation);
   });
-  const closeHistoryGroup = vi.fn(() => {
-    if (config.enableStringAction !== true) {
-      return unexpected("closeHistoryGroup");
-    }
-    return unchangedCommandResult(makeObservation(revision), generation);
-  });
+  const closeHistoryGroup = vi.fn(() =>
+    unchangedCommandResult(makeObservation(revision), generation)
+  );
   const executeStringAction = vi.fn(
     (
       expected: WasmCommandObservationView,
@@ -3164,6 +3654,7 @@ function engineFixture(
     setRangeSelection,
     selection,
     executeNoInputAction,
+    executeNoInputIntent,
     executeStringAction,
     undo: vi.fn(() => unexpected("undo")),
     redo: vi.fn(() => unexpected("redo")),
@@ -3186,6 +3677,7 @@ function engineFixture(
       rawFree,
       observationFrees,
       executeNoInputAction,
+      executeNoInputIntent,
       executeStringAction,
       setRangeSelection,
       closeHistoryGroup,
@@ -3371,26 +3863,48 @@ function actionStatesResult(
   active: boolean,
   generation: WasmProfileGenerationView,
   onStatusRead?: () => void,
+  includeHistory = false,
 ): WasmActionStatesResultView {
   let taken = false;
-  const entryCount = enabled ? 1 : 0;
+  const entryCount = includeHistory ? 3 : 1;
+  const ids = includeHistory
+    ? [STATE_ID, "breditor/control-redo", "breditor/control-undo"] as const
+    : [STATE_ID] as const;
   const snapshot: WasmActionStateSnapshotView = {
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     snapshotLineage: lineage,
     snapshotRevision: String(revision),
     entryCount,
     changedCount: entryCount,
-    entryId: (index) => (index === 0 && enabled ? STATE_ID : undefined),
-    entryStatus: (index) => (index === 0 && enabled ? "enabled" : undefined),
+    entryId: (index) => ids[index],
+    entryStatus: (index) =>
+      index === 0
+        ? (enabled ? "enabled" : "disabled")
+        : index < entryCount
+          ? "disabled"
+          : undefined,
     entryActivation: (index) =>
-      index === 0 && enabled ? (active ? "active" : "inactive") : undefined,
-    entryReasonCode: () => undefined,
+      index === 0
+        ? (active ? "active" : "inactive")
+        : index < entryCount
+          ? "stateless"
+          : undefined,
+    entryReasonCode: (index) =>
+      index >= entryCount
+        ? undefined
+        : index === 0
+        ? (enabled ? undefined : "breditor/not-enabled")
+        : index === 1
+          ? "breditor/nothing-to-redo"
+          : index === 2
+            ? "breditor/nothing-to-undo"
+            : undefined,
     entryValueStatus: (index) =>
-      index === 0 && enabled ? "unsupported" : undefined,
+      index < entryCount ? "unsupported" : undefined,
     entryValueContractName: () => undefined,
     entryValueContractVersion: () => undefined,
     entryUniformValueJson: () => absentStringResult(),
-    changedId: (index) => (index === 0 && enabled ? STATE_ID : undefined),
+    changedId: (index) => ids[index],
     free: vi.fn(),
   };
   const result: WasmActionStatesResultView = {
@@ -3441,6 +3955,103 @@ function commandResult(
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     observation: () => successor,
     projectionUpdate: () => update,
+    free: vi.fn(),
+  };
+}
+
+function committedIntentResult(
+  successor: WasmCommandObservationView,
+  update: SemanticProjectionUpdateView,
+  generation: WasmProfileGenerationView,
+): WasmIntentResultView {
+  return {
+    status: "committed",
+    intentId: INTENT_ID,
+    bindingId: BINDING_ID,
+    actionId: ACTION_ID,
+    bindingPriority: 0,
+    blockedReasonCode: undefined,
+    blockedActivation: undefined,
+    blockedValueStatus: undefined,
+    blockedValueContractName: undefined,
+    blockedValueContractVersion: undefined,
+    fallthroughCount: 0,
+    error: undefined,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    observation: () => successor,
+    projectionUpdate: () => update,
+    blockedReasonDetailJson: () => undefined,
+    blockedValueJson: () => undefined,
+    commitJson: () => undefined,
+    fallthroughBindingId: () => undefined,
+    fallthroughActionId: () => undefined,
+    fallthroughPriority: () => undefined,
+    fallthroughReasonCode: () => undefined,
+    fallthroughReasonDetailJson: () => undefined,
+    free: vi.fn(),
+  };
+}
+
+function blockedIntentResult(
+  successor: WasmCommandObservationView,
+  generation: WasmProfileGenerationView,
+): WasmIntentResultView {
+  return {
+    status: "blocked",
+    intentId: INTENT_ID,
+    bindingId: BINDING_ID,
+    actionId: ACTION_ID,
+    bindingPriority: 0,
+    blockedReasonCode: "breditor/no-selection",
+    blockedActivation: "inactive",
+    blockedValueStatus: "unsupported",
+    blockedValueContractName: undefined,
+    blockedValueContractVersion: undefined,
+    fallthroughCount: 0,
+    error: undefined,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    observation: () => successor,
+    projectionUpdate: () => undefined,
+    blockedReasonDetailJson: () => undefined,
+    blockedValueJson: () => undefined,
+    commitJson: () => undefined,
+    fallthroughBindingId: () => undefined,
+    fallthroughActionId: () => undefined,
+    fallthroughPriority: () => undefined,
+    fallthroughReasonCode: () => undefined,
+    fallthroughReasonDetailJson: () => undefined,
+    free: vi.fn(),
+  };
+}
+
+function unhandledIntentResult(
+  successor: WasmCommandObservationView,
+  generation: WasmProfileGenerationView,
+): WasmIntentResultView {
+  return {
+    status: "unhandled",
+    intentId: INTENT_ID,
+    bindingId: undefined,
+    actionId: undefined,
+    bindingPriority: undefined,
+    blockedReasonCode: undefined,
+    blockedActivation: undefined,
+    blockedValueStatus: undefined,
+    blockedValueContractName: undefined,
+    blockedValueContractVersion: undefined,
+    fallthroughCount: 0,
+    error: undefined,
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    observation: () => successor,
+    projectionUpdate: () => undefined,
+    blockedReasonDetailJson: () => undefined,
+    blockedValueJson: () => undefined,
+    commitJson: () => undefined,
+    fallthroughBindingId: () => undefined,
+    fallthroughActionId: () => undefined,
+    fallthroughPriority: () => undefined,
+    fallthroughReasonCode: () => undefined,
+    fallthroughReasonDetailJson: () => undefined,
     free: vi.fn(),
   };
 }
@@ -3542,16 +4153,17 @@ function baseDescriptor(
     schemaVersion: 1,
     schemaFingerprint: BASE_SCHEMA_FINGERPRINT,
     formatCount: 1,
-    intentCount: 0,
+    intentCount: 1,
     actionStateCount: 3,
     matchesProfileGeneration: (candidate) => candidate === generation,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
-    intentId: () => undefined,
-    intentInputKind: () => undefined,
+    intentId: (index) => index === 0 ? INTENT_ID : undefined,
+    intentInputKind: (index) => index === 0 ? "none" : undefined,
     intentInputContractName: () => undefined,
     intentInputContractVersion: () => undefined,
-    intentActivationContract: () => undefined,
+    intentActivationContract: (index) =>
+      index === 0 ? "tracked" : undefined,
     intentValueContractName: () => undefined,
     intentValueContractVersion: () => undefined,
     actionStateId: (index) => [
@@ -3560,10 +4172,10 @@ function baseDescriptor(
       "breditor/control-undo",
     ][index],
     actionStateSourceKind: (index) =>
-      index === 0 ? "direct" : index === 1 || index === 2 ? "history" : undefined,
-    actionStateSourceActionId: (index) =>
-      index === 0 ? "breditor/toggle-strong" : undefined,
-    actionStateSourceIntentId: () => undefined,
+      index === 0 ? "routed" : index === 1 || index === 2 ? "history" : undefined,
+    actionStateSourceActionId: () => undefined,
+    actionStateSourceIntentId: (index) =>
+      index === 0 ? INTENT_ID : undefined,
     actionStateHistoryDirection: (index) =>
       index === 1 ? "redo" : index === 2 ? "undo" : undefined,
     actionStateActivationContract: (index) =>

@@ -109,7 +109,6 @@ describe("translateBeforeInput", () => {
     ["deleteContentBackward", "breditor/delete-backward", "none", "preserve"],
     ["deleteContentForward", "breditor/delete-forward", "none", "preserve"],
     ["deleteContent", "breditor/delete-selection", "none", "closeBefore"],
-    ["formatBold", "breditor/toggle-strong", "none", "closeBefore"],
   ] as const)(
     "maps the closed %s input to %s",
     (inputType, actionId, inputKind, history) => {
@@ -123,6 +122,17 @@ describe("translateBeforeInput", () => {
       );
     },
   );
+
+  it("maps formatBold to the replaceable strong-format intent", () => {
+    const request = command(snapshot("formatBold"));
+    expect(request.source).toEqual({ kind: "beforeinput", detail: "formatBold" });
+    expect(request.requirements.history).toBe("closeBefore");
+    expect(request.command).toEqual({
+      kind: "intent",
+      intentId: "breditor/format-strong",
+      input: { kind: "none" },
+    });
+  });
 
   it.each([
     ["historyUndo", "undo"],

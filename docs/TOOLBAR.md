@@ -1,7 +1,8 @@
 # Breditor toolbar and action-state contract
 
-Status: supported by the public `0.1.0` runtime; required cross-browser and
-accessibility validation passed
+Status: supported by the public `0.1.0` runtime and extended by the complete
+`0.2.0-alpha.7` descriptor-validated intent toolbar; Alpha.8 cross-browser and
+consumer proof is next
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -14,8 +15,10 @@ later click.
 1. Toolbar state comes from the existing Rust `ActionStateCatalog` and
    `ActionStateCache`. JavaScript does not recreate action enablement rules.
 2. Every click enters the same bounded command queue used by browser input.
-   Rust reparses and reprepares it against the current observation even when a
-   matching display state was enabled.
+   Supported toggle buttons name semantic intents; Undo/Redo name history
+   directions. Rust reroutes and reprepares against the current observation
+   even when a matching display state was enabled. Direct action controls are
+   an advanced low-level bypass.
 3. Selection changes are semantic work. New in-editor DOM ranges synchronize
    through that queue; absent and outside-editor ranges preserve the last core
    selection instead of clearing it.
@@ -33,7 +36,9 @@ later click.
 The first Wasm engine constructs one frozen catalog from the same base action
 registry used for execution:
 
-- `breditor/control-bold` observes `breditor/toggle-strong`;
+- `breditor/control-bold` observes the tracked, no-input
+  `breditor/format-strong` intent, whose priority-zero blocking
+  `breditor/format-strong-binding` selects `breditor/toggle-strong`;
 - `breditor/control-undo` observes history undo; and
 - `breditor/control-redo` observes history redo.
 
@@ -61,6 +66,15 @@ The browser adapter treats every generated object as hostile:
 - aliases with protected or already-owned handles fail closed; and
 - the result, snapshot, nested value results, and cloned errors are freed
   exactly once on every path.
+
+Alpha.7 adds a second correlation check before publication: the snapshot's
+complete count and ordered lexical IDs must equal the compiled profile
+descriptor. Resolved activation must satisfy the descriptor's stateless or
+tracked contract. `unsupported` is valid exactly when the descriptor declares
+no value; otherwise the snapshot must repeat the exact value name and version.
+Missing, extra, substituted, reordered, duplicate, and contract-drifted
+catalogs fail closed before the last-good store can mutate. Unhandled/faulted
+entries retain the transport's deliberate absence of state observations.
 
 No generated handle, Wasm engine reference, observation capability, or
 executable preparation enters application state or a subscriber callback.
@@ -141,7 +155,7 @@ that route and use the same queue observer for action-state refresh.
 `createToolbarManifest` accepts a dense array of 1 through 64 controls. The
 toolbar label and every control label contain valid Unicode, at least one
 non-whitespace character, no ASCII control or DEL character, and at most 128
-UTF-16 code units / 512 UTF-8 bytes. Every unique `stateId` and action ID is at
+UTF-16 code units / 512 UTF-8 bytes. Every unique `stateId`, intent ID, and action ID is at
 most 128 ASCII characters and follows the lowercase
 `namespace/local-name` grammar. An optional group is valid Unicode, already
 trimmed, nonempty, control-free, and at most 64 UTF-16 code units / 256 UTF-8
@@ -155,7 +169,8 @@ admits primitive data only:
 - a bounded visible/accessibility label;
 - tracked or stateless activation presentation;
 - an optional presentation group; and
-- a declarative no-input/string action or undo/redo command.
+- a declarative semantic intent, no-input/string direct action, or undo/redo
+  command.
 
 It accepts no callback, DOM node, HTML, CSS, icon markup, Wasm handle, or
 executable object. Hosts can map their own icons or localized labels by stable
@@ -167,11 +182,20 @@ never read. Undeclared properties are dropped. In particular, v0.1.0 does not
 admit `aria-keyshortcuts`: shortcut metadata will be added only with a runtime
 that registers and tests the advertised shortcut behavior.
 
-The default manifest is Bold, Undo, Redo. Custom validated manifests can omit,
-reorder, or extend controls only when the injected state catalog and command
-runtime expose matching state IDs and commands. The official `0.1.0` engine
-exposes only the Bold, Undo, and Redo bindings; adding behavior requires a new
-engine command and state evaluator, not just a manifest entry.
+The default manifest is Bold, Undo, Redo, with Bold naming
+`breditor/format-strong`. Alpha.7 high-level startup checks every control
+against the owned compiled-profile descriptor. An intent control must name a
+routed action-state entry sourced from the same declared no-input intent, match
+its tracked/stateless activation, and declare no value on either side. A
+history control must match the state entry's exact Undo or Redo direction.
+Missing state or intent declarations, direct sources, typed inputs, value
+contracts, and any source/activation mismatch reject the complete startup.
+
+Custom validated manifests can omit, reorder, relabel, group, or expose
+additional compiled property-free format toggle intents as native buttons. A
+manifest still cannot register behavior. The parser retains direct action
+declarations for advanced low-level toolbar construction, but the supported
+high-level editor rejects them as a policy bypass.
 
 ## Accessible DOM behavior
 
@@ -218,7 +242,8 @@ Dispatch must return an outcome minted by `toolbarCommandDispatchResult`:
 `completed` means synchronous completion, `rejected` means no command ran, and
 `failed` means the runtime cannot prove a safe outcome. Thrown, asynchronous,
 forged, malformed, and failed outcomes fault the toolbar closed. The public
-`0.1.0` high-level runtime owns this dispatcher; advanced low-level
+high-level runtime owns this dispatcher and routes intent controls without
+exposing selected action or binding provenance; advanced low-level
 construction still requires a host-supplied implementation.
 
 Disposal removes the owned inner root, generated buttons, listeners, and
@@ -235,9 +260,11 @@ browser owner uses this signal to turn presentation failure into a
 payload-redacted editor fault rather than continuing to report a false-live
 toolbar.
 
-## Explicit `0.1.0` limits
+## Explicit limits
 
-- The distributed catalog contains Bold, Undo, and Redo only.
+- The default catalog contains Bold, Undo, and Redo. Alpha.7 compiled profiles
+  can add property-free format toggle intents/states, but all supported controls
+  remain the same native-button kind.
 - One browser action-state snapshot admits at most 512 entries. One uniform
   value admits at most 524,288 encoded JSON bytes; one complete snapshot admits
   at most 8,388,608 such encoded bytes, 65,536 decoded values, and 1,048,576
@@ -252,10 +279,13 @@ toolbar.
 - `unhandled` and `faulted` expose their category across Wasm, but not the
   routed fallthrough trace, fault code, or fault detail. Disabled reason detail
   likewise remains core-only; the browser receives only its stable reason code.
-- Toolbar state and dispatch remain synchronous; the public `0.1.0` runtime
+- Toolbar state and dispatch remain synchronous; the public runtime
   bridges status into a bounded, immutable external-store subscription.
-- A host can inject a custom manifest, but the `0.1.0` surface does not
-  dynamically register Rust actions or catalog entries from JavaScript.
+- A host can inject a descriptor-matched custom manifest, but the surface does
+  not dynamically register Rust actions or catalog entries from JavaScript.
+- There are no typed public intent inputs, custom control kinds, menus/selects,
+  extension keymaps or `beforeinput` rules, dynamic manifest replacement, or
+  asynchronous toolbar dispatch.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
 - The `0.1.0` automated gate covers keyboard navigation, computed focus

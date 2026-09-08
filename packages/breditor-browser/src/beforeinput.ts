@@ -1,8 +1,10 @@
 import {
   BASE_ACTION_IDS,
+  BASE_INTENT_IDS,
   browserCommandTextIsAdmissible,
   historyRequest,
   noInputActionRequest,
+  noInputIntentRequest,
   stringActionRequest,
   type EditorDeliveryToken,
   type EditorCommandRequest,
@@ -107,11 +109,11 @@ function translateSafeBeforeInput(
       );
     case "formatBold":
       return command(
-        noInputActionRequest(
+        noInputIntentRequest(
           delivery,
           selection,
           source(snapshot.inputType),
-          BASE_ACTION_IDS.toggleStrong,
+          BASE_INTENT_IDS.formatStrong,
           "closeBefore",
         ),
       );

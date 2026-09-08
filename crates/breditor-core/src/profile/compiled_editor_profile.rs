@@ -34,7 +34,8 @@ impl CompiledEditorProfile {
     /// Every inline-format toggle declaration becomes one Rust-owned generic
     /// action, one tracked no-input semantic intent, one priority-zero blocking
     /// route, and one routed no-input observable state. The complete base action
-    /// set and the existing Bold, Undo, and Redo state entries are retained.
+    /// set, built-in strong-format intent route, and Bold, Undo, and Redo state
+    /// entries are retained; Bold observes that built-in route.
     ///
     /// # Errors
     ///
@@ -53,7 +54,9 @@ impl CompiledEditorProfile {
     ///
     /// Unlike the extension-facing compiler, this factory is allowed to use
     /// the reserved `breditor/base` schema and core-owned identities. Every
-    /// call creates a fresh process-local profile generation.
+    /// call creates a fresh process-local profile generation. The result also
+    /// contains the tracked no-input `breditor/format-strong` intent and its
+    /// priority-zero blocking route to `breditor/toggle-strong`.
     ///
     /// # Errors
     ///

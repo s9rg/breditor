@@ -1,6 +1,9 @@
 import {
+  isOwnedBrowserCompiledProfileDescriptor,
   wasmProfileGenerationIsLive,
   wasmViewMatchesProfileGeneration,
+  type BrowserCompiledProfileDescriptor,
+  type BrowserProfileActionStateDescriptor,
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
@@ -284,6 +287,91 @@ export function isOwnedBrowserActionStateReadResult(
   value: unknown,
 ): value is BrowserActionStateReadResult {
   return objectLike(value) && OWNED_READ_RESULTS.has(value);
+}
+
+/**
+ * Correlates one consumed action-state read with its compiled profile catalog.
+ *
+ * Both inputs must have been minted by their strict boundary consumers. Core
+ * and boundary failures contain no snapshot and pass through unchanged. A
+ * successful read is returned by identity only when its complete, lexically
+ * ordered entry catalog exactly matches the descriptor. Resolved entries must
+ * satisfy the descriptor's activation and value contracts; unresolved/faulted
+ * entries retain the protocol-mandated absence of state observations.
+ *
+ * This is a pure admission filter. It owns no last-good state and never mutates
+ * either input, so startup and every later refresh can apply the same check
+ * before handing a result to a publication owner.
+ */
+export function correlateBrowserActionStatesWithProfileDescriptor(
+  descriptor: unknown,
+  result: unknown,
+): BrowserActionStateReadResult {
+  if (
+    !isOwnedBrowserCompiledProfileDescriptor(descriptor) ||
+    !isOwnedBrowserActionStateReadResult(result)
+  ) {
+    return boundaryFailure();
+  }
+  if (!result.ok) return result;
+  try {
+    return actionStateCatalogMatchesDescriptor(result.snapshot, descriptor)
+      ? result
+      : boundaryFailure();
+  } catch {
+    return boundaryFailure();
+  }
+}
+
+function actionStateCatalogMatchesDescriptor(
+  snapshot: BrowserActionStateSnapshot,
+  descriptor: BrowserCompiledProfileDescriptor,
+): boolean {
+  const entries = snapshot.entries;
+  const expected = descriptor.actionStates;
+  if (entries.length !== expected.length) return false;
+  for (let index = 0; index < expected.length; index += 1) {
+    const entry = entries[index];
+    const declaration = expected[index];
+    if (
+      entry === undefined ||
+      declaration === undefined ||
+      entry.id !== declaration.id ||
+      !actionStateEntryMatchesContract(entry, declaration)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function actionStateEntryMatchesContract(
+  entry: BrowserActionStateEntry,
+  declaration: BrowserProfileActionStateDescriptor,
+): boolean {
+  const resolved =
+    entry.availability === "enabled" ||
+    entry.availability === "disabled" ||
+    entry.availability === "blocked";
+  if (!resolved) {
+    return entry.activation === undefined && entry.value === undefined;
+  }
+
+  const activationMatches =
+    declaration.state.activation === "stateless"
+      ? entry.activation === "stateless"
+      : entry.activation === "inactive" ||
+        entry.activation === "active" ||
+        entry.activation === "mixed";
+  if (!activationMatches || entry.value === undefined) return false;
+
+  const expectedValue = declaration.state.value;
+  if (expectedValue === undefined) return entry.value.status === "unsupported";
+  return (
+    entry.value.status !== "unsupported" &&
+    entry.value.contract.name === expectedValue.name &&
+    entry.value.contract.version === expectedValue.version
+  );
 }
 
 function readWasmActionStates(

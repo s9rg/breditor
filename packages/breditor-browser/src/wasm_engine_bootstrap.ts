@@ -31,7 +31,7 @@ import {
 export const BREDITOR_WASM_ABI_VERSION = "3" as const;
 
 /** Exact official Wasm package version paired with this browser build. */
-export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.2.0-alpha.6" as const;
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.2.0-alpha.7" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
@@ -277,6 +277,7 @@ interface EngineMethodSnapshot {
   readonly setRangeSelection: WasmCommandEngineView["setRangeSelection"];
   readonly selection: WasmCommandEngineView["selection"];
   readonly executeNoInputAction: WasmCommandEngineView["executeNoInputAction"];
+  readonly executeNoInputIntent: WasmCommandEngineView["executeNoInputIntent"];
   readonly executeStringAction: WasmCommandEngineView["executeStringAction"];
   readonly undo: WasmCommandEngineView["undo"];
   readonly redo: WasmCommandEngineView["redo"];
@@ -950,6 +951,7 @@ function snapshotEngineMethods(
       setRangeSelection: engine.setRangeSelection,
       selection: engine.selection,
       executeNoInputAction: engine.executeNoInputAction,
+      executeNoInputIntent: engine.executeNoInputIntent,
       executeStringAction: engine.executeStringAction,
       undo: engine.undo,
       redo: engine.redo,
@@ -968,6 +970,7 @@ function snapshotEngineMethods(
       snapshot.setRangeSelection,
       snapshot.selection,
       snapshot.executeNoInputAction,
+      snapshot.executeNoInputIntent,
       snapshot.executeStringAction,
       snapshot.undo,
       snapshot.redo,
@@ -1064,6 +1067,8 @@ function createEngineOwner(
     selection: (expected) => invoke(snapshot.selection, [expected]),
     executeNoInputAction: (expected, actionId) =>
       invoke(snapshot.executeNoInputAction, [expected, actionId]),
+    executeNoInputIntent: (expected, intentId) =>
+      invoke(snapshot.executeNoInputIntent, [expected, intentId]),
     executeStringAction: (expected, actionId, value) =>
       invoke(snapshot.executeStringAction, [expected, actionId, value]),
     undo: (expected) => invoke(snapshot.undo, [expected]),
@@ -1568,13 +1573,17 @@ function isExactBuiltInBaseDescriptor(
     formats.length === 1 &&
     formats[0]?.kind === "breditor/strong" &&
     formats[0]?.revision === 1 &&
-    intents.length === 0 &&
+    intents.length === 1 &&
+    intents[0]?.id === "breditor/format-strong" &&
+    intents[0]?.input.kind === "none" &&
+    intents[0]?.state.activation === "tracked" &&
+    intents[0]?.state.value === undefined &&
     actionStates.length === 3 &&
     actionStateMatches(
       actionStates[0],
       "breditor/control-bold",
-      "direct",
-      "breditor/toggle-strong",
+      "routed",
+      "breditor/format-strong",
       "tracked",
     ) &&
     actionStateMatches(
@@ -1596,7 +1605,7 @@ function isExactBuiltInBaseDescriptor(
 function actionStateMatches(
   state: BrowserCompiledProfileDescriptor["actionStates"][number] | undefined,
   id: string,
-  sourceKind: "direct" | "history",
+  sourceKind: "direct" | "routed" | "history",
   sourceIdentity: string,
   activation: "stateless" | "tracked",
 ): boolean {
@@ -1611,7 +1620,9 @@ function actionStateMatches(
   }
   return state.source.kind === "direct"
     ? state.source.actionId === sourceIdentity
-    : state.source.direction === sourceIdentity;
+    : state.source.kind === "routed"
+      ? state.source.intentId === sourceIdentity
+      : state.source.direction === sourceIdentity;
 }
 
 function readScalar(

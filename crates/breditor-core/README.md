@@ -73,8 +73,22 @@ The declaration bundle still contains no callback, custom action input,
 renderer, or toolbar metadata and does not enter the durable schema
 fingerprint. Existing native registry, router, and unprofiled engine
 constructors remain advanced bypasses. Wasm ABI 3 transports the compiled
-profile, and alpha.6 adds the separate callback-free profile-aware browser
-renderer; the supported intent toolbar arrives at alpha.7. See the
+profile, alpha.6 adds the separate callback-free profile-aware browser
+renderer, and Alpha.7 connects the supported browser intent/toolbar path.
+
+Version `0.2.0-alpha.7` adds a built-in tracked, no-input
+`breditor/format-strong` intent and the priority-zero blocking
+`breditor/format-strong-binding` route to `breditor/toggle-strong`. Both
+`try_compile_breditor_base` and extension profile compilation include it, and
+the built-in `breditor/control-bold` action-state source is routed through that
+intent rather than directly coupled to the action. The descriptor therefore
+gives supported browser startup one exact intent/state contract for native
+`formatBold`, keyboard Bold, the default toolbar, and the high-level no-input
+intent API. This changes no durable V1/V2 codec or schema fingerprint and adds
+no typed portable input, callback, custom action, keymap, or toolbar metadata
+to the Rust profile.
+
+See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
 [schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and

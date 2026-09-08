@@ -1,7 +1,7 @@
 # IndexedDB session-checkpoint storage
 
 Status: supported by the optional public `0.1.0` autosave path; the exact
-`"current"` V1 record remains the stable `0.1.x` profile. The current alpha.6
+`"current"` V1 record remains the stable `0.1.x` profile. The current alpha.7
 implementation adds an explicit profile-bound V2 outer record and scoped slots
 without changing the legacy bytes. Direct store/autosave assembly remains an
 advanced integration surface.

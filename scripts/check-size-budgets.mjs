@@ -11,14 +11,14 @@ const budgets = Object.freeze([
     actual: sumFiles("packages/breditor-browser/dist", (name) =>
       name.endsWith(".js"),
     ),
-    maximum: 825_000,
+    maximum: 860_000,
   }),
   Object.freeze({
     label: "browser declarations",
     actual: sumFiles("packages/breditor-browser/dist", (name) =>
       name.endsWith(".d.ts"),
     ),
-    maximum: 225_000,
+    maximum: 235_000,
   }),
   fileBudget(
     "generated Wasm binary",

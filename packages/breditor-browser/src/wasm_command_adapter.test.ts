@@ -7,6 +7,7 @@ import {
   closeHistoryGroupRequest,
   editorDeliveryAuthorityAccepts,
   noInputActionRequest,
+  noInputIntentRequest,
   noSelectionSync,
   preserveSelectionSync,
   rangeSelectionSync,
@@ -49,6 +50,7 @@ import {
   type WasmCommandObservationView,
   type WasmCommandResultView,
   type WasmCommandSequenceOutcome,
+  type WasmIntentResultView,
   type WasmSelectionResultView,
 } from "./wasm_command_adapter.js";
 import type {
@@ -60,6 +62,7 @@ import { consumeWasmCompiledProfileDescriptor } from "./wasm_profile_descriptor.
 
 const TEST_SCHEMA_FINGERPRINT =
   "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173";
+const TEST_INTENT_ID = "breditor/format-strong";
 const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
   matches(other) {
     return other === TEST_PROFILE_GENERATION;
@@ -75,17 +78,17 @@ const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
     schemaVersion: 1,
     schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
     formatCount: 1,
-    intentCount: 0,
+    intentCount: 1,
     actionStateCount: 0,
     matchesProfileGeneration: (generation) =>
       generation === TEST_PROFILE_GENERATION,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
-    intentId: noEntry,
-    intentInputKind: noEntry,
+    intentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
+    intentInputKind: (index) => index === 0 ? "none" : undefined,
     intentInputContractName: noEntry,
     intentInputContractVersion: noEntry,
-    intentActivationContract: noEntry,
+    intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
     intentValueContractName: noEntry,
     intentValueContractVersion: noEntry,
     actionStateId: noEntry,
@@ -137,6 +140,11 @@ interface TrackedObservation extends WasmCommandObservationView {
 interface TrackedResult {
   readonly view: WasmCommandResultView;
   readonly free: () => void;
+}
+
+interface TrackedIntentResult {
+  readonly view: WasmIntentResultView;
+  readonly free: ReturnType<typeof vi.fn>;
 }
 
 beforeEach(() => {
@@ -224,6 +232,57 @@ describe("BreditorWasmCommandAdapter", () => {
       expect(successor.free).toHaveBeenCalledOnce();
     },
   );
+
+  it("captures the no-input intent ABI once before application code can replace it", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const blocked = intentResult({
+      status: "blocked",
+      successor,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      blockedReasonCode: "breditor/no-selection",
+      blockedActivation: "inactive",
+      blockedValueStatus: "unsupported",
+    });
+    const engine = engineQueues({ intents: [blocked.view] });
+    const captured = engine.executeNoInputIntent;
+    const reads = vi.fn();
+    Object.defineProperty(engine, "executeNoInputIntent", {
+      configurable: true,
+      get() {
+        reads();
+        return captured;
+      },
+    });
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    const replacement = vi.fn((): never => {
+      throw new Error("replacement must not run");
+    });
+    Object.defineProperty(engine, "executeNoInputIntent", {
+      value: replacement,
+    });
+
+    const outcome = adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "captured-engine-method" },
+        TEST_INTENT_ID,
+      ),
+    );
+
+    expect(outcome.command.status).toBe("blocked");
+    expect(reads).toHaveBeenCalledOnce();
+    expect(replacement).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
 
   it("contains core-observer failures and gives each adopted commit to active listeners", async () => {
     const base = projectionFixture(0, "a");
@@ -364,6 +423,39 @@ describe("BreditorWasmCommandAdapter", () => {
       },
     });
     expect(adapter.state).toBe("live");
+    adapter.dispose();
+  });
+
+  it("rejects an otherwise valid action-state snapshot whose catalog omits a profile entry", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const actionState = emptyActionStateResult(0);
+    const descriptor = profileDescriptorWithActionState();
+    const adapter = new RawBreditorWasmCommandAdapter(
+      engineQueues({ actionStates: [actionState.view] }),
+      initial,
+      {
+        profileGeneration: TEST_PROFILE_GENERATION,
+        profileDescriptor: descriptor,
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    const result = adapter.actionStateReadPort.read();
+
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: "boundary",
+        code: "action_state.invalid_wasm_view",
+        message: "The Wasm action-state view is invalid.",
+      },
+    });
+    expect(isOwnedBrowserActionStateReadResult(result)).toBe(true);
+    expect(actionState.free).toHaveBeenCalledOnce();
+    expect(actionState.snapshotFree).toHaveBeenCalledOnce();
     adapter.dispose();
   });
 
@@ -1081,6 +1173,735 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(outcome.command.status).toBe("disabled");
     expect(write).not.toHaveBeenCalled();
     expect(disabled.free).toHaveBeenCalledOnce();
+    expect(initial.free).toHaveBeenCalledOnce();
+    adapter.dispose();
+    expect(successor.free).toHaveBeenCalledOnce();
+  });
+
+  it("routes a no-input semantic intent and exposes only frozen handle-free provenance", () => {
+    const base = projectionFixture(0, "a");
+    const next = projection(1, "a");
+    const initial = observation(0);
+    const successor = observation(1);
+    const update = projectionUpdate(base.projection, next);
+    const routed = intentResult({
+      status: "committed",
+      successor,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      fallthroughs: [
+        {
+          bindingId: "example/first-binding",
+          actionId: "example/first-action",
+          priority: 20,
+          reasonCode: "example/first-disabled",
+        },
+        {
+          bindingId: "example/second-binding",
+          actionId: "example/second-action",
+          priority: 10,
+          reasonCode: "example/second-disabled",
+        },
+      ],
+      update: update.view,
+    });
+    const semanticSelection = selectionResult(selectionView(1, 1));
+    const engine = engineQueues({
+      intents: [routed.view],
+      selection: [semanticSelection.view],
+    });
+    const execute = vi.spyOn(engine, "executeNoInputIntent");
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
+
+    const outcome = adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "format-strong" },
+        TEST_INTENT_ID,
+      ),
+    );
+
+    expect(execute).toHaveBeenCalledExactlyOnceWith(initial, TEST_INTENT_ID);
+    expect(outcome.command).toEqual({
+      status: "committed",
+      eventKind: "intent",
+      intentId: TEST_INTENT_ID,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      fallthroughs: [
+        {
+          bindingId: "example/first-binding",
+          actionId: "example/first-action",
+          priority: 20,
+          reasonCode: "example/first-disabled",
+        },
+        {
+          bindingId: "example/second-binding",
+          actionId: "example/second-action",
+          priority: 10,
+          reasonCode: "example/second-disabled",
+        },
+      ],
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+      render: expect.objectContaining({ mode: "incremental" }),
+    });
+    expect(Object.isFrozen(outcome.command)).toBe(true);
+    if (outcome.command.status === "committed" && outcome.command.eventKind === "intent") {
+      expect(Object.isFrozen(outcome.command.fallthroughs)).toBe(true);
+      expect(Object.isFrozen(outcome.command.fallthroughs[0])).toBe(true);
+    }
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "intent",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    expect(routed.free).toHaveBeenCalledOnce();
+    expect(update.free).toHaveBeenCalledOnce();
+    expect(initial.free).toHaveBeenCalledOnce();
+    expect(semanticSelection.free).toHaveBeenCalledOnce();
+    adapter.dispose();
+    expect(successor.free).toHaveBeenCalledOnce();
+  });
+
+  it("adopts exact blocked and unhandled intent successor observations", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const blockedObservation = observation(0);
+    const unhandledObservation = observation(0);
+    const blocked = intentResult({
+      status: "blocked",
+      successor: blockedObservation,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      blockedReasonCode: "breditor/no-selection",
+      blockedActivation: "inactive",
+      blockedValueStatus: "unsupported",
+      fallthroughs: [{
+        bindingId: "example/fallback-binding",
+        actionId: "example/fallback-action",
+        priority: 10,
+        reasonCode: "example/disabled",
+      }],
+    });
+    const unhandled = intentResult({
+      status: "unhandled",
+      successor: unhandledObservation,
+      fallthroughs: [{
+        bindingId: "example/last-binding",
+        actionId: "example/last-action",
+        priority: -5,
+        reasonCode: "example/disabled",
+      }],
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [blocked.view, unhandled.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
+
+    const first = adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "toolbar", detail: "bold" },
+        TEST_INTENT_ID,
+      ),
+    );
+    expect(first.command).toEqual({
+      status: "blocked",
+      intentId: TEST_INTENT_ID,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      reasonCode: "breditor/no-selection",
+      activation: "inactive",
+      blockedValueStatus: "unsupported",
+      blockedValueContract: undefined,
+      fallthroughs: [{
+        bindingId: "example/fallback-binding",
+        actionId: "example/fallback-action",
+        priority: 10,
+        reasonCode: "example/disabled",
+      }],
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
+    expect(initial.free).toHaveBeenCalledOnce();
+
+    const second = adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "unhandled" },
+        TEST_INTENT_ID,
+      ),
+    );
+    expect(second.command).toEqual({
+      status: "unhandled",
+      intentId: TEST_INTENT_ID,
+      fallthroughs: [{
+        bindingId: "example/last-binding",
+        actionId: "example/last-action",
+        priority: -5,
+        reasonCode: "example/disabled",
+      }],
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
+    expect(blockedObservation.free).toHaveBeenCalledOnce();
+    expect(commits).not.toHaveBeenCalled();
+    adapter.dispose();
+    expect(unhandledObservation.free).toHaveBeenCalledOnce();
+  });
+
+  it("correlates a blocked indicator with its declared typed value contract", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const blocked = intentResult({
+      status: "blocked",
+      successor,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      blockedReasonCode: "breditor/no-selection",
+      blockedActivation: "mixed",
+      blockedValueStatus: "uniform",
+      blockedValueContractName: "example/value",
+      blockedValueContractVersion: 2,
+    });
+    const adapter = new RawBreditorWasmCommandAdapter(
+      engineQueues({ intents: [blocked.view] }),
+      initial,
+      {
+        profileGeneration: TEST_PROFILE_GENERATION,
+        profileDescriptor: profileDescriptorWithIntentContract({
+          input: "none",
+          value: true,
+        }),
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    const outcome = adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "typed-state" },
+        TEST_INTENT_ID,
+      ),
+    );
+
+    expect(outcome.command).toMatchObject({
+      status: "blocked",
+      blockedValueStatus: "uniform",
+      blockedValueContract: { name: "example/value", version: 2 },
+    });
+    if (outcome.command.status === "blocked") {
+      expect(Object.isFrozen(outcome.command.blockedValueContract)).toBe(true);
+    }
+    adapter.dispose();
+  });
+
+  it("admits the exact 256-entry fallthrough ceiling for an unhandled intent", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const fallthroughs = Array.from({ length: 256 }, (_, index) => ({
+      bindingId: `example/binding-${String(index).padStart(3, "0")}`,
+      actionId: `example/action-${String(index).padStart(3, "0")}`,
+      priority: 255 - index,
+      reasonCode: "example/disabled",
+    }));
+    const routed = intentResult({
+      status: "unhandled",
+      successor,
+      fallthroughs,
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [routed.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    const outcome = adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "maximum-fallthroughs" },
+        TEST_INTENT_ID,
+      ),
+    );
+
+    expect(outcome.command.status).toBe("unhandled");
+    if (outcome.command.status === "unhandled") {
+      expect(outcome.command.fallthroughs).toHaveLength(256);
+    }
+    adapter.dispose();
+  });
+
+  it("refuses to invoke the no-input ABI for a typed-input intent declaration", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const engine = engineQueues({});
+    const execute = vi.spyOn(engine, "executeNoInputIntent");
+    const adapter = new RawBreditorWasmCommandAdapter(engine, initial, {
+      profileGeneration: TEST_PROFILE_GENERATION,
+      profileDescriptor: profileDescriptorWithIntentContract({
+        input: "typed",
+        value: false,
+      }),
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "wrong-input-shape" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/no-input contract/u);
+    expect(execute).not.toHaveBeenCalled();
+    expect(adapter.state).toBe("faulted");
+    adapter.dispose();
+  });
+
+  it("refuses to invoke an intent absent from the owned profile descriptor", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const engine = engineQueues({});
+    const execute = vi.spyOn(engine, "executeNoInputIntent");
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "undeclared" },
+        "example/undeclared",
+      ),
+    )).toThrow(/no-input contract/u);
+    expect(execute).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("contains a structured semantic-intent error and keeps a non-stale adapter live", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const rejected = intentError("editor_engine.intent_routing");
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [rejected.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "rejected" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/intent_routing/u);
+    expect(adapter.state).toBe("live");
+    expect(rejected.free).toHaveBeenCalledOnce();
+    expect(rejected.errorFree).toHaveBeenCalledOnce();
+    expect(initial.free).not.toHaveBeenCalled();
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it("faults permanently on a structured stale semantic-intent error", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const rejected = intentError("editor_engine.stale_snapshot");
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [rejected.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "stale" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/stale_snapshot/u);
+    expect(adapter.state).toBe("faulted");
+    expect(() => adapter.deliveryToken()).toThrow(/faulted/u);
+    expect(rejected.free).toHaveBeenCalledOnce();
+    expect(rejected.errorFree).toHaveBeenCalledOnce();
+    adapter.dispose();
+  });
+
+  it("requires the complete generated semantic-intent method surface", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const routed = intentResult({ status: "unhandled", successor });
+    Object.defineProperty(routed.view, "commitJson", { value: undefined });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [routed.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "missing-method" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/intent result/u);
+    expect(routed.free).toHaveBeenCalledOnce();
+    expect(successor.free).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("adopts a published intent commit before requiring DOM reconciliation", () => {
+    const base = projectionFixture(0, "a");
+    const next = projection(1, "a");
+    const initial = observation(0);
+    const successor = observation(1);
+    const routed = intentResult({
+      status: "committed",
+      successor,
+      bindingId: "breditor/format-strong-binding",
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      update: projectionUpdate(base.projection, next).view,
+    });
+    const afterCommit = selectionResult(selectionView(1, 1));
+    const afterRestore = selectionResult(selectionView(1, 1));
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({
+        intents: [routed.view],
+        selection: [afterCommit.view, afterRestore.view],
+      }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new FailOnWriteBridge(1),
+      },
+    );
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "reconcile" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/canonical DOM restoration/u);
+    expect(adapter.state).toBe("reconcile");
+    expect(adapter.snapshot).toEqual({
+      lineage: "adapter-tests",
+      revision: "1",
+    });
+    expect(initial.free).toHaveBeenCalledOnce();
+    expect(routed.free).toHaveBeenCalledOnce();
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "intent",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    expect(adapter.restoreCanonicalRender().ok).toBe(true);
+    expect(adapter.state).toBe("live");
+    expect(adapter.deliveryToken().snapshotRevision).toBe("1");
+    adapter.dispose();
+    expect(successor.free).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    "wrong intent ID",
+    "changed blocked snapshot",
+    "blocked projection update",
+    "missing selected binding",
+    "invalid blocked activation",
+    "invalid blocked value contract",
+    "out-of-order fallthroughs",
+    "256 fallthroughs plus selected binding",
+  ] as const)("faults on an inexact semantic-intent receipt with %s", (violation) => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(violation === "changed blocked snapshot" ? 1 : 0);
+    const exposedUpdate = violation === "blocked projection update"
+      ? projectionUpdate(base.projection, projection(1, "a"))
+      : undefined;
+    const longTrace = Array.from({ length: 256 }, (_, index) => ({
+      bindingId: `example/binding-${String(index).padStart(3, "0")}`,
+      actionId: `example/action-${String(index).padStart(3, "0")}`,
+      priority: 1_000 - index,
+      reasonCode: "example/disabled",
+    }));
+    const routed = intentResult({
+      status: "blocked",
+      successor,
+      intentId: violation === "wrong intent ID" ? "example/other" : TEST_INTENT_ID,
+      ...(violation === "missing selected binding"
+        ? {}
+        : { bindingId: "breditor/format-strong-binding" }),
+      actionId: "breditor/toggle-strong",
+      bindingPriority: 0,
+      blockedReasonCode: "breditor/no-selection",
+      blockedActivation: violation === "invalid blocked activation"
+        ? "stateless"
+        : "inactive",
+      blockedValueStatus: violation === "invalid blocked value contract"
+        ? "uniform"
+        : "unsupported",
+      fallthroughs: violation === "out-of-order fallthroughs"
+        ? [
+            {
+              bindingId: "example/first-binding",
+              actionId: "example/first-action",
+              priority: 10,
+              reasonCode: "example/disabled",
+            },
+            {
+              bindingId: "example/second-binding",
+              actionId: "example/second-action",
+              priority: 20,
+              reasonCode: "example/disabled",
+            },
+          ]
+        : violation === "256 fallthroughs plus selected binding"
+          ? longTrace
+          : [],
+      ...(exposedUpdate === undefined ? {} : { update: exposedUpdate.view }),
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [routed.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: violation },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/intent/u);
+    expect(adapter.state).toBe("faulted");
+    expect(routed.free).toHaveBeenCalledOnce();
+    expect(successor.free).toHaveBeenCalledOnce();
+    if (exposedUpdate !== undefined) {
+      expect(exposedUpdate.free).toHaveBeenCalledOnce();
+    }
+    expect(initial.free).not.toHaveBeenCalled();
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it.each(["unchanged revision", "missing update", "blocked-only scalar"] as const)(
+    "faults on a committed semantic-intent receipt with %s",
+    (violation) => {
+      const base = projectionFixture(0, "a");
+      const nextRevision = violation === "unchanged revision" ? 0 : 1;
+      const initial = observation(0);
+      const successor = observation(nextRevision);
+      const update = violation === "missing update"
+        ? undefined
+        : projectionUpdate(base.projection, projection(nextRevision, "a"));
+      const routed = intentResult({
+        status: "committed",
+        successor,
+        bindingId: "breditor/format-strong-binding",
+        actionId: "breditor/toggle-strong",
+        bindingPriority: 0,
+        ...(violation === "blocked-only scalar"
+          ? { blockedReasonCode: "breditor/no-selection" }
+          : {}),
+        ...(update === undefined ? {} : { update: update.view }),
+      });
+      const adapter = new BreditorWasmCommandAdapter(
+        engineQueues({ intents: [routed.view] }),
+        initial,
+        {
+          renderer: base.renderer,
+          rendered: base.rendered,
+          selectionBridge: new BreditorDomSelectionBridge(),
+        },
+      );
+
+      expect(() => adapter.execute(
+        noInputIntentRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "api", detail: violation },
+          TEST_INTENT_ID,
+        ),
+      )).toThrow(/committed intent/u);
+      expect(adapter.state).toBe("faulted");
+      expect(routed.free).toHaveBeenCalledOnce();
+      expect(successor.free).toHaveBeenCalledOnce();
+      if (update !== undefined) expect(update.free).toHaveBeenCalledOnce();
+      adapter.dispose();
+    },
+  );
+
+  it("rejects intent result aliases without releasing adapter-owned handles", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const engine = engineQueues({
+      intents: [initial as unknown as WasmIntentResultView],
+    });
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "alias" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/aliased/u);
+    expect(initial.free).not.toHaveBeenCalled();
+    adapter.dispose();
+    expect(initial.free).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    "wrong generation",
+    "aliased successor",
+    "thenable result",
+    "thenable scalar",
+  ] as const)(
+    "frees and faults a hostile semantic-intent handle with %s",
+    async (violation) => {
+      const base = projectionFixture(0, "a");
+      const initial = observation(0);
+      const successor = observation(0);
+      const routed = intentResult({
+        status: "unhandled",
+        successor,
+        matchesGeneration: violation !== "wrong generation",
+      });
+      if (violation === "aliased successor") {
+        Object.defineProperty(routed.view, "observation", {
+          value: () => routed.view,
+        });
+      }
+      if (violation === "thenable result") {
+        Object.defineProperty(routed.view, "then", {
+          value: (resolve: (value: undefined) => void) => resolve(undefined),
+        });
+      }
+      if (violation === "thenable scalar") {
+        Object.defineProperty(routed.view, "intentId", {
+          value: Promise.reject(
+            new Error("intent scalar rejection must be contained"),
+          ),
+        });
+      }
+      const adapter = new BreditorWasmCommandAdapter(
+        engineQueues({ intents: [routed.view] }),
+        initial,
+        {
+          renderer: base.renderer,
+          rendered: base.rendered,
+          selectionBridge: new BreditorDomSelectionBridge(),
+        },
+      );
+
+      expect(() => adapter.execute(
+        noInputIntentRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "api", detail: violation },
+          TEST_INTENT_ID,
+        ),
+      )).toThrow(/intent result|generation|handles alias/u);
+      await Promise.resolve();
+      expect(adapter.state).toBe("faulted");
+      expect(routed.free).toHaveBeenCalledOnce();
+      expect(successor.free).not.toHaveBeenCalled();
+      adapter.dispose();
+      expect(initial.free).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("adopts the exact intent successor before reporting a result cleanup failure", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const routed = intentResult({
+      status: "unhandled",
+      successor,
+      freeResult: "unexpected",
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ intents: [routed.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() => adapter.execute(
+      noInputIntentRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "cleanup" },
+        TEST_INTENT_ID,
+      ),
+    )).toThrow(/free returned/u);
+    expect(adapter.state).toBe("faulted");
     expect(initial.free).toHaveBeenCalledOnce();
     adapter.dispose();
     expect(successor.free).toHaveBeenCalledOnce();
@@ -2694,6 +3515,116 @@ function commandError(code: string) {
   return { view, free, errorFree };
 }
 
+function intentResult(input: Readonly<{
+  status: "committed" | "blocked" | "unhandled";
+  successor: WasmCommandObservationView;
+  intentId?: string;
+  bindingId?: string;
+  actionId?: string;
+  bindingPriority?: number;
+  blockedReasonCode?: string;
+  blockedActivation?: WasmIntentResultView["blockedActivation"];
+  blockedValueStatus?: WasmIntentResultView["blockedValueStatus"];
+  blockedValueContractName?: string;
+  blockedValueContractVersion?: number;
+  fallthroughs?: readonly Readonly<{
+    bindingId: string;
+    actionId: string;
+    priority: number;
+    reasonCode: string;
+  }>[];
+  update?: SemanticProjectionUpdateView;
+  error?: WasmCommandErrorView;
+  matchesGeneration?: boolean;
+  freeResult?: unknown;
+}>): TrackedIntentResult {
+  const fallthroughs = input.fallthroughs ?? [];
+  const free = input.freeResult === undefined
+    ? vi.fn()
+    : vi.fn(() => input.freeResult);
+  const view: WasmIntentResultView = {
+    status: input.status,
+    intentId: input.intentId ?? TEST_INTENT_ID,
+    bindingId: input.bindingId,
+    actionId: input.actionId,
+    bindingPriority: input.bindingPriority,
+    blockedReasonCode: input.blockedReasonCode,
+    blockedActivation: input.blockedActivation,
+    blockedValueStatus: input.blockedValueStatus,
+    blockedValueContractName: input.blockedValueContractName,
+    blockedValueContractVersion: input.blockedValueContractVersion,
+    fallthroughCount: fallthroughs.length,
+    error: input.error,
+    matchesProfileGeneration: (generation) =>
+      input.matchesGeneration !== false && generation === TEST_PROFILE_GENERATION,
+    observation: () => input.successor,
+    projectionUpdate: () => input.update,
+    blockedReasonDetailJson: () => {
+      throw new Error("unused intent detail helper");
+    },
+    blockedValueJson: () => {
+      throw new Error("unused intent value helper");
+    },
+    commitJson: () => {
+      throw new Error("unused intent commit helper");
+    },
+    fallthroughBindingId: (index) => fallthroughs[index]?.bindingId,
+    fallthroughActionId: (index) => fallthroughs[index]?.actionId,
+    fallthroughPriority: (index) => fallthroughs[index]?.priority,
+    fallthroughReasonCode: (index) => fallthroughs[index]?.reasonCode,
+    fallthroughReasonDetailJson: () => {
+      throw new Error("unused intent fallthrough detail helper");
+    },
+    free,
+  };
+  return { view, free };
+}
+
+function intentError(code: string) {
+  const errorFree = vi.fn();
+  const error: WasmCommandErrorView = {
+    code,
+    message: "the semantic intent was rejected",
+    free: errorFree,
+  };
+  const free = vi.fn();
+  const view: WasmIntentResultView = {
+    status: "error",
+    intentId: undefined,
+    bindingId: undefined,
+    actionId: undefined,
+    bindingPriority: undefined,
+    blockedReasonCode: undefined,
+    blockedActivation: undefined,
+    blockedValueStatus: undefined,
+    blockedValueContractName: undefined,
+    blockedValueContractVersion: undefined,
+    fallthroughCount: 0,
+    error,
+    matchesProfileGeneration: matchesTestProfile,
+    observation: () => undefined,
+    projectionUpdate: () => undefined,
+    blockedReasonDetailJson: () => {
+      throw new Error("unused intent detail helper");
+    },
+    blockedValueJson: () => {
+      throw new Error("unused intent value helper");
+    },
+    commitJson: () => {
+      throw new Error("unused intent commit helper");
+    },
+    fallthroughBindingId: () => undefined,
+    fallthroughActionId: () => undefined,
+    fallthroughPriority: () => undefined,
+    fallthroughReasonCode: () => undefined,
+    fallthroughReasonDetailJson: () => {
+      throw new Error("unused intent fallthrough detail helper");
+    },
+    free,
+  };
+  return { view, free, errorFree };
+}
+
 function projectionUpdate(
   base: BaseDocumentProjection,
   result: BaseDocumentProjection,
@@ -2843,6 +3774,87 @@ function emptyActionStateResult(revision: number) {
   return { view, free, snapshotFree, valueFree };
 }
 
+function profileDescriptorWithActionState(): BrowserCompiledProfileDescriptor {
+  const noEntry = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "breditor/base",
+    schemaVersion: 1,
+    schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
+    formatCount: 1,
+    intentCount: 1,
+    actionStateCount: 1,
+    matchesProfileGeneration: matchesTestProfile,
+    formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
+    formatRevision: (index) => index === 0 ? 1 : undefined,
+    intentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
+    intentInputKind: (index) => index === 0 ? "none" : undefined,
+    intentInputContractName: noEntry,
+    intentInputContractVersion: noEntry,
+    intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    intentValueContractName: noEntry,
+    intentValueContractVersion: noEntry,
+    actionStateId: (index) => index === 0 ? "breditor/control-bold" : undefined,
+    actionStateSourceKind: (index) => index === 0 ? "routed" : undefined,
+    actionStateSourceActionId: noEntry,
+    actionStateSourceIntentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
+    actionStateHistoryDirection: noEntry,
+    actionStateActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    actionStateValueContractName: noEntry,
+    actionStateValueContractVersion: noEntry,
+    free: () => undefined,
+  };
+  const consumed = consumeWasmCompiledProfileDescriptor(
+    TEST_PROFILE_GENERATION,
+    view,
+  );
+  if (!consumed.ok) throw new Error("action-state descriptor was rejected");
+  return consumed.descriptor;
+}
+
+function profileDescriptorWithIntentContract(options: Readonly<{
+  input: "none" | "typed";
+  value: boolean;
+}>): BrowserCompiledProfileDescriptor {
+  const noEntry = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "breditor/base",
+    schemaVersion: 1,
+    schemaFingerprint: TEST_SCHEMA_FINGERPRINT,
+    formatCount: 1,
+    intentCount: 1,
+    actionStateCount: 0,
+    matchesProfileGeneration: matchesTestProfile,
+    formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
+    formatRevision: (index) => index === 0 ? 1 : undefined,
+    intentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
+    intentInputKind: (index) => index === 0 ? options.input : undefined,
+    intentInputContractName: (index) =>
+      index === 0 && options.input === "typed" ? "example/input" : undefined,
+    intentInputContractVersion: (index) =>
+      index === 0 && options.input === "typed" ? 1 : undefined,
+    intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    intentValueContractName: (index) =>
+      index === 0 && options.value ? "example/value" : undefined,
+    intentValueContractVersion: (index) =>
+      index === 0 && options.value ? 2 : undefined,
+    actionStateId: noEntry,
+    actionStateSourceKind: noEntry,
+    actionStateSourceActionId: noEntry,
+    actionStateSourceIntentId: noEntry,
+    actionStateHistoryDirection: noEntry,
+    actionStateActivationContract: noEntry,
+    actionStateValueContractName: noEntry,
+    actionStateValueContractVersion: noEntry,
+    free: () => undefined,
+  };
+  const consumed = consumeWasmCompiledProfileDescriptor(
+    TEST_PROFILE_GENERATION,
+    view,
+  );
+  if (!consumed.ok) throw new Error("intent contract descriptor was rejected");
+  return consumed.descriptor;
+}
+
 function checkpointResult(revision: number): Readonly<{
   view: WasmSessionCheckpointStringResultView;
   free: ReturnType<typeof vi.fn>;
@@ -2881,6 +3893,7 @@ function engineQueues(input: Readonly<{
   setRangeSelection?: () => WasmCommandResultView;
   stringAction?: WasmCommandResultView[];
   noInputAction?: WasmCommandResultView[];
+  intents?: WasmIntentResultView[];
   closeHistory?: WasmCommandResultView[];
   selection?: WasmSelectionResultView[];
   actionStates?: WasmActionStatesResultView[];
@@ -2903,6 +3916,7 @@ function engineQueues(input: Readonly<{
     setRangeSelection: () => input.setRangeSelection?.() ?? take(input.setSelection, "setRangeSelection"),
     selection: () => take(input.selection, "selection"),
     executeNoInputAction: () => take(input.noInputAction, "executeNoInputAction"),
+    executeNoInputIntent: () => take(input.intents, "executeNoInputIntent"),
     executeStringAction: () => take(input.stringAction, "executeStringAction"),
     undo: () => { throw new Error("unexpected undo"); },
     redo: () => { throw new Error("unexpected redo"); },

@@ -4,6 +4,7 @@ import { BaseDocumentProjection } from "./projection.js";
 import { BreditorDomRenderer } from "./dom_renderer.js";
 import { BaseRangeSelection } from "./selection.js";
 import {
+  BASE_INTENT_IDS,
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   browserCommandTextIsAdmissible,
   canonicalEditorCommandRequest,
@@ -12,6 +13,7 @@ import {
   isEngineCommand,
   issueEditorDeliveryToken,
   noInputActionRequest,
+  noInputIntentRequest,
   preserveSelectionSync,
   rangeSelectionSync,
   selectionSynchronizationRequest,
@@ -90,6 +92,92 @@ describe("editor command contract", () => {
     expect(Object.isFrozen(request.source)).toBe(true);
     expect(Object.isFrozen(request.requirements)).toBe(true);
     expect(Object.isFrozen(request.command)).toBe(true);
+  });
+
+  it("represents a closed no-input semantic intent with explicit queue policy", () => {
+    const { token } = delivery();
+    const request = noInputIntentRequest(
+      token,
+      preserveSelectionSync(),
+      { kind: "toolbar", detail: "breditor/control-bold" },
+      BASE_INTENT_IDS.formatStrong,
+      "closeBefore",
+    );
+
+    expect(request).toMatchObject({
+      delivery: token,
+      selection: { kind: "preserve" },
+      source: { kind: "toolbar", detail: "breditor/control-bold" },
+      requirements: { selection: "preserve", history: "closeBefore" },
+      command: {
+        kind: "intent",
+        intentId: "breditor/format-strong",
+        input: { kind: "none" },
+      },
+    });
+    expect(Object.isFrozen(request)).toBe(true);
+    expect(Object.isFrozen(request.command)).toBe(true);
+    expect(
+      request.command.kind === "intent" && Object.isFrozen(request.command.input),
+    ).toBe(true);
+    expect(isEngineCommand(request.command)).toBe(true);
+    expect(canonicalEditorCommandRequest(request)).toEqual(request);
+  });
+
+  it("rejects malformed or widened semantic intent envelopes without getters", () => {
+    const { token, selection } = delivery();
+    const base = {
+      delivery: token,
+      selection,
+      source: { kind: "api", detail: "intent-test" },
+      requirements: { selection: "synchronize", history: "preserve" },
+    };
+    let reads = 0;
+    const accessorInput = Object.defineProperty({}, "kind", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return "none";
+      },
+    });
+
+    for (const command of [
+      { kind: "intent", intentId: "missing-slash", input: { kind: "none" } },
+      {
+        kind: "intent",
+        intentId: "example/format-mark",
+        input: { kind: "none", value: "forbidden" },
+      },
+      {
+        kind: "intent",
+        intentId: "example/format-mark",
+        input: accessorInput,
+      },
+      {
+        kind: "intent",
+        intentId: "example/format-mark",
+        input: { kind: "string", value: "forbidden" },
+      },
+      {
+        kind: "intent",
+        intentId: "example/format-mark",
+        input: { kind: "none" },
+        actionId: "example/forged",
+      },
+    ]) {
+      expect(isEngineCommand(command)).toBe(false);
+      expect(canonicalEditorCommandRequest({ ...base, command })).toBeNull();
+    }
+    expect(reads).toBe(0);
+
+    expect(() =>
+      noInputIntentRequest(
+        token,
+        selection,
+        { kind: "api", detail: "bad-intent" },
+        "Example/format-mark",
+      ),
+    ).toThrow(/intent ID/u);
   });
 
   it("represents a history boundary as an explicit executable control command", () => {

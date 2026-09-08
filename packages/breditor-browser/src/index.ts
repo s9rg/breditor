@@ -21,6 +21,8 @@ export {
   type BreditorBrowserEditorSubscriber,
   type BreditorBrowserDocumentSnapshot,
   type BreditorBrowserInitialDocument,
+  type BreditorBrowserIntentRejectionReason,
+  type BreditorBrowserIntentResult,
   type BreditorBrowserSemanticProfileOptions,
   type BreditorBrowserToolbarOptions,
   type BreditorBrowserWasmModule,
@@ -69,6 +71,7 @@ export {
 
 /** Public bounds for declarative toolbar string-action input. */
 export {
+  BASE_INTENT_IDS,
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   MAX_BROWSER_COMMAND_TEXT_UTF8,
 } from "./editor_command.js";

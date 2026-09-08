@@ -1,7 +1,9 @@
 import {
   BASE_ACTION_IDS,
+  BASE_INTENT_IDS,
   historyRequest,
   noInputActionRequest,
+  noInputIntentRequest,
   type EditorDeliveryToken,
   type EditorCommandRequest,
   type EditorSelectionSync,
@@ -121,11 +123,11 @@ function translateSafeKeyDown(
         return snapshot.repeat
           ? blocked("repeatSuppressed")
           : command(
-              noInputActionRequest(
+              noInputIntentRequest(
                 delivery,
                 selection,
                 source,
-                BASE_ACTION_IDS.toggleStrong,
+                BASE_INTENT_IDS.formatStrong,
                 "closeBefore",
               ),
             );

@@ -1,6 +1,6 @@
 # Browser release size budgets
 
-Status: required `0.2.0-alpha.6` release gate
+Status: required `0.2.0-alpha.7` release gate
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -11,8 +11,8 @@ total.
 
 The current release ceilings are deliberately explicit:
 
-- all emitted `@breditor/browser` JavaScript: 825,000 bytes;
-- all emitted browser declarations: 225,000 bytes;
+- all emitted `@breditor/browser` JavaScript: 860,000 bytes;
+- all emitted browser declarations: 235,000 bytes;
 - generated Wasm binary: 1,500,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 225,000 bytes;
@@ -29,6 +29,22 @@ bytes. The final Alpha.6 gate measured:
 - reference-application JavaScript: 708,638 raw and 186,131 gzip bytes;
 - generated Wasm: 1,224,221 bytes; and
 - generated Wasm JavaScript glue: 46,732 bytes.
+
+Alpha.7 recalibrates only the browser-package JavaScript and declaration
+ceilings, from 825,000 to 860,000 bytes and from 225,000 to 235,000 bytes. Its
+measured artifacts are:
+
+- browser-package JavaScript: 848,850 bytes;
+- browser declarations: 225,622 bytes;
+- reference-application JavaScript: 722,537 raw and 189,216 gzip bytes;
+- generated Wasm: 1,224,768 bytes; and
+- generated Wasm JavaScript glue: 46,732 bytes.
+
+The measured growth is the reviewed strict semantic-intent result adapter,
+immediate-only public and toolbar delivery, descriptor-correlated action-state
+catalog, and toolbar/profile admission code. The application, Wasm, glue,
+gzip, and package-tarball ceilings are unchanged; the gate still counts every
+emitted module recursively.
 
 This includes the profile-aware projection path, descriptor-only bounded array
 admission, and brand-checked native Event-family, Selection,

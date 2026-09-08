@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-alpha.6` packaged boundary contract; ABI generation `3` is authoritative
+Status: `0.2.0-alpha.7` packaged boundary contract; ABI generation `3` is authoritative
 for the matching official browser/Wasm packages, while direct raw-handle use is
 an intentionally narrow, advanced, and experimental integration surface
 
@@ -13,7 +13,7 @@ import-time dependency on their concrete classes. A clean temporary consumer
 installs both npm tarballs, initializes the real Wasm module, imports the
 browser entry point, and type-checks without workspace paths.
 
-`@breditor/browser@0.2.0-alpha.6` and `@breditor/wasm@0.2.0-alpha.6` are
+`@breditor/browser@0.2.0-alpha.7` and `@breditor/wasm@0.2.0-alpha.7` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
 are not the high-level browser compatibility surface.
@@ -316,17 +316,18 @@ reads and leaves the prior cache observation installed.
 Every compiled profile catalog contains the three built-in,
 presentation-independent observable IDs in canonical lexical order:
 
-- `breditor/control-bold` directly prepares `breditor/toggle-strong`, so its
-  enabled state and inactive/active/mixed indicator come from the same semantic
-  evaluation a later click repeats;
+- `breditor/control-bold` routes the no-input `breditor/format-strong` intent
+  through its priority-zero blocking binding to `breditor/toggle-strong`, so
+  its enabled state and inactive/active/mixed indicator come from the same
+  semantic route a later supported click repeats;
 - `breditor/control-redo` preflights the current redo branch; and
 - `breditor/control-undo` preflights the current undo branch.
 
 These observable IDs are not command IDs, labels, icons, shortcuts, or toolbar
 positions. The browser manifest maps them to presentation and dispatch. An
 extended profile catalog also contains its admitted routed action-state entries
-without changing the flattened entry contract; alpha.5 transports them even
-though the supported browser does not render their controls until alpha.7.
+without changing the flattened entry contract; Alpha.7 admits their supported
+native-button controls after exact descriptor validation.
 
 A successful result is `full`, `unchanged`, or `delta` and owns one complete
 snapshot. `takeSnapshot()` transfers it exactly once and changes the result to
@@ -357,6 +358,13 @@ owned `BreditorStringResult` in `absent` state. This preserves the core's value
 contract for future select, color, font, and plugin controls without forcing
 every toolbar refresh through a complete JSON document. The isolated value
 payload remains bounded by the core action-value limits.
+
+The Alpha.7 browser consumer additionally correlates every complete snapshot
+with the owned descriptor's exact action-state count, lexical IDs, activation
+contracts, and value-contract name/version before publication. This is a
+browser admission check over ABI 3, not a new ABI generation. Missing, extra,
+reordered, duplicate, or drifted catalogs fail closed without replacing the
+last-good browser snapshot.
 
 Every numeric entry/change index is a raw generated `u32` parameter and shares
 the projection getter's JavaScript-coercion limitation. The reviewed browser

@@ -1,8 +1,8 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` through `0.2.0-alpha.5` engine/Wasm
-foundations are complete, and the `0.2.0-alpha.6` profile-aware browser path is
-implemented and passing its release gates
+Status: in progress; the `0.1.1` through `0.2.0-alpha.7` compiler, engine, Wasm,
+profile-aware browser, and supported intent/toolbar checkpoints are complete;
+`0.2.0-alpha.8` consumer proof and release gates are next
 
 `0.2.0` will make Breditor's first deliberately narrow semantic extension
 path shippable. An application will be able to assemble a frozen editor
@@ -77,6 +77,18 @@ format recipe manifest to one live compiled-profile generation and descriptor;
 projection updates, renderer ownership, point mapping, composition
 reconciliation, clipboard serialization, and canonical export all retain that
 correlation.
+
+Alpha.7 closes the first supported browser intent path without widening the
+portable semantic model. Every compiled base profile contains the tracked,
+no-input `breditor/format-strong` intent, its priority-zero blocking route to
+`breditor/toggle-strong`, and a Bold state entry sourced from that route. Native
+`formatBold`, the configured Bold shortcut, the default Bold button, and
+high-level `executeIntent()` use that same meaning. Supplied toolbars are
+admitted only when each intent/history, activation, and absent value contract
+matches the compiled descriptor. Complete action-state snapshots must match
+the descriptor's fixed ordered catalog and value contracts before publication.
+The public imperative result redacts concrete route provenance, while the
+advanced adapter retains it.
 
 Rust remains the authority for the AST, compiled schema, selection, action
 evaluation, primitive operations, transactions, history, replay, and durable
@@ -246,6 +258,10 @@ when review finds a correctness boundary; later features are not claimed early.
    button toolbar surface with startup validation of intent/state contracts.
    Concrete action dispatch remains an advanced policy bypass; extension
    keymaps, `beforeinput` rules, menus, selects, and custom controls are deferred.
+   Public no-input calls use immediate-only queue leases and reject while
+   delivery, composition, authoritative reads, or reentrancy owns the path.
+   Descriptor-correlated action-state snapshots cannot change catalog identity
+   or activation/value contracts after startup. Complete.
 9. `0.2.0-alpha.8`: reference extension package, consumer fixtures, missing and
    extra browser contribution tests, cross-browser matrix, compatibility and
    limitation documentation, and size gates.

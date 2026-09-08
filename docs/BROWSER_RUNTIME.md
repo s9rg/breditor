@@ -1,7 +1,8 @@
 # Breditor browser runtime
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
-extended by the unpublished experimental `0.2.0-alpha.6` compiled-profile path
+extended by the unpublished experimental `0.2.0-alpha.7` compiled-profile and
+supported no-input intent/toolbar path
 
 `BreditorBrowserEditor` is the recommended application boundary for the
 `0.1.0` browser release. It assembles the generated Rust/Wasm engine, typed
@@ -11,7 +12,8 @@ behind one framework-neutral owner.
 
 The package-root API is intentionally small. Applications receive the editing
 element, immutable status snapshots, subscription, focus, persistence flush
-and retry, explicit content export, and disposal. They do not receive the
+and retry, synchronous no-input semantic intent execution, explicit content
+export, and disposal. They do not receive the
 engine, observation handles, renderer, queue, delivery tokens, or native-event
 receipts. The lower-level pieces remain available from
 `@breditor/browser/advanced` for host-trusted integrations, but using them
@@ -126,10 +128,13 @@ host integration; their generated handle protocol is not a compatibility
 promise. Applications should install matching versions of `@breditor/browser`
 and `@breditor/wasm`.
 
-The experimental Alpha.6 root path adds `semanticProfile: { bootstrapJson }`, a
+The experimental Alpha.7 root path adds `semanticProfile: { bootstrapJson }`, a
 matching Document V2 or Session Checkpoint V2 source, and an exact callback-free
 `rendering` manifest. The presentation must cover every format in the compiled
-profile descriptor. Without `semanticProfile`, the stable exact-base Document
+profile descriptor. A supplied toolbar must also match descriptor-declared
+no-input intent/routed-state or exact history contracts, and the first
+action-state snapshot must repeat the descriptor's complete fixed catalog.
+Without `semanticProfile`, the stable exact-base Document
 V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
 sniffs or falls back between wire generations.
 
@@ -180,6 +185,11 @@ executable capability. Whenever `actionState.status` is `fresh`, the nested
 the document but presentation fails before the synchronous action-state refresh,
 the last-good actions remain available for diagnosis but are labelled `stale`
 with `action_state.snapshot_mismatch` until the fallback refresh settles.
+Alpha.7 additionally admits a snapshot only when its complete entry count and
+ordered lexical IDs equal the compiled descriptor and every resolved entry
+satisfies the declared tracked/stateless and exact value contract. A missing,
+extra, reordered, duplicate, substituted, or contract-drifted catalog becomes a
+failed refresh; the store retains but marks its prior last-good value stale.
 `subscribe(listener)` is compatible with external-store
 adapters, retains at most 64 distinct listeners, coalesces ordinary updates on
 a microtask, deduplicates repeat registration of the same function for
@@ -201,6 +211,38 @@ spins waiting for teardown: if the owned adapter is still busy or unreadable
 after that bounded deferral, it releases external DOM/storage/host ownership
 but deliberately retains the adapter and engine instead of risking use-after-
 free. Disposal does not mean that dirty state was saved.
+
+## Synchronous semantic intent execution
+
+`executeIntent(intentId)` is the supported imperative command boundary in
+Alpha.7. It accepts one exact qualified ID declared by the active compiled
+profile and currently supports only declarations with no input contract:
+
+```ts
+const result = editor.executeIntent("breditor/format-strong");
+if (result.status === "blocked") {
+  console.log(result.reasonCode, result.activation);
+}
+```
+
+The result is deeply frozen and includes the requested intent identity plus the
+authoritative `{ lineage, revision }` document snapshot observed when the call
+settled. The sole identity exception is malformed or over-limit input, which is
+reported as `invalidIntent` with `intentId: ""` so rejected text is not retained
+or reflected. Semantic outcomes are `committed`, `blocked`, or `unhandled`.
+Invalid or unknown identities, a declaration requiring typed input, a busy
+owner, or a non-live owner return `rejected`; an uncertain delivery returns
+`failed` and faults editing closed. Blocked results expose only the stable
+reason code and stateless/inactive/active/mixed activation.
+
+This public result deliberately omits the selected binding/action and routed
+fallthrough trace. Those are diagnostic provenance retained by the advanced
+Wasm command adapter, not stable application authority. Public dispatch uses
+an immediate idle-queue lease. It never waits behind an executing command and
+never runs recursively: composition, an authoritative read, an active
+delivery, or a reentrant call returns busy instead of enqueueing a request whose
+selection/observation token may become stale. There is no public typed intent
+input, asynchronous intent method, or callback command in Alpha.7.
 
 ## Event ordering
 
@@ -272,7 +314,7 @@ history, and checkpoint authority. The browser DOM is a disposable projection:
 native event
   -> bounded semantic request + exact selection
   -> serial queue
-  -> guarded Rust/Wasm engine action
+  -> guarded Rust/Wasm intent, action, or history execution
   -> validated successor AST and selection
   -> DOM projection
 ```
@@ -456,10 +498,13 @@ declarations. Toolbar/control labels are nonblank, control-free valid Unicode
 bounded to 128 UTF-16 code units and 512 UTF-8 bytes; state/action IDs use the
 lowercase, 128-character `namespace/local-name` grammar; optional valid-Unicode,
 trimmed groups are bounded to 64 UTF-16 code units and 256 UTF-8 bytes; and
-nonempty string inputs are bounded to 65,536 UTF-16 code units and UTF-8 bytes.
+nonempty advanced string-action inputs are bounded to 65,536 UTF-16 code units
+and UTF-8 bytes.
 The package root exports the corresponding constants. A manifest controls label, order,
 optional presentation group, pressed-state behavior, and a closed
-no-input/string-action or undo/redo command:
+intent, direct-action, or undo/redo declaration. The supported high-level
+runtime admits only descriptor-matched no-input intents and exact history
+directions; the direct-action shape exists for advanced low-level assembly:
 
 ```ts
 import { createToolbarManifest } from "@breditor/browser";
@@ -474,10 +519,8 @@ const manifest = createToolbarManifest({
       activation: "tracked",
       group: "inline",
       command: {
-        kind: "action",
-        actionId: "breditor/toggle-strong",
-        input: { kind: "none" },
-        history: "closeBefore",
+        kind: "intent",
+        intentId: "breditor/format-strong",
       },
     },
   ],
@@ -489,27 +532,33 @@ const toolbar = { host: toolbarHost, manifest };
 
 The manifest is presentation data, not a JavaScript plugin object. It retains
 only copied, frozen primitive fields and drops executable or extra properties.
-A control is enabled only when the Rust action-state catalog publishes the
-matching `stateId`, availability, and activation contract. Toolbar focus uses
+A supported control is installed only when its `stateId`, intent/history
+source, activation, and absent value contract exactly match the compiled
+profile descriptor. It is enabled only when the correlated Rust action-state
+catalog publishes fresh availability. Toolbar focus uses
 the last exact semantic editor selection, and dispatch still requires a fresh
 delivery token.
 
-The official `0.1.0` engine publishes matching state/command bindings only for
-Bold, Undo, and Redo. A manifest alone cannot register a new action or history
-command.
+The default profile publishes the routed `breditor/format-strong` Bold state
+plus Undo and Redo. A compiled extension toggle may contribute another tracked
+no-input intent and routed state; a manifest can expose it as the same native
+button kind but cannot register behavior by itself.
 
 Adding real behavior therefore proceeds from the core outward:
 
-1. Implement and register the action and its state evaluator in Rust.
-2. Expose the action through the guarded engine/Wasm build without changing the
-   ABI generation unexpectedly.
-3. Add a manifest control whose `stateId` and action ID match that catalog.
+1. Declare the property-free format toggle in the extension profile so Rust
+   compiles its generic action, no-input intent, blocking binding, and routed
+   state.
+2. Add a manifest control whose `stateId` and `intentId` match that descriptor.
+3. Supply a complete render recipe for the admitted format.
 4. Supply the manifest at editor startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
-There is no runtime JavaScript action registration, arbitrary callback command,
-dynamic manifest replacement, plugin unload, custom node renderer, or stable
-third-party Wasm plugin ABI in the supported `0.1.0` surface.
+There is no typed public intent input, extension keymap or `beforeinput` rule,
+custom control kind, runtime JavaScript action registration, arbitrary callback
+command, dynamic manifest replacement, plugin unload, custom node renderer, or
+stable third-party Wasm plugin ABI in the supported surface. Direct concrete
+action toolbar declarations remain an advanced policy bypass.
 
 ## Honest limitations
 
@@ -523,8 +572,10 @@ The `0.1.0` runtime is deliberately a small local notes/form editor:
   text, not HTML, transactions, streaming output, editor-state/checkpoint
   export, or a controlled-value `onChange` callback. The advanced contracts are
   not a substitute for treating DOM as the model.
-- The public high-level command surface is native input plus the startup
-  toolbar. There is not yet a general imperative application-command method.
+- The public high-level command surface is native input, the startup toolbar,
+  and synchronous no-input `executeIntent()`. There is no typed input,
+  asynchronous command method, raw action API, extension keymap, or custom
+  `beforeinput` registration.
 - Selection supports one directional light-DOM range. Shadow-root crossing,
   browser multi-range selection, nested editors, and ambiguous host-boundary
   positions fail closed.
@@ -552,14 +603,15 @@ The `0.1.0` runtime is deliberately a small local notes/form editor:
   desktop automation is not a broad mobile-IME or assistive-technology support
   claim; those still need dedicated device and user-agent coverage.
 
-The unpublished Alpha.6 path deliberately widens only the sealed base-text
+The unpublished Alpha.7 path deliberately widens only the sealed base-text
 seams above: a compiled profile may add property-free inline formats, exact
 callback-free wrapper recipes, Document/Session Checkpoint V2, and scoped
 profile-bound persistence. Composition accepts only canonical known wrappers
 and strips them back to plain replacement text; paste likewise transports no
 source formatting. It still has no property-bearing links, arbitrary nodes,
-extension callbacks, rich paste, collaboration, selective undo, or dynamic
-extension lifecycle. These prerelease additions do not alter the stable
+extension callbacks, typed public intent inputs, custom toolbar controls or
+keymaps, rich paste, collaboration, selective undo, or dynamic extension
+lifecycle. These prerelease additions do not alter the stable
 `0.1.x` promises listed above.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),

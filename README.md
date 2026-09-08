@@ -11,7 +11,7 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current alpha.6 implementation carries the immutable compiled editor
+The current alpha.7 implementation carries the immutable compiled editor
 profile through the guarded Rust engine, Wasm ABI 3, and the browser projection
 boundary. Profile-created engine
 contexts, observations, intent outcomes, action-state snapshots, projections,
@@ -27,10 +27,20 @@ property-free format sets, compiles an exact callback-free render manifest,
 checks DOM drift/selection/composition against that presentation, produces
 semantic safe-copy HTML, strips formatting on paste, validates V1/V2 canonical
 export, and binds IndexedDB to a schema fingerprint or caller slot without
-overwriting mismatched evidence. Intent toolbar controls arrive in alpha.7.
+overwriting mismatched evidence. Alpha.7 adds the core-owned no-input
+`breditor/format-strong` intent and blocking route to `breditor/toggle-strong`,
+makes Bold state observe that route, and sends `beforeinput` `formatBold`, the
+configured primary-modifier+B shortcut, the default Bold button, and the new
+synchronous public `executeIntent()` method through the same guarded semantic
+intent path. Supported toolbar manifests are checked against the compiled
+descriptor's exact routed intent/history, activation, and value contracts at
+startup; direct concrete-action controls remain an advanced runtime bypass.
+Every action-state refresh is also correlated against the descriptor's fixed
+ordered catalog before publication.
 Fingerprint-default persistence is profile-scoped rather than document-scoped;
 hosts with multiple same-schema documents must provide distinct caller slots.
-Alpha.6 has passed its final audit and release gates and remains unpublished. The
+Alpha.7 is complete and remains unpublished; Alpha.8 is the next consumer-proof
+and release-gate checkpoint. The
 decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
@@ -108,7 +118,9 @@ The implementation includes:
 - an immutable `CompiledEditorProfile` that co-owns the resolved extension set,
   compiled schema, generated action registry, intent router, and action-state
   catalog under one fresh Rust-local generation; generated toggles are bounded,
-  no-input, priority-0 blocking routes over manifest-owned formats;
+  no-input, priority-0 blocking routes over manifest-owned formats, while the
+  built-in `breditor/format-strong` intent supplies the same route contract for
+  the core-owned strong-format action;
 - a frozen semantic intent router with declared input contracts, named
   bindings, explicit priority and disabled fallback policy, and distinct
   unhandled, blocked, and prepared outcomes;
@@ -120,8 +132,10 @@ The implementation includes:
   coalescing, and bounded local deltas;
 - semantic `insert-text`, atomic `insert-plain-text`, paragraph break,
   grapheme-aware backward/forward delete, exact selection delete, and
-  `toggle-strong` actions exposed through the same registry for future
-  keyboard, toolbar, palette, and API adapters; typed insertion consumes
+  `toggle-strong` actions exposed through the same registry; supported Bold
+  browser input, toolbar, and public API delivery select `toggle-strong`
+  through the frozen `breditor/format-strong` intent route, while typed
+  insertion consumes
   pending formats, multiline insertion and extended deletion atomically replace
   cross-paragraph selections, while `toggle-strong`
   publishes tracked inactive/active/mixed state and preserves selected block
@@ -159,9 +173,12 @@ The implementation includes:
   reconciles one paragraph-local native IME replacement back through Rust, and
   guarded semantic copy/cut/paste with profile-aware safe HTML output, exact
   wrapper admission, and formatting-stripping plain-text ingress,
-  plus handle-free guarded action-state refresh, a last-good subscription
-  store, and a bounded manifest-driven native-button toolbar whose commands
-  preserve semantic selection and re-enter the same FIFO, plus synchronous,
+  plus descriptor-correlated guarded action-state refresh, a last-good
+  subscription store, and a bounded manifest-driven native-button toolbar
+  whose supported controls are validated as routed no-input intents or exact
+  history directions, preserve semantic selection, and re-enter the same FIFO,
+  plus a synchronous high-level no-input `executeIntent()` boundary with
+  immediate-only queue admission and public provenance redaction, plus synchronous,
   snapshot-correlated mode-selected canonical Document V1/V2 and semantic
   plain-text exports, plus schema-fingerprint/caller-slot IndexedDB binding that
   never treats the DOM or storage envelope as content;
@@ -173,11 +190,12 @@ The implementation includes:
   failures return the unchanged log owner.
 
 The supported `0.1.0` product is intentionally small, not a general document
-processor. The alpha.6 path adds generic property-free format kinds and sealed
+processor. The alpha.7 path adds generic property-free format kinds and sealed
 manifest-owned toggle action/intent/state compilation through browser
-projection and rendering. It does not add format attributes, arbitrary nodes,
-custom actions or inputs, callbacks, or cross-extension/shared/fallback toggle
-routing.
+projection, rendering, and intent-backed toggle buttons. It does not add format
+attributes, arbitrary nodes, custom actions, typed public intent inputs,
+callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
+cross-extension/shared/fallback toggle routing.
 One manifest and one complete profile can each contribute at most 255 toggles;
 every target is owned by that manifest, each typed ID is profile-unique in its
 namespace, and extension semantic IDs cannot use `breditor/*`.
@@ -898,11 +916,12 @@ The presentation layer is Breditor's own bounded, immutable, callback-free
 manifest rather than a ProseMirror-style plugin protocol. It renders native
 buttons in an owned inner toolbar root with roving focus, fresh availability,
 tracked pressed/mixed state, and exact synchronous dispatch outcomes. Keyboard
-activation restores the same toolbar button after a command. Custom manifests can reorder or describe additional
-controls when a host supplies matching state and command implementations, but
-the supported browser toolbar remains the three base controls. Starting with
-alpha.5, a compiled-profile Rust/Wasm catalog can also carry admitted extension
-state entries; the browser does not present them until alpha.7.
+activation restores the same toolbar button after a command. The default
+manifest remains Bold, Undo, and Redo. Alpha.7 custom manifests can omit,
+reorder, relabel, or add native toggle buttons when each control exactly matches
+a compiled no-input intent and routed state contract; exact history controls
+remain supported too. The high-level runtime rejects direct action controls
+even though the advanced low-level toolbar can still execute them.
 Dynamic JavaScript action registration, styling/icons, menus, and asynchronous
 delivery remain outside the `0.1.0` product. Full assistive-technology
 certification is explicitly not claimed. The `0.0.59` candidate added
@@ -959,6 +978,16 @@ double-compilation cost prevents generated Wasm authority from crossing the
 async boundary. A different fingerprint/checkpoint generation at the selected
 slot fails non-destructively; it is never retried as another codec or
 overwritten.
+
+The Alpha.7 browser path validates the complete descriptor/action-state catalog
+before startup publication and on every refresh. It also validates every
+supplied toolbar control against the descriptor before installing DOM: toggle
+buttons name no-input semantic intents and routed state, while Undo/Redo name
+their exact history sources. Public `executeIntent()` shares that route but
+uses an immediate idle-queue lease, so composition, authoritative reads, active
+delivery, and reentrant calls return busy instead of becoming stale queued
+work. Public results omit concrete action and binding provenance; advanced
+adapter outcomes retain it for host-trusted integration.
 
 Breditor is dual-licensed under `MIT OR Apache-2.0`; the Rust manifests and both npm
 packages carry the same SPDX expression and every package tarball contains both

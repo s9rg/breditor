@@ -1,8 +1,8 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` through `0.2.0-alpha.6` engine, Wasm, and
-profile-aware browser foundations are implemented and later stages remain
-planned
+Status: decision freeze; the `0.1.1` through `0.2.0-alpha.7` compiler, engine,
+Wasm, profile-aware browser, and supported intent/toolbar checkpoints are
+complete; Alpha.8 consumer proof is next
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` will ship. It complements
@@ -497,13 +497,25 @@ arbitrary Rust or JavaScript handler into evaluation.
 
 The alpha.4 semantic bundle stops before presentation: it contains no label,
 icon, shortcut, renderer recipe, or toolbar placement. Alpha.6 adds a separate
-callback-free browser render manifest for complete format coverage; the
-supported intent-driven toolbar remains alpha.7 work.
+callback-free browser render manifest for complete format coverage. Alpha.7
+adds the supported intent-driven toggle-button toolbar while keeping its label,
+group, order, and control declarations outside the Rust profile.
+
+Every compiled base profile now includes the tracked no-input
+`breditor/format-strong` intent, the priority-zero blocking
+`breditor/format-strong-binding` route to `breditor/toggle-strong`, and the
+`breditor/control-bold` state sourced from that route. Browser
+`beforeinput` `formatBold`, primary-modifier+B, the default Bold button, and
+high-level `executeIntent()` therefore share one frozen semantic meaning
+without exposing the selected action as public API.
 
 Action, intent, route, and contribution ownership collisions fail. Intent
 fallback order is part of the compiled semantic profile; toolbar placement is
 presentation-only. A toolbar activation always re-enters the guarded intent
-FIFO against live state. A previously enabled button is not commit authority.
+FIFO against live state. The high-level imperative intent method is stricter:
+it acquires an immediate idle-queue lease and reports busy rather than waiting
+behind delivery, a read, composition, or reentrant work whose base could become
+stale. A previously enabled button is not commit authority.
 
 Labels, localization, icons, placement hints, shortcut display, CSS, and
 framework components live in the browser package. They are excluded from the
@@ -534,6 +546,13 @@ construction fails. The browser records a presentation identity only after
 these checks. Labels and recipes can change across reconstruction, and CSS can
 change live, but the checked contribution set is immutable for that browser
 editor instance.
+
+The descriptor also fixes the complete action-state catalog for that instance.
+Every consumed snapshot must repeat its exact count and ordered lexical IDs.
+Resolved entries must satisfy the declared tracked/stateless activation and
+either report unsupported when no value contract exists or repeat the exact
+value-contract name and version. Drift rejects the refresh before the last-good
+store can mutate; it is not a dynamic catalog update protocol.
 
 Format sets are semantic unordered sets stored in qualified-identity order.
 DOM wrapper nesting is a separate explicit deterministic render order. It uses
@@ -580,9 +599,11 @@ The supported `0.2.0` ABI path is Wasm ABI 3. Alpha.5 carries a compiled profile
 and its opaque generation through Rust-owned engines and Wasm handles. New
 profile factories explicitly accept Document V2 or Session Checkpoint V2; the
 legacy exact-base factory remains a separate V1 compatibility path. The
-supported alpha.6 browser consumes ABI 3 and admits either the exact built-in
+supported alpha.7 browser consumes ABI 3 and admits either the exact built-in
 base descriptor or one completely correlated compiled-profile descriptor plus
-callback-free browser presentation.
+callback-free browser presentation. Alpha.7 does not change the ABI number or
+durable formats; it consumes the existing intent-result provenance through a
+public redaction boundary.
 
 The ABI 3 boundary:
 
@@ -829,6 +850,12 @@ earlier or skip a gate.
   an intent-based toggle-button surface with startup validation of intent/state
   contracts.
 - Keep direct concrete action dispatch documented as an advanced policy bypass.
+- Route built-in strong formatting from native input, keyboard, and the default
+  toolbar through `breditor/format-strong`; correlate the fixed action-state
+  catalog and value contracts with the compiled descriptor before publication.
+- Make public imperative calls immediate-only and provenance-redacted while the
+  advanced adapter retains binding/action/fallthrough detail.
+- Complete.
 
 ### 0.2.0-alpha.8 — consumer proof
 

@@ -8,7 +8,16 @@ import {
   type BrowserEventRouterFaultReason,
   type BrowserEventRouterStatus,
 } from "./browser_event_router.js";
-import { BreditorCommandQueue } from "./command_queue.js";
+import {
+  BreditorCommandQueue,
+  openCommandQueueLeasePort,
+  type CommandQueueLeasePort,
+  type CommandQueueLeasedSubmission,
+} from "./command_queue.js";
+import {
+  noInputIntentRequest,
+  preserveSelectionSync,
+} from "./editor_command.js";
 import {
   BreditorDomRenderer,
   type RenderedProjection,
@@ -64,6 +73,7 @@ import {
   DEFAULT_TOOLBAR_MANIFEST,
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
+import { toolbarManifestMatchesProfileDescriptor } from "./toolbar_profile_contract.js";
 import type { BrowserActionStateSnapshot } from "./wasm_action_state_adapter.js";
 import type { BrowserProjectionPlainTextResult } from "./projection_plain_text.js";
 import {
@@ -215,6 +225,51 @@ export interface BreditorBrowserEditorSnapshot {
   readonly persistence: BreditorBrowserEditorPersistenceStatus;
 }
 
+/** Why a supported high-level semantic-intent request did not run. */
+export type BreditorBrowserIntentRejectionReason =
+  | "invalidIntent"
+  | "unknownIntent"
+  | "inputRequired"
+  | "busy"
+  | "unavailable";
+
+/**
+ * Synchronous, provenance-redacted result of one high-level semantic intent.
+ *
+ * Concrete binding/action identities and routing fallthroughs remain confined
+ * to the advanced adapter boundary. Every branch carries the authoritative
+ * document snapshot observed when the public call settled.
+ */
+export type BreditorBrowserIntentResult =
+  | Readonly<{
+      status: "committed";
+      intentId: string;
+      document: BreditorBrowserDocumentSnapshot;
+    }>
+  | Readonly<{
+      status: "blocked";
+      intentId: string;
+      reasonCode: string;
+      activation: "stateless" | "inactive" | "active" | "mixed";
+      document: BreditorBrowserDocumentSnapshot;
+    }>
+  | Readonly<{
+      status: "unhandled";
+      intentId: string;
+      document: BreditorBrowserDocumentSnapshot;
+    }>
+  | Readonly<{
+      status: "rejected";
+      intentId: string;
+      reason: BreditorBrowserIntentRejectionReason;
+      document: BreditorBrowserDocumentSnapshot;
+    }>
+  | Readonly<{
+      status: "failed";
+      intentId: string;
+      document: BreditorBrowserDocumentSnapshot;
+    }>;
+
 /** Notification-only listener compatible with `useSyncExternalStore`. */
 export type BreditorBrowserEditorSubscriber = () => unknown;
 
@@ -227,6 +282,7 @@ export interface BreditorBrowserEditorOpenError {
     | "browser_editor.persistence_load_failed"
     | "browser_editor.engine_bootstrap_failed"
     | "browser_editor.presentation_invalid"
+    | "browser_editor.toolbar_profile_invalid"
     | "browser_editor.initial_render_failed"
     | "browser_editor.initial_selection_failed"
     | "browser_editor.action_state_failed"
@@ -348,15 +404,29 @@ interface RuntimeResources {
   readonly installedHostChildren: readonly HTMLElement[];
   readonly engine: WasmBootstrappedEngineView;
   readonly adapter: BreditorWasmCommandAdapter;
+  readonly profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly contentReadPorts: Readonly<WasmContentReadPorts>;
   readonly selectionBridge: BreditorDomSelectionBridge;
   readonly actionStore: BreditorActionStateStore;
   readonly queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
+  readonly queueLeasePort: CommandQueueLeasePort<WasmCommandSequenceOutcome>;
   readonly storage: IndexedDbSessionCheckpointStore | undefined;
   readonly autosave:
     | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
     | undefined;
 }
+
+type ImmediateQueueDelivery =
+  | Readonly<{
+      status: "completed";
+      submission: Extract<
+        CommandQueueLeasedSubmission<WasmCommandSequenceOutcome>,
+        Readonly<{ status: "completed" }>
+      >;
+    }>
+  | Readonly<{ status: "busy" }>
+  | Readonly<{ status: "unavailable" }>
+  | Readonly<{ status: "failed" }>;
 
 const LIVE_STATUS: BreditorBrowserEditorStatus = Object.freeze({
   phase: "live",
@@ -449,11 +519,13 @@ export class BreditorBrowserEditor {
   readonly #installedHostChildren: readonly HTMLElement[];
   readonly #engine: WasmBootstrappedEngineView;
   readonly #adapter: BreditorWasmCommandAdapter;
+  readonly #profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly #readDocumentJson: BreditorWasmCommandAdapter["documentJsonReadPort"]["read"];
   readonly #readPlainText: BreditorWasmCommandAdapter["plainTextReadPort"]["read"];
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #actionStore: BreditorActionStateStore;
   readonly #queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
+  readonly #queueLeasePort: CommandQueueLeasePort<WasmCommandSequenceOutcome>;
   readonly #storage: IndexedDbSessionCheckpointStore | undefined;
   readonly #autosave:
     | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
@@ -490,11 +562,13 @@ export class BreditorBrowserEditor {
     this.#installedHostChildren = resources.installedHostChildren;
     this.#engine = resources.engine;
     this.#adapter = resources.adapter;
+    this.#profileDescriptor = resources.profileDescriptor;
     this.#readDocumentJson = resources.contentReadPorts.documentJson.read;
     this.#readPlainText = resources.contentReadPorts.plainText.read;
     this.#selectionBridge = resources.selectionBridge;
     this.#actionStore = resources.actionStore;
     this.#queue = resources.queue;
+    this.#queueLeasePort = resources.queueLeasePort;
     this.#storage = resources.storage;
     this.#autosave = resources.autosave;
     this.#snapshot = this.#readSnapshot();
@@ -531,6 +605,9 @@ export class BreditorBrowserEditor {
     let adapter: BreditorWasmCommandAdapter | undefined;
     let actionStore: BreditorActionStateStore | undefined;
     let queue: BreditorCommandQueue<WasmCommandSequenceOutcome> | undefined;
+    let queueLeasePort:
+      | CommandQueueLeasePort<WasmCommandSequenceOutcome>
+      | undefined;
     let autosave:
       | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
       | undefined;
@@ -658,6 +735,15 @@ export class BreditorBrowserEditor {
           return openFailure("browser_editor.presentation_invalid");
         }
       }
+      if (
+        normalized.toolbar !== undefined &&
+        !toolbarManifestMatchesProfileDescriptor(
+          normalized.toolbar.manifest,
+          bootstrap.profileDescriptor,
+        )
+      ) {
+        return openFailure("browser_editor.toolbar_profile_invalid");
+      }
 
       // Generated module/profile methods can synchronously reenter application
       // code just as IndexedDB can yield to it. Never overwrite a mount changed
@@ -770,12 +856,17 @@ export class BreditorBrowserEditor {
         return openFailure("browser_editor.setup_failed");
       }
 
-      queue = new BreditorCommandQueue(adapter.commandExecutor, {
+      const commandExecutor = adapter.commandExecutor;
+      queue = new BreditorCommandQueue(commandExecutor, {
         // A completed delivery must make action state revision-coherent before
         // submit() returns. The core-commit microtask below remains the fallback
         // for a commit which publishes before a later adapter/render failure.
         observer: actionStore.queueObserver,
       });
+      queueLeasePort = openCommandQueueLeasePort(queue, commandExecutor);
+      if (queueLeasePort === undefined) {
+        return openFailure("browser_editor.setup_failed");
+      }
       if (storage !== undefined && loaded?.ok === true) {
         autosave = new BreditorSessionCheckpointAutosave(
           adapter.sessionCheckpointReadPort,
@@ -792,10 +883,12 @@ export class BreditorBrowserEditor {
         installedHostChildren,
         engine,
         adapter,
+        profileDescriptor: bootstrap.profileDescriptor,
         contentReadPorts,
         selectionBridge,
         actionStore,
         queue,
+        queueLeasePort,
         storage,
         autosave,
       });
@@ -913,6 +1006,89 @@ export class BreditorBrowserEditor {
   /** Stable immutable external-store snapshot. */
   getSnapshot(): BreditorBrowserEditorSnapshot {
     return this.#snapshot;
+  }
+
+  /**
+   * Executes one declared no-input semantic intent against the current core
+   * selection without consulting mutable DOM selection.
+   *
+   * Delivery is immediate-or-rejected: calls made during composition, another
+   * delivery, or an authoritative read never wait behind work whose token may
+   * become stale.
+   */
+  executeIntent(intentId: string): BreditorBrowserIntentResult {
+    const reportedIntentId = validBrowserIntentId(intentId) ? intentId : "";
+    if (!validBrowserIntentId(intentId)) {
+      return this.#intentRejected(reportedIntentId, "invalidIntent");
+    }
+    const descriptor = findProfileIntent(this.#profileDescriptor, intentId);
+    if (descriptor === undefined) {
+      return this.#intentRejected(intentId, "unknownIntent");
+    }
+    if (descriptor.input.kind !== "none") {
+      return this.#intentRejected(intentId, "inputRequired");
+    }
+    if (this.#status.phase !== "live") {
+      return this.#intentRejected(intentId, "unavailable");
+    }
+
+    const delivery = this.#submitImmediate(() =>
+      noInputIntentRequest(
+        this.#adapter.deliveryToken(),
+        preserveSelectionSync(),
+        Object.freeze({ kind: "api" as const, detail: intentId }),
+        intentId,
+        "closeBefore",
+      ),
+    );
+    if (delivery.status === "busy" || delivery.status === "unavailable") {
+      return this.#intentRejected(intentId, delivery.status);
+    }
+    if (delivery.status === "failed") {
+      this.#fault("queueUncertain");
+      return this.#intentFailed(intentId);
+    }
+
+    try {
+      const sequence = delivery.submission.result;
+      if (sequence.status !== "delivered") {
+        throw new TypeError("intent delivery outcome is invalid");
+      }
+      const outcome = sequence.command;
+      const document = this.#correlatedIntentDocument(outcome.snapshot);
+      if (document === undefined || outcome.status === "disabled" ||
+        outcome.status === "unchanged") {
+        throw new TypeError("intent command outcome is invalid");
+      }
+      if (
+        outcome.status === "committed" &&
+        outcome.eventKind === "intent" &&
+        outcome.intentId === intentId
+      ) {
+        return Object.freeze({ status: "committed", intentId, document });
+      }
+      if (
+        outcome.status === "blocked" &&
+        outcome.intentId === intentId &&
+        validBrowserIntentReasonCode(outcome.reasonCode) &&
+        validBrowserIntentActivation(outcome.activation)
+      ) {
+        return Object.freeze({
+          status: "blocked",
+          intentId,
+          reasonCode: outcome.reasonCode,
+          activation: outcome.activation,
+          document,
+        });
+      }
+      if (outcome.status === "unhandled" && outcome.intentId === intentId) {
+        return Object.freeze({ status: "unhandled", intentId, document });
+      }
+    } catch {
+      // The single uncertainty transition below owns every impossible shape.
+    }
+    this.#fault("queueUncertain");
+    return this.#intentFailed(intentId);
   }
 
   /**
@@ -1216,11 +1392,13 @@ export class BreditorBrowserEditor {
     this.#observeRouterStatus(router.status);
   }
 
-  #dispatchToolbar(
-    invocation: ToolbarCommandInvocation,
-  ): ToolbarCommandDispatchResult {
+  #submitImmediate(
+    buildRequest: () => Parameters<
+      CommandQueueLeasePort<WasmCommandSequenceOutcome>["submitLeased"]
+    >[1],
+  ): ImmediateQueueDelivery {
     if (this.#status.phase !== "live") {
-      return toolbarCommandDispatchResult("rejected");
+      return Object.freeze({ status: "unavailable" });
     }
     try {
       const adapterState = this.#adapter.state;
@@ -1231,29 +1409,147 @@ export class BreditorBrowserEditor {
         adapterState === "readingCheckpoint" ||
         adapterState === "readingContent"
       ) {
-        // These states are temporary, exclusive leases rather than evidence of
-        // uncertainty. In particular, pointerdown intentionally preserves an
-        // active IME composition, so a toolbar click must fail benignly until
-        // the native composition settles.
-        return toolbarCommandDispatchResult("rejected");
+        return Object.freeze({ status: "busy" });
       }
-      const request = toolbarCommandRequest(
-        this.#adapter.deliveryToken(),
-        invocation,
-      );
-      const submission = this.#queue.submit(request);
-      if (submission.status === "completed") {
-        return toolbarCommandDispatchResult("completed");
+      if (adapterState !== "live") {
+        return Object.freeze({ status: "unavailable" });
       }
-      if (
-        submission.status === "rejected" &&
-        submission.reason !== "failed" &&
-        submission.reason !== "disposed"
-      ) {
-        return toolbarCommandDispatchResult("rejected");
+      if (this.#queueLeasePort.failure() !== undefined) {
+        return Object.freeze({ status: "failed" });
       }
     } catch {
-      // The single failure transition below is authoritative.
+      return Object.freeze({ status: "failed" });
+    }
+
+    let lease: ReturnType<
+      CommandQueueLeasePort<WasmCommandSequenceOutcome>["acquireLease"]
+    >;
+    try {
+      lease = this.#queueLeasePort.acquireLease();
+    } catch {
+      return Object.freeze({ status: "failed" });
+    }
+    if (lease === undefined) {
+      try {
+        return this.#queueLeasePort.failure() === undefined
+          ? Object.freeze({ status: "busy" })
+          : Object.freeze({ status: "failed" });
+      } catch {
+        return Object.freeze({ status: "failed" });
+      }
+    }
+
+    let submission:
+      | CommandQueueLeasedSubmission<WasmCommandSequenceOutcome>
+      | undefined;
+    let released = false;
+    try {
+      const request = buildRequest();
+      submission = this.#queueLeasePort.submitLeased(lease, request);
+    } catch {
+      submission = undefined;
+    } finally {
+      try {
+        released = this.#queueLeasePort.releaseLease(lease);
+      } catch {
+        released = false;
+      }
+    }
+
+    // Once the queue has returned an exact completion or uncertainty result,
+    // a lifecycle transition triggered reentrantly during that delivery must
+    // not rewrite what happened. In particular, disposal can invalidate the
+    // lease before this finally block releases it even though the command has
+    // already committed. `unavailable` is reserved for paths with no admitted
+    // outcome, never for a completed or failed submission.
+    if (submission?.status === "completed") {
+      if (!released && this.#status.phase === "live") {
+        return Object.freeze({ status: "failed" });
+      }
+      return Object.freeze({ status: "completed", submission });
+    }
+    if (submission?.status === "failed") {
+      return Object.freeze({ status: "failed" });
+    }
+    if (
+      submission?.status === "rejected" &&
+      submission.reason === "disposed"
+    ) {
+      return Object.freeze({ status: "unavailable" });
+    }
+    if (submission === undefined && this.#status.phase !== "live") {
+      return Object.freeze({ status: "unavailable" });
+    }
+    return Object.freeze({ status: "failed" });
+  }
+
+  #intentRejected(
+    intentId: string,
+    reason: BreditorBrowserIntentRejectionReason,
+  ): BreditorBrowserIntentResult {
+    return Object.freeze({
+      status: "rejected",
+      intentId,
+      reason,
+      document: this.#currentIntentDocument(),
+    });
+  }
+
+  #intentFailed(intentId: string): BreditorBrowserIntentResult {
+    return Object.freeze({
+      status: "failed",
+      intentId,
+      document: this.#currentIntentDocument(),
+    });
+  }
+
+  #currentIntentDocument(): BreditorBrowserDocumentSnapshot {
+    try {
+      const snapshot = this.#adapter.snapshot;
+      if (validBrowserDocumentSnapshot(snapshot)) {
+        return Object.freeze({
+          lineage: snapshot.lineage,
+          revision: snapshot.revision,
+        });
+      }
+    } catch {
+      // The immutable last-published snapshot remains the redacted fallback.
+    }
+    const fallback = this.#snapshot.document;
+    return Object.freeze({
+      lineage: fallback.lineage,
+      revision: fallback.revision,
+    });
+  }
+
+  #correlatedIntentDocument(
+    candidate: unknown,
+  ): BreditorBrowserDocumentSnapshot | undefined {
+    if (!validBrowserDocumentSnapshot(candidate)) return undefined;
+    const current = this.#currentIntentDocument();
+    return snapshotsMatch(candidate, current) ? current : undefined;
+  }
+
+  #dispatchToolbar(
+    invocation: ToolbarCommandInvocation,
+  ): ToolbarCommandDispatchResult {
+    if (this.#status.phase !== "live") {
+      return toolbarCommandDispatchResult("rejected");
+    }
+    const delivery = this.#submitImmediate(() =>
+      toolbarCommandRequest(this.#adapter.deliveryToken(), invocation),
+    );
+    if (delivery.status === "busy" || delivery.status === "unavailable") {
+      return toolbarCommandDispatchResult("rejected");
+    }
+    if (
+      delivery.status === "completed" &&
+      toolbarSequenceOutcomeMatchesInvocation(
+        delivery.submission.result,
+        invocation,
+      )
+    ) {
+      return toolbarCommandDispatchResult("completed");
     }
     this.#fault("toolbarDispatchFailed");
     return toolbarCommandDispatchResult("failed");
@@ -1435,6 +1731,76 @@ function snapshotsMatch(
   right: BreditorBrowserDocumentSnapshot,
 ): boolean {
   return left.lineage === right.lineage && left.revision === right.revision;
+}
+
+function validBrowserDocumentSnapshot(
+  value: unknown,
+): value is BreditorBrowserDocumentSnapshot {
+  if (!objectLike(value)) return false;
+  try {
+    const snapshot = value as Partial<BreditorBrowserDocumentSnapshot>;
+    return typeof snapshot.lineage === "string" &&
+      snapshot.lineage.length >= 1 &&
+      typeof snapshot.revision === "string" &&
+      /^(0|[1-9][0-9]*)$/u.test(snapshot.revision);
+  } catch {
+    return false;
+  }
+}
+
+function validBrowserIntentId(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= 128 &&
+    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+}
+
+function validBrowserIntentReasonCode(value: unknown): value is string {
+  return validBrowserIntentId(value);
+}
+
+function validBrowserIntentActivation(
+  value: unknown,
+): value is "stateless" | "inactive" | "active" | "mixed" {
+  return value === "stateless" || value === "inactive" ||
+    value === "active" || value === "mixed";
+}
+
+function findProfileIntent(
+  descriptor: BrowserCompiledProfileDescriptor,
+  intentId: string,
+): BrowserCompiledProfileDescriptor["intents"][number] | undefined {
+  for (let index = 0; index < descriptor.intents.length; index += 1) {
+    const intent = descriptor.intents[index];
+    if (intent?.id === intentId) return intent;
+  }
+  return undefined;
+}
+
+function toolbarSequenceOutcomeMatchesInvocation(
+  sequence: WasmCommandSequenceOutcome,
+  invocation: ToolbarCommandInvocation,
+): boolean {
+  try {
+    if (sequence.status !== "delivered") return false;
+    const outcome = sequence.command;
+    const command = invocation.command;
+    if (command.kind === "intent") {
+      return outcome.status === "committed"
+        ? outcome.eventKind === "intent" && outcome.intentId === command.intentId
+        : (outcome.status === "blocked" || outcome.status === "unhandled") &&
+            outcome.intentId === command.intentId;
+    }
+    if (command.kind === "history") {
+      return outcome.status === "unchanged" ||
+        (outcome.status === "committed" &&
+          outcome.eventKind === command.operation);
+    }
+    return outcome.status === "disabled"
+      ? outcome.actionId === command.actionId
+      : outcome.status === "committed" && outcome.eventKind === "action";
+  } catch {
+    return false;
+  }
 }
 
 function adapterStateIsContentBusy(
@@ -2117,6 +2483,8 @@ const OPEN_ERROR_MESSAGES: Readonly<
     "The Rust editor engine could not be initialized safely.",
   "browser_editor.presentation_invalid":
     "The browser render manifest does not exactly match the compiled profile.",
+  "browser_editor.toolbar_profile_invalid":
+    "The toolbar manifest does not exactly match the compiled semantic profile.",
   "browser_editor.initial_render_failed":
     "The initial semantic document could not be projected into the editing host.",
   "browser_editor.initial_selection_failed":

@@ -4,6 +4,65 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0-alpha.7 - 2026-09-08
+
+This unpublished checkpoint completes the supported synchronous semantic-
+intent path from the compiled Rust profile through native browser input, the
+public editor API, and the default or extension-supplied toggle-button toolbar.
+It retains Wasm ABI 3 and the durable V1/V2 formats unchanged.
+
+### Built-in intent and routed state
+
+- Added the core-owned tracked, no-input `breditor/format-strong` intent and
+  the priority-zero blocking `breditor/format-strong-binding` route to
+  `breditor/toggle-strong`. Both the exact base profile and compiled extension
+  profiles include that declaration and binding.
+- Changed `breditor/control-bold` from a direct action-state source to the
+  built-in routed intent. Its inactive/active/mixed and blocked results now
+  exercise the same frozen route used by supported Bold dispatch.
+- Kept concrete actions, bindings, and routed-fallthrough provenance inside
+  Rust and the advanced adapter result. The public browser result reports only
+  the requested intent, committed/blocked/unhandled/rejected/failed status,
+  stable blocked reason and activation when applicable, and the authoritative
+  document snapshot.
+
+### Supported browser intent path
+
+- Added synchronous `BreditorBrowserEditor.executeIntent()` for declared
+  no-input intents. Invalid, unknown, typed-input, busy, and unavailable calls
+  reject without entering the queue; committed, blocked, and unhandled results
+  remain discriminated and handle-free.
+- Made public API delivery immediate-or-rejected through an exact idle queue
+  lease. It never waits behind earlier work, never executes recursively, and
+  reports busy while another delivery, authoritative read, or composition owns
+  the adapter. An uncertain leased submission faults the high-level owner
+  rather than retrying a possibly published intent.
+- Routed native `beforeinput` `formatBold`, the configured primary-modifier+B
+  shortcut, and the default Bold toolbar button through
+  `breditor/format-strong`. Undo/Redo remain history commands; text and
+  structural edits retain their existing concrete built-in actions.
+
+### Descriptor-correlated presentation
+
+- Added exact startup validation between every high-level toolbar control and
+  the compiled profile descriptor. Supported controls must name a declared
+  no-input intent and its routed state, or an exact history direction; their
+  activation and absent value contracts must also agree. Direct concrete
+  action controls remain available only through the advanced low-level toolbar
+  assembly and are rejected by the supported editor startup path.
+- Correlated every consumed action-state snapshot with the descriptor's fixed
+  canonical catalog before publication. Missing, extra, substituted,
+  reordered, or duplicate state IDs and activation/value contract drift fail
+  closed; a failed refresh does not mutate the store's last-good snapshot.
+- Kept the public contribution model deliberately narrow: one immutable
+  native-button manifest, no callbacks, typed public intent input, custom
+  control kinds, menus/selects, extension keymaps or `beforeinput` rules,
+  dynamic replacement, or JavaScript action registration.
+
+Alpha.7 is complete. Alpha.8 is the consumer-proof checkpoint: the reference
+extension package, missing/extra contribution fixtures, complete cross-browser
+and packaging gates, compatibility/limitation sweep, and final size evidence.
+
 ## 0.2.0-alpha.6 - 2026-09-08
 
 This unpublished checkpoint completes the profile-aware base-text browser path.
@@ -77,8 +136,9 @@ changing Wasm ABI 3.
 Known limits remain intentional: the semantic tree is still document,
 paragraph, and text only; formats are property-free; paste is plain-text;
 links, lists, tables, embeds, collaboration, rich-fragment transfer, extension
-keymaps, and supported intent toolbar dispatch are not yet included. The intent
-toolbar surface is the next alpha.7 checkpoint.
+keymaps, and supported intent toolbar dispatch are not included in this
+checkpoint; the Alpha.7 entry above records their deliberately narrow
+successor surface.
 
 ## 0.2.0-alpha.5 - 2026-09-07
 

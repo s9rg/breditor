@@ -170,8 +170,8 @@ describe("translateKeyDown", () => {
   it("maps enabled bold and history shortcuts with exact history boundaries", () => {
     const bold = command(keyboard("b", { ctrlKey: true }), BEFOREINPUT_POLICY);
     expect(bold.command).toEqual({
-      kind: "action",
-      actionId: "breditor/toggle-strong",
+      kind: "intent",
+      intentId: "breditor/format-strong",
       input: { kind: "none" },
     });
     expect(bold.requirements.history).toBe("closeBefore");
@@ -199,7 +199,8 @@ describe("translateKeyDown", () => {
       primaryModifier: "meta",
     };
     expect(command(keyboard("b", { metaKey: true }), metaPolicy).command).toMatchObject({
-      actionId: "breditor/toggle-strong",
+      kind: "intent",
+      intentId: "breditor/format-strong",
     });
     expect(translate(keyboard("b", { ctrlKey: true }), metaPolicy)).toEqual({
       kind: "native",
