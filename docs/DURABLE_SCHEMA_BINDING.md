@@ -1,6 +1,6 @@
 # Durable schema binding contract
 
-Status: implemented through `0.2.0-alpha.7`; Wasm ABI 3 provides explicit V2
+Status: implemented in `0.2.0`; Wasm ABI 3 provides explicit V2
 profile factories, and the supported browser selects exact-base V1 or
 profile-aware V2 persistence without sniffing or silently converting formats
 

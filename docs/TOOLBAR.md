@@ -1,8 +1,8 @@
 # Breditor toolbar and action-state contract
 
 Status: supported by the public `0.1.0` runtime and carried unchanged into the
-`0.2.0-rc.1` descriptor-validated intent toolbar and reference-package
-consumer/cross-browser release audit
+`0.2.0` descriptor-validated intent toolbar and reference-package
+consumer/cross-browser release
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The

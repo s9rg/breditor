@@ -1,7 +1,7 @@
 # Breditor selection mapping contract
 
 Status: supported inside the public `0.1.0` runtime for the closed base schema
-and extended by the experimental `0.2.0-alpha.7` compiled-profile path; direct
+and extended by the supported `0.2.0` compiled-profile path; direct
 mapping and controller construction remains advanced and experimental
 
 The Rust editor state owns the semantic selection. A browser `Selection` is a

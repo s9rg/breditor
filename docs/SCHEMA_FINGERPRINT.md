@@ -2,8 +2,8 @@
 
 Status: compiler identity, strict public parser, durable binding, the complete
 Rust-core V2 record graph, the sealed base-text extension compiler, and the
-profile-aware browser persistence selector are implemented through
-`0.2.0-alpha.7`. Immutable compiled semantic profiles keep action/intent/state
+profile-aware browser persistence selector are implemented in `0.2.0`.
+Immutable compiled semantic profiles keep action/intent/state
 and browser-presentation declarations outside this digest; their separate
 runtime generation crosses the engine/Wasm/browser boundary without being
 serialized.

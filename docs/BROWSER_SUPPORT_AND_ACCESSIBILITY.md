@@ -1,6 +1,7 @@
 # Browser support and accessibility gate
 
-Status: required `0.1.0` desktop-browser and accessibility gate passed
+Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
+accessibility gate passed
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -9,7 +10,8 @@ opens the public `@breditor/browser` runtime in every engine. A missing browser
 capability or browser executable is a test failure; the core matrix is never
 silently skipped.
 
-The matrix covers the supported `0.1.0` browser contract:
+The matrix covers the supported `0.1.0` base and `0.2.0` profile browser
+contracts:
 
 - programmatically dispatched `beforeinput` coverage for Unicode insertion and
   backward deletion across non-BMP text;
@@ -26,16 +28,20 @@ The matrix covers the supported `0.1.0` browser contract:
   revision both before and after reload;
 - toolbar names, orientation, roving tab stop, arrow/Home/End focus, keyboard
   activation, `aria-pressed` state, and a computed visible focus outline on the
-  keyboard-focused control and editor; and
+  keyboard-focused control and editor;
 - an axe-core scan of the mounted editor, toolbar, status, and surrounding
-  fixture.
+  fixture; and
+- the actual `@breditor/reference-highlight` package with Document V2 startup,
+  Highlight intent/state/toolbar behavior, Strong/Highlight nesting, undo/redo,
+  export/copy, plain paste, persistence reload, restored history, and teardown.
 
-Run the gate after generating the two public packages:
+Run the gate after generating the three public packages:
 
 ```sh
 export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
 npm run build --workspace @breditor/wasm
 npm run build --workspace @breditor/browser
+npm run build --workspace @breditor/reference-highlight
 npm run typecheck:browser
 npm run test:browser
 ```
@@ -90,5 +96,5 @@ path in all three desktop engines, but synthetic composition cannot reproduce
 an operating system IME. Japanese, Korean, Chinese, Indic, handwriting,
 dictation, autocorrect, and hardware/software keyboard behavior—especially on
 iOS/iPadOS Safari and Android browsers—require manual testing on real devices.
-Breditor's `0.1.0` claim remains the documented paragraph-local composition
+Breditor's support claim remains the documented paragraph-local composition
 subset, not blanket mobile-IME support.

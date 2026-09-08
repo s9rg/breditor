@@ -1,12 +1,11 @@
 # Breditor extension architecture for 0.2.0
 
-Status: decision freeze; the `0.1.1` through `0.2.0-rc.1` compiler, engine,
+Status: complete decision freeze; the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
-consumer-proof, and release-audit checkpoints are complete; final `0.2.0`
-shippability validation is next
+consumer-proof, release-audit, and final shippability checkpoints passed
 
 This document defines Breditor's extension architecture and the deliberately
-narrow part of it that `0.2.0` will ship. It complements
+narrow part of it that `0.2.0` ships. It complements
 [`V0_2_SCOPE.md`](V0_2_SCOPE.md); if a broad architectural seam described here
 is not in that scope, it is not a `0.2.0` feature.
 
@@ -16,7 +15,7 @@ limitations** distinguish work that is not promised by `0.2.0`.
 
 ## Scope in one paragraph
 
-`0.2.0` will compile a complete, immutable set of declarative extension
+`0.2.0` compiles a complete, immutable set of declarative extension
 manifests in Rust before an editor opens. The first portable semantic extension
 point is intentionally only a property-free inline format on the existing base
 text structure. It can register a generic Rust-owned action, bind that action to
@@ -903,6 +902,7 @@ earlier or skip a gate.
   review.
 - Tag the exact tested commit; pushing and publishing remain separate explicit
   actions.
+- Complete.
 
 ## Architecture-specific acceptance tests
 

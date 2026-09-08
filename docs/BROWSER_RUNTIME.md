@@ -1,14 +1,14 @@
 # Breditor browser runtime
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
-extended by the unpublished `0.2.0-rc.1` compiled-profile, supported no-input
-intent/toolbar, and reference-package path
+extended in `0.2.0` by the compiled-profile, supported no-input intent/toolbar,
+and reference-package path
 
-`BreditorBrowserEditor` is the recommended application boundary for the
-`0.1.0` browser release. It assembles the generated Rust/Wasm engine, typed
-projection, DOM renderer, selection bridge, serial command queue, native-event
-router, action-state store, optional toolbar, and optional IndexedDB autosave
-behind one framework-neutral owner.
+`BreditorBrowserEditor` is the recommended application boundary introduced in
+`0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
+typed projection, DOM renderer, selection bridge, serial command queue,
+native-event router, action-state store, optional toolbar, and optional
+IndexedDB autosave behind one framework-neutral owner.
 
 The package-root API is intentionally small. Applications receive the editing
 element, immutable status snapshots, subscription, focus, persistence flush
@@ -128,7 +128,7 @@ host integration; their generated handle protocol is not a compatibility
 promise. Applications should install matching versions of `@breditor/browser`
 and `@breditor/wasm`.
 
-The experimental Alpha.8 root path retains Alpha.7's
+The supported `0.2.0` package-root path retains Alpha.7's
 `semanticProfile: { bootstrapJson }`, a
 matching Document V2 or Session Checkpoint V2 source, and an exact callback-free
 `rendering` manifest. The presentation must cover every format in the compiled
@@ -140,12 +140,12 @@ V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
 sniffs or falls back between wire generations.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
-supported package roots. Install exactly matching release-candidate packages:
+supported package roots. Install exactly matching `0.2.0` packages:
 
 ```sh
-npm install @breditor/browser@0.2.0-rc.1 \
-  @breditor/wasm@0.2.0-rc.1 \
-  @breditor/reference-highlight@0.2.0-rc.1
+npm install @breditor/browser@0.2.0 \
+  @breditor/wasm@0.2.0 \
+  @breditor/reference-highlight@0.2.0
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -645,7 +645,7 @@ The `0.1.0` runtime is deliberately a small local notes/form editor:
   positions fail closed.
 - Composition is constrained to one range in one paragraph and to the strict
   text/`strong` temporary DOM subset. Handwriting, cross-block IME edits, and a
-  broad mobile/browser claim are outside `0.1.0` support.
+  broad mobile/browser claim are outside current support.
 - Clipboard integration uses synchronous event `clipboardData`. There is no
   async Clipboard API, files, images, custom internal MIME, or general rich
   mixed-format paste; admitted HTML-only paste is flattened to plain text.
@@ -667,7 +667,7 @@ The `0.1.0` runtime is deliberately a small local notes/form editor:
   desktop automation is not a broad mobile-IME or assistive-technology support
   claim; those still need dedicated device and user-agent coverage.
 
-The unpublished Alpha.8 path deliberately widens only the sealed base-text
+The `0.2.0` path deliberately widens only the sealed base-text
 seams above: a compiled profile may add property-free inline formats, exact
 callback-free wrapper recipes, Document/Session Checkpoint V2, and scoped
 profile-bound persistence. Composition accepts only canonical known wrappers
@@ -675,7 +675,7 @@ and strips them back to plain replacement text; paste likewise transports no
 source formatting. It still has no property-bearing links, arbitrary nodes,
 extension callbacks, typed public intent inputs, custom toolbar controls or
 keymaps, rich paste, collaboration, selective undo, or dynamic extension
-lifecycle. These prerelease additions do not alter the stable
+lifecycle. These additions do not alter the stable
 `0.1.x` promises listed above.
 
 The reference package does not change those limits. It is trusted same-realm

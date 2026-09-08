@@ -14,14 +14,15 @@ or adopt a ProseMirror, Lexical, Tiptap, or CKEditor protocol.
 
 ## Use
 
-This release candidate is currently unpublished. After publication, install one
-exact browser/Wasm/reference set. The exact browser peer matters: browser
-manifests are owned by the module instance that checks them.
+This repository does not publish packages automatically. After a maintainer
+publishes the release, install one exact browser/Wasm/reference set. The exact
+browser peer matters: browser manifests are owned by the module instance that
+checks them.
 
 ```sh
-npm install @breditor/browser@0.2.0-rc.1 \
-  @breditor/wasm@0.2.0-rc.1 \
-  @breditor/reference-highlight@0.2.0-rc.1
+npm install @breditor/browser@0.2.0 \
+  @breditor/wasm@0.2.0 \
+  @breditor/reference-highlight@0.2.0
 ```
 
 ```ts

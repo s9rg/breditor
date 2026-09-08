@@ -1,6 +1,6 @@
 # Browser release size budgets
 
-Status: required `0.2.0-rc.1` release gate
+Status: required `0.2.0` release gate
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -70,6 +70,22 @@ application ceiling therefore moves from 725,000 to 750,000 bytes; the gzip
 ceiling remains 200,000. The same-source tagged comparison produced the same
 734,688-byte output, so this recalibration is build-output headroom rather than
 reference-extension code being added to the React application.
+
+The final `0.2.0` gate measured:
+
+- browser-package JavaScript: 848,842 bytes;
+- browser declarations: 225,614 bytes;
+- reference Highlight JavaScript: 8,088 bytes;
+- reference Highlight declarations: 7,880 bytes;
+- generated Wasm: 1,224,760 bytes;
+- generated Wasm JavaScript glue: 46,732 bytes;
+- reference-application JavaScript: 734,680 raw and 194,962 gzip bytes;
+- reference-application Wasm: 1,224,760 raw and 362,048 gzip bytes;
+- packed browser package: 210,754 bytes;
+- packed reference Highlight package: 9,435 bytes; and
+- packed Wasm package: 428,471 bytes.
+
+No final-release ceiling was widened.
 
 This includes the profile-aware projection path, descriptor-only bounded array
 admission, and brand-checked native Event-family, Selection,

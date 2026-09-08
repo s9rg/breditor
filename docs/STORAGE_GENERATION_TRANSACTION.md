@@ -27,7 +27,7 @@ Validation format name: `breditor/local-log-storage-generation`
 Implemented validation format version: `1`
 
 Compatibility status: experimental repository-internal validation shape
-outside the `0.1.x` browser compatibility promise
+outside the supported browser compatibility promise
 
 Version `0.0.32` implements the six bounded identity/version values, trusted
 ordinary-rotation binding, private-constructor non-`Clone` manifest, strict
@@ -35,7 +35,7 @@ encode/decode codec, independent limits, and borrowed preparation validation
 for this shape. It does not implement a prepared state, capability, receipt,
 adapter, compare-and-swap, I/O, durability, restart selection, or ownership
 release. The implemented V1 validation shape remains experimental and outside
-the `0.1.x` compatibility promise. Implementations must not treat
+the supported package-root compatibility promise. Implementations must not treat
 successful validation as evidence that `breditor-core` can publish or commit
 the record, select storage during restart, or recover and activate log bytes.
 

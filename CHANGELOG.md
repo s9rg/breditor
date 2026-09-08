@@ -4,6 +4,73 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.0 - 2026-09-08
+
+This release makes Breditor's first narrow semantic extension path shippable.
+It promotes the audited RC.1 surface without changing Rust semantics, the
+closed primitive replay language, V1/V2 durable formats, reference identities
+or fingerprint, package-root exports other than the required final version
+literal, or Wasm ABI 3.
+
+### Supported extension foundation
+
+- Added a supported, immutable compiled-profile path for property-free inline
+  formats on Breditor's sealed paragraph/text AST. Rust remains authoritative
+  for schema validation, selection, actions, transactions, history, replay,
+  checkpoints, and semantic action state.
+- Added exact Document/Session Checkpoint V2 profile binding, an opaque
+  process-local profile generation, callback-free browser rendering, guarded
+  no-input semantic intents, descriptor-validated toggle-button toolbars,
+  canonical export/copy, plain-text paste, and profile-scoped IndexedDB restore.
+- Shipped matching `@breditor/browser@0.2.0`, `@breditor/wasm@0.2.0`, and
+  `@breditor/reference-highlight@0.2.0` package definitions. The reference
+  package proves the full Highlight path from supported package roots with one
+  exact shared browser peer. Publication remains a separate maintainer action;
+  this release workflow does not publish to npm or crates.io.
+- Retained the exact-base V1 browser path and documented `0.1.x` promises.
+  Advanced browser exports, raw generated Wasm handles, Rust APIs, and the
+  local-log/storage-generation research remain outside the supported
+  package-root compatibility surface.
+
+### Final shippability proof
+
+- Repeated Rust formatting, all-target/all-feature workspace check, Clippy with
+  warnings denied, the complete native workspace suite, and the Wasm target
+  check, lint, and 24 browser-run boundary tests on final `0.2.0` metadata.
+- Passed all TypeScript checks and 869 browser, 9 reference-package, and 14
+  React unit tests. All 48 package-built browser tests passed in Chromium,
+  Firefox, and WebKit, including Highlight, history, persistence reload,
+  clipboard, teardown, and accessibility assertions.
+- Rebuilt Wasm twice with byte-identical output, verified the reviewed
+  202-signature ABI baseline, generated declarations, package file allowlists,
+  locked dependency notices, and license bytes, then passed the isolated legacy
+  and supported-root reference consumer flows through real Chromium.
+- Measured 848,842 browser JavaScript bytes, 225,614 browser declaration bytes,
+  8,088 reference JavaScript bytes, 7,880 reference declaration bytes,
+  1,224,760 Wasm bytes, and 46,732 Wasm-glue bytes. The React reference build is
+  734,680 JavaScript bytes (194,962 gzip) and 1,224,760 Wasm bytes (362,048
+  gzip). Packed artifacts are 210,754 browser, 9,435 reference, and 428,471
+  Wasm bytes. Every frozen ceiling passed.
+
+### Explicit release limits
+
+- Profiles are fixed for an engine lifetime. There is no dynamic extension
+  install/unload, package discovery, independently compiled plugin ABI, or
+  browser/Rust callback seam.
+- Extensions cannot add arbitrary nodes, blocks, links/properties, operations,
+  codecs, custom action inputs, keymaps, input rules, menus, selects, or custom
+  toolbar controls. The supported contribution is a property-free inline format
+  with the fixed generic toggle/intent/state path.
+- Paste deliberately strips source formatting; generic HTML fidelity and rich
+  fragment round trips are not promised. Browser evidence is desktop
+  Playwright coverage, not mobile IME, screen-reader, or WCAG certification.
+- History is bounded local linear undo/redo, and IndexedDB is a same-origin
+  checkpoint slot with conflict detection rather than merge, collaboration,
+  CRDT/OT, authenticated storage, rollback defense, or secure erasure.
+- Resource ceilings can reject otherwise meaningful large inputs. Moving to a
+  different schema fingerprint requires explicit admission/migration and starts
+  a new history lineage; no general migration or downgrade engine ships here.
+
 ## 0.2.0-rc.1 - 2026-09-08
 
 This unpublished release candidate freezes the complete Alpha.8 extension

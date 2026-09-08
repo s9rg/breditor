@@ -9,11 +9,11 @@ The package type entry point supplies the `esnext.disposable` library reference
 required by generated `[Symbol.dispose]` declarations, so consumers do not need
 to add that library solely to type-check Breditor.
 
-This release candidate is currently unpublished. After publication, the
-registry package can be installed with:
+This repository does not publish packages automatically. After a maintainer
+publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.2.0-rc.1
+npm install @breditor/wasm@0.2.0
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,13 +25,14 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x` browser bootstrap is the no-argument default asynchronous
-initializer shown above, called once in an HTTP(S) browser or browser bundler
-that resolves the adjacent generated Wasm asset, before passing the initialized
-namespace to the exactly matching `@breditor/browser` package. Synchronous
-`initSync`, initializer arguments, direct `@breditor/wasm/wasm` binary imports,
-and Node/file-URL initialization remain available to advanced hosts but do not
-carry the `0.1.x` compatibility promise.
+The supported `0.1.x` and `0.2.0` browser bootstrap is the no-argument default
+asynchronous initializer shown above, called once in an HTTP(S) browser or
+browser bundler that resolves the adjacent generated Wasm asset, before passing
+the initialized namespace to the exactly matching `@breditor/browser` package.
+Synchronous `initSync`, initializer arguments, direct
+`@breditor/wasm/wasm` binary imports, and Node/file-URL initialization remain
+available to advanced hosts but do not carry the supported high-level
+compatibility promise.
 
 Ignore the value returned when the default initializer resolves. Only its
 no-argument call, asynchronous settlement, and the usable initialized namespace
@@ -41,9 +42,9 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 `take*` contracts and call `free()` on every owned handle. The higher-level
 `@breditor/browser` package contains the checked browser adapters and should be
 preferred by editor integrations. Raw generated handles and classes are an
-advanced boundary outside the `0.1.x` API compatibility promise; official
-browser/Wasm packages are supported only as an exact same-version pair with ABI
-generation `3`.
+advanced boundary outside the supported high-level API compatibility promise;
+official browser/Wasm packages are supported only as an exact same-version pair
+with ABI generation `3`.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session

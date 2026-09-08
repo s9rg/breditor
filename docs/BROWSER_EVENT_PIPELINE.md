@@ -1,8 +1,7 @@
 # Breditor browser event pipeline
 
 Status: supported inside the public `0.1.0` runtime for the closed base schema
-and retained by the experimental `0.2.0-alpha.7` compiled-profile and intent
-path; direct
+and retained by the supported `0.2.0` compiled-profile and intent path; direct
 event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,

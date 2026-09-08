@@ -28,7 +28,7 @@ IndexedDB database name: `breditor-local-log-v1`
 
 IndexedDB database version: `1`
 
-Compatibility status: experimental local-log profile outside the `0.1.x`
+Compatibility status: experimental local-log profile outside the supported
 browser compatibility promise
 
 This document freezes one correctness-first browser profile for the

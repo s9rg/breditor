@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.0-rc.1` packaged boundary contract; ABI generation `3` is
+Status: `0.2.0` packaged boundary contract; ABI generation `3` is
 authoritative for the matching official browser/Wasm packages, while direct
 raw-handle use is an intentionally narrow, advanced, and experimental
 integration surface
@@ -16,11 +16,11 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-`@breditor/browser@0.2.0-rc.1` and `@breditor/wasm@0.2.0-rc.1` are
+`@breditor/browser@0.2.0` and `@breditor/wasm@0.2.0` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
 are not the high-level browser compatibility surface. The reference package
-also has version `0.2.0-rc.1` and declares the exact browser package as a
+also has version `0.2.0` and declares the exact browser package as a
 peer so its branded presentation values are created by the same module instance
 that admits them.
 
@@ -43,10 +43,11 @@ link. The build first writes an isolated directory, compares its declaration
 byte-for-byte with the reviewed ABI, and only then replaces
 `packages/breditor-wasm/dist`. The package check compares the complete content
 hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x` HTTP(S)-browser/browser-bundler entry
-point. Advanced hosts may import `@breditor/wasm/wasm` and call `initSync`, but
-synchronous, binary, argument-taking, and direct Node/file-URL initialization
-carry no `0.1.x` compatibility promise.
+initializer is the supported `0.1.x` and `0.2.0`
+HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
+`@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
+argument-taking, and direct Node/file-URL initialization carry no supported
+high-level compatibility promise.
 
 The `breditor-wasm` crate is the synchronous, no-DOM adapter around the Rust
 `CheckpointedEditorEngine`. Rust remains the sole owner of the document AST,

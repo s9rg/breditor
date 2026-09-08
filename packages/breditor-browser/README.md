@@ -20,13 +20,14 @@ optional declarative toolbar, and optional atomic IndexedDB autosave as one
 all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
-The package root is the supported `0.1.x` ESM entry point. Clean npm tarballs
-are install-, import-, type-check-, production-bundle-, and real-browser tested
-without workspace links. Declaration maps are intentionally omitted because
-the corresponding TypeScript sources are not part of the package.
+The package root is the supported ESM entry point for the `0.1.x` base and the
+`0.2.0` extension surface. Clean npm tarballs are install-, import-, type-check-,
+production-bundle-, and real-browser tested without workspace links.
+Declaration maps are intentionally omitted because the corresponding
+TypeScript sources are not part of the package.
 
-The current release-candidate implementation requires Wasm ABI 3 and an exact
-matching Wasm package version before it reads the generated engine factory.
+The `0.2.0` implementation requires Wasm ABI 3 and an exact matching Wasm
+package version before it reads the generated engine factory.
 Bootstrap owns
 and validates the compiled-profile generation and descriptor and checks every
 observation, projection, selection, action-state, and command result against
@@ -46,21 +47,22 @@ Alpha.8 adds the separately packaged callback-free
 `@breditor/reference-highlight` profile and proves its complete supported-root
 path in clean tarball and Chromium/Firefox/WebKit consumers. The former bare-
 factory and standalone restore seams are not accepted by the supported root
-API. `0.2.0-rc.1` remains unpublished and is the no-feature-widening release audit.
+API. `0.2.0` carries the audited RC.1 surface without feature widening.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
-experimental and outside the `0.1.x` compatibility promise. Only the package
-root and the documented V1 browser formats carry that promise.
+experimental and outside the supported application compatibility promise. The
+package root and documented V1 base forms remain supported; `0.2.0` adds the
+exact compiled-profile V2 forms described above, not the advanced internals.
 
 ## Public runtime
 
-This release candidate is currently unpublished. After publication, the
-matching registry packages can be installed with:
+This repository does not publish packages automatically. After a maintainer
+publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.2.0-rc.1 @breditor/wasm@0.2.0-rc.1
+npm install @breditor/browser@0.2.0 @breditor/wasm@0.2.0
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -121,7 +123,7 @@ Document V2, and an owned `rendering` value from
 `createInlineFormatRenderManifest`. It must cover every admitted format; recipes
 contain only a safe element, checked classes, and explicit ordering edges.
 
-The supported release-candidate configuration passes the initialized, exactly
+The supported `0.2.0` configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
 not admit a bare structural factory. Lower-level structural factory types exist
 only on the experimental advanced surface for adapter testing and host-side

@@ -1,12 +1,11 @@
 # Breditor `0.2.0` scope
 
-Status: in progress; the `0.1.1` through `0.2.0-rc.1` compiler, engine, Wasm,
+Status: complete; the `0.1.1` through `0.2.0` compiler, engine, Wasm,
 profile-aware browser, supported intent/toolbar, reference-package,
-consumer-proof, and release-audit checkpoints are complete; final `0.2.0`
-shippability validation is next
+consumer-proof, release-audit, and final shippability checkpoints passed
 
-`0.2.0` will make Breditor's first deliberately narrow semantic extension
-path shippable. An application will be able to assemble a frozen editor
+`0.2.0` makes Breditor's first deliberately narrow semantic extension path
+shippable. An application can assemble a frozen editor
 profile before opening content, add property-free inline formats to the base
 text structure, expose those formats through semantic intents, render them in
 the browser, and contribute toolbar controls without giving extension code
@@ -18,7 +17,7 @@ step, model, and serialization protocols are not Breditor protocols.
 
 ## Product promise
 
-The release target is one complete extension path with these properties:
+The release ships one complete extension path with these properties:
 
 - an immutable, bounded extension set with qualified identities, exact
   dependencies, explicit conflicts, and deterministic dependency-first order;
@@ -173,7 +172,7 @@ dynamically link arbitrary third-party Rust after it has been built.
 
 ## Deliberately outside `0.2.0`
 
-The release will not promise:
+The release does not promise:
 
 - arbitrary block or inline node kinds, headings, lists, tables, images, embeds,
   atom nodes, or nested editable regions;
@@ -216,7 +215,7 @@ schema metadata for storage selection. It compiles the same bootstrap JSON a
 second time to create the engine after the asynchronous load, then compares the
 two schema identities before autosave can start. This deliberate double
 compilation avoids retaining generated Wasm authority across an async storage
-boundary; its startup cost is an accepted alpha.6 limitation.
+boundary; its startup cost is an accepted `0.2.0` limitation.
 
 ## Checkpoint sequence
 
@@ -294,6 +293,7 @@ when review finds a correctness boundary; later features are not claimed early.
     Complete.
 11. `0.2.0`: final shippability gates, release notes, clean consumer proof, and
     an honest limitations review.
+    Complete.
 
 ## Exit gates
 

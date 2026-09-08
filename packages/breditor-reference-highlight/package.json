@@ -1,6 +1,6 @@
 {
   "name": "@breditor/reference-highlight",
-  "version": "0.2.0-rc.1",
+  "version": "0.2.0",
   "description": "Callback-free reference Highlight extension for Breditor",
   "keywords": [
     "rich-text-editor",
@@ -32,7 +32,7 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@breditor/browser": "0.2.0-rc.1"
+    "@breditor/browser": "0.2.0"
   },
   "scripts": {
     "clean": "node scripts/clean.mjs",

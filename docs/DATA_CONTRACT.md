@@ -1,8 +1,10 @@
 # Rust data contract
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
-the `0.1.x` browser path; other formats in this proof kernel remain experimental
-unless [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them.
+the `0.1.x` browser path. Document V2 and Session Checkpoint V2 are supported
+only through the exact `0.2.0` package-root compiled-profile path; other formats
+in this proof kernel remain experimental unless
+[`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them.
 The complete fingerprint-bearing V2 record graph was implemented as the
 experimental Rust-only `0.2.0-alpha.2` boundary. `0.2.0-alpha.3` adds the sealed
 base-text schema compiler and generic property-free inline-format behavior;
@@ -28,11 +30,11 @@ Local-log-checkpoint format: `breditor/local-log-checkpoint`, explicit versions
 `1` and `2`
 Local-log-frame format: binary `Local Log Frame`, explicit versions `1` and `2`
 Storage-generation validation format: `breditor/local-log-storage-generation`,
-explicit versions `1` and `2` (experimental and outside the `0.1.x`
-compatibility promise)
+explicit versions `1` and `2` (experimental and outside the supported
+package-root compatibility promise)
 Initial storage-root format: `breditor/local-log-storage-root`, explicit
-versions `1` and `2` (experimental and outside the `0.1.x` compatibility
-promise)
+versions `1` and `2` (experimental and outside the supported package-root
+compatibility promise)
 Base schema: `breditor/base`, version `1`
 
 ## Boundary
@@ -292,8 +294,8 @@ anchor. It performs no I/O and proves no provisioning, CAS/head currentness,
 lifetime ID/fence freshness, empty-generation reservation, writer authority/epoch,
 durability, commit evidence, or ownership release. No IndexedDB, JavaScript,
 Wasm, or filesystem adapter exists, and these storage formats remain
-experimental repository-internal contracts outside the `0.1.x` compatibility
-promise.
+experimental repository-internal contracts outside the supported package-root
+compatibility promise.
 
 Version `0.0.35` retains the complete checked selected binding and the exact
 canonical current/optional-immediate-predecessor selection bytes in the
@@ -3543,8 +3545,8 @@ EOF, byte provenance, physical length, sealing, publication, or durability.
 Version `0.0.32` implements the platform-neutral value and validation subset of
 [`STORAGE_GENERATION_TRANSACTION.md`](STORAGE_GENERATION_TRANSACTION.md). The
 implemented validation-only `breditor/local-log-storage-generation@1` name and
-shape remain an experimental repository-internal contract outside the `0.1.x`
-compatibility promise.
+shape remain an experimental repository-internal contract outside the supported
+package-root compatibility promise.
 
 The six new bounded types keep storage roles distinct:
 

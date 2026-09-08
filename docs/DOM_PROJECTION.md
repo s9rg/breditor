@@ -1,7 +1,7 @@
 # Breditor DOM projection contract
 
 Status: supported inside the public `0.1.0` runtime for the closed base schema
-and extended by the experimental `0.2.0-alpha.7` compiled-profile path; direct
+and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a

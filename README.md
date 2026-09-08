@@ -11,8 +11,8 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
-The current `0.2.0-rc.1` candidate retains Alpha.8's immutable compiled editor
-profile through the guarded Rust engine, Wasm ABI 3, and the browser projection
+Version `0.2.0` retains the audited RC.1 immutable compiled editor profile
+through the guarded Rust engine, Wasm ABI 3, and the browser projection
 boundary. Profile-created engine
 contexts, observations, intent outcomes, action-state snapshots, projections,
 selection reads, and command results all share one opaque process-local
@@ -54,8 +54,8 @@ render recipes and action-state entries, or an invalid toolbar intent/state
 contribution, fail before startup publishes host DOM.
 Fingerprint-default persistence is profile-scoped rather than document-scoped;
 hosts with multiple same-schema documents must provide distinct caller slots.
-`0.2.0-rc.1` is complete and remains unpublished; final `0.2.0` shippability
-validation is next and will not widen the feature set. The
+Version `0.2.0` is complete and remains unpublished. It does not widen the
+audited RC.1 feature set. The
 decisions and checkpoint gates are recorded in the
 [extension architecture](docs/EXTENSION_ARCHITECTURE.md) and
 [`0.2.0` scope](docs/V0_2_SCOPE.md); the exact hash input and locked base vector
@@ -204,11 +204,11 @@ The implementation includes:
   and an inherited proof-dropping compaction lifetime ceiling whose typed
   failures return the unchanged log owner.
 
-The supported `0.1.0` product is intentionally small, not a general document
-processor. The Alpha.8 path retains Alpha.7's generic property-free format
+The supported product is intentionally small, not a general document
+processor. The `0.2.0` path retains Alpha.7's generic property-free format
 kinds and sealed manifest-owned toggle action/intent/state compilation through
-browser projection, rendering, and intent-backed toggle buttons. It does not add format
-attributes, arbitrary nodes, custom actions, typed public intent inputs,
+browser projection, rendering, and intent-backed toggle buttons. It does not
+add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
 One manifest and one complete profile can each contribute at most 255 toggles;
@@ -247,8 +247,8 @@ typestate, compare-and-swap, durability claim, or writable-owner release. The
 caller-supplied binding and prior manifest are not authority, and successful
 validation cannot prove ID/fence freshness or an empty successor. The
 implemented validation-only `breditor/local-log-storage-generation@1` shape
-remains an experimental repository-internal contract outside the `0.1.x`
-compatibility promise.
+remains an experimental repository-internal contract outside the supported
+package-root compatibility promise.
 
 Version `0.0.33` is contract-only. It freezes one correctness-first
 [IndexedDB local-log profile](docs/INDEXEDDB_STORAGE_PROFILE.md): a distinct
@@ -454,7 +454,7 @@ resolution remains pure Rust: no IndexedDB adapter, browser-event
 authentication, process-restart reconstruction, arbitrary far-later conflict
 classification, durability, or ownership release is implemented. All Storage
 V1 shapes remain experimental repository-internal contracts outside the
-`0.1.x` compatibility promise.
+supported package-root compatibility promise.
 
 Version `0.0.41` implements the next pure-Rust writer-fence value boundary.
 `LocalLogStorageWriterEpoch` is a canonical, nonzero, nonwrapping `u64` with

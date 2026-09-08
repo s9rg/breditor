@@ -1,10 +1,10 @@
 # Breditor compatibility policy
 
-Status: active for the `0.1.x` line
+Status: active for the supported `0.1.x` base and `0.2.0` extension surfaces
 
-This policy defines the deliberately narrow compatibility promise made by the
-first Breditor release. It is a source and runtime contract, not a claim that a
-package has been published to npm or crates.io.
+This policy defines the deliberately narrow compatibility promise made by
+supported Breditor releases. It is a source and runtime contract, not a claim
+that a package has been published to npm or crates.io.
 
 ## Supported `0.1.x` surface
 
@@ -149,13 +149,23 @@ missing required fields, noncanonical numbers, invalid schema content,
 corruption, or a resource-limit violation can fail closed. A compatible reader
 need not accept bytes that were never conforming to the relevant V1 contract.
 
-An incompatible application API change requires `0.2.0`. An incompatible wire
-change requires a new format name or `formatVersion`. An incompatible generated
-Wasm transport requires a new ABI number. A change crossing more than one of
-these boundaries must carry every applicable signal; silently changing meaning
-under the same application version, wire version, or ABI is not allowed.
+An incompatible application API change requires a new incompatible application
+version. An incompatible wire change requires a new format name or
+`formatVersion`. An incompatible generated Wasm transport requires a new ABI
+number. A change crossing more than one of these boundaries must carry every
+applicable signal; silently changing meaning under the same application
+version, wire version, or ABI is not allowed.
 
-## Experimental `0.2.0-rc.1` profile boundary
+## `0.2.0` profile boundary
+
+The supported `0.2.0` package-root addition is the complete, immutable,
+callback-free property-free inline-format path documented below: exact official
+browser/Wasm pairing, compiled-profile bootstrap, V2 document or session input,
+complete declarative rendering, no-input semantic intents, checked toggle-button
+toolbar contributions, profile-bound persistence, and the reference Highlight
+package. Removing or changing the meaning of that documented path requires a
+later incompatible application version. The lower-level Rust and advanced
+browser surfaces remain outside that package-root promise as stated below.
 
 The Rust core now has separate fingerprint-bearing V2 codecs for Document,
 Operation, Transaction Request, Editor State, Commit, Session Checkpoint, Local
@@ -227,8 +237,8 @@ remain advanced; public results are provenance-redacted and immediate-only.
 There is no typed public intent input, custom control kind, extension keymap, or
 custom `beforeinput` registration.
 
-Alpha.8 adds `@breditor/reference-highlight` as the package proof for that
-experimental boundary. Its supported surface is the package root only. It
+Alpha.8 added `@breditor/reference-highlight` as the package proof for that
+narrow boundary. Its supported surface is the package root only. It
 exports frozen IDs, ABI-local profile bootstrap data, the exact durable schema
 fingerprint, bounded fingerprint-bearing Document V2 helpers/fixtures, and
 browser-created render and toolbar manifests. Internal `dist/*` files are not
@@ -250,14 +260,14 @@ executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; the `0.2.0-rc.1` pair reports ABI `3`. The prerelease path checks
+ABI `2`; the `0.2.0` pair reports ABI `3`. The `0.2.x` path checks
 both the exact ABI string and exact embedded package version before reading the
 generated engine factory. ABI compatibility alone never makes mismatched
 official package versions a supported pair.
 
-The supported release-candidate reference configuration installs exactly
-`@breditor/browser@0.2.0-rc.1`, `@breditor/wasm@0.2.0-rc.1`, and
-`@breditor/reference-highlight@0.2.0-rc.1`. The reference package declares
+The supported `0.2.0` reference configuration installs exactly
+`@breditor/browser@0.2.0`, `@breditor/wasm@0.2.0`, and
+`@breditor/reference-highlight@0.2.0`. The reference package declares
 the exact browser version as a peer dependency. Its render and toolbar
 manifests are branded by the `@breditor/browser` module instance that created
 them, so a duplicate, nested, or mismatched browser copy is not a compatible
@@ -269,7 +279,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`:
+form remains supported throughout `0.1.x` and `0.2.0`:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -284,7 +294,7 @@ glue rather than a public application contract.
 
 Initializer arguments, `initSync`, the `@breditor/wasm/wasm` binary export, and
 direct Node/file-URL initialization remain advanced escape hatches and are not
-part of the `0.1.x` compatibility promise.
+part of the supported high-level compatibility promise.
 
 `@breditor/wasm` is an optional peer dependency because an application may
 initialize and inject the official module namespace itself. Optional does not
@@ -302,9 +312,9 @@ standalone bootstrap ingress or a custom-runtime conformance promise.
 
 The supported automated baseline is the repository's lockfile-pinned desktop
 Playwright matrix: Chromium, Firefox, and WebKit. Support applies to the latest
-available `0.1.x` patch and to the documented product subset. The project does
-not promise long-term-support branches, backports, or continuing fixes for an
-older `0.1.x` patch after a newer patch is available.
+available `0.1.x` patch and the documented `0.2.0` product subset. The project
+does not promise long-term-support branches, backports, or continuing fixes for
+an older release after a newer compatible release is available.
 
 The matrix exercises real package-built pages. ASCII typing plus Backspace and
 Delete use Playwright's real keyboard input path; non-BMP Unicode insertion and
@@ -319,7 +329,8 @@ only. VoiceOver
 was not enabled. Neither that audit nor the axe checks are a screen-reader,
 assistive-technology, mobile-browser, or WCAG conformance claim.
 
-Alpha.8 additionally runs the actual `@breditor/reference-highlight` package
+The `0.2.0` matrix additionally runs the actual
+`@breditor/reference-highlight` package
 in Chromium, Firefox, and WebKit. That path covers Document V2 startup,
 Highlight intent/state/toolbar delivery, mixed Strong/Highlight nesting,
 undo/redo, export/copy, formatting-stripping paste, persistence flush/reload,
@@ -345,7 +356,7 @@ pretending a consumer lockfile is controlled here.
 ## Explicitly excluded surfaces
 
 The following are useful implementation and research surfaces, but they carry
-no `0.1.x` compatibility promise:
+no supported package-root compatibility promise:
 
 - every export from `@breditor/browser/advanced`, including renderer,
   projection, DOM-selection, command-queue, event, composition, clipboard,
@@ -376,5 +387,5 @@ In particular, the advanced local-log and storage-generation work is not the
 supported IndexedDB Session Checkpoint Profile V1. Exported Rust proof types or
 documented experimental bytes do not make those designs a browser durability
 contract. Promoting any excluded surface requires an explicit public contract
-in a later release; incompatible promotion or redesign uses `0.2.0`, a new
-format version, or a new Wasm ABI as appropriate.
+in a later release; incompatible promotion or redesign uses a new incompatible
+application version, a new format version, or a new Wasm ABI as appropriate.
