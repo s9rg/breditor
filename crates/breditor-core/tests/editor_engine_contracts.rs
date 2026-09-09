@@ -11,13 +11,17 @@ use breditor_core::{
         ObservedAvailability,
         builtins::{insert_text_action_id, insert_text_input_contract, toggle_strong_action_id},
     },
-    codec::DocumentJsonCodec,
+    codec::{CommitJsonCodec, DocumentJsonCodec, LocalLogEntryJsonCodec},
     document::{Format, FormatSet, PropertyMap},
     engine::{
         EditorActionOutcome, EditorEngine, EditorEngineError, EditorEngineErrorCode,
-        EditorEngineEvent, EditorEngineEventKind,
+        EditorEngineEvent, EditorEngineEventKind, EditorEngineObservation,
     },
     identity::QualifiedName,
+    local_log::{
+        LocalLogEntry, LocalLogEventKind, LocalLogId, LocalLogRecovery, LocalLogSequence,
+        LocalSessionId, ReplayId,
+    },
     position::{Affinity, Point},
     selection::{RangeSelection, Selection},
     session::EditorSession,
@@ -25,6 +29,8 @@ use breditor_core::{
     transaction::ReplayDirection,
 };
 use support::{TestResult, document_json, paragraph, path, test_error, text_node};
+
+const NORMALIZATION_PRIVATE_TEXT: &str = "private-normalization-document-payload";
 
 fn strong_formats() -> Result<FormatSet, Box<dyn Error>> {
     Ok(FormatSet::try_from_formats(vec![Format::new(
@@ -105,6 +111,47 @@ fn only_text(state: &EditorState) -> Result<&str, Box<dyn Error>> {
 
 fn require_event(outcome: EditorActionOutcome) -> Result<EditorEngineEvent, Box<dyn Error>> {
     outcome.into_event().ok_or_else(|| test_error("action was unexpectedly disabled").into())
+}
+
+fn normalized_entry(
+    context: &EditorContext,
+    event: EditorEngineEvent,
+    expected_source_kind: EditorEngineEventKind,
+    expected_local_kind: LocalLogEventKind,
+    expected_observation: &EditorEngineObservation,
+    sequence: u64,
+) -> Result<LocalLogEntry, Box<dyn Error>> {
+    assert_eq!(event.kind(), expected_source_kind);
+    let commit_codec = CommitJsonCodec::new(context.clone());
+    let expected_commit_bytes =
+        event.commit().map(|commit| commit_codec.encode(commit)).transpose()?;
+
+    let normalized = event.into_local_log_event();
+    let debug = format!("{normalized:?}");
+    assert!(!debug.contains(NORMALIZATION_PRIVATE_TEXT));
+    assert_eq!(normalized.source_kind(), expected_source_kind);
+    assert_eq!(normalized.event().kind(), expected_local_kind);
+    assert_eq!(normalized.observation(), expected_observation);
+    let (source_kind, event, observation) = normalized.into_parts();
+    assert_eq!(source_kind, expected_source_kind);
+    assert_eq!(observation, *expected_observation);
+    let actual_commit_bytes =
+        event.as_commit().map(|commit| commit_codec.encode(commit)).transpose()?;
+    assert_eq!(actual_commit_bytes, expected_commit_bytes);
+
+    let entry = LocalLogEntry::new(
+        LocalSessionId::try_new("session:engine-normalization")?,
+        LocalLogId::try_new("log:engine-normalization")?,
+        LocalLogSequence::try_new(sequence)?,
+        ReplayId::try_new(format!("engine:{sequence}"))?,
+        event,
+    );
+    let entry_codec = LocalLogEntryJsonCodec::new(context.clone());
+    let encoded = entry_codec.encode(&entry)?;
+    let decoded = entry_codec.decode(&encoded)?;
+    assert_eq!(decoded, entry);
+    assert_eq!(entry_codec.encode(&decoded)?, encoded);
+    Ok(decoded)
 }
 
 fn assert_stale(error: &EditorEngineError) {
@@ -443,6 +490,106 @@ fn guarded_history_replays_and_controls_report_exact_effectiveness() -> TestResu
     assert_eq!(engine.session().redo_depth(), 0);
     assert!(engine.undo(&current)?.is_none());
     assert!(engine.redo(&current)?.is_none());
+    Ok(())
+}
+
+#[test]
+fn every_effective_engine_event_maps_infallibly_to_the_local_replay_language() -> TestResult {
+    let caret = collapsed(text_point(1, Affinity::After)?);
+    let initial = editor_state(
+        "engine-local-log-normalization",
+        NORMALIZATION_PRIVATE_TEXT,
+        Some(caret),
+        None,
+    )?;
+    let context = initial.context().clone();
+    let mut engine = EditorEngine::try_with_base_actions(EditorSession::new(initial.clone()))?;
+    let mut entries = Vec::new();
+
+    let expected = engine.observation();
+    let action = require_event(engine.execute_action(&expected, &insert_invocation("b")?)?)?;
+    let expected = engine.observation();
+    entries.push(normalized_entry(
+        &context,
+        action,
+        EditorEngineEventKind::Action,
+        LocalLogEventKind::Commit,
+        &expected,
+        1,
+    )?);
+
+    let close = engine
+        .close_history_group(&expected)?
+        .ok_or_else(|| test_error("open history group was not closed"))?;
+    let expected = engine.observation();
+    entries.push(normalized_entry(
+        &context,
+        close,
+        EditorEngineEventKind::CloseHistoryGroup,
+        LocalLogEventKind::CloseHistoryGroup,
+        &expected,
+        2,
+    )?);
+
+    let selection = engine
+        .set_selection(&expected, Some(collapsed(text_point(0, Affinity::Before)?)))?
+        .ok_or_else(|| test_error("selection change was unexpectedly ignored"))?;
+    let expected = engine.observation();
+    entries.push(normalized_entry(
+        &context,
+        selection,
+        EditorEngineEventKind::Selection,
+        LocalLogEventKind::Commit,
+        &expected,
+        3,
+    )?);
+
+    let undo =
+        engine.undo(&expected)?.ok_or_else(|| test_error("undo was unexpectedly unavailable"))?;
+    let expected = engine.observation();
+    entries.push(normalized_entry(
+        &context,
+        undo,
+        EditorEngineEventKind::Undo,
+        LocalLogEventKind::Undo,
+        &expected,
+        4,
+    )?);
+
+    let redo =
+        engine.redo(&expected)?.ok_or_else(|| test_error("redo was unexpectedly unavailable"))?;
+    let expected = engine.observation();
+    entries.push(normalized_entry(
+        &context,
+        redo,
+        EditorEngineEventKind::Redo,
+        LocalLogEventKind::Redo,
+        &expected,
+        5,
+    )?);
+
+    let clear = engine
+        .clear_history(&expected)?
+        .ok_or_else(|| test_error("nonempty history was not cleared"))?;
+    let expected = engine.observation();
+    entries.push(normalized_entry(
+        &context,
+        clear,
+        EditorEngineEventKind::ClearHistory,
+        LocalLogEventKind::ClearHistory,
+        &expected,
+        6,
+    )?);
+
+    let recovered = LocalLogRecovery::new(
+        LocalSessionId::try_new("session:engine-normalization")?,
+        LocalLogId::try_new("log:engine-normalization")?,
+    )
+    .recover(EditorSession::new(initial), entries)?;
+    assert_eq!(recovered.session().state(), engine.state());
+    assert_eq!(recovered.session().history_capacity(), engine.session().history_capacity());
+    assert_eq!(recovered.session().undo_depth(), engine.session().undo_depth());
+    assert_eq!(recovered.session().redo_depth(), engine.session().redo_depth());
     Ok(())
 }
 

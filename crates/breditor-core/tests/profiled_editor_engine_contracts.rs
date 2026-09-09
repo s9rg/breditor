@@ -15,19 +15,24 @@ use breditor_core::{
         routing::{BindingId, IntentExecutionOutcome, IntentId, IntentInvocation},
     },
     codec::{
-        CodecErrorCode, DocumentJsonCodec, DocumentJsonCodecV2, SESSION_CHECKPOINT_FORMAT_VERSION,
-        SESSION_CHECKPOINT_V2_FORMAT_VERSION, SessionCheckpointJsonCodec,
-        SessionCheckpointJsonCodecV2, SessionCheckpointLimits,
+        CodecErrorCode, DocumentJsonCodec, DocumentJsonCodecV2, LocalLogEntryJsonCodecV2,
+        SESSION_CHECKPOINT_FORMAT_VERSION, SESSION_CHECKPOINT_V2_FORMAT_VERSION,
+        SessionCheckpointJsonCodec, SessionCheckpointJsonCodecV2, SessionCheckpointLimits,
     },
     engine::{
         CheckpointedEditorEngine, CheckpointedEditorEngineError, CheckpointedEditorEngineErrorCode,
         EditorEngine, EditorEngineError, EditorEngineErrorCode, EditorEngineProfileError,
+        EditorIntentEventOutcome,
     },
     extension::{
         ExtensionId, ExtensionLimits, ExtensionManifest, ExtensionSet, ExtensionVersion,
         InlineFormatSpecV1, InlineFormatToggleSpecV1,
     },
     identity::QualifiedName,
+    local_log::{
+        LocalLogEntry, LocalLogEventKind, LocalLogId, LocalLogRecovery, LocalLogSequence,
+        LocalSessionId, ReplayId,
+    },
     position::{Affinity, Point},
     profile::{CompiledEditorProfile, CompiledProfileActionStateSource},
     schema::{DocumentLimits, PersistedTypeRevision, SchemaId, SchemaVersion},
@@ -306,6 +311,23 @@ fn typed_intent_commits_or_blocks_with_indicator_and_successor_observation() -> 
     assert!(outcome.is_committed());
     assert_eq!(outcome.observation(), &committed.observation());
     assert_eq!(outcome.observation().profile_generation(), committed.profile_generation());
+    let event_outcome = outcome.into_event_outcome();
+    assert!(!format!("{event_outcome:?}").contains("abc"));
+    let EditorIntentEventOutcome::Committed(committed_outcome) = event_outcome else {
+        return Err(test_error("committed intent did not produce an engine event").into());
+    };
+    assert!(!format!("{committed_outcome:?}").contains("abc"));
+    assert_eq!(committed_outcome.intent_id().as_str(), INTENT);
+    assert_eq!(committed_outcome.binding().id().as_str(), BINDING);
+    assert!(committed_outcome.fallthroughs().is_empty());
+    assert_eq!(committed_outcome.observation(), &committed.observation());
+    let (_, _, _, event) = committed_outcome.into_parts();
+    assert_eq!(event.kind(), breditor_core::engine::EditorEngineEventKind::Action);
+    assert_eq!(event.observation(), &committed.observation());
+    assert_eq!(
+        event.into_local_log_event().event().kind(),
+        breditor_core::local_log::LocalLogEventKind::Commit
+    );
 
     let mut blocked = profiled_engine(
         compiled_profile()?,
@@ -329,6 +351,13 @@ fn typed_intent_commits_or_blocks_with_indicator_and_successor_observation() -> 
         Some(ActionActivation::Inactive),
     );
     assert_eq!(outcome.observation(), &expected);
+    let unchanged = outcome.into_event_outcome();
+    assert!(!format!("{unchanged:?}").contains("abc"));
+    assert_eq!(unchanged.observation(), &expected);
+    let EditorIntentEventOutcome::Unchanged(outcome) = unchanged else {
+        return Err(test_error("blocked intent unexpectedly produced an engine event").into());
+    };
+    assert!(matches!(outcome.execution(), IntentExecutionOutcome::Blocked { .. }));
 
     let error = require_engine_error(blocked.execute_intent(
         &expected,
@@ -336,6 +365,82 @@ fn typed_intent_commits_or_blocks_with_indicator_and_successor_observation() -> 
     ))?;
     assert_eq!(error.code(), EditorEngineErrorCode::IntentRouting);
     assert_eq!(blocked.observation(), expected);
+    Ok(())
+}
+
+#[test]
+fn profiled_event_projection_round_trips_schema_bound_v2_controls_and_recovers() -> TestResult {
+    let profile = compiled_profile()?;
+    let initial = profiled_state(
+        &profile,
+        DocumentLimits::default(),
+        "profile-v2-event-projection",
+        Some(selected_text()?),
+    )?;
+    let context = initial.context().clone();
+    let schema_binding = profile.schema().durable_binding();
+    let session_id = LocalSessionId::try_new("session:profile-v2-projection")?;
+    let log_id = LocalLogId::try_new("log:profile-v2-projection")?;
+    let mut engine =
+        EditorEngine::try_with_compiled_profile(EditorSession::new(initial.clone()), profile)?;
+    let codec = LocalLogEntryJsonCodecV2::new(context);
+
+    let expected = engine.observation();
+    let outcome = engine
+        .execute_intent(&expected, &IntentInvocation::without_input(IntentId::try_new(INTENT)?))?;
+    let EditorIntentEventOutcome::Committed(committed) = outcome.into_event_outcome() else {
+        return Err(test_error("profile intent did not commit").into());
+    };
+    let (_, _, _, event) = committed.into_parts();
+    let normalized = event.into_local_log_event();
+    assert_eq!(normalized.source_kind(), breditor_core::engine::EditorEngineEventKind::Action);
+    assert_eq!(normalized.event().kind(), LocalLogEventKind::Commit);
+    assert_eq!(normalized.observation(), &engine.observation());
+    let (_, action_event, _) = normalized.into_parts();
+    let action_entry = LocalLogEntry::new_with_schema_binding(
+        schema_binding.clone(),
+        session_id.clone(),
+        log_id.clone(),
+        LocalLogSequence::FIRST,
+        ReplayId::try_new("profile-v2:action")?,
+        action_event,
+    );
+    let action_json = codec.encode(&action_entry)?;
+    let action_entry = codec.decode(&action_json)?;
+    assert_eq!(action_entry.schema_binding(), &schema_binding);
+    assert_eq!(codec.encode(&action_entry)?, action_json);
+
+    let expected = engine.observation();
+    let clear = engine
+        .clear_history(&expected)?
+        .ok_or_else(|| test_error("profile action left no history to clear"))?;
+    let normalized = clear.into_local_log_event();
+    assert_eq!(
+        normalized.source_kind(),
+        breditor_core::engine::EditorEngineEventKind::ClearHistory
+    );
+    assert_eq!(normalized.event().kind(), LocalLogEventKind::ClearHistory);
+    assert_eq!(normalized.observation(), &engine.observation());
+    let (_, clear_event, _) = normalized.into_parts();
+    let clear_entry = LocalLogEntry::new_with_schema_binding(
+        schema_binding.clone(),
+        session_id.clone(),
+        log_id.clone(),
+        LocalLogSequence::try_new(2)?,
+        ReplayId::try_new("profile-v2:clear")?,
+        clear_event,
+    );
+    let clear_json = codec.encode(&clear_entry)?;
+    let clear_entry = codec.decode(&clear_json)?;
+    assert_eq!(clear_entry.schema_binding(), &schema_binding);
+    assert_eq!(codec.encode(&clear_entry)?, clear_json);
+
+    let recovered = LocalLogRecovery::new(session_id, log_id)
+        .recover(EditorSession::new(initial), vec![action_entry, clear_entry])?;
+    assert_eq!(recovered.session().state(), engine.state());
+    assert_eq!(recovered.session().history_capacity(), engine.session().history_capacity());
+    assert_eq!(recovered.session().undo_depth(), engine.session().undo_depth());
+    assert_eq!(recovered.session().redo_depth(), engine.session().redo_depth());
     Ok(())
 }
 

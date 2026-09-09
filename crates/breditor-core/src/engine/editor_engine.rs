@@ -316,8 +316,8 @@ impl EditorEngine {
         expected: &EditorEngineObservation,
     ) -> Result<Option<EditorEngineEvent>, EditorEngineError> {
         self.require_observation(expected)?;
-        let commit = self.session.undo()?;
-        Ok(commit.map(|commit| EditorEngineEvent::undo(Box::new(commit), self.observation())))
+        let replay = self.session.undo_for_engine()?;
+        Ok(replay.map(|replay| EditorEngineEvent::undo(replay, self.observation())))
     }
 
     /// Atomically replays the nearest redo entry after checking the observation.
@@ -334,8 +334,8 @@ impl EditorEngine {
         expected: &EditorEngineObservation,
     ) -> Result<Option<EditorEngineEvent>, EditorEngineError> {
         self.require_observation(expected)?;
-        let commit = self.session.redo()?;
-        Ok(commit.map(|commit| EditorEngineEvent::redo(Box::new(commit), self.observation())))
+        let replay = self.session.redo_for_engine()?;
+        Ok(replay.map(|replay| EditorEngineEvent::redo(replay, self.observation())))
     }
 
     /// Closes an open history merge group after checking the observation.
@@ -418,20 +418,30 @@ impl fmt::Debug for EditorEngine {
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
+    use std::{error::Error, io};
 
     use crate::{
         action::{
-            ActionStateCatalog,
-            builtins::base_action_registry,
+            Action, ActionActivation, ActionDecision, ActionEvaluation, ActionFault, ActionId,
+            ActionRegistration, ActionRegistry, ActionStateCatalog, ActionStateIndicator,
+            ActionStateSpec, ActionStateValue, DisabledReason,
+            builtins::{
+                ToggleStrongAction, base_action_registrations, base_action_registry,
+                toggle_strong_action_id,
+            },
             routing::{
-                IntentDeclaration, IntentExecutionOutcome, IntentId, IntentInvocation, IntentRouter,
+                BindingId, BindingPriority, DisabledRouting, IntentBinding, IntentDeclaration,
+                IntentExecutionOutcome, IntentId, IntentInvocation, IntentRouter,
             },
         },
         codec::DocumentJsonCodec,
+        engine::{EditorEngineEventKind, EditorIntentEventOutcome},
         extension::ExtensionSet,
+        identity::QualifiedName,
+        position::{Affinity, NodePath, Point},
         profile::CompiledEditorProfile,
         schema::{CompiledSchema, DocumentLimits},
+        selection::RangeSelection,
         session::EditorSession,
         state::{EditorContext, EditorState, LineageId},
     };
@@ -443,6 +453,34 @@ mod tests {
         r#"{"kind":"element","type":"breditor/paragraph","entityId":null,"properties":{},"children":[]}"#,
         r#"]}}"#,
     );
+
+    #[derive(Clone, Copy)]
+    struct DisabledTrackedAction;
+
+    impl Action for DisabledTrackedAction {
+        type Input = ();
+
+        fn state_spec() -> ActionStateSpec {
+            ToggleStrongAction::state_spec()
+        }
+
+        fn evaluate(
+            &self,
+            _: &EditorState,
+            (): &Self::Input,
+        ) -> Result<ActionEvaluation, ActionFault> {
+            Ok(ActionEvaluation::new(
+                ActionDecision::Disabled(DisabledReason::new(
+                    QualifiedName::from_known_static("test/forced-fallthrough"),
+                    None,
+                )),
+                ActionStateIndicator::new(
+                    ActionActivation::Inactive,
+                    ActionStateValue::Unsupported,
+                ),
+            ))
+        }
+    }
 
     fn profile_with_unbound_intent() -> Result<CompiledEditorProfile, Box<dyn Error>> {
         let schema = CompiledSchema::breditor_base();
@@ -459,10 +497,63 @@ mod tests {
         ))
     }
 
+    fn profile_with_fallthrough_intent() -> Result<CompiledEditorProfile, Box<dyn Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let disabled_action = ActionId::try_new("test/disabled-tracked-action")?;
+        let mut actions = base_action_registrations();
+        actions.push(ActionRegistration::new(disabled_action.clone(), DisabledTrackedAction));
+        let actions = ActionRegistry::try_new(actions)?;
+        let intent = IntentId::try_new("test/fallthrough-intent")?;
+        let bindings = vec![
+            IntentBinding::new(
+                BindingId::try_new("test/disabled-selection-binding")?,
+                intent.clone(),
+                disabled_action,
+                BindingPriority::new(10),
+                DisabledRouting::FallThrough,
+            ),
+            IntentBinding::new(
+                BindingId::try_new("test/committed-strong-binding")?,
+                intent.clone(),
+                toggle_strong_action_id(),
+                BindingPriority::new(0),
+                DisabledRouting::Block,
+            ),
+        ];
+        let router = IntentRouter::try_new(
+            actions,
+            vec![IntentDeclaration::new(intent).with_state_spec(ToggleStrongAction::state_spec())],
+            bindings,
+        )?;
+        let action_states = ActionStateCatalog::try_new_with_router(router.clone(), Vec::new())?;
+        Ok(CompiledEditorProfile::from_compilation(
+            ExtensionSet::empty(),
+            schema,
+            router,
+            action_states,
+        ))
+    }
+
     fn session(context: &EditorContext, lineage: &str) -> Result<EditorSession, Box<dyn Error>> {
         let document = DocumentJsonCodec::new(context.schema().clone()).decode(EMPTY_DOCUMENT)?;
         let state =
             EditorState::try_new(context, LineageId::try_new(lineage)?, document, None, None)?;
+        Ok(EditorSession::new(state))
+    }
+
+    fn session_with_collapsed_selection(
+        context: &EditorContext,
+        lineage: &str,
+    ) -> Result<EditorSession, Box<dyn Error>> {
+        let document = DocumentJsonCodec::new(context.schema().clone()).decode(EMPTY_DOCUMENT)?;
+        let point = Point::Children {
+            parent_path: NodePath::try_from_indices(vec![0])?,
+            child_index: 0,
+            affinity: Affinity::Before,
+        };
+        let selection = Some(RangeSelection::new(point.clone(), point).into());
+        let state =
+            EditorState::try_new(context, LineageId::try_new(lineage)?, document, selection, None)?;
         Ok(EditorSession::new(state))
     }
 
@@ -503,6 +594,45 @@ mod tests {
         assert!(!outcome.is_committed());
         assert_eq!(outcome.observation(), &expected);
         assert_eq!(engine.observation(), expected);
+        let projected = outcome.into_event_outcome();
+        assert_eq!(projected.observation(), &expected);
+        let EditorIntentEventOutcome::Unchanged(outcome) = projected else {
+            return Err(io::Error::other("unhandled intent unexpectedly produced an event").into());
+        };
+        assert!(matches!(outcome.execution(), IntentExecutionOutcome::Unhandled { .. }));
+        assert_eq!(outcome.observation(), &expected);
+        Ok(())
+    }
+
+    #[test]
+    fn committed_intent_projection_preserves_nonempty_ordered_fallthrough_provenance()
+    -> Result<(), Box<dyn Error>> {
+        let profile = profile_with_fallthrough_intent()?;
+        let context = profile.editor_context(DocumentLimits::default());
+        let mut engine = EditorEngine::try_with_compiled_profile(
+            session_with_collapsed_selection(&context, "profile-fallthrough-intent")?,
+            profile,
+        )?;
+        let expected = engine.observation();
+        let outcome = engine.execute_intent(
+            &expected,
+            &IntentInvocation::without_input(IntentId::try_new("test/fallthrough-intent")?),
+        )?;
+
+        let EditorIntentEventOutcome::Committed(committed) = outcome.into_event_outcome() else {
+            return Err(
+                io::Error::other("fallthrough route did not reach the enabled binding").into()
+            );
+        };
+        assert_eq!(committed.fallthroughs().len(), 1);
+        let (intent, binding, fallthroughs, event) = committed.into_parts();
+        assert_eq!(intent.as_str(), "test/fallthrough-intent");
+        assert_eq!(binding.id().as_str(), "test/committed-strong-binding");
+        assert_eq!(fallthroughs.len(), 1);
+        assert_eq!(fallthroughs[0].binding_id().as_str(), "test/disabled-selection-binding");
+        assert_eq!(fallthroughs[0].action_id().as_str(), "test/disabled-tracked-action");
+        assert_eq!(event.kind(), EditorEngineEventKind::Action);
+        assert_eq!(event.observation(), &engine.observation());
         Ok(())
     }
 }

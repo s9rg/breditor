@@ -22,7 +22,7 @@ pub use error::{HistoryReplayError, SessionCommitError};
 pub use history_stamp::HistoryStamp;
 pub use history_status::SessionHistoryStatus;
 
-pub(crate) use editor_session::EditorSessionCheckpointParts;
+pub(crate) use editor_session::{EditorSessionCheckpointParts, ExecutedRedo, ExecutedUndo};
 pub(crate) use history::HistoryCheckpointInvariantError;
 pub(crate) use history_entry::HistoryEntry;
 pub(crate) use prepared_history_replay::{PreparedHistoryReplay, PreparedHistoryReplayError};

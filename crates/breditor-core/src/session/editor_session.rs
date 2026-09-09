@@ -1,5 +1,9 @@
 use std::fmt;
 
+mod executed_history_replay;
+
+pub(crate) use executed_history_replay::{ExecutedRedo, ExecutedUndo};
+
 use crate::{
     action::{
         ActionExecutionError, ActionPreparation,
@@ -283,6 +287,15 @@ impl EditorSession {
         self.replay(ReplayDirection::Undo)
     }
 
+    /// Replays undo and seals its successful publication for guarded-engine use.
+    ///
+    /// The direction-specific proof cannot be constructed outside this module,
+    /// so downstream trusted normalization never needs to infer undo from commit
+    /// metadata or bypass validation for an arbitrary commit.
+    pub(crate) fn undo_for_engine(&mut self) -> Result<Option<ExecutedUndo>, HistoryReplayError> {
+        self.replay(ReplayDirection::Undo).map(|executed| executed.map(ExecutedUndo::new))
+    }
+
     /// Replays the nearest redo entry as one atomic transaction.
     ///
     /// Returns `Ok(None)` when redo is unavailable. A successful replay returns
@@ -294,6 +307,11 @@ impl EditorSession {
     /// stack when boundary validation or the complete transaction fails.
     pub fn redo(&mut self) -> Result<Option<Commit>, HistoryReplayError> {
         self.replay(ReplayDirection::Redo)
+    }
+
+    /// Replays redo and seals its successful publication for guarded-engine use.
+    pub(crate) fn redo_for_engine(&mut self) -> Result<Option<ExecutedRedo>, HistoryReplayError> {
+        self.replay(ReplayDirection::Redo).map(|executed| executed.map(ExecutedRedo::new))
     }
 
     /// Closes the current merge group without changing editor state.

@@ -4,6 +4,43 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.2.1 - 2026-09-08
+
+This checkpoint closes the guarded engine's process-local replay-classification
+gap without changing the document model, durable V1/V2 formats, Wasm ABI 3,
+browser API, compiled-profile fingerprint, or extension semantics.
+
+### Core event-classification projection
+
+- Added a non-lossy consuming projection from every sealed
+  `EditorEngineEvent` to `EditorEngineLocalLogEvent`. It retains the source
+  engine kind, corresponding `LocalLogEvent`, and exact successor
+  `EditorEngineObservation`. Action and selection share the ordinary local
+  commit classification but remain distinguishable by source kind; undo,
+  redo, close-history-group, and clear-history remain distinct.
+- Added `EditorIntentOutcome::into_event_outcome`. Committed intents retain
+  their intent, selected binding, ordered fallthrough trace, action-classified
+  engine event, and successor observation. Blocked and unhandled routes remain
+  complete unchanged outcomes and claim no mutation.
+- Kept `LocalLogEvent::try_undo` and `try_redo` mandatory for decoded or
+  caller-supplied commits. The trusted constructors now require
+  direction-specific, session-issued replay proofs rather than an arbitrary
+  crate-internal commit.
+
+### Scope
+
+- Added exhaustive public-boundary coverage for all six engine event kinds,
+  exact durable commit bytes across projection, codec round trips, successful
+  V1 and profile-owned V2 log recovery (including a schema-bound control),
+  state-only selection commits, successor-observation retention, redacted
+  wrapper diagnostics, and non-lossy committed/blocked/unhandled intent
+  projection with an ordered disabled fallthrough trace.
+- This is process-local classification, not durable append coordination. It
+  does not construct a `LocalLogEntry`; supply its schema, session, log,
+  sequence, or replay bindings; establish ordering, uniqueness, or atomic
+  append ownership; perform I/O; acknowledge an append; or attest durability.
+  Package definitions remain unpublished.
+
 ## 0.2.0 - 2026-09-08
 
 This release makes Breditor's first narrow semantic extension path shippable.

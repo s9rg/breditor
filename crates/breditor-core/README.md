@@ -758,14 +758,24 @@ reference. This prevents a direct accidental move into an ordinary log event,
 but it is not authorization or provenance because public codecs can copy the
 commit. Payload-bearing sources are omitted from engine `Debug`.
 
-`EditorEngineEvent` is a process-local controller result, not
-`LocalLogEvent`. No infallible internal mapping to that separately sealed event
-exists yet, and checked undo/redo conversion is still a fallible step after
-session publication. `LocalLogEntry` separately requires session/generation,
-sequence, and retry identities. A later log coordinator must reserve those and
-close conversion before publication. The core facade itself adds no Wasm ABI,
-DOM/event adapter, subscription scheduler, or persistence I/O; those remain in
-the separate Wasm and browser packages.
+Version `0.2.1` adds a non-lossy consuming projection from a sealed
+`EditorEngineEvent` to `EditorEngineLocalLogEvent`. The result retains the
+source engine kind, corresponding `LocalLogEvent` classification, and exact
+successor observation. Action and selection share `LocalLogEventKind::Commit`
+but remain distinguishable by source kind; undo, redo, close-group, and
+clear-history retain their local replay classifications. Committed intent
+outcomes can produce an action-classified event while retaining their route
+provenance; blocked and unhandled routes remain complete unchanged outcomes.
+Decoded or caller-supplied undo/redo commits still require the checked public
+constructors, while trusted engine classification requires a direction-specific
+session replay proof.
+
+This is process-local classification only. It does not construct a
+`LocalLogEntry`; supply its schema/session/log/sequence/replay bindings;
+enforce ordering or uniqueness; atomically bind engine mutation to append
+ownership; perform I/O; acknowledge an append; or attest durability. The core
+facade itself adds no Wasm ABI, DOM/event adapter, subscription scheduler, or
+persistence I/O; those remain in the separate Wasm and browser packages.
 
 Version `0.0.49` adds `delete-forward`, `delete-selection`, and
 `insert-plain-text` to the base action generation. Directional deletion uses

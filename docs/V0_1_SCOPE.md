@@ -2,6 +2,10 @@
 
 Status: released; the `0.1.0` scope and every required release gate are complete
 
+Historical note: this document freezes the `0.1.0` boundary. Version `0.2.1`
+supersedes the event-classification limitation below; durable entry allocation,
+append ownership, physical I/O, and durability remain outside that projection.
+
 `0.1.0` is a small, usable, local-first browser rich-text editor backed by
 the Breditor Rust core. It does not mean that every storage or collaboration
 contract already present in the proof kernel has a browser implementation.
@@ -83,14 +87,13 @@ accidental-misuse guard, not an authorization or provenance boundary: a host can
 copy the borrowed commit through the public codec and must not treat event
 sealing as proof.
 
-`LocalLogEvent` is the core's separately sealed ordinary/undo/redo/control
-classification, but no infallible internal mapping from `EditorEngineEvent` to
-that value exists yet. Its checked undo/redo constructors consume a commit and
-can fail after the session replay that produced the engine event has already
-published. `LocalLogEntry` then adds the durable session/generation, sequence,
-and retry identities needed by append. An append coordinator must reserve those
-identities and close conversion before mutation; inventing them in a UI facade
-would be untrustworthy and would couple every command to one storage policy.
+At `0.1.0`, `LocalLogEvent` was the core's separately sealed ordinary/undo/
+redo/control classification, but no infallible internal projection from
+`EditorEngineEvent` existed. Its checked undo/redo constructors could fail
+after the session replay had already published. `LocalLogEntry` then added the
+durable session/log, sequence, and replay identities needed by append. Version
+`0.2.1` later added a non-lossy process-local classification projection, but it
+still does not allocate those identities or coordinate append.
 
 This is a deliberate `0.1.0` limitation, not permission to reinterpret an
 engine event as an append-ready log entry. The `0.1.0` persistence promise uses

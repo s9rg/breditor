@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.2.0
+npm install @breditor/wasm@0.2.1
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x` and `0.2.0` browser bootstrap is the no-argument default
+The supported `0.1.x` and exact-matched `0.2.x` browser bootstrap is the no-argument default
 asynchronous initializer shown above, called once in an HTTP(S) browser or
 browser bundler that resolves the adjacent generated Wasm asset, before passing
 the initialized namespace to the exactly matching `@breditor/browser` package.

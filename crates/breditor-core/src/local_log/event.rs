@@ -2,7 +2,10 @@ use std::fmt;
 
 use thiserror::Error;
 
-use crate::transaction::{Commit, HistoryIntent};
+use crate::{
+    session::{ExecutedRedo, ExecutedUndo},
+    transaction::{Commit, HistoryIntent},
+};
 
 /// Stable discriminator for one ordered local-log event.
 ///
@@ -81,6 +84,17 @@ impl LocalLogEvent {
         Ok(Self(LocalLogEventValue::Undo(commit)))
     }
 
+    /// Classifies a commit already sealed by the guarded engine as an undo.
+    ///
+    /// The engine can construct an undo event only from a successful
+    /// crate-private session replay proof. Keeping this constructor crate-private
+    /// lets that trusted path consume the commit without a second, fallible
+    /// validation step after publication. Decoded or otherwise caller-supplied
+    /// commits must continue to use [`Self::try_undo`].
+    pub(crate) fn undo_from_engine(replay: ExecutedUndo) -> Self {
+        Self(LocalLogEventValue::Undo(replay.into_commit()))
+    }
+
     /// Validates and creates a redo event.
     ///
     /// # Errors
@@ -91,6 +105,14 @@ impl LocalLogEvent {
     pub fn try_redo(commit: Commit) -> Result<Self, LocalLogEventError> {
         validate_replay_commit(&commit, LocalLogEventKind::Redo, "breditor/redo")?;
         Ok(Self(LocalLogEventValue::Redo(commit)))
+    }
+
+    /// Classifies a commit already sealed by the guarded engine as a redo.
+    ///
+    /// This is the redo counterpart to [`Self::undo_from_engine`]. It is not a
+    /// general bypass for decoded or caller-supplied commits.
+    pub(crate) fn redo_from_engine(replay: ExecutedRedo) -> Self {
+        Self(LocalLogEventValue::Redo(replay.into_commit()))
     }
 
     /// Creates an explicit close-history-group event.

@@ -17,7 +17,9 @@ mod editor_profile_error;
 mod error;
 mod event;
 mod instance_id;
+mod intent_event_outcome;
 mod intent_outcome;
+mod local_log_event;
 mod observation;
 
 pub use action_outcome::{EditorActionOutcome, EditorDisabledAction};
@@ -29,5 +31,7 @@ pub use editor_engine::EditorEngine;
 pub use editor_profile_error::{EditorEngineProfileError, EditorEngineProfileErrorCode};
 pub use error::{EditorEngineError, EditorEngineErrorCode};
 pub use event::{EditorEngineEvent, EditorEngineEventKind};
+pub use intent_event_outcome::{EditorCommittedIntentEvent, EditorIntentEventOutcome};
 pub use intent_outcome::EditorIntentOutcome;
+pub use local_log_event::EditorEngineLocalLogEvent;
 pub use observation::EditorEngineObservation;

@@ -20,9 +20,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.2.0 \
-  @breditor/wasm@0.2.0 \
-  @breditor/reference-highlight@0.2.0
+npm install @breditor/browser@0.2.1 \
+  @breditor/wasm@0.2.1 \
+  @breditor/reference-highlight@0.2.1
 ```
 
 ```ts

@@ -62,7 +62,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.2.0 @breditor/wasm@0.2.0
+npm install @breditor/browser@0.2.1 @breditor/wasm@0.2.1
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,

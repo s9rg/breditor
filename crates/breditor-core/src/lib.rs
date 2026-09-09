@@ -605,12 +605,11 @@
 //! [`engine::EditorEngineEvent`] that preserves action, selection, undo, redo,
 //! close-group, or clear-history kind and lends any renderer commit without an
 //! owned escape. That blocks direct accidental relabeling but is not provenance;
-//! a public codec can copy the commit. It is not an append-ready
-//! [`local_log::LocalLogEvent`]: no
-//! infallible internal mapping to that separately sealed value exists yet, and
-//! a [`local_log::LocalLogEntry`] additionally needs pre-reserved durable
-//! identities. It adds no Wasm, DOM, scheduler, subscription, or storage
-//! adapter.
+//! a public codec can copy the commit. At that checkpoint it was not an
+//! append-ready [`local_log::LocalLogEvent`]: no infallible internal mapping to
+//! that separately sealed value existed, and a [`local_log::LocalLogEntry`]
+//! additionally needed pre-reserved durable identities. It added no Wasm, DOM,
+//! scheduler, subscription, or storage adapter.
 //!
 //! Version `0.0.49` adds forward delete, dedicated selection delete, and atomic
 //! multiline plain-text insertion while retaining the existing operation
@@ -645,6 +644,15 @@
 //! causal relationship between those values. None of these boundaries provides
 //! durable storage, cryptographic integrity, rollback protection, writer
 //! fencing, aggregate tail recovery, or crash-tail truncation.
+//!
+//! Version `0.2.1` adds a non-lossy consuming projection from a sealed
+//! [`engine::EditorEngineEvent`] to [`engine::EditorEngineLocalLogEvent`]. It
+//! retains the source engine kind, corresponding [`local_log::LocalLogEvent`]
+//! classification, and exact successor observation. Committed semantic intents
+//! can produce an action-classified event while retaining routing provenance;
+//! blocked and unhandled routes remain complete unchanged outcomes. This is
+//! process-local classification only: it creates no [`local_log::LocalLogEntry`]
+//! identity, append ownership, I/O acknowledgement, or durability evidence.
 
 pub mod action;
 pub mod codec;

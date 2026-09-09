@@ -2,7 +2,7 @@
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path. Document V2 and Session Checkpoint V2 are supported
-only through the exact `0.2.0` package-root compiled-profile path; other formats
+only through the exact same-version `0.2.x` package-root compiled-profile path; other formats
 in this proof kernel remain experimental unless
 [`COMPATIBILITY.md`](COMPATIBILITY.md) explicitly includes them.
 The complete fingerprint-bearing V2 record graph was implemented as the
@@ -253,9 +253,9 @@ The following remain deliberately unimplemented:
   runtime, unified event router, React integration, guarded clipboard, toolbar,
   and single-slot checkpoint profile, but its synthetic composition checks do
   not establish real operating-system IME or mobile-browser support;
-- atomic conversion from `EditorEngineEvent` into `LocalLogEvent` at the engine
-  boundary, plus pre-publication `LocalLogEntry` sequence/retry allocation and
-  append coordination;
+- pre-publication `LocalLogEntry` schema/session/log/sequence/replay binding
+  allocation plus ordering, uniqueness, and atomic append coordination around
+  the guarded-engine classification projection;
 - branching/selective undo, collaboration history, rebasing, CRDT/OT behavior,
   and remote presence; and
 - generic subtree summaries and incremental validation for structural or
@@ -1090,15 +1090,16 @@ state-only commit, while an exact selection echo is a complete no-op. Action,
 selection, undo, redo, merge-group close, and history clear return distinct
 private-constructor `EditorEngineEvent` kinds when effective.
 
-The engine event preserves process-local renderer/controller classification
-but is not a `LocalLogEvent`. No infallible internal mapping to that separately
-sealed value exists yet, and checked undo/redo conversion can still fail after
-a session mutation has already published. A `LocalLogEntry` separately requires
-durable session/generation, sequence, and retry identity. Therefore `0.0.48`
-makes no false atomic append claim; a later pre-publication coordinator must
-reserve those identities and close event conversion. This release adds no Wasm,
-browser, DOM, scheduling, subscription, or storage adapter. The bounded target
-through `0.1.0` is frozen in
+At `0.0.48`, the engine event preserved process-local renderer/controller
+classification but was not a `LocalLogEvent`; no infallible internal mapping to
+that separately sealed value existed, and checked undo/redo conversion could
+still fail after a session mutation had already published. A `LocalLogEntry`
+separately required durable session/generation, sequence, and retry identity.
+That checkpoint therefore made no false atomic append claim. Version `0.2.1`
+later adds classification projection while leaving identity reservation and
+append coordination outstanding. The original release added no Wasm, browser, DOM,
+scheduling, subscription, or storage adapter. The bounded target through
+`0.1.0` is frozen in
 [`V0_1_SCOPE.md`](V0_1_SCOPE.md).
 
 Version `0.0.49` closes the first editing gaps without adding another primitive
@@ -2228,15 +2229,27 @@ authorization or provenance: the public commit codec can copy the borrowed
 value, so durable classification must come from a trusted coordinator rather
 than event sealing.
 
-This sealed process-local classification is still not append-ready durable
-evidence. No infallible internal mapping to the separately sealed
-`LocalLogEvent` exists, and checked conversion of an already published undo or
-redo is fallible. `LocalLogEntry` additionally needs session/generation,
-sequence, and retry identity plus failure-atomic publication. The `0.1.0`
-browser target therefore uses atomic Session Checkpoint V1 save/restore. A
-future coordinator must reserve entry identity, close event conversion before
-mutation, publish the session transition, and hand off append ownership as one
-protocol.
+Version `0.2.1` adds a non-lossy consuming projection from a sealed
+`EditorEngineEvent` to `EditorEngineLocalLogEvent`. The result retains the
+source engine kind, corresponding `LocalLogEvent` classification, and exact
+successor observation. Action and selection share
+`LocalLogEventKind::Commit` but remain distinguishable by source kind; undo,
+redo, close-group, and clear-history retain their local replay classifications.
+A committed `EditorIntentOutcome` can produce an action-classified event while
+retaining its intent, selected binding, ordered fallthrough trace, and
+observation. Blocked and unhandled routes remain complete unchanged outcomes
+and claim no mutation. Public `try_undo` and `try_redo` remain checked for
+decoded or caller-supplied commits; the trusted projection instead requires a
+direction-specific replay proof issued by the session that performed the
+successful replay.
+
+This is process-local classification only. It does not construct a
+`LocalLogEntry`; supply its schema/session/log/sequence/replay bindings;
+establish ordering, uniqueness, or atomic ownership between engine mutation
+and append; perform physical I/O; acknowledge an append; or attest durability.
+The browser target therefore still uses atomic Session Checkpoint save/restore.
+A future coordinator must reserve entry identity before mutation, publish the
+session transition, and hand off append ownership as one protocol.
 
 ## Current performance limitations
 

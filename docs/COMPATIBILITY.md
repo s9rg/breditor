@@ -1,6 +1,6 @@
 # Breditor compatibility policy
 
-Status: active for the supported `0.1.x` base and `0.2.0` extension surfaces
+Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -260,14 +260,14 @@ executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; the `0.2.0` pair reports ABI `3`. The `0.2.x` path checks
+ABI `2`; every `0.2.x` pair reports ABI `3`. The `0.2.x` path checks
 both the exact ABI string and exact embedded package version before reading the
 generated engine factory. ABI compatibility alone never makes mismatched
 official package versions a supported pair.
 
-The supported `0.2.0` reference configuration installs exactly
-`@breditor/browser@0.2.0`, `@breditor/wasm@0.2.0`, and
-`@breditor/reference-highlight@0.2.0`. The reference package declares
+The current `0.2.1` reference configuration installs exactly
+`@breditor/browser@0.2.1`, `@breditor/wasm@0.2.1`, and
+`@breditor/reference-highlight@0.2.1`. The reference package declares
 the exact browser version as a peer dependency. Its render and toolbar
 manifests are branded by the `@breditor/browser` module instance that created
 them, so a duplicate, nested, or mismatched browser copy is not a compatible
@@ -279,7 +279,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x` and `0.2.0`:
+form remains supported throughout `0.1.x` and `0.2.x`:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

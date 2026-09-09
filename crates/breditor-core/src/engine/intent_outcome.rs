@@ -2,7 +2,10 @@ use std::fmt;
 
 use crate::action::routing::IntentExecutionOutcome;
 
-use super::EditorEngineObservation;
+use super::{
+    EditorCommittedIntentEvent, EditorEngineEvent, EditorEngineObservation,
+    EditorIntentEventOutcome,
+};
 
 /// Complete synchronous result of one guarded semantic-intent invocation.
 ///
@@ -44,6 +47,30 @@ impl EditorIntentOutcome {
     /// Consumes the outcome into its exact receipt and successor observation.
     pub fn into_parts(self) -> (IntentExecutionOutcome, EditorEngineObservation) {
         (self.execution, self.observation)
+    }
+
+    /// Separates a committed intent into its sealed action event and complete
+    /// routing receipt without losing either.
+    ///
+    /// Blocked and unhandled results remain complete [`Self`] values, including
+    /// their authoritative unchanged observation.
+    pub fn into_event_outcome(self) -> EditorIntentEventOutcome {
+        let Self { execution, observation } = self;
+        match execution {
+            IntentExecutionOutcome::Committed { intent, binding, commit, fallthroughs } => {
+                let event = EditorEngineEvent::action(commit, observation);
+                EditorIntentEventOutcome::Committed(EditorCommittedIntentEvent::new(
+                    intent,
+                    binding,
+                    fallthroughs,
+                    event,
+                ))
+            }
+            execution @ (IntentExecutionOutcome::Blocked { .. }
+            | IntentExecutionOutcome::Unhandled { .. }) => {
+                EditorIntentEventOutcome::Unchanged(Self::new(execution, observation))
+            }
+        }
     }
 }
 

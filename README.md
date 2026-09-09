@@ -63,6 +63,20 @@ are specified by the [schema fingerprint contract](docs/SCHEMA_FINGERPRINT.md).
 This work does not reinterpret the released `breditor/base@1` document contract
 or adopt another editor's plugin protocol.
 
+Version `0.2.1` closes one Rust-core classification gap before the next feature
+cycle. A sealed `EditorEngineEvent` now has a non-lossy consuming projection to
+`EditorEngineLocalLogEvent`, retaining its source engine kind, corresponding
+`LocalLogEvent` classification, and exact successor observation. Action and
+selection share the ordinary local commit kind but remain distinguishable by
+source kind. Committed intent outcomes can produce the same action-classified
+engine event while retaining their route provenance; blocked and unhandled
+outcomes remain complete unchanged outcomes. This process-local projection
+does not construct a `LocalLogEntry`, allocate durable identities, establish
+append ownership or ordering, perform I/O, acknowledge an append, or attest
+durability. It does not change Wasm ABI 3, browser behavior, schema
+fingerprints, or any V1/V2 wire format. The matching workspace package
+definitions remain unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -165,7 +179,10 @@ The implementation includes:
   action registry, requires an exact combined engine-instance/state/history observation for
   every mutation, keeps executable action preparations inside one synchronous
   call, and returns private-constructor semantic events for action, selection,
-  undo, redo, and effective history controls without a mutable-session escape;
+  undo, redo, and effective history controls without a mutable-session escape,
+  plus a non-lossy consuming classification projection of every sealed
+  effective event that retains the source engine kind, local replay event, and
+  exact successor observation;
 - a separate no-DOM `breditor-wasm` crate with opaque engine-created
   observation handles, structured domain results, guarded no-input/string
   action commands and no-input semantic intents, history controls, reusable
@@ -730,13 +747,12 @@ exact renderer transition without surrendering it for direct accidental
 relabeling. Event sealing is not authorization or provenance: a host can copy a
 borrowed commit through the public codec.
 
-`EditorEngineEvent` is deliberately not `LocalLogEvent`. It preserves ephemeral
-command classification and the resulting engine observation. No infallible
-internal mapping to the separately sealed `LocalLogEvent` exists yet; checked
-undo/redo conversion can still fail after session replay has published. A
-`LocalLogEntry` additionally needs pre-reserved session/generation, sequence,
-and retry identities. A future coordinator must close conversion and those
-identities before publication. Version `0.1.0` instead uses atomic
+At `0.0.48`, `EditorEngineEvent` was deliberately not `LocalLogEvent`: it
+preserved ephemeral command classification and the resulting observation, but
+no infallible internal projection to the separately sealed local event existed.
+Version `0.2.1` later added classification projection only. A `LocalLogEntry`
+still needs its schema, session, log, sequence, and replay bindings plus atomic
+append ordering and ownership. Version `0.1.0` instead uses atomic
 session-checkpoint persistence.
 The core `EditorEngine` type itself adds no Wasm ABI, browser event loop, DOM
 projection, scheduler, subscription delivery, or storage I/O; the separate
