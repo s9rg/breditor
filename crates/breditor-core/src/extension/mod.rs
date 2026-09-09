@@ -1,13 +1,13 @@
 //! Deterministic data-only extension identity, dependency resolution, and
-//! sealed inline-format and toggle declarations.
+//! sealed inline-format, toggle, and property-aware set declarations.
 //!
 //! An [`ExtensionSet`] contains bounded manifests, exact-version dependency
 //! edges, explicit exact-version conflicts, [`InlineFormatSpecV1`] identities,
 //! optional typed [`InlineFormatPropertyContractV1`] values, and behavior-free
-//! [`InlineFormatToggleSpecV1`] values. Resolution itself never compiles a
-//! schema, installs an action, registers a renderer, executes extension code,
-//! or mutates editor state. A resolved set can be supplied explicitly to the
-//! sealed base-text schema compiler.
+//! [`InlineFormatToggleSpecV1`] and [`InlineFormatSetSpecV1`] values. Resolution
+//! itself never compiles a schema, installs an action, registers a renderer,
+//! executes extension code, or mutates editor state. A resolved set can be
+//! supplied explicitly to the sealed base-text schema compiler.
 //!
 //! Extension identity is also not persistence compatibility. An
 //! [`ExtensionId`] is a developer-assigned name and version, not a fingerprint
@@ -21,6 +21,7 @@ mod inline_format_property_contract_v1_error;
 mod inline_format_property_spec_v1;
 mod inline_format_property_type_v1;
 mod inline_format_property_type_v1_error;
+mod inline_format_set_spec_v1;
 mod inline_format_spec_v1;
 mod inline_format_toggle_spec_v1;
 mod limits;
@@ -41,11 +42,13 @@ pub use inline_format_property_type_v1::{
     InlineFormatPropertyIntegerTypeV1, InlineFormatPropertyStringTypeV1, InlineFormatPropertyTypeV1,
 };
 pub use inline_format_property_type_v1_error::InlineFormatPropertyTypeV1Error;
+pub use inline_format_set_spec_v1::InlineFormatSetSpecV1;
 pub use inline_format_spec_v1::InlineFormatSpecV1;
 pub use inline_format_toggle_spec_v1::InlineFormatToggleSpecV1;
 pub use limits::{
     ExtensionLimits, MAX_EXTENSION_CONFLICTS_PER_MANIFEST, MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST,
     MAX_EXTENSION_INLINE_FORMAT_PROPERTY_CONTRACTS_PER_MANIFEST,
+    MAX_EXTENSION_INLINE_FORMAT_SETS_PER_MANIFEST,
     MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST, MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST,
     MAX_EXTENSION_SET_CONFLICTS, MAX_EXTENSION_SET_DEPENDENCIES, MAX_EXTENSION_SET_ENTRIES,
     MAX_INLINE_FORMAT_PROPERTIES_PER_CONTRACT, MAX_INLINE_FORMAT_PROPERTY_STRING_BYTES,

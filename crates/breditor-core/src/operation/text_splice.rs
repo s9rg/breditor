@@ -169,7 +169,11 @@ impl TextSplice {
             ChildRange::new(0, old_child_count),
             ChildRange::new(0, new_child_count),
         );
-        let relocation = TextSpliceMap::new(self.range.clone(), self.replacement.utf16_len());
+        let relocation = TextSpliceMap::new(
+            self.range.clone(),
+            self.replacement.utf16_len(),
+            fragments_have_identical_text(&self.expected_removed, &self.replacement),
+        );
         Ok(AppliedOperation::Changed(Box::new(AppliedChange {
             document: result,
             inverse: Operation::TextSplice(inverse),
@@ -177,6 +181,14 @@ impl TextSplice {
             change: change.into(),
         })))
     }
+}
+
+fn fragments_have_identical_text(left: &TextFragment, right: &TextFragment) -> bool {
+    left.text_bytes() == right.text_bytes()
+        && left
+            .iter()
+            .flat_map(|run| run.text().bytes())
+            .eq(right.iter().flat_map(|run| run.text().bytes()))
 }
 
 fn resolve_text_container<'a>(
@@ -221,7 +233,7 @@ fn ensure_document_proof(
 }
 
 fn ensure_schema_support(context: &EditorContext) -> Result<(), TextSpliceApplyError> {
-    if context.schema().supports_base_text_operations() {
+    if context.schema().supports_text_splice_operations() {
         Ok(())
     } else {
         Err(TextSpliceApplyError::UnsupportedSchema { schema: context.schema().id().clone() })
@@ -247,6 +259,8 @@ fn validate_fragment(
             maximum: context.limits().max_total_text_bytes(),
         });
     }
+    let mut property_value_count = 0_u64;
+    let mut property_string_bytes = 0_u64;
     for (run_index, run) in fragment.iter().enumerate() {
         if run.text().len() > context.limits().max_text_bytes() {
             return Err(TextSpliceApplyError::FragmentTextBytesLimit {
@@ -273,15 +287,41 @@ fn validate_fragment(
                     kind: format.kind().clone(),
                 });
             }
-            if !format.properties().is_empty() {
-                return Err(TextSpliceApplyError::FragmentFormatPropertiesNotAllowed {
+            let summary = context
+                .schema()
+                .validate_inline_format_instance(context.limits(), format)
+                .map_err(|source| TextSpliceApplyError::InvalidFormatInstance {
                     role,
                     run_index,
                     format_index,
                     kind: format.kind().clone(),
-                });
-            }
+                    source,
+                })?;
+            property_value_count = property_value_count
+                .checked_add(summary.property_value_count())
+                .ok_or(TextSpliceApplyError::CoordinateOverflow)?;
+            property_string_bytes = property_string_bytes
+                .checked_add(summary.property_string_bytes())
+                .ok_or(TextSpliceApplyError::CoordinateOverflow)?;
         }
+    }
+    let maximum_property_values =
+        u64::try_from(context.limits().max_property_values()).unwrap_or(u64::MAX);
+    if property_value_count > maximum_property_values {
+        return Err(TextSpliceApplyError::FragmentPropertyValueCountLimit {
+            role,
+            actual: property_value_count,
+            maximum: maximum_property_values,
+        });
+    }
+    let maximum_property_string_bytes =
+        u64::try_from(context.limits().max_total_property_string_bytes()).unwrap_or(u64::MAX);
+    if property_string_bytes > maximum_property_string_bytes {
+        return Err(TextSpliceApplyError::FragmentPropertyStringBytesLimit {
+            role,
+            actual: property_string_bytes,
+            maximum: maximum_property_string_bytes,
+        });
     }
     Ok(())
 }
@@ -691,6 +731,45 @@ pub enum TextSpliceApplyError {
         format_index: usize,
         /// Rejected kind.
         kind: QualifiedName,
+    },
+    /// One format instance violates its compiled typed-property contract.
+    #[error(
+        "{role:?} fragment run {run_index} format {format_index} `{kind}` is invalid: {source}"
+    )]
+    InvalidFormatInstance {
+        /// Failing fragment.
+        role: FragmentRole,
+        /// Failing run.
+        run_index: usize,
+        /// Failing format.
+        format_index: usize,
+        /// Rejected kind.
+        kind: QualifiedName,
+        /// Structured property-contract or resource failure.
+        #[source]
+        source: ValidationReport,
+    },
+    /// One fragment exceeds the document-wide property-value ceiling by itself.
+    #[error("{role:?} fragment has {actual} property values; the configured maximum is {maximum}")]
+    FragmentPropertyValueCountLimit {
+        /// Failing fragment.
+        role: FragmentRole,
+        /// Exact aggregate property-value count.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
+    },
+    /// One fragment exceeds the document-wide property-string byte ceiling by itself.
+    #[error(
+        "{role:?} fragment has {actual} property-string bytes; the configured maximum is {maximum}"
+    )]
+    FragmentPropertyStringBytesLimit {
+        /// Failing fragment.
+        role: FragmentRole,
+        /// Exact aggregate UTF-8 property-string bytes.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
     },
     /// Canonical fragment construction or seam merging failed.
     #[error(transparent)]

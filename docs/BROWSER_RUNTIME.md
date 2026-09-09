@@ -141,12 +141,12 @@ sniffs or falls back between wire generations.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.1` packages:
+exactly matching `0.3.0-alpha.2` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.1 \
-  @breditor/wasm@0.3.0-alpha.1 \
-  @breditor/reference-highlight@0.3.0-alpha.1
+npm install @breditor/browser@0.3.0-alpha.2 \
+  @breditor/wasm@0.3.0-alpha.2 \
+  @breditor/reference-highlight@0.3.0-alpha.2
 ```
 
 Then import only the package roots and pass the exported data to the ordinary

@@ -95,18 +95,25 @@ durability. It does not change Wasm ABI 3, browser behavior, schema
 fingerprints, or any V1/V2 wire format. The matching workspace package
 definitions remain unpublished.
 
-Version `0.3.0-alpha.1` starts the typed-format foundation in the Rust core.
-Manifest-owned inline formats may attach a closed, canonical contract of
-required or optional Boolean, JavaScript-safe integer, and UTF-8 byte-bounded
-string properties. Those rules enter Document V2 validation, the compiled
-profile's Rust descriptor, and compiler-contract fingerprint version 2;
-property-free schemas retain their exact version-1 fingerprint bytes. New
-per-string, aggregate-document, retained-checkpoint, and validation-report
-limits close the hostile-input boundaries. This is deliberately not an editing
-or browser release: any typed format disables all existing content operations
-for its schema, typed pending formats and generated no-input toggles fail
-closed, and Wasm ABI 3/browser bootstrap/rendering/toolbars remain
-property-free. See the [`0.3.0` scope](docs/V0_3_SCOPE.md).
+Version `0.3.0-alpha.1` established the typed-format foundation in the Rust
+core: closed manifest-owned Boolean, JavaScript-safe integer, and UTF-8
+byte-bounded string contracts; Document V2 validation; compiler-contract
+fingerprint version 2; and bounded hostile-input accounting. Property-free
+schemas retain their exact version-1 fingerprint bytes.
+
+The `0.3.0-alpha.2` Rust-core checkpoint adds the first complete
+property-aware editing slice. A registration-owned `SetInlineFormatAction`
+accepts explicit typed set/remove input, and a sealed `InlineFormatSetSpecV1`
+can compile its action, typed intent, blocking route, and observable presence
+state. `TextSplice`, same-paragraph insert/type-over, same-paragraph selection
+deletion, and intra-paragraph grapheme deletion preserve typed formats through
+exact relocation and undo/redo. Explicit Operation, Editor State, Transaction
+Request, Commit, and Session Checkpoint V3 codecs preserve typed operation and
+pending-format payloads while continuing to embed Document V2. V1/V2 operation
+payloads fail closed for every typed-schema operation instead of discarding
+properties. Typed paragraph split/join/root replacement, Local Log V3, Wasm,
+browser rendering/input, clipboard, and toolbar support remain deferred. See
+the [`0.3.0` scope](docs/V0_3_SCOPE.md).
 
 The implementation includes:
 
@@ -121,6 +128,11 @@ The implementation includes:
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
   with generation-locked nesting and non-destructive mismatch handling;
+- explicit property-preserving V3 codecs for operation, editor state,
+  transaction request, commit, and session checkpoint, with Document V2 kept
+  as the nested document generation, property-aware operation/pending-format
+  payloads, bounded preflight, exact replay, and no automatic generation
+  detection or conversion; the local-log/storage graph remains V1/V2 only;
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
   editor-state checkpoints, self-contained replay-proved commit records, and
@@ -159,7 +171,8 @@ The implementation includes:
 - immutable `EditorContext` and `EditorState` snapshots with caller-owned
   lineage identity and monotonic revisions;
 - paragraph-local `TextSplice` operations over canonical formatted fragments,
-  including source guards, exact inverse operations, and proof-backed local
+  including complete typed format properties, source guards, exact inverse
+  operations, text-preserving interior relocation, and proof-backed local
   result validation with authoritative fallback;
 - direct-root base-paragraph `ParagraphSplit` and `ParagraphJoin` operations
   with whole-paragraph guards, exact content inverses, and structural
@@ -174,8 +187,8 @@ The implementation includes:
   extension conflicts;
 - an immutable extension-set resolver with exact identities, bounded
   dependency/conflict metadata, manifest-owned inline-format declarations,
-  optional typed property contracts, and property-free toggle bundles,
-  deterministic diagnostics, and canonical
+  optional typed property contracts, property-free toggle bundles, and typed
+  set-format bundles, deterministic diagnostics, and canonical
   dependency-first order; schema compatibility exists only after explicit
   sealed compilation under a caller-owned profile `SchemaId`;
 - an immutable `CompiledEditorProfile` that co-owns the resolved extension set,
@@ -183,7 +196,9 @@ The implementation includes:
   catalog under one fresh Rust-local generation; generated toggles are bounded,
   no-input, priority-0 blocking routes over manifest-owned formats, while the
   built-in `breditor/format-strong` intent supplies the same route contract for
-  the core-owned strong-format action;
+  the core-owned strong-format action; typed set declarations generate an
+  explicit-input action and intent, priority-0 blocking route, and routed
+  format-presence state without retaining caller property values;
 - a frozen semantic intent router with declared input contracts, named
   bindings, explicit priority and disabled fallback policy, and distinct
   unhandled, blocked, and prepared outcomes;
@@ -198,17 +213,22 @@ The implementation includes:
   `toggle-strong` actions exposed through the same registry; supported Bold
   browser input, toolbar, and public API delivery select `toggle-strong`
   through the frozen `breditor/format-strong` intent route, while typed
-  insertion consumes
-  pending formats, multiline insertion and extended deletion atomically replace
-  cross-paragraph selections, while `toggle-strong`
+  insertion consumes pending formats, and typed schemas support paragraph-local
+  insertion/type-over and deletion across property-bearing run seams; multiline
+  insertion and extended deletion atomically replace cross-paragraph selections
+  only on the property-free structural path, while `toggle-strong`
   publishes tracked inactive/active/mixed state and preserves selected block
   boundaries during cross-paragraph formatting, plus a public Rust-owned
   `ToggleInlineFormatAction` that can be registered explicitly for any
   property-free format admitted by the active sealed schema or instantiated by
-  the compiled-profile builder for a manifest-owned toggle bundle;
+  the compiled-profile builder for a manifest-owned toggle bundle, and a
+  public registration-owned `SetInlineFormatAction` whose versioned typed input
+  replaces or removes one complete format property map at a caret or within
+  one paragraph;
 - a synchronous `EditorSession` publication boundary with exact-state commit
   acceptance, intent/action execution, bounded linear history, deterministic
-  merge groups, atomic undo/redo replay, and durable local checkpoint restore;
+  merge groups, atomic undo/redo replay, exact state-only pending-format
+  history boundaries, and durable local checkpoint restore;
 - a guarded product-level `EditorEngine` that owns one session and one frozen
   action registry, requires an exact combined engine-instance/state/history observation for
   every mutation, keeps executable action preparations inside one synchronous
@@ -262,13 +282,20 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.1` Rust contract can admit typed properties for
-Document V2, but it intentionally supplies no property-aware operation,
-pending-typing, action, replay, Wasm, renderer, clipboard, or toolbar path yet.
-Boolean/integer/string shape validation is not URL or CSS sanitization.
-One manifest and one complete profile can each contribute at most 255 toggles;
-every target is owned by that manifest, each typed ID is profile-unique in its
-namespace, and extension semantic IDs cannot use `breditor/*`.
+The experimental `0.3.0-alpha.2` Rust-core contract admits typed properties in
+Document V2 and supports explicit set/remove, typed pending insertion,
+paragraph-local splice/delete paths, exact history, and the Operation, Editor
+State, Transaction Request, Commit, and Session Checkpoint V3 families. It does
+not yet support typed `ParagraphSplit`, `ParagraphJoin`, or `RootTextReplace`,
+so paragraph breaks, paragraph-boundary deletes, cross-paragraph replacement,
+and the `InsertPlainTextAction` structural path remain property-free. No Local
+Log V3 exists, and the Wasm/bootstrap, renderer, clipboard, toolbar, and public
+browser input paths remain property-free. Boolean/integer/string shape
+validation is not URL or CSS sanitization. One manifest and one complete
+profile can each contribute at most 255 toggle declarations and at most 255 set
+declarations; every target is owned by that manifest, each typed ID is
+profile-unique in its namespace, and extension semantic IDs cannot use
+`breditor/*`.
 Structural edits
 beyond the compiler-minted direct-root base-text shape, asynchronous
 action-state delivery, dynamic catalog registration, presentation plugin

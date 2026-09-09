@@ -20,7 +20,8 @@ use super::{
     grapheme_boundary::{grapheme_boundary_at_or_after, previous_grapheme_boundary},
     support::{
         base_shape_fits, collapsed_selection_at, disabled, fault, fragment_range_parts,
-        paragraph_fragment, require_base_text_range, require_operation_budget, strict_relocation,
+        require_operation_budget, require_text_splice_range, strict_relocation,
+        text_splice_paragraph_fragment,
     },
 };
 
@@ -30,11 +31,13 @@ use super::{
 /// become one independent history record. A collapsed range deletes one
 /// Unicode extended grapheme cluster and offers the stable
 /// `breditor/delete-backward` history merge group, or joins with the previous
-/// paragraph at paragraph offset zero. Formatting seams do not split grapheme
-/// clusters. A protocol caret inside a grapheme cluster is disabled rather
-/// than widened or guessed. If removing content or a paragraph boundary forms
-/// a cluster across the deletion seam, the core-produced caret snaps to that
-/// cluster's following boundary. Pending typing formats are preserved exactly.
+/// paragraph at paragraph offset zero when the schema supports property-free
+/// structural operations. Paragraph-local splices preserve complete typed
+/// inline-format instances. Formatting seams do not split grapheme clusters. A
+/// protocol caret inside a grapheme cluster is disabled rather than widened or
+/// guessed. If removing content or a paragraph boundary forms a cluster across
+/// the deletion seam, the core-produced caret snaps to that cluster's following
+/// boundary. Pending typing formats are preserved exactly.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeleteBackwardAction;
 
@@ -71,17 +74,24 @@ impl Action for DeleteBackwardAction {
 }
 
 fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_text_range(state)? {
+    let range = match require_text_splice_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
     if !range.is_collapsed() {
         return delete_selected_range(state, &range);
     }
+    let paragraph_path = range.start().paragraph_path();
+    if range.start().offset() == TextOffset::ZERO
+        && !state.context().schema().supports_base_text_operations()
+    {
+        // ParagraphJoin is intentionally still property-free. This also keeps
+        // the pre-existing typed-schema outcome stable at document start.
+        return Ok(disabled("breditor/unsupported-schema"));
+    }
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
     }
-    let paragraph_path = range.start().paragraph_path();
     if range.start().offset() != TextOffset::ZERO {
         return delete_previous_grapheme(state, paragraph_path, range.start().offset());
     }
@@ -121,7 +131,7 @@ fn delete_previous_grapheme(
     paragraph_path: &crate::position::NodePath,
     caret: TextOffset,
 ) -> Result<ActionDecision, ActionFault> {
-    let source = paragraph_fragment(state, paragraph_path, caret)?;
+    let source = text_splice_paragraph_fragment(state, paragraph_path)?;
     let Some(start) = previous_grapheme_boundary(&source, caret)? else {
         return Ok(disabled("breditor/caret-not-grapheme-boundary"));
     };

@@ -9,6 +9,7 @@ use crate::{
 use super::compiler::{
     ChildConstraint, CompiledSchemaDefinition, GlobalConstraints, compile_base_text_profile,
     compile_breditor_base, is_exact_breditor_base, supports_base_text_operations,
+    supports_text_splice_operations,
 };
 
 /// The immutable schema used to validate a document.
@@ -22,6 +23,7 @@ pub struct CompiledSchema {
     definition: Arc<CompiledSchemaDefinition>,
     fingerprint: SchemaFingerprint,
     proof: CompiledSchemaProof,
+    supports_text_splice_operations: bool,
     supports_base_text_operations: bool,
 }
 
@@ -94,11 +96,13 @@ impl CompiledSchema {
         definition: Arc<CompiledSchemaDefinition>,
         fingerprint: SchemaFingerprint,
     ) -> Self {
+        let supports_text_splice_operations = supports_text_splice_operations(&definition);
         let supports_base_text_operations = supports_base_text_operations(&definition);
         Self {
             definition,
             fingerprint,
             proof: CompiledSchemaProof::fresh(),
+            supports_text_splice_operations,
             supports_base_text_operations,
         }
     }
@@ -238,6 +242,16 @@ impl CompiledSchema {
 
     pub(crate) fn is_exact_breditor_base(&self) -> bool {
         is_exact_breditor_base(&self.definition)
+    }
+
+    /// Returns whether the compiled schema preserves the sealed base text
+    /// container shape required by paragraph-local guarded splices.
+    ///
+    /// Unlike the broader structural-operation capability, this permits typed
+    /// inline formats because a `TextSplice` carries complete format instances
+    /// in both its source guard and replacement.
+    pub(crate) const fn supports_text_splice_operations(&self) -> bool {
+        self.supports_text_splice_operations
     }
 
     pub(crate) const fn supports_base_text_operations(&self) -> bool {

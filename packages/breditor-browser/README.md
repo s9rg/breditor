@@ -49,10 +49,10 @@ path in clean tarball and Chromium/Firefox/WebKit consumers. The former bare-
 factory and standalone restore seams are not accepted by the supported root
 API. `0.2.0` carries the audited RC.1 surface without feature widening.
 
-The matching `0.3.0-alpha.1` package keeps this browser surface property-free.
-Its Rust dependency can describe typed inline-format properties, but Wasm ABI
-3 and the browser bootstrap/descriptor cannot construct, render, edit, or add
-toolbar controls for them yet.
+The matching `0.3.0-alpha.2` package keeps this browser surface property-free.
+Its Rust dependency can now describe, edit, and replay typed inline-format
+properties, but Wasm ABI 3 and the browser bootstrap/descriptor cannot yet
+construct, render, edit, or add toolbar controls for them.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -67,7 +67,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.1 @breditor/wasm@0.3.0-alpha.1
+npm install @breditor/browser@0.3.0-alpha.2 @breditor/wasm@0.3.0-alpha.2
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,

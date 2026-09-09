@@ -4,10 +4,34 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
-## Unreleased
+## 0.3.0-alpha.2 - 2026-09-09
 
-This demo-readiness checkpoint does not advance the package version, Wasm ABI,
-durable formats, schema fingerprint, or typed-property editing boundary.
+This source checkpoint advances the workspace and package manifests to
+`0.3.0-alpha.2` while retaining Wasm ABI 3. The packages remain unpublished,
+and browser-facing profiles remain property-free.
+
+### Rust core
+
+- Added registration-owned `SetInlineFormatAction` and the closed typed
+  `breditor/set-inline-format-input@1` set/remove input. Set replaces the exact
+  complete property map; collapsed selections update pending typing formats,
+  and same-paragraph ranges use one guarded `TextSplice`.
+- Added `InlineFormatSetSpecV1`, which compiles a same-manifest typed format
+  into its action, typed intent, priority-0 blocking route, and routed presence
+  state without embedding values, callbacks, or presentation metadata.
+- Made `TextSplice`, paragraph-local insert/type-over, selection deletion, and
+  backward/forward grapheme deletion preserve typed formats, exact resource
+  accounting, relocation, inverses, and undo/redo values. Structural typed
+  paragraph split/join/root replacement remains unsupported.
+- Added explicitly selected Operation, Editor State, Transaction Request,
+  Commit, and Session Checkpoint V3 codecs. They preserve operation and pending
+  properties, retain selector/fingerprint binding, use Document V2, preflight
+  hostile payloads, and publish only after complete validation/replay.
+- Preserved V1/V2 bytes and made their property-free operation generation fail
+  closed for typed schemas, including optional-only contracts with empty maps.
+  No generation is detected or converted automatically.
+- Local-log entry/checkpoint/frame/root/storage V3, typed Wasm/browser input,
+  rendering, clipboard, and toolbar integration remain deferred.
 
 ### Browser demo and input correctness
 

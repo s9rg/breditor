@@ -1,8 +1,9 @@
 use super::{
-    ExtensionId, ExtensionManifestError, InlineFormatPropertyContractV1, InlineFormatSpecV1,
-    InlineFormatToggleSpecV1, MAX_EXTENSION_CONFLICTS_PER_MANIFEST,
+    ExtensionId, ExtensionManifestError, InlineFormatPropertyContractV1, InlineFormatSetSpecV1,
+    InlineFormatSpecV1, InlineFormatToggleSpecV1, MAX_EXTENSION_CONFLICTS_PER_MANIFEST,
     MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST,
     MAX_EXTENSION_INLINE_FORMAT_PROPERTY_CONTRACTS_PER_MANIFEST,
+    MAX_EXTENSION_INLINE_FORMAT_SETS_PER_MANIFEST,
     MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST, MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST,
 };
 
@@ -14,9 +15,9 @@ use super::{
 /// deliberately absent. Both lists are immutable, unique, and canonically
 /// ordered by qualified-name ASCII bytes followed by numeric extension version.
 /// Its V1 inline-format and optional typed-property declarations are data, and
-/// its V1 toggle declarations contain identities but no behavior. A manifest carries no node
-/// registrations, action handlers, renderer callbacks, executable code, custom
-/// codecs, or persistence proof.
+/// its V1 toggle and property-aware set declarations contain identities but no
+/// behavior. A manifest carries no node registrations, action handlers,
+/// renderer callbacks, executable code, custom codecs, or persistence proof.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExtensionManifest {
     id: ExtensionId,
@@ -25,6 +26,7 @@ pub struct ExtensionManifest {
     inline_formats: Box<[InlineFormatSpecV1]>,
     inline_format_property_contracts: Box<[InlineFormatPropertyContractV1]>,
     inline_format_toggles: Box<[InlineFormatToggleSpecV1]>,
+    inline_format_sets: Box<[InlineFormatSetSpecV1]>,
 }
 
 impl ExtensionManifest {
@@ -150,13 +152,15 @@ impl ExtensionManifest {
         )
     }
 
-    /// Validates all V1 inline-format declarations owned by one manifest.
+    /// Validates the original V1 inline-format declaration families.
     ///
-    /// This is the complete constructor for formats, their optional typed
-    /// property contracts, and optional property-free toggle identities. Older
-    /// constructors remain exact shorthand for an empty property-contract set.
-    /// A property-bearing toggle target is retained here and rejected later by
-    /// profile compilation, where action semantics are assembled.
+    /// This source-compatible constructor covers formats, their optional typed
+    /// property contracts, and optional property-free toggle identities. It
+    /// supplies an empty property-aware set list; use
+    /// [`Self::try_new_with_inline_format_declarations_and_sets`] to provide
+    /// every declaration family. A property-bearing toggle target is retained
+    /// here and rejected later by profile compilation, where action semantics
+    /// are assembled.
     ///
     /// # Errors
     ///
@@ -165,11 +169,79 @@ impl ExtensionManifest {
     /// this manifest, exact self-reference, or relation overlap.
     pub fn try_new_with_inline_format_declarations(
         id: ExtensionId,
+        dependencies: Vec<ExtensionId>,
+        conflicts: Vec<ExtensionId>,
+        inline_formats: Vec<InlineFormatSpecV1>,
+        inline_format_property_contracts: Vec<InlineFormatPropertyContractV1>,
+        inline_format_toggles: Vec<InlineFormatToggleSpecV1>,
+    ) -> Result<Self, ExtensionManifestError> {
+        Self::try_new_with_inline_format_declarations_and_sets(
+            id,
+            dependencies,
+            conflicts,
+            inline_formats,
+            inline_format_property_contracts,
+            inline_format_toggles,
+            Vec::new(),
+        )
+    }
+
+    /// Validates a manifest with typed formats and property-aware set declarations.
+    ///
+    /// This convenience constructor supplies no property-free toggles. Setter
+    /// target ownership and the requirement for a typed property contract are
+    /// checked later by profile compilation, where executable action semantics
+    /// are assembled.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExtensionManifestError`] for a fixed resource overflow,
+    /// duplicate identity, unowned property contract, exact self-reference, or
+    /// relation overlap.
+    pub fn try_new_with_inline_formats_property_contracts_and_sets(
+        id: ExtensionId,
+        dependencies: Vec<ExtensionId>,
+        conflicts: Vec<ExtensionId>,
+        inline_formats: Vec<InlineFormatSpecV1>,
+        inline_format_property_contracts: Vec<InlineFormatPropertyContractV1>,
+        inline_format_sets: Vec<InlineFormatSetSpecV1>,
+    ) -> Result<Self, ExtensionManifestError> {
+        Self::try_new_with_inline_format_declarations_and_sets(
+            id,
+            dependencies,
+            conflicts,
+            inline_formats,
+            inline_format_property_contracts,
+            Vec::new(),
+            inline_format_sets,
+        )
+    }
+
+    /// Validates every V1 inline-format declaration family owned by one manifest.
+    ///
+    /// This is the complete constructor for formats, optional typed property
+    /// contracts, property-free toggles, and property-aware set identities. All
+    /// collections are canonicalized before deterministic duplicate checks.
+    /// Older constructors remain source-compatible shorthand with an empty set
+    /// declaration list.
+    ///
+    /// Target/action compatibility is deliberately a profile-compilation
+    /// concern: toggles must target property-free formats, while sets must target
+    /// formats with typed property contracts owned by this same manifest.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ExtensionManifestError`] for a fixed resource overflow,
+    /// duplicate identity within or across behavior declaration families,
+    /// unowned property contract, exact self-reference, or relation overlap.
+    pub fn try_new_with_inline_format_declarations_and_sets(
+        id: ExtensionId,
         mut dependencies: Vec<ExtensionId>,
         mut conflicts: Vec<ExtensionId>,
         mut inline_formats: Vec<InlineFormatSpecV1>,
         mut inline_format_property_contracts: Vec<InlineFormatPropertyContractV1>,
         mut inline_format_toggles: Vec<InlineFormatToggleSpecV1>,
+        mut inline_format_sets: Vec<InlineFormatSetSpecV1>,
     ) -> Result<Self, ExtensionManifestError> {
         validate_resource_counts(
             &id,
@@ -178,6 +250,7 @@ impl ExtensionManifest {
             &inline_formats,
             &inline_format_property_contracts,
             &inline_format_toggles,
+            &inline_format_sets,
         )?;
         canonicalize_collections(
             &mut dependencies,
@@ -185,10 +258,13 @@ impl ExtensionManifest {
             &mut inline_formats,
             &mut inline_format_property_contracts,
             &mut inline_format_toggles,
+            &mut inline_format_sets,
         );
         validate_relation_and_format_duplicates(&id, &dependencies, &conflicts, &inline_formats)?;
         validate_property_contracts(&id, &inline_formats, &inline_format_property_contracts)?;
         validate_toggle_duplicates(&id, &inline_format_toggles)?;
+        validate_set_duplicates(&id, &inline_format_sets)?;
+        validate_cross_behavior_duplicates(&id, &inline_format_toggles, &inline_format_sets)?;
 
         if dependencies.binary_search(&id).is_ok() {
             return Err(ExtensionManifestError::SelfDependency { extension: id });
@@ -210,6 +286,7 @@ impl ExtensionManifest {
             inline_formats: inline_formats.into_boxed_slice(),
             inline_format_property_contracts: inline_format_property_contracts.into_boxed_slice(),
             inline_format_toggles: inline_format_toggles.into_boxed_slice(),
+            inline_format_sets: inline_format_sets.into_boxed_slice(),
         })
     }
 
@@ -250,6 +327,12 @@ impl ExtensionManifest {
     pub const fn inline_format_toggles(&self) -> &[InlineFormatToggleSpecV1] {
         &self.inline_format_toggles
     }
+
+    /// Returns property-aware inline-format set declarations in canonical order.
+    #[must_use]
+    pub const fn inline_format_sets(&self) -> &[InlineFormatSetSpecV1] {
+        &self.inline_format_sets
+    }
 }
 
 fn validate_resource_counts(
@@ -259,6 +342,7 @@ fn validate_resource_counts(
     inline_formats: &[InlineFormatSpecV1],
     inline_format_property_contracts: &[InlineFormatPropertyContractV1],
     inline_format_toggles: &[InlineFormatToggleSpecV1],
+    inline_format_sets: &[InlineFormatSetSpecV1],
 ) -> Result<(), ExtensionManifestError> {
     let dependency_count = fixed_count(dependencies.len());
     if dependency_count > MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST {
@@ -300,6 +384,14 @@ fn validate_resource_counts(
             maximum: MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST,
         });
     }
+    let inline_format_set_count = fixed_count(inline_format_sets.len());
+    if inline_format_set_count > MAX_EXTENSION_INLINE_FORMAT_SETS_PER_MANIFEST {
+        return Err(ExtensionManifestError::TooManyInlineFormatSets {
+            extension: extension.clone(),
+            actual: inline_format_set_count,
+            maximum: MAX_EXTENSION_INLINE_FORMAT_SETS_PER_MANIFEST,
+        });
+    }
     Ok(())
 }
 
@@ -309,6 +401,7 @@ fn canonicalize_collections(
     inline_formats: &mut [InlineFormatSpecV1],
     inline_format_property_contracts: &mut [InlineFormatPropertyContractV1],
     inline_format_toggles: &mut [InlineFormatToggleSpecV1],
+    inline_format_sets: &mut [InlineFormatSetSpecV1],
 ) {
     dependencies.sort();
     conflicts.sort();
@@ -316,6 +409,14 @@ fn canonicalize_collections(
     inline_format_property_contracts
         .sort_by(|left, right| left.format_kind().cmp(right.format_kind()));
     inline_format_toggles.sort_by(|left, right| {
+        left.format_kind()
+            .cmp(right.format_kind())
+            .then_with(|| left.action_id().cmp(right.action_id()))
+            .then_with(|| left.intent_id().cmp(right.intent_id()))
+            .then_with(|| left.binding_id().cmp(right.binding_id()))
+            .then_with(|| left.action_state_id().cmp(right.action_state_id()))
+    });
+    inline_format_sets.sort_by(|left, right| {
         left.format_kind()
             .cmp(right.format_kind())
             .then_with(|| left.action_id().cmp(right.action_id()))
@@ -421,6 +522,105 @@ fn validate_toggle_duplicates(
         });
     }
     Ok(())
+}
+
+fn validate_set_duplicates(
+    extension: &ExtensionId,
+    inline_format_sets: &[InlineFormatSetSpecV1],
+) -> Result<(), ExtensionManifestError> {
+    if let Some(kind) =
+        first_duplicate(inline_format_sets.iter().map(|set| set.format_kind().clone()).collect())
+    {
+        return Err(ExtensionManifestError::DuplicateInlineFormatSetTarget {
+            extension: extension.clone(),
+            kind,
+        });
+    }
+    if let Some(action_id) =
+        first_duplicate(inline_format_sets.iter().map(|set| set.action_id().clone()).collect())
+    {
+        return Err(ExtensionManifestError::DuplicateInlineFormatSetActionId {
+            extension: extension.clone(),
+            action_id,
+        });
+    }
+    if let Some(intent_id) =
+        first_duplicate(inline_format_sets.iter().map(|set| set.intent_id().clone()).collect())
+    {
+        return Err(ExtensionManifestError::DuplicateInlineFormatSetIntentId {
+            extension: extension.clone(),
+            intent_id,
+        });
+    }
+    if let Some(binding_id) =
+        first_duplicate(inline_format_sets.iter().map(|set| set.binding_id().clone()).collect())
+    {
+        return Err(ExtensionManifestError::DuplicateInlineFormatSetBindingId {
+            extension: extension.clone(),
+            binding_id,
+        });
+    }
+    if let Some(action_state_id) = first_duplicate(
+        inline_format_sets.iter().map(|set| set.action_state_id().clone()).collect(),
+    ) {
+        return Err(ExtensionManifestError::DuplicateInlineFormatSetActionStateId {
+            extension: extension.clone(),
+            action_state_id,
+        });
+    }
+    Ok(())
+}
+
+fn validate_cross_behavior_duplicates(
+    extension: &ExtensionId,
+    toggles: &[InlineFormatToggleSpecV1],
+    sets: &[InlineFormatSetSpecV1],
+) -> Result<(), ExtensionManifestError> {
+    if let Some(action_id) = first_cross_duplicate(
+        toggles.iter().map(|toggle| toggle.action_id().clone()),
+        sets.iter().map(|set| set.action_id().clone()),
+    ) {
+        return Err(ExtensionManifestError::DuplicateInlineFormatActionId {
+            extension: extension.clone(),
+            action_id,
+        });
+    }
+    if let Some(intent_id) = first_cross_duplicate(
+        toggles.iter().map(|toggle| toggle.intent_id().clone()),
+        sets.iter().map(|set| set.intent_id().clone()),
+    ) {
+        return Err(ExtensionManifestError::DuplicateInlineFormatIntentId {
+            extension: extension.clone(),
+            intent_id,
+        });
+    }
+    if let Some(binding_id) = first_cross_duplicate(
+        toggles.iter().map(|toggle| toggle.binding_id().clone()),
+        sets.iter().map(|set| set.binding_id().clone()),
+    ) {
+        return Err(ExtensionManifestError::DuplicateInlineFormatBindingId {
+            extension: extension.clone(),
+            binding_id,
+        });
+    }
+    if let Some(action_state_id) = first_cross_duplicate(
+        toggles.iter().map(|toggle| toggle.action_state_id().clone()),
+        sets.iter().map(|set| set.action_state_id().clone()),
+    ) {
+        return Err(ExtensionManifestError::DuplicateInlineFormatActionStateId {
+            extension: extension.clone(),
+            action_state_id,
+        });
+    }
+    Ok(())
+}
+
+fn first_cross_duplicate<T: Ord>(
+    first: impl Iterator<Item = T>,
+    second: impl Iterator<Item = T>,
+) -> Option<T> {
+    let first = first.collect::<std::collections::BTreeSet<_>>();
+    second.filter(|value| first.contains(value)).min()
 }
 
 fn first_duplicate<T: Ord>(mut values: Vec<T>) -> Option<T> {

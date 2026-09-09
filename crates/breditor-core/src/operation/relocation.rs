@@ -331,11 +331,16 @@ fn select_nested(outcome: PointRelocation, policy: DeletedPointPolicy) -> Point 
 pub(crate) struct TextSpliceMap {
     range: TextRange,
     inserted_length: TextOffset,
+    preserves_text: bool,
 }
 
 impl TextSpliceMap {
-    pub(crate) const fn new(range: TextRange, inserted_length: TextOffset) -> Self {
-        Self { range, inserted_length }
+    pub(crate) const fn new(
+        range: TextRange,
+        inserted_length: TextOffset,
+        preserves_text: bool,
+    ) -> Self {
+        Self { range, inserted_length, preserves_text }
     }
 
     fn relocate(
@@ -396,6 +401,9 @@ impl TextSpliceMap {
                 .and_then(|value| value.checked_add(inserted))
                 .ok_or(RelocationError::CoordinateOverflow)?;
             return Ok(OffsetRelocation::Exact(TextOffset::try_new(shifted)?));
+        }
+        if self.preserves_text {
+            return Ok(OffsetRelocation::Exact(offset));
         }
         if start == end || value == start {
             return Ok(OffsetRelocation::Exact(match affinity {

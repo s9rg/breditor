@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::{
     action::{
-        ActionId, ActionRegistryError, ActionStateCatalogError, ActionStateId,
+        ActionId, ActionRegistryError, ActionStateCatalogError, ActionStateId, ActionValueError,
         routing::{BindingId, IntentId, IntentRouterError},
     },
     extension::ExtensionId,
@@ -27,6 +27,14 @@ pub enum ProfileCompilationError {
         /// Fixed aggregate toggle ceiling.
         maximum: u32,
     },
+    /// The aggregate generated property-aware set count exceeds its ceiling.
+    #[error("profile has {actual} inline-format sets; the maximum is {maximum}")]
+    TooManyInlineFormatSets {
+        /// Rejected fixed-width aggregate count.
+        actual: u32,
+        /// Fixed aggregate set ceiling.
+        maximum: u32,
+    },
     /// A toggle did not target an inline format declared by its own manifest.
     #[error("extension {owner} does not own inline-format toggle target {format_kind}")]
     InlineFormatToggleTargetNotOwned {
@@ -45,10 +53,26 @@ pub enum ProfileCompilationError {
         /// Property-bearing target format kind.
         format_kind: QualifiedName,
     },
-    /// Two extension manifests claimed one generated action identity.
+    /// A property-aware set did not target a format declared by its own manifest.
+    #[error("extension {owner} does not own inline-format set target {format_kind}")]
+    InlineFormatSetTargetNotOwned {
+        /// Manifest that owns the invalid set declaration.
+        owner: ExtensionId,
+        /// Target format kind absent from that manifest's declarations.
+        format_kind: QualifiedName,
+    },
+    /// A property-aware set targeted a format without a typed property contract.
     #[error(
-        "inline-format toggle action {action_id} is owned by both {first_owner} and {second_owner}"
+        "extension {owner} cannot generate a property-aware set for property-free inline format {format_kind}"
     )]
+    InlineFormatSetTargetHasNoProperties {
+        /// Manifest that owns the invalid set declaration.
+        owner: ExtensionId,
+        /// Property-free target format kind.
+        format_kind: QualifiedName,
+    },
+    /// Two extension manifests claimed one generated action identity.
+    #[error("inline-format action {action_id} is owned by both {first_owner} and {second_owner}")]
     DuplicateActionId {
         /// Duplicated action identity.
         action_id: ActionId,
@@ -58,9 +82,7 @@ pub enum ProfileCompilationError {
         second_owner: ExtensionId,
     },
     /// Two extension manifests claimed one semantic intent identity.
-    #[error(
-        "inline-format toggle intent {intent_id} is owned by both {first_owner} and {second_owner}"
-    )]
+    #[error("inline-format intent {intent_id} is owned by both {first_owner} and {second_owner}")]
     DuplicateIntentId {
         /// Duplicated semantic intent identity.
         intent_id: IntentId,
@@ -70,9 +92,7 @@ pub enum ProfileCompilationError {
         second_owner: ExtensionId,
     },
     /// Two extension manifests claimed one intent-binding identity.
-    #[error(
-        "inline-format toggle binding {binding_id} is owned by both {first_owner} and {second_owner}"
-    )]
+    #[error("inline-format binding {binding_id} is owned by both {first_owner} and {second_owner}")]
     DuplicateBindingId {
         /// Duplicated intent-binding identity.
         binding_id: BindingId,
@@ -83,7 +103,7 @@ pub enum ProfileCompilationError {
     },
     /// Two extension manifests claimed one observable action-state identity.
     #[error(
-        "inline-format toggle action state {action_state_id} is owned by both {first_owner} and {second_owner}"
+        "inline-format action state {action_state_id} is owned by both {first_owner} and {second_owner}"
     )]
     DuplicateActionStateId {
         /// Duplicated observable action-state identity.
@@ -94,9 +114,7 @@ pub enum ProfileCompilationError {
         second_owner: ExtensionId,
     },
     /// An extension action attempted to use the core-owned namespace.
-    #[error(
-        "inline-format toggle action {action_id} uses the reserved Breditor namespace, not {owner}"
-    )]
+    #[error("inline-format action {action_id} uses the reserved Breditor namespace, not {owner}")]
     ReservedActionId {
         /// Rejected action identity.
         action_id: ActionId,
@@ -104,9 +122,7 @@ pub enum ProfileCompilationError {
         owner: ExtensionId,
     },
     /// An extension intent attempted to use the core-owned namespace.
-    #[error(
-        "inline-format toggle intent {intent_id} uses the reserved Breditor namespace, not {owner}"
-    )]
+    #[error("inline-format intent {intent_id} uses the reserved Breditor namespace, not {owner}")]
     ReservedIntentId {
         /// Rejected semantic intent identity.
         intent_id: IntentId,
@@ -114,9 +130,7 @@ pub enum ProfileCompilationError {
         owner: ExtensionId,
     },
     /// An extension binding attempted to use the core-owned namespace.
-    #[error(
-        "inline-format toggle binding {binding_id} uses the reserved Breditor namespace, not {owner}"
-    )]
+    #[error("inline-format binding {binding_id} uses the reserved Breditor namespace, not {owner}")]
     ReservedBindingId {
         /// Rejected binding identity.
         binding_id: BindingId,
@@ -125,13 +139,20 @@ pub enum ProfileCompilationError {
     },
     /// An extension action-state entry attempted to use the core-owned namespace.
     #[error(
-        "inline-format toggle action state {action_state_id} uses the reserved Breditor namespace, not {owner}"
+        "inline-format action state {action_state_id} uses the reserved Breditor namespace, not {owner}"
     )]
     ReservedActionStateId {
         /// Rejected observable action-state identity.
         action_state_id: ActionStateId,
         /// Manifest that attempted to claim it.
         owner: ExtensionId,
+    },
+    /// The fixed generated format-presence query could not be constructed.
+    #[error("generated inline-format set presence input is invalid: {source}")]
+    InlineFormatSetPresenceInput {
+        /// Unexpected bounded action-value construction failure.
+        #[source]
+        source: ActionValueError,
     },
     /// The sealed document schema could not be compiled.
     #[error("profile schema compilation failed: {source}")]

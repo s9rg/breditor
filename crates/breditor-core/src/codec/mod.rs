@@ -1,10 +1,15 @@
 //! Strict versioned codecs for untrusted persisted data.
 
 mod commit_encoding_v2;
+mod commit_encoding_v3;
 mod commit_error;
 mod commit_json;
 mod commit_json_v2;
+mod commit_json_v3;
+#[cfg(test)]
+mod commit_json_v3_tests;
 mod commit_v2_error;
+mod commit_v3_error;
 mod diagnostic;
 mod document_encoding;
 mod document_json;
@@ -13,11 +18,18 @@ mod document_preflight;
 mod document_v2_error;
 mod editor_state_encoding;
 mod editor_state_encoding_v2;
+mod editor_state_encoding_v3;
 mod editor_state_error;
 mod editor_state_json;
 mod editor_state_json_v2;
+mod editor_state_json_v3;
+#[cfg(test)]
+mod editor_state_json_v3_tests;
 mod editor_state_v2_error;
+mod editor_state_v3_error;
 mod editor_value_payload_v1;
+mod editor_value_payload_v2;
+mod editor_value_preflight_v2;
 mod error;
 mod json_size;
 mod local_log_checkpoint_encoding_v2;
@@ -313,27 +325,48 @@ mod operation_json;
 mod operation_json_v2;
 #[cfg(test)]
 mod operation_json_v2_tests;
+mod operation_json_v3;
+#[cfg(test)]
+mod operation_json_v3_tests;
 mod operation_payload_v1;
+mod operation_payload_v2;
+#[cfg(test)]
+mod operation_payload_v2_tests;
 mod operation_preflight;
+mod operation_preflight_v2;
 mod operation_sequence_v1;
+mod operation_sequence_v2;
 mod operation_v2_error;
+mod operation_v3_error;
+mod property_payload;
 #[cfg(test)]
 mod runtime_codec_v2_tests;
 mod schema_binding_encoding;
 mod session_checkpoint_encoding_v2;
+mod session_checkpoint_encoding_v3;
 mod session_checkpoint_entries_v1;
+mod session_checkpoint_entries_v2;
 mod session_checkpoint_error;
 mod session_checkpoint_json;
 mod session_checkpoint_json_v2;
+mod session_checkpoint_json_v3;
+#[cfg(test)]
+mod session_checkpoint_json_v3_tests;
 mod session_checkpoint_limits;
 mod session_checkpoint_v2_error;
+mod session_checkpoint_v3_error;
 mod transaction_error;
 mod transaction_json;
 mod transaction_json_v2;
 #[cfg(test)]
 mod transaction_json_v2_tests;
+mod transaction_json_v3;
+#[cfg(test)]
+mod transaction_json_v3_tests;
 mod transaction_payload_v1;
+mod transaction_payload_v2;
 mod transaction_v2_error;
+mod transaction_v3_error;
 
 pub use commit_error::{
     CommitApplicationError, CommitApplicationErrorCode, CommitCodecError, CommitRecordError,
@@ -341,7 +374,9 @@ pub use commit_error::{
 };
 pub use commit_json::{COMMIT_FORMAT, COMMIT_FORMAT_VERSION, CommitJsonCodec};
 pub use commit_json_v2::{COMMIT_V2_FORMAT_VERSION, CommitJsonCodecV2};
+pub use commit_json_v3::{COMMIT_V3_FORMAT_VERSION, CommitJsonCodecV3};
 pub use commit_v2_error::CommitV2CodecError;
+pub use commit_v3_error::CommitV3CodecError;
 pub use diagnostic::{BoundedDiagnostic, MAX_DIAGNOSTIC_PREVIEW_BYTES};
 pub use document_json::{DOCUMENT_FORMAT, DOCUMENT_FORMAT_VERSION, DocumentJsonCodec};
 pub use document_json_v2::{DOCUMENT_V2_FORMAT_VERSION, DocumentJsonCodecV2};
@@ -354,7 +389,11 @@ pub use editor_state_json::{
     EDITOR_STATE_FORMAT, EDITOR_STATE_FORMAT_VERSION, EditorStateJsonCodec,
 };
 pub use editor_state_json_v2::{EDITOR_STATE_V2_FORMAT_VERSION, EditorStateJsonCodecV2};
+pub use editor_state_json_v3::{EDITOR_STATE_V3_FORMAT_VERSION, EditorStateJsonCodecV3};
 pub use editor_state_v2_error::EditorStateV2CodecError;
+pub use editor_state_v3_error::{
+    EditorStateV3CodecError, EditorStateV3PendingFormatError, EditorStateV3PendingFormatErrorCode,
+};
 pub use error::{CodecErrorCode, DocumentCodecError, JsonFailure, JsonFailureKind};
 pub use local_log_checkpoint_error::{
     LocalLogCheckpointBindingField, LocalLogCheckpointCodecError, LocalLogCheckpointRecordError,
@@ -678,7 +717,9 @@ pub use operation_error::{
 };
 pub use operation_json::{OPERATION_FORMAT, OPERATION_FORMAT_VERSION, OperationJsonCodec};
 pub use operation_json_v2::{OPERATION_V2_FORMAT_VERSION, OperationJsonCodecV2};
+pub use operation_json_v3::{OPERATION_V3_FORMAT_VERSION, OperationJsonCodecV3};
 pub use operation_v2_error::OperationV2CodecError;
+pub use operation_v3_error::OperationV3CodecError;
 pub use session_checkpoint_error::{
     RetainedResourceKind, SessionCheckpointApplicationError, SessionCheckpointApplicationErrorCode,
     SessionCheckpointCodecError, SessionCheckpointRecordError, SessionCheckpointRecordErrorCode,
@@ -692,6 +733,9 @@ pub use session_checkpoint_json::{
 pub use session_checkpoint_json_v2::{
     SESSION_CHECKPOINT_V2_FORMAT_VERSION, SessionCheckpointJsonCodecV2,
 };
+pub use session_checkpoint_json_v3::{
+    SESSION_CHECKPOINT_V3_FORMAT_VERSION, SessionCheckpointJsonCodecV3,
+};
 pub use session_checkpoint_limits::{
     DEFAULT_SESSION_CHECKPOINT_MAX_AGGREGATE_FORWARD_OPERATIONS,
     DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY, DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
@@ -700,6 +744,7 @@ pub use session_checkpoint_limits::{
     DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_TEXT_BYTES, SessionCheckpointLimits,
 };
 pub use session_checkpoint_v2_error::SessionCheckpointV2CodecError;
+pub use session_checkpoint_v3_error::SessionCheckpointV3CodecError;
 pub use transaction_error::{
     TransactionCodecError, TransactionRecordError, TransactionRecordErrorCode,
     TransactionRecordLocation,
@@ -708,4 +753,6 @@ pub use transaction_json::{
     TRANSACTION_REQUEST_FORMAT, TRANSACTION_REQUEST_FORMAT_VERSION, TransactionJsonCodec,
 };
 pub use transaction_json_v2::{TRANSACTION_REQUEST_V2_FORMAT_VERSION, TransactionJsonCodecV2};
+pub use transaction_json_v3::{TRANSACTION_REQUEST_V3_FORMAT_VERSION, TransactionJsonCodecV3};
 pub use transaction_v2_error::TransactionV2CodecError;
+pub use transaction_v3_error::TransactionV3CodecError;

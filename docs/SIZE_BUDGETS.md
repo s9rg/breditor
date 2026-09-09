@@ -19,7 +19,7 @@ The current release ceilings are deliberately explicit:
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 225,000 bytes;
 - packed `@breditor/reference-highlight` tarball: 20,000 bytes;
-- packed `@breditor/wasm` tarball: 450,000 bytes;
+- packed `@breditor/wasm` tarball: 455,000 bytes;
 - reference-application JavaScript: 750,000 raw and 200,000 gzip bytes; and
 - reference-application Wasm: 1,500,000 raw and 400,000 gzip bytes.
 
@@ -86,6 +86,19 @@ The final `0.2.0` gate measured:
 - packed Wasm package: 428,471 bytes.
 
 No final-release ceiling was widened.
+
+The `0.3.0-alpha.2` typed-formatting checkpoint recalibrates only the packed
+Wasm tarball ceiling from 450,000 to 455,000 bytes. Its clean deterministic
+build measured:
+
+- generated Wasm: 1,310,315 bytes;
+- reference-application Wasm gzip: 384,753 bytes; and
+- packed Wasm package: 451,381 bytes.
+
+The raw and gzip Wasm ceilings remain unchanged. The 1,381-byte overflow over
+the prior packed ceiling is attributable to the reviewed property-aware action,
+validation, and exact replay paths now linked into the browser engine; package
+contents and deterministic two-build checks remain unchanged.
 
 This includes the profile-aware projection path, descriptor-only bounded array
 admission, and brand-checked native Event-family, Selection,

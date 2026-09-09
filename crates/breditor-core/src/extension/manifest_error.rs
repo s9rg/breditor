@@ -9,9 +9,9 @@ use super::ExtensionId;
 
 /// Why one behavior-free extension manifest could not be constructed.
 ///
-/// Construction validates fixed resource ceilings and canonical relation sets
-/// in deterministic phases. Caller relation order never selects which identity
-/// appears in a duplicate, self-reference, or overlap diagnostic.
+/// Construction validates fixed resource ceilings and canonical relation and
+/// declaration sets in deterministic phases. Caller order never selects which
+/// identity appears in a duplicate, self-reference, or overlap diagnostic.
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 #[non_exhaustive]
 pub enum ExtensionManifestError {
@@ -63,6 +63,16 @@ pub enum ExtensionManifestError {
         /// Extension whose manifest was rejected.
         extension: ExtensionId,
         /// Rejected fixed-width inline-format toggle count.
+        actual: u32,
+        /// Fixed per-manifest declaration ceiling.
+        maximum: u32,
+    },
+    /// The property-aware inline-format set declaration list exceeds its ceiling.
+    #[error("extension {extension} has {actual} inline-format sets; the maximum is {maximum}")]
+    TooManyInlineFormatSets {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// Rejected fixed-width inline-format set count.
         actual: u32,
         /// Fixed per-manifest declaration ceiling.
         maximum: u32,
@@ -159,6 +169,88 @@ pub enum ExtensionManifestError {
         /// Extension whose manifest was rejected.
         extension: ExtensionId,
         /// First duplicated action-state identity in canonical lexical order.
+        action_state_id: ActionStateId,
+    },
+    /// More than one property-aware set targets the same inline-format kind.
+    #[error("extension {extension} declares an inline-format set for {kind} more than once")]
+    DuplicateInlineFormatSetTarget {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated target kind in canonical lexical order.
+        kind: QualifiedName,
+    },
+    /// More than one property-aware set uses the same action identity.
+    #[error("extension {extension} declares inline-format set action {action_id} more than once")]
+    DuplicateInlineFormatSetActionId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated action identity in canonical lexical order.
+        action_id: ActionId,
+    },
+    /// More than one property-aware set uses the same intent identity.
+    #[error("extension {extension} declares inline-format set intent {intent_id} more than once")]
+    DuplicateInlineFormatSetIntentId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated intent identity in canonical lexical order.
+        intent_id: IntentId,
+    },
+    /// More than one property-aware set uses the same binding identity.
+    #[error("extension {extension} declares inline-format set binding {binding_id} more than once")]
+    DuplicateInlineFormatSetBindingId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated binding identity in canonical lexical order.
+        binding_id: BindingId,
+    },
+    /// More than one property-aware set uses the same action-state identity.
+    #[error(
+        "extension {extension} declares inline-format set action state {action_state_id} more than once"
+    )]
+    DuplicateInlineFormatSetActionStateId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated action-state identity in canonical lexical order.
+        action_state_id: ActionStateId,
+    },
+    /// A toggle and property-aware set use the same action identity.
+    #[error(
+        "extension {extension} declares action {action_id} in both inline-format behavior families"
+    )]
+    DuplicateInlineFormatActionId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First cross-family action collision in canonical lexical order.
+        action_id: ActionId,
+    },
+    /// A toggle and property-aware set use the same intent identity.
+    #[error(
+        "extension {extension} declares intent {intent_id} in both inline-format behavior families"
+    )]
+    DuplicateInlineFormatIntentId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First cross-family intent collision in canonical lexical order.
+        intent_id: IntentId,
+    },
+    /// A toggle and property-aware set use the same binding identity.
+    #[error(
+        "extension {extension} declares binding {binding_id} in both inline-format behavior families"
+    )]
+    DuplicateInlineFormatBindingId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First cross-family binding collision in canonical lexical order.
+        binding_id: BindingId,
+    },
+    /// A toggle and property-aware set use the same action-state identity.
+    #[error(
+        "extension {extension} declares action state {action_state_id} in both inline-format behavior families"
+    )]
+    DuplicateInlineFormatActionStateId {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First cross-family state collision in canonical lexical order.
         action_state_id: ActionStateId,
     },
     /// A manifest depends on its own exact identity.

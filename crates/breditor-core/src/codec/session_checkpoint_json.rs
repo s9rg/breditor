@@ -466,7 +466,7 @@ impl SessionCheckpointJsonCodec {
             .map_err(SessionCheckpointCodecError::Encoding)
     }
 
-    fn prove_entry(
+    pub(crate) fn prove_entry(
         &self,
         entry_index: u64,
         before: &EditorState,
@@ -668,7 +668,7 @@ pub(crate) fn validate_capacity_policy(
     Ok(())
 }
 
-fn validate_encoding_operation_count(
+pub(crate) fn validate_encoding_operation_count(
     entry_index: u64,
     actual: u64,
     context: &EditorContext,
@@ -848,7 +848,7 @@ fn session_record_error_from_editor_value(
 }
 
 #[derive(Default)]
-struct RetainedBoundaryBudget {
+pub(crate) struct RetainedBoundaryBudget {
     nodes: u64,
     text_bytes: u64,
     property_values: u64,
@@ -856,9 +856,70 @@ struct RetainedBoundaryBudget {
 }
 
 impl RetainedBoundaryBudget {
-    fn observe(
+    pub(crate) fn observe(
         &mut self,
         summary: &crate::document::DocumentSummary,
+        boundary_index: u64,
+        limits: &SessionCheckpointLimits,
+    ) -> Result<(), SessionCheckpointCodecError> {
+        self.observe_with_additional_properties(summary, 0, 0, boundary_index, limits)
+    }
+
+    /// Accounts for one complete retained V3 editor-state boundary.
+    ///
+    /// Pending formats are state outside the document AST, so their properties
+    /// must be added to (rather than substituted for) the document summary.
+    /// Computing the combined per-boundary increments before observation keeps
+    /// the established nodes, text, property-values, property-string-bytes
+    /// rejection order and counts the document exactly once.
+    pub(crate) fn observe_state(
+        &mut self,
+        state: &EditorState,
+        boundary_index: u64,
+        limits: &SessionCheckpointLimits,
+    ) -> Result<(), SessionCheckpointCodecError> {
+        let mut pending_property_values = 0_u64;
+        let mut pending_property_string_bytes = 0_u64;
+        if let Some(formats) = state.pending_formats() {
+            for format in formats {
+                let summary = state
+                    .context()
+                    .schema()
+                    .validate_inline_format_instance(state.context().limits(), format)
+                    .map_err(|report| {
+                        runtime_invariant(format!(
+                            "validated retained pending format failed schema admission with {} issue(s)",
+                            report.issue_count()
+                        ))
+                    })?;
+                pending_property_values = pending_property_values
+                    .checked_add(summary.property_value_count())
+                    .ok_or(SessionCheckpointResourceLimit::RetainedOverflow {
+                        kind: RetainedResourceKind::PropertyValues,
+                        boundary_index,
+                    })?;
+                pending_property_string_bytes = pending_property_string_bytes
+                    .checked_add(summary.property_string_bytes())
+                    .ok_or(SessionCheckpointResourceLimit::RetainedOverflow {
+                        kind: RetainedResourceKind::PropertyStringBytes,
+                        boundary_index,
+                    })?;
+            }
+        }
+        self.observe_with_additional_properties(
+            state.document().summary(),
+            pending_property_values,
+            pending_property_string_bytes,
+            boundary_index,
+            limits,
+        )
+    }
+
+    fn observe_with_additional_properties(
+        &mut self,
+        summary: &crate::document::DocumentSummary,
+        additional_property_values: u64,
+        additional_property_string_bytes: u64,
         boundary_index: u64,
         limits: &SessionCheckpointLimits,
     ) -> Result<(), SessionCheckpointCodecError> {
@@ -886,11 +947,18 @@ impl RetainedBoundaryBudget {
             self.text_bytes,
             limits.max_retained_text_bytes(),
         )?;
+        let boundary_property_values = summary
+            .property_value_count()
+            .checked_add(additional_property_values)
+            .ok_or(SessionCheckpointResourceLimit::RetainedOverflow {
+                kind: RetainedResourceKind::PropertyValues,
+                boundary_index,
+            })?;
         self.property_values = checked_retained_add(
             RetainedResourceKind::PropertyValues,
             boundary_index,
             self.property_values,
-            summary.property_value_count(),
+            boundary_property_values,
         )?;
         check_retained_limit(
             RetainedResourceKind::PropertyValues,
@@ -898,11 +966,18 @@ impl RetainedBoundaryBudget {
             self.property_values,
             limits.max_retained_property_values(),
         )?;
+        let boundary_property_string_bytes = summary
+            .total_property_string_bytes()
+            .checked_add(additional_property_string_bytes)
+            .ok_or(SessionCheckpointResourceLimit::RetainedOverflow {
+                kind: RetainedResourceKind::PropertyStringBytes,
+                boundary_index,
+            })?;
         self.property_string_bytes = checked_retained_add(
             RetainedResourceKind::PropertyStringBytes,
             boundary_index,
             self.property_string_bytes,
-            summary.total_property_string_bytes(),
+            boundary_property_string_bytes,
         )?;
         check_retained_limit(
             RetainedResourceKind::PropertyStringBytes,

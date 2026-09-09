@@ -191,6 +191,7 @@ legacy built-in Wasm factories and unprofiled browser persistence path continue
 to use V1. The alpha.6 profiled browser path selects an exact V2 fingerprint
 binding before reading stored payload bytes. Every V1 record remains
 exact-`breditor/base@1`-only; the runtime profile generation never enters this
-digest or any wire record. `0.3.0-alpha.1` does not widen the Wasm bootstrap or
-browser descriptor to construct or expose typed contracts; the new version-2
-compiler projection is reachable through Rust only at this checkpoint.
+digest or any wire record. `0.3.0-alpha.2` still does not widen the Wasm
+bootstrap or browser descriptor to construct or expose typed contracts; the
+version-2 compiler projection and property-aware editing remain reachable
+through Rust only at this checkpoint.

@@ -1,8 +1,9 @@
 # Durable schema binding contract
 
-Status: implemented in `0.2.0`; Wasm ABI 3 provides explicit V2
-profile factories, and the supported browser selects exact-base V1 or
-profile-aware V2 persistence without sniffing or silently converting formats
+Status: implemented in `0.2.0`; the `0.3.0-alpha.2` Rust core adds explicitly
+selected property-preserving V3 operation/state/replay families. Wasm ABI 3
+and the supported browser still select exact-base V1 or profile-aware V2
+persistence without sniffing or silently converting formats.
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.
@@ -11,7 +12,7 @@ their document, step, state, history, or plugin formats are accepted here.
 
 ## Two required identities
 
-Every V2 semantic record carries both:
+Every V2 or V3 semantic record carries both:
 
 - `schema`, the human-readable `SchemaId` selector; and
 - `schemaFingerprint`, the collision-resistant identity of the complete
@@ -29,15 +30,19 @@ is invalid rather than normalized.
 
 ## Explicit generations
 
-V1 and V2 are separate public codec families. Existing codec types,
+V1, V2, and the implemented V3 families are separate public codec families.
+Existing codec types,
 `*_FORMAT_VERSION` constants, methods, and golden bytes remain permanently V1.
 They accept only the exact built-in `breditor/base@1` definition. V2 uses
-separate `*CodecV2` types and `*_V2_FORMAT_VERSION` constants.
+separate `*CodecV2` types and `*_V2_FORMAT_VERSION` constants. Property-aware
+Operation, Editor State, Transaction Request, Commit, and Session Checkpoint
+use separate `*CodecV3` types and V3 constants. Document remains V2, and the
+local-log/frame/storage graph has no V3 family.
 
 There is no context-sensitive "latest" encoder and no decoder that silently
-upgrades either generation. A future decoder that accepts more than one
+upgrades or downgrades any generation. A future decoder that accepts more than one
 generation must return the observed generation with the decoded value so a
-host cannot unknowingly replace retained V1 evidence with V2 bytes.
+host cannot unknowingly replace retained evidence with another generation.
 
 V2 keeps each existing format string and sets `formatVersion` to `2`. Every
 independent JSON envelope begins in this canonical field order:
@@ -72,20 +77,46 @@ are runtime ownership and validation contracts, not additional durable
 envelope formats.
 
 Every repeated selector and fingerprint must match the outer record and the
-receiving compiled context. Mixed V1/V2 nesting is invalid. An ordinary storage
-rotation cannot change fingerprints or frame generations.
+receiving compiled context. Unspecified mixed envelope generations are invalid;
+only the explicitly frozen nested generations listed here are accepted. An
+ordinary storage rotation cannot change fingerprints or frame generations.
+
+V3 keeps the same format strings and ordered binding prefix, with
+`formatVersion: 3`, but advances only record families that must preserve typed
+operation or editor-value payloads:
+
+- Operation V3 carries `OperationRecordV2`, whose format occurrences retain
+  complete canonical property maps.
+- Transaction Request V3 carries property-aware operation sequences and V2
+  pending-format updates; snapshot, selection, and metadata records remain V1.
+- Editor State V3 embeds Document V2 and advances pending formats to their
+  property-preserving V2 record. There is no Document V3.
+- Commit V3 embeds Editor State V3 and property-aware forward operations and
+  result pending formats.
+- Session Checkpoint V3 embeds Editor State V3 and property-aware history
+  entries and replay values.
+
+These five families advance together when their nested values require typed
+properties. The local-log entry/checkpoint/frame/root/storage generations stop
+at V2 and cannot wrap a Session Checkpoint V3. V1/V2 operation payloads retain
+their exact bytes and fail closed for any actual operation under a schema with
+a typed property contract, including an optional-only contract and empty
+property instances. V1 pending-format records also reject property-bearing
+instances. Document V2 remains property-aware, so legacy composite records
+that contain no typed pending value or operation recipe may still be valid.
 
 ## Decode and encode order
 
-A V2 decoder performs these checks before returning a runtime value:
+A V2 or V3 decoder performs these checks before returning a runtime value:
 
 1. enforce the complete input-byte ceiling;
-2. route the exact format and V2 version;
+2. route the exact format and caller-selected version;
 3. validate the exact outer shape while retaining large nested values as
    borrowed raw JSON;
 4. parse and compare the schema selector;
 5. parse and compare the schema fingerprint;
-6. preflight nested counts, strings, paths, and payload sizes;
+6. preflight nested counts, strings, paths, property canonicality, numeric
+   form, and payload sizes;
 7. reconstruct, replay where required, and completely validate under the
    receiving process-local proof; and
 8. perform any family-specific canonical-byte comparison.
@@ -177,24 +208,24 @@ document cannot directly mint a new persistence root. This narrower source
 contract makes history/session reset observable and prevents a document-only
 helper from being mistaken for persistence migration.
 
-## Deliberate alpha.6 limits
+## Current limits
 
 - The public schema compiler remains
   `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
   non-`breditor/*` `SchemaId` and manifest-owned inline formats. The `0.2.0`
   path is property-free; `0.3.0-alpha.1` adds closed typed scalar properties for
-  inline formats in Rust only. It still cannot express new nodes, element
+  inline formats in Rust only, and alpha.2 adds the typed set declaration. It
+  still cannot express new nodes, element
   properties, entities, exclusions, or normalization. Alpha.4 adds
   `CompiledEditorProfile::try_compile_base_text_profile` over that sealed
   compiler and co-owns its exact `ExtensionSet`, schema, generated registry,
   router, and catalog.
-- Existing primitive operation validation now accepts the compiler-minted
-  sealed property-free base-text capability. `TextSplice`, `ParagraphSplit`,
-  `ParagraphJoin`, and `RootTextReplace` preserve admitted property-free
-  extension formats, exact inverses, undo/redo, and V2 checkpoint replay. In
-  `0.3.0-alpha.1`, any typed format globally disables those operations until a
-  property-aware mutation/inverse contract exists. No operation tag, wire
-  shape, inverse callback, or replay callback was added.
+- Existing primitive operation validation accepts the compiler-minted sealed
+  base-text capability. Alpha.2 makes `TextSplice` property-aware and proves
+  paragraph-local set, insert/type-over, selection deletion, grapheme deletion,
+  exact inverse, relocation, undo/redo, and V3 replay. `ParagraphSplit`,
+  `ParagraphJoin`, and `RootTextReplace` remain property-free and fail closed
+  for typed schemas.
 - A manifest-owned toggle bundle contains one same-manifest format kind plus
   action, no-input intent, binding, and action-state IDs. Compilation generates
   the existing Rust toggle action, a tracked intent, one priority-0 blocking
@@ -202,6 +233,11 @@ helper from being mistaken for persistence migration.
   unique within each typed namespace and extension semantic IDs cannot use
   `breditor/*`. Custom actions, callbacks, inputs, cross-extension targets,
   shared identities, and fallback routes remain unavailable.
+- A manifest-owned `InlineFormatSetSpecV1` targets one same-manifest typed
+  format and generates an explicit-input set/remove action, typed intent,
+  priority-0 blocking binding, and routed presence state. It carries no
+  property values, callback, renderer, label, key binding, or toolbar metadata;
+  set replaces the complete property map rather than patching it.
 - Every successful profile compilation mints a fresh opaque process-local
   generation. Alpha.5 carries it through profile-created Rust engine/state
   observations and Wasm handles, but never serializes or exposes it as a
@@ -213,8 +249,11 @@ helper from being mistaken for persistence migration.
   documents under one schema must supply distinct caller slots. Intent-based
   Alpha.7 intent/toolbar execution is process-local presentation and changes no
   durable binding or record bytes.
-  `0.3.0-alpha.1` does not widen the Wasm bootstrap or browser descriptor to
-  declare typed properties.
+  Alpha.2 does not widen the Wasm bootstrap or browser descriptor to declare
+  typed properties or typed action input.
+- The local-log entry, checkpoint, frame, root, and storage-generation families
+  have no V3 codec. Property-bearing Session Checkpoint V3 bytes cannot enter
+  the current V1/V2 local-log graph.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

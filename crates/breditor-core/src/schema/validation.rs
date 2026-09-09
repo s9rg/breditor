@@ -7,8 +7,8 @@ use std::{
 
 use crate::{
     document::{
-        DocumentSummary, NodeRef, PropertyInteger, PropertyMap, PropertyValue, PropertyValueInner,
-        PropertyValueKind,
+        DocumentSummary, Format, NodeRef, PropertyInteger, PropertyMap, PropertyValue,
+        PropertyValueInner, PropertyValueKind,
     },
     extension::{
         InlineFormatPropertyContractV1, InlineFormatPropertySpecV1, InlineFormatPropertyTypeV1,
@@ -422,6 +422,40 @@ impl CompiledSchema {
         state.validate_root_kind(root, &root_path);
         state.finish()
     }
+
+    /// Validates one complete inline-format instance against this compiled
+    /// schema and the active host limits.
+    ///
+    /// This is the shared admission boundary used by document validation,
+    /// pending typing state, action evaluation, and property-aware operations.
+    /// It deliberately returns the same structured validation report as full
+    /// document admission so those paths cannot drift on typed-property rules.
+    pub(crate) fn validate_inline_format_instance(
+        &self,
+        limits: &DocumentLimits,
+        format: &Format,
+    ) -> Result<InlineFormatInstanceSummary, ValidationReport> {
+        let mut state = ValidationState::new(self, limits);
+        state.visit_inline_format(format, &NodePath::root(), 0);
+        state.finish_inline_format()
+    }
+}
+
+/// Exact resource contribution of one admitted inline-format instance.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct InlineFormatInstanceSummary {
+    property_value_count: u64,
+    property_string_bytes: u64,
+}
+
+impl InlineFormatInstanceSummary {
+    pub(crate) const fn property_value_count(self) -> u64 {
+        self.property_value_count
+    }
+
+    pub(crate) const fn property_string_bytes(self) -> u64 {
+        self.property_string_bytes
+    }
 }
 
 struct ValidationState<'a> {
@@ -464,6 +498,17 @@ impl<'a> ValidationState<'a> {
                 self.property_value_count,
                 self.property_string_bytes,
             ))
+        } else {
+            Err(ValidationReport::from_collected_issues(self.issues, self.report_truncated))
+        }
+    }
+
+    fn finish_inline_format(self) -> Result<InlineFormatInstanceSummary, ValidationReport> {
+        if self.issue_count == 0 {
+            Ok(InlineFormatInstanceSummary {
+                property_value_count: self.property_value_count,
+                property_string_bytes: self.property_string_bytes,
+            })
         } else {
             Err(ValidationReport::from_collected_issues(self.issues, self.report_truncated))
         }
@@ -859,34 +904,36 @@ impl<'a> ValidationState<'a> {
                 }
             }
             previous = Some(format.kind());
-            let known_format = self.schema.allows_text_format(format.kind());
-            if !known_format {
-                self.issue(
-                    ValidationCode::UnknownFormat,
-                    path,
-                    ValidationSubject::Format { index },
-                    ValidationDetail::None,
-                    format!(
-                        "schema `{}` does not register format `{}`",
-                        self.schema.id(),
-                        format.kind()
-                    ),
-                );
-            }
-            self.visit_properties(format.properties(), path, Some(index));
-            let schema = self.schema;
-            let property_contract = schema.format_property_contract(format.kind());
-            if let Some(contract) = property_contract {
-                self.validate_format_property_contract(contract, format.properties(), path, index);
-            } else if !format.properties().is_empty() {
-                self.issue(
-                    ValidationCode::PropertiesNotAllowed,
-                    path,
-                    ValidationSubject::Format { index },
-                    ValidationDetail::None,
-                    format!("base-schema format `{}` does not allow properties", format.kind()),
-                );
-            }
+            self.visit_inline_format(format, path, index);
+        }
+    }
+
+    fn visit_inline_format(&mut self, format: &Format, path: &NodePath, index: usize) {
+        if !self.schema.allows_text_format(format.kind()) {
+            self.issue(
+                ValidationCode::UnknownFormat,
+                path,
+                ValidationSubject::Format { index },
+                ValidationDetail::None,
+                format!(
+                    "schema `{}` does not register format `{}`",
+                    self.schema.id(),
+                    format.kind()
+                ),
+            );
+        }
+        self.visit_properties(format.properties(), path, Some(index));
+        let property_contract = self.schema.format_property_contract(format.kind());
+        if let Some(contract) = property_contract {
+            self.validate_format_property_contract(contract, format.properties(), path, index);
+        } else if !format.properties().is_empty() {
+            self.issue(
+                ValidationCode::PropertiesNotAllowed,
+                path,
+                ValidationSubject::Format { index },
+                ValidationDetail::None,
+                format!("base-schema format `{}` does not allow properties", format.kind()),
+            );
         }
     }
 

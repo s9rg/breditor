@@ -654,21 +654,21 @@
 //! process-local classification only: it creates no [`local_log::LocalLogEntry`]
 //! identity, append ownership, I/O acknowledgement, or durability evidence.
 //!
-//! Version `0.3.0-alpha.1` adds the Rust-only typed inline-format property
-//! foundation. A manifest-owned format may attach a closed canonical contract
-//! of required or optional Boolean, JavaScript-safe integer, and UTF-8
-//! byte-bounded string properties. The compiled schema and Rust profile
-//! descriptor retain it, Document V2 validates exact keys/types/bounds, and any
-//! typed format selects compiler-contract fingerprint version 2 while
-//! property-free fingerprints remain byte-identical. Document and checkpoint
-//! limits separately account for property-string bytes, and validation reports
-//! are bounded.
+//! Version `0.3.0-alpha.2` makes the Rust typed-format foundation editable and
+//! durable. Property-aware [`operation::TextSplice`] recipes now support exact
+//! same-paragraph insertion, deletion, formatting, relocation, inverse replay,
+//! and undo/redo. Extension manifests can generate a typed set/remove action,
+//! intent, blocking binding, and presence state for a manifest-owned typed
+//! format. Operation, editor-state, transaction, commit, and session-checkpoint
+//! V3 codecs preserve exact properties; checkpoints prove every history recipe
+//! in both directions before publication. Older generations remain immutable
+//! and fail closed whenever projection would discard typed values.
 //!
-//! This alpha deliberately fails closed for behavior it cannot preserve. Any
-//! typed format disables the existing content-operation language for that
-//! schema, cannot enter V1 pending-format state, and cannot use a generated
-//! no-input toggle. Wasm ABI 3 and the browser path remain property-free. Typed
-//! scalar validation does not define URL, CSS, HTML, or clipboard safety.
+//! This alpha still keeps structural typed editing deliberately closed:
+//! paragraph split/join, cross-paragraph typed edits, root-text replacement,
+//! and local-log V3 persistence are not yet supported. Wasm ABI 3 and the
+//! browser path remain property-free. Typed scalar validation is a data-shape
+//! contract; it does not by itself define URL, CSS, HTML, or clipboard safety.
 
 pub mod action;
 pub mod codec;

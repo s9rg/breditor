@@ -10,7 +10,9 @@ use crate::{
     state::EditorContext,
 };
 
-use super::operation_payload_v1::{decode_operation_payload_v1, encode_operation_payload_v1};
+use super::operation_payload_v1::{
+    decode_operation_payload_v1, encode_operation_payload_v1, validate_operation_payload_v1,
+};
 use super::operation_preflight::preflight_operation_payload;
 
 /// Stable identifier for Breditor's singular operation envelope.
@@ -98,7 +100,7 @@ impl OperationJsonCodec {
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(OperationCodecError::InvalidJson)?;
         let operation = decode_operation_payload_v1(record.operation)?;
-        operation.validate(&self.context)?;
+        validate_operation_payload_v1(&operation, &self.context)?;
         Ok(operation)
     }
 
@@ -118,8 +120,7 @@ impl OperationJsonCodec {
     /// on serialization failure.
     pub fn encode(&self, operation: &Operation) -> Result<String, OperationCodecError> {
         self.ensure_v1_schema()?;
-        operation.validate(&self.context)?;
-        let record = record_from_operation(self.context.schema().id(), operation);
+        let record = record_from_operation(self.context.schema().id(), operation, &self.context)?;
         let encoded = serde_json::to_string(&record)
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(OperationCodecError::Encoding)?;
@@ -162,14 +163,18 @@ fn schema_id_from_record(record: SchemaIdRecord) -> Result<SchemaId, OperationCo
     Ok(SchemaId::new(name, version))
 }
 
-fn record_from_operation(schema: &SchemaId, operation: &Operation) -> OperationRecordEnvelopeV1 {
-    OperationRecordEnvelopeV1 {
+fn record_from_operation(
+    schema: &SchemaId,
+    operation: &Operation,
+    context: &EditorContext,
+) -> Result<OperationRecordEnvelopeV1, crate::operation::OperationValidationError> {
+    Ok(OperationRecordEnvelopeV1 {
         format: OPERATION_FORMAT.to_owned(),
         format_version: OPERATION_FORMAT_VERSION,
         schema: SchemaIdRecord {
             name: schema.name().as_str().to_owned(),
             version: schema.version().get(),
         },
-        operation: encode_operation_payload_v1(operation),
-    }
+        operation: encode_operation_payload_v1(operation, context)?,
+    })
 }

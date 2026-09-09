@@ -3,7 +3,8 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-`0.3.0-alpha.1` adds the first Rust-only typed-property refinement described in
+`0.3.0-alpha.2` adds Rust-only typed-property editing and replay on top of the
+Alpha.1 declaration refinement described in
 [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 This document defines Breditor's extension architecture and the deliberately

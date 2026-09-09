@@ -19,8 +19,8 @@ use super::{
     grapheme_boundary::{grapheme_boundary_at_or_before, next_grapheme_boundary},
     support::{
         base_shape_fits, collapsed_selection_at_with_affinity, disabled, fault,
-        fragment_range_parts, paragraph_fragment, require_base_text_range,
-        require_operation_budget, strict_relocation,
+        fragment_range_parts, require_operation_budget, require_text_splice_range,
+        strict_relocation, text_splice_paragraph_fragment,
     },
 };
 
@@ -30,12 +30,13 @@ use super::{
 /// becomes one independent history record. A collapsed selection deletes one
 /// Unicode extended grapheme cluster and offers the stable
 /// `breditor/delete-forward` history merge group. At a paragraph end it joins
-/// the immediate next paragraph; at document end it is disabled. A protocol
-/// caret inside a grapheme cluster is also disabled instead of widening or
-/// guessing its deletion range. If removing content or a paragraph boundary
-/// forms a cluster across the deletion seam, the core-produced caret snaps to
-/// that cluster's preceding boundary. Pending typing formats are preserved
-/// exactly.
+/// the immediate next paragraph only when the schema supports property-free
+/// structural operations; typed paragraph-local splices preserve complete
+/// inline-format instances. At document end it is disabled. A protocol caret
+/// inside a grapheme cluster is also disabled instead of widening or guessing
+/// its deletion range. If removing content or a paragraph boundary forms a
+/// cluster across the deletion seam, the core-produced caret snaps to that
+/// cluster's preceding boundary. Pending typing formats are preserved exactly.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeleteForwardAction;
 
@@ -72,19 +73,31 @@ impl Action for DeleteForwardAction {
 }
 
 fn evaluate_delete_forward(state: &EditorState) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_text_range(state)? {
+    let range = match require_text_splice_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
     if !range.is_collapsed() {
         return delete_selected_range(state, &range);
     }
-    if let Some(decision) = require_operation_budget(state, 1) {
-        return Ok(decision);
-    }
     let paragraph_path = range.start().paragraph_path();
     let caret = range.start().offset();
-    let source = paragraph_fragment(state, paragraph_path, caret)?;
+    let supports_structural = state.context().schema().supports_base_text_operations();
+    // Preserve the property-free action's early operation-budget exit. Typed
+    // schemas need the paragraph length first so a boundary route can retain
+    // its stable unsupported-schema outcome instead of appearing budget-bound.
+    if supports_structural && let Some(decision) = require_operation_budget(state, 1) {
+        return Ok(decision);
+    }
+    let source = text_splice_paragraph_fragment(state, paragraph_path)?;
+    if caret == source.utf16_len() && !supports_structural {
+        // ParagraphJoin is intentionally still property-free. This also keeps
+        // the pre-existing typed-schema outcome stable at document end.
+        return Ok(disabled("breditor/unsupported-schema"));
+    }
+    if !supports_structural && let Some(decision) = require_operation_budget(state, 1) {
+        return Ok(decision);
+    }
     if caret < source.utf16_len() {
         return delete_next_grapheme(state, paragraph_path, caret, &source);
     }

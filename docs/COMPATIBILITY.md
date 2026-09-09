@@ -1,7 +1,7 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-`0.3.0-alpha.1` adds an explicitly experimental Rust-only contract
+the `0.3.0-alpha.2` work adds an explicitly experimental Rust-only contract
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -257,7 +257,7 @@ manifest wire protocol. The package's callback-free data prevents a browser
 callback from becoming Rust mutation authority; importing the package still
 executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
 
-## `0.3.0-alpha.1` Rust boundary
+## `0.3.0-alpha.1` and `alpha.2` Rust boundary
 
 This prerelease adds an experimental Rust-only typed inline-format property
 contract. It is not yet part of the supported browser package-root surface.
@@ -277,18 +277,39 @@ Document and checkpoint limits now separately bound property-string bytes, and
 validation reports have a fixed 1,024-issue ceiling including a truncation
 marker.
 
-The alpha fails closed where preservation semantics do not yet exist. Any typed
-format globally disables all four content operation variants for its schema;
-property-bearing formats cannot enter V1 pending typing state or generated
-no-input toggles. Valid typed documents, ordinary selections without typed
-pending state, and empty-history Session Checkpoint V2 state can still be
-represented. This does not claim property-changing undo, redo, or replay.
+The alpha.2 Rust-core checkpoint adds the first property-preserving
+mutation boundary. `SetInlineFormatAction` accepts a closed typed set/remove
+input and replaces one complete format property map at a caret or across a
+same-paragraph selection. `InlineFormatSetSpecV1` can compile one same-manifest
+typed format into that action, a typed intent, a priority-0 blocking route, and
+an observable presence state. Paragraph-local insert/type-over, selection
+deletion, and backward/forward grapheme deletion now use a property-aware
+`TextSplice`; exact relocation and undo/redo preserve typed document, selection,
+and pending-format values.
+
+Operation, Editor State, Transaction Request, Commit, and Session Checkpoint V3
+are separate public Rust codec families selected explicitly by callers. They
+retain the selector/fingerprint binding, preserve operation and pending-format
+properties, and embed Document V2 rather than introducing Document V3. V1/V2
+golden bytes remain unchanged. Their frozen primitive-operation payloads fail
+closed for every operation under a typed-contract schema—even an optional-only
+contract with an empty property instance—rather than silently projecting it as
+property-free. V1 pending-format shapes similarly cannot carry typed instances.
+A V2 state or empty-history checkpoint can still carry a property-aware
+Document V2 when it contains no typed pending value or operation recipe.
+
+Preservation remains deliberately incomplete. `ParagraphSplit`,
+`ParagraphJoin`, and `RootTextReplace` are not enabled for typed schemas, so
+typed paragraph breaks, paragraph-boundary deletion, cross-paragraph
+replacement, and structural plain-text insertion fail closed. There is no V3
+local-log, frame, root, or storage-generation family, and no automatic codec
+generation detection, upgrade, downgrade, or mixed nesting.
 
 Wasm ABI 3 is unchanged. Its bootstrap and browser descriptor cannot declare or
 expose typed contracts, and the browser cannot construct, render, edit, copy,
 paste, or add toolbar controls for them. The package-root profile path therefore
 remains property-free even when the matching workspace packages carry a
-`0.3.0-alpha.1` version. Typed validation proves only scalar shape and ranges;
+`0.3.0-alpha.2` version. Typed validation proves only scalar shape and ranges;
 URL schemes, CSS safety, and renderer sanitization remain separate future
 contracts. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
@@ -301,9 +322,12 @@ both the exact ABI string and exact embedded package version before reading the
 generated engine factory. ABI compatibility alone never makes mismatched
 official package versions a supported pair.
 
-The current `0.3.0-alpha.1` reference configuration installs exactly
-`@breditor/browser@0.3.0-alpha.1`, `@breditor/wasm@0.3.0-alpha.1`, and
-`@breditor/reference-highlight@0.3.0-alpha.1`. The reference package declares
+The current workspace reference configuration declares exactly matching
+`@breditor/browser@0.3.0-alpha.2`, `@breditor/wasm@0.3.0-alpha.2`, and
+`@breditor/reference-highlight@0.3.0-alpha.2` package versions. This is not a
+registry-availability or publication claim. The clean consumer gate first packs
+the local workspace tarballs, then installs those artifacts in an isolated
+consumer. The reference package declares
 the exact browser version as a peer dependency. Its render and toolbar
 manifests are branded by the `@breditor/browser` module instance that created
 them, so a duplicate, nested, or mismatched browser copy is not a compatible
@@ -411,7 +435,8 @@ no supported package-root compatibility promise:
   local-log checkpoint, Local Log Frame, local-log recovery/tail/compaction,
   storage-root, local-log storage-generation, selected-storage normalization,
   and schema-admission formats and state machines, including their experimental
-  V2 generations;
+  V2 generations and the property-preserving Rust-only V3 operation/state/
+  transaction/commit/session generations;
 - internal renderer generations, AST/DOM map identity, engine observations,
   history stamps, delivery tokens, queue receipts, storage attempt IDs, writer
   epochs, replay tombstones, and other process-local identities; and

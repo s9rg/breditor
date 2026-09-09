@@ -19,14 +19,22 @@ intent/toolbar path without widening any Rust V1/V2 codec or Wasm ABI 3.
 `0.3.0-alpha.1` adds Rust-only typed inline-format property declarations,
 validation, fingerprinting, and retained-resource accounting. It does not widen
 Wasm ABI 3 or the supported browser path.
+The alpha.2 Rust core adds explicit typed set/remove input,
+property-aware paragraph-local `TextSplice` insert/delete/format paths, exact
+relocation and undo/redo, and caller-selected Operation, Editor State,
+Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
+families retain Document V2. Typed structural paragraph split/join/root replace
+and Local Log V3 remain unsupported; Wasm and browser paths remain
+property-free.
 Document format: `breditor/document`, explicit versions `1` and `2`
-Operation format: `breditor/operation`, explicit versions `1` and `2`
+Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
-`1` and `2`
-Editor-state format: `breditor/editor-state`, explicit versions `1` and `2`
-Commit format: `breditor/commit`, explicit versions `1` and `2`
-Session-checkpoint format: `breditor/session-checkpoint`, explicit versions `1`
-and `2`
+`1`, `2`, and `3`
+Editor-state format: `breditor/editor-state`, explicit versions `1`, `2`, and
+`3`
+Commit format: `breditor/commit`, explicit versions `1`, `2`, and `3`
+Session-checkpoint format: `breditor/session-checkpoint`, explicit versions
+`1`, `2`, and `3`
 Local-log-entry format: `breditor/local-log-entry`, explicit versions `1` and
 `2`
 Local-log-checkpoint format: `breditor/local-log-checkpoint`, explicit versions
@@ -54,6 +62,9 @@ The implemented Rust slice owns:
   `CompiledEditorProfile` that co-owns the resolved extension set, compiled
   schema, generated action registry, intent router, and action-state catalog
   under one fresh opaque Rust-local generation;
+- immutable manifest-owned `InlineFormatSetSpecV1` bundles plus the
+  registration-owned `SetInlineFormatAction` and exact
+  `breditor/set-inline-format-input@1` complete-map set/remove input;
 - exact proof-derived document measurements cached on each `Document`;
 - snapshot-local points, document-aware point ordering, and directional range
   selections;
@@ -62,6 +73,9 @@ The implemented Rust slice owns:
 - paragraph-local `TextSplice`, direct-root `ParagraphSplit`/`ParagraphJoin`,
   and guarded root-text range replacement operations with closed exact content
   inverses;
+- property-preserving Operation, Editor State, Transaction Request, Commit,
+  and Session Checkpoint V3 codecs with bounded preflight and replay, while
+  retaining Document V2 and leaving the local-log/storage graph at V1/V2;
 - the frozen, strict Operation V1 JSON codec that preserves every
   optimistic guard and validates statically knowable schema and resource laws;
 - the strict contextual Transaction Request V1 codec that binds ordered
@@ -1416,20 +1430,27 @@ version-1 bytes; any typed format selects compiler-contract version 2.
 The private compiler-minted base-text capability, rather than matching names
 alone, gates the primitive edit paths.
 
-These non-base schemas use only the V2 durable codec graph. Every V1 codec
-continues to require the exact built-in strong-only `breditor/base@1`
-definition.
+These non-base schemas use Document V2. The explicitly selected Operation,
+Editor State, Transaction Request, Commit, and Session Checkpoint V3 families
+carry typed operation and pending-format payloads while continuing to embed
+Document V2. Their V2 predecessors remain available only where no typed
+operation or pending value must be represented. Every V1 codec continues to
+require the exact built-in strong-only `breditor/base@1` definition.
 
 ## Text operation contract
 
-At `0.3.0-alpha.1`, all four existing operation variants fail closed when the
-compiled schema admits any property-bearing format. This global gate applies to
-capture, static validation, V2 codec admission, and transaction application,
-even when the current document does not use that format. It prevents property
-loss until a property-aware mutation and inverse contract exists. A rejected
-transaction leaves its base state unchanged. Valid typed documents and
-selection-only state can still exist; content-changing history and replay are
-not promised for this alpha.
+Alpha.2 makes `TextSplice` property-aware: capture, validation, application,
+inverse generation, relocation, undo/redo, and V3 replay retain complete typed
+format instances. Same-paragraph set, insert/type-over, selection deletion,
+and backward/forward grapheme deletion use this path. `ParagraphSplit`,
+`ParagraphJoin`, and `RootTextReplace` remain property-free and fail closed for
+typed schemas, leaving a rejected transaction's base state unchanged.
+
+The frozen V1/V2 operation payload generation cannot represent properties. It
+therefore rejects every actual operation under any typed-contract schema—even
+an optional-only contract with an empty property map—instead of silently
+stripping data. Callers explicitly select V3 for property-bearing operations;
+there is no automatic detection or conversion.
 
 `TextSplice` replaces one half-open UTF-16 range inside one paragraph. Its range
 is paragraph-local rather than tied to unstable text-leaf paths, so one splice

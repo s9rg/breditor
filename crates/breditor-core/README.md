@@ -103,9 +103,31 @@ keep exact version-1 bytes. Document and checkpoint policies separately bound
 property-string bytes, and capped validation reports include one truncation
 issue in the report's canonical sort order.
 
-This checkpoint intentionally has no property-aware edit protocol. Any typed
-format disables all four existing content operations for the schema; typed
-pending formats and generated no-input toggles are rejected. Wasm ABI 3,
+The `0.3.0-alpha.2` Rust-core checkpoint adds a property-preserving
+`TextSplice`, registration-owned `SetInlineFormatAction`, and the exact typed
+`breditor/set-inline-format-input@1` set/remove contract. A collapsed action
+updates pending typing formats without a document operation; a same-paragraph
+range uses one guarded splice and replaces or removes the complete configured
+format instance. `InlineFormatSetSpecV1` can compile that handler into a typed
+intent, priority-0 blocking binding, and routed presence state. Generated
+no-input toggles remain property-free.
+
+Typed `insert-text` now supports paragraph-local insertion and type-over,
+including exact pending formats and contextual inheritance. Selection deletion
+and backward/forward Unicode 17 grapheme deletion support paragraph-local
+property-bearing runs. Exact relocation distinguishes formatting from deletion,
+and undo/redo preserves document, directional selection, and typed pending
+formats. `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` remain
+property-free, so typed paragraph breaks, boundary joins, cross-paragraph
+replacement, and `insert-plain-text` still fail closed.
+
+Public Operation, Editor State, Transaction Request, Commit, and Session
+Checkpoint V3 codecs preserve typed operation and pending-format payloads under
+the existing selector/fingerprint binding. V3 state boundaries continue to
+embed Document V2; there is no Document V3. V1/V2 operation payloads retain
+their exact bytes and reject typed-schema operations rather than projecting
+them through empty property records. Generations are selected explicitly; no
+codec sniffs or converts them. Local Log V3 does not yet exist. Wasm ABI 3,
 profile bootstrap, browser descriptors/rendering, clipboard, and toolbar
 controls remain property-free. Scalar validation is not URL or CSS
 sanitization.
@@ -121,8 +143,11 @@ The current crate exposes immutable validated documents with cached exact
 measurements, the fixed base schema used by the first proof, strict versioned
 document, singular guarded-operation, exact-base transaction-request,
 contextual complete editor-state, replay-proved commit, and bounded durable
-session-checkpoint plus replay-identified local-log-entry JSON codecs and
-bounded atomic recovery of one supplied genesis-anchored log prefix plus a
+session-checkpoint plus replay-identified local-log-entry JSON codecs. Its
+explicit V3 operation, state, transaction, commit, and session families preserve
+typed properties while retaining Document V2, and its local-log/storage
+families remain V1/V2. The crate also provides bounded atomic recovery of one
+supplied genesis-anchored log prefix plus a
 compact runtime anchor, checked batch or recoverable one-observation successor
 admission with fixed cumulative budgets, repeated cumulative compaction, and a
 strict trusted-scope local-log-checkpoint JSON codec plus a checksummed,
@@ -148,7 +173,8 @@ plus a source-preserving, request-correlated same-process append resolver with
 closed physical observations, exact retry/presence outcomes, enqueue while
 resolving, and a nominally separate one-head acknowledgement family,
 UTF-16-safe points and
-selections, paragraph-local text splices, atomic transactions, direct-root
+selections, property-preserving paragraph-local text splices, atomic
+transactions, direct-root
 paragraph split/join operations, proof-backed local
 validation for sealed base-text edits, structural relocation, heterogeneous
 change notifications, guarded root-text range replacement with a closed
@@ -159,7 +185,8 @@ extension set and schema under one Rust-local generation, and seven base actions
 inline and structural plain-text insertion, paragraph break, grapheme-aware
 backward and forward deletion, exact selection deletion, and strong-format
 toggle, plus the configurable Rust-owned `ToggleInlineFormatAction` for an
-explicitly registered property-free format. Registry
+explicitly registered property-free format and the registration-owned
+`SetInlineFormatAction` for explicit typed set/remove input. Registry
 preparation is the authoritative integration path for semantic capability and
 execution: it preflights and caches an exact transaction result against one
 immutable state.
@@ -184,8 +211,9 @@ while preserving every selected paragraph boundary for a cross-paragraph
 selection. The typed text-insertion action consumes that pending override,
 inherits deterministic context otherwise, replaces one exact direct-root text
 range, and offers adjacent edits to the `breditor/typing` history group.
-Same-paragraph insertion stays on the local splice path, while
-cross-paragraph type-over uses one guarded root-text replacement.
+Same-paragraph insertion stays on the property-aware local splice path, while
+cross-paragraph type-over uses the property-free guarded root-text replacement
+path and therefore fails closed for typed schemas.
 Atomic plain-text insertion converts CRLF/CR/LF into structural paragraphs with
 one root-text replacement. Grapheme-aware backward and forward deletion share a
 dedicated exact-selection planner while preserving directional splice/join
@@ -197,8 +225,9 @@ Operation records retain exact optimistic guards and pass checked constructors
 plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The core
 stays platform-independent: it has no action-state subscription/delivery
-layer, presentation manifest, DOM or browser scheduler, property-aware
-mutation/action protocol, log-storage I/O, checkpoint/log atomic replacement,
+layer, presentation manifest, DOM or browser scheduler, typed structural
+paragraph split/join/root-replacement protocol, V3 local-log/storage codec,
+log-storage I/O, checkpoint/log atomic replacement,
 storage-generation publication or initial scope provisioning, process-restart
 append reconstruction, or collaboration transform. Alpha.5 does propagate a
 compiled-profile generation through `EditorEngine`; the separate

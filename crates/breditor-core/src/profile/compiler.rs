@@ -1,17 +1,18 @@
 use crate::{
     action::{
-        Action, ActionRegistration, ActionRegistry, ActionStateCatalog, ActionStateId,
-        ActionStateRegistration, ActionStateSource,
+        Action, ActionInput, ActionRegistration, ActionRegistry, ActionStateCatalog, ActionStateId,
+        ActionStateRegistration, ActionStateSource, ActionValue,
         builtins::{
-            ToggleInlineFormatAction, base_action_registrations, base_intent_bindings,
-            base_intent_declarations, format_strong_intent_id,
+            SetInlineFormatAction, ToggleInlineFormatAction, base_action_registrations,
+            base_intent_bindings, base_intent_declarations, format_strong_intent_id,
+            set_inline_format_input_contract,
         },
         routing::{
             BindingPriority, DisabledRouting, IntentBinding, IntentDeclaration, IntentInvocation,
             IntentRouter,
         },
     },
-    extension::{ExtensionId, ExtensionSet, InlineFormatToggleSpecV1},
+    extension::{ExtensionId, ExtensionSet, InlineFormatSetSpecV1, InlineFormatToggleSpecV1},
     identity::QualifiedName,
     schema::{CompiledSchema, SchemaId},
     transaction::ReplayDirection,
@@ -21,14 +22,16 @@ use super::{CompiledEditorProfile, ProfileCompilationError};
 
 /// Maximum generated inline-format toggles in one compiled editor profile.
 pub const MAX_PROFILE_INLINE_FORMAT_TOGGLES: u32 = 255;
+/// Maximum generated property-aware inline-format sets in one compiled profile.
+pub const MAX_PROFILE_INLINE_FORMAT_SETS: u32 = 255;
 
 pub(super) fn compile_base_text_profile(
     schema_id: SchemaId,
     extensions: ExtensionSet,
 ) -> Result<CompiledEditorProfile, ProfileCompilationError> {
-    validate_toggle_count(&extensions)?;
+    validate_declaration_counts(&extensions)?;
     let schema = CompiledSchema::try_compile_base_text_profile(schema_id, &extensions)?;
-    validate_toggle_targets(&extensions)?;
+    validate_declaration_targets(&extensions)?;
     validate_cross_owner_identities(&extensions)?;
     validate_reserved_identities(&extensions)?;
 
@@ -60,6 +63,32 @@ pub(super) fn compile_base_text_profile(
                 )),
             ));
         }
+        for set in manifest.inline_format_sets() {
+            let input_contract = set_inline_format_input_contract();
+            actions.push(ActionRegistration::with_input(
+                set.action_id().clone(),
+                input_contract.clone(),
+                SetInlineFormatAction::new(set.format_kind().clone()),
+            ));
+            intents.push(
+                IntentDeclaration::with_input(set.intent_id().clone(), input_contract)
+                    .with_state_spec(SetInlineFormatAction::state_spec()),
+            );
+            bindings.push(IntentBinding::new(
+                set.binding_id().clone(),
+                set.intent_id().clone(),
+                set.action_id().clone(),
+                BindingPriority::new(0),
+                DisabledRouting::Block,
+            ));
+            action_states.push(ActionStateRegistration::new(
+                set.action_state_id().clone(),
+                ActionStateSource::routed(IntentInvocation::new(
+                    set.intent_id().clone(),
+                    inline_format_presence_input()?,
+                )),
+            ));
+        }
     }
 
     let actions = ActionRegistry::try_new(actions)?;
@@ -80,20 +109,29 @@ pub(super) fn compile_breditor_base_profile()
     Ok(CompiledEditorProfile::from_compilation(extensions, schema, router, action_states))
 }
 
-fn validate_toggle_count(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let actual = extensions.manifests().fold(0_u32, |total, manifest| {
+fn validate_declaration_counts(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
+    let toggle_count = extensions.manifests().fold(0_u32, |total, manifest| {
         total.saturating_add(fixed_count(manifest.inline_format_toggles().len()))
     });
-    if actual > MAX_PROFILE_INLINE_FORMAT_TOGGLES {
+    if toggle_count > MAX_PROFILE_INLINE_FORMAT_TOGGLES {
         return Err(ProfileCompilationError::TooManyInlineFormatToggles {
-            actual,
+            actual: toggle_count,
             maximum: MAX_PROFILE_INLINE_FORMAT_TOGGLES,
+        });
+    }
+    let set_count = extensions.manifests().fold(0_u32, |total, manifest| {
+        total.saturating_add(fixed_count(manifest.inline_format_sets().len()))
+    });
+    if set_count > MAX_PROFILE_INLINE_FORMAT_SETS {
+        return Err(ProfileCompilationError::TooManyInlineFormatSets {
+            actual: set_count,
+            maximum: MAX_PROFILE_INLINE_FORMAT_SETS,
         });
     }
     Ok(())
 }
 
-fn validate_toggle_targets(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
+fn validate_declaration_targets(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
     let mut declarations = extensions
         .manifests()
         .flat_map(|manifest| {
@@ -125,6 +163,37 @@ fn validate_toggle_targets(extensions: &ExtensionSet) -> Result<(), ProfileCompi
             });
         }
     }
+    let mut declarations = extensions
+        .manifests()
+        .flat_map(|manifest| {
+            manifest.inline_format_sets().iter().map(move |set| {
+                (
+                    set.format_kind().clone(),
+                    manifest.id().clone(),
+                    manifest.inline_formats(),
+                    manifest.inline_format_property_contracts(),
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+    declarations.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    for (format_kind, owner, owned_formats, property_contracts) in declarations {
+        if !owned_formats.iter().any(|format| format.kind() == &format_kind) {
+            return Err(ProfileCompilationError::InlineFormatSetTargetNotOwned {
+                owner,
+                format_kind,
+            });
+        }
+        if property_contracts
+            .binary_search_by(|contract| contract.format_kind().cmp(&format_kind))
+            .is_err()
+        {
+            return Err(ProfileCompilationError::InlineFormatSetTargetHasNoProperties {
+                owner,
+                format_kind,
+            });
+        }
+    }
     Ok(())
 }
 
@@ -138,7 +207,11 @@ fn validate_cross_owner_identities(
 }
 
 fn validate_action_id_ownership(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.action_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.action_id().clone(),
+        |set| set.action_id().clone(),
+    );
     claims.sort();
     if let Some(pair) = claims.windows(2).find(|pair| pair[0].0 == pair[1].0) {
         return Err(ProfileCompilationError::DuplicateActionId {
@@ -151,7 +224,11 @@ fn validate_action_id_ownership(extensions: &ExtensionSet) -> Result<(), Profile
 }
 
 fn validate_intent_id_ownership(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.intent_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.intent_id().clone(),
+        |set| set.intent_id().clone(),
+    );
     claims.sort();
     if let Some(pair) = claims.windows(2).find(|pair| pair[0].0 == pair[1].0) {
         return Err(ProfileCompilationError::DuplicateIntentId {
@@ -164,7 +241,11 @@ fn validate_intent_id_ownership(extensions: &ExtensionSet) -> Result<(), Profile
 }
 
 fn validate_binding_id_ownership(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.binding_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.binding_id().clone(),
+        |set| set.binding_id().clone(),
+    );
     claims.sort();
     if let Some(pair) = claims.windows(2).find(|pair| pair[0].0 == pair[1].0) {
         return Err(ProfileCompilationError::DuplicateBindingId {
@@ -179,7 +260,11 @@ fn validate_binding_id_ownership(extensions: &ExtensionSet) -> Result<(), Profil
 fn validate_action_state_id_ownership(
     extensions: &ExtensionSet,
 ) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.action_state_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.action_state_id().clone(),
+        |set| set.action_state_id().clone(),
+    );
     claims.sort();
     if let Some(pair) = claims.windows(2).find(|pair| pair[0].0 == pair[1].0) {
         return Err(ProfileCompilationError::DuplicateActionStateId {
@@ -191,18 +276,25 @@ fn validate_action_state_id_ownership(
     Ok(())
 }
 
-fn toggle_claims<T: Ord>(
+fn declaration_claims<T: Ord>(
     extensions: &ExtensionSet,
-    identity: impl Fn(&InlineFormatToggleSpecV1) -> T,
+    toggle_identity: impl Fn(&InlineFormatToggleSpecV1) -> T,
+    set_identity: impl Fn(&InlineFormatSetSpecV1) -> T,
 ) -> Vec<(T, ExtensionId)> {
     extensions
         .manifests()
         .flat_map(|manifest| {
-            let identity = &identity;
-            manifest
+            let toggle_identity = &toggle_identity;
+            let set_identity = &set_identity;
+            let toggles = manifest
                 .inline_format_toggles()
                 .iter()
-                .map(move |toggle| (identity(toggle), manifest.id().clone()))
+                .map(move |toggle| (toggle_identity(toggle), manifest.id().clone()));
+            let sets = manifest
+                .inline_format_sets()
+                .iter()
+                .map(move |set| (set_identity(set), manifest.id().clone()));
+            toggles.chain(sets)
         })
         .collect()
 }
@@ -215,7 +307,11 @@ fn validate_reserved_identities(extensions: &ExtensionSet) -> Result<(), Profile
 }
 
 fn validate_reserved_action_ids(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.action_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.action_id().clone(),
+        |set| set.action_id().clone(),
+    );
     claims.sort();
     if let Some((action_id, owner)) =
         claims.into_iter().find(|(id, _)| is_reserved(id.qualified_name()))
@@ -226,7 +322,11 @@ fn validate_reserved_action_ids(extensions: &ExtensionSet) -> Result<(), Profile
 }
 
 fn validate_reserved_intent_ids(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.intent_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.intent_id().clone(),
+        |set| set.intent_id().clone(),
+    );
     claims.sort();
     if let Some((intent_id, owner)) =
         claims.into_iter().find(|(id, _)| is_reserved(id.qualified_name()))
@@ -237,7 +337,11 @@ fn validate_reserved_intent_ids(extensions: &ExtensionSet) -> Result<(), Profile
 }
 
 fn validate_reserved_binding_ids(extensions: &ExtensionSet) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.binding_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.binding_id().clone(),
+        |set| set.binding_id().clone(),
+    );
     claims.sort();
     if let Some((binding_id, owner)) =
         claims.into_iter().find(|(id, _)| is_reserved(id.qualified_name()))
@@ -250,7 +354,11 @@ fn validate_reserved_binding_ids(extensions: &ExtensionSet) -> Result<(), Profil
 fn validate_reserved_action_state_ids(
     extensions: &ExtensionSet,
 ) -> Result<(), ProfileCompilationError> {
-    let mut claims = toggle_claims(extensions, |toggle| toggle.action_state_id().clone());
+    let mut claims = declaration_claims(
+        extensions,
+        |toggle| toggle.action_state_id().clone(),
+        |set| set.action_state_id().clone(),
+    );
     claims.sort();
     if let Some((action_state_id, owner)) =
         claims.into_iter().find(|(id, _)| is_reserved(id.qualified_name()))
@@ -258,6 +366,20 @@ fn validate_reserved_action_state_ids(
         return Err(ProfileCompilationError::ReservedActionStateId { action_state_id, owner });
     }
     Ok(())
+}
+
+/// Builds the exact typed query used by generated set action-state entries.
+///
+/// `SetInlineFormatAction` interprets `Remove` activation as format presence:
+/// active means every selected run has the configured format, mixed means only
+/// some do, and inactive means none do. Commands remain free to route their own
+/// dynamic set or remove input through the same typed intent.
+fn inline_format_presence_input() -> Result<ActionInput, ProfileCompilationError> {
+    let operation = ActionValue::try_from_string("remove")
+        .map_err(|source| ProfileCompilationError::InlineFormatSetPresenceInput { source })?;
+    let value = ActionValue::try_object(vec![("operation".to_owned(), operation)])
+        .map_err(|source| ProfileCompilationError::InlineFormatSetPresenceInput { source })?;
+    Ok(ActionInput::typed(set_inline_format_input_contract(), value))
 }
 
 fn base_action_state_registrations() -> Vec<ActionStateRegistration> {

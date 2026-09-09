@@ -23,5 +23,5 @@ pub use compiled_profile_descriptor::CompiledProfileDescriptor;
 pub use compiled_profile_generation::CompiledProfileGeneration;
 pub use compiled_profile_inline_format_descriptor::CompiledProfileInlineFormatDescriptor;
 pub use compiled_profile_intent_descriptor::CompiledProfileIntentDescriptor;
-pub use compiler::MAX_PROFILE_INLINE_FORMAT_TOGGLES;
+pub use compiler::{MAX_PROFILE_INLINE_FORMAT_SETS, MAX_PROFILE_INLINE_FORMAT_TOGGLES};
 pub use error::ProfileCompilationError;

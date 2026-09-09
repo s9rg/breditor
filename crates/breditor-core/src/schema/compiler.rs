@@ -369,7 +369,7 @@ pub(super) fn compile_base_text_profile(
     compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
 }
 
-pub(super) fn supports_base_text_operations(definition: &CompiledSchemaDefinition) -> bool {
+pub(super) fn supports_text_splice_operations(definition: &CompiledSchemaDefinition) -> bool {
     let base = base_spec();
     if definition.root_kind != base.root_kind
         || definition.paragraph_kind != base.paragraph_kind
@@ -396,8 +396,11 @@ pub(super) fn supports_base_text_operations(definition: &CompiledSchemaDefinitio
     let Some(strong) = definition.inline_formats.get(&base.strong_kind) else {
         return false;
     };
-    strong.revision == PersistedTypeRevision::one()
-        && strong.property_contract.is_none()
+    strong.revision == PersistedTypeRevision::one() && strong.property_contract.is_none()
+}
+
+pub(super) fn supports_base_text_operations(definition: &CompiledSchemaDefinition) -> bool {
+    supports_text_splice_operations(definition)
         && definition.inline_formats.values().all(|format| format.property_contract.is_none())
 }
 
@@ -1345,6 +1348,7 @@ mod tests {
     fn base_text_capability_rejects_every_representable_structural_widening() -> TestResult {
         let base = super::compile_breditor_base();
         assert!(base.is_exact_breditor_base());
+        assert!(base.supports_text_splice_operations());
         assert!(base.supports_base_text_operations());
 
         let owner = external_owner("example/capability-test", 1)?;
@@ -1385,20 +1389,25 @@ mod tests {
         changed_child_kind.elements[1].children.kind =
             ChildKind::Element(QualifiedName::from_known_static("breditor/paragraph"));
 
-        for (label, spec) in [
-            ("extra element", extra_element),
-            ("property-bearing added format", property_format),
-            ("strong revision", strong_revision),
-            ("strong property policy", strong_properties),
-            ("element revision", element_revision),
-            ("root property policy", root_properties),
-            ("paragraph entity policy", paragraph_entity),
-            ("role assignment", changed_roles),
-            ("child range", changed_child_range),
-            ("child kind", changed_child_kind),
+        for (label, spec, supports_splice) in [
+            ("extra element", extra_element, false),
+            ("property-bearing added format", property_format, true),
+            ("strong revision", strong_revision, false),
+            ("strong property policy", strong_properties, false),
+            ("element revision", element_revision, false),
+            ("root property policy", root_properties, false),
+            ("paragraph entity policy", paragraph_entity, false),
+            ("role assignment", changed_roles, false),
+            ("child range", changed_child_range, false),
+            ("child kind", changed_child_kind, false),
         ] {
             let schema = compile(spec, CompilerLimits::default())?;
             assert!(!schema.is_exact_breditor_base(), "{label} remained exact base");
+            assert_eq!(
+                schema.supports_text_splice_operations(),
+                supports_splice,
+                "{label} received the wrong paragraph-local splice capability"
+            );
             assert!(
                 !schema.supports_base_text_operations(),
                 "{label} received the sealed base-text capability"

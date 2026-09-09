@@ -8,6 +8,8 @@ mod grapheme_boundary;
 mod insert_paragraph_break;
 mod insert_plain_text;
 mod insert_text;
+mod set_inline_format;
+mod set_inline_format_input;
 mod support;
 mod toggle_inline_format;
 mod toggle_strong;
@@ -37,6 +39,13 @@ pub use insert_text::{
     INSERT_TEXT_INPUT_NOT_STRING_CODE, INSERT_TEXT_INPUT_VERSION, InsertTextAction,
     InsertTextInput, InsertTextInputError, MAX_INSERT_TEXT_BYTES, MAX_INSERT_TEXT_UTF16_CODE_UNITS,
     insert_text_action_id, insert_text_input_contract,
+};
+pub use set_inline_format::SetInlineFormatAction;
+pub use set_inline_format_input::{
+    SET_INLINE_FORMAT_INPUT_CONTRACT_NAME, SET_INLINE_FORMAT_INPUT_NOT_OBJECT_CODE,
+    SET_INLINE_FORMAT_INPUT_OPERATION_CODE, SET_INLINE_FORMAT_INPUT_PROPERTY_NAME_CODE,
+    SET_INLINE_FORMAT_INPUT_PROPERTY_ORDER_CODE, SET_INLINE_FORMAT_INPUT_SHAPE_CODE,
+    SET_INLINE_FORMAT_INPUT_VERSION, SetInlineFormatInput, set_inline_format_input_contract,
 };
 pub use toggle_inline_format::ToggleInlineFormatAction;
 pub use toggle_strong::{ToggleStrongAction, toggle_strong_action_id};

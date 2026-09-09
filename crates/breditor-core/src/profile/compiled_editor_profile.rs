@@ -32,10 +32,13 @@ impl CompiledEditorProfile {
     /// Compiles one sealed base-text editor profile from a resolved extension set.
     ///
     /// Every inline-format toggle declaration becomes one Rust-owned generic
-    /// action, one tracked no-input semantic intent, one priority-zero blocking
-    /// route, and one routed no-input observable state. The complete base action
-    /// set, built-in strong-format intent route, and Bold, Undo, and Redo state
-    /// entries are retained; Bold observes that built-in route.
+    /// no-input action route. Every property-aware set declaration becomes one
+    /// Rust-owned typed action and intent route using the shared versioned set
+    /// input contract. Its observable state uses a fixed remove query, so it
+    /// answers whether the configured format is present; commands supply their
+    /// own dynamic set/remove input. All generated routes are priority-zero and
+    /// blocking. The complete base action set, built-in strong-format intent
+    /// route, and Bold, Undo, and Redo state entries are retained.
     ///
     /// # Errors
     ///

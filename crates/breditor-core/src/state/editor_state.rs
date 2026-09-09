@@ -224,18 +224,41 @@ fn validate_pending_formats(
             maximum: context.limits().max_formats_per_text(),
         });
     }
+    let mut property_value_count = 0_u64;
+    let mut property_string_bytes = 0_u64;
     for format in formats {
         if !context.schema().allows_text_format(format.kind()) {
             return Err(PendingFormatError::UnknownKind { kind: format.kind().clone() });
         }
-        if !context.schema().is_property_free_inline_format(format.kind()) {
-            return Err(PendingFormatError::PropertyBearingKindUnsupported {
+        let summary = context
+            .schema()
+            .validate_inline_format_instance(context.limits(), format)
+            .map_err(|source| PendingFormatError::InvalidFormatInstance {
                 kind: format.kind().clone(),
-            });
-        }
-        if !format.properties().is_empty() {
-            return Err(PendingFormatError::PropertiesNotAllowed { kind: format.kind().clone() });
-        }
+                source,
+            })?;
+        property_value_count = property_value_count
+            .checked_add(summary.property_value_count())
+            .ok_or(PendingFormatError::PropertyValueCountOverflow)?;
+        property_string_bytes = property_string_bytes
+            .checked_add(summary.property_string_bytes())
+            .ok_or(PendingFormatError::PropertyStringBytesOverflow)?;
+    }
+    let maximum_property_values =
+        u64::try_from(context.limits().max_property_values()).unwrap_or(u64::MAX);
+    if property_value_count > maximum_property_values {
+        return Err(PendingFormatError::PropertyValueCountLimit {
+            actual: property_value_count,
+            maximum: maximum_property_values,
+        });
+    }
+    let maximum_property_string_bytes =
+        u64::try_from(context.limits().max_total_property_string_bytes()).unwrap_or(u64::MAX);
+    if property_string_bytes > maximum_property_string_bytes {
+        return Err(PendingFormatError::PropertyStringBytesLimit {
+            actual: property_string_bytes,
+            maximum: maximum_property_string_bytes,
+        });
     }
     Ok(())
 }
@@ -297,6 +320,37 @@ pub enum PendingFormatError {
     PropertiesNotAllowed {
         /// Rejected format kind.
         kind: QualifiedName,
+    },
+    /// One pending format violates its compiled typed-property contract.
+    #[error("pending format `{kind}` is invalid: {source}")]
+    InvalidFormatInstance {
+        /// Rejected registered format kind.
+        kind: QualifiedName,
+        /// Structured property-contract or resource failure.
+        #[source]
+        source: ValidationReport,
+    },
+    /// Pending-format property-value arithmetic exceeded fixed-width accounting.
+    #[error("pending-format property-value accounting overflowed")]
+    PropertyValueCountOverflow,
+    /// Pending formats exceed the active aggregate property-value ceiling.
+    #[error("pending formats have {actual} property values; the maximum is {maximum}")]
+    PropertyValueCountLimit {
+        /// Exact aggregate property-value count.
+        actual: u64,
+        /// Configured maximum.
+        maximum: u64,
+    },
+    /// Pending-format property-string arithmetic exceeded fixed-width accounting.
+    #[error("pending-format property-string accounting overflowed")]
+    PropertyStringBytesOverflow,
+    /// Pending formats exceed the active aggregate property-string byte ceiling.
+    #[error("pending formats have {actual} property-string bytes; the maximum is {maximum}")]
+    PropertyStringBytesLimit {
+        /// Exact aggregate UTF-8 property-string bytes.
+        actual: u64,
+        /// Configured maximum.
+        maximum: u64,
     },
 }
 

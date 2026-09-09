@@ -16,8 +16,8 @@ use super::{
     support::{
         CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
         capture_cross_paragraph_text_source, collapsed_selection_at, disabled, fault,
-        fragment_range_parts, paragraph_fragment, require_base_text_range,
-        require_operation_budget, strict_relocation,
+        fragment_range_parts, require_operation_budget, require_text_splice_range,
+        strict_relocation, text_splice_paragraph_fragment,
     },
 };
 
@@ -26,11 +26,13 @@ use super::{
 /// The source range is normalized into spatial order before evaluation, so a
 /// backward selection deletes the same content as its forward equivalent and
 /// collapses at the same spatial start. Same-paragraph selections use one
-/// [`TextSplice`]; cross-paragraph selections use one atomic
-/// [`RootTextReplace`], including selections that contain only paragraph
-/// boundaries. Pending typing formats are preserved exactly. Active resource
-/// limits can disable deletion when canonicalizing retained seams would create
-/// an oversized leaf or otherwise exceed the result bounds.
+/// [`TextSplice`] and preserve complete typed inline-format instances in its
+/// source guard and inverse. Property-free cross-paragraph selections use one
+/// atomic [`RootTextReplace`], including selections that contain only paragraph
+/// boundaries; typed structural deletion remains disabled. Pending typing
+/// formats are preserved exactly. Active resource limits can disable deletion
+/// when canonicalizing retained seams would create an oversized leaf or
+/// otherwise exceed the result bounds.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeleteSelectionAction;
 
@@ -67,7 +69,7 @@ impl Action for DeleteSelectionAction {
 }
 
 fn evaluate_delete_selection(state: &EditorState) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_text_range(state)? {
+    let range = match require_text_splice_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
@@ -87,6 +89,11 @@ pub(super) fn delete_selected_range(
     if range.is_collapsed() {
         return Ok(disabled("breditor/collapsed-selection"));
     }
+    // RootTextReplace remains a property-free structural contract. Opening the
+    // paragraph-local TextSplice path must not widen cross-paragraph deletion.
+    if !range.is_same_paragraph() && !state.context().schema().supports_base_text_operations() {
+        return Ok(disabled("breditor/unsupported-schema"));
+    }
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
     }
@@ -101,7 +108,7 @@ fn delete_same_paragraph_range(
     range: &TextRangeSelection,
 ) -> Result<ActionDecision, ActionFault> {
     let paragraph_path = range.start().paragraph_path();
-    let source = paragraph_fragment(state, paragraph_path, range.start().offset())?;
+    let source = text_splice_paragraph_fragment(state, paragraph_path)?;
     let Some(result) = deletion_result(&source, range.start().offset(), range.end().offset())?
     else {
         return Ok(disabled("breditor/result-limit-exceeded"));

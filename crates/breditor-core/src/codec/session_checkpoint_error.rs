@@ -22,12 +22,20 @@ pub enum SessionCheckpointRecordErrorCode {
     InvalidSelectionPath,
     /// The open merge group or one result format is not a qualified name.
     InvalidQualifiedName,
+    /// One result pending-format property name is not a qualified name.
+    InvalidPendingFormatPropertyName,
+    /// One result pending-format property value is outside the deterministic value model.
+    InvalidPendingFormatPropertyValue,
     /// One entry's result pending formats exceed the active context limit.
     PendingFormatLimit,
     /// Result pending formats are not sorted and unique by kind.
     NonCanonicalPendingFormats,
     /// A result pending format is not representable in V1 or allowed by the active schema.
     PendingFormatNotAllowed,
+    /// Result pending formats exceed the aggregate property-value ceiling.
+    PendingFormatPropertyValueLimit,
+    /// Result pending formats exceed the aggregate property-string byte ceiling.
+    PendingFormatPropertyStringBytesLimit,
 }
 
 impl SessionCheckpointRecordErrorCode {
@@ -38,11 +46,23 @@ impl SessionCheckpointRecordErrorCode {
             Self::InvalidCurrentRevision => "session_checkpoint_record.invalid_current_revision",
             Self::InvalidSelectionPath => "session_checkpoint_record.invalid_selection_path",
             Self::InvalidQualifiedName => "session_checkpoint_record.invalid_qualified_name",
+            Self::InvalidPendingFormatPropertyName => {
+                "session_checkpoint_record.invalid_pending_format_property_name"
+            }
+            Self::InvalidPendingFormatPropertyValue => {
+                "session_checkpoint_record.invalid_pending_format_property_value"
+            }
             Self::PendingFormatLimit => "session_checkpoint_record.pending_format_limit",
             Self::NonCanonicalPendingFormats => {
                 "session_checkpoint_record.noncanonical_pending_formats"
             }
             Self::PendingFormatNotAllowed => "session_checkpoint_record.pending_format_not_allowed",
+            Self::PendingFormatPropertyValueLimit => {
+                "session_checkpoint_record.pending_format_property_value_limit"
+            }
+            Self::PendingFormatPropertyStringBytesLimit => {
+                "session_checkpoint_record.pending_format_property_string_bytes_limit"
+            }
         }
     }
 }

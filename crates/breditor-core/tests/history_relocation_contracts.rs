@@ -4,7 +4,7 @@ mod support;
 
 use breditor_core::{
     codec::DocumentJsonCodec,
-    document::{Document, FormatSet, TextFragment, TextRun},
+    document::{Document, Format, FormatSet, PropertyMap, TextFragment, TextRun},
     identity::QualifiedName,
     operation::{PointRelocation, RelocationError, TextRange, TextSplice},
     position::{Affinity, Point, PointError, TextOffset},
@@ -59,6 +59,14 @@ fn range(start: u64, end: u64) -> Result<TextRange, Box<dyn std::error::Error>> 
 
 fn fragment(text: &str) -> Result<TextFragment, Box<dyn std::error::Error>> {
     Ok(TextRun::try_new(text, FormatSet::default())?.into())
+}
+
+fn strong_fragment(text: &str) -> Result<TextFragment, Box<dyn std::error::Error>> {
+    let formats = FormatSet::try_from_formats(vec![Format::new(
+        QualifiedName::try_new("breditor/strong")?,
+        PropertyMap::default(),
+    )])?;
+    Ok(TextRun::try_new(text, formats)?.into())
 }
 
 fn splice(
@@ -178,6 +186,46 @@ fn insertion_boundary_respects_before_and_after_affinity() -> TestResult {
         commit.relocation().relocate_point(&initial, &after)?,
         PointRelocation::Exact(text_point(2, Affinity::After)?),
     );
+    Ok(())
+}
+
+#[test]
+fn format_only_splice_preserves_every_interior_text_position() -> TestResult {
+    let context = EditorContext::default();
+    let initial = state(&context, "abcd", "format-only-relocation", None, None)?;
+    let formatting = splice(1, 3, fragment("bc")?, strong_fragment("bc")?)?;
+    let commit =
+        committed(Transaction::new(&initial, vec![formatting.into()]).apply(&context, &initial)?)?;
+
+    for affinity in [Affinity::Before, Affinity::After] {
+        let interior = Point::Text { text_path: path(&[0, 0])?, utf16_offset: 2, affinity };
+        let expected = Point::Text { text_path: path(&[0, 1])?, utf16_offset: 1, affinity };
+        assert_eq!(
+            commit.relocation().relocate_point(&initial, &interior)?,
+            PointRelocation::Exact(expected),
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn equal_length_text_replacement_still_marks_interior_positions_deleted() -> TestResult {
+    let context = EditorContext::default();
+    let initial = state(&context, "abcd", "equal-length-text-relocation", None, None)?;
+    let replacement = splice(1, 3, fragment("bc")?, fragment("xy")?)?;
+    let commit =
+        committed(Transaction::new(&initial, vec![replacement.into()]).apply(&context, &initial)?)?;
+
+    for affinity in [Affinity::Before, Affinity::After] {
+        let interior = text_point(2, affinity)?;
+        assert_eq!(
+            commit.relocation().relocate_point(&initial, &interior)?,
+            PointRelocation::Deleted {
+                before: text_point(1, affinity)?,
+                after: text_point(3, affinity)?,
+            },
+        );
+    }
     Ok(())
 }
 

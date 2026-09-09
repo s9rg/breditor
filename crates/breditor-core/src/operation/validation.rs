@@ -5,7 +5,7 @@ use crate::{
     identity::QualifiedName,
     operation::{Operation, OperationKind, ParagraphJoinError, RootTextReplaceError},
     position::{NodePath, TextOffset},
-    schema::{SchemaId, point_protocol_child_count_maximum},
+    schema::{SchemaId, ValidationReport, point_protocol_child_count_maximum},
     state::EditorContext,
 };
 
@@ -388,6 +388,83 @@ pub enum OperationValidationError {
         /// Rejected format kind.
         format_kind: QualifiedName,
     },
+    /// One format instance violates its compiled typed-property contract.
+    #[error(
+        "{kind:?} {role:?} fragment at paragraph {paragraph_index:?}, run {run_index}, format {format_index} `{format_kind}` is invalid: {source}"
+    )]
+    InvalidFormatInstance {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected fragment.
+        role: OperationFragmentRole,
+        /// Slice-relative paragraph, or `None` for a single fragment field.
+        paragraph_index: Option<u64>,
+        /// Zero-based run index.
+        run_index: u64,
+        /// Zero-based format index.
+        format_index: u64,
+        /// Rejected format kind.
+        format_kind: QualifiedName,
+        /// Structured property-contract or resource failure.
+        #[source]
+        source: ValidationReport,
+    },
+    /// One fragment exceeds the document-wide property-value ceiling by itself.
+    #[error(
+        "{kind:?} {role:?} fragment at paragraph {paragraph_index:?} has {actual} property values; the configured maximum is {maximum}"
+    )]
+    FragmentPropertyValueCountLimit {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected fragment.
+        role: OperationFragmentRole,
+        /// Slice-relative paragraph, or `None` for a single fragment field.
+        paragraph_index: Option<u64>,
+        /// Exact aggregate property-value count.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
+    },
+    /// Property-value accounting for one fragment exceeded fixed-width space.
+    #[error(
+        "{kind:?} {role:?} fragment at paragraph {paragraph_index:?} property-value arithmetic overflowed"
+    )]
+    FragmentPropertyValueCountOverflow {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected fragment.
+        role: OperationFragmentRole,
+        /// Slice-relative paragraph, or `None` for a single fragment field.
+        paragraph_index: Option<u64>,
+    },
+    /// One fragment exceeds the document-wide property-string byte ceiling by itself.
+    #[error(
+        "{kind:?} {role:?} fragment at paragraph {paragraph_index:?} has {actual} property-string bytes; the configured maximum is {maximum}"
+    )]
+    FragmentPropertyStringBytesLimit {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected fragment.
+        role: OperationFragmentRole,
+        /// Slice-relative paragraph, or `None` for a single fragment field.
+        paragraph_index: Option<u64>,
+        /// Exact aggregate UTF-8 property-string bytes.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
+    },
+    /// Property-string accounting for one fragment exceeded fixed-width space.
+    #[error(
+        "{kind:?} {role:?} fragment at paragraph {paragraph_index:?} property-string arithmetic overflowed"
+    )]
+    FragmentPropertyStringBytesOverflow {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected fragment.
+        role: OperationFragmentRole,
+        /// Slice-relative paragraph, or `None` for a single fragment field.
+        paragraph_index: Option<u64>,
+    },
     /// Re-deriving a split result violated its already-checked constructor law.
     #[error("paragraph-split result derivation failed: {source}")]
     DerivedParagraphSplit {
@@ -428,7 +505,7 @@ fn validate_text_splice(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::TextSplice;
-    validate_base_text_schema(context, kind)?;
+    validate_text_splice_schema(context, kind)?;
     validate_path(
         context,
         kind,
@@ -748,6 +825,19 @@ fn validate_base_text_schema(
     Ok(())
 }
 
+fn validate_text_splice_schema(
+    context: &EditorContext,
+    kind: OperationKind,
+) -> Result<(), OperationValidationError> {
+    if !context.schema().supports_text_splice_operations() {
+        return Err(OperationValidationError::UnsupportedSchema {
+            kind,
+            schema: context.schema().id().clone(),
+        });
+    }
+    Ok(())
+}
+
 fn validate_path(
     context: &EditorContext,
     kind: OperationKind,
@@ -999,55 +1089,122 @@ fn validate_fragment(
         });
     }
 
+    let mut property_summary = FragmentPropertySummary::default();
     for (run_index, run) in fragment.iter().enumerate() {
-        let run_index = usize_to_u64(run_index);
-        let actual_text_bytes = usize_to_u64(run.text().len());
-        let maximum_text_bytes = usize_to_u64(context.limits().max_text_bytes());
-        if actual_text_bytes > maximum_text_bytes {
-            return Err(OperationValidationError::FragmentTextBytesLimit {
+        validate_fragment_run(
+            context,
+            kind,
+            role,
+            paragraph_index,
+            usize_to_u64(run_index),
+            run,
+            &mut property_summary,
+        )?;
+    }
+    let maximum_property_values =
+        u64::try_from(context.limits().max_property_values()).unwrap_or(u64::MAX);
+    if property_summary.value_count > maximum_property_values {
+        return Err(OperationValidationError::FragmentPropertyValueCountLimit {
+            kind,
+            role,
+            paragraph_index,
+            actual: property_summary.value_count,
+            maximum: maximum_property_values,
+        });
+    }
+    let maximum_property_string_bytes =
+        u64::try_from(context.limits().max_total_property_string_bytes()).unwrap_or(u64::MAX);
+    if property_summary.string_bytes > maximum_property_string_bytes {
+        return Err(OperationValidationError::FragmentPropertyStringBytesLimit {
+            kind,
+            role,
+            paragraph_index,
+            actual: property_summary.string_bytes,
+            maximum: maximum_property_string_bytes,
+        });
+    }
+    Ok(())
+}
+
+#[derive(Default)]
+struct FragmentPropertySummary {
+    value_count: u64,
+    string_bytes: u64,
+}
+
+fn validate_fragment_run(
+    context: &EditorContext,
+    kind: OperationKind,
+    role: OperationFragmentRole,
+    paragraph_index: Option<u64>,
+    run_index: u64,
+    run: &crate::document::TextRun,
+    properties: &mut FragmentPropertySummary,
+) -> Result<(), OperationValidationError> {
+    let actual_text_bytes = usize_to_u64(run.text().len());
+    let maximum_text_bytes = usize_to_u64(context.limits().max_text_bytes());
+    if actual_text_bytes > maximum_text_bytes {
+        return Err(OperationValidationError::FragmentTextBytesLimit {
+            kind,
+            role,
+            paragraph_index,
+            run_index,
+            actual: actual_text_bytes,
+            maximum: maximum_text_bytes,
+        });
+    }
+    let actual_formats = usize_to_u64(run.formats().len());
+    let maximum_formats = usize_to_u64(context.limits().max_formats_per_text());
+    if actual_formats > maximum_formats {
+        return Err(OperationValidationError::FragmentFormatCountLimit {
+            kind,
+            role,
+            paragraph_index,
+            run_index,
+            actual: actual_formats,
+            maximum: maximum_formats,
+        });
+    }
+    for (format_index, format) in run.formats().iter().enumerate() {
+        let format_index = usize_to_u64(format_index);
+        if !context.schema().allows_text_format(format.kind()) {
+            return Err(OperationValidationError::FragmentFormatNotAllowed {
                 kind,
                 role,
                 paragraph_index,
                 run_index,
-                actual: actual_text_bytes,
-                maximum: maximum_text_bytes,
+                format_index,
+                format_kind: format.kind().clone(),
             });
         }
-        let actual_formats = usize_to_u64(run.formats().len());
-        let maximum_formats = usize_to_u64(context.limits().max_formats_per_text());
-        if actual_formats > maximum_formats {
-            return Err(OperationValidationError::FragmentFormatCountLimit {
+        let summary = context
+            .schema()
+            .validate_inline_format_instance(context.limits(), format)
+            .map_err(|source| OperationValidationError::InvalidFormatInstance {
                 kind,
                 role,
                 paragraph_index,
                 run_index,
-                actual: actual_formats,
-                maximum: maximum_formats,
-            });
-        }
-        for (format_index, format) in run.formats().iter().enumerate() {
-            let format_index = usize_to_u64(format_index);
-            if !context.schema().allows_text_format(format.kind()) {
-                return Err(OperationValidationError::FragmentFormatNotAllowed {
-                    kind,
-                    role,
-                    paragraph_index,
-                    run_index,
-                    format_index,
-                    format_kind: format.kind().clone(),
-                });
-            }
-            if !format.properties().is_empty() {
-                return Err(OperationValidationError::FragmentFormatPropertiesNotAllowed {
-                    kind,
-                    role,
-                    paragraph_index,
-                    run_index,
-                    format_index,
-                    format_kind: format.kind().clone(),
-                });
-            }
-        }
+                format_index,
+                format_kind: format.kind().clone(),
+                source,
+            })?;
+        properties.value_count = properties
+            .value_count
+            .checked_add(summary.property_value_count())
+            .ok_or(OperationValidationError::FragmentPropertyValueCountOverflow {
+                kind,
+                role,
+                paragraph_index,
+            })?;
+        properties.string_bytes = properties
+            .string_bytes
+            .checked_add(summary.property_string_bytes())
+            .ok_or(OperationValidationError::FragmentPropertyStringBytesOverflow {
+                kind,
+                role,
+                paragraph_index,
+            })?;
     }
     Ok(())
 }
@@ -1087,7 +1244,7 @@ fn usize_to_u64(value: usize) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeMap, error::Error};
+    use std::{collections::BTreeMap, error::Error, io};
 
     use crate::{
         document::{Format, FormatSet, PropertyMap, PropertyValue, TextFragment, TextRun},
@@ -1445,7 +1602,8 @@ mod tests {
     }
 
     #[test]
-    fn format_properties_are_rejected_as_typed_static_data() -> Result<(), Box<dyn Error>> {
+    fn property_free_format_rejects_properties_through_shared_admission()
+    -> Result<(), Box<dyn Error>> {
         let mut properties = BTreeMap::new();
         properties.insert(QualifiedName::try_new("breditor/value")?, PropertyValue::boolean(true));
         let format_kind = QualifiedName::try_new("breditor/strong")?;
@@ -1461,17 +1619,24 @@ mod tests {
         )
         .map(Operation::from)?;
 
-        assert_eq!(
-            operation.validate(&EditorContext::default()),
-            Err(OperationValidationError::FragmentFormatPropertiesNotAllowed {
+        let Err(error) = operation.validate(&EditorContext::default()) else {
+            return Err(
+                io::Error::other("property-bearing strong unexpectedly passed validation").into()
+            );
+        };
+        assert!(matches!(
+            error,
+            OperationValidationError::InvalidFormatInstance {
                 kind: OperationKind::TextSplice,
                 role: OperationFragmentRole::Replacement,
                 paragraph_index: None,
                 run_index: 0,
                 format_index: 0,
-                format_kind,
-            })
-        );
+                format_kind: ref actual_kind,
+                ref source,
+            } if actual_kind == &format_kind
+                && source.contains(crate::schema::ValidationCode::PropertiesNotAllowed)
+        ));
         Ok(())
     }
 

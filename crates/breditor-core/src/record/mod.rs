@@ -4,14 +4,18 @@ mod commit_record;
 mod document_record;
 mod editor_state_record;
 mod editor_value_record;
+mod editor_value_record_v2;
 mod local_log_checkpoint_record;
 mod local_log_entry_record;
 mod local_log_storage_generation_record;
 mod local_log_storage_root_record;
 mod operation_record;
+mod operation_record_v2;
 mod session_checkpoint_record;
+mod session_checkpoint_record_v2;
 mod strict_json;
 mod transaction_record;
+mod transaction_record_v2;
 
 pub(crate) use commit_record::{COMMIT_FORMAT, COMMIT_FORMAT_VERSION, CommitRecordV1};
 pub(crate) use document_record::{
@@ -23,6 +27,7 @@ pub(crate) use editor_value_record::{
     AffinityRecordV1, DecimalU64Record, DecimalU64RecordError, PendingFormatRecordV1,
     PointRecordV1, SelectionRecordV1, SnapshotIdRecordV1,
 };
+pub(crate) use editor_value_record_v2::PendingFormatRecordV2;
 pub(crate) use local_log_checkpoint_record::{
     LOCAL_LOG_CHECKPOINT_FORMAT, LOCAL_LOG_CHECKPOINT_FORMAT_VERSION, LocalLogCheckpointRecordV1,
 };
@@ -43,13 +48,18 @@ pub(crate) use operation_record::{
     OperationRecordEnvelopeV1, OperationRecordV1, RootTextBoundaryRecordV1, RootTextRangeRecordV1,
     TextFragmentRecordV1, TextRangeRecordV1, TextRunRecordV1,
 };
+pub(crate) use operation_record_v2::{
+    OperationFormatRecordV2, OperationRecordV2, TextFragmentRecordV2, TextRunRecordV2,
+};
 pub(crate) use session_checkpoint_record::{
     SESSION_CHECKPOINT_FORMAT, SESSION_CHECKPOINT_FORMAT_VERSION, SessionCheckpointRecordV1,
     SessionHistoryEntryRecordV1,
 };
+pub(crate) use session_checkpoint_record_v2::SessionHistoryEntryRecordV2;
 pub(crate) use strict_json::{PropertyMapRecord, PropertyValueRecord};
 pub(crate) use transaction_record::{
     DeletedPointPolicyRecordV1, HistoryIntentRecordV1, PendingFormatsUpdateRecordV1,
     SelectionRelocationRecordV1, SelectionUpdateRecordV1, TRANSACTION_REQUEST_FORMAT,
     TRANSACTION_REQUEST_FORMAT_VERSION, TransactionMetadataRecordV1, TransactionRequestRecordV1,
 };
+pub(crate) use transaction_record_v2::PendingFormatsUpdateRecordV2;

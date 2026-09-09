@@ -201,6 +201,15 @@ pub enum ActionStateOperationFault {
     /// A text-splice fragment used disallowed format properties.
     #[error("text-splice fragment format properties not allowed")]
     TextSpliceFragmentFormatPropertiesNotAllowed,
+    /// A text-splice fragment carried a format instance that violated its typed contract.
+    #[error("text-splice invalid format instance")]
+    TextSpliceInvalidFormatInstance,
+    /// A text-splice fragment exceeded the aggregate property-value ceiling.
+    #[error("text-splice fragment property-value limit")]
+    TextSpliceFragmentPropertyValueCountLimit,
+    /// A text-splice fragment exceeded the aggregate property-string byte ceiling.
+    #[error("text-splice fragment property-string limit")]
+    TextSpliceFragmentPropertyStringBytesLimit,
     /// Canonical text-fragment construction failed.
     #[error("text-splice fragment")]
     TextSpliceFragment,
@@ -446,6 +455,21 @@ pub enum ActionStateResultFault {
     /// The result used properties on a pending format that forbids them.
     #[error("pending-format properties are not allowed")]
     PendingFormatPropertiesNotAllowed,
+    /// A pending format violated its compiled typed-property contract.
+    #[error("pending format instance is invalid")]
+    PendingFormatInvalidInstance,
+    /// Pending-format property-value accounting overflowed.
+    #[error("pending-format property-value accounting overflow")]
+    PendingFormatPropertyValueCountOverflow,
+    /// Pending formats exceeded the aggregate property-value ceiling.
+    #[error("pending-format property-value limit")]
+    PendingFormatPropertyValueCountLimit,
+    /// Pending-format property-string accounting overflowed.
+    #[error("pending-format property-string accounting overflow")]
+    PendingFormatPropertyStringBytesOverflow,
+    /// Pending formats exceeded the aggregate property-string byte ceiling.
+    #[error("pending-format property-string limit")]
+    PendingFormatPropertyStringBytesLimit,
 }
 
 /// Entry-local failure observed while deriving an immutable action-state batch.
@@ -708,6 +732,15 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             TextSpliceApplyError::FragmentFormatPropertiesNotAllowed { .. } => {
                 ActionStateOperationFault::TextSpliceFragmentFormatPropertiesNotAllowed
             }
+            TextSpliceApplyError::InvalidFormatInstance { .. } => {
+                ActionStateOperationFault::TextSpliceInvalidFormatInstance
+            }
+            TextSpliceApplyError::FragmentPropertyValueCountLimit { .. } => {
+                ActionStateOperationFault::TextSpliceFragmentPropertyValueCountLimit
+            }
+            TextSpliceApplyError::FragmentPropertyStringBytesLimit { .. } => {
+                ActionStateOperationFault::TextSpliceFragmentPropertyStringBytesLimit
+            }
             TextSpliceApplyError::Fragment(_) => ActionStateOperationFault::TextSpliceFragment,
             TextSpliceApplyError::TextRange(_) => ActionStateOperationFault::TextSpliceTextRange,
             TextSpliceApplyError::TextOffset(_) => ActionStateOperationFault::TextSpliceTextOffset,
@@ -922,6 +955,21 @@ fn project_result_error(error: EditorStateError) -> ActionStateResultFault {
             }
             PendingFormatError::PropertiesNotAllowed { .. } => {
                 ActionStateResultFault::PendingFormatPropertiesNotAllowed
+            }
+            PendingFormatError::InvalidFormatInstance { .. } => {
+                ActionStateResultFault::PendingFormatInvalidInstance
+            }
+            PendingFormatError::PropertyValueCountOverflow => {
+                ActionStateResultFault::PendingFormatPropertyValueCountOverflow
+            }
+            PendingFormatError::PropertyValueCountLimit { .. } => {
+                ActionStateResultFault::PendingFormatPropertyValueCountLimit
+            }
+            PendingFormatError::PropertyStringBytesOverflow => {
+                ActionStateResultFault::PendingFormatPropertyStringBytesOverflow
+            }
+            PendingFormatError::PropertyStringBytesLimit { .. } => {
+                ActionStateResultFault::PendingFormatPropertyStringBytesLimit
             }
         },
     }

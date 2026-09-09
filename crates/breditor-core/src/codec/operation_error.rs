@@ -20,6 +20,10 @@ pub enum OperationRecordErrorCode {
     InvalidOffset,
     /// A format name does not satisfy the qualified-name grammar.
     InvalidFormatName,
+    /// A format-property name does not satisfy the qualified-name grammar.
+    InvalidPropertyName,
+    /// A format-property value violates the deterministic value contract.
+    InvalidPropertyValue,
     /// A format array is not sorted and unique by kind.
     NonCanonicalFormats,
     /// A formatted run is empty or exceeds a fixed-width protocol bound.
@@ -40,6 +44,8 @@ impl OperationRecordErrorCode {
             Self::InvalidPath => "operation_record.invalid_path",
             Self::InvalidOffset => "operation_record.invalid_offset",
             Self::InvalidFormatName => "operation_record.invalid_format_name",
+            Self::InvalidPropertyName => "operation_record.invalid_property_name",
+            Self::InvalidPropertyValue => "operation_record.invalid_property_value",
             Self::NonCanonicalFormats => "operation_record.noncanonical_formats",
             Self::InvalidTextRun => "operation_record.invalid_text_run",
             Self::NonCanonicalFragment => "operation_record.noncanonical_fragment",
@@ -49,7 +55,7 @@ impl OperationRecordErrorCode {
     }
 }
 
-/// One fixed path field in the operation V1 record.
+/// One fixed path field in a primitive operation record.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum OperationPathField {
@@ -65,7 +71,7 @@ pub enum OperationPathField {
     RootTextReplaceEnd,
 }
 
-/// One fixed UTF-16 offset field in the operation V1 record.
+/// One fixed UTF-16 offset field in a primitive operation record.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum OperationOffsetField {
@@ -81,7 +87,7 @@ pub enum OperationOffsetField {
     RootTextReplaceEnd,
 }
 
-/// One semantic fragment field in the operation V1 record.
+/// One semantic fragment field in a primitive operation record.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum OperationFragmentField {

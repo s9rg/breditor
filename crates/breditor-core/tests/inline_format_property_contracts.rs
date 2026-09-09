@@ -21,7 +21,7 @@ use breditor_core::{
         PropertyPresenceV1,
     },
     identity::QualifiedName,
-    operation::{TextRange, TextSplice, TextSpliceApplyError},
+    operation::{TextRange, TextSplice},
     position::{NodePath, TextOffset},
     profile::{CompiledEditorProfile, ProfileCompilationError},
     schema::{
@@ -463,7 +463,7 @@ fn typed_validation_distinguishes_exact_keys_types_ranges_and_host_limits() -> T
 }
 
 #[test]
-fn property_bearing_profiles_reject_generic_toggles_and_base_text_splices() -> TestResult {
+fn property_bearing_profiles_reject_generic_toggles_but_admit_exact_text_splices() -> TestResult {
     let contract = href_contract(2_048)?;
     let toggle = InlineFormatToggleSpecV1::new(
         name(LINK_FORMAT)?,
@@ -496,10 +496,10 @@ fn property_bearing_profiles_reject_generic_toggles_and_base_text_splices() -> T
         TextOffset::ZERO,
         TextOffset::ZERO,
     )?;
-    assert_eq!(
-        TextSplice::capture(&context, &document, range, TextFragment::empty()),
-        Err(TextSpliceApplyError::UnsupportedSchema { schema: schema.id().clone() })
-    );
+    let captured = TextSplice::capture(&context, &document, range.clone(), TextFragment::empty())?;
+    assert_eq!(captured.range(), &range);
+    assert_eq!(captured.expected_removed(), &TextFragment::empty());
+    assert_eq!(captured.replacement(), &TextFragment::empty());
     Ok(())
 }
 

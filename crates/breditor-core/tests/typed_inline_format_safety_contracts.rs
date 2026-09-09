@@ -13,7 +13,7 @@ use breditor_core::{
     },
     document::{
         Format, FormatSet, MAX_SAFE_INTEGER, MIN_SAFE_INTEGER, PropertyInteger, PropertyMap,
-        PropertyValueKind, TextFragment,
+        PropertyValue, PropertyValueKind, TextFragment,
     },
     extension::{
         ExtensionId, ExtensionLimits, ExtensionManifest, ExtensionManifestError, ExtensionSet,
@@ -27,7 +27,6 @@ use breditor_core::{
         Operation, OperationApplyError, OperationKind, OperationValidationError, ParagraphJoin,
         ParagraphJoinApplyError, ParagraphSplit, ParagraphSplitApplyError, RootTextBoundary,
         RootTextRange, RootTextReplace, RootTextReplaceApplyError, TextRange, TextSplice,
-        TextSpliceApplyError,
     },
     position::{Affinity, NodePath, Point, TextOffset},
     schema::{
@@ -36,7 +35,7 @@ use breditor_core::{
     },
     selection::{RangeSelection, Selection},
     session::EditorSession,
-    state::{EditorContext, EditorState, EditorStateError, LineageId, PendingFormatError},
+    state::{EditorContext, EditorState, LineageId},
     transaction::{Transaction, TransactionApplyError},
 };
 use serde_json::{Value, json};
@@ -330,7 +329,7 @@ fn all_base_operations() -> Result<Vec<Operation>, Box<dyn Error>> {
 }
 
 #[test]
-fn every_base_operation_and_transaction_fail_closed_for_a_typed_schema() -> TestResult {
+fn only_property_preserving_text_splice_is_admitted_for_a_typed_schema() -> TestResult {
     let schema = typed_schema("example/typed-operation-gate")?;
     let limits = DocumentLimits::default();
     let context = EditorContext::new(schema.clone(), limits);
@@ -344,13 +343,19 @@ fn every_base_operation_and_transaction_fail_closed_for_a_typed_schema() -> Test
     )?;
 
     let operations = all_base_operations()?;
+    assert_eq!(operations[0].validate(&context), Ok(()));
+    assert!(
+        Transaction::new(&state, vec![operations[0].clone()])
+            .apply(&context, &state)?
+            .is_unchanged()
+    );
+
     let expected_kinds = [
-        OperationKind::TextSplice,
         OperationKind::ParagraphSplit,
         OperationKind::ParagraphJoin,
         OperationKind::RootTextReplace,
     ];
-    for (operation, expected_kind) in operations.iter().zip(expected_kinds) {
+    for (operation, expected_kind) in operations[1..].iter().zip(expected_kinds) {
         assert_eq!(
             operation.validate(&context),
             Err(OperationValidationError::UnsupportedSchema {
@@ -361,9 +366,6 @@ fn every_base_operation_and_transaction_fail_closed_for_a_typed_schema() -> Test
     }
 
     let expected_apply_errors = [
-        OperationApplyError::TextSplice(TextSpliceApplyError::UnsupportedSchema {
-            schema: schema.id().clone(),
-        }),
         OperationApplyError::ParagraphSplit(ParagraphSplitApplyError::UnsupportedSchema {
             schema: schema.id().clone(),
         }),
@@ -374,7 +376,7 @@ fn every_base_operation_and_transaction_fail_closed_for_a_typed_schema() -> Test
             schema: schema.id().clone(),
         }),
     ];
-    for (operation, expected_error) in operations.iter().zip(expected_apply_errors) {
+    for (operation, expected_error) in operations[1..].iter().zip(expected_apply_errors) {
         let before = state.clone();
         let transaction = Transaction::new(&state, vec![operation.clone()]);
         assert_eq!(
@@ -387,15 +389,21 @@ fn every_base_operation_and_transaction_fail_closed_for_a_typed_schema() -> Test
 }
 
 #[test]
-fn typed_formats_are_not_admitted_as_v1_pending_typing_state() -> TestResult {
+fn typed_pending_state_is_runtime_valid_but_v2_wire_remains_fail_closed() -> TestResult {
     let schema = typed_schema("example/typed-pending-gate")?;
     let context = EditorContext::new(schema.clone(), DocumentLimits::default());
     let document = valid_document(&schema, &json!({HREF_PROPERTY: "x"}))?;
     let text_path = NodePath::try_from_indices(vec![0, 0])?;
     let point = Point::Text { text_path, utf16_offset: 0, affinity: Affinity::After };
     let selection: Selection = RangeSelection::new(point.clone(), point).into();
-    let pending =
-        FormatSet::try_from_formats(vec![Format::new(name(LINK_FORMAT)?, PropertyMap::default())])?;
+    let pending_properties = PropertyMap::try_from_sorted(vec![(
+        name(HREF_PROPERTY)?,
+        PropertyValue::from_string("x"),
+    )])?;
+    let pending = FormatSet::try_from_formats(vec![Format::new(
+        name(LINK_FORMAT)?,
+        pending_properties.clone(),
+    )])?;
 
     let valid_state = EditorState::try_new(
         &context,
@@ -424,18 +432,22 @@ fn typed_formats_are_not_admitted_as_v1_pending_typing_state() -> TestResult {
         Ok(_) => return Err(test_error("typed pending format decoded through V2 state").into()),
     }
 
+    let typed_pending = EditorState::try_new(
+        &context,
+        LineageId::try_new("typed-pending-gate")?,
+        document,
+        Some(selection),
+        Some(pending),
+    )?;
+    let link_kind = name(LINK_FORMAT)?;
     assert_eq!(
-        EditorState::try_new(
-            &context,
-            LineageId::try_new("typed-pending-gate")?,
-            document,
-            Some(selection),
-            Some(pending),
-        ),
-        Err(EditorStateError::InvalidPendingFormats(
-            PendingFormatError::PropertyBearingKindUnsupported { kind: name(LINK_FORMAT)? },
-        ))
+        typed_pending
+            .pending_formats()
+            .and_then(|formats| formats.get(&link_kind))
+            .map(Format::properties),
+        Some(&pending_properties),
     );
+    assert!(state_codec.encode(&typed_pending).is_err());
     Ok(())
 }
 

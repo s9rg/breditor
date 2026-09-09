@@ -10,6 +10,8 @@ pub const MAX_EXTENSION_CONFLICTS_PER_MANIFEST: u32 = 256;
 pub const MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST: u32 = 255;
 /// Maximum inline-format toggle declarations accepted by one manifest.
 pub const MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST: u32 = 255;
+/// Maximum property-aware inline-format set declarations accepted by one manifest.
+pub const MAX_EXTENSION_INLINE_FORMAT_SETS_PER_MANIFEST: u32 = 255;
 /// Maximum typed inline-format property contracts accepted by one manifest.
 pub const MAX_EXTENSION_INLINE_FORMAT_PROPERTY_CONTRACTS_PER_MANIFEST: u32 = 255;
 /// Maximum named properties accepted by one typed inline-format contract.

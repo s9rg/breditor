@@ -18,12 +18,20 @@ pub enum CommitRecordErrorCode {
     InvalidSelectionPath,
     /// A result pending-format or metadata name is not a qualified name.
     InvalidQualifiedName,
+    /// A result pending-format property name is not a qualified name.
+    InvalidPendingFormatPropertyName,
+    /// A result pending-format property value is outside the deterministic value model.
+    InvalidPendingFormatPropertyValue,
     /// The result pending-format array exceeds the active context limit.
     PendingFormatLimit,
     /// Result pending formats are not sorted and unique by kind.
     NonCanonicalPendingFormats,
-    /// A result pending format is not representable in V1 or allowed by the active schema.
+    /// A result pending format is not representable by the active wire generation or schema.
     PendingFormatNotAllowed,
+    /// Result pending formats exceed the aggregate property-value ceiling.
+    PendingFormatPropertyValueLimit,
+    /// Result pending formats exceed the aggregate property-string byte ceiling.
+    PendingFormatPropertyStringBytesLimit,
 }
 
 impl CommitRecordErrorCode {
@@ -33,14 +41,26 @@ impl CommitRecordErrorCode {
         match self {
             Self::InvalidSelectionPath => "commit_record.invalid_selection_path",
             Self::InvalidQualifiedName => "commit_record.invalid_qualified_name",
+            Self::InvalidPendingFormatPropertyName => {
+                "commit_record.invalid_pending_format_property_name"
+            }
+            Self::InvalidPendingFormatPropertyValue => {
+                "commit_record.invalid_pending_format_property_value"
+            }
             Self::PendingFormatLimit => "commit_record.pending_format_limit",
             Self::NonCanonicalPendingFormats => "commit_record.noncanonical_pending_formats",
             Self::PendingFormatNotAllowed => "commit_record.pending_format_not_allowed",
+            Self::PendingFormatPropertyValueLimit => {
+                "commit_record.pending_format_property_value_limit"
+            }
+            Self::PendingFormatPropertyStringBytesLimit => {
+                "commit_record.pending_format_property_string_bytes_limit"
+            }
         }
     }
 }
 
-/// Stable location within a commit V1 record.
+/// Stable location within a durable commit record.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum CommitRecordLocation {
@@ -61,7 +81,7 @@ pub enum CommitRecordLocation {
     MetadataHistoryGroup,
 }
 
-/// Breditor-owned details for one invalid commit V1 field.
+/// Breditor-owned details for one invalid durable-commit field.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CommitRecordError {
     code: CommitRecordErrorCode,
@@ -306,7 +326,7 @@ pub enum CommitCodecError {
         /// Configured maximum.
         maximum: u32,
     },
-    /// A non-operation commit field could not pass checked V1 reconstruction.
+    /// A non-operation commit field could not pass checked reconstruction.
     #[error(transparent)]
     InvalidCommit(#[from] CommitRecordError),
     /// One forward operation could not pass checked runtime construction.
@@ -377,6 +397,14 @@ mod tests {
         let cases = [
             (CommitRecordErrorCode::InvalidSelectionPath, "commit_record.invalid_selection_path"),
             (CommitRecordErrorCode::InvalidQualifiedName, "commit_record.invalid_qualified_name"),
+            (
+                CommitRecordErrorCode::InvalidPendingFormatPropertyName,
+                "commit_record.invalid_pending_format_property_name",
+            ),
+            (
+                CommitRecordErrorCode::InvalidPendingFormatPropertyValue,
+                "commit_record.invalid_pending_format_property_value",
+            ),
             (CommitRecordErrorCode::PendingFormatLimit, "commit_record.pending_format_limit"),
             (
                 CommitRecordErrorCode::NonCanonicalPendingFormats,
@@ -385,6 +413,14 @@ mod tests {
             (
                 CommitRecordErrorCode::PendingFormatNotAllowed,
                 "commit_record.pending_format_not_allowed",
+            ),
+            (
+                CommitRecordErrorCode::PendingFormatPropertyValueLimit,
+                "commit_record.pending_format_property_value_limit",
+            ),
+            (
+                CommitRecordErrorCode::PendingFormatPropertyStringBytesLimit,
+                "commit_record.pending_format_property_string_bytes_limit",
             ),
         ];
 

@@ -22,12 +22,20 @@ pub enum TransactionRecordErrorCode {
     InvalidSelectionPath,
     /// A pending-format or metadata name is not a qualified name.
     InvalidQualifiedName,
+    /// A pending-format property name is not a qualified name.
+    InvalidPendingFormatPropertyName,
+    /// A pending-format property value violates the deterministic value contract.
+    InvalidPendingFormatPropertyValue,
     /// A pending-format array exceeds the active context limit.
     PendingFormatLimit,
     /// Pending formats are not sorted and unique by kind.
     NonCanonicalPendingFormats,
-    /// A pending format is not representable in V1 or allowed by the active schema.
+    /// A pending format is not representable in its wire generation or allowed by the schema.
     PendingFormatNotAllowed,
+    /// Pending formats exceed the aggregate property-value ceiling.
+    PendingFormatPropertyValueLimit,
+    /// Pending formats exceed the aggregate property-string byte ceiling.
+    PendingFormatPropertyStringBytesLimit,
 }
 
 impl TransactionRecordErrorCode {
@@ -39,14 +47,26 @@ impl TransactionRecordErrorCode {
             Self::InvalidBaseRevision => "transaction_record.invalid_base_revision",
             Self::InvalidSelectionPath => "transaction_record.invalid_selection_path",
             Self::InvalidQualifiedName => "transaction_record.invalid_qualified_name",
+            Self::InvalidPendingFormatPropertyName => {
+                "transaction_record.invalid_pending_format_property_name"
+            }
+            Self::InvalidPendingFormatPropertyValue => {
+                "transaction_record.invalid_pending_format_property_value"
+            }
             Self::PendingFormatLimit => "transaction_record.pending_format_limit",
             Self::NonCanonicalPendingFormats => "transaction_record.noncanonical_pending_formats",
             Self::PendingFormatNotAllowed => "transaction_record.pending_format_not_allowed",
+            Self::PendingFormatPropertyValueLimit => {
+                "transaction_record.pending_format_property_value_limit"
+            }
+            Self::PendingFormatPropertyStringBytesLimit => {
+                "transaction_record.pending_format_property_string_bytes_limit"
+            }
         }
     }
 }
 
-/// Stable location within a transaction-request V1 record.
+/// Stable location within a transaction-request record.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[non_exhaustive]
 pub enum TransactionRecordLocation {
@@ -290,6 +310,14 @@ mod tests {
                 "transaction_record.invalid_qualified_name",
             ),
             (
+                TransactionRecordErrorCode::InvalidPendingFormatPropertyName,
+                "transaction_record.invalid_pending_format_property_name",
+            ),
+            (
+                TransactionRecordErrorCode::InvalidPendingFormatPropertyValue,
+                "transaction_record.invalid_pending_format_property_value",
+            ),
+            (
                 TransactionRecordErrorCode::PendingFormatLimit,
                 "transaction_record.pending_format_limit",
             ),
@@ -300,6 +328,14 @@ mod tests {
             (
                 TransactionRecordErrorCode::PendingFormatNotAllowed,
                 "transaction_record.pending_format_not_allowed",
+            ),
+            (
+                TransactionRecordErrorCode::PendingFormatPropertyValueLimit,
+                "transaction_record.pending_format_property_value_limit",
+            ),
+            (
+                TransactionRecordErrorCode::PendingFormatPropertyStringBytesLimit,
+                "transaction_record.pending_format_property_string_bytes_limit",
             ),
         ];
 

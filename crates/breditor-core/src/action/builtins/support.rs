@@ -1,6 +1,6 @@
 use crate::{
     action::{ActionDecision, ActionFault, DisabledReason},
-    document::{FormatSet, TextFragment},
+    document::{FormatSet, TextFragment, TextRun},
     identity::QualifiedName,
     operation::{ParagraphSplit, RootTextBoundary, RootTextRange, SelectionRelocationPolicy},
     position::{Affinity, NodePath, Point, TextOffset},
@@ -16,6 +16,23 @@ pub(super) fn require_base_text_range(
     state: &EditorState,
 ) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
     if !state.context().schema().supports_base_text_operations() {
+        return Ok(Err(disabled_reason("breditor/unsupported-schema")));
+    }
+    match normalize_range_selection(state) {
+        Ok(range) => Ok(Ok(range)),
+        Err(error) => map_text_position_error(error),
+    }
+}
+
+/// Requires only the paragraph-local splice capability and a normalizable range.
+///
+/// Property-aware inline formatting deliberately uses this narrower gate. The
+/// structural base-operation gate remains property-free until every split,
+/// join, and root-replacement contract can preserve typed format properties.
+pub(super) fn require_text_splice_range(
+    state: &EditorState,
+) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
+    if !state.context().schema().supports_text_splice_operations() {
         return Ok(Err(disabled_reason("breditor/unsupported-schema")));
     }
     match normalize_range_selection(state) {
@@ -234,6 +251,43 @@ pub(super) fn paragraph_fragment(
     ParagraphSplit::capture(state.context(), state.document(), paragraph_path.clone(), boundary)
         .map(|operation| operation.expected().clone())
         .map_err(|error| fault_with_error("breditor/paragraph-capture-fault", &error))
+}
+
+/// Captures one direct-root text container without invoking a structural operation.
+///
+/// The source document is already fully proved by [`EditorState`]. This helper
+/// rechecks the narrow path and child shape needed by paragraph-local
+/// [`crate::operation::TextSplice`] planning, then copies each immutable text
+/// leaf into an exact guarded fragment. It deliberately never consults the
+/// broader paragraph split/join capability.
+pub(super) fn text_splice_paragraph_fragment(
+    state: &EditorState,
+    paragraph_path: &NodePath,
+) -> Result<TextFragment, ActionFault> {
+    if !state.context().schema().supports_text_splice_operations() || paragraph_path.len() != 1 {
+        return Err(fault("breditor/text-splice-paragraph-capture-fault"));
+    }
+    let paragraph = state
+        .document()
+        .node_at(paragraph_path)
+        .map_err(|_| fault("breditor/text-splice-paragraph-capture-fault"))?
+        .as_element()
+        .ok_or_else(|| fault("breditor/text-splice-paragraph-capture-fault"))?;
+    if !state.context().schema().is_text_container(paragraph.kind()) {
+        return Err(fault("breditor/text-splice-paragraph-capture-fault"));
+    }
+    let runs = paragraph
+        .children()
+        .iter()
+        .map(|child| {
+            child
+                .as_text()
+                .map(TextRun::from_text_node)
+                .ok_or_else(|| fault("breditor/text-splice-paragraph-capture-fault"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    TextFragment::try_from_runs(runs)
+        .map_err(|_| fault("breditor/text-splice-paragraph-capture-fault"))
 }
 
 pub(super) fn fragment_range_parts(

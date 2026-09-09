@@ -8,9 +8,9 @@ use crate::{
     document::{Format, FormatSet, PropertyMap, TextFragment, TextRun},
     identity::QualifiedName,
     operation::{
-        Operation, OperationKind, ParagraphJoin, ParagraphJoinError, ParagraphSplit,
-        ParagraphSplitError, RootTextBoundary, RootTextRange, RootTextReplace, TextRange,
-        TextSplice,
+        Operation, OperationKind, OperationValidationError, ParagraphJoin, ParagraphJoinError,
+        ParagraphSplit, ParagraphSplitError, RootTextBoundary, RootTextRange, RootTextReplace,
+        TextRange, TextSplice,
     },
     position::{NodePath, TextOffset},
     record::{
@@ -18,6 +18,7 @@ use crate::{
         RootTextBoundaryRecordV1, RootTextRangeRecordV1, TextFragmentRecordV1, TextRangeRecordV1,
         TextRunRecordV1,
     },
+    state::EditorContext,
 };
 
 /// Reconstructs one strict V1 payload through the runtime checked constructors.
@@ -88,9 +89,33 @@ pub(crate) fn decode_operation_payload_v1(
     }
 }
 
-/// Projects one checked runtime operation into its exact V1 payload.
-pub(crate) fn encode_operation_payload_v1(operation: &Operation) -> OperationRecordV1 {
-    match operation {
+/// Checks that one operation belongs to the permanently property-free V1
+/// primitive language before an existing V1 or V2 envelope admits it.
+///
+/// Runtime operation validation can grow independently of this frozen wire
+/// generation. Keeping this separate schema gate prevents a newly supported
+/// runtime format from being projected through `EmptyPropertyMapRecord`.
+pub(crate) fn validate_operation_payload_v1(
+    operation: &Operation,
+    context: &EditorContext,
+) -> Result<(), OperationValidationError> {
+    if !context.schema().supports_base_text_operations() {
+        return Err(OperationValidationError::UnsupportedSchema {
+            kind: operation.kind(),
+            schema: context.schema().id().clone(),
+        });
+    }
+    operation.validate(context)
+}
+
+/// Projects one operation into its exact property-free V1 payload after
+/// checking the frozen generation contract.
+pub(crate) fn encode_operation_payload_v1(
+    operation: &Operation,
+    context: &EditorContext,
+) -> Result<OperationRecordV1, OperationValidationError> {
+    validate_operation_payload_v1(operation, context)?;
+    Ok(match operation {
         Operation::TextSplice(operation) => OperationRecordV1::TextSplice {
             range: TextRangeRecordV1 {
                 container_path: operation.range().container_path().to_vec(),
@@ -126,7 +151,7 @@ pub(crate) fn encode_operation_payload_v1(operation: &Operation) -> OperationRec
                 .map(fragment_record_from_runtime)
                 .collect(),
         },
-    }
+    })
 }
 
 fn text_range_from_record(record: TextRangeRecordV1) -> Result<TextRange, OperationRecordError> {

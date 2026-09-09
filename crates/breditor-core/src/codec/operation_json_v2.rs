@@ -16,7 +16,9 @@ use crate::{
 };
 
 use super::json_size::JsonByteCounter;
-use super::operation_payload_v1::{decode_operation_payload_v1, encode_operation_payload_v1};
+use super::operation_payload_v1::{
+    decode_operation_payload_v1, encode_operation_payload_v1, validate_operation_payload_v1,
+};
 use super::operation_preflight::preflight_operation_payload;
 use super::schema_binding_encoding::SchemaBindingEncoding;
 
@@ -100,7 +102,7 @@ impl OperationJsonCodecV2 {
             .map_err(|error| JsonFailure::from_serde(&error))
             .map_err(OperationV2CodecError::InvalidJson)?;
         let operation = decode_operation_payload_v1(record)?;
-        operation.validate(&self.context)?;
+        validate_operation_payload_v1(&operation, &self.context)?;
         Ok(operation)
     }
 
@@ -118,11 +120,10 @@ impl OperationJsonCodecV2 {
     /// the same codec's input budget, or [`OperationV2CodecError::Encoding`] on
     /// serialization failure.
     pub fn encode(&self, operation: &Operation) -> Result<String, OperationV2CodecError> {
-        operation.validate(&self.context)?;
         let binding = self.context.schema().durable_binding();
         let record = OperationRecordEnvelopeV2 {
             binding,
-            operation: encode_operation_payload_v1(operation),
+            operation: encode_operation_payload_v1(operation, &self.context)?,
         };
         let maximum = self.context.limits().max_json_bytes();
         let mut byte_counter = JsonByteCounter::new(maximum);

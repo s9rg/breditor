@@ -1,7 +1,4 @@
-use std::{
-    cell::{Cell, RefCell},
-    fmt,
-};
+use std::{cell::RefCell, fmt};
 
 use serde::{
     Serialize,
@@ -18,7 +15,9 @@ use crate::{
 };
 
 use super::{
-    operation_payload_v1::{decode_operation_payload_v1, encode_operation_payload_v1},
+    operation_payload_v1::{
+        decode_operation_payload_v1, encode_operation_payload_v1, validate_operation_payload_v1,
+    },
     operation_preflight::preflight_operation_payloads,
 };
 
@@ -27,18 +26,12 @@ const MAX_INITIAL_OPERATION_CAPACITY: u64 = 256;
 pub(crate) struct OperationSequenceEncoding<'a> {
     operations: &'a [Operation],
     context: &'a EditorContext,
-    validation_complete: Cell<bool>,
     validation_error: RefCell<Option<IndexedOperationValidationError>>,
 }
 
 impl<'a> OperationSequenceEncoding<'a> {
     pub(crate) fn new(operations: &'a [Operation], context: &'a EditorContext) -> Self {
-        Self {
-            operations,
-            context,
-            validation_complete: Cell::new(false),
-            validation_error: RefCell::new(None),
-        }
+        Self { operations, context, validation_error: RefCell::new(None) }
     }
 
     pub(crate) fn take_validation_error(&self) -> Option<IndexedOperationValidationError> {
@@ -51,25 +44,21 @@ impl Serialize for OperationSequenceEncoding<'_> {
     where
         S: serde::Serializer,
     {
-        let validate = !self.validation_complete.get();
         let mut sequence = serializer.serialize_seq(Some(self.operations.len()))?;
         for (operation_index, operation) in self.operations.iter().enumerate() {
-            if validate && let Err(source) = operation.validate(self.context) {
-                *self.validation_error.borrow_mut() = Some(IndexedOperationValidationError {
-                    operation_index: usize_to_u64(operation_index),
-                    source,
-                });
-                return Err(<S::Error as serde::ser::Error>::custom(
-                    "transaction operation validation failed",
-                ));
-            }
-            sequence.serialize_element(&encode_operation_payload_v1(operation))?;
+            let record =
+                encode_operation_payload_v1(operation, self.context).map_err(|source| {
+                    *self.validation_error.borrow_mut() = Some(IndexedOperationValidationError {
+                        operation_index: usize_to_u64(operation_index),
+                        source,
+                    });
+                    <S::Error as serde::ser::Error>::custom(
+                        "transaction operation validation failed",
+                    )
+                })?;
+            sequence.serialize_element(&record)?;
         }
-        let result = sequence.end()?;
-        if validate {
-            self.validation_complete.set(true);
-        }
-        Ok(result)
+        sequence.end()
     }
 }
 
@@ -216,7 +205,7 @@ impl<'de> Visitor<'de> for OperationSequenceVisitor<'_> {
                     return Err(A::Error::custom("transaction operation record is invalid"));
                 }
             };
-            if let Err(source) = operation.validate(self.context) {
+            if let Err(source) = validate_operation_payload_v1(&operation, self.context) {
                 *self.deferred_error =
                     Some(DeferredOperationError::Validation(IndexedOperationValidationError {
                         operation_index,
