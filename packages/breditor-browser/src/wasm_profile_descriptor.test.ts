@@ -70,6 +70,18 @@ class Descriptor implements WasmCompiledProfileDescriptorView {
     return [2, 1][index];
   }
 
+  formatPropertyCount(index: number): number | undefined {
+    return index === 0 || index === 1 ? 0 : undefined;
+  }
+
+  formatPropertyName(): undefined { return undefined; }
+  formatPropertyPresence(): undefined { return undefined; }
+  formatPropertyValueType(): undefined { return undefined; }
+  formatPropertyIntegerMinimum(): undefined { return undefined; }
+  formatPropertyIntegerMaximum(): undefined { return undefined; }
+  formatPropertyStringMinimumUtf8Bytes(): undefined { return undefined; }
+  formatPropertyStringMaximumUtf8Bytes(): undefined { return undefined; }
+
   intentId(index: number): string | undefined {
     return ["example/set-link", "example/toggle-mark"][index];
   }
@@ -155,8 +167,8 @@ describe("compiled Wasm profile descriptor boundary", () => {
         fingerprint: FINGERPRINT,
       },
       formats: [
-        { kind: "example/comment", revision: 2 },
-        { kind: "example/highlight", revision: 1 },
+        { kind: "example/comment", revision: 2, properties: [] },
+        { kind: "example/highlight", revision: 1, properties: [] },
       ],
       intents: [
         {
@@ -200,6 +212,7 @@ describe("compiled Wasm profile descriptor boundary", () => {
     expect(Object.isFrozen(result.descriptor)).toBe(true);
     expect(Object.isFrozen(result.descriptor.schema)).toBe(true);
     expect(Object.isFrozen(result.descriptor.formats)).toBe(true);
+    expect(Object.isFrozen(result.descriptor.formats[0]?.properties)).toBe(true);
     expect(Object.isFrozen(result.descriptor.intents[0]?.input)).toBe(true);
     expect(Object.isFrozen(result.descriptor.actionStates[1]?.source)).toBe(true);
     expect(isOwnedBrowserCompiledProfileDescriptor(result.descriptor)).toBe(true);

@@ -5,6 +5,8 @@ import {
   projectionMatchesProfileGeneration as ownedProjectionMatchesProfileGeneration,
   projectionProfileDescriptor,
   type BaseDocumentProjectionInput,
+  type InlineFormatProjection,
+  type InlineFormatPropertyProjection,
   type ProfiledDocumentProjectionInput,
 } from "./projection.js";
 import { BaseProjectionUpdate, type BaseProjectionImpact } from "./projection_update.js";
@@ -25,6 +27,10 @@ const PROJECTION_PROFILE_GENERATIONS = new WeakMap<
   WasmProfileGenerationView
 >();
 const ACTIVE_GENERATED_CONSUMPTIONS = new WeakSet<object>();
+const MAX_PROJECTED_PROPERTIES_PER_FORMAT = 32;
+const MAX_PROJECTED_PROPERTY_VALUES = 10_000;
+const MAX_PROJECTED_PROPERTY_STRING_BYTES = 65_536;
+const MAX_PROJECTED_TOTAL_PROPERTY_STRING_BYTES = 1024 * 1024;
 
 /**
  * Dependency-free structural view of the flattened semantic Wasm projection.
@@ -62,6 +68,38 @@ export interface SemanticProjectionView extends WasmProfileCorrelatedView {
   formatCount(index: number): number | undefined;
   /** Returns one text format's qualified type. */
   formatType(index: number, ordinal: number): string | undefined;
+  /** Returns one text format's canonical property count. */
+  formatPropertyCount(index: number, formatOrdinal: number): number | undefined;
+  /** Returns one canonical qualified property name. */
+  formatPropertyName(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): string | undefined;
+  /** Returns one property's closed scalar kind. */
+  formatPropertyValueKind(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): "boolean" | "integer" | "string" | undefined;
+  /** Returns one Boolean property value and no other property kind. */
+  formatPropertyBoolean(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): boolean | undefined;
+  /** Returns one exactly representable integer property value. */
+  formatPropertyInteger(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): number | undefined;
+  /** Returns one string property value and no other property kind. */
+  formatPropertyString(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): string | undefined;
   /** Releases the consumed Wasm handle. */
   free(): void;
 }
@@ -113,6 +151,12 @@ interface SemanticProjectionMethods {
   readonly text: SemanticProjectionView["text"];
   readonly formatCount: SemanticProjectionView["formatCount"];
   readonly formatType: SemanticProjectionView["formatType"];
+  readonly formatPropertyCount: SemanticProjectionView["formatPropertyCount"];
+  readonly formatPropertyName: SemanticProjectionView["formatPropertyName"];
+  readonly formatPropertyValueKind: SemanticProjectionView["formatPropertyValueKind"];
+  readonly formatPropertyBoolean: SemanticProjectionView["formatPropertyBoolean"];
+  readonly formatPropertyInteger: SemanticProjectionView["formatPropertyInteger"];
+  readonly formatPropertyString: SemanticProjectionView["formatPropertyString"];
 }
 
 interface SemanticProjectionScalars {
@@ -511,7 +555,8 @@ function readSemanticProjection(
     invokeGenerated(methods.elementType, view, 0) !== "breditor/document" ||
     invokeGenerated(methods.text, view, 0) !== undefined ||
     invokeGenerated(methods.formatCount, view, 0) !== undefined ||
-    invokeGenerated(methods.formatType, view, 0, 0) !== undefined
+    invokeGenerated(methods.formatType, view, 0, 0) !== undefined ||
+    !formatPropertyProbeIsAbsent(view, methods, 0, 0, 0)
   ) {
     return projectionFailure("projection.invalid_shape");
   }
@@ -530,8 +575,15 @@ function readSemanticProjection(
     ? new Set(["breditor/strong"])
     : new Set(expectedProfile.formats.map((format) => format.kind));
   const paragraphs: Array<{
-    runs: Array<{ text: string; strong: boolean; formats: string[] }>;
+    runs: Array<{
+      text: string;
+      strong: boolean;
+      formats: string[];
+      formatDetails: InlineFormatProjection[];
+    }>;
   }> = [];
+  let totalPropertyValues = 0;
+  let totalPropertyStringBytes = 0;
   let expectedIndex = 1;
   for (let paragraphOrdinal = 0; paragraphOrdinal < paragraphCount; paragraphOrdinal += 1) {
     if (expectedIndex >= nodeCount) {
@@ -549,7 +601,8 @@ function readSemanticProjection(
       invokeGenerated(methods.elementType, view, paragraphIndex) !== "breditor/paragraph" ||
       invokeGenerated(methods.text, view, paragraphIndex) !== undefined ||
       invokeGenerated(methods.formatCount, view, paragraphIndex) !== undefined ||
-      invokeGenerated(methods.formatType, view, paragraphIndex, 0) !== undefined
+      invokeGenerated(methods.formatType, view, paragraphIndex, 0) !== undefined ||
+      !formatPropertyProbeIsAbsent(view, methods, paragraphIndex, 0, 0)
     ) {
       return projectionFailure("projection.invalid_shape");
     }
@@ -563,7 +616,12 @@ function readSemanticProjection(
     ) {
       return projectionFailure("projection.invalid_shape");
     }
-    const runs: Array<{ text: string; strong: boolean; formats: string[] }> = [];
+    const runs: Array<{
+      text: string;
+      strong: boolean;
+      formats: string[];
+      formatDetails: InlineFormatProjection[];
+    }> = [];
     for (let runOrdinal = 0; runOrdinal < runCount; runOrdinal += 1) {
       const runIndex = invokeGenerated(
         methods.childAt,
@@ -592,6 +650,7 @@ function readSemanticProjection(
         return projectionFailure("projection.invalid_shape");
       }
       const formats: string[] = [];
+      const formatDetails: InlineFormatProjection[] = [];
       let previousFormat: string | undefined;
       for (let formatIndex = 0; formatIndex < formatCount; formatIndex += 1) {
         const format = invokeGenerated(
@@ -607,17 +666,75 @@ function readSemanticProjection(
         ) {
           return projectionFailure("projection.invalid_shape");
         }
+        const propertyCount = invokeGenerated(
+          methods.formatPropertyCount,
+          view,
+          runIndex,
+          formatIndex,
+        );
+        if (
+          propertyCount === undefined ||
+          !isIndex(propertyCount) ||
+          propertyCount > MAX_PROJECTED_PROPERTIES_PER_FORMAT ||
+          propertyCount > MAX_PROJECTED_PROPERTY_VALUES - totalPropertyValues ||
+          (typeof expectedProfile === "string" && propertyCount !== 0)
+        ) {
+          return projectionFailure("projection.invalid_shape");
+        }
+        const properties: InlineFormatPropertyProjection[] = [];
+        let previousProperty: string | undefined;
+        for (
+          let propertyIndex = 0;
+          propertyIndex < propertyCount;
+          propertyIndex += 1
+        ) {
+          const property = readProjectedFormatProperty(
+            view,
+            methods,
+            runIndex,
+            formatIndex,
+            propertyIndex,
+          );
+          if (
+            property === null ||
+            (previousProperty !== undefined &&
+              previousProperty >= property.entry.name) ||
+            property.stringBytes >
+              MAX_PROJECTED_TOTAL_PROPERTY_STRING_BYTES - totalPropertyStringBytes
+          ) {
+            return projectionFailure("projection.invalid_shape");
+          }
+          totalPropertyValues += 1;
+          totalPropertyStringBytes += property.stringBytes;
+          previousProperty = property.entry.name;
+          properties.push(property.entry);
+        }
+        if (
+          !formatPropertyValueProbeIsAbsent(
+            view,
+            methods,
+            runIndex,
+            formatIndex,
+            propertyCount,
+          )
+        ) {
+          return projectionFailure("projection.invalid_shape");
+        }
         formats.push(format);
+        formatDetails.push({ kind: format, properties });
         previousFormat = format;
       }
-      if (invokeGenerated(methods.formatType, view, runIndex, formatCount) !== undefined) {
+      if (
+        invokeGenerated(methods.formatType, view, runIndex, formatCount) !== undefined ||
+        !formatPropertyProbeIsAbsent(view, methods, runIndex, formatCount, 0)
+      ) {
         return projectionFailure("projection.invalid_shape");
       }
       const strong = formats.includes("breditor/strong");
       if (typeof expectedProfile === "string" && formats.length !== (strong ? 1 : 0)) {
         return projectionFailure("projection.invalid_shape");
       }
-      runs.push({ text, strong, formats });
+      runs.push({ text, strong, formats, formatDetails });
     }
     if (invokeGenerated(methods.childAt, view, paragraphIndex, runCount) !== undefined) {
       return projectionFailure("projection.invalid_shape");
@@ -633,7 +750,8 @@ function readSemanticProjection(
     invokeGenerated(methods.childAt, view, nodeCount, 0) !== undefined ||
     invokeGenerated(methods.text, view, nodeCount) !== undefined ||
     invokeGenerated(methods.formatCount, view, nodeCount) !== undefined ||
-    invokeGenerated(methods.formatType, view, nodeCount, 0) !== undefined
+    invokeGenerated(methods.formatType, view, nodeCount, 0) !== undefined ||
+    !formatPropertyProbeIsAbsent(view, methods, nodeCount, 0, 0)
   ) {
     return projectionFailure("projection.invalid_shape");
   }
@@ -656,10 +774,162 @@ function readSemanticProjection(
     },
     snapshot: { lineage: snapshotLineage, revision: snapshotRevision },
     paragraphs: paragraphs.map((paragraph) => ({
-      runs: paragraph.runs.map((run) => ({ text: run.text, formats: run.formats })),
+      runs: paragraph.runs.map((run) => ({
+        text: run.text,
+        formatDetails: run.formatDetails,
+      })),
     })),
   };
   return createProfiledDocumentProjection(input, generation, expectedProfile);
+}
+
+interface ReadProjectedFormatProperty {
+  readonly entry: InlineFormatPropertyProjection;
+  readonly stringBytes: number;
+}
+
+function readProjectedFormatProperty(
+  view: SemanticProjectionView,
+  methods: SemanticProjectionMethods,
+  nodeIndex: number,
+  formatIndex: number,
+  propertyIndex: number,
+): ReadProjectedFormatProperty | null {
+  const name = invokeGenerated(
+    methods.formatPropertyName,
+    view,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  );
+  const kind = invokeGenerated(
+    methods.formatPropertyValueKind,
+    view,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  );
+  const booleanValue = invokeGenerated(
+    methods.formatPropertyBoolean,
+    view,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  );
+  const integerValue = invokeGenerated(
+    methods.formatPropertyInteger,
+    view,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  );
+  const stringValue = invokeGenerated(
+    methods.formatPropertyString,
+    view,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  );
+  if (!isQualifiedName(name)) return null;
+
+  switch (kind) {
+    case "boolean":
+      return typeof booleanValue === "boolean" &&
+          integerValue === undefined &&
+          stringValue === undefined
+        ? { entry: { name, value: booleanValue }, stringBytes: 0 }
+        : null;
+    case "integer":
+      return booleanValue === undefined &&
+          typeof integerValue === "number" &&
+          Number.isSafeInteger(integerValue) &&
+          !Object.is(integerValue, -0) &&
+          stringValue === undefined
+        ? { entry: { name, value: integerValue }, stringBytes: 0 }
+        : null;
+    case "string": {
+      if (
+        booleanValue !== undefined ||
+        integerValue !== undefined ||
+        typeof stringValue !== "string" ||
+        stringValue.length > MAX_PROJECTED_PROPERTY_STRING_BYTES
+      ) {
+        return null;
+      }
+      const stringBytes = unicodeScalarUtf8Length(stringValue);
+      return stringBytes !== null &&
+          stringBytes <= MAX_PROJECTED_PROPERTY_STRING_BYTES
+        ? { entry: { name, value: stringValue }, stringBytes }
+        : null;
+    }
+    default:
+      return null;
+  }
+}
+
+function formatPropertyProbeIsAbsent(
+  view: SemanticProjectionView,
+  methods: SemanticProjectionMethods,
+  nodeIndex: number,
+  formatIndex: number,
+  propertyIndex: number,
+): boolean {
+  return invokeGenerated(
+    methods.formatPropertyCount,
+    view,
+    nodeIndex,
+    formatIndex,
+  ) === undefined && formatPropertyValueProbeIsAbsent(
+    view,
+    methods,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  );
+}
+
+function formatPropertyValueProbeIsAbsent(
+  view: SemanticProjectionView,
+  methods: SemanticProjectionMethods,
+  nodeIndex: number,
+  formatIndex: number,
+  propertyIndex: number,
+): boolean {
+  return invokeGenerated(
+    methods.formatPropertyName,
+    view,
+    nodeIndex,
+    formatIndex,
+    propertyIndex,
+  ) === undefined &&
+    invokeGenerated(
+      methods.formatPropertyValueKind,
+      view,
+      nodeIndex,
+      formatIndex,
+      propertyIndex,
+    ) === undefined &&
+    invokeGenerated(
+      methods.formatPropertyBoolean,
+      view,
+      nodeIndex,
+      formatIndex,
+      propertyIndex,
+    ) === undefined &&
+    invokeGenerated(
+      methods.formatPropertyInteger,
+      view,
+      nodeIndex,
+      formatIndex,
+      propertyIndex,
+    ) === undefined &&
+    invokeGenerated(
+      methods.formatPropertyString,
+      view,
+      nodeIndex,
+      formatIndex,
+      propertyIndex,
+    ) === undefined;
 }
 
 function readProfiledSemanticProjectionUpdate(
@@ -830,6 +1100,34 @@ function isSchemaFingerprint(value: unknown): value is string {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
 }
 
+function isQualifiedName(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= 128 &&
+    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+}
+
+function unicodeScalarUtf8Length(text: string): number | null {
+  let bytes = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const codeUnit = text.charCodeAt(index);
+    if (codeUnit <= 0x7f) {
+      bytes += 1;
+    } else if (codeUnit <= 0x7ff) {
+      bytes += 2;
+    } else if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+      const low = text.charCodeAt(index + 1);
+      if (!(low >= 0xdc00 && low <= 0xdfff)) return null;
+      bytes += 4;
+      index += 1;
+    } else if (codeUnit >= 0xdc00 && codeUnit <= 0xdfff) {
+      return null;
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
+}
+
 function schemaMatchesExpectedProfile(
   name: unknown,
   version: unknown,
@@ -852,6 +1150,15 @@ function snapshotSemanticProjection(
     const text = readProjectionMethod(view, "text");
     const formatCount = readProjectionMethod(view, "formatCount");
     const formatType = readProjectionMethod(view, "formatType");
+    const formatPropertyCount = readProjectionMethod(view, "formatPropertyCount");
+    const formatPropertyName = readProjectionMethod(view, "formatPropertyName");
+    const formatPropertyValueKind = readProjectionMethod(
+      view,
+      "formatPropertyValueKind",
+    );
+    const formatPropertyBoolean = readProjectionMethod(view, "formatPropertyBoolean");
+    const formatPropertyInteger = readProjectionMethod(view, "formatPropertyInteger");
+    const formatPropertyString = readProjectionMethod(view, "formatPropertyString");
     if (
       nodeKind === null ||
       elementType === null ||
@@ -859,7 +1166,13 @@ function snapshotSemanticProjection(
       childAt === null ||
       text === null ||
       formatCount === null ||
-      formatType === null
+      formatType === null ||
+      formatPropertyCount === null ||
+      formatPropertyName === null ||
+      formatPropertyValueKind === null ||
+      formatPropertyBoolean === null ||
+      formatPropertyInteger === null ||
+      formatPropertyString === null
     ) {
       return null;
     }
@@ -879,6 +1192,12 @@ function snapshotSemanticProjection(
         text,
         formatCount,
         formatType,
+        formatPropertyCount,
+        formatPropertyName,
+        formatPropertyValueKind,
+        formatPropertyBoolean,
+        formatPropertyInteger,
+        formatPropertyString,
       },
     };
   } catch {

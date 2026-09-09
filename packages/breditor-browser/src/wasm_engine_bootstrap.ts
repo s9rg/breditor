@@ -28,10 +28,10 @@ import {
 } from "./wasm_profile_descriptor.js";
 
 /** JavaScript-visible Wasm transport generation accepted by this bootstrap. */
-export const BREDITOR_WASM_ABI_VERSION = "3" as const;
+export const BREDITOR_WASM_ABI_VERSION = "4" as const;
 
 /** Exact official Wasm package version paired with this browser build. */
-export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.2" as const;
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.3" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
@@ -98,6 +98,14 @@ export interface WasmCompiledProfileBootstrapView
   createEngineFromSessionCheckpointJson(
     checkpointJson: string,
   ): WasmEngineBootstrapResultView;
+  createEngineFromDocumentJsonV3(
+    lineageId: string,
+    documentJson: string,
+    historyCapacity: number,
+  ): WasmEngineBootstrapResultView;
+  createEngineFromSessionCheckpointJsonV3(
+    checkpointJson: string,
+  ): WasmEngineBootstrapResultView;
   generation(): WasmProfileGenerationView;
   descriptor(): WasmCompiledProfileDescriptorView;
   matchesProfileGeneration(generation: WasmProfileGenerationView): boolean;
@@ -117,6 +125,9 @@ export interface WasmCompiledProfileBootstrapFactoryView {
   fromBootstrapJson(
     bootstrapJson: string,
   ): WasmCompiledProfileBootstrapResultView;
+  fromBootstrapJsonV2(
+    bootstrapJson: string,
+  ): WasmCompiledProfileBootstrapResultView;
 }
 
 /** Structural generated module namespace with explicit compatibility probes. */
@@ -127,10 +138,10 @@ export interface WasmEngineBootstrapModuleView {
   breditorVersion(): string;
 }
 
-/** Strict opt-in selector for compiled-profile V2 bootstrap. */
-export interface WasmSemanticProfileBootstrapSource {
-  readonly bootstrapJson: string;
-}
+/** Strict opt-in selector for one exact compiled-profile bootstrap generation. */
+export type WasmSemanticProfileBootstrapSource =
+  | Readonly<{ bootstrapJson: string }>
+  | Readonly<{ bootstrapJson: string; formatVersion: 2 }>;
 
 /** Strict request for a history-free Document V1 engine. */
 export interface WasmDocumentBootstrapSource {
@@ -251,9 +262,9 @@ type ResolvedFactory =
       protectedHandles: ReadonlySet<object>;
     }>
   | Readonly<{
-      durableMode: "v2";
+      durableMode: "v2" | "v3";
       factory: WasmCompiledProfileBootstrapFactoryView;
-      fromBootstrapJson: WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"];
+      compileProfile: WasmCompiledProfileBootstrapFactoryView["fromBootstrapJson"];
       protectedHandles: ReadonlySet<object>;
     }>;
 
@@ -279,6 +290,8 @@ interface EngineMethodSnapshot {
   readonly executeNoInputAction: WasmCommandEngineView["executeNoInputAction"];
   readonly executeNoInputIntent: WasmCommandEngineView["executeNoInputIntent"];
   readonly executeStringAction: WasmCommandEngineView["executeStringAction"];
+  readonly executeTypedActionJson: WasmCommandEngineView["executeTypedActionJson"];
+  readonly executeTypedIntentJson: WasmCommandEngineView["executeTypedIntentJson"];
   readonly undo: WasmCommandEngineView["undo"];
   readonly redo: WasmCommandEngineView["redo"];
   readonly closeHistoryGroup: WasmCommandEngineView["closeHistoryGroup"];
@@ -297,7 +310,7 @@ interface ObservationSnapshot {
 /**
  * Constructs one browser-ready generated engine and its exact initial AST.
  *
- * A generated module namespace must report ABI `3` and the exact package
+ * A generated module namespace must report ABI `4` and the exact package
  * version paired with this browser build before its factory is accessed. All generated
  * handles are claimed before `then` or sibling getters are inspected. Result,
  * error, and projection handles are consumed here; only a frozen engine
@@ -311,7 +324,7 @@ export function bootstrapWasmEngine(
   const request = readSource(source);
   if (request === null) return failure(INVALID_REQUEST);
 
-  const resolved = resolveFactory(module, request.semanticProfile !== undefined);
+  const resolved = resolveFactory(module, request.semanticProfile);
   if (!resolved.ok) return failure(resolved.error);
 
   const registry: GeneratedHandleRegistry = {
@@ -426,9 +439,9 @@ export function preflightWasmSemanticProfile(
   if (normalized === null || normalized === undefined) {
     return preflightFailure(INVALID_REQUEST);
   }
-  const resolved = resolveFactory(module, true);
+  const resolved = resolveFactory(module, normalized);
   if (!resolved.ok) return preflightFailure(resolved.error);
-  if (resolved.value.durableMode !== "v2") {
+  if (resolved.value.durableMode === "v1") {
     return preflightFailure(INVALID_MODULE);
   }
 
@@ -468,7 +481,7 @@ export function isOwnedBrowserWasmEngineBootstrapResult(
 
 function consumeCompiledProfile(
   bootstrapJson: unknown,
-  resolved: Extract<ResolvedFactory, { durableMode: "v2" }>,
+  resolved: Extract<ResolvedFactory, { durableMode: "v2" | "v3" }>,
   registry: GeneratedHandleRegistry,
 ):
   | Readonly<{ ok: true; value: CompiledProfileExpectation }>
@@ -477,7 +490,7 @@ function consumeCompiledProfile(
     return Object.freeze({ ok: false, error: INVALID_REQUEST });
   }
   const rawResult = Reflect.apply(
-    resolved.fromBootstrapJson,
+    resolved.compileProfile,
     resolved.factory,
     [bootstrapJson],
   ) as unknown;
@@ -526,13 +539,16 @@ function consumeCompiledProfile(
     rawProfile,
     "matchesProfileGeneration",
   );
-  const createEngineFromDocumentJson = readMethod(
-    rawProfile,
-    "createEngineFromDocumentJson",
-  );
+  const documentFactoryName = resolved.durableMode === "v3"
+    ? "createEngineFromDocumentJsonV3"
+    : "createEngineFromDocumentJson";
+  const checkpointFactoryName = resolved.durableMode === "v3"
+    ? "createEngineFromSessionCheckpointJsonV3"
+    : "createEngineFromSessionCheckpointJson";
+  const createEngineFromDocumentJson = readMethod(rawProfile, documentFactoryName);
   const createEngineFromSessionCheckpointJson = readMethod(
     rawProfile,
-    "createEngineFromSessionCheckpointJson",
+    checkpointFactoryName,
   );
   if (
     generation === null ||
@@ -573,7 +589,7 @@ function consumeCompiledProfile(
     return Object.freeze({ ok: false, error: INVALID_DESCRIPTOR });
   }
   const durableContract: WasmDurableJsonContract = Object.freeze({
-    mode: "v2",
+    mode: resolved.durableMode,
     schema: descriptorResult.descriptor.schema,
     formats: descriptorResult.descriptor.formats,
   });
@@ -761,7 +777,7 @@ function consumeConstructionResult(
   const success = Object.freeze({
     ok: true as const,
     engine,
-    durableMode: compiledProfile === undefined ? "v1" as const : "v2" as const,
+    durableMode: compiledProfile?.durableContract.mode ?? "v1",
     profileGeneration: activeGeneration,
     profileDescriptor: activeDescriptor,
     observation: rawObservation as WasmCommandObservationView,
@@ -874,6 +890,12 @@ function snapshotProjectionFacade(
     const text = view.text;
     const formatCount = view.formatCount;
     const formatType = view.formatType;
+    const formatPropertyCount = view.formatPropertyCount;
+    const formatPropertyName = view.formatPropertyName;
+    const formatPropertyValueKind = view.formatPropertyValueKind;
+    const formatPropertyBoolean = view.formatPropertyBoolean;
+    const formatPropertyInteger = view.formatPropertyInteger;
+    const formatPropertyString = view.formatPropertyString;
     const matchesProfileGeneration = view.matchesProfileGeneration;
     const scalars = [
       schemaName,
@@ -892,6 +914,12 @@ function snapshotProjectionFacade(
       text,
       formatCount,
       formatType,
+      formatPropertyCount,
+      formatPropertyName,
+      formatPropertyValueKind,
+      formatPropertyBoolean,
+      formatPropertyInteger,
+      formatPropertyString,
       matchesProfileGeneration,
     ];
     if (
@@ -923,6 +951,48 @@ function snapshotProjectionFacade(
       text: (index: number) => invoke(text, [index]) as ReturnType<SemanticProjectionView["text"]>,
       formatCount: (index: number) => invoke(formatCount, [index]) as ReturnType<SemanticProjectionView["formatCount"]>,
       formatType: (index: number, ordinal: number) => invoke(formatType, [index, ordinal]) as ReturnType<SemanticProjectionView["formatType"]>,
+      formatPropertyCount: (index: number, formatOrdinal: number) =>
+        invoke(formatPropertyCount, [index, formatOrdinal]) as ReturnType<SemanticProjectionView["formatPropertyCount"]>,
+      formatPropertyName: (
+        index: number,
+        formatOrdinal: number,
+        propertyOrdinal: number,
+      ) => invoke(
+        formatPropertyName,
+        [index, formatOrdinal, propertyOrdinal],
+      ) as ReturnType<SemanticProjectionView["formatPropertyName"]>,
+      formatPropertyValueKind: (
+        index: number,
+        formatOrdinal: number,
+        propertyOrdinal: number,
+      ) => invoke(
+        formatPropertyValueKind,
+        [index, formatOrdinal, propertyOrdinal],
+      ) as ReturnType<SemanticProjectionView["formatPropertyValueKind"]>,
+      formatPropertyBoolean: (
+        index: number,
+        formatOrdinal: number,
+        propertyOrdinal: number,
+      ) => invoke(
+        formatPropertyBoolean,
+        [index, formatOrdinal, propertyOrdinal],
+      ) as ReturnType<SemanticProjectionView["formatPropertyBoolean"]>,
+      formatPropertyInteger: (
+        index: number,
+        formatOrdinal: number,
+        propertyOrdinal: number,
+      ) => invoke(
+        formatPropertyInteger,
+        [index, formatOrdinal, propertyOrdinal],
+      ) as ReturnType<SemanticProjectionView["formatPropertyInteger"]>,
+      formatPropertyString: (
+        index: number,
+        formatOrdinal: number,
+        propertyOrdinal: number,
+      ) => invoke(
+        formatPropertyString,
+        [index, formatOrdinal, propertyOrdinal],
+      ) as ReturnType<SemanticProjectionView["formatPropertyString"]>,
       matchesProfileGeneration: (generation: WasmProfileGenerationView) =>
         invoke(matchesProfileGeneration as Function, [generation]) as boolean,
       free: (() => cleanup()) as () => void,
@@ -953,6 +1023,8 @@ function snapshotEngineMethods(
       executeNoInputAction: engine.executeNoInputAction,
       executeNoInputIntent: engine.executeNoInputIntent,
       executeStringAction: engine.executeStringAction,
+      executeTypedActionJson: engine.executeTypedActionJson,
+      executeTypedIntentJson: engine.executeTypedIntentJson,
       undo: engine.undo,
       redo: engine.redo,
       closeHistoryGroup: engine.closeHistoryGroup,
@@ -972,6 +1044,8 @@ function snapshotEngineMethods(
       snapshot.executeNoInputAction,
       snapshot.executeNoInputIntent,
       snapshot.executeStringAction,
+      snapshot.executeTypedActionJson,
+      snapshot.executeTypedIntentJson,
       snapshot.undo,
       snapshot.redo,
       snapshot.closeHistoryGroup,
@@ -1065,14 +1139,18 @@ function createEngineOwner(
       focusAffinity,
     ]),
     selection: (expected) => invoke(snapshot.selection, [expected]),
-    executeNoInputAction: (expected, actionId) =>
-      invoke(snapshot.executeNoInputAction, [expected, actionId]),
-    executeNoInputIntent: (expected, intentId) =>
-      invoke(snapshot.executeNoInputIntent, [expected, intentId]),
-    executeStringAction: (expected, actionId, value) =>
-      invoke(snapshot.executeStringAction, [expected, actionId, value]),
-    undo: (expected) => invoke(snapshot.undo, [expected]),
-    redo: (expected) => invoke(snapshot.redo, [expected]),
+    executeNoInputAction: (expected, actionId, closeBefore) =>
+      invoke(snapshot.executeNoInputAction, [expected, actionId, closeBefore]),
+    executeNoInputIntent: (expected, intentId, closeBefore) =>
+      invoke(snapshot.executeNoInputIntent, [expected, intentId, closeBefore]),
+    executeStringAction: (expected, actionId, value, closeBefore) =>
+      invoke(snapshot.executeStringAction, [expected, actionId, value, closeBefore]),
+    executeTypedActionJson: (expected, actionId, inputJson, closeBefore) =>
+      invoke(snapshot.executeTypedActionJson, [expected, actionId, inputJson, closeBefore]),
+    executeTypedIntentJson: (expected, intentId, inputJson, closeBefore) =>
+      invoke(snapshot.executeTypedIntentJson, [expected, intentId, inputJson, closeBefore]),
+    undo: (expected, closeBefore) => invoke(snapshot.undo, [expected, closeBefore]),
+    redo: (expected, closeBefore) => invoke(snapshot.redo, [expected, closeBefore]),
     closeHistoryGroup: (expected) =>
       invoke(snapshot.closeHistoryGroup, [expected]),
     matchesProfileGeneration: (generation) =>
@@ -1183,7 +1261,7 @@ function profileGenerationOwnerIsLive(owner: WasmProfileGenerationView): boolean
 
 function resolveFactory(
   value: unknown,
-  compiledProfile: boolean,
+  semanticProfile: WasmSemanticProfileBootstrapSource | undefined,
 ):
   | Readonly<{ ok: true; value: ResolvedFactory }>
   | Readonly<{ ok: false; error: BrowserWasmEngineBootstrapError }> {
@@ -1214,6 +1292,7 @@ function resolveFactory(
       return Object.freeze({ ok: false, error: INCOMPATIBLE_VERSION });
     }
 
+    const compiledProfile = semanticProfile !== undefined;
     const factoryKey = compiledProfile
       ? "BreditorCompiledProfile"
       : "BreditorEngine";
@@ -1225,18 +1304,22 @@ function resolveFactory(
     if (compiledProfile) {
       const structural = factory as WasmCompiledProfileBootstrapFactoryView;
       const fromBootstrapJson = structural.fromBootstrapJson;
+      const fromBootstrapJsonV2 = structural.fromBootstrapJsonV2;
       if (
         typeof fromBootstrapJson !== "function" ||
-        valueIsThenable(fromBootstrapJson)
+        valueIsThenable(fromBootstrapJson) ||
+        typeof fromBootstrapJsonV2 !== "function" ||
+        valueIsThenable(fromBootstrapJsonV2)
       ) {
         return Object.freeze({ ok: false, error: INVALID_MODULE });
       }
+      const v2 = "formatVersion" in semanticProfile;
       return Object.freeze({
         ok: true,
         value: Object.freeze({
-          durableMode: "v2" as const,
+          durableMode: v2 ? "v3" as const : "v2" as const,
           factory: structural,
-          fromBootstrapJson,
+          compileProfile: v2 ? fromBootstrapJsonV2 : fromBootstrapJson,
           protectedHandles,
         }),
       });
@@ -1354,8 +1437,11 @@ function readSemanticProfile(
   value: unknown,
 ): WasmSemanticProfileBootstrapSource | null | undefined {
   if (value === undefined) return undefined;
-  const record = exactRecord(value, ["bootstrapJson"]);
+  const v1 = exactRecord(value, ["bootstrapJson"]);
+  const v2 = exactRecord(value, ["bootstrapJson", "formatVersion"]);
+  const record = v1 ?? v2;
   if (record === null) return null;
+  if (v2 !== null && v2["formatVersion"] !== 2) return null;
   const bootstrapJson = record["bootstrapJson"];
   if (
     typeof bootstrapJson !== "string" ||
@@ -1368,7 +1454,9 @@ function readSemanticProfile(
   ) {
     return null;
   }
-  return Object.freeze({ bootstrapJson });
+  return v2 === null
+    ? Object.freeze({ bootstrapJson })
+    : Object.freeze({ bootstrapJson, formatVersion: 2 as const });
 }
 
 function exactRecord(
@@ -1503,7 +1591,15 @@ function compiledProfileDescriptorsEqual(
     left.schema.version === right.schema.version &&
     left.schema.fingerprint === right.schema.fingerprint &&
     sameArray(left.formats, right.formats, (a, b) =>
-      a.kind === b.kind && a.revision === b.revision) &&
+      a.kind === b.kind &&
+      a.revision === b.revision &&
+      sameArray(a.properties, b.properties, (leftProperty, rightProperty) =>
+        leftProperty.name === rightProperty.name &&
+        leftProperty.presence === rightProperty.presence &&
+        formatPropertyValueTypesEqual(
+          leftProperty.valueType,
+          rightProperty.valueType,
+        ))) &&
     sameArray(left.intents, right.intents, (a, b) =>
       a.id === b.id &&
       a.input.kind === b.input.kind &&
@@ -1516,6 +1612,22 @@ function compiledProfileDescriptorsEqual(
       a.id === b.id &&
       actionStateSourcesEqual(a.source, b.source) &&
       stateContractsEqual(a.state, b.state));
+}
+
+function formatPropertyValueTypesEqual(
+  left: BrowserCompiledProfileDescriptor["formats"][number]["properties"][number]["valueType"],
+  right: BrowserCompiledProfileDescriptor["formats"][number]["properties"][number]["valueType"],
+): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "boolean") return right.kind === "boolean";
+  if (left.kind === "integer") {
+    return right.kind === "integer" &&
+      left.minimum === right.minimum &&
+      left.maximum === right.maximum;
+  }
+  return right.kind === "string" &&
+    left.minimumUtf8Bytes === right.minimumUtf8Bytes &&
+    left.maximumUtf8Bytes === right.maximumUtf8Bytes;
 }
 
 function sameArray<T>(
@@ -1573,6 +1685,7 @@ function isExactBuiltInBaseDescriptor(
     formats.length === 1 &&
     formats[0]?.kind === "breditor/strong" &&
     formats[0]?.revision === 1 &&
+    formats[0]?.properties.length === 0 &&
     intents.length === 1 &&
     intents[0]?.id === "breditor/format-strong" &&
     intents[0]?.input.kind === "none" &&

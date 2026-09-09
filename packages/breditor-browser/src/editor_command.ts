@@ -14,6 +14,12 @@ export const MAX_BROWSER_COMMAND_TEXT_UTF16 = 65_536;
 /** Maximum UTF-8 bytes admitted for one browser-originated string command. */
 export const MAX_BROWSER_COMMAND_TEXT_UTF8 = 65_536;
 
+/** Maximum UTF-16 code units admitted for one typed JSON command transport. */
+export const MAX_BROWSER_COMMAND_JSON_UTF16 = 512 * 1024;
+
+/** Maximum UTF-8 bytes admitted for one typed JSON command transport. */
+export const MAX_BROWSER_COMMAND_JSON_UTF8 = 512 * 1024;
+
 /** Stable command origins. Presentation layers add detail without changing semantics. */
 export type EditorCommandSource = Readonly<{
   kind:
@@ -39,9 +45,19 @@ export type EngineCommand =
       input: Readonly<{ kind: "string"; value: string }>;
     }>
   | Readonly<{
+      kind: "action";
+      actionId: string;
+      input: Readonly<{ kind: "json"; value: string }>;
+    }>
+  | Readonly<{
       kind: "intent";
       intentId: string;
       input: Readonly<{ kind: "none" }>;
+    }>
+  | Readonly<{
+      kind: "intent";
+      intentId: string;
+      input: Readonly<{ kind: "json"; value: string }>;
     }>
   | Readonly<{ kind: "selection"; operation: "synchronize" }>
   | Readonly<{ kind: "history"; operation: "undo" | "redo" }>
@@ -320,6 +336,35 @@ export function stringActionRequest(
   });
 }
 
+/** Creates an immutable, bounded typed-JSON action request. */
+export function jsonActionRequest(
+  delivery: EditorDeliveryToken,
+  selection: EditorSelectionSync,
+  source: EditorCommandSource,
+  actionId: string,
+  value: string,
+  history: EditorCommandRequirements["history"] = "preserve",
+): EngineCommandRequest {
+  const safeSource = requireSource(source);
+  requireQualifiedName(actionId);
+  requireHistory(history);
+  if (!browserCommandJsonIsAdmissible(value)) {
+    throw new RangeError("editor command JSON is empty, malformed Unicode, or too large");
+  }
+  const safeDelivery = requireDelivery(delivery);
+  return freezeRequest(
+    safeDelivery,
+    requireSelection(selection, safeDelivery),
+    safeSource,
+    history,
+    {
+      kind: "action",
+      actionId,
+      input: Object.freeze({ kind: "json", value }),
+    },
+  );
+}
+
 /** Creates an immutable no-input semantic intent request. */
 export function noInputIntentRequest(
   delivery: EditorDeliveryToken,
@@ -341,6 +386,35 @@ export function noInputIntentRequest(
       kind: "intent",
       intentId,
       input: Object.freeze({ kind: "none" }),
+    },
+  );
+}
+
+/** Creates an immutable, bounded typed-JSON semantic-intent request. */
+export function jsonIntentRequest(
+  delivery: EditorDeliveryToken,
+  selection: EditorSelectionSync,
+  source: EditorCommandSource,
+  intentId: string,
+  value: string,
+  history: EditorCommandRequirements["history"] = "preserve",
+): EngineCommandRequest {
+  const safeSource = requireSource(source);
+  requireQualifiedName(intentId, "intent ID");
+  requireHistory(history);
+  if (!browserCommandJsonIsAdmissible(value)) {
+    throw new RangeError("editor command JSON is empty, malformed Unicode, or too large");
+  }
+  const safeDelivery = requireDelivery(delivery);
+  return freezeRequest(
+    safeDelivery,
+    requireSelection(selection, safeDelivery),
+    safeSource,
+    history,
+    {
+      kind: "intent",
+      intentId,
+      input: Object.freeze({ kind: "json", value }),
     },
   );
 }
@@ -402,11 +476,28 @@ export function selectionSynchronizationRequest(
 
 /** Returns whether a string fits both browser-side action-input ceilings. */
 export function browserCommandTextIsAdmissible(value: unknown): value is string {
-  if (
-    typeof value !== "string" ||
-    value.length === 0 ||
-    value.length > MAX_BROWSER_COMMAND_TEXT_UTF16
-  ) {
+  return boundedWellFormedUtf8String(
+    value,
+    MAX_BROWSER_COMMAND_TEXT_UTF16,
+    MAX_BROWSER_COMMAND_TEXT_UTF8,
+  );
+}
+
+/** Returns whether a typed JSON transport fits the exact browser/Wasm ceiling. */
+export function browserCommandJsonIsAdmissible(value: unknown): value is string {
+  return boundedWellFormedUtf8String(
+    value,
+    MAX_BROWSER_COMMAND_JSON_UTF16,
+    MAX_BROWSER_COMMAND_JSON_UTF8,
+  );
+}
+
+function boundedWellFormedUtf8String(
+  value: unknown,
+  maximumUtf16: number,
+  maximumUtf8: number,
+): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > maximumUtf16) {
     return false;
   }
   let utf8Bytes = 0;
@@ -425,7 +516,7 @@ export function browserCommandTextIsAdmissible(value: unknown): value is string 
     }
     utf8Bytes +=
       codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
-    if (utf8Bytes > MAX_BROWSER_COMMAND_TEXT_UTF8) {
+    if (utf8Bytes > maximumUtf8) {
       return false;
     }
   }
@@ -486,24 +577,42 @@ export function canonicalEditorCommandRequest(value: unknown): EditorCommandRequ
       return closeHistoryGroupRequest(delivery, selection, source);
     }
     if (command.kind === "intent") {
-      return noInputIntentRequest(
-        delivery,
-        selection,
-        source,
-        command.intentId,
-        history,
-      );
+      return command.input.kind === "none"
+        ? noInputIntentRequest(
+            delivery,
+            selection,
+            source,
+            command.intentId,
+            history,
+          )
+        : jsonIntentRequest(
+            delivery,
+            selection,
+            source,
+            command.intentId,
+            command.input.value,
+            history,
+          );
     }
     return command.input.kind === "none"
       ? noInputActionRequest(delivery, selection, source, command.actionId, history)
-      : stringActionRequest(
+      : command.input.kind === "string"
+        ? stringActionRequest(
           delivery,
           selection,
           source,
           command.actionId,
           command.input.value,
           history,
-        );
+        )
+        : jsonActionRequest(
+            delivery,
+            selection,
+            source,
+            command.actionId,
+            command.input.value,
+            history,
+          );
   } catch {
     return null;
   }
@@ -700,6 +809,18 @@ function snapshotEngineCommand(value: unknown): EngineCommand | null {
         input: Object.freeze({ kind: "none" }),
       });
     }
+    const json = readExactDataRecord(intent["input"], ["kind", "value"]);
+    if (
+      json !== null &&
+      json["kind"] === "json" &&
+      browserCommandJsonIsAdmissible(json["value"])
+    ) {
+      return Object.freeze({
+        kind: "intent",
+        intentId: intent["intentId"],
+        input: Object.freeze({ kind: "json", value: json["value"] }),
+      });
+    }
   }
   const action = readExactDataRecord(value, ["kind", "actionId", "input"]);
   if (
@@ -720,17 +841,26 @@ function snapshotEngineCommand(value: unknown): EngineCommand | null {
   }
   const string = readExactDataRecord(action["input"], ["kind", "value"]);
   if (
-    string === null ||
-    string["kind"] !== "string" ||
-    !browserCommandTextIsAdmissible(string["value"])
+    string !== null &&
+    string["kind"] === "string" &&
+    browserCommandTextIsAdmissible(string["value"])
   ) {
-    return null;
+    return Object.freeze({
+      kind: "action",
+      actionId: action["actionId"],
+      input: Object.freeze({ kind: "string", value: string["value"] }),
+    });
   }
-  return Object.freeze({
-    kind: "action",
-    actionId: action["actionId"],
-    input: Object.freeze({ kind: "string", value: string["value"] }),
-  });
+  const json = readExactDataRecord(action["input"], ["kind", "value"]);
+  return json !== null &&
+      json["kind"] === "json" &&
+      browserCommandJsonIsAdmissible(json["value"])
+    ? Object.freeze({
+        kind: "action" as const,
+        actionId: action["actionId"],
+        input: Object.freeze({ kind: "json" as const, value: json["value"] }),
+      })
+    : null;
 }
 
 function readExactDataRecord(

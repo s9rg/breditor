@@ -321,7 +321,7 @@ describe("IndexedDbSessionCheckpointStore", () => {
       {
         slot: "profile.one",
         schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT,
-        checkpointFormatVersion: 3,
+        checkpointFormatVersion: 4,
       },
       {
         slot: "profile.one",
@@ -469,6 +469,38 @@ describe("IndexedDbSessionCheckpointStore", () => {
     legacy.close();
     highlight.close();
     comment.close();
+  });
+
+  it("round-trips checkpoint generation 3 as an exact retained binding", async () => {
+    const factory = new IDBFactory();
+    const digest = digestFixture();
+    const binding: IndexedDbSessionCheckpointBinding = Object.freeze({
+      slot: "profile.typed-v3",
+      schemaFingerprint: HIGHLIGHT_SCHEMA_FINGERPRINT,
+      checkpointFormatVersion: 3,
+    });
+    const store = createStore(factory, digest, undefined, binding).store;
+    const empty = await store.load();
+    if (!empty.ok) throw new Error(empty.error.code);
+    expect((await store.save(empty.token, '{"formatVersion":3}')).ok).toBe(true);
+    expect(await rawSlot(factory, binding.slot)).toMatchObject({
+      formatVersion: 2,
+      slot: binding.slot,
+      schemaFingerprint: binding.schemaFingerprint,
+      checkpointFormatVersion: 3,
+      checkpointJson: '{"formatVersion":3}',
+    });
+    store.close();
+
+    const wrongGeneration = createStore(factory, digest, undefined, {
+      ...binding,
+      checkpointFormatVersion: 2,
+    }).store;
+    await expect(wrongGeneration.load()).resolves.toMatchObject({
+      ok: false,
+      error: { code: "session_checkpoint.binding_mismatch" },
+    });
+    wrongGeneration.close();
   });
 
   it("uses the exact bound key for every count, read, and write request", async () => {
@@ -843,7 +875,7 @@ describe("IndexedDbSessionCheckpointStore", () => {
 
   it.each([
     [{ schemaFingerprint: `sha256:${"A".repeat(64)}` }, "noncanonical fingerprint"],
-    [{ checkpointFormatVersion: 3 }, "unsupported checkpoint format"],
+    [{ checkpointFormatVersion: 4 }, "unsupported checkpoint format"],
     [{ slot: "-invalid" }, "invalid retained slot"],
     [{ extra: true }, "extra retained field"],
   ] as const)("rejects a corrupt profile-bound record: %s", async (overrides, _label) => {

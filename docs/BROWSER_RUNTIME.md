@@ -1,8 +1,9 @@
 # Breditor browser runtime
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
-extended in `0.2.0` by the compiled-profile, supported no-input intent/toolbar,
-and reference-package path
+extended in `0.2.0` by compiled property-free profiles and extended again by
+the unpublished `0.3.0-alpha.3` ABI-4 typed-profile, typed-intent, and explicit
+Session-V3 persistence path
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -12,8 +13,8 @@ IndexedDB autosave behind one framework-neutral owner.
 
 The package-root API is intentionally small. Applications receive the editing
 element, immutable status snapshots, subscription, focus, persistence flush
-and retry, synchronous no-input semantic intent execution, explicit content
-export, and disposal. They do not receive the
+and retry, synchronous no-input and strict typed-JSON semantic intent
+execution, explicit content export, and disposal. They do not receive the
 engine, observation handles, renderer, queue, delivery tokens, or native-event
 receipts. The lower-level pieces remain available from
 `@breditor/browser/advanced` for host-trusted integrations, but using them
@@ -119,34 +120,40 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-Starting with `0.2.0-alpha.5`, startup verifies Wasm ABI generation `3` and the
-exact matching crate/package version before it reads the generated engine
-factory. The supported root option rejects a bare structural factory, which has
-no module-level compatibility probe. Lower-level factory types remain available
-only from the experimental advanced surface for adapter tests and controlled
-host integration; their generated handle protocol is not a compatibility
-promise. Applications should install matching versions of `@breditor/browser`
-and `@breditor/wasm`.
+The alpha.3 source path verifies Wasm ABI generation `4` and the exact matching
+crate/package version before it reads the generated engine factory. The
+supported root option rejects a bare structural factory, which has no module-
+level compatibility probe. Lower-level factory types remain available only
+from the experimental advanced surface for adapter tests and controlled host
+integration; their generated handle protocol is not a compatibility promise.
+Applications must install matching versions of `@breditor/browser` and
+`@breditor/wasm` after those packages are published.
 
-The supported `0.2.0` package-root path retains Alpha.7's
-`semanticProfile: { bootstrapJson }`, a
-matching Document V2 or Session Checkpoint V2 source, and an exact callback-free
-`rendering` manifest. The presentation must cover every format in the compiled
-profile descriptor. A supplied toolbar must also match descriptor-declared
-no-input intent/routed-state or exact history contracts, and the first
-action-state snapshot must repeat the descriptor's complete fixed catalog.
-Without `semanticProfile`, the stable exact-base Document
-V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
-sniffs or falls back between wire generations.
+Three startup modes are explicit. Omitting `semanticProfile` selects exact-base
+Document/Session Checkpoint V1. `semanticProfile: { bootstrapJson }` selects
+Profile Bootstrap V1 with Document/Session Checkpoint V2.
+`semanticProfile: { bootstrapJson, formatVersion: 2 }` selects Profile Bootstrap
+V2 with Document V2 and Session Checkpoint V3. The last form admits typed
+property contracts and set-intent declarations. A required callback-free
+`rendering` manifest must cover every descriptor format; the supplied toolbar
+must still match the supported no-input intent/routed-state or exact history
+contracts. Startup never sniffs, upgrades, or falls back between modes.
+
+For Bootstrap V2, the owned `BrowserCompiledProfileDescriptor` deep-freezes
+each format's canonical `properties` list: name, required/optional presence,
+Boolean/integer/string type, and exact bounds. The semantic projection exposes
+each run's canonical `formatDetails`, including the scalar value of every
+present property. Both are validated against the same opaque profile generation
+before the editor is published.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.2` packages:
+exactly matching `0.3.0-alpha.3` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.2 \
-  @breditor/wasm@0.3.0-alpha.2 \
-  @breditor/reference-highlight@0.3.0-alpha.2
+npm install @breditor/browser@0.3.0-alpha.3 \
+  @breditor/wasm@0.3.0-alpha.3 \
+  @breditor/reference-highlight@0.3.0-alpha.3
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -273,9 +280,9 @@ free. Disposal does not mean that dirty state was saved.
 
 ## Synchronous semantic intent execution
 
-`executeIntent(intentId)` is the supported imperative command boundary in
-Alpha.7. It accepts one exact qualified ID declared by the active compiled
-profile and currently supports only declarations with no input contract:
+`executeIntent(intentId)` remains the no-input imperative command boundary. It
+accepts one exact qualified ID declared by the active compiled profile whose
+descriptor declares no input:
 
 ```ts
 const result = editor.executeIntent("breditor/format-strong");
@@ -284,24 +291,54 @@ if (result.status === "blocked") {
 }
 ```
 
-The result is deeply frozen and includes the requested intent identity plus the
-authoritative `{ lineage, revision }` document snapshot observed when the call
-settled. The sole identity exception is malformed or over-limit input, which is
-reported as `invalidIntent` with `intentId: ""` so rejected text is not retained
-or reflected. Semantic outcomes are `committed`, `blocked`, or `unhandled`.
-Invalid or unknown identities, a declaration requiring typed input, a busy
-owner, or a non-live owner return `rejected`; an uncertain delivery returns
-`failed` and faults editing closed. Blocked results expose only the stable
-reason code and stateless/inactive/active/mixed activation.
+Alpha.3 adds `executeIntentJson(intentId, inputJson)` for an exact descriptor-
+declared typed intent:
 
-This public result deliberately omits the selected binding/action and routed
+```ts
+const result = editor.executeIntentJson(
+  "example/set-link-intent",
+  JSON.stringify({
+    operation: "set",
+    properties: [
+      { name: "example/href", value: "https://example.test" },
+    ],
+  }),
+);
+```
+
+The browser validates the intent ID, bounded JSON transport, and descriptor
+input kind, but preserves the caller's JSON bytes exactly so duplicate keys and
+other non-deterministic forms remain visible to the strict Wasm decoder. Rust
+derives the contract name/version from the registered intent; the caller cannot
+forge it. `executeIntent()` rejects typed declarations, and
+`executeIntentJson()` rejects no-input declarations. A deterministic Rust
+decoder rejection for malformed or contract-invalid typed JSON becomes
+`{ status: "rejected", reason: "invalidInput" }`; it neither faults the queue
+nor disposes the editor, and no payload or internal Rust code is exposed. A
+requested history-group close and the intent run on one private Rust candidate
+and publish together only after final checkpoint admission. Rejection therefore
+leaves undo grouping unchanged with one intent preparation.
+
+Both results are deeply frozen and include the requested intent identity plus the
+authoritative `{ lineage, revision }` document snapshot observed when the call
+settled. The sole identity exception is a malformed or over-limit intent ID,
+which is reported as `invalidIntent` with `intentId: ""` so rejected identity
+text is not retained or reflected. Semantic outcomes are `committed`,
+`blocked`, or `unhandled`. Invalid or unknown identities, input-kind mismatch,
+invalid typed input, a busy owner, or a non-live owner return `rejected`; an
+uncertain delivery returns `failed` and faults editing closed. Blocked results
+expose only the stable reason code and stateless/inactive/active/mixed
+activation.
+
+The public result deliberately omits the selected binding/action and routed
 fallthrough trace. Those are diagnostic provenance retained by the advanced
 Wasm command adapter, not stable application authority. Public dispatch uses
 an immediate idle-queue lease. It never waits behind an executing command and
 never runs recursively: composition, an authoritative read, an active
 delivery, or a reentrant call returns busy instead of enqueueing a request whose
-selection/observation token may become stale. There is no public typed intent
-input, asynchronous intent method, or callback command in Alpha.7.
+selection/observation token may become stale. There is no asynchronous intent
+method or callback command; typed JSON is programmatic input, not toolbar or
+renderer authority.
 
 ## Event ordering
 
@@ -373,10 +410,17 @@ history, and checkpoint authority. The browser DOM is a disposable projection:
 native event
   -> bounded semantic request + exact selection
   -> serial queue
-  -> guarded Rust/Wasm intent, action, or history execution
+  -> separately guarded Rust/Wasm selection synchronization
+  -> Rust-atomic optional history close plus intent, action, undo, or redo
   -> validated successor AST and selection
   -> DOM projection
 ```
+
+The selection prestage can publish before a later command error. The requested
+history boundary cannot: Rust evaluates it with the command on one private
+checkpointed candidate and publishes both or neither. DOM update and selection
+installation happen after that core publication and remain recoverable browser
+work rather than members of the Rust transaction.
 
 Typing, formatting, deletion, paste, selection synchronization, undo, and redo
 must all pass through that route. The browser cannot edit the AST directly or
@@ -396,15 +440,27 @@ positions, actions, history, and persistence formats are independent contracts.
 
 When configured, startup opens the fixed
 `breditor-session-checkpoint-v1` database. The stable `0.1.x` path selects its
-single legacy `current` outer-V1 record. Alpha.6 may instead bind one outer-V2
-record to an exact schema-fingerprint-derived or caller-named slot and to
-Checkpoint V1 or V2 before reading its payload. Different slots may coexist but
-do not form a registry. A load requires exactly one schema-valid record at its
-selected slot and verifies its declared UTF-8 size and SHA-256 digest before
-giving its checkpoint to Rust for strict decode and replay proof. Corrupt,
-incompatible, mismatched, oversized, or inaccessible storage fails startup; it
-is never silently discarded, repaired, retried as another generation, or
-replaced by `initialDocument`.
+single legacy `current` outer-V1 record. A semantic profile instead binds one
+outer-V2 record to an exact schema-fingerprint-derived or caller-named slot and
+an explicit `checkpointFormatVersion`: `2` for Bootstrap V1 or `3` for
+Bootstrap V2. Different slots may coexist but do not form a registry. A load
+requires exactly one schema-valid record at its selected slot, validates its
+mode and complete typed-property catalog, and verifies its declared UTF-8 size
+and SHA-256 digest before giving its checkpoint to Rust for strict decode and
+replay proof. Corrupt, incompatible, mismatched, oversized, or inaccessible
+storage fails startup; it is never silently discarded, repaired, retried as
+another generation, or replaced by `initialDocument`.
+
+The browser checkpoint pass is a bounded structural and binding preflight. For
+V3 it exactly bounds capacity, per-entry and aggregate operation counts,
+validates every serialized recipe/property shape, and counts the retained-
+property lower bound present in the history base and each result pending-format
+set. It does not replay history or exactly reproduce the Rust codec's complete
+aggregate retained-node, text, and property totals because entry-result
+documents exist only after recipe execution. The selected Rust restore factory
+is authoritative for complete decode, resource-limit enforcement,
+canonicality, and forward/inverse replay; a checkpoint that passes browser
+preflight can still fail closed there.
 
 Every validated Rust successor marks a private dirty epoch, including a commit
 whose later DOM publication fails. Autosave defaults to a 250 ms trailing quiet
@@ -511,21 +567,23 @@ A success is a deeply frozen
 `{ ok: true, format, value, utf8Bytes, snapshot }` record. `documentJson`
 returns the exact canonical Rust encoding selected at bootstrap: Document V1
 for the stable legacy exact-base path or fingerprint-bearing Document V2 for an
-Alpha.6 semantic profile. `plainText` is derived from the validated semantic
-projection rather than DOM `textContent`: it concatenates runs, removes every
-inline format, joins adjacent paragraphs with one LF, retains empty paragraphs,
-and does not append a synthetic LF after the final paragraph.
+explicit Bootstrap-V1 or Bootstrap-V2 semantic profile. `plainText` is derived
+from the validated property-bearing semantic projection rather than DOM
+`textContent`: it concatenates runs, removes every inline format, joins adjacent
+paragraphs with one LF, retains empty paragraphs, and does not append a
+synthetic LF after the final paragraph.
 
 The API does not export HTML, editor state, a session checkpoint, selection,
 pending formatting, undo/redo history, transaction records, or raw commands.
 Those distinctions matter: Document V1 or V2 is lossless document content,
-while the correspondingly selected Session Checkpoint V1 or V2 is the private
-local-durability representation that can retain deleted text in history.
+while the correspondingly selected Session Checkpoint V1, V2, or V3 is the
+private local-durability representation that can retain deleted text in
+history. There is no Document V3.
 
 Neither document generation embeds a snapshot. Correlation therefore uses
 three proofs: the generated Rust method receives the adapter's exact observation;
 the browser validates the selected wire generation, schema binding, complete
-format catalog, and returned AST against the current owned projection; and the
+format/property catalog, and returned AST against the current owned projection; and the
 high-level owner checks that the adapter snapshot was unchanged across the
 synchronous read. A V2 rejection is never retried as V1, and a custom structural
 factory cannot substitute a different valid document without failing the
@@ -605,19 +663,23 @@ button kind but cannot register behavior by itself.
 
 Adding real behavior therefore proceeds from the core outward:
 
-1. Declare the property-free format toggle in the extension profile so Rust
-   compiles its generic action, no-input intent, blocking binding, and routed
-   state.
-2. Add a manifest control whose `stateId` and `intentId` match that descriptor.
-3. Supply a complete render recipe for the admitted format.
+1. Declare a property-free toggle or typed set bundle in the extension profile
+   so Rust compiles its action, intent, blocking binding, and routed state.
+2. For a property-free toggle, add a manifest button whose `stateId` and
+   `intentId` match that descriptor. Typed set intents are currently invoked
+   programmatically through `executeIntentJson()`.
+3. Supply a complete property-insensitive render recipe for the admitted
+   format.
 4. Supply the manifest at editor startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
-There is no typed public intent input, extension keymap or `beforeinput` rule,
+There is no typed toolbar control, extension keymap or `beforeinput` rule,
 custom control kind, runtime JavaScript action registration, arbitrary callback
 command, dynamic manifest replacement, plugin unload, custom node renderer, or
 stable third-party Wasm plugin ABI in the supported surface. Direct concrete
-action toolbar declarations remain an advanced policy bypass.
+action toolbar declarations remain an advanced policy bypass. The current
+wrapper recipe cannot derive `href`, style, or any other DOM attribute from a
+format property; safe property-driven recipes and URL/CSS policy are next.
 
 The high-level startup gate is all-or-nothing for presentation as well as
 semantic data. A missing or extra render recipe, missing or extra initial
@@ -678,6 +740,14 @@ extension callbacks, typed public intent inputs, custom toolbar controls or
 keymaps, rich paste, collaboration, selective undo, or dynamic extension
 lifecycle. These additions do not alter the stable
 `0.1.x` promises listed above.
+
+The alpha.3 source path additionally validates and freezes typed property
+contracts and property-bearing semantic projections, exposes strict synchronous
+`executeIntentJson()`, and carries Session Checkpoint V3 through the same
+profile-bound IndexedDB/autosave lifecycle. It still does not map properties to
+safe DOM attributes or copy HTML, accept rich formatting on paste, or provide a
+typed-input toolbar control. Its structural typed-edit and Local Log V3 limits
+remain those documented in [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 The reference package does not change those limits. It is trusted same-realm
 JavaScript that supplies frozen configuration and presentation values, not

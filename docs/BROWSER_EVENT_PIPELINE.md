@@ -1,8 +1,9 @@
 # Breditor browser event pipeline
 
-Status: supported inside the public `0.1.0` runtime for the closed base schema
-and retained by the supported `0.2.0` compiled-profile and intent path; direct
-event-controller assembly remains an advanced integration surface
+Status: supported inside the public `0.1.0` runtime for the closed base schema,
+retained by the supported `0.2.0` compiled-profile and intent path, and
+strengthened in `0.3.0-alpha.3` by Rust-atomic close-before command execution;
+direct event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
 Tiptap, and CKEditor remain research references; their event, transaction,
@@ -25,8 +26,8 @@ native event
   -> immutable command request + one-use delivery token
   -> bounded non-recursive FIFO
   -> guarded Rust selection synchronization
-  -> optional history-group close
-  -> exactly one semantic intent, action, undo, or redo
+  -> one Rust-atomic optional history-group close plus exactly one
+     semantic intent, action, undo, or redo
   -> consume exact semantic successor projection
   -> update canonical DOM + restore semantic selection
   -> handle-free notification
@@ -256,10 +257,11 @@ queue lease on one request:
 
 Every successful insert, delete, or cancellation settlement therefore closes
 the prior typing history group; cancellation is a history boundary too. Abort
-recovery makes no Rust call and does not close history. As with ordinary command
-delivery, a history close may publish before a later action error and is not
-rolled back. The native IME DOM is never the committed value: only the resulting
-guarded Rust action can publish the candidate.
+recovery makes no Rust call and does not close history. For insertion and
+deletion, Rust runs the requested close and action on one checkpointed candidate;
+an action or checkpoint error publishes neither. Cancellation remains a
+standalone close command. The native IME DOM is never the committed value: only
+the resulting guarded Rust action can publish the candidate.
 
 Strict restoration requires the exact live composition token and, once native
 mutation opened, the exact renderer DOM lease. A stale, foreign, refined-away,
@@ -335,9 +337,11 @@ submission faults the high-level owner and is never retried.
 - a closed lifecycle: `live`, `composition`, `executing`, `reconcile`,
   `faulted`, or `disposed`.
 
-For each sequence the adapter validates the request and selection scalars, spends
-the token, synchronizes selection, optionally closes the history group, and
-executes the command. Every generated result is shape-checked and every returned
+For each sequence the adapter validates the request and selection scalars,
+spends the token, and synchronizes selection. It then passes the request's
+`closeBefore` choice into the one action, intent, undo, or redo call. Rust runs
+that boundary and command on one private checkpointed candidate and publishes
+both or neither. Every generated result is shape-checked and every returned
 handle is checked for aliasing before ownership moves.
 
 The following successor laws are mandatory:
@@ -345,8 +349,9 @@ The following successor laws are mandatory:
 - selection, action, intent, undo, and redo commits retain the lineage and advance the
   revision by exactly one, with an exact-base projection update whose result
   equals the successor observation;
-- an effective history-group close has the identical visible snapshot and no
-  projection update;
+- an effective history-group close is reported by
+  `historyGroupClosedBefore`, retains the identical visible document snapshot,
+  and has no projection update of its own;
 - disabled and unchanged outcomes preserve the complete visible snapshot and
   expose no projection update; and
 - a disabled action reports the exact requested action identity.
@@ -372,10 +377,11 @@ full render and selection restore. The semantic action is never retried.
 Every validated `committed` successor is published to the adapter's
 notification-only core-commit feed immediately after adoption and before a
 later cleanup or reconciliation error can escape. This includes same-revision
-history-group boundaries and selection/history prestages whose later command
-fails. Autosave uses this feed because a command-queue observer sees only
-successful whole deliveries. Observer failure is contained; reads and other
-work must be deferred while the adapter remains in its execution lease.
+history-group boundaries reported as part of an adopted combined result and
+separate selection prestages whose later command fails. Autosave uses this feed
+because a command-queue observer sees only successful whole deliveries.
+Observer failure is contained; reads and other work must be deferred while the
+adapter remains in its execution lease.
 
 ## Clipboard ownership (`0.0.55`)
 
@@ -403,10 +409,13 @@ failure states, and deliberately unsupported content.
 
 One delivery is non-interleaved, but it is not a rollback transaction spanning
 all browser and core work. Selection synchronization can commit before the
-final action. An explicit history-group close can also remain effective if the
-later action returns an error. DOM APIs cannot participate in a Rust transaction.
-Consequently an uncertain later failure quarantines the queue and requires
-reconciliation; it does not roll back or retry already published prestages.
+final command. The requested history-group close and following action, intent,
+undo, or redo are one Rust publication: a command or checkpoint error discards
+both, while an effective close may accompany a disabled, unchanged, blocked, or
+unhandled result. DOM APIs cannot participate in the Rust transaction.
+Consequently an uncertain later browser failure quarantines the queue and
+requires reconciliation; it does not roll back or retry an already published
+selection or combined command result.
 
 ## Selection-change and toolbar policy (`0.0.56`)
 

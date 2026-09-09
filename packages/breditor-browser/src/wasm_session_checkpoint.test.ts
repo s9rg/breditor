@@ -20,8 +20,45 @@ const V2_CONTRACT: WasmDurableJsonContract = Object.freeze({
     fingerprint: PROFILE_FINGERPRINT,
   }),
   formats: Object.freeze([
-    Object.freeze({ kind: "breditor/strong", revision: 1 }),
-    Object.freeze({ kind: "example/highlight", revision: 2 }),
+    Object.freeze({ kind: "breditor/strong", revision: 1, properties: Object.freeze([]) }),
+    Object.freeze({ kind: "example/highlight", revision: 2, properties: Object.freeze([]) }),
+  ]),
+});
+const V3_LINK_PROPERTIES = Object.freeze([
+  Object.freeze({
+    name: "example/enabled",
+    presence: "required" as const,
+    valueType: Object.freeze({ kind: "boolean" as const }),
+  }),
+  Object.freeze({
+    name: "example/href",
+    presence: "required" as const,
+    valueType: Object.freeze({
+      kind: "string" as const,
+      minimumUtf8Bytes: 1,
+      maximumUtf8Bytes: 12,
+    }),
+  }),
+  Object.freeze({
+    name: "example/priority",
+    presence: "optional" as const,
+    valueType: Object.freeze({
+      kind: "integer" as const,
+      minimum: -2,
+      maximum: 9,
+    }),
+  }),
+]);
+const V3_CONTRACT: WasmDurableJsonContract = Object.freeze({
+  mode: "v3",
+  schema: V2_CONTRACT.schema,
+  formats: Object.freeze([
+    Object.freeze({ kind: "breditor/strong", revision: 1, properties: Object.freeze([]) }),
+    Object.freeze({
+      kind: "example/link",
+      revision: 1,
+      properties: V3_LINK_PROPERTIES,
+    }),
   ]),
 });
 
@@ -218,6 +255,200 @@ describe("Wasm session-checkpoint adapter", () => {
         .toBe(false);
       expect(view.freeCalls).toBe(1);
     }
+  });
+
+  it("admits Session and Editor State V3 while retaining nested Document V2", () => {
+    const json = checkpointV3Json();
+    const parsed = JSON.parse(json) as Record<string, any>;
+    expect(parsed["formatVersion"]).toBe(3);
+    expect(parsed["historyBase"]["formatVersion"]).toBe(3);
+    expect(parsed["historyBase"]["document"]["formatVersion"]).toBe(2);
+    expect(sessionCheckpointJsonMatchesDurableContract(json, V3_CONTRACT)).toBe(
+      new TextEncoder().encode(json).byteLength,
+    );
+    expect(sessionCheckpointJsonMatchesDurableContract(json, V2_CONTRACT)).toBeNull();
+    expect(sessionCheckpointJsonMatchesDurableContract(checkpointV2Json(), V3_CONTRACT))
+      .toBeNull();
+
+    const view = new FakeStringResult("value", json);
+    expect(consumeWasmSessionCheckpoint(EXPECTED, view, [], V3_CONTRACT)).toMatchObject({
+      ok: true,
+      checkpoint: { checkpointJson: json, snapshot: EXPECTED },
+    });
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("validates V3 properties in the document, pending formats, and operation recipes", () => {
+    const optionalOmitted = checkpointV3Value();
+    for (const properties of v3PropertyMaps(optionalOmitted)) {
+      delete properties["example/priority"];
+    }
+    const optionalOmittedJson = JSON.stringify(optionalOmitted);
+    expect(sessionCheckpointJsonMatchesDurableContract(optionalOmittedJson, V3_CONTRACT))
+      .not.toBeNull();
+
+    const mutations: readonly ((value: Record<string, any>) => void)[] = [
+      (value) => {
+        delete v3PropertyMaps(value)[0]?.["example/href"];
+      },
+      (value) => {
+        const pending = v3PropertyMaps(value)[1];
+        if (pending !== undefined) pending["example/enabled"] = "true";
+      },
+      (value) => {
+        const operation = v3PropertyMaps(value)[2];
+        if (operation !== undefined) operation["example/unknown"] = true;
+      },
+      (value) => {
+        const operation = v3PropertyMaps(value)[3];
+        if (operation !== undefined) operation["example/priority"] = 10;
+      },
+      (value) => {
+        const resultPending = v3PropertyMaps(value).at(-1);
+        if (resultPending !== undefined) resultPending["example/href"] = "💡💡💡💡";
+      },
+    ];
+    for (const mutate of mutations) {
+      const value = checkpointV3Value();
+      mutate(value);
+      expect(sessionCheckpointJsonMatchesDurableContract(
+        JSON.stringify(value),
+        V3_CONTRACT,
+      )).toBeNull();
+    }
+  });
+
+  it("rejects noncanonical V3 property order, duplicate keys, and contract order", () => {
+    const outOfOrder = checkpointV3Value();
+    const first = v3PropertyMaps(outOfOrder)[0];
+    if (first === undefined) throw new Error("missing property fixture");
+    replaceObject(first, {
+      "example/href": "a",
+      "example/enabled": true,
+      "example/priority": 1,
+    });
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(outOfOrder),
+      V3_CONTRACT,
+    )).toBeNull();
+
+    const valid = checkpointV3Json();
+    const duplicate = valid.replace(
+      '"example/enabled":true',
+      '"example/enabled":true,"example/enabled":true',
+    );
+    expect(sessionCheckpointJsonMatchesDurableContract(duplicate, V3_CONTRACT)).toBeNull();
+
+    const reversedContract: WasmDurableJsonContract = Object.freeze({
+      mode: "v3",
+      schema: V3_CONTRACT.schema,
+      formats: Object.freeze([
+        V3_CONTRACT.formats[0]!,
+        Object.freeze({
+          kind: "example/link",
+          revision: 1,
+          properties: Object.freeze([...V3_LINK_PROPERTIES].reverse()),
+        }),
+      ]),
+    });
+    expect(sessionCheckpointJsonMatchesDurableContract(valid, reversedContract)).toBeNull();
+  });
+
+  it("fails closed for every mixed V2/V3 layer and malformed V3 operation payload", () => {
+    const mutations: readonly ((value: Record<string, any>) => void)[] = [
+      (value) => { value["formatVersion"] = 2; },
+      (value) => { value["historyBase"]["formatVersion"] = 2; },
+      (value) => { value["historyBase"]["document"]["formatVersion"] = 3; },
+      (value) => { value["entries"][0]["forwardOperations"] = []; },
+      (value) => { value["entries"][0]["forwardOperations"][0]["extra"] = true; },
+      (value) => { value["entries"][0]["forwardOperations"][0]["range"]["start"] = 2; },
+      (value) => { value["historyCapacity"] = 0; },
+      (value) => { value["cursor"] = 2; },
+      (value) => { value["openMergeGroup"] = "example/group"; value["cursor"] = 0; },
+    ];
+    for (const mutate of mutations) {
+      const value = checkpointV3Value();
+      mutate(value);
+      expect(sessionCheckpointJsonMatchesDurableContract(
+        JSON.stringify(value),
+        V3_CONTRACT,
+      )).toBeNull();
+    }
+
+    // No generation retry occurs at capture time either.
+    const v2View = new FakeStringResult("value", checkpointV2Json());
+    expect(consumeWasmSessionCheckpoint(EXPECTED, v2View, [], V3_CONTRACT).ok)
+      .toBe(false);
+    expect(v2View.freeCalls).toBe(1);
+  });
+
+  it("enforces the exact V3 aggregate operation ceiling from the wire", () => {
+    const exact = checkpointV3Value();
+    const operation = {
+      kind: "paragraphSplit",
+      paragraphPath: [0],
+      offset: 0,
+      expected: { runs: [] },
+    };
+    const entry = (count: number): Record<string, unknown> => ({
+      forwardOperations: Array.from({ length: count }, () => operation),
+      resultSelection: null,
+      resultPendingFormats: null,
+    });
+    exact["historyCapacity"] = 17;
+    exact["cursor"] = 16;
+    exact["entries"] = Array.from({ length: 16 }, () => entry(1_024));
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(exact),
+      V3_CONTRACT,
+    )).not.toBeNull();
+
+    exact["cursor"] = 17;
+    exact["entries"].push(entry(1));
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(exact),
+      V3_CONTRACT,
+    )).toBeNull();
+  });
+
+  it("bounds the provable retained-property lower bound across V3 boundaries", () => {
+    const { contract, value } = retainedPropertyBudgetCheckpoint(99);
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(value),
+      contract,
+    )).not.toBeNull();
+
+    const baseRun = value["historyBase"]["document"]["root"]["children"][0]
+      ["children"][0];
+    baseRun["formats"] = [value["historyBase"]["pendingFormats"][0]];
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(value),
+      contract,
+    )).toBeNull();
+    baseRun["formats"] = [];
+
+    value["cursor"] = 100;
+    value["entries"].push(retainedPropertyBudgetEntry(
+      value["historyBase"]["pendingFormats"],
+    ));
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(value),
+      contract,
+    )).toBeNull();
+  });
+
+  it("leaves semantic replay proof to the authoritative Rust restore", () => {
+    const replayMismatch = checkpointV3Value();
+    replayMismatch["entries"][0]["forwardOperations"][0]
+      ["expectedRemoved"]["runs"][0]["text"] = "not-the-base-text";
+
+    // This is canonical and structurally bounded, but its guard cannot replay
+    // against the history base. Browser admission is intentionally a preflight;
+    // the V3 Rust factory performs the authoritative forward/inverse proof.
+    expect(sessionCheckpointJsonMatchesDurableContract(
+      JSON.stringify(replayMismatch),
+      V3_CONTRACT,
+    )).not.toBeNull();
   });
 
   it("copies a payload-redacted core failure and releases both handles", () => {
@@ -610,4 +841,172 @@ function checkpointV2Json(): string {
     entries: [],
     openMergeGroup: null,
   });
+}
+
+function checkpointV3Json(): string {
+  return JSON.stringify(checkpointV3Value());
+}
+
+function checkpointV3Value(): Record<string, any> {
+  const properties = (href: string): Record<string, unknown> => ({
+    "example/enabled": true,
+    "example/href": href,
+    "example/priority": 1,
+  });
+  const format = (href: string): unknown => ({
+    type: "example/link",
+    properties: properties(href),
+  });
+  const run = (text: string, href: string): unknown => ({
+    text,
+    formats: [format(href)],
+  });
+  const selection = {
+    kind: "range",
+    anchor: {
+      kind: "text",
+      textPath: [0, 0],
+      utf16Offset: 1,
+      affinity: "after",
+    },
+    focus: {
+      kind: "text",
+      textPath: [0, 0],
+      utf16Offset: 1,
+      affinity: "after",
+    },
+  };
+  const document = {
+    format: "breditor/document",
+    formatVersion: 2,
+    schema: { name: "example/rich-document", version: 3 },
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    root: {
+      kind: "element",
+      type: "breditor/document",
+      entityId: null,
+      properties: {},
+      children: [{
+        kind: "element",
+        type: "breditor/paragraph",
+        entityId: null,
+        properties: {},
+        children: [{ kind: "text", text: "A", formats: [format("a")] }],
+      }],
+    },
+  };
+  return {
+    format: "breditor/session-checkpoint",
+    formatVersion: 3,
+    schema: { name: "example/rich-document", version: 3 },
+    schemaFingerprint: PROFILE_FINGERPRINT,
+    historyBase: {
+      format: "breditor/editor-state",
+      formatVersion: 3,
+      schema: { name: "example/rich-document", version: 3 },
+      schemaFingerprint: PROFILE_FINGERPRINT,
+      snapshot: { lineage: EXPECTED.lineage, revision: "0" },
+      document,
+      selection,
+      pendingFormats: [format("a")],
+    },
+    currentRevision: EXPECTED.revision,
+    historyCapacity: 10,
+    cursor: 1,
+    entries: [{
+      forwardOperations: [{
+        kind: "textSplice",
+        range: { containerPath: [0], start: 0, end: 1 },
+        expectedRemoved: { runs: [run("A", "a")] },
+        replacement: { runs: [run("B", "b")] },
+      }],
+      resultSelection: selection,
+      resultPendingFormats: [format("b")],
+    }],
+    openMergeGroup: null,
+  };
+}
+
+function v3PropertyMaps(value: Record<string, any>): Record<string, unknown>[] {
+  return [
+    value["historyBase"]["document"]["root"]["children"][0]["children"][0]
+      ["formats"][0]["properties"],
+    value["historyBase"]["pendingFormats"][0]["properties"],
+    value["entries"][0]["forwardOperations"][0]["expectedRemoved"]["runs"][0]
+      ["formats"][0]["properties"],
+    value["entries"][0]["forwardOperations"][0]["replacement"]["runs"][0]
+      ["formats"][0]["properties"],
+    value["entries"][0]["resultPendingFormats"][0]["properties"],
+  ];
+}
+
+function replaceObject(
+  target: Record<string, unknown>,
+  replacement: Record<string, unknown>,
+): void {
+  for (const key of Object.keys(target)) delete target[key];
+  Object.assign(target, replacement);
+}
+
+function retainedPropertyBudgetCheckpoint(entryCount: number): {
+  readonly contract: WasmDurableJsonContract;
+  readonly value: Record<string, any>;
+} {
+  if (V3_CONTRACT.mode === "v1") {
+    throw new Error("the V3 fixture lost its compiled schema binding");
+  }
+  const formats = Array.from({ length: 32 }, (_, formatIndex) => {
+    const propertyCount = formatIndex === 31 ? 8 : 32;
+    return Object.freeze({
+      kind: formatIndex === 0
+        ? "breditor/strong"
+        : `example/format-${String(formatIndex).padStart(2, "0")}`,
+      revision: 1,
+      properties: Object.freeze(Array.from(
+        { length: propertyCount },
+        (_, propertyIndex) => Object.freeze({
+          name: `example/property-${String(propertyIndex).padStart(2, "0")}`,
+          presence: "required" as const,
+          valueType: Object.freeze({ kind: "boolean" as const }),
+        }),
+      )),
+    });
+  });
+  const contract: WasmDurableJsonContract = Object.freeze({
+    mode: "v3",
+    schema: V3_CONTRACT.schema,
+    formats: Object.freeze(formats),
+  });
+  const pendingFormats = formats.map((format) => ({
+    type: format.kind,
+    properties: Object.fromEntries(
+      format.properties.map((property) => [property.name, true]),
+    ),
+  }));
+  const value = checkpointV3Value();
+  value["historyBase"]["document"]["root"]["children"][0]["children"][0]
+    ["formats"] = [];
+  value["historyBase"]["pendingFormats"] = pendingFormats;
+  value["historyCapacity"] = 100;
+  value["cursor"] = entryCount;
+  value["entries"] = Array.from(
+    { length: entryCount },
+    () => retainedPropertyBudgetEntry(pendingFormats),
+  );
+  return { contract, value };
+}
+
+function retainedPropertyBudgetEntry(
+  pendingFormats: unknown,
+): Record<string, unknown> {
+  return {
+    forwardOperations: [{
+      kind: "paragraphSplit",
+      paragraphPath: [0],
+      offset: 0,
+      expected: { runs: [] },
+    }],
+    resultSelection: null,
+    resultPendingFormats: pendingFormats,
+  };
 }

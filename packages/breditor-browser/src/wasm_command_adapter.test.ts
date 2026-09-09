@@ -6,6 +6,8 @@ import { issueCompositionDeliveryToken } from "./composition_delivery_token.js";
 import {
   closeHistoryGroupRequest,
   editorDeliveryAuthorityAccepts,
+  historyRequest,
+  jsonActionRequest,
   noInputActionRequest,
   noInputIntentRequest,
   noSelectionSync,
@@ -71,6 +73,17 @@ const TEST_PROFILE_GENERATION: WasmProfileGenerationView = {
 };
 const matchesTestProfile = (generation: WasmProfileGenerationView): boolean =>
   generation === TEST_PROFILE_GENERATION;
+const PROPERTY_FREE_FORMAT_METHODS = Object.freeze({
+  formatPropertyCount: (formatIndex: number) =>
+    formatIndex === 0 ? 0 : undefined,
+  formatPropertyName: () => undefined,
+  formatPropertyPresence: () => undefined,
+  formatPropertyValueType: () => undefined,
+  formatPropertyIntegerMinimum: () => undefined,
+  formatPropertyIntegerMaximum: () => undefined,
+  formatPropertyStringMinimumUtf8Bytes: () => undefined,
+  formatPropertyStringMaximumUtf8Bytes: () => undefined,
+});
 const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
   const noEntry = (): undefined => undefined;
   const view: WasmCompiledProfileDescriptorView = {
@@ -84,6 +97,7 @@ const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
       generation === TEST_PROFILE_GENERATION,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
+    ...PROPERTY_FREE_FORMAT_METHODS,
     intentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
     intentInputKind: (index) => index === 0 ? "none" : undefined,
     intentInputContractName: noEntry,
@@ -692,6 +706,43 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
   });
 
+  it("contains and rejects an asynchronous command-result scalar", async () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const successor = observation(0);
+    const result = disabledActionResult(successor);
+    Object.defineProperty(result.view, "historyGroupClosedBefore", {
+      value: Promise.reject(
+        new Error("command scalar rejection must be contained"),
+      ),
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ noInputAction: [result.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        noInputActionRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "toolbar", detail: "async-scalar" },
+          "breditor/toggle-strong",
+        ),
+      ),
+    ).toThrow(/scalars are asynchronous/u);
+    expect(result.free).toHaveBeenCalledOnce();
+    expect(successor.free).not.toHaveBeenCalled();
+    expect(adapter.state).toBe("faulted");
+    await Promise.resolve();
+    adapter.dispose();
+  });
+
   it("releases a command result through the free method captured before then inspection", () => {
     const base = projectionFixture(0, "a");
     const initial = observation(0);
@@ -700,6 +751,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const replacementFree = vi.fn();
     const result: WasmCommandResultView = {
       status: "disabled",
+      historyGroupClosedBefore: false,
       eventKind: undefined,
       disabledActionId: "breditor/toggle-strong",
       disabledReasonCode: "breditor/not-enabled",
@@ -849,6 +901,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const resultFree = vi.fn();
     const result: WasmCommandResultView = {
       status: "error",
+      historyGroupClosedBefore: false,
       eventKind: undefined,
       disabledActionId: undefined,
       disabledReasonCode: undefined,
@@ -946,8 +999,9 @@ describe("BreditorWasmCommandAdapter", () => {
         : undefined;
       const resultFree = vi.fn();
       const result: WasmCommandResultView = kind === "error"
-        ? {
+          ? {
             status: "error",
+            historyGroupClosedBefore: false,
             eventKind: undefined,
             disabledActionId: undefined,
             disabledReasonCode: undefined,
@@ -961,6 +1015,7 @@ describe("BreditorWasmCommandAdapter", () => {
         : kind === "observation"
           ? {
               status: "disabled",
+              historyGroupClosedBefore: false,
               eventKind: undefined,
               disabledActionId: "breditor/toggle-strong",
               disabledReasonCode: "breditor/not-enabled",
@@ -973,6 +1028,7 @@ describe("BreditorWasmCommandAdapter", () => {
             }
           : {
               status: "committed",
+              historyGroupClosedBefore: false,
               eventKind: "action",
               disabledActionId: undefined,
               disabledReasonCode: undefined,
@@ -1178,6 +1234,98 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(successor.free).toHaveBeenCalledOnce();
   });
 
+  it("delivers typed JSON actions through the captured atomic command path", () => {
+    const base = projectionFixture(0, "a");
+    const resultProjection = projection(1, "a");
+    const initial = observation(0);
+    const successor = observation(1);
+    const update = projectionUpdate(base.projection, resultProjection);
+    const committed = commandResult({
+      status: "committed",
+      eventKind: "action",
+      successor,
+      update: update.view,
+    });
+    const selected = selectionResult(selectionView(1, 1));
+    const engine = engineQueues({
+      typedAction: [committed.view],
+      selection: [selected.view],
+    });
+    const execute = vi.spyOn(engine, "executeTypedActionJson");
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    const inputJson = '{"operation":"remove"}';
+
+    const outcome = adapter.execute(
+      jsonActionRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "typed-action" },
+        "example/set-link",
+        inputJson,
+      ),
+    );
+
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ snapshotRevision: "0" }),
+      "example/set-link",
+      inputJson,
+      false,
+    );
+    expect(outcome.command).toMatchObject({
+      status: "committed",
+      eventKind: "action",
+      snapshot: { lineage: "adapter-tests", revision: "1" },
+    });
+    adapter.dispose();
+  });
+
+  it("contains deterministic typed rejection without publishing history control", () => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const rejected = commandError("breditor_wasm.invalid_action_value_json");
+    const engine = engineQueues({ typedAction: [rejected.view] });
+    const close = vi.spyOn(engine, "closeHistoryGroup");
+    const execute = vi.spyOn(engine, "executeTypedActionJson");
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+
+    const outcome = adapter.execute(
+      jsonActionRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "api", detail: "invalid-typed-action" },
+        "example/set-link",
+        '{"operation":"remove","operation":"set"}',
+        "closeBefore",
+      ),
+    );
+
+    expect(outcome.boundary).toBeUndefined();
+    expect(outcome.command).toMatchObject({
+      status: "rejected",
+      error: { code: "breditor_wasm.invalid_action_value_json", stale: false },
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
+    expect(adapter.state).toBe("live");
+    expect(close).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      initial,
+      "example/set-link",
+      '{"operation":"remove","operation":"set"}',
+      true,
+    );
+    expect(rejected.free).toHaveBeenCalledOnce();
+    expect(rejected.errorFree).toHaveBeenCalledOnce();
+    adapter.dispose();
+  });
+
   it("routes a no-input semantic intent and exposes only frozen handle-free provenance", () => {
     const base = projectionFixture(0, "a");
     const next = projection(1, "a");
@@ -1229,7 +1377,11 @@ describe("BreditorWasmCommandAdapter", () => {
       ),
     );
 
-    expect(execute).toHaveBeenCalledExactlyOnceWith(initial, TEST_INTENT_ID);
+    expect(execute).toHaveBeenCalledExactlyOnceWith(
+      initial,
+      TEST_INTENT_ID,
+      false,
+    );
     expect(outcome.command).toEqual({
       status: "committed",
       eventKind: "intent",
@@ -1279,6 +1431,7 @@ describe("BreditorWasmCommandAdapter", () => {
     const blocked = intentResult({
       status: "blocked",
       successor: blockedObservation,
+      historyGroupClosedBefore: true,
       bindingId: "breditor/format-strong-binding",
       actionId: "breditor/toggle-strong",
       bindingPriority: 0,
@@ -1320,8 +1473,15 @@ describe("BreditorWasmCommandAdapter", () => {
         preserveSelectionSync(),
         { kind: "toolbar", detail: "bold" },
         TEST_INTENT_ID,
+        "closeBefore",
       ),
     );
+    expect(first.boundary).toEqual({
+      status: "committed",
+      eventKind: "closeHistoryGroup",
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+      render: undefined,
+    });
     expect(first.command).toEqual({
       status: "blocked",
       intentId: TEST_INTENT_ID,
@@ -1348,8 +1508,13 @@ describe("BreditorWasmCommandAdapter", () => {
         preserveSelectionSync(),
         { kind: "api", detail: "unhandled" },
         TEST_INTENT_ID,
+        "closeBefore",
       ),
     );
+    expect(second.boundary).toEqual({
+      status: "unchanged",
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
     expect(second.command).toEqual({
       status: "unhandled",
       intentId: TEST_INTENT_ID,
@@ -1362,7 +1527,10 @@ describe("BreditorWasmCommandAdapter", () => {
       snapshot: { lineage: "adapter-tests", revision: "0" },
     });
     expect(blockedObservation.free).toHaveBeenCalledOnce();
-    expect(commits).not.toHaveBeenCalled();
+    expect(commits).toHaveBeenCalledExactlyOnceWith({
+      eventKind: "closeHistoryGroup",
+      snapshot: { lineage: "adapter-tests", revision: "0" },
+    });
     adapter.dispose();
     expect(unhandledObservation.free).toHaveBeenCalledOnce();
   });
@@ -1482,7 +1650,7 @@ describe("BreditorWasmCommandAdapter", () => {
         { kind: "api", detail: "wrong-input-shape" },
         TEST_INTENT_ID,
       ),
-    )).toThrow(/no-input contract/u);
+    )).toThrow(/compiled contract/u);
     expect(execute).not.toHaveBeenCalled();
     expect(adapter.state).toBe("faulted");
     adapter.dispose();
@@ -1506,7 +1674,7 @@ describe("BreditorWasmCommandAdapter", () => {
         { kind: "api", detail: "undeclared" },
         "example/undeclared",
       ),
-    )).toThrow(/no-input contract/u);
+    )).toThrow(/compiled contract/u);
     expect(execute).not.toHaveBeenCalled();
     adapter.dispose();
   });
@@ -2107,6 +2275,7 @@ describe("BreditorWasmCommandAdapter", () => {
       synchronized,
       "breditor/insert-text",
       "x",
+      false,
     );
     expect(outcome.command).toEqual({
       status: "disabled",
@@ -2178,21 +2347,22 @@ describe("BreditorWasmCommandAdapter", () => {
     bridge.write(base.rendered, selected);
     const initial = observation(0);
     const synchronized = observation(0);
-    const bounded = observation(0);
     const finished = observation(0);
     const syncResult = commandResult({ status: "unchanged", successor: synchronized });
-    const boundaryResult = commandResult({
-      status: "committed",
-      eventKind: "closeHistoryGroup",
-      successor: bounded,
+    const actionResult = commandResult({
+      status: "disabled",
+      successor: finished,
+      disabledActionId: "breditor/insert-text",
+      disabledReasonCode: "breditor/not-enabled",
+      activation: "inactive",
+      historyGroupClosedBefore: true,
     });
-    const actionResult = disabledActionResult(finished);
     const engine = engineQueues({
       setSelection: [syncResult.view],
-      closeHistory: [boundaryResult.view],
       stringAction: [actionResult.view],
     });
     const closeHistoryGroup = vi.spyOn(engine, "closeHistoryGroup");
+    const executeStringAction = vi.spyOn(engine, "executeStringAction");
     const adapter = new BreditorWasmCommandAdapter(engine, initial, {
       renderer: base.renderer,
       rendered: base.rendered,
@@ -2211,7 +2381,13 @@ describe("BreditorWasmCommandAdapter", () => {
 
     const outcome = adapter.execute(request);
 
-    expect(closeHistoryGroup).toHaveBeenCalledWith(synchronized);
+    expect(closeHistoryGroup).not.toHaveBeenCalled();
+    expect(executeStringAction).toHaveBeenCalledWith(
+      synchronized,
+      "breditor/insert-text",
+      "x",
+      true,
+    );
     expect(outcome.boundary).toEqual({
       status: "committed",
       eventKind: "closeHistoryGroup",
@@ -2226,6 +2402,71 @@ describe("BreditorWasmCommandAdapter", () => {
       snapshot: { lineage: "adapter-tests", revision: "0" },
     });
     adapter.dispose();
+  });
+
+  it("routes undo through one atomic close-before command and preserves observer order", () => {
+    const base = projectionFixture(2, "ab");
+    const resultProjection = projection(3, "a");
+    const initial = observation(2);
+    const successor = observation(3);
+    const update = projectionUpdate(base.projection, resultProjection);
+    const undoResult = commandResult({
+      status: "committed",
+      eventKind: "undo",
+      successor,
+      update: update.view,
+      historyGroupClosedBefore: true,
+    });
+    const semanticSelection = selectionResult(selectionView(3, 1));
+    const engine = engineQueues({
+      undo: [undoResult.view],
+      selection: [semanticSelection.view],
+    });
+    const undo = vi.spyOn(engine, "undo");
+    const adapter = new BreditorWasmCommandAdapter(engine, initial, {
+      renderer: base.renderer,
+      rendered: base.rendered,
+      selectionBridge: new BreditorDomSelectionBridge(),
+    });
+    const commits = vi.fn();
+    adapter.observeCoreCommits(commits);
+
+    const outcome = adapter.execute(
+      historyRequest(
+        adapter.deliveryToken(),
+        preserveSelectionSync(),
+        { kind: "keyboard", detail: "history-undo" },
+        "undo",
+      ),
+    );
+
+    expect(undo).toHaveBeenCalledExactlyOnceWith(initial, true);
+    expect(outcome.boundary).toEqual({
+      status: "committed",
+      eventKind: "closeHistoryGroup",
+      snapshot: { lineage: "adapter-tests", revision: "2" },
+      render: undefined,
+    });
+    expect(outcome.command).toMatchObject({
+      status: "committed",
+      eventKind: "undo",
+      snapshot: { lineage: "adapter-tests", revision: "3" },
+    });
+    expect(commits.mock.calls).toEqual([
+      [{
+        eventKind: "closeHistoryGroup",
+        snapshot: { lineage: "adapter-tests", revision: "2" },
+      }],
+      [{
+        eventKind: "undo",
+        snapshot: { lineage: "adapter-tests", revision: "3" },
+      }],
+    ]);
+    expect(base.host.textContent).toBe("a");
+    expect(update.free).toHaveBeenCalledOnce();
+    expect(semanticSelection.free).toHaveBeenCalledOnce();
+    adapter.dispose();
+    expect(successor.free).toHaveBeenCalledOnce();
   });
 
   it("executes an explicit history-group control without a document action", () => {
@@ -2275,54 +2516,37 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
   });
 
-  it.each(["changed snapshot", "projection update"])(
-    "rejects a close-history commit with %s",
-    (violation) => {
-      const base = projectionFixture(0, "a");
-      const bridge = new BreditorDomSelectionBridge();
-      const selected = selection(base.projection, 1);
-      bridge.write(base.rendered, selected);
-      const initial = observation(0);
-      const synchronized = observation(0);
-      const boundaryObservation = observation(violation === "changed snapshot" ? 1 : 0);
-      const syncResult = commandResult({ status: "unchanged", successor: synchronized });
-      const exposedUpdate = violation === "projection update"
-        ? projectionUpdate(base.projection, projection(1, "ax"))
-        : undefined;
-      const boundaryResult = commandResult({
-        status: "committed",
-        eventKind: "closeHistoryGroup",
-        successor: boundaryObservation,
-        ...(exposedUpdate === undefined ? {} : { update: exposedUpdate.view }),
-      });
-      const engine = engineQueues({
-        setSelection: [syncResult.view],
-        closeHistory: [boundaryResult.view],
-      });
-      const adapter = new BreditorWasmCommandAdapter(engine, initial, {
-        renderer: base.renderer,
-        rendered: base.rendered,
-        selectionBridge: bridge,
-      });
-      const request = stringActionRequest(
-        adapter.deliveryToken(),
-        rangeSelectionSync(selected),
-        { kind: "api", detail: "history-boundary-test" },
-        "breditor/insert-text",
-        "x",
-        "closeBefore",
-      );
+  it("rejects a result claiming an atomic history boundary when none was requested", () => {
+    const base = projectionFixture(0, "a");
+    const bridge = new BreditorDomSelectionBridge();
+    const selected = selection(base.projection, 1);
+    bridge.write(base.rendered, selected);
+    const initial = observation(0);
+    const synchronized = observation(0);
+    const successor = observation(0);
+    const syncResult = commandResult({ status: "unchanged", successor: synchronized });
+    const forged = commandResult({
+      status: "disabled",
+      successor,
+      disabledActionId: "breditor/insert-text",
+      disabledReasonCode: "breditor/not-enabled",
+      activation: "inactive",
+      historyGroupClosedBefore: true,
+    });
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ setSelection: [syncResult.view], stringAction: [forged.view] }),
+      initial,
+      { renderer: base.renderer, rendered: base.rendered, selectionBridge: bridge },
+    );
 
-      expect(() => adapter.execute(request)).toThrow(/correlation contract|history-only/u);
-      expect(adapter.state).toBe("faulted");
-      expect(boundaryResult.free).toHaveBeenCalledOnce();
-      expect(boundaryObservation.free).toHaveBeenCalledOnce();
-      if (exposedUpdate !== undefined) {
-        expect(exposedUpdate.free).toHaveBeenCalledOnce();
-      }
-      adapter.dispose();
-    },
-  );
+    expect(() => adapter.execute(actionRequest(adapter, selected))).toThrow(
+      /history-boundary result is invalid/u,
+    );
+    expect(adapter.state).toBe("faulted");
+    expect(forged.free).toHaveBeenCalledOnce();
+    expect(successor.free).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
 
   it("rejects an unchanged action result which the Rust action ABI cannot produce", () => {
     const base = projectionFixture(0, "a");
@@ -2402,6 +2626,7 @@ describe("BreditorWasmCommandAdapter", () => {
     let aliasedResult: WasmCommandResultView;
     aliasedResult = {
       status: "unchanged",
+      historyGroupClosedBefore: false,
       eventKind: undefined,
       disabledActionId: undefined,
       disabledReasonCode: undefined,
@@ -3453,6 +3678,7 @@ function commandResult(input: Readonly<{
   activation?: WasmCommandResultView["activation"];
   successor: WasmCommandObservationView;
   update?: SemanticProjectionUpdateView;
+  historyGroupClosedBefore?: boolean;
   freeThrows?: boolean;
   freeResult?: unknown;
 }>): TrackedResult {
@@ -3467,6 +3693,7 @@ function commandResult(input: Readonly<{
     free,
     view: {
       status: input.status,
+      historyGroupClosedBefore: input.historyGroupClosedBefore ?? false,
       eventKind: input.eventKind,
       disabledActionId: input.disabledActionId,
       disabledReasonCode: input.disabledReasonCode,
@@ -3501,6 +3728,7 @@ function commandError(code: string) {
   const free = vi.fn();
   const view: WasmCommandResultView = {
     status: "error",
+    historyGroupClosedBefore: false,
     eventKind: undefined,
     disabledActionId: undefined,
     disabledReasonCode: undefined,
@@ -3534,6 +3762,7 @@ function intentResult(input: Readonly<{
     reasonCode: string;
   }>[];
   update?: SemanticProjectionUpdateView;
+  historyGroupClosedBefore?: boolean;
   error?: WasmCommandErrorView;
   matchesGeneration?: boolean;
   freeResult?: unknown;
@@ -3544,6 +3773,7 @@ function intentResult(input: Readonly<{
     : vi.fn(() => input.freeResult);
   const view: WasmIntentResultView = {
     status: input.status,
+    historyGroupClosedBefore: input.historyGroupClosedBefore ?? false,
     intentId: input.intentId ?? TEST_INTENT_ID,
     bindingId: input.bindingId,
     actionId: input.actionId,
@@ -3590,6 +3820,7 @@ function intentError(code: string) {
   const free = vi.fn();
   const view: WasmIntentResultView = {
     status: "error",
+    historyGroupClosedBefore: false,
     intentId: undefined,
     bindingId: undefined,
     actionId: undefined,
@@ -3684,6 +3915,12 @@ function projectionView(documentProjection: BaseDocumentProjection): SemanticPro
     text: (index) => index === 2 ? text : undefined,
     formatCount: (index) => index === 2 ? 0 : undefined,
     formatType: () => undefined,
+    formatPropertyCount: () => undefined,
+    formatPropertyName: () => undefined,
+    formatPropertyValueKind: () => undefined,
+    formatPropertyBoolean: () => undefined,
+    formatPropertyInteger: () => undefined,
+    formatPropertyString: () => undefined,
     free: vi.fn(),
   };
 }
@@ -3786,6 +4023,7 @@ function profileDescriptorWithActionState(): BrowserCompiledProfileDescriptor {
     matchesProfileGeneration: matchesTestProfile,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
+    ...PROPERTY_FREE_FORMAT_METHODS,
     intentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
     intentInputKind: (index) => index === 0 ? "none" : undefined,
     intentInputContractName: noEntry,
@@ -3826,6 +4064,7 @@ function profileDescriptorWithIntentContract(options: Readonly<{
     matchesProfileGeneration: matchesTestProfile,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
+    ...PROPERTY_FREE_FORMAT_METHODS,
     intentId: (index) => index === 0 ? TEST_INTENT_ID : undefined,
     intentInputKind: (index) => index === 0 ? options.input : undefined,
     intentInputContractName: (index) =>
@@ -3893,7 +4132,11 @@ function engineQueues(input: Readonly<{
   setRangeSelection?: () => WasmCommandResultView;
   stringAction?: WasmCommandResultView[];
   noInputAction?: WasmCommandResultView[];
+  typedAction?: WasmCommandResultView[];
   intents?: WasmIntentResultView[];
+  typedIntents?: WasmIntentResultView[];
+  undo?: WasmCommandResultView[];
+  redo?: WasmCommandResultView[];
   closeHistory?: WasmCommandResultView[];
   selection?: WasmSelectionResultView[];
   actionStates?: WasmActionStatesResultView[];
@@ -3918,8 +4161,12 @@ function engineQueues(input: Readonly<{
     executeNoInputAction: () => take(input.noInputAction, "executeNoInputAction"),
     executeNoInputIntent: () => take(input.intents, "executeNoInputIntent"),
     executeStringAction: () => take(input.stringAction, "executeStringAction"),
-    undo: () => { throw new Error("unexpected undo"); },
-    redo: () => { throw new Error("unexpected redo"); },
+    executeTypedActionJson: () =>
+      take(input.typedAction, "executeTypedActionJson"),
+    executeTypedIntentJson: () =>
+      take(input.typedIntents, "executeTypedIntentJson"),
+    undo: () => take(input.undo, "undo"),
+    redo: () => take(input.redo, "redo"),
     closeHistoryGroup: () => take(input.closeHistory, "closeHistoryGroup"),
   };
 }

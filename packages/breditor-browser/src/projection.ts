@@ -8,6 +8,8 @@ import {
 import {
   browserCompiledProfileDescriptorMatchesGeneration,
   type BrowserCompiledProfileDescriptor,
+  type BrowserProfileFormatDescriptor,
+  type BrowserProfileFormatPropertyDescriptor,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 
@@ -42,6 +44,25 @@ export interface ProjectionSnapshot {
   readonly revision: string;
 }
 
+/** One scalar value retained by a schema-admitted inline-format property. */
+export type InlineFormatPropertyProjectionValue = boolean | number | string;
+
+/** One qualified property entry in canonical lexical-name order. */
+export interface InlineFormatPropertyProjection {
+  /** Exact qualified property name. */
+  readonly name: string;
+  /** Exact schema-admitted scalar value. */
+  readonly value: InlineFormatPropertyProjectionValue;
+}
+
+/** One inline format and its canonical, deeply immutable property entries. */
+export interface InlineFormatProjection {
+  /** Exact qualified inline-format kind. */
+  readonly kind: string;
+  /** Canonical property entries in strictly ascending name order. */
+  readonly properties: readonly InlineFormatPropertyProjection[];
+}
+
 /** One base-schema text leaf projected without persistence-record details. */
 export interface BaseTextRunProjection {
   /** Non-empty Unicode scalar text. */
@@ -50,6 +71,8 @@ export interface BaseTextRunProjection {
   readonly strong: boolean;
   /** Canonical qualified identities of all property-free inline formats. */
   readonly formats: readonly string[];
+  /** Canonical inline formats, including their schema-admitted scalar properties. */
+  readonly formatDetails: readonly InlineFormatProjection[];
 }
 
 /** One direct-root base-schema paragraph. */
@@ -75,7 +98,16 @@ export interface ProfiledDocumentProjectionInput {
   readonly schema: Readonly<{ name: string; version: number; fingerprint: string }>;
   readonly snapshot: Readonly<{ lineage: string; revision: string }>;
   readonly paragraphs: readonly Readonly<{
-    runs: readonly Readonly<{ text: string; formats: readonly string[] }>[];
+    runs: readonly Readonly<{
+      text: string;
+      formatDetails: readonly Readonly<{
+        kind: string;
+        properties: readonly Readonly<{
+          name: string;
+          value: InlineFormatPropertyProjectionValue;
+        }>[];
+      }>[];
+    }>[];
   }>[];
 }
 
@@ -86,6 +118,10 @@ const MAX_NODES = 100_000;
 const MAX_TEXT_BYTES = 1024 * 1024;
 const MAX_TOTAL_TEXT_BYTES = 8 * 1024 * 1024;
 const MAX_FORMATS_PER_RUN = 32;
+const MAX_PROPERTIES_PER_FORMAT = 32;
+const MAX_TOTAL_PROPERTY_VALUES = 10_000;
+const MAX_PROPERTY_STRING_BYTES = 65_536;
+const MAX_TOTAL_PROPERTY_STRING_BYTES = 1024 * 1024;
 const MAX_REVISION = 18_446_744_073_709_551_615n;
 const ARRAY_IS_ARRAY = Array.isArray;
 const GET_OWN_PROPERTY_DESCRIPTOR = Reflect.getOwnPropertyDescriptor;
@@ -334,7 +370,7 @@ export function paragraphsEqual(
       rightRun === undefined ||
       leftRun.text !== rightRun.text ||
       leftRun.strong !== rightRun.strong ||
-      !formatKindsEqual(leftRun.formats, rightRun.formats)
+      !formatDetailsEqual(leftRun.formatDetails, rightRun.formatDetails)
     ) {
       return false;
     }
@@ -484,9 +520,13 @@ function validateProfiledProjection(
     return validationFailure("projection.invalid_shape");
   }
 
-  const admittedFormats = new Set(descriptor.formats.map((format) => format.kind));
+  const admittedFormats = new Map(
+    descriptor.formats.map((format) => [format.kind, format] as const),
+  );
   let nodeCount = 1 + paragraphInputs.length;
   let totalTextBytes = 0;
+  let totalPropertyValues = 0;
+  let totalPropertyStringBytes = 0;
   const paragraphs: BaseParagraphProjection[] = [];
   for (let paragraphIndex = 0; paragraphIndex < paragraphInputs.length; paragraphIndex += 1) {
     const paragraphInput = paragraphInputs[paragraphIndex];
@@ -510,22 +550,38 @@ function validateProfiledProjection(
     if (nodeCount > MAX_NODES) return validationFailure("projection.resource_limit");
 
     const runs: BaseTextRunProjection[] = [];
-    let previousFormats: readonly string[] | undefined;
+    let previousFormats: readonly InlineFormatProjection[] | undefined;
     for (let runIndex = 0; runIndex < runInputs.length; runIndex += 1) {
       const runInput = runInputs[runIndex];
-      const run = exactDataRecord(runInput, ["text", "formats"]);
+      const run = exactDataRecord(runInput, ["text", "formatDetails"]);
       if (run === null || typeof run["text"] !== "string") {
         return validationFailure("projection.invalid_shape");
       }
       const text = run["text"];
-      const formats = validateFormatKinds(run["formats"], admittedFormats);
-      if (formats === null || text.length === 0) {
+      const validatedFormats = validateFormatDetails(
+        run["formatDetails"],
+        admittedFormats,
+      );
+      if (validatedFormats === null || text.length === 0) {
         return validationFailure("projection.invalid_shape");
       }
-      if (previousFormats !== undefined && formatKindsEqual(previousFormats, formats)) {
+      const { formatDetails, formats, propertyValues, propertyStringBytes } =
+        validatedFormats;
+      if (
+        previousFormats !== undefined &&
+        formatDetailsEqual(previousFormats, formatDetails)
+      ) {
         return validationFailure("projection.noncanonical_runs");
       }
-      previousFormats = formats;
+      previousFormats = formatDetails;
+      totalPropertyValues += propertyValues;
+      totalPropertyStringBytes += propertyStringBytes;
+      if (
+        totalPropertyValues > MAX_TOTAL_PROPERTY_VALUES ||
+        totalPropertyStringBytes > MAX_TOTAL_PROPERTY_STRING_BYTES
+      ) {
+        return validationFailure("projection.resource_limit");
+      }
       const byteLength = unicodeScalarUtf8Length(text);
       if (byteLength === null) return validationFailure("projection.invalid_shape");
       if (text.length > MAX_TEXT_BYTES || byteLength > MAX_TEXT_BYTES) {
@@ -535,7 +591,7 @@ function validateProfiledProjection(
       if (totalTextBytes > MAX_TOTAL_TEXT_BYTES) {
         return validationFailure("projection.resource_limit");
       }
-      runs.push(freezeRun(text, formats));
+      runs.push(freezeRun(text, formats, formatDetails));
     }
     paragraphs.push(Object.freeze({ runs: Object.freeze(runs) }));
   }
@@ -555,36 +611,122 @@ function validateProfiledProjection(
   };
 }
 
-function validateFormatKinds(
+interface ValidatedFormatDetails {
+  readonly formats: readonly string[];
+  readonly formatDetails: readonly InlineFormatProjection[];
+  readonly propertyValues: number;
+  readonly propertyStringBytes: number;
+}
+
+function validateFormatDetails(
   input: unknown,
-  admitted: ReadonlySet<string>,
-): readonly string[] | null {
+  admitted: ReadonlyMap<string, BrowserProfileFormatDescriptor>,
+): ValidatedFormatDetails | null {
   const array = readExactBoundedArray(input, MAX_FORMATS_PER_RUN);
   if (!array.ok) return null;
   const formats: string[] = [];
+  const formatDetails: InlineFormatProjection[] = [];
   let previous: string | undefined;
+  let propertyValues = 0;
+  let propertyStringBytes = 0;
   for (let index = 0; index < array.values.length; index += 1) {
-    const format = array.values[index];
+    const record = exactDataRecord(array.values[index], ["kind", "properties"]);
+    if (record === null) return null;
+    const format = record["kind"];
+    const formatContract = typeof format === "string"
+      ? admitted.get(format)
+      : undefined;
     if (
       typeof format !== "string" ||
-      !admitted.has(format) ||
+      formatContract === undefined ||
       (previous !== undefined && previous >= format)
     ) {
       return null;
     }
+    const propertyArray = readExactBoundedArray(
+      record["properties"],
+      MAX_PROPERTIES_PER_FORMAT,
+    );
+    if (!propertyArray.ok) return null;
+    const properties: InlineFormatPropertyProjection[] = [];
+    let previousProperty: string | undefined;
+    let contractIndex = 0;
+    for (let propertyIndex = 0; propertyIndex < propertyArray.values.length; propertyIndex += 1) {
+      const property = exactDataRecord(
+        propertyArray.values[propertyIndex],
+        ["name", "value"],
+      );
+      if (property === null) return null;
+      const name = property["name"];
+      const value = property["value"];
+      if (
+        !isQualifiedName(name) ||
+        (previousProperty !== undefined && previousProperty >= name) ||
+        !isCanonicalPropertyScalar(value)
+      ) {
+        return null;
+      }
+      while (
+        contractIndex < formatContract.properties.length &&
+        formatContract.properties[contractIndex]?.name !== undefined &&
+        (formatContract.properties[contractIndex]?.name ?? "") < name
+      ) {
+        if (formatContract.properties[contractIndex]?.presence === "required") return null;
+        contractIndex += 1;
+      }
+      const propertyContract = formatContract.properties[contractIndex];
+      if (propertyContract?.name !== name) return null;
+      let stringBytes = 0;
+      if (typeof value === "string") {
+        if (value.length > MAX_PROPERTY_STRING_BYTES) return null;
+        const byteLength = unicodeScalarUtf8Length(value);
+        if (byteLength === null || byteLength > MAX_PROPERTY_STRING_BYTES) return null;
+        stringBytes = byteLength;
+      }
+      if (!propertyValueMatchesContract(value, stringBytes, propertyContract)) return null;
+      propertyStringBytes += stringBytes;
+      propertyValues += 1;
+      previousProperty = name;
+      properties.push(Object.freeze({ name, value }));
+      contractIndex += 1;
+    }
+    while (contractIndex < formatContract.properties.length) {
+      if (formatContract.properties[contractIndex]?.presence === "required") return null;
+      contractIndex += 1;
+    }
     formats.push(format);
+    formatDetails.push(Object.freeze({
+      kind: format,
+      properties: Object.freeze(properties),
+    }));
     previous = format;
   }
-  return Object.freeze(formats);
+  return Object.freeze({
+    formats: Object.freeze(formats),
+    formatDetails: Object.freeze(formatDetails),
+    propertyValues,
+    propertyStringBytes,
+  });
 }
 
-function freezeRun(text: string, formats: readonly string[]): BaseTextRunProjection {
+function freezeRun(
+  text: string,
+  formats: readonly string[],
+  formatDetails?: readonly InlineFormatProjection[],
+): BaseTextRunProjection {
   const ownedFormats = Object.isFrozen(formats)
     ? formats
     : Object.freeze([...formats]);
+  const ownedFormatDetails = formatDetails ?? Object.freeze(
+    ownedFormats.map((kind) => Object.freeze({
+      kind,
+      properties: Object.freeze([]),
+    })),
+  );
   const run = {
     text,
     strong: ownedFormats.includes("breditor/strong"),
+    formatDetails: ownedFormatDetails,
   } as BaseTextRunProjection;
   Object.defineProperty(run, "formats", {
     value: ownedFormats,
@@ -595,8 +737,75 @@ function freezeRun(text: string, formats: readonly string[]): BaseTextRunProject
   return Object.freeze(run);
 }
 
-function formatKindsEqual(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((value, index) => value === right[index]);
+function formatDetailsEqual(
+  left: readonly InlineFormatProjection[],
+  right: readonly InlineFormatProjection[],
+): boolean {
+  if (left.length !== right.length) return false;
+  for (let formatIndex = 0; formatIndex < left.length; formatIndex += 1) {
+    const leftFormat = left[formatIndex];
+    const rightFormat = right[formatIndex];
+    if (
+      leftFormat === undefined ||
+      rightFormat === undefined ||
+      leftFormat.kind !== rightFormat.kind ||
+      leftFormat.properties.length !== rightFormat.properties.length
+    ) {
+      return false;
+    }
+    for (
+      let propertyIndex = 0;
+      propertyIndex < leftFormat.properties.length;
+      propertyIndex += 1
+    ) {
+      const leftProperty = leftFormat.properties[propertyIndex];
+      const rightProperty = rightFormat.properties[propertyIndex];
+      if (
+        leftProperty === undefined ||
+        rightProperty === undefined ||
+        leftProperty.name !== rightProperty.name ||
+        leftProperty.value !== rightProperty.value
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function isQualifiedName(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= 128 &&
+    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+}
+
+function isCanonicalPropertyScalar(
+  value: unknown,
+): value is InlineFormatPropertyProjectionValue {
+  return typeof value === "boolean" ||
+    typeof value === "string" ||
+    (typeof value === "number" &&
+      Number.isSafeInteger(value) &&
+      !Object.is(value, -0));
+}
+
+function propertyValueMatchesContract(
+  value: InlineFormatPropertyProjectionValue,
+  stringBytes: number,
+  contract: BrowserProfileFormatPropertyDescriptor,
+): boolean {
+  switch (contract.valueType.kind) {
+    case "boolean":
+      return typeof value === "boolean";
+    case "integer":
+      return typeof value === "number" &&
+        (contract.valueType.minimum === null || value >= contract.valueType.minimum) &&
+        (contract.valueType.maximum === null || value <= contract.valueType.maximum);
+    case "string":
+      return typeof value === "string" &&
+        stringBytes >= contract.valueType.minimumUtf8Bytes &&
+        stringBytes <= contract.valueType.maximumUtf8Bytes;
+  }
 }
 
 function validateSnapshot(input: unknown): ProjectionSnapshot | null {

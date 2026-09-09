@@ -1191,7 +1191,12 @@ function profiledSetup(start: number, end = start): Fixture {
       },
       snapshot: { lineage: "clipboard-controller-profile", revision: "1" },
       paragraphs: [
-        { runs: [{ text: "abc", formats: ["example/highlight"] }] },
+        {
+          runs: [{
+            text: "abc",
+            formatDetails: [{ kind: "example/highlight", properties: [] }],
+          }],
+        },
       ],
     },
     generation,
@@ -1244,6 +1249,15 @@ function controllerProfileDescriptor(
     formatKind: (index) => formats[index],
     formatRevision: (index) =>
       index >= 0 && index < formats.length ? 1 : undefined,
+    formatPropertyCount: (index) =>
+      index >= 0 && index < formats.length ? 0 : undefined,
+    formatPropertyName: absent,
+    formatPropertyPresence: absent,
+    formatPropertyValueType: absent,
+    formatPropertyIntegerMinimum: absent,
+    formatPropertyIntegerMaximum: absent,
+    formatPropertyStringMinimumUtf8Bytes: absent,
+    formatPropertyStringMaximumUtf8Bytes: absent,
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,

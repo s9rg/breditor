@@ -20,9 +20,10 @@ optional declarative toolbar, and optional atomic IndexedDB autosave as one
 all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
-The package root is the supported ESM entry point for the `0.1.x` base and the
-`0.2.0` extension surface. Clean npm tarballs are install-, import-, type-check-,
-production-bundle-, and real-browser tested without workspace links.
+The package root is the supported ESM entry point for the `0.1.x` base, the
+`0.2.0` extension surface, and the alpha.3 typed-profile source checkpoint.
+Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
+real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
 TypeScript sources are not part of the package.
 
@@ -49,10 +50,16 @@ path in clean tarball and Chromium/Firefox/WebKit consumers. The former bare-
 factory and standalone restore seams are not accepted by the supported root
 API. `0.2.0` carries the audited RC.1 surface without feature widening.
 
-The matching `0.3.0-alpha.2` package keeps this browser surface property-free.
-Its Rust dependency can now describe, edit, and replay typed inline-format
-properties, but Wasm ABI 3 and the browser bootstrap/descriptor cannot yet
-construct, render, edit, or add toolbar controls for them.
+The unpublished `0.3.0-alpha.3` source package requires Wasm ABI 4 and adds an
+explicit typed-profile path. Profile Bootstrap V2, compiled property
+descriptors, property-bearing semantic projections, strict typed intent JSON,
+and Session Checkpoint V3 IndexedDB/autosave now cross the supported browser
+owner. Existing exact-base V1 and Bootstrap-V1 profile V2 paths remain
+separately selected. Rendering and toolbar presentation are still narrower:
+the safe wrapper recipe cannot derive DOM attributes from property values, and
+the native-button toolbar cannot collect typed input. A requested close-before
+history boundary and its action, intent, undo, or redo are admitted as one Rust
+checkpoint publication rather than separate browser-issued mutations.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -67,7 +74,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.2 @breditor/wasm@0.3.0-alpha.2
+npm install @breditor/browser@0.3.0-alpha.3 @breditor/wasm@0.3.0-alpha.3
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -123,10 +130,14 @@ if (!result.ok) throw new Error(result.error.message);
 const editor = result.editor;
 ```
 
-The semantic-profile path adds `semanticProfile: { bootstrapJson }`, a matching
-Document V2, and an owned `rendering` value from
-`createInlineFormatRenderManifest`. It must cover every admitted format; recipes
-contain only a safe element, checked classes, and explicit ordering edges.
+The legacy semantic-profile path adds `semanticProfile: { bootstrapJson }`, a
+matching Document/Session Checkpoint V2, and an owned `rendering` value from
+`createInlineFormatRenderManifest`. The typed path is explicitly
+`semanticProfile: { bootstrapJson, formatVersion: 2 }`; it uses Profile
+Bootstrap V2, Document V2, and Session Checkpoint V3. Omitting the semantic
+profile retains exact-base V1. No form sniffs or falls back to another
+generation. Rendering must cover every admitted format; current recipes contain
+only a safe element, checked classes, and explicit ordering edges.
 
 The supported `0.2.0` configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
@@ -187,9 +198,10 @@ toolbar root and restores the editing-host attributes installed by the owner.
 
 The Rust AST, selection, action state, history, and checkpoint remain
 authoritative. The editor exposes immutable status snapshots, bounded
-subscription, focus, synchronous no-input semantic-intent execution, explicit
-content export, persistence flush/retry, and idempotent disposal; it does not expose its engine, queue, observation,
-renderer, or delivery tokens.
+subscription, focus, synchronous no-input and typed-JSON semantic-intent
+execution, explicit content export, persistence flush/retry, and idempotent
+disposal; it does not expose its engine, queue, observation, renderer, or
+delivery tokens.
 `initialDocument` is ignored when a valid stored session checkpoint exists.
 Call and await `flushPersistence()` before controlled navigation when saving
 matters, then call `dispose()`; disposal itself does not promise a save.
@@ -215,8 +227,20 @@ Committed, blocked, and unhandled results always carry the authoritative
 document snapshot at settlement; a blocked result also carries the stable
 reason code and activation. Concrete action/binding identities and routing
 fallthroughs are intentionally redacted from this package-root API and remain
-visible only in the advanced adapter outcome. There is no typed public intent
-input or asynchronous intent API in Alpha.7.
+visible only in the advanced adapter outcome. The historical Alpha.7 path did
+not provide typed public intent input.
+
+Alpha.3 adds `executeIntentJson(intentId, inputJson)` for a descriptor-declared
+typed intent. The browser validates the qualified identity and bounded JSON
+transport, preserves the exact JSON bytes for Rust's duplicate-aware strict
+decoder, and rejects a no-input descriptor. It uses the same immediate lease,
+selection preservation, correlated result, and public provenance redaction as
+`executeIntent()`. Malformed or contract-invalid JSON rejected deterministically
+by Rust returns `{ status: "rejected", reason: "invalidInput" }` without
+faulting or disposing the editor. A requested history-group close and the intent
+run on one private Rust candidate and publish together only after final
+checkpoint admission. Rejection therefore leaves undo grouping unchanged with
+one intent preparation. There remains no asynchronous intent API.
 
 Content leaves the editor only through the synchronous, discriminated API:
 
@@ -230,8 +254,9 @@ if (exported.ok) {
 `documentJson` is the exact canonical, lossless Rust encoding selected at
 bootstrap: Document V1 for the legacy exact-base path or fingerprint-bearing
 Document V2 for a semantic profile. The browser independently checks the
-selected version, schema binding, complete property-free format catalog, AST
-contents, and current projection before returning it. `plainText` traverses the
+selected version, schema binding, complete format/property catalog, AST
+contents, and current property-bearing projection before returning it.
+`plainText` traverses the
 owned semantic projection, joins paragraphs with one LF, preserves empty
 paragraphs, strips every inline format, and adds no trailing LF after the final
 paragraph. Both successes are deeply frozen
@@ -270,15 +295,17 @@ The accepted semantic shape is deliberately closed:
   compiled semantic profile;
 - one or more direct-root `breditor/paragraph` elements;
 - non-empty text leaves with canonical lexical sets of zero through 32
-  descriptor-admitted property-free formats; and
+  descriptor-admitted formats and canonical scalar property entries; and
 - exact snapshot identity with a portable lineage and canonical decimal `u64`
   revision.
 
 Projection construction rechecks the sealed base-text shape, descriptor/schema
-binding, format membership and order, canonical adjacent-run law, Unicode
-scalar validity, and the Rust default node/text limits. It clones and freezes
-all accepted arrays and records. Formats are AST semantics; wrapper tags and
-classes are browser presentation and never enter the projection.
+binding, format membership and order, property names/types/bounds, canonical
+adjacent-run law, Unicode scalar validity, and the Rust default node/text and
+property limits. It clones and freezes all accepted arrays and records.
+`formatDetails` retains ordered Boolean, integer, and string values. Formats are
+AST semantics; wrapper tags and classes are browser presentation and never
+enter the projection.
 
 ## DOM contract
 
@@ -402,15 +429,18 @@ echoes, while `input` is only a postcondition and never executes a second
 command. A composition can reserve a completely idle queue for one
 never-queued settlement. Ordinary event, toolbar, API, observer, and reentrant
 submissions reject while the exact lease remains active.
-The package-root `executeIntent()` method uses a separate immediate queue lease:
-it succeeds only when the queue and adapter can complete the full request
-synchronously now. It never appends behind an active delivery, and a reentrant
-call observes `busy` rather than recursive execution.
+The package-root `executeIntent()` and `executeIntentJson()` methods use a
+separate immediate queue lease: they succeed only when the queue and adapter can
+complete the full request synchronously now. They never append behind an active
+delivery, and a reentrant call observes `busy` rather than recursive execution.
 
 `BreditorWasmCommandAdapter` owns the exact observation, browser projection,
 renderer handle, selection bridge, and private one-use delivery epoch. One
-engine request synchronizes its already captured semantic selection, optionally
-closes a history group, executes one action/undo/redo, validates the exact
+engine request synchronizes its already captured semantic selection, then
+passes its optional close-before requirement into one action, intent, undo, or
+redo call. Rust runs the boundary and command on one private checkpointed
+candidate and publishes both or neither; the result reports an effective
+boundary through `historyGroupClosedBefore`. The adapter validates the exact
 successor and projection update, updates the DOM, restores the resulting core
 selection, and frees all generated handles before returning a handle-free
 outcome. A valid semantic successor whose DOM publication fails is retained for
@@ -568,7 +598,8 @@ runtime rejects those controls as policy bypasses.
 `IndexedDbSessionCheckpointStore` owns one exact database and one selected
 slot. Omitted binding preserves the legacy outer-V1 `"current"` record; an
 explicit binding uses an outer-V2 record carrying the slot, schema fingerprint,
-and Checkpoint V1/V2 generation. Fingerprint-derived and caller-named slots can
+and explicit checkpoint generation. Bootstrap V1 selects Checkpoint V2;
+Bootstrap V2 selects Checkpoint V3. Fingerprint-derived and caller-named slots can
 coexist. A load returns absence or a digest-verified checkpoint plus an opaque,
 store/slot/binding-bound compare-and-swap token. A save computes
 the UTF-8 byte count and SHA-256 before opening its transaction, rechecks the
@@ -579,12 +610,17 @@ generation exhaustion, and digest failure remain distinct payload-redacted
 outcomes. Mismatch never deletes, repairs, falls back, or overwrites evidence.
 
 `bootstrapWasmEngine` strictly consumes the generated construction result for
-fresh/restored V1 or compiled-profile V2 input. With a semantic profile and
-persistence, the owner first compiles and releases the profile to select its
-durable fingerprint before the async load, recompiles it for the live engine,
-and requires both schema identities to match before autosave. This deliberate
-double compilation avoids retaining generated authority across IndexedDB at a
-bounded startup cost.
+fresh/restored exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile
+V3 input. With a semantic profile and persistence, the owner first compiles and
+releases the profile to select its durable fingerprint and complete property
+catalog before the async load, recompiles it for the live engine, and requires
+both descriptors to match before restore and autosave. This deliberate double
+compilation avoids retaining generated authority across IndexedDB at a bounded
+startup cost. Browser checkpoint preflight validates bounded wire structure and
+binding but neither replays history nor exactly reproduces the Rust codec's
+aggregate retained-state accounting. The selected Rust restore factory remains
+authoritative for complete decode, resource limits, canonicality, and replay;
+a browser-admissible checkpoint can still fail closed there.
 `BreditorSessionCheckpointAutosave` coalesces adopted core commits behind a
 250 ms trailing delay and, while capture is available, starts an attempt within
 2 s of continuous changes. Composition or another exclusive adapter lease can
@@ -631,8 +667,9 @@ backpressure; terminal adapter loss pauses autosave. See
 - The default toolbar contains Bold, Undo, and Redo. A compiled semantic
   profile can contribute additional property-free format toggle intents and a
   custom manifest can omit, reorder, relabel, group, or expose them as the same
-  native-button control kind. There are no typed public intent inputs, custom
-  controls, menus/selects, extension keymaps or `beforeinput` rules, dynamic
+  native-button control kind. Typed intents are callable through
+  `executeIntentJson()`, but there are no typed toolbar controls, menus/selects,
+  extension keymaps or `beforeinput` rules, dynamic
   manifest replacement, JavaScript action/catalog registration, or packaged
   React wrapper.
 - Each checkpoint owner uses one best-effort local slot. Slots may coexist but
@@ -641,9 +678,11 @@ backpressure; terminal adapter loss pauses autosave. See
 - Clipboard uses synchronous event `clipboardData`; safe profile formatting is
   copied, but every paste is plain-text. There is no async Clipboard API,
   internal MIME, files/images, or rich paste.
-- Extensions add only property-free formats to the sealed paragraph/text AST.
-  There are no links or other format properties, arbitrary nodes, entities,
-  nested blocks, callbacks, or extension-owned DOM renderers.
+- Extensions may add closed typed scalar properties to inline formats in the
+  sealed paragraph/text AST. Current render recipes and copy HTML do not derive
+  attributes, URLs, or CSS from those values, so a safe rendered Link control is
+  not yet supported. Arbitrary nodes, entities, nested blocks, callbacks, and
+  extension-owned DOM renderers remain absent.
 - History is local and linear; collaboration, CRDT/OT rebasing, remote
   selections, and selective undo are absent.
 - Public content egress is mode-selected Document V1/V2 or semantic plain text.
@@ -673,11 +712,13 @@ backpressure; terminal adapter loss pauses autosave. See
   and content export in Chromium, Firefox, and WebKit through Playwright. This
   desktop automation is not a broad mobile-IME or assistive-technology support
   claim; those still need dedicated device and user-agent coverage.
-- Command execution is synchronous. Public `executeIntent()` is immediate-only
-  and returns busy during composition, reads, active delivery, or reentrancy;
-  it does not enqueue a future command. Selection synchronization or a history
-  boundary can publish before a later command error; queue fail-stop and
-  canonical reconciliation are provided, but cross-stage rollback is not.
+- Command execution is synchronous. Public `executeIntent()` and
+  `executeIntentJson()` are immediate-only and return busy during composition,
+  reads, active delivery, or reentrancy;
+  neither enqueues a future command. Selection synchronization remains a
+  separate publication and can survive a later command error. A requested
+  history boundary and its action, intent, undo, or redo publish atomically in
+  Rust; DOM publication still cannot participate in that transaction.
 
 ## Development
 

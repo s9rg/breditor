@@ -94,13 +94,13 @@ describe("parseClipboardHtmlToPlainText", () => {
             runs: [
               {
                 text: "nested<&",
-                formats: [
-                  "breditor/strong",
-                  "example/emphasis",
-                  "example/highlight",
+                formatDetails: [
+                  { kind: "breditor/strong", properties: [] },
+                  { kind: "example/emphasis", properties: [] },
+                  { kind: "example/highlight", properties: [] },
                 ],
               },
-              { text: " plain", formats: [] },
+              { text: " plain", formatDetails: [] },
             ],
           },
           { runs: [] },
@@ -506,6 +506,15 @@ function ownedProfileDescriptor(
     formatKind: (index) => formatKinds[index],
     formatRevision: (index) =>
       index >= 0 && index < formatKinds.length ? 1 : undefined,
+    formatPropertyCount: (index) =>
+      index >= 0 && index < formatKinds.length ? 0 : undefined,
+    formatPropertyName: absent,
+    formatPropertyPresence: absent,
+    formatPropertyValueType: absent,
+    formatPropertyIntegerMinimum: absent,
+    formatPropertyIntegerMaximum: absent,
+    formatPropertyStringMinimumUtf8Bytes: absent,
+    formatPropertyStringMaximumUtf8Bytes: absent,
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,

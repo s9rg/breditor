@@ -19,17 +19,21 @@ impl BreditorEngine {
         &mut self,
         expected: &BreditorObservation,
         intent_id: &str,
+        close_history_group_before: bool,
     ) -> BreditorIntentResult {
         let generation = self.generation.clone();
+        let checkpoint_format_version = self.inner.session_checkpoint_format_version();
         if let Err(error) = self.inner.check_observation(expected.inner()) {
             return BreditorIntentResult::from_error(
                 generation,
+                checkpoint_format_version,
                 BreditorError::checkpointed_engine(&error),
             );
         }
         let Ok(intent_id) = IntentId::try_new(intent_id) else {
             return BreditorIntentResult::from_error(
                 generation,
+                checkpoint_format_version,
                 BreditorError::new(INVALID_INTENT_ID_CODE, "the semantic intent ID is invalid"),
             );
         };
@@ -41,6 +45,7 @@ impl BreditorEngine {
         {
             return BreditorIntentResult::from_error(
                 generation,
+                checkpoint_format_version,
                 BreditorError::new(
                     INTENT_REQUIRES_INPUT_CODE,
                     "the semantic intent requires typed input",
@@ -48,10 +53,30 @@ impl BreditorEngine {
             );
         }
         let invocation = IntentInvocation::without_input(intent_id);
-        match self.inner.execute_intent(expected.inner(), &invocation) {
-            Ok(outcome) => BreditorIntentResult::from_outcome(generation, outcome),
+        let outcome = if close_history_group_before {
+            self.inner
+                .execute_intent_after_closing_history_group(expected.inner(), &invocation)
+                .map(|sequence| {
+                    BreditorIntentResult::from_sequence(
+                        generation.clone(),
+                        checkpoint_format_version,
+                        sequence,
+                    )
+                })
+        } else {
+            self.inner.execute_intent(expected.inner(), &invocation).map(|outcome| {
+                BreditorIntentResult::from_outcome(
+                    generation.clone(),
+                    checkpoint_format_version,
+                    outcome,
+                )
+            })
+        };
+        match outcome {
+            Ok(result) => result,
             Err(error) => BreditorIntentResult::from_error(
                 generation,
+                checkpoint_format_version,
                 BreditorError::checkpointed_engine(&error),
             ),
         }

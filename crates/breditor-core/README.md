@@ -117,9 +117,9 @@ including exact pending formats and contextual inheritance. Selection deletion
 and backward/forward Unicode 17 grapheme deletion support paragraph-local
 property-bearing runs. Exact relocation distinguishes formatting from deletion,
 and undo/redo preserves document, directional selection, and typed pending
-formats. `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` remain
-property-free, so typed paragraph breaks, boundary joins, cross-paragraph
-replacement, and `insert-plain-text` still fail closed.
+formats. At the alpha.2 checkpoint, `ParagraphSplit`, `ParagraphJoin`, and
+`RootTextReplace` remained property-free, so typed paragraph breaks, boundary
+joins, cross-paragraph replacement, and `insert-plain-text` failed closed.
 
 Public Operation, Editor State, Transaction Request, Commit, and Session
 Checkpoint V3 codecs preserve typed operation and pending-format payloads under
@@ -129,8 +129,22 @@ their exact bytes and reject typed-schema operations rather than projecting
 them through empty property records. Generations are selected explicitly; no
 codec sniffs or converts them. Local Log V3 does not yet exist. Wasm ABI 3,
 profile bootstrap, browser descriptors/rendering, clipboard, and toolbar
-controls remain property-free. Scalar validation is not URL or CSS
-sanitization.
+controls remained property-free at that alpha.2 checkpoint.
+
+The unpublished `0.3.0-alpha.3` source checkpoint adds an explicit V3 policy to
+the guarded checkpointed engine and carries the same typed-property contract
+through the separately selected Wasm ABI 4 Profile Bootstrap V2 path.
+`CheckpointedEditorEngine::try_new_v3` seals Session Checkpoint V3, while its
+close-before action, intent, undo, and redo methods run the boundary and command
+on one private candidate and publish both or neither after final checkpoint
+admission. ABI 4
+exposes typed declarations and projection values, strict typed action/intent
+JSON, and explicit Document-V2-to-Session-V3 and Session-Checkpoint-V3 engine
+factories. The browser selects that path only with Profile Bootstrap V2 and
+retains V3 through restore and autosave; exact-base V1 and
+Bootstrap-V1/Session-V2 paths remain separate. Property-driven DOM/clipboard
+attributes, typed toolbar controls, typed structural edits, and Local Log V3
+remain unsupported. Scalar validation is not URL or CSS sanitization.
 
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),

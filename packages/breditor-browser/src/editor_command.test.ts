@@ -5,13 +5,17 @@ import { BreditorDomRenderer } from "./dom_renderer.js";
 import { BaseRangeSelection } from "./selection.js";
 import {
   BASE_INTENT_IDS,
+  MAX_BROWSER_COMMAND_JSON_UTF16,
   MAX_BROWSER_COMMAND_TEXT_UTF16,
+  browserCommandJsonIsAdmissible,
   browserCommandTextIsAdmissible,
   canonicalEditorCommandRequest,
   closeHistoryGroupRequest,
   isEditorCommandRequest,
   isEngineCommand,
   issueEditorDeliveryToken,
+  jsonActionRequest,
+  jsonIntentRequest,
   noInputActionRequest,
   noInputIntentRequest,
   preserveSelectionSync,
@@ -92,6 +96,56 @@ describe("editor command contract", () => {
     expect(Object.isFrozen(request.source)).toBe(true);
     expect(Object.isFrozen(request.requirements)).toBe(true);
     expect(Object.isFrozen(request.command)).toBe(true);
+  });
+
+  it("preserves bounded typed JSON byte-for-byte for actions and intents", () => {
+    const { token } = delivery();
+    const inputJson = '{"operation":"set","operation":"remove"}';
+    const action = jsonActionRequest(
+      token,
+      preserveSelectionSync(),
+      { kind: "api", detail: "typed-action" },
+      "example/set-link",
+      inputJson,
+    );
+    const intent = jsonIntentRequest(
+      token,
+      preserveSelectionSync(),
+      { kind: "toolbar", detail: "typed-intent" },
+      "example/set-link-intent",
+      inputJson,
+      "closeBefore",
+    );
+
+    expect(action.command).toEqual({
+      kind: "action",
+      actionId: "example/set-link",
+      input: { kind: "json", value: inputJson },
+    });
+    expect(intent.command).toEqual({
+      kind: "intent",
+      intentId: "example/set-link-intent",
+      input: { kind: "json", value: inputJson },
+    });
+    expect(canonicalEditorCommandRequest(action)?.command).toEqual(action.command);
+    expect(canonicalEditorCommandRequest(intent)?.command).toEqual(intent.command);
+    if (action.command.kind !== "action" || intent.command.kind !== "intent") {
+      throw new Error("typed command builders returned the wrong command kind");
+    }
+    expect(Object.isFrozen(action.command.input)).toBe(true);
+    expect(Object.isFrozen(intent.command.input)).toBe(true);
+  });
+
+  it("bounds typed JSON transport without parsing away duplicate keys", () => {
+    expect(browserCommandJsonIsAdmissible("null")).toBe(true);
+    expect(
+      browserCommandJsonIsAdmissible("x".repeat(MAX_BROWSER_COMMAND_JSON_UTF16)),
+    ).toBe(true);
+    expect(
+      browserCommandJsonIsAdmissible("x".repeat(MAX_BROWSER_COMMAND_JSON_UTF16 + 1)),
+    ).toBe(false);
+    expect(browserCommandJsonIsAdmissible("\ud800")).toBe(false);
+    expect(browserCommandJsonIsAdmissible("")).toBe(false);
   });
 
   it("represents a closed no-input semantic intent with explicit queue policy", () => {

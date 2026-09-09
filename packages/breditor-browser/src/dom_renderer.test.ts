@@ -86,9 +86,13 @@ describe("BreditorDomRenderer", () => {
         runs: [
           {
             text: "mixed",
-            formats: ["breditor/strong", "example/highlight", "example/whisper"],
+            formatDetails: propertyFreeFormats([
+              "breditor/strong",
+              "example/highlight",
+              "example/whisper",
+            ]),
           },
-          { text: "plain", formats: [] },
+          { text: "plain", formatDetails: [] },
         ],
       }],
     }, generation, descriptor));
@@ -146,9 +150,12 @@ describe("BreditorDomRenderer", () => {
         paragraphs: [
           { runs: [{
             text: firstText,
-            formats: ["breditor/strong", "example/highlight"],
+            formatDetails: propertyFreeFormats([
+              "breditor/strong",
+              "example/highlight",
+            ]),
           }] },
-          { runs: [{ text: "stable", formats: [] }] },
+          { runs: [{ text: "stable", formatDetails: [] }] },
         ],
       }, generation, descriptor),
     );
@@ -192,7 +199,12 @@ describe("BreditorDomRenderer", () => {
     const profiled = valueOf(createProfiledDocumentProjection({
       schema: { ...descriptor.schema },
       snapshot: { lineage: "presentation-identity-tests", revision: "0" },
-      paragraphs: [{ runs: [{ text: "x", formats: ["example/highlight"] }] }],
+      paragraphs: [{
+        runs: [{
+          text: "x",
+          formatDetails: propertyFreeFormats(["example/highlight"]),
+        }],
+      }],
     }, generation, descriptor));
 
     expect(new BreditorDomRenderer(first).render(
@@ -214,7 +226,12 @@ describe("BreditorDomRenderer", () => {
     const profiled = valueOf(createProfiledDocumentProjection({
       schema: { ...descriptor.schema },
       snapshot: { lineage: "profile-dom-tests", revision: "0" },
-      paragraphs: [{ runs: [{ text: "x", formats: ["example/highlight"] }] }],
+      paragraphs: [{
+        runs: [{
+          text: "x",
+          formatDetails: propertyFreeFormats(["example/highlight"]),
+        }],
+      }],
     }, generation, descriptor));
     const host = document.createElement("div");
 
@@ -236,7 +253,12 @@ describe("BreditorDomRenderer", () => {
     expect(createProfiledDocumentProjection({
       schema: { ...descriptor.schema },
       snapshot: { lineage: "profile-generation-tests", revision: "0" },
-      paragraphs: [{ runs: [{ text: "x", formats: ["example/highlight"] }] }],
+      paragraphs: [{
+        runs: [{
+          text: "x",
+          formatDetails: propertyFreeFormats(["example/highlight"]),
+        }],
+      }],
     }, foreignGeneration, descriptor)).toMatchObject({
       ok: false,
       error: { code: "projection.invalid_shape" },
@@ -265,7 +287,10 @@ describe("BreditorDomRenderer", () => {
       paragraphs: [{
         runs: [{
           text: "abcdef",
-          formats: ["breditor/strong", "example/highlight"],
+          formatDetails: propertyFreeFormats([
+            "breditor/strong",
+            "example/highlight",
+          ]),
         }],
       }],
     }, generation, descriptor));
@@ -1399,6 +1424,15 @@ function ownedProfileDescriptor(
     formatKind: (index) => formats[index],
     formatRevision: (index) =>
       index >= 0 && index < formats.length ? 1 : undefined,
+    formatPropertyCount: (index) =>
+      index >= 0 && index < formats.length ? 0 : undefined,
+    formatPropertyName: absent,
+    formatPropertyPresence: absent,
+    formatPropertyValueType: absent,
+    formatPropertyIntegerMinimum: absent,
+    formatPropertyIntegerMaximum: absent,
+    formatPropertyStringMinimumUtf8Bytes: absent,
+    formatPropertyStringMaximumUtf8Bytes: absent,
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,
@@ -1419,4 +1453,8 @@ function ownedProfileDescriptor(
   const result = consumeWasmCompiledProfileDescriptor(generation, view);
   if (!result.ok) throw new Error("test descriptor was rejected");
   return result.descriptor;
+}
+
+function propertyFreeFormats(formats: readonly string[]) {
+  return formats.map((kind) => ({ kind, properties: [] }));
 }

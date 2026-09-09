@@ -3,9 +3,10 @@
 Status: compiler identity, strict public parser, durable binding, the complete
 Rust-core V2 record graph, the sealed base-text extension compiler, and the
 profile-aware browser persistence selector are implemented in `0.2.0`.
-`0.3.0-alpha.1` adds the Rust-only typed inline-format property projection and
-compiler-contract version 2 while preserving exact version-1 bytes for every
-property-free schema.
+`0.3.0-alpha.1` adds the typed inline-format property projection and compiler-
+contract version 2 while preserving exact version-1 bytes for every property-
+free schema. The unpublished alpha.3 ABI-4/browser bridge exposes and validates
+that same digest-bound property contract; it does not change fingerprint bytes.
 Immutable compiled semantic profiles keep action/intent/state
 and browser-presentation declarations outside this digest; their separate
 runtime generation crosses the engine/Wasm/browser boundary without being
@@ -186,12 +187,18 @@ Rust-core durable families likewise use separate V2 codec types with
 generation-locked nesting, as specified by the
 [durable schema binding contract](DURABLE_SCHEMA_BINDING.md). Legacy V1 records
 remain byte-for-byte unchanged and bound to the exact built-in base definition.
-Wasm ABI 3 exposes explicit profile factories that consume and emit V2. The
-legacy built-in Wasm factories and unprofiled browser persistence path continue
-to use V1. The alpha.6 profiled browser path selects an exact V2 fingerprint
-binding before reading stored payload bytes. Every V1 record remains
-exact-`breditor/base@1`-only; the runtime profile generation never enters this
-digest or any wire record. `0.3.0-alpha.2` still does not widen the Wasm
-bootstrap or browser descriptor to construct or expose typed contracts; the
-version-2 compiler projection and property-aware editing remain reachable
-through Rust only at this checkpoint.
+Wasm ABI 3 historically exposed explicit property-free profile factories that
+consume and emit V2. ABI 4 preserves those factories and adds explicit Profile
+Bootstrap V2, whose descriptor exposes the exact sorted property contracts
+already committed to compiler-contract fingerprint version 2. The explicit V3
+engine factories consume Document V2 and emit Session/State/Commit V3; those
+outer generations do not add fingerprint inputs. The browser's alpha.3 mode
+validates the same selector, digest, format revisions, property names,
+presence/types/bounds, and projected values before restore, export, or autosave.
+Legacy built-in Wasm factories and unprofiled browser persistence remain V1;
+Bootstrap V1 remains profile-aware V2. Every V1 record stays exact-
+`breditor/base@1`-only, and the runtime profile generation never enters this
+digest or any wire record. Set action/intent IDs, Bootstrap envelope bytes,
+renderer recipes, toolbar declarations, and property values remain excluded
+from the fingerprint except insofar as the compiled property contract itself
+defines the admitted document language.

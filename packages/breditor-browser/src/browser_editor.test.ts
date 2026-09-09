@@ -78,8 +78,16 @@ const PROFILE_FORMATS = Object.freeze([
   "example/highlight",
 ]);
 const PROFILE_FORMAT_DESCRIPTORS = Object.freeze([
-  Object.freeze({ kind: "breditor/strong", revision: 1 }),
-  Object.freeze({ kind: "example/highlight", revision: 2 }),
+  Object.freeze({
+    kind: "breditor/strong",
+    revision: 1,
+    properties: Object.freeze([]),
+  }),
+  Object.freeze({
+    kind: "example/highlight",
+    revision: 2,
+    properties: Object.freeze([]),
+  }),
 ]);
 const PROFILE_BOOTSTRAP = Object.freeze({
   bootstrapJson:
@@ -126,6 +134,8 @@ interface EngineRecord {
   readonly executeNoInputAction: ReturnType<typeof vi.fn>;
   readonly executeNoInputIntent: ReturnType<typeof vi.fn>;
   readonly executeStringAction: ReturnType<typeof vi.fn>;
+  readonly executeTypedActionJson: ReturnType<typeof vi.fn>;
+  readonly executeTypedIntentJson: ReturnType<typeof vi.fn>;
   readonly setRangeSelection: ReturnType<typeof vi.fn>;
   readonly closeHistoryGroup: ReturnType<typeof vi.fn>;
   readonly actionStates: ReturnType<typeof vi.fn>;
@@ -173,6 +183,7 @@ interface ProfileSchemaFixture {
 interface ProfileFormatFixture {
   readonly kind: string;
   readonly revision: number;
+  readonly properties?: readonly never[];
 }
 
 interface ProfileModuleFixtureOptions {
@@ -180,6 +191,7 @@ interface ProfileModuleFixtureOptions {
   readonly schemasByCompilation?: readonly ProfileSchemaFixture[];
   readonly formatsByCompilation?: readonly (readonly ProfileFormatFixture[])[];
   readonly intentInputKind?: "none" | "typed";
+  readonly typedIntentErrorCode?: string;
   readonly onCreateEngine?: (compilationIndex: number) => void;
 }
 
@@ -491,11 +503,12 @@ describe("BreditorBrowserEditor", () => {
     expect(Object.isFrozen(result.document)).toBe(true);
     expect(JSON.stringify(result)).not.toContain(BINDING_ID);
     expect(JSON.stringify(result)).not.toContain(ACTION_ID);
-    expect(fixture.engines[0]?.closeHistoryGroup).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.closeHistoryGroup).not.toHaveBeenCalled();
     expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledOnce();
     expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledWith(
       expect.objectContaining({ snapshotRevision: "0" }),
       INTENT_ID,
+      true,
     );
     expect(opened.editor.getSnapshot().document).toEqual(result.document);
     opened.editor.dispose();
@@ -620,6 +633,16 @@ describe("BreditorBrowserEditor", () => {
       intentId: "example/unknown",
       reason: "unknownIntent",
     });
+    expect(opened.editor.executeIntentJson(INTENT_ID, "null")).toMatchObject({
+      status: "rejected",
+      intentId: INTENT_ID,
+      reason: "inputNotAccepted",
+    });
+    expect(opened.editor.executeIntentJson(INTENT_ID, "")).toMatchObject({
+      status: "rejected",
+      intentId: INTENT_ID,
+      reason: "invalidInput",
+    });
     expect(base.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
     opened.editor.dispose();
     expect(opened.editor.executeIntent(INTENT_ID)).toMatchObject({
@@ -648,8 +671,71 @@ describe("BreditorBrowserEditor", () => {
       reason: "inputRequired",
       document: { lineage: LINEAGE, revision: "0" },
     });
+    const inputJson = '{"operation":"remove"}';
+    expect(typed.editor.executeIntentJson(INTENT_ID, inputJson)).toEqual({
+      status: "committed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(
+      profile.engines[0]?.executeTypedIntentJson,
+    ).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ snapshotRevision: "0" }),
+      INTENT_ID,
+      inputJson,
+      true,
+    );
     expect(profile.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
     typed.editor.dispose();
+  });
+
+  it("contains Rust typed-input rejection before closing history and remains usable", async () => {
+    const profile = profileModuleFixture({
+      intentInputKind: "typed",
+      typedIntentErrorCode: "breditor_wasm.invalid_action_value_json",
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), profile.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("profile text", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: Object.freeze({
+          bootstrapJson: PROFILE_BOOTSTRAP.bootstrapJson,
+          formatVersion: 2 as const,
+        }),
+        rendering: PROFILE_RENDERING,
+      }),
+    );
+    if (!opened.ok) throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+
+    expect(
+      opened.editor.executeIntentJson(
+        INTENT_ID,
+        '{"operation":"remove","operation":"set"}',
+      ),
+    ).toEqual({
+      status: "rejected",
+      intentId: INTENT_ID,
+      reason: "invalidInput",
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+    expect(profile.engines[0]?.closeHistoryGroup).not.toHaveBeenCalled();
+    expect(profile.engines[0]?.executeTypedIntentJson).toHaveBeenCalledOnce();
+
+    expect(
+      opened.editor.executeIntentJson(INTENT_ID, '{"operation":"remove"}'),
+    ).toEqual({
+      status: "committed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "1" },
+    });
+    expect(profile.engines[0]?.closeHistoryGroup).not.toHaveBeenCalled();
+    expect(profile.engines[0]?.executeTypedIntentJson).toHaveBeenCalledTimes(2);
+    expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+    opened.editor.dispose();
   });
 
   it("rejects reentrant and authoritative-read intent admission as busy without queueing", async () => {
@@ -1043,13 +1129,14 @@ describe("BreditorBrowserEditor", () => {
       expect(clipboard.event.defaultPrevented).toBe(true);
       expect(clipboard.getData).toHaveBeenCalledExactlyOnceWith("text/html");
       expect(fixture.engines[0]?.setRangeSelection).toHaveBeenCalledOnce();
-      expect(fixture.engines[0]?.closeHistoryGroup).toHaveBeenCalledOnce();
+      expect(fixture.engines[0]?.closeHistoryGroup).not.toHaveBeenCalled();
       expect(
         fixture.engines[0]?.executeStringAction,
       ).toHaveBeenCalledExactlyOnceWith(
         expect.objectContaining({ snapshotRevision: "0" }),
         "breditor/insert-plain-text",
         "bold",
+        true,
       );
       expect(host.textContent).toBe("startbold");
       expect(opened.editor.getSnapshot().document).toEqual({
@@ -1928,6 +2015,7 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.engines[0]?.executeNoInputIntent).toHaveBeenCalledWith(
       expect.objectContaining({ snapshotRevision: "0" }),
       INTENT_ID,
+      true,
     );
     expect(host.textContent).toBe("after");
     expect(editor.getSnapshot()).toMatchObject({
@@ -2001,7 +2089,7 @@ describe("BreditorBrowserEditor", () => {
       phase: "disposed",
     });
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
-    expect(fixture.engines[0]?.observationFrees).toHaveLength(3);
+    expect(fixture.engines[0]?.observationFrees).toHaveLength(2);
     expect(
       fixture.engines[0]?.observationFrees.every(
         (free) => free.mock.calls.length === 1,
@@ -3123,6 +3211,35 @@ describe("BreditorBrowserEditor", () => {
     });
     expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
   });
+
+  it("snapshots semantic-profile selection from exact own data and rejects accessors", async () => {
+    const fixture = profileModuleFixture();
+    const profile: Record<string, unknown> = {
+      bootstrapJson: PROFILE_BOOTSTRAP.bootstrapJson,
+    };
+    const versionGetter = vi.fn(() => 2);
+    Object.defineProperty(profile, "formatVersion", {
+      enumerable: true,
+      configurable: true,
+      get: versionGetter,
+    });
+
+    await expect(
+      BreditorBrowserEditor.open(
+        options(mountHost(), fixture.module, {
+          semanticProfile: profile as NonNullable<
+            BreditorBrowserEditorOptions["semanticProfile"]
+          >,
+          rendering: PROFILE_RENDERING,
+        }),
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.invalid_options" },
+    });
+    expect(versionGetter).not.toHaveBeenCalled();
+    expect(fixture.fromBootstrapJson).not.toHaveBeenCalled();
+  });
 });
 
 function mountHost(): HTMLDivElement {
@@ -3221,7 +3338,11 @@ function profileModuleFixture(
       const formats = Object.freeze(
         (config.formatsByCompilation?.[compilationIndex] ??
           PROFILE_FORMAT_DESCRIPTORS).map((format) =>
-          Object.freeze({ kind: format.kind, revision: format.revision }),
+          Object.freeze({
+            kind: format.kind,
+            revision: format.revision,
+            properties: Object.freeze([]),
+          }),
         ),
       );
       const token = Object.freeze({});
@@ -3253,6 +3374,7 @@ function profileModuleFixture(
           formats,
           token,
           config.intentInputKind,
+          config.typedIntentErrorCode,
         );
         engines.push(built.record);
         engineGenerations.push(built.engineGeneration);
@@ -3280,6 +3402,9 @@ function profileModuleFixture(
       const profile: WasmCompiledProfileBootstrapView = {
         createEngineFromDocumentJson,
         createEngineFromSessionCheckpointJson,
+        createEngineFromDocumentJsonV3: createEngineFromDocumentJson,
+        createEngineFromSessionCheckpointJsonV3:
+          createEngineFromSessionCheckpointJson,
         generation: () => profileGeneration,
         descriptor: () => profileDescriptor,
         matchesProfileGeneration: (candidate) =>
@@ -3308,7 +3433,10 @@ function profileModuleFixture(
   return {
     module: {
       BreditorEngine: factory,
-      BreditorCompiledProfile: { fromBootstrapJson },
+      BreditorCompiledProfile: {
+        fromBootstrapJson,
+        fromBootstrapJsonV2: fromBootstrapJson,
+      },
       breditorWasmAbiVersion: () => BREDITOR_WASM_ABI_VERSION,
       breditorVersion: () => BREDITOR_BROWSER_PACKAGE_VERSION,
     },
@@ -3355,6 +3483,15 @@ function profileDescriptorFixture(
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     formatKind: (index) => formats[index]?.kind,
     formatRevision: (index) => formats[index]?.revision,
+    formatPropertyCount: (formatIndex) =>
+      formats[formatIndex] === undefined ? undefined : 0,
+    formatPropertyName: () => undefined,
+    formatPropertyPresence: () => undefined,
+    formatPropertyValueType: () => undefined,
+    formatPropertyIntegerMinimum: () => undefined,
+    formatPropertyIntegerMaximum: () => undefined,
+    formatPropertyStringMinimumUtf8Bytes: () => undefined,
+    formatPropertyStringMaximumUtf8Bytes: () => undefined,
     intentId: (index) => index === 0 ? INTENT_ID : undefined,
     intentInputKind: (index) => index === 0 ? intentInputKind : undefined,
     intentInputContractName: (index) =>
@@ -3390,6 +3527,7 @@ function profileEngineFixture(
   formats: readonly ProfileFormatFixture[],
   token: object,
   intentInputKind: "none" | "typed" = "none",
+  typedIntentErrorCode?: string,
 ): Readonly<{
   engine: WasmBootstrappedEngineView;
   record: EngineRecord;
@@ -3442,7 +3580,11 @@ function profileEngineFixture(
     ),
   );
   const executeNoInputAction = vi.fn(
-    (expected: WasmCommandObservationView, actionId: string) => {
+    (
+      expected: WasmCommandObservationView,
+      actionId: string,
+      closeHistoryGroupBefore: boolean,
+    ) => {
       if (actionId !== ACTION_ID) throw new Error("unexpected profile action");
       const baseRevision = Number(expected.snapshotRevision);
       const successorRevision = baseRevision + 1;
@@ -3464,11 +3606,15 @@ function profileEngineFixture(
           engineGeneration,
         ),
         engineGeneration,
+        closeHistoryGroupBefore,
       );
     },
   );
-  const executeNoInputIntent = vi.fn(
-    (expected: WasmCommandObservationView, intentId: string) => {
+  const executeIntentCommit = (
+    expected: WasmCommandObservationView,
+    intentId: string,
+    closeHistoryGroupBefore: boolean,
+  ) => {
       if (intentId !== INTENT_ID) throw new Error("unexpected profile intent");
       const baseRevision = Number(expected.snapshotRevision);
       const successorRevision = baseRevision + 1;
@@ -3490,10 +3636,47 @@ function profileEngineFixture(
           engineGeneration,
         ),
         engineGeneration,
+        closeHistoryGroupBefore,
       );
+    };
+  const executeNoInputIntent = vi.fn(
+    (
+      expected: WasmCommandObservationView,
+      intentId: string,
+      closeHistoryGroupBefore: boolean,
+    ) => {
+      if (intentInputKind !== "none") {
+        return unexpected("executeNoInputIntent");
+      }
+      return executeIntentCommit(expected, intentId, closeHistoryGroupBefore);
     },
   );
   const executeStringAction = vi.fn(() => unexpected("executeStringAction"));
+  const executeTypedActionJson = vi.fn(() =>
+    unexpected("executeTypedActionJson")
+  );
+  let typedIntentCalls = 0;
+  const executeTypedIntentJson = vi.fn(
+    (
+      expected: WasmCommandObservationView,
+      intentId: string,
+      inputJson: string,
+      closeHistoryGroupBefore: boolean,
+    ) => {
+      if (intentInputKind !== "typed" || inputJson.length === 0) {
+        return unexpected("executeTypedIntentJson");
+      }
+      typedIntentCalls += 1;
+      if (typedIntentErrorCode !== undefined && typedIntentCalls === 1) {
+        return errorIntentResult(typedIntentErrorCode, engineGeneration);
+      }
+      return executeIntentCommit(
+        expected,
+        intentId,
+        closeHistoryGroupBefore,
+      );
+    },
+  );
   const setRangeSelection = vi.fn(() => unexpected("setRangeSelection"));
   const closeHistoryGroup = vi.fn(() =>
     unchangedCommandResult(makeObservation(revision), engineGeneration)
@@ -3516,6 +3699,8 @@ function profileEngineFixture(
     executeNoInputAction,
     executeNoInputIntent,
     executeStringAction,
+    executeTypedActionJson,
+    executeTypedIntentJson,
     undo: vi.fn(() => unexpected("undo")),
     redo: vi.fn(() => unexpected("redo")),
     closeHistoryGroup,
@@ -3547,6 +3732,8 @@ function profileEngineFixture(
       executeNoInputAction,
       executeNoInputIntent,
       executeStringAction,
+      executeTypedActionJson,
+      executeTypedIntentJson,
       setRangeSelection,
       closeHistoryGroup,
       actionStates,
@@ -3618,7 +3805,11 @@ function engineFixture(
     );
   });
   const executeNoInputAction = vi.fn(
-    (expected: WasmCommandObservationView, actionId: string) => {
+    (
+      expected: WasmCommandObservationView,
+      actionId: string,
+      closeHistoryGroupBefore: boolean,
+    ) => {
       if (config.actionThrows === true)
         throw new Error("uncertain Wasm delivery");
       if (config.enableAction !== true || actionId !== ACTION_ID) {
@@ -3644,11 +3835,16 @@ function engineFixture(
           generation,
         ),
         generation,
+        closeHistoryGroupBefore,
       );
     },
   );
   const executeNoInputIntent = vi.fn(
-    (expected: WasmCommandObservationView, intentId: string) => {
+    (
+      expected: WasmCommandObservationView,
+      intentId: string,
+      closeHistoryGroupBefore: boolean,
+    ) => {
       if (config.actionThrows === true)
         throw new Error("uncertain Wasm delivery");
       if (config.enableAction !== true || intentId !== INTENT_ID) {
@@ -3660,17 +3856,23 @@ function engineFixture(
         return blockedIntentResult(
           makeObservation(baseRevision),
           generation,
+          closeHistoryGroupBefore,
         );
       }
       if (config.intentOutcome === "unhandled") {
         return unhandledIntentResult(
           makeObservation(baseRevision),
           generation,
+          closeHistoryGroupBefore,
         );
       }
       if (config.intentOutcome === "malformed") {
         return {
-          ...unhandledIntentResult(makeObservation(baseRevision), generation),
+          ...unhandledIntentResult(
+            makeObservation(baseRevision),
+            generation,
+            closeHistoryGroupBefore,
+          ),
           intentId: "breditor/wrong-intent",
         };
       }
@@ -3692,6 +3894,7 @@ function engineFixture(
           generation,
         ),
         generation,
+        closeHistoryGroupBefore,
       );
     },
   );
@@ -3718,6 +3921,7 @@ function engineFixture(
       expected: WasmCommandObservationView,
       actionId: string,
       value: string,
+      closeHistoryGroupBefore: boolean,
     ) => {
       if (
         config.enableStringAction !== true ||
@@ -3743,8 +3947,15 @@ function engineFixture(
           generation,
         ),
         generation,
+        closeHistoryGroupBefore,
       );
     },
+  );
+  const executeTypedActionJson = vi.fn(() =>
+    unexpected("executeTypedActionJson")
+  );
+  const executeTypedIntentJson = vi.fn(() =>
+    unexpected("executeTypedIntentJson")
   );
   const engine: WasmBootstrappedEngineView = {
     actionStates,
@@ -3756,6 +3967,8 @@ function engineFixture(
     executeNoInputAction,
     executeNoInputIntent,
     executeStringAction,
+    executeTypedActionJson,
+    executeTypedIntentJson,
     undo: vi.fn(() => unexpected("undo")),
     redo: vi.fn(() => unexpected("redo")),
     closeHistoryGroup,
@@ -3779,6 +3992,8 @@ function engineFixture(
       executeNoInputAction,
       executeNoInputIntent,
       executeStringAction,
+      executeTypedActionJson,
+      executeTypedIntentJson,
       setRangeSelection,
       closeHistoryGroup,
       actionStates,
@@ -3850,6 +4065,12 @@ function projectionView(
     text: (index) => (index === 2 ? text : undefined),
     formatCount: (index) => (index === 2 ? 0 : undefined),
     formatType: () => undefined,
+    formatPropertyCount: () => undefined,
+    formatPropertyName: () => undefined,
+    formatPropertyValueKind: () => undefined,
+    formatPropertyBoolean: () => undefined,
+    formatPropertyInteger: () => undefined,
+    formatPropertyString: () => undefined,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     free: vi.fn(),
   };
@@ -3886,6 +4107,13 @@ function profileProjectionView(
     formatCount: (index) => (index === 2 ? formats.length : undefined),
     formatType: (index, ordinal) =>
       index === 2 ? formats[ordinal]?.kind : undefined,
+    formatPropertyCount: (index, formatOrdinal) =>
+      index === 2 && formats[formatOrdinal] !== undefined ? 0 : undefined,
+    formatPropertyName: () => undefined,
+    formatPropertyValueKind: () => undefined,
+    formatPropertyBoolean: () => undefined,
+    formatPropertyInteger: () => undefined,
+    formatPropertyString: () => undefined,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     free: vi.fn(),
   };
@@ -4050,9 +4278,11 @@ function commandResult(
   successor: WasmCommandObservationView,
   update: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView,
+  historyGroupClosedBefore = false,
 ): WasmCommandResultView {
   return {
     status: "committed",
+    historyGroupClosedBefore,
     eventKind: "action",
     disabledActionId: undefined,
     disabledReasonCode: undefined,
@@ -4069,9 +4299,11 @@ function committedIntentResult(
   successor: WasmCommandObservationView,
   update: SemanticProjectionUpdateView,
   generation: WasmProfileGenerationView,
+  historyGroupClosedBefore = false,
 ): WasmIntentResultView {
   return {
     status: "committed",
+    historyGroupClosedBefore,
     intentId: INTENT_ID,
     bindingId: BINDING_ID,
     actionId: ACTION_ID,
@@ -4101,9 +4333,11 @@ function committedIntentResult(
 function blockedIntentResult(
   successor: WasmCommandObservationView,
   generation: WasmProfileGenerationView,
+  historyGroupClosedBefore = false,
 ): WasmIntentResultView {
   return {
     status: "blocked",
+    historyGroupClosedBefore,
     intentId: INTENT_ID,
     bindingId: BINDING_ID,
     actionId: ACTION_ID,
@@ -4133,9 +4367,11 @@ function blockedIntentResult(
 function unhandledIntentResult(
   successor: WasmCommandObservationView,
   generation: WasmProfileGenerationView,
+  historyGroupClosedBefore = false,
 ): WasmIntentResultView {
   return {
     status: "unhandled",
+    historyGroupClosedBefore,
     intentId: INTENT_ID,
     bindingId: undefined,
     actionId: undefined,
@@ -4168,6 +4404,7 @@ function unchangedCommandResult(
 ): WasmCommandResultView {
   return {
     status: "unchanged",
+    historyGroupClosedBefore: false,
     eventKind: undefined,
     disabledActionId: undefined,
     disabledReasonCode: undefined,
@@ -4176,6 +4413,66 @@ function unchangedCommandResult(
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     observation: () => successor,
     projectionUpdate: () => undefined,
+    free: vi.fn(),
+  };
+}
+
+function errorCommandResult(
+  code: string,
+  generation: WasmProfileGenerationView,
+): WasmCommandResultView {
+  return {
+    status: "error",
+    historyGroupClosedBefore: false,
+    eventKind: undefined,
+    disabledActionId: undefined,
+    disabledReasonCode: undefined,
+    activation: undefined,
+    error: {
+      code,
+      message: "the typed command input was rejected",
+      free: vi.fn(),
+    },
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    observation: () => undefined,
+    projectionUpdate: () => undefined,
+    free: vi.fn(),
+  };
+}
+
+function errorIntentResult(
+  code: string,
+  generation: WasmProfileGenerationView,
+): WasmIntentResultView {
+  return {
+    status: "error",
+    historyGroupClosedBefore: false,
+    intentId: undefined,
+    bindingId: undefined,
+    actionId: undefined,
+    bindingPriority: undefined,
+    blockedReasonCode: undefined,
+    blockedActivation: undefined,
+    blockedValueStatus: undefined,
+    blockedValueContractName: undefined,
+    blockedValueContractVersion: undefined,
+    fallthroughCount: 0,
+    error: {
+      code,
+      message: "the typed command input was rejected",
+      free: vi.fn(),
+    },
+    matchesProfileGeneration: (candidate) => generation.matches(candidate),
+    observation: () => undefined,
+    projectionUpdate: () => undefined,
+    blockedReasonDetailJson: () => undefined,
+    blockedValueJson: () => undefined,
+    commitJson: () => undefined,
+    fallthroughBindingId: () => undefined,
+    fallthroughActionId: () => undefined,
+    fallthroughPriority: () => undefined,
+    fallthroughReasonCode: () => undefined,
+    fallthroughReasonDetailJson: () => undefined,
     free: vi.fn(),
   };
 }
@@ -4264,6 +4561,14 @@ function baseDescriptor(
     matchesProfileGeneration: (candidate) => candidate === generation,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
+    formatPropertyCount: (formatIndex) => formatIndex === 0 ? 0 : undefined,
+    formatPropertyName: () => undefined,
+    formatPropertyPresence: () => undefined,
+    formatPropertyValueType: () => undefined,
+    formatPropertyIntegerMinimum: () => undefined,
+    formatPropertyIntegerMaximum: () => undefined,
+    formatPropertyStringMinimumUtf8Bytes: () => undefined,
+    formatPropertyStringMaximumUtf8Bytes: () => undefined,
     intentId: (index) => index === 0 ? INTENT_ID : undefined,
     intentInputKind: (index) => index === 0 ? "none" : undefined,
     intentInputContractName: () => undefined,

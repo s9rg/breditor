@@ -293,9 +293,10 @@ toolbar.
   bridges status into a bounded, immutable external-store subscription.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
-- There are no typed public intent inputs, custom control kinds, menus/selects,
-  extension keymaps or `beforeinput` rules, dynamic manifest replacement, or
-  asynchronous toolbar dispatch.
+- The alpha.3 public editor can execute descriptor-declared typed intent JSON,
+  but the toolbar has no typed-input control kind. There are no custom control
+  kinds, menus/selects, extension keymaps or `beforeinput` rules, dynamic
+  manifest replacement, or asynchronous toolbar dispatch.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
 - The `0.1.0` automated gate covers keyboard navigation, computed focus

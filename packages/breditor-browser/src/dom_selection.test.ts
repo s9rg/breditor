@@ -264,7 +264,12 @@ describe("BreditorDomSelectionBridge", () => {
           schema: { ...descriptor.schema },
           snapshot: { lineage: "dom-selection-profile", revision: "0" },
           paragraphs: [
-            { runs: [{ text: "styled", formats: ["example/emphasis"] }] },
+            {
+              runs: [{
+                text: "styled",
+                formatDetails: [{ kind: "example/emphasis", properties: [] }],
+              }],
+            },
           ],
         },
         generation,
@@ -1633,6 +1638,15 @@ function selectionProfileDescriptor(
     formatKind: (index) => formats[index],
     formatRevision: (index) =>
       index >= 0 && index < formats.length ? 1 : undefined,
+    formatPropertyCount: (index) =>
+      index >= 0 && index < formats.length ? 0 : undefined,
+    formatPropertyName: absent,
+    formatPropertyPresence: absent,
+    formatPropertyValueType: absent,
+    formatPropertyIntegerMinimum: absent,
+    formatPropertyIntegerMaximum: absent,
+    formatPropertyStringMinimumUtf8Bytes: absent,
+    formatPropertyStringMaximumUtf8Bytes: absent,
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,

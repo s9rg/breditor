@@ -1,16 +1,18 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.2` Rust-core checkpoint implements typed inline-format
-editing, exact history, and property-preserving V3 operation/state/replay
-codecs. Workspace manifests advance to alpha.2, but the packages remain
-unpublished. Wasm ABI 3, browser construction, DOM rendering, clipboard
-conversion, and toolbar input remain on the property-free surface.
+Status: the `0.3.0-alpha.3` source checkpoint carries typed inline-format
+contracts, values, and commands through Wasm ABI 4 and the framework-neutral
+browser. Explicit Bootstrap V2 selects property-aware Session/State/Commit V3;
+V1 and V2 paths remain separately available. The packages remain unpublished.
+Safe property-driven DOM/clipboard recipes and typed toolbar controls are next.
 
 `0.3.0` is the path from property-free formatting to semantic formats such as
 links, mentions, text colors, and annotations. Alpha.1 defined and validated
-their closed data language. Alpha.2 makes the safe paragraph-local part of
-that language editable and replayable without claiming that every structural
-edit or browser integration is complete.
+their closed data language. Alpha.2 made its safe paragraph-local subset
+editable and replayable. Alpha.3 transports that exact contract through Wasm,
+browser projection, strict programmatic input, and durable browser restore
+without claiming that property-aware DOM presentation or every structural edit
+is complete.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -215,6 +217,66 @@ codecs do not exist yet. A property-bearing Session Checkpoint V3 therefore
 cannot be inserted into the current V1/V2 local-log durable graph without a
 future explicitly versioned local-log contract.
 
+## Alpha.3 Wasm ABI 4 and browser durable bridge
+
+Wasm ABI 4 adds the explicitly selected
+`BreditorCompiledProfile.fromBootstrapJsonV2()` configuration envelope.
+Bootstrap V2 retains the strict bounded graph of extensions and inline formats,
+adds closed typed property contracts, and adds manifest-owned set declarations
+with their action, typed intent, binding, and state identities. Boolean,
+integer, and string domains carry their exact presence and bounds. Unknown,
+duplicate, missing, malformed, noncanonical, or over-limit input fails closed;
+the envelope remains ABI-local configuration rather than a durable extension
+manifest protocol. `fromBootstrapJson()` continues to mean Bootstrap V1.
+
+`BreditorCompiledProfileDescriptor` exposes canonical per-format property
+names, presence, scalar kind, and integer/string bounds. `BreditorProjection`
+exposes every format occurrence's canonical scalar property values. Browser
+adapters validate these getters completely, deep-freeze the descriptor and
+projection, and correlate both with the same opaque process-local profile
+generation.
+
+`BreditorEngine.executeTypedActionJson()` and
+`executeTypedIntentJson()` preserve exact caller JSON bytes until Rust performs
+strict bounded decoding. The registered action or intent supplies its value
+contract name and version; JavaScript cannot substitute one. Duplicate object
+keys, non-integral or unsafe numbers, invalid shape, excessive depth/count/text,
+and contract mismatches are rejected with bounded, payload-redacted errors.
+The high-level browser owner exposes the semantic path as synchronous
+`executeIntentJson(intentId, inputJson)`, using the same immediate queue lease,
+selection preservation, result correlation, and public provenance redaction as
+the no-input `executeIntent()` path.
+
+ABI-4 action, intent, undo, and redo calls also accept one
+`closeHistoryGroupBefore` choice. Rust evaluates that requested boundary and the
+command on one private checkpointed candidate, encodes the final session once,
+and publishes both or neither. Results expose `historyGroupClosedBefore` so the
+browser can report an effective boundary without inferring it. Invalid typed
+input therefore cannot split undo grouping, and action preparation remains
+single-pass. Selection synchronization remains a distinct publication before
+this combined step.
+
+Two explicit profile factories select V3 engine egress:
+`createEngineFromDocumentJsonV3()` consumes Document V2 and starts a fresh
+Session V3, while `createEngineFromSessionCheckpointJsonV3()` strictly restores
+Session Checkpoint V3. Those engines emit Session Checkpoint V3, Editor State
+V3, and Commit V3; Document egress remains V2. Existing profile factory names
+retain Session V2, and static exact-base factories retain V1.
+
+At the browser package root, only
+`semanticProfile: { bootstrapJson, formatVersion: 2 }` selects Bootstrap V2 and
+durable mode V3. `{ bootstrapJson }` continues to select Bootstrap V1 and
+durable mode V2; an omitted profile selects exact-base V1. Startup, canonical
+Document validation, Session Checkpoint validation, IndexedDB binding and
+restore, and autosave capture all use that explicit mode. They compare the
+schema selector, fingerprint, property catalog, and checkpoint generation
+before passing retained bytes to the selected Rust restore factory. Browser
+preflight checks bounded wire structure but does not replay history or exactly
+account for the core codec's aggregate retained-state ceilings. Rust decode,
+replay, canonicality, and resource-limit enforcement remain authoritative; a
+browser-admissible checkpoint can still be rejected there. No path sniffs,
+retries, upgrades, or falls back to another generation.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -223,11 +285,19 @@ Wasm hosts. It does not make ordinary typing automatically faster than
 optimized JavaScript; its performance value is predictable validation/replay,
 while small Wasm crossings still have a cost.
 
-Alpha.2 does not widen Wasm ABI 3. The Wasm bootstrap cannot declare typed
-property or set-action contracts, the browser descriptor cannot expose them,
-and browser action input remains the property-free surface. Browser rendering,
-copy/paste, persistence factory selection, reference Highlight integration,
-and toolbar controls therefore do not yet exercise the Rust typed path.
+Alpha.3 widens the transport to Wasm ABI 4. Typed contracts, set-action
+declarations, property descriptors, property-bearing projections, strict typed
+action/intent JSON, explicit V3 engine factories, browser durable validation,
+IndexedDB/autosave, and programmatic `executeIntentJson()` now exercise the
+Rust typed path.
+
+The DOM and toolbar layers deliberately remain narrower. Current render recipes
+select only a fixed safe wrapper element, canonical classes, and wrapper order;
+they do not derive attributes, styles, URLs, or text from property values. Safe
+copy has no property-to-HTML attribute recipe, paste remains plain text, and
+the supported toolbar accepts no text field, menu, select, color control, or
+other typed-input control. The existing no-input toggle buttons continue to
+work for property-free formats.
 
 Typed scalar validation is not sanitization. A valid link string is not
 automatically a safe URL, and a valid color string is not automatically safe
@@ -246,21 +316,26 @@ clipboard policy require separate browser-facing contracts.
 - Typed `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` are not
   supported, with the action limitations described above.
 - No V3 local-log/storage family exists.
-- Wasm, browser projection, DOM rendering, toolbar input, HTML/clipboard
-  conversion, and the reference package remain property-free.
+- Wasm descriptors, browser projection, strict programmatic typed intent input,
+  and browser Session V3 persistence support typed properties. DOM rendering,
+  property-bearing HTML/clipboard conversion, and typed toolbar controls do not.
+- The callback-free reference Highlight profile remains property-free; no safe
+  reference Link recipe/control is claimed yet.
 - No migration, generation negotiation, collaboration transform, or unknown
   typed-format preservation is introduced.
 - Host limits can make a portable schema uninhabitable on that host.
 
 ## Next checkpoints
 
-The next Rust-core structural checkpoint must make paragraph split, paragraph
-join, and root replacement preserve typed format instances and exact inverses
-before lifting the corresponding action gates. The next durable checkpoint
-must version the local-log graph around Session Checkpoint V3 rather than
-placing V3 nested bytes inside a V1/V2 envelope.
+The next browser checkpoint is a safe declarative property-to-DOM contract:
+explicit attribute targets, value transforms, URL-scheme policy, amplification
+bounds, canonical safe-copy output, and fail-closed DOM drift checks. Typed
+toolbar controls must then construct the exact JSON contract without becoming
+mutation callbacks or bypassing the intent router.
 
-Only after those Rust contracts are stable should Wasm/bootstrap descriptors,
-typed browser input, safe callback-free rendering, toolbar controls, and
-clipboard policy widen. Link URL policy must be explicit; it is not implied by
-the scalar property contract.
+The remaining Rust structural checkpoint must make paragraph split, paragraph
+join, and root replacement preserve typed format instances and exact inverses
+before lifting those action gates. A later durable checkpoint must version the
+local-log graph around Session Checkpoint V3 rather than placing V3 nested bytes
+inside a V1/V2 envelope. Link URL policy is explicit browser policy; it is not
+implied by the scalar property contract.

@@ -3,8 +3,8 @@ use breditor_core::{
         ActionActivation, ActionStateValue,
         routing::{IntentExecutionOutcome, IntentFallThrough},
     },
-    codec::CommitJsonCodecV2,
-    engine::EditorIntentOutcome,
+    codec::{CommitJsonCodecV2, CommitJsonCodecV3},
+    engine::{EditorHistorySequenceOutcome, EditorIntentOutcome},
     profile::CompiledProfileGeneration,
 };
 use wasm_bindgen::prelude::wasm_bindgen;
@@ -24,22 +24,47 @@ enum IntentResultValue {
 #[wasm_bindgen]
 pub struct BreditorIntentResult {
     generation: CompiledProfileGeneration,
+    checkpoint_format_version: u32,
+    history_group_closed_before: bool,
     value: IntentResultValue,
 }
 
 impl BreditorIntentResult {
     pub(crate) fn from_outcome(
         generation: CompiledProfileGeneration,
+        checkpoint_format_version: u32,
         outcome: EditorIntentOutcome,
     ) -> Self {
-        Self { generation, value: IntentResultValue::Outcome(Box::new(outcome)) }
+        Self {
+            generation,
+            checkpoint_format_version,
+            history_group_closed_before: false,
+            value: IntentResultValue::Outcome(Box::new(outcome)),
+        }
+    }
+
+    pub(crate) fn from_sequence(
+        generation: CompiledProfileGeneration,
+        checkpoint_format_version: u32,
+        sequence: EditorHistorySequenceOutcome<EditorIntentOutcome>,
+    ) -> Self {
+        let (boundary, outcome) = sequence.into_parts();
+        let mut result = Self::from_outcome(generation, checkpoint_format_version, outcome);
+        result.history_group_closed_before = boundary.is_some();
+        result
     }
 
     pub(crate) const fn from_error(
         generation: CompiledProfileGeneration,
+        checkpoint_format_version: u32,
         error: BreditorError,
     ) -> Self {
-        Self { generation, value: IntentResultValue::Error(error) }
+        Self {
+            generation,
+            checkpoint_format_version,
+            history_group_closed_before: false,
+            value: IntentResultValue::Error(error),
+        }
     }
 
     fn outcome(&self) -> Option<&EditorIntentOutcome> {
@@ -60,6 +85,13 @@ impl BreditorIntentResult {
 
 #[wasm_bindgen]
 impl BreditorIntentResult {
+    /// Reports whether this intent atomically closed an open history group first.
+    #[must_use]
+    #[wasm_bindgen(getter, js_name = historyGroupClosedBefore)]
+    pub fn history_group_closed_before(&self) -> bool {
+        self.history_group_closed_before
+    }
+
     /// Returns `committed`, `blocked`, `unhandled`, or `error`.
     #[must_use]
     #[wasm_bindgen(getter, unchecked_return_type = "BreditorIntentResultStatus")]
@@ -245,18 +277,34 @@ impl BreditorIntentResult {
             .map_or_else(BreditorStringResult::absent, action_value_json)
     }
 
-    /// Separately encodes the published commit as fingerprint-bearing Commit V2 JSON.
+    /// Separately encodes the published commit as V2 for legacy/property-free
+    /// engines or V3 for a property-preserving engine.
     #[must_use]
     #[wasm_bindgen(js_name = commitJson)]
     pub fn commit_json(&self) -> BreditorStringResult {
         let Some(commit) = self.execution().and_then(IntentExecutionOutcome::commit) else {
             return BreditorStringResult::absent();
         };
-        match CommitJsonCodecV2::new(commit.after().context().clone()).encode(commit) {
-            Ok(json) => BreditorStringResult::from_value(json),
-            Err(error) => BreditorStringResult::from_error(BreditorError::codec(
-                error.code(),
-                "the published intent commit could not be encoded",
+        match self.checkpoint_format_version {
+            1 | 2 => {
+                match CommitJsonCodecV2::new(commit.after().context().clone()).encode(commit) {
+                    Ok(json) => BreditorStringResult::from_value(json),
+                    Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                        error.code(),
+                        "the published intent commit could not be encoded",
+                    )),
+                }
+            }
+            3 => match CommitJsonCodecV3::new(commit.after().context().clone()).encode(commit) {
+                Ok(json) => BreditorStringResult::from_value(json),
+                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                    error.code(),
+                    "the published intent commit could not be encoded",
+                )),
+            },
+            _ => BreditorStringResult::from_error(BreditorError::new(
+                crate::error::UNSUPPORTED_CHECKPOINT_FORMAT_CODE,
+                "the engine checkpoint format is unsupported",
             )),
         }
     }

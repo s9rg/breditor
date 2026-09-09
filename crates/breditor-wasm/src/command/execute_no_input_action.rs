@@ -22,6 +22,7 @@ impl BreditorEngine {
         &mut self,
         expected: &BreditorObservation,
         action_id: &str,
+        close_history_group_before: bool,
     ) -> BreditorCommandResult {
         if let Err(error) = self.inner.check_observation(expected.inner()) {
             return BreditorCommandResult::from_error(
@@ -61,8 +62,17 @@ impl BreditorEngine {
         }
 
         let invocation = ActionInvocation::without_input(action_id);
-        match self.inner.execute_action(expected.inner(), &invocation) {
-            Ok(outcome) => BreditorCommandResult::from_action_outcome(self, outcome),
+        let outcome = if close_history_group_before {
+            self.inner
+                .execute_action_after_closing_history_group(expected.inner(), &invocation)
+                .map(|sequence| BreditorCommandResult::from_action_sequence(self, sequence))
+        } else {
+            self.inner
+                .execute_action(expected.inner(), &invocation)
+                .map(|outcome| BreditorCommandResult::from_action_outcome(self, outcome))
+        };
+        match outcome {
+            Ok(result) => result,
             Err(error) => {
                 BreditorCommandResult::from_error(self, BreditorError::checkpointed_engine(&error))
             }

@@ -48,6 +48,16 @@ impl BreditorEngine {
             .map_err(|error| BreditorError::checkpointed_engine(&error))?;
         Ok(Self { inner, action_states, generation, descriptor })
     }
+
+    pub(crate) fn try_new_v3(
+        inner: EditorEngine,
+        action_states: ActionStateCache,
+    ) -> Result<Self, BreditorError> {
+        let (generation, descriptor) = profile_identity(&inner, &action_states)?;
+        let inner = CheckpointedEditorEngine::try_new_v3(inner, SessionCheckpointLimits::default())
+            .map_err(|error| BreditorError::checkpointed_engine(&error))?;
+        Ok(Self { inner, action_states, generation, descriptor })
+    }
 }
 
 fn profile_identity(

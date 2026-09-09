@@ -69,11 +69,14 @@ export {
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
 
-/** Public bounds for declarative toolbar string-action input. */
+/** Public command-input bounds and typed-JSON preflight. */
 export {
   BASE_INTENT_IDS,
+  MAX_BROWSER_COMMAND_JSON_UTF16,
+  MAX_BROWSER_COMMAND_JSON_UTF8,
   MAX_BROWSER_COMMAND_TEXT_UTF16,
   MAX_BROWSER_COMMAND_TEXT_UTF8,
+  browserCommandJsonIsAdmissible,
 } from "./editor_command.js";
 
 /** Host-selected keyboard behavior. */

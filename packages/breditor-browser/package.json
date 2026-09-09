@@ -1,6 +1,6 @@
 {
   "name": "@breditor/browser",
-  "version": "0.3.0-alpha.2",
+  "version": "0.3.0-alpha.3",
   "description": "Framework-neutral browser runtime for the Breditor rich-text editor",
   "keywords": [
     "rich-text-editor",
@@ -40,7 +40,7 @@
     "parse5": "8.0.1"
   },
   "peerDependencies": {
-    "@breditor/wasm": "0.3.0-alpha.2"
+    "@breditor/wasm": "0.3.0-alpha.3"
   },
   "peerDependenciesMeta": {
     "@breditor/wasm": {

@@ -3,6 +3,12 @@ import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
 /** Maximum inline-format descriptors admitted by the browser ABI boundary. */
 export const MAX_BROWSER_PROFILE_FORMATS = 256;
 
+/** Maximum property declarations admitted for one inline format. */
+export const MAX_BROWSER_PROFILE_PROPERTIES_PER_FORMAT = 32;
+
+/** Maximum UTF-8 ceiling admitted by one string property declaration. */
+export const MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES = 65_536;
+
 /** Maximum intent descriptors admitted by the browser ABI boundary. */
 export const MAX_BROWSER_PROFILE_INTENTS = 1_024;
 
@@ -31,6 +37,32 @@ export interface WasmCompiledProfileDescriptorView
   readonly actionStateCount: number;
   formatKind(index: number): string | undefined;
   formatRevision(index: number): number | undefined;
+  formatPropertyCount(formatIndex: number): number | undefined;
+  formatPropertyName(formatIndex: number, propertyIndex: number): string | undefined;
+  formatPropertyPresence(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "required" | "optional" | undefined;
+  formatPropertyValueType(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "boolean" | "integer" | "string" | undefined;
+  formatPropertyIntegerMinimum(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined;
+  formatPropertyIntegerMaximum(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined;
+  formatPropertyStringMinimumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined;
+  formatPropertyStringMaximumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined;
   intentId(index: number): string | undefined;
   intentInputKind(index: number): "none" | "typed" | undefined;
   intentInputContractName(index: number): string | undefined;
@@ -56,10 +88,32 @@ export interface BrowserProfileSchemaDescriptor {
   readonly fingerprint: string;
 }
 
-/** One admitted property-free inline-format identity. */
+/** Closed scalar domain of one schema-admitted inline-format property. */
+export type BrowserProfileFormatPropertyValueType =
+  | Readonly<{ kind: "boolean" }>
+  | Readonly<{
+      kind: "integer";
+      minimum: number | null;
+      maximum: number | null;
+    }>
+  | Readonly<{
+      kind: "string";
+      minimumUtf8Bytes: number;
+      maximumUtf8Bytes: number;
+    }>;
+
+/** One canonical property declaration owned by an inline format. */
+export interface BrowserProfileFormatPropertyDescriptor {
+  readonly name: string;
+  readonly presence: "required" | "optional";
+  readonly valueType: BrowserProfileFormatPropertyValueType;
+}
+
+/** One admitted inline-format identity and its exact property contract. */
 export interface BrowserProfileFormatDescriptor {
   readonly kind: string;
   readonly revision: number;
+  readonly properties: readonly BrowserProfileFormatPropertyDescriptor[];
 }
 
 /** Exact versioned identity of one typed value contract. */
@@ -141,6 +195,14 @@ interface DescriptorMethods {
   readonly matchesProfileGeneration: WasmCompiledProfileDescriptorView["matchesProfileGeneration"];
   readonly formatKind: WasmCompiledProfileDescriptorView["formatKind"];
   readonly formatRevision: WasmCompiledProfileDescriptorView["formatRevision"];
+  readonly formatPropertyCount: WasmCompiledProfileDescriptorView["formatPropertyCount"];
+  readonly formatPropertyName: WasmCompiledProfileDescriptorView["formatPropertyName"];
+  readonly formatPropertyPresence: WasmCompiledProfileDescriptorView["formatPropertyPresence"];
+  readonly formatPropertyValueType: WasmCompiledProfileDescriptorView["formatPropertyValueType"];
+  readonly formatPropertyIntegerMinimum: WasmCompiledProfileDescriptorView["formatPropertyIntegerMinimum"];
+  readonly formatPropertyIntegerMaximum: WasmCompiledProfileDescriptorView["formatPropertyIntegerMaximum"];
+  readonly formatPropertyStringMinimumUtf8Bytes: WasmCompiledProfileDescriptorView["formatPropertyStringMinimumUtf8Bytes"];
+  readonly formatPropertyStringMaximumUtf8Bytes: WasmCompiledProfileDescriptorView["formatPropertyStringMaximumUtf8Bytes"];
   readonly intentId: WasmCompiledProfileDescriptorView["intentId"];
   readonly intentInputKind: WasmCompiledProfileDescriptorView["intentInputKind"];
   readonly intentInputContractName: WasmCompiledProfileDescriptorView["intentInputContractName"];
@@ -373,11 +435,154 @@ function readFormats(
   for (let index = 0; index < count; index += 1) {
     const kind = invoke(methods.formatKind, receiver, index);
     const revision = invoke(methods.formatRevision, receiver, index);
-    if (!isQualifiedName(kind) || !isPositiveU32(revision) || kind <= prior) return null;
+    const propertyCount = invoke(methods.formatPropertyCount, receiver, index);
+    if (
+      !isQualifiedName(kind) ||
+      !isPositiveU32(revision) ||
+      kind <= prior ||
+      !isBoundedCount(propertyCount, MAX_BROWSER_PROFILE_PROPERTIES_PER_FORMAT)
+    ) return null;
+    const properties = readFormatProperties(receiver, methods, index, propertyCount);
+    if (properties === null) return null;
     prior = kind;
-    output.push(Object.freeze({ kind, revision }));
+    output.push(Object.freeze({ kind, revision, properties: Object.freeze(properties) }));
   }
   return output;
+}
+
+function readFormatProperties(
+  receiver: WasmCompiledProfileDescriptorView,
+  methods: DescriptorMethods,
+  formatIndex: number,
+  count: number,
+): BrowserProfileFormatPropertyDescriptor[] | null {
+  const output: BrowserProfileFormatPropertyDescriptor[] = [];
+  let prior = "";
+  for (let propertyIndex = 0; propertyIndex < count; propertyIndex += 1) {
+    const name = invoke2(methods.formatPropertyName, receiver, formatIndex, propertyIndex);
+    const presence = invoke2(
+      methods.formatPropertyPresence,
+      receiver,
+      formatIndex,
+      propertyIndex,
+    );
+    const kind = invoke2(
+      methods.formatPropertyValueType,
+      receiver,
+      formatIndex,
+      propertyIndex,
+    );
+    const integerMinimum = invoke2(
+      methods.formatPropertyIntegerMinimum,
+      receiver,
+      formatIndex,
+      propertyIndex,
+    );
+    const integerMaximum = invoke2(
+      methods.formatPropertyIntegerMaximum,
+      receiver,
+      formatIndex,
+      propertyIndex,
+    );
+    const stringMinimum = invoke2(
+      methods.formatPropertyStringMinimumUtf8Bytes,
+      receiver,
+      formatIndex,
+      propertyIndex,
+    );
+    const stringMaximum = invoke2(
+      methods.formatPropertyStringMaximumUtf8Bytes,
+      receiver,
+      formatIndex,
+      propertyIndex,
+    );
+    if (
+      !isQualifiedName(name) ||
+      name <= prior ||
+      (presence !== "required" && presence !== "optional")
+    ) return null;
+    const valueType = readFormatPropertyValueType(
+      kind,
+      integerMinimum,
+      integerMaximum,
+      stringMinimum,
+      stringMaximum,
+    );
+    if (valueType === null) return null;
+    prior = name;
+    output.push(Object.freeze({ name, presence, valueType }));
+  }
+  if (!formatPropertySentinelsAreAbsent(receiver, methods, formatIndex, count)) {
+    return null;
+  }
+  return output;
+}
+
+function readFormatPropertyValueType(
+  kind: unknown,
+  integerMinimum: unknown,
+  integerMaximum: unknown,
+  stringMinimum: unknown,
+  stringMaximum: unknown,
+): BrowserProfileFormatPropertyValueType | null {
+  if (kind === "boolean") {
+    return integerMinimum === undefined &&
+      integerMaximum === undefined &&
+      stringMinimum === undefined &&
+      stringMaximum === undefined
+      ? Object.freeze({ kind })
+      : null;
+  }
+  if (kind === "integer") {
+    if (
+      stringMinimum !== undefined ||
+      stringMaximum !== undefined ||
+      !isOptionalSafeInteger(integerMinimum) ||
+      !isOptionalSafeInteger(integerMaximum) ||
+      (typeof integerMinimum === "number" &&
+        typeof integerMaximum === "number" &&
+        integerMinimum > integerMaximum)
+    ) return null;
+    return Object.freeze({
+      kind,
+      minimum: integerMinimum ?? null,
+      maximum: integerMaximum ?? null,
+    });
+  }
+  if (
+    kind !== "string" ||
+    integerMinimum !== undefined ||
+    integerMaximum !== undefined ||
+    !isU32(stringMinimum) ||
+    !isU32(stringMaximum) ||
+    stringMinimum > stringMaximum ||
+    stringMaximum > MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES
+  ) return null;
+  return Object.freeze({
+    kind,
+    minimumUtf8Bytes: stringMinimum,
+    maximumUtf8Bytes: stringMaximum,
+  });
+}
+
+function formatPropertySentinelsAreAbsent(
+  receiver: WasmCompiledProfileDescriptorView,
+  methods: DescriptorMethods,
+  formatIndex: number,
+  propertyCount: number,
+): boolean {
+  const calls: readonly Function[] = [
+    methods.formatPropertyName,
+    methods.formatPropertyPresence,
+    methods.formatPropertyValueType,
+    methods.formatPropertyIntegerMinimum,
+    methods.formatPropertyIntegerMaximum,
+    methods.formatPropertyStringMinimumUtf8Bytes,
+    methods.formatPropertyStringMaximumUtf8Bytes,
+  ];
+  return calls.every(
+    (method) => invoke2(method, receiver, formatIndex, propertyCount) === undefined,
+  );
 }
 
 function readIntents(
@@ -505,6 +710,26 @@ function descriptorSentinelsAreAbsent(
     actionStateCount: number;
   }>,
 ): boolean {
+  if (
+    invoke(methods.formatPropertyCount, receiver, counts.formatCount) !== undefined ||
+    invoke2(methods.formatPropertyName, receiver, counts.formatCount, 0) !== undefined ||
+    invoke2(methods.formatPropertyPresence, receiver, counts.formatCount, 0) !== undefined ||
+    invoke2(methods.formatPropertyValueType, receiver, counts.formatCount, 0) !== undefined ||
+    invoke2(methods.formatPropertyIntegerMinimum, receiver, counts.formatCount, 0) !== undefined ||
+    invoke2(methods.formatPropertyIntegerMaximum, receiver, counts.formatCount, 0) !== undefined ||
+    invoke2(
+      methods.formatPropertyStringMinimumUtf8Bytes,
+      receiver,
+      counts.formatCount,
+      0,
+    ) !== undefined ||
+    invoke2(
+      methods.formatPropertyStringMaximumUtf8Bytes,
+      receiver,
+      counts.formatCount,
+      0,
+    ) !== undefined
+  ) return false;
   const calls: readonly [Function, number][] = [
     [methods.formatKind, counts.formatCount],
     [methods.formatRevision, counts.formatCount],
@@ -534,6 +759,14 @@ function snapshotDescriptorMethods(
     "matchesProfileGeneration",
     "formatKind",
     "formatRevision",
+    "formatPropertyCount",
+    "formatPropertyName",
+    "formatPropertyPresence",
+    "formatPropertyValueType",
+    "formatPropertyIntegerMinimum",
+    "formatPropertyIntegerMaximum",
+    "formatPropertyStringMinimumUtf8Bytes",
+    "formatPropertyStringMaximumUtf8Bytes",
     "intentId",
     "intentInputKind",
     "intentInputContractName",
@@ -581,6 +814,17 @@ function readScalar(value: object, key: string): unknown {
 
 function invoke(method: Function, receiver: object, index: number): unknown {
   const result = Reflect.apply(method, receiver, [index]) as unknown;
+  if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor method");
+  return result;
+}
+
+function invoke2(
+  method: Function,
+  receiver: object,
+  first: number,
+  second: number,
+): unknown {
+  const result = Reflect.apply(method, receiver, [first, second]) as unknown;
   if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor method");
   return result;
 }
@@ -675,6 +919,20 @@ function isPositiveU32(value: unknown): value is number {
     Number.isInteger(value) &&
     value >= 1 &&
     value <= 4_294_967_295;
+}
+
+function isU32(value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 4_294_967_295;
+}
+
+function isOptionalSafeInteger(value: unknown): value is number | undefined {
+  return value === undefined ||
+    (typeof value === "number" &&
+      Number.isSafeInteger(value) &&
+      !Object.is(value, -0));
 }
 
 function isBoundedCount(value: unknown, maximum: number): value is number {

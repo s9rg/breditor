@@ -4,6 +4,70 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.3 - 2026-09-09
+
+This source checkpoint advances the typed-property integration through Wasm
+ABI 4 and the browser runtime. It has not been published to npm or crates.io;
+registry installation remains contingent on a separate maintainer publication.
+
+### Wasm ABI 4
+
+- Added the explicit, strict, bounded
+  `BreditorCompiledProfile.fromBootstrapJsonV2()` path. Profile Bootstrap V2
+  declares typed Boolean, bounded JavaScript-safe integer, and UTF-8-bounded
+  string property contracts plus manifest-owned inline-format set bundles.
+  Bootstrap V1 remains unchanged and separately selected.
+- Added canonical property-contract getters to
+  `BreditorCompiledProfileDescriptor` and scalar property getters to
+  `BreditorProjection`, preserving property names, kinds, bounds, presence, and
+  values without exposing executable callbacks.
+- Added `executeTypedActionJson()` and `executeTypedIntentJson()`. The registered
+  action or intent supplies the exact contract identity; strict bounded JSON
+  decoding rejects duplicate keys, non-integral or unsafe numbers, malformed
+  shape, and over-limit input without reflecting attacker payloads.
+- Added a Rust-atomic `closeHistoryGroupBefore` option to action, intent, undo,
+  and redo commands. Rust runs the requested boundary and command on one private
+  checkpointed candidate, publishes both or neither, and reports an effective
+  boundary through `historyGroupClosedBefore`. Typed JSON or contract rejection
+  therefore leaves undo grouping unchanged with one action preparation.
+- Added explicit `createEngineFromDocumentJsonV3()` and
+  `createEngineFromSessionCheckpointJsonV3()` profile factories. These emit
+  Session Checkpoint, Editor State, and Commit V3 while continuing to use
+  Document V2. Existing exact-base V1 and compiled-profile V2 factories and
+  egress remain explicit compatibility paths; there is no generation sniffing
+  or automatic conversion.
+
+### Browser typed and durable path
+
+- Added the explicit `semanticProfile: { bootstrapJson, formatVersion: 2 }`
+  selector for Bootstrap V2 plus Session Checkpoint V3. Startup deep-validates
+  and freezes the full property descriptor, consumes property-bearing semantic
+  projections, and correlates schema, fingerprint, profile generation, and
+  property catalog before publishing DOM.
+- Added high-level synchronous `executeIntentJson(intentId, inputJson)` for
+  descriptor-declared typed intents. It preserves exact JSON bytes for the Wasm
+  decoder, uses the same immediate queue lease and selection-preserving command
+  path as `executeIntent()`, and returns the same redacted committed, blocked,
+  unhandled, rejected, or failed result family. A deterministic Rust rejection
+  of malformed or contract-invalid typed JSON maps to `rejected` with
+  `reason: "invalidInput"` without faulting or disposing the editor.
+- Extended canonical Document validation, defensive Session Checkpoint
+  structural preflight, IndexedDB binding, restore, export correlation, and
+  autosave capture to the explicitly selected V3 profile mode. Rust decode and
+  replay remain authoritative for aggregate retained-state limits and complete
+  checkpoint acceptance. Legacy unprofiled V1 and Bootstrap-V1 profile-aware
+  V2 modes remain unchanged and never act as fallback paths.
+
+### Remaining boundary
+
+- Typed properties now reach the browser data and programmatic command layers,
+  but callback-free rendering still uses fixed property-insensitive wrapper
+  recipes, copy HTML emits no property-derived attributes, paste remains plain
+  text, and the supported toolbar still exposes native no-input buttons. Safe
+  property-to-DOM recipes, URL/CSS policy, and typed toolbar controls are next.
+- Typed `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` and a V3
+  local-log/storage graph remain out of scope at this checkpoint.
+
 ## 0.3.0-alpha.2 - 2026-09-09
 
 This source checkpoint advances the workspace and package manifests to

@@ -31,6 +31,12 @@ export type BreditorCompiledProfileResultStatus = "profile" | "taken" | "error";
 /** Cross-language input envelope admitted by one semantic intent. */
 export type BreditorProfileIntentInputKind = "none" | "typed";
 
+/** Requiredness of one schema-admitted inline-format property. */
+export type BreditorProfilePropertyPresence = "required" | "optional";
+
+/** Closed scalar type of one schema-admitted inline-format property. */
+export type BreditorProfilePropertyValueType = "boolean" | "integer" | "string";
+
 /** Semantic source evaluated by one action-state entry. */
 export type BreditorProfileActionStateSourceKind = "direct" | "routed" | "history";
 
@@ -48,6 +54,9 @@ export type BreditorProjectionResultStatus = "projection" | "taken" | "error";
 
 /** Structural kind of one flattened semantic projection node. */
 export type BreditorProjectionNodeKind = "element" | "text";
+
+/** Scalar kind of one schema-admitted inline-format property. */
+export type BreditorProjectionPropertyValueKind = "boolean" | "integer" | "string";
 
 /** Conservative DOM invalidation derived from one proved commit. */
 export type BreditorProjectionImpact = "none" | "textContainers" | "rootSplice" | "root";
@@ -191,7 +200,7 @@ export class BreditorCommandResult {
      * Encoding is intentionally not part of command publication. `absent`
      * means the outcome is disabled/unchanged or its effective event is a
      * history-only control. `error` means publication succeeded but the
-     * mode-selected Commit V1 or V2 could not be represented within the
+     * mode-selected Commit V1, V2, or V3 could not be represented within the
      * active codec budget.
      */
     commitJson(): BreditorStringResult;
@@ -241,6 +250,10 @@ export class BreditorCommandResult {
      */
     readonly eventKind: BreditorEngineEventKind | undefined;
     /**
+     * Reports whether this command atomically closed an open history group first.
+     */
+    readonly historyGroupClosedBefore: boolean;
+    /**
      * Returns the disabled indicator value-contract name, when supported.
      */
     readonly indicatorValueContractName: string | undefined;
@@ -277,6 +290,15 @@ export class BreditorCompiledProfile {
      */
     createEngineFromDocumentJson(lineage: string, document_json: string, history_capacity: number): BreditorEngineResult;
     /**
+     * Creates a property-preserving Session V3 engine from Document V2 JSON.
+     *
+     * The document remains bound to this profile's exact schema fingerprint.
+     * Selection, pending formats, and history start empty. Every later
+     * mutation must be representable as a complete Session V3 checkpoint
+     * before it can become authoritative.
+     */
+    createEngineFromDocumentJsonV3(lineage: string, document_json: string, history_capacity: number): BreditorEngineResult;
+    /**
      * Restores an engine from strict fingerprint-bearing Session Checkpoint V2 JSON.
      *
      * Restoration replay-proves the checkpoint under this exact compiled
@@ -284,6 +306,14 @@ export class BreditorCompiledProfile {
      * profile's process-local generation.
      */
     createEngineFromSessionCheckpointJson(checkpoint_json: string): BreditorEngineResult;
+    /**
+     * Restores a property-preserving engine from strict Session V3 JSON.
+     *
+     * Restoration replay-proves current state and every retained history entry
+     * under this exact compiled schema. A failed decode consumes neither this
+     * profile nor any engine previously produced from it.
+     */
+    createEngineFromSessionCheckpointJsonV3(checkpoint_json: string): BreditorEngineResult;
     /**
      * Returns an independently disposable complete profile descriptor.
      */
@@ -296,6 +326,14 @@ export class BreditorCompiledProfile {
      * descriptor's schema fingerprint.
      */
     static fromBootstrapJson(json: string): BreditorCompiledProfileResult;
+    /**
+     * Strictly decodes and compiles one complete typed profile request.
+     *
+     * Version 2 adds closed inline-format property contracts and generated
+     * property-aware set action identities. It is selected explicitly so the
+     * original version-1 bootstrap contract remains unchanged.
+     */
+    static fromBootstrapJsonV2(json: string): BreditorCompiledProfileResult;
     /**
      * Returns an independently disposable generation handle.
      */
@@ -352,6 +390,47 @@ export class BreditorCompiledProfileDescriptor {
      * Returns one admitted inline-format identity.
      */
     formatKind(index: number): string | undefined;
+    /**
+     * Returns the number of declared properties for one admitted format.
+     *
+     * Property-free formats return zero; an out-of-range format index returns
+     * `undefined` at the JavaScript boundary.
+     */
+    formatPropertyCount(format_index: number): number | undefined;
+    /**
+     * Returns one integer property's inclusive upper bound.
+     *
+     * `undefined` means the bound is open, the property has another type, or
+     * either index is out of range.
+     */
+    formatPropertyIntegerMaximum(format_index: number, property_index: number): number | undefined;
+    /**
+     * Returns one integer property's inclusive lower bound.
+     *
+     * `undefined` means the bound is open, the property has another type, or
+     * either index is out of range.
+     */
+    formatPropertyIntegerMinimum(format_index: number, property_index: number): number | undefined;
+    /**
+     * Returns one property's qualified identity.
+     */
+    formatPropertyName(format_index: number, property_index: number): string | undefined;
+    /**
+     * Returns `required` or `optional` for one property declaration.
+     */
+    formatPropertyPresence(format_index: number, property_index: number): BreditorProfilePropertyPresence | undefined;
+    /**
+     * Returns one string property's inclusive maximum UTF-8 byte length.
+     */
+    formatPropertyStringMaximumUtf8Bytes(format_index: number, property_index: number): number | undefined;
+    /**
+     * Returns one string property's inclusive minimum UTF-8 byte length.
+     */
+    formatPropertyStringMinimumUtf8Bytes(format_index: number, property_index: number): number | undefined;
+    /**
+     * Returns `boolean`, `integer`, or `string` for one property declaration.
+     */
+    formatPropertyValueType(format_index: number, property_index: number): BreditorProfilePropertyValueType | undefined;
     /**
      * Returns one admitted inline-format persisted revision.
      */
@@ -496,7 +575,7 @@ export class BreditorEngine {
      * the authoritative core mutation. Domain rejection is returned in the
      * structured result for live typed handles.
      */
-    executeNoInputAction(expected: BreditorObservation, action_id: string): BreditorCommandResult;
+    executeNoInputAction(expected: BreditorObservation, action_id: string, close_history_group_before: boolean): BreditorCommandResult;
     /**
      * Executes one declared semantic intent whose exact input contract is none.
      *
@@ -504,7 +583,7 @@ export class BreditorEngine {
      * parsed. The core repeats the complete guard while routing and consuming
      * the cached route exactly once.
      */
-    executeNoInputIntent(expected: BreditorObservation, intent_id: string): BreditorIntentResult;
+    executeNoInputIntent(expected: BreditorObservation, intent_id: string, close_history_group_before: boolean): BreditorIntentResult;
     /**
      * Executes one registered string-input action.
      *
@@ -514,7 +593,30 @@ export class BreditorEngine {
      * Domain rejection is returned in the structured result for live typed
      * handles.
      */
-    executeStringAction(expected: BreditorObservation, action_id: string, value: string): BreditorCommandResult;
+    executeStringAction(expected: BreditorObservation, action_id: string, value: string, close_history_group_before: boolean): BreditorCommandResult;
+    /**
+     * Executes one registered typed-input action from strict bounded JSON.
+     *
+     * JavaScript supplies only the action identity and value. The exact input
+     * contract name and version come from the immutable registered descriptor,
+     * so callers cannot forge or downgrade the envelope. Stale observation
+     * rejection precedes identity and JSON admission; the authoritative core
+     * repeats the complete guard immediately before mutation. When
+     * `close_history_group_before` is true, the history close and action are
+     * admitted and published as one checkpointed candidate.
+     */
+    executeTypedActionJson(expected: BreditorObservation, action_id: string, input_json: string, close_history_group_before: boolean): BreditorCommandResult;
+    /**
+     * Routes one declared typed semantic intent from strict bounded JSON.
+     *
+     * The caller cannot name an action-input contract. Its exact identity and
+     * version are derived from the compiled intent descriptor and forwarded
+     * unchanged through routing. Stale observation rejection precedes identity
+     * and JSON admission; the core repeats the complete guard while consuming
+     * the selected route. When `close_history_group_before` is true, the
+     * history close and routed command publish as one checkpointed candidate.
+     */
+    executeTypedIntentJson(expected: BreditorObservation, intent_id: string, input_json: string, close_history_group_before: boolean): BreditorIntentResult;
     /**
      * Creates a history-free base-schema engine from strict Document V1 JSON.
      *
@@ -565,14 +667,15 @@ export class BreditorEngine {
      * Unavailable redo is an `unchanged` outcome. Domain rejection is returned
      * in the structured result for live typed handles.
      */
-    redo(expected: BreditorObservation): BreditorCommandResult;
+    redo(expected: BreditorObservation, close_history_group_before: boolean): BreditorCommandResult;
     /**
      * Reads the semantic selection at one exact guarded engine observation.
      */
     selection(expected: BreditorObservation): BreditorSelectionResult;
     /**
      * Encodes current state and retained linear history as Session Checkpoint
-     * V1 JSON for legacy constructors or V2 JSON for compiled-profile factories.
+     * V1 JSON for legacy constructors, V2 JSON for legacy compiled-profile
+     * factories, or V3 JSON for property-aware compiled-profile factories.
      *
      * The checkpoint was encoded before its session became authoritative, so
      * a live engine always returns a successful clone of the cached canonical
@@ -592,7 +695,7 @@ export class BreditorEngine {
      */
     setRangeSelection(expected: BreditorObservation, anchor_kind: BreditorSelectionPointKind, anchor_node_index: number, anchor_offset: number, anchor_affinity: BreditorSelectionAffinity, focus_kind: BreditorSelectionPointKind, focus_node_index: number, focus_offset: number, focus_affinity: BreditorSelectionAffinity): BreditorCommandResult;
     /**
-     * Encodes the current immutable editor state as mode-selected V1 or V2 JSON.
+     * Encodes the current immutable editor state in its selected checkpoint generation.
      *
      * This does not include undo/redo history. Encoding is a separate fallible
      * read, returns a structured result for a live handle, and never changes
@@ -605,7 +708,7 @@ export class BreditorEngine {
      * Unavailable undo is an `unchanged` outcome. Domain rejection is returned
      * in the structured result for live typed handles.
      */
-    undo(expected: BreditorObservation): BreditorCommandResult;
+    undo(expected: BreditorObservation, close_history_group_before: boolean): BreditorCommandResult;
 }
 
 /**
@@ -668,7 +771,8 @@ export class BreditorIntentResult {
      */
     blockedValueJson(): BreditorStringResult;
     /**
-     * Separately encodes the published commit as fingerprint-bearing Commit V2 JSON.
+     * Separately encodes the published commit as V2 for legacy/property-free
+     * engines or V3 for a property-preserving engine.
      */
     commitJson(): BreditorStringResult;
     /**
@@ -743,6 +847,10 @@ export class BreditorIntentResult {
      * Returns the complete bounded disabled-fallthrough count.
      */
     readonly fallthroughCount: number;
+    /**
+     * Reports whether this intent atomically closed an open history group first.
+     */
+    readonly historyGroupClosedBefore: boolean;
     /**
      * Returns the routed semantic intent identity.
      */
@@ -855,6 +963,30 @@ export class BreditorProjection {
      * Returns the canonical format count for a text leaf.
      */
     formatCount(index: number): number | undefined;
+    /**
+     * Returns a Boolean property's value, or `undefined` for another kind.
+     */
+    formatPropertyBoolean(index: number, format_ordinal: number, property_ordinal: number): boolean | undefined;
+    /**
+     * Returns the canonical property count for one text leaf format.
+     */
+    formatPropertyCount(index: number, format_ordinal: number): number | undefined;
+    /**
+     * Returns an integer property's exactly representable JavaScript number.
+     */
+    formatPropertyInteger(index: number, format_ordinal: number, property_ordinal: number): number | undefined;
+    /**
+     * Returns one format property's qualified name in canonical order.
+     */
+    formatPropertyName(index: number, format_ordinal: number, property_ordinal: number): string | undefined;
+    /**
+     * Returns a string property's exact Unicode scalar sequence.
+     */
+    formatPropertyString(index: number, format_ordinal: number, property_ordinal: number): string | undefined;
+    /**
+     * Returns the closed scalar kind of one projected format property.
+     */
+    formatPropertyValueKind(index: number, format_ordinal: number, property_ordinal: number): BreditorProjectionPropertyValueKind | undefined;
     /**
      * Returns one text leaf's qualified semantic format type.
      */
@@ -1175,6 +1307,7 @@ export interface InitOutput {
     readonly breditorcommandresult_disabledReasonDetailJson: (a: number) => number;
     readonly breditorcommandresult_error: (a: number) => number;
     readonly breditorcommandresult_eventKind: (a: number, b: number) => void;
+    readonly breditorcommandresult_historyGroupClosedBefore: (a: number) => number;
     readonly breditorcommandresult_indicatorValueContractName: (a: number, b: number) => void;
     readonly breditorcommandresult_indicatorValueContractVersion: (a: number) => number;
     readonly breditorcommandresult_indicatorValueJson: (a: number) => number;
@@ -1184,9 +1317,12 @@ export interface InitOutput {
     readonly breditorcommandresult_projectionUpdate: (a: number) => number;
     readonly breditorcommandresult_status: (a: number, b: number) => void;
     readonly breditorcompiledprofile_createEngineFromDocumentJson: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly breditorcompiledprofile_createEngineFromDocumentJsonV3: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly breditorcompiledprofile_createEngineFromSessionCheckpointJson: (a: number, b: number, c: number) => number;
+    readonly breditorcompiledprofile_createEngineFromSessionCheckpointJsonV3: (a: number, b: number, c: number) => number;
     readonly breditorcompiledprofile_descriptor: (a: number) => number;
     readonly breditorcompiledprofile_fromBootstrapJson: (a: number, b: number) => number;
+    readonly breditorcompiledprofile_fromBootstrapJsonV2: (a: number, b: number) => number;
     readonly breditorcompiledprofile_generation: (a: number) => number;
     readonly breditorcompiledprofile_matchesProfileGeneration: (a: number, b: number) => number;
     readonly breditorcompiledprofiledescriptor_actionStateActivationContract: (a: number, b: number, c: number) => void;
@@ -1198,6 +1334,14 @@ export interface InitOutput {
     readonly breditorcompiledprofiledescriptor_actionStateValueContractName: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_actionStateValueContractVersion: (a: number, b: number) => number;
     readonly breditorcompiledprofiledescriptor_formatKind: (a: number, b: number, c: number) => void;
+    readonly breditorcompiledprofiledescriptor_formatPropertyCount: (a: number, b: number) => number;
+    readonly breditorcompiledprofiledescriptor_formatPropertyIntegerMaximum: (a: number, b: number, c: number, d: number) => void;
+    readonly breditorcompiledprofiledescriptor_formatPropertyIntegerMinimum: (a: number, b: number, c: number, d: number) => void;
+    readonly breditorcompiledprofiledescriptor_formatPropertyName: (a: number, b: number, c: number, d: number) => void;
+    readonly breditorcompiledprofiledescriptor_formatPropertyPresence: (a: number, b: number, c: number, d: number) => void;
+    readonly breditorcompiledprofiledescriptor_formatPropertyStringMaximumUtf8Bytes: (a: number, b: number, c: number) => number;
+    readonly breditorcompiledprofiledescriptor_formatPropertyStringMinimumUtf8Bytes: (a: number, b: number, c: number) => number;
+    readonly breditorcompiledprofiledescriptor_formatPropertyValueType: (a: number, b: number, c: number, d: number) => void;
     readonly breditorcompiledprofiledescriptor_formatRevision: (a: number, b: number) => number;
     readonly breditorcompiledprofiledescriptor_intentActivationContract: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentId: (a: number, b: number, c: number) => void;
@@ -1218,9 +1362,11 @@ export interface InitOutput {
     readonly breditorengine_clearSelection: (a: number, b: number) => number;
     readonly breditorengine_closeHistoryGroup: (a: number, b: number) => number;
     readonly breditorengine_documentJson: (a: number, b: number) => number;
-    readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number) => number;
-    readonly breditorengine_executeNoInputIntent: (a: number, b: number, c: number, d: number) => number;
-    readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly breditorengine_executeNoInputAction: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly breditorengine_executeNoInputIntent: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly breditorengine_executeStringAction: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+    readonly breditorengine_executeTypedActionJson: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
+    readonly breditorengine_executeTypedIntentJson: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
     readonly breditorengine_fromDocumentJson: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly breditorengine_fromSessionCheckpointJson: (a: number, b: number) => number;
     readonly breditorengine_matchesProfileGeneration: (a: number, b: number) => number;
@@ -1228,12 +1374,12 @@ export interface InitOutput {
     readonly breditorengine_profileDescriptor: (a: number) => number;
     readonly breditorengine_profileGeneration: (a: number) => number;
     readonly breditorengine_projection: (a: number, b: number) => number;
-    readonly breditorengine_redo: (a: number, b: number) => number;
+    readonly breditorengine_redo: (a: number, b: number, c: number) => number;
     readonly breditorengine_selection: (a: number, b: number) => number;
     readonly breditorengine_sessionCheckpointJson: (a: number) => number;
     readonly breditorengine_setRangeSelection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number) => number;
     readonly breditorengine_stateJson: (a: number) => number;
-    readonly breditorengine_undo: (a: number, b: number) => number;
+    readonly breditorengine_undo: (a: number, b: number, c: number) => number;
     readonly breditorengineresult_error: (a: number) => number;
     readonly breditorengineresult_status: (a: number, b: number) => void;
     readonly breditorengineresult_takeEngine: (a: number) => number;
@@ -1257,6 +1403,7 @@ export interface InitOutput {
     readonly breditorintentresult_fallthroughPriority: (a: number, b: number) => number;
     readonly breditorintentresult_fallthroughReasonCode: (a: number, b: number, c: number) => void;
     readonly breditorintentresult_fallthroughReasonDetailJson: (a: number, b: number) => number;
+    readonly breditorintentresult_historyGroupClosedBefore: (a: number) => number;
     readonly breditorintentresult_intentId: (a: number, b: number) => void;
     readonly breditorintentresult_matchesProfileGeneration: (a: number, b: number) => number;
     readonly breditorintentresult_observation: (a: number) => number;
@@ -1272,6 +1419,12 @@ export interface InitOutput {
     readonly breditorprojection_childCount: (a: number, b: number) => number;
     readonly breditorprojection_elementType: (a: number, b: number, c: number) => void;
     readonly breditorprojection_formatCount: (a: number, b: number) => number;
+    readonly breditorprojection_formatPropertyBoolean: (a: number, b: number, c: number, d: number) => number;
+    readonly breditorprojection_formatPropertyCount: (a: number, b: number, c: number) => number;
+    readonly breditorprojection_formatPropertyInteger: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly breditorprojection_formatPropertyName: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly breditorprojection_formatPropertyString: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly breditorprojection_formatPropertyValueKind: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly breditorprojection_formatType: (a: number, b: number, c: number, d: number) => void;
     readonly breditorprojection_matchesProfileGeneration: (a: number, b: number) => number;
     readonly breditorprojection_nodeCount: (a: number) => number;

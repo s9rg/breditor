@@ -65,6 +65,41 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
     return index === 0 ? 1 : undefined;
   }
 
+  formatPropertyCount(index: number): number | undefined {
+    return index >= 0 && index < this.formatCount ? 0 : undefined;
+  }
+  formatPropertyName(_formatIndex: number, _propertyIndex: number): string | undefined {
+    return undefined;
+  }
+  formatPropertyPresence(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): "required" | "optional" | undefined {
+    return undefined;
+  }
+  formatPropertyValueType(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): "boolean" | "integer" | "string" | undefined {
+    return undefined;
+  }
+  formatPropertyIntegerMinimum(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+  formatPropertyIntegerMaximum(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+  formatPropertyStringMinimumUtf8Bytes(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+  formatPropertyStringMaximumUtf8Bytes(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+
   intentId(index: number): string | undefined {
     return index === 0 ? "breditor/format-strong" : undefined;
   }
@@ -182,6 +217,53 @@ class FakeSemanticDescriptor extends FakeDescriptor {
   }
 }
 
+class FakeTypedSemanticDescriptor extends FakeSemanticDescriptor {
+  override formatKind(index: number): string | undefined {
+    return ["breditor/strong", "example/link"][index];
+  }
+
+  override formatPropertyCount(index: number): number | undefined {
+    return index === 0 ? 0 : index === 1 ? 1 : undefined;
+  }
+
+  override formatPropertyName(
+    formatIndex: number,
+    propertyIndex: number,
+  ): string | undefined {
+    return formatIndex === 1 && propertyIndex === 0
+      ? "example/href"
+      : undefined;
+  }
+
+  override formatPropertyPresence(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "required" | undefined {
+    return formatIndex === 1 && propertyIndex === 0 ? "required" : undefined;
+  }
+
+  override formatPropertyValueType(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "string" | undefined {
+    return formatIndex === 1 && propertyIndex === 0 ? "string" : undefined;
+  }
+
+  override formatPropertyStringMinimumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined {
+    return formatIndex === 1 && propertyIndex === 0 ? 1 : undefined;
+  }
+
+  override formatPropertyStringMaximumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined {
+    return formatIndex === 1 && propertyIndex === 0 ? 2_048 : undefined;
+  }
+}
+
 class FakeError implements WasmSessionCheckpointErrorView {
   freeCalls = 0;
 
@@ -260,6 +342,17 @@ class FakeProjection implements SemanticProjectionView {
   formatType(index: number, ordinal: number): string | undefined {
     return index === 2 ? this.profile.formats[ordinal] : undefined;
   }
+
+  formatPropertyCount(index: number, formatOrdinal: number): number | undefined {
+    return index === 2 && formatOrdinal < this.profile.formats.length
+      ? 0
+      : undefined;
+  }
+  formatPropertyName(): undefined { return undefined; }
+  formatPropertyValueKind(): undefined { return undefined; }
+  formatPropertyBoolean(): undefined { return undefined; }
+  formatPropertyInteger(): undefined { return undefined; }
+  formatPropertyString(): undefined { return undefined; }
 
   free(): void {
     this.freeCalls += 1;
@@ -341,6 +434,8 @@ class FakeCompiledProfile implements WasmCompiledProfileBootstrapView {
   freeCalls = 0;
   readonly createEngineFromDocumentJson = vi.fn();
   readonly createEngineFromSessionCheckpointJson = vi.fn();
+  readonly createEngineFromDocumentJsonV3 = vi.fn();
+  readonly createEngineFromSessionCheckpointJsonV3 = vi.fn();
 
   constructor(
     readonly profileGeneration: FakeGeneration,
@@ -350,6 +445,8 @@ class FakeCompiledProfile implements WasmCompiledProfileBootstrapView {
   ) {
     this.createEngineFromDocumentJson.mockReturnValue(documentResult);
     this.createEngineFromSessionCheckpointJson.mockReturnValue(checkpointResult);
+    this.createEngineFromDocumentJsonV3.mockReturnValue(documentResult);
+    this.createEngineFromSessionCheckpointJsonV3.mockReturnValue(checkpointResult);
   }
 
   generation(): WasmProfileGenerationView {
@@ -386,10 +483,12 @@ function engineFixture(
   revision = "0",
   generation = new FakeGeneration(),
   semantic = false,
+  descriptorOverride?: FakeDescriptor,
+  projectionFormats?: readonly string[],
 ): EngineFixture {
-  const descriptor = semantic
+  const descriptor = descriptorOverride ?? (semantic
     ? new FakeSemanticDescriptor(generation)
-    : new FakeDescriptor(generation);
+    : new FakeDescriptor(generation));
   const observationFree = vi.fn();
   const observation: WasmCommandObservationView = {
     snapshotLineage: lineage,
@@ -407,7 +506,9 @@ function engineFixture(
           schemaName: "example/rich-document",
           schemaVersion: 3,
           schemaFingerprint: `sha256:${"6".repeat(64)}`,
-          formats: Object.freeze(["example/highlight"]),
+          formats: Object.freeze(
+            projectionFormats ?? ["example/highlight"],
+          ),
         })
       : undefined,
   );
@@ -428,6 +529,8 @@ function engineFixture(
     executeNoInputAction: command,
     executeNoInputIntent: command,
     executeStringAction: command,
+    executeTypedActionJson: command,
+    executeTypedIntentJson: command,
     undo: command,
     redo: command,
     closeHistoryGroup: command,
@@ -466,10 +569,12 @@ function compiledFactoryReturning(
   result: WasmCompiledProfileBootstrapResultView,
 ) {
   const fromBootstrapJson = vi.fn(() => result);
+  const fromBootstrapJsonV2 = vi.fn(() => result);
   const factory: WasmCompiledProfileBootstrapFactoryView = {
     fromBootstrapJson,
+    fromBootstrapJsonV2,
   };
-  return { factory, fromBootstrapJson };
+  return { factory, fromBootstrapJson, fromBootstrapJsonV2 };
 }
 
 function moduleFor(
@@ -502,6 +607,11 @@ const SEMANTIC_PROFILE = Object.freeze({
   bootstrapJson: "{\"format\":\"breditor/profile-bootstrap\",\"formatVersion\":1}",
 });
 
+const TYPED_SEMANTIC_PROFILE = Object.freeze({
+  bootstrapJson: "{\"format\":\"breditor/profile-bootstrap\",\"formatVersion\":2}",
+  formatVersion: 2 as const,
+});
+
 const SEMANTIC_DOCUMENT_JSON = JSON.stringify({
   format: "breditor/document",
   formatVersion: 2,
@@ -532,6 +642,34 @@ const SEMANTIC_DOCUMENT_SOURCE = Object.freeze({
   documentJson: SEMANTIC_DOCUMENT_JSON,
   historyCapacity: 100,
   semanticProfile: SEMANTIC_PROFILE,
+});
+
+const TYPED_SEMANTIC_DOCUMENT_JSON = JSON.stringify({
+  format: "breditor/document",
+  formatVersion: 2,
+  schema: { name: "example/rich-document", version: 3 },
+  schemaFingerprint: `sha256:${"6".repeat(64)}`,
+  root: {
+    kind: "element",
+    type: "breditor/document",
+    entityId: null,
+    properties: {},
+    children: [{
+      kind: "element",
+      type: "breditor/paragraph",
+      entityId: null,
+      properties: {},
+      children: [{ kind: "text", text: "hello", formats: [] }],
+    }],
+  },
+});
+
+const TYPED_SEMANTIC_DOCUMENT_SOURCE = Object.freeze({
+  kind: "document" as const,
+  lineageId: "bootstrap-tests",
+  documentJson: TYPED_SEMANTIC_DOCUMENT_JSON,
+  historyCapacity: 100,
+  semanticProfile: TYPED_SEMANTIC_PROFILE,
 });
 
 const SEMANTIC_CHECKPOINT_JSON = JSON.stringify({
@@ -738,6 +876,68 @@ describe("Wasm engine bootstrap", () => {
       SEMANTIC_CHECKPOINT_JSON,
     );
     expect(profile.createEngineFromDocumentJson).not.toHaveBeenCalled();
+    result.observation.free();
+    result.profileGeneration.free();
+    result.engine.free();
+  });
+
+  it("selects Bootstrap V2 and the property-preserving V3 engine without sniffing", () => {
+    const token = {};
+    const profileGeneration = new FakeGeneration(token);
+    const engineGeneration = new FakeGeneration(token);
+    const fixture = engineFixture(
+      "bootstrap-tests",
+      "0",
+      engineGeneration,
+      true,
+      new FakeTypedSemanticDescriptor(engineGeneration),
+      Object.freeze([]),
+    );
+    const construction = new FakeConstructionResult("engine", fixture.engine);
+    const profile = new FakeCompiledProfile(
+      profileGeneration,
+      new FakeTypedSemanticDescriptor(profileGeneration),
+      construction,
+    );
+    const compiledFactory = compiledFactoryReturning(
+      new FakeCompiledProfileResult("profile", profile),
+    );
+    const legacy = factoryReturning(
+      new FakeConstructionResult("error", undefined, new FakeError()),
+    );
+
+    const result = bootstrapWasmEngine(
+      moduleFor(legacy.factory, compiledFactory.factory),
+      TYPED_SEMANTIC_DOCUMENT_SOURCE,
+    );
+
+    expect(result.ok, result.ok ? undefined : result.error.code).toBe(true);
+    if (!result.ok) throw new Error(result.error.code);
+    expect(result.durableMode).toBe("v3");
+    expect(result.profileDescriptor.formats[1]).toEqual({
+      kind: "example/link",
+      revision: 2,
+      properties: [{
+        name: "example/href",
+        presence: "required",
+        valueType: {
+          kind: "string",
+          minimumUtf8Bytes: 1,
+          maximumUtf8Bytes: 2_048,
+        },
+      }],
+    });
+    expect(compiledFactory.fromBootstrapJsonV2).toHaveBeenCalledExactlyOnceWith(
+      TYPED_SEMANTIC_PROFILE.bootstrapJson,
+    );
+    expect(compiledFactory.fromBootstrapJson).not.toHaveBeenCalled();
+    expect(profile.createEngineFromDocumentJsonV3).toHaveBeenCalledExactlyOnceWith(
+      "bootstrap-tests",
+      TYPED_SEMANTIC_DOCUMENT_JSON,
+      100,
+    );
+    expect(profile.createEngineFromDocumentJson).not.toHaveBeenCalled();
+    expect(legacy.fromDocumentJson).not.toHaveBeenCalled();
     result.observation.free();
     result.profileGeneration.free();
     result.engine.free();
@@ -1285,7 +1485,7 @@ describe("Wasm engine bootstrap", () => {
     const replacementFree = vi.fn();
     Reflect.set(fixture.engine, "undo", replacementCommand);
     Reflect.set(fixture.engine, "free", replacementFree);
-    result.engine.undo(result.observation);
+    result.engine.undo(result.observation, false);
     expect(originalCommand).toHaveBeenCalledOnce();
     expect(replacementCommand).not.toHaveBeenCalled();
     result.engine.free();
@@ -1327,7 +1527,7 @@ describe("Wasm engine bootstrap", () => {
     );
     if (!result.ok) throw new Error("bootstrap failed");
 
-    expect(() => result.engine.undo(result.observation)).toThrow(
+    expect(() => result.engine.undo(result.observation, false)).toThrow(
       "generated engine returned its private owner",
     );
     expect(fixture.engineFree).not.toHaveBeenCalled();

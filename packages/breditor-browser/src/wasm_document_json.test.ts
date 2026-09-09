@@ -30,8 +30,62 @@ const V2_CONTRACT: WasmDurableJsonContract = Object.freeze({
     fingerprint: PROFILE_FINGERPRINT,
   }),
   formats: Object.freeze([
-    Object.freeze({ kind: "breditor/strong", revision: 1 }),
-    Object.freeze({ kind: "example/highlight", revision: 2 }),
+    Object.freeze({ kind: "breditor/strong", revision: 1, properties: Object.freeze([]) }),
+    Object.freeze({ kind: "example/highlight", revision: 2, properties: Object.freeze([]) }),
+  ]),
+});
+const LINK_PROPERTIES = Object.freeze([
+  Object.freeze({
+    name: "example/enabled",
+    presence: "required" as const,
+    valueType: Object.freeze({ kind: "boolean" as const }),
+  }),
+  Object.freeze({
+    name: "example/href",
+    presence: "required" as const,
+    valueType: Object.freeze({
+      kind: "string" as const,
+      minimumUtf8Bytes: 1,
+      maximumUtf8Bytes: 12,
+    }),
+  }),
+  Object.freeze({
+    name: "example/priority",
+    presence: "optional" as const,
+    valueType: Object.freeze({
+      kind: "integer" as const,
+      minimum: -2,
+      maximum: 9,
+    }),
+  }),
+]);
+const V3_CONTRACT: WasmDurableJsonContract = Object.freeze({
+  mode: "v3",
+  schema: V2_CONTRACT.schema,
+  formats: Object.freeze([
+    Object.freeze({ kind: "breditor/strong", revision: 1, properties: Object.freeze([]) }),
+    Object.freeze({ kind: "example/link", revision: 1, properties: LINK_PROPERTIES }),
+  ]),
+});
+const PROPERTY_BUDGET_CONTRACT: WasmDurableJsonContract = Object.freeze({
+  mode: "v3",
+  schema: V2_CONTRACT.schema,
+  formats: Object.freeze([
+    Object.freeze({
+      kind: "example/value",
+      revision: 1,
+      properties: Object.freeze([
+        Object.freeze({
+          name: "example/value",
+          presence: "required" as const,
+          valueType: Object.freeze({
+            kind: "string" as const,
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: 65_536,
+          }),
+        }),
+      ]),
+    }),
   ]),
 });
 
@@ -63,6 +117,108 @@ class FakeProfileDescriptor implements WasmCompiledProfileDescriptorView {
 
   formatRevision(index: number): number | undefined {
     return [1, 2][index];
+  }
+
+  formatPropertyCount(index: number): number | undefined {
+    return index >= 0 && index < this.formatCount ? 0 : undefined;
+  }
+
+  formatPropertyName(): undefined { return undefined; }
+  formatPropertyPresence(): undefined { return undefined; }
+  formatPropertyValueType(): undefined { return undefined; }
+  formatPropertyIntegerMinimum(): undefined { return undefined; }
+  formatPropertyIntegerMaximum(): undefined { return undefined; }
+  formatPropertyStringMinimumUtf8Bytes(): undefined { return undefined; }
+  formatPropertyStringMaximumUtf8Bytes(): undefined { return undefined; }
+
+  intentId(): undefined { return undefined; }
+  intentInputKind(): undefined { return undefined; }
+  intentInputContractName(): undefined { return undefined; }
+  intentInputContractVersion(): undefined { return undefined; }
+  intentActivationContract(): undefined { return undefined; }
+  intentValueContractName(): undefined { return undefined; }
+  intentValueContractVersion(): undefined { return undefined; }
+  actionStateId(): undefined { return undefined; }
+  actionStateSourceKind(): undefined { return undefined; }
+  actionStateSourceActionId(): undefined { return undefined; }
+  actionStateSourceIntentId(): undefined { return undefined; }
+  actionStateHistoryDirection(): undefined { return undefined; }
+  actionStateActivationContract(): undefined { return undefined; }
+  actionStateValueContractName(): undefined { return undefined; }
+  actionStateValueContractVersion(): undefined { return undefined; }
+  free(): void {}
+}
+
+class FakeTypedProfileDescriptor implements WasmCompiledProfileDescriptorView {
+  readonly schemaName = "example/rich-document";
+  readonly schemaVersion = 3;
+  readonly schemaFingerprint = PROFILE_FINGERPRINT;
+  readonly formatCount = 2;
+  readonly intentCount = 0;
+  readonly actionStateCount = 0;
+
+  constructor(readonly generation: WasmProfileGenerationView) {}
+
+  matchesProfileGeneration(generation: WasmProfileGenerationView): boolean {
+    return generation === this.generation;
+  }
+
+  formatKind(index: number): string | undefined {
+    return ["breditor/strong", "example/link"][index];
+  }
+
+  formatRevision(index: number): number | undefined {
+    return [1, 1][index];
+  }
+
+  formatPropertyCount(index: number): number | undefined {
+    return [0, 3][index];
+  }
+
+  formatPropertyName(formatIndex: number, propertyIndex: number): string | undefined {
+    return formatIndex === 1
+      ? ["example/enabled", "example/href", "example/priority"][propertyIndex]
+      : undefined;
+  }
+
+  formatPropertyPresence(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "required" | "optional" | undefined {
+    return formatIndex === 1
+      ? (["required", "required", "optional"] as const)[propertyIndex]
+      : undefined;
+  }
+
+  formatPropertyValueType(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "boolean" | "integer" | "string" | undefined {
+    return formatIndex === 1
+      ? (["boolean", "string", "integer"] as const)[propertyIndex]
+      : undefined;
+  }
+
+  formatPropertyIntegerMinimum(formatIndex: number, propertyIndex: number): number | undefined {
+    return formatIndex === 1 && propertyIndex === 2 ? -2 : undefined;
+  }
+
+  formatPropertyIntegerMaximum(formatIndex: number, propertyIndex: number): number | undefined {
+    return formatIndex === 1 && propertyIndex === 2 ? 9 : undefined;
+  }
+
+  formatPropertyStringMinimumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined {
+    return formatIndex === 1 && propertyIndex === 1 ? 1 : undefined;
+  }
+
+  formatPropertyStringMaximumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined {
+    return formatIndex === 1 && propertyIndex === 1 ? 12 : undefined;
   }
 
   intentId(): undefined { return undefined; }
@@ -367,8 +523,14 @@ describe("Wasm Document V1 export boundary", () => {
       snapshot: EXPECTED,
       paragraphs: [{
         runs: [
-          { text: "A", formats: ["breditor/strong"] },
-          { text: "B", formats: ["example/highlight"] },
+          {
+            text: "A",
+            formatDetails: [{ kind: "breditor/strong", properties: [] }],
+          },
+          {
+            text: "B",
+            formatDetails: [{ kind: "example/highlight", properties: [] }],
+          },
         ],
       }],
     }, generation, consumedDescriptor.descriptor);
@@ -387,6 +549,198 @@ describe("Wasm Document V1 export boundary", () => {
       documentJsonMatchesProjection(differentFormats, projected.value, V2_CONTRACT),
     ).toBe(false);
     expect(documentJsonMatchesProjection(exact, projected.value)).toBe(false);
+  });
+
+  it("admits bounded scalar format properties only under the explicit V3 contract", () => {
+    const optionalOmitted = documentV2Json([paragraph([
+      formattedRunWithProperties("A", [{
+        type: "example/link",
+        properties: {
+          "example/enabled": true,
+          "example/href": "a",
+        },
+      }]),
+    ])]);
+    const full = documentV2Json([paragraph([
+      formattedRunWithProperties("A", [linkFormat("a", -2)]),
+      formattedRunWithProperties("B", [linkFormat("💡", 9)]),
+    ])]);
+
+    expect(documentJsonUtf8Bytes(optionalOmitted, V3_CONTRACT)).not.toBeNull();
+    expect(documentJsonUtf8Bytes(full, V3_CONTRACT)).not.toBeNull();
+    // V2 remains the property-free generation even though it shares Document V2.
+    expect(documentJsonUtf8Bytes(full, V2_CONTRACT)).toBeNull();
+    expect(documentJsonUtf8Bytes(full)).toBeNull();
+
+    const view = new FakeStringResult("value", full);
+    expect(consumeWasmDocumentJson(EXPECTED, view, [], V3_CONTRACT)).toMatchObject({
+      ok: true,
+      document: { documentJson: full },
+    });
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("rejects missing, unknown, duplicate, and noncanonical property names", () => {
+    const documents = [
+      documentWithLinkProperties({ "example/enabled": true }),
+      documentWithLinkProperties({
+        "example/enabled": true,
+        "example/href": "a",
+        "example/unknown": true,
+      }),
+      documentWithLinkProperties({
+        "example/href": "a",
+        "example/enabled": true,
+      }),
+      documentWithLinkProperties({
+        "example/enabled": true,
+        "example/priority": 1,
+        "example/href": "a",
+      }),
+    ];
+    const valid = documentWithLinkProperties({
+      "example/enabled": true,
+      "example/href": "a",
+    });
+    documents.push(valid.replace(
+      '"example/enabled":true',
+      '"example/enabled":true,"example/enabled":true',
+    ));
+
+    for (const document of documents) {
+      expect(documentJsonUtf8Bytes(document, V3_CONTRACT)).toBeNull();
+    }
+
+    const reversedContract: WasmDurableJsonContract = Object.freeze({
+      mode: "v3",
+      schema: V3_CONTRACT.schema,
+      formats: Object.freeze([
+        V3_CONTRACT.formats[0]!,
+        Object.freeze({
+          kind: "example/link",
+          revision: 1,
+          properties: Object.freeze([...LINK_PROPERTIES].reverse()),
+        }),
+      ]),
+    });
+    const duplicateContract: WasmDurableJsonContract = Object.freeze({
+      mode: "v3",
+      schema: V3_CONTRACT.schema,
+      formats: Object.freeze([
+        V3_CONTRACT.formats[0]!,
+        Object.freeze({
+          kind: "example/link",
+          revision: 1,
+          properties: Object.freeze([LINK_PROPERTIES[0]!, LINK_PROPERTIES[0]!]),
+        }),
+      ]),
+    });
+    expect(documentJsonUtf8Bytes(valid, reversedContract)).toBeNull();
+    expect(documentJsonUtf8Bytes(valid, duplicateContract)).toBeNull();
+  });
+
+  it("enforces exact scalar types, safe integer ranges, and UTF-8 string bounds", () => {
+    const invalidProperties: readonly Record<string, unknown>[] = [
+      { "example/enabled": "true", "example/href": "a" },
+      { "example/enabled": true, "example/href": 1 },
+      { "example/enabled": true, "example/href": "", "example/priority": 0 },
+      { "example/enabled": true, "example/href": "1234567890123" },
+      { "example/enabled": true, "example/href": "💡💡💡💡" },
+      { "example/enabled": true, "example/href": "\ud800" },
+      { "example/enabled": true, "example/href": "a", "example/priority": -3 },
+      { "example/enabled": true, "example/href": "a", "example/priority": 10 },
+      { "example/enabled": true, "example/href": "a", "example/priority": 1.5 },
+      {
+        "example/enabled": true,
+        "example/href": "a",
+        "example/priority": Number.MAX_SAFE_INTEGER + 1,
+      },
+    ];
+    for (const properties of invalidProperties) {
+      expect(documentJsonUtf8Bytes(
+        documentWithLinkProperties(properties),
+        V3_CONTRACT,
+      )).toBeNull();
+    }
+  });
+
+  it("admits exactly 10,000 property values and rejects the next value", () => {
+    const exactRuns = Array.from({ length: 10_000 }, (_, index) =>
+      propertyBudgetRun(index % 2 === 0 ? "a" : "b"));
+    const exact = documentV2Json([paragraph(exactRuns)]);
+    const over = documentV2Json([
+      paragraph(exactRuns),
+      paragraph([propertyBudgetRun("c")]),
+    ]);
+
+    expect(documentJsonUtf8Bytes(exact, PROPERTY_BUDGET_CONTRACT)).not.toBeNull();
+    expect(documentJsonUtf8Bytes(over, PROPERTY_BUDGET_CONTRACT)).toBeNull();
+  });
+
+  it("admits exactly 1 MiB of property strings and rejects the next byte", () => {
+    const left = "💡".repeat(16_384);
+    const right = "🚀".repeat(16_384);
+    const exactRuns = Array.from({ length: 16 }, (_, index) =>
+      propertyBudgetRun(index % 2 === 0 ? left : right));
+    const exact = documentV2Json([paragraph(exactRuns)]);
+    const over = documentV2Json([paragraph([
+      ...exactRuns,
+      propertyBudgetRun("é"),
+    ])]);
+
+    expect(documentJsonUtf8Bytes(exact, PROPERTY_BUDGET_CONTRACT)).not.toBeNull();
+    expect(documentJsonUtf8Bytes(over, PROPERTY_BUDGET_CONTRACT)).toBeNull();
+  });
+
+  it("correlates V3 property names and values exactly to formatDetails", () => {
+    const generation = new FakeProfileGeneration();
+    const consumedDescriptor = consumeWasmCompiledProfileDescriptor(
+      generation,
+      new FakeTypedProfileDescriptor(generation),
+    );
+    if (!consumedDescriptor.ok) throw new Error(consumedDescriptor.error.code);
+    const projected = createProfiledDocumentProjection({
+      schema: {
+        name: "example/rich-document",
+        version: 3,
+        fingerprint: PROFILE_FINGERPRINT,
+      },
+      snapshot: EXPECTED,
+      paragraphs: [{
+        runs: [{
+          text: "A",
+          formatDetails: [{
+            kind: "example/link",
+            properties: [
+              { name: "example/enabled", value: true },
+              { name: "example/href", value: "a" },
+              { name: "example/priority", value: 7 },
+            ],
+          }],
+        }],
+      }],
+    }, generation, consumedDescriptor.descriptor);
+    if (!projected.ok) throw new Error(projected.error.code);
+
+    const exact = documentWithLinkProperties({
+      "example/enabled": true,
+      "example/href": "a",
+      "example/priority": 7,
+    });
+    const wrongValue = documentWithLinkProperties({
+      "example/enabled": true,
+      "example/href": "b",
+      "example/priority": 7,
+    });
+    const missingOptional = documentWithLinkProperties({
+      "example/enabled": true,
+      "example/href": "a",
+    });
+    expect(documentJsonMatchesProjection(exact, projected.value, V3_CONTRACT)).toBe(true);
+    expect(documentJsonMatchesProjection(wrongValue, projected.value, V3_CONTRACT)).toBe(false);
+    expect(documentJsonMatchesProjection(missingOptional, projected.value, V3_CONTRACT))
+      .toBe(false);
+    expect(documentJsonMatchesProjection(exact, projected.value, V2_CONTRACT)).toBe(false);
   });
 
   it("collapses a structural core failure to fixed payload-free data and releases both handles", () => {
@@ -612,4 +966,43 @@ function formattedRun(text: string, formats: readonly string[]): unknown {
     text,
     formats: formats.map((type) => ({ type, properties: {} })),
   };
+}
+
+function formattedRunWithProperties(
+  text: string,
+  formats: readonly Readonly<{
+    type: string;
+    properties: Readonly<Record<string, unknown>>;
+  }>[],
+): unknown {
+  return { kind: "text", text, formats };
+}
+
+function linkFormat(href: string, priority?: number): Readonly<{
+  type: string;
+  properties: Readonly<Record<string, unknown>>;
+}> {
+  return {
+    type: "example/link",
+    properties: priority === undefined
+      ? { "example/enabled": true, "example/href": href }
+      : {
+          "example/enabled": true,
+          "example/href": href,
+          "example/priority": priority,
+        },
+  };
+}
+
+function documentWithLinkProperties(properties: Record<string, unknown>): string {
+  return documentV2Json([paragraph([
+    formattedRunWithProperties("A", [{ type: "example/link", properties }]),
+  ])]);
+}
+
+function propertyBudgetRun(value: string): unknown {
+  return formattedRunWithProperties("x", [{
+    type: "example/value",
+    properties: { "example/value": value },
+  }]);
 }

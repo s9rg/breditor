@@ -11,8 +11,8 @@ const declarationPath = join(
 const versionPath = join(repository, "crates/breditor-wasm/src/version.rs");
 
 const expectedNormalizedSha256 =
-  "c7be931c5b7b01035e0a03712beb80c35398e4c59e0193060a9e1fc14d8c342f";
-const expectedInitOutputMembers = 202;
+  "3ba4518297021a3e7a8a50595fbb469889decfeb07eccfc32b64643b51dd593b";
+const expectedInitOutputMembers = 223;
 
 const declaration = readFileSync(declarationPath, "utf8");
 const marker = "export interface InitOutput {";
@@ -30,7 +30,7 @@ if (members.length !== expectedInitOutputMembers) {
   fail(
     "reviewed InitOutput has " +
       members.length +
-      " members; ABI 3 requires " +
+      "; ABI 4 requires " +
       expectedInitOutputMembers,
   );
 }
@@ -48,7 +48,7 @@ const normalized =
 const actual = createHash("sha256").update(normalized).digest("hex");
 if (actual !== expectedNormalizedSha256) {
   fail(
-    "reviewed declaration changed ABI 3 (normalized SHA-256 " +
+    "reviewed declaration changed ABI 4 (normalized SHA-256 " +
       actual +
       "; expected " +
       expectedNormalizedSha256 +
@@ -59,19 +59,19 @@ if (actual !== expectedNormalizedSha256) {
 const versionSource = readFileSync(versionPath, "utf8");
 if (
   !versionSource.includes(
-    'pub const BREDITOR_WASM_ABI_VERSION: &str = "3";',
+    'pub const BREDITOR_WASM_ABI_VERSION: &str = "4";',
   )
 ) {
-  fail("Rust Wasm boundary no longer declares exact ABI generation 3");
+  fail("Rust Wasm boundary no longer declares exact ABI generation 4");
 }
 
 console.log(
-  "check-wasm-abi-v3-baseline: " +
+  "check-wasm-abi-v4-baseline: " +
     members.length +
-    " signatures and ABI generation 3 are unchanged.",
+    " signatures and ABI generation 4 are unchanged.",
 );
 
 function fail(message) {
-  console.error("check-wasm-abi-v3-baseline: " + message);
+  console.error("check-wasm-abi-v4-baseline: " + message);
   process.exit(1);
 }

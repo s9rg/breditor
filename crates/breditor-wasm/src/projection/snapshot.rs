@@ -1,5 +1,5 @@
 use breditor_core::{
-    document::{NodeKind, NodeRef},
+    document::{Format, NodeKind, NodeRef, PropertyValue, PropertyValueKind},
     profile::CompiledProfileGeneration,
     state::EditorState,
 };
@@ -50,6 +50,23 @@ impl BreditorProjection {
 
     fn node(&self, index: u32) -> Option<&ProjectionNodeRecord> {
         self.nodes.get(index as usize)
+    }
+
+    fn format(&self, index: u32, ordinal: u32) -> Option<&Format> {
+        self.node(index)
+            .and_then(|record| record.node().as_text())
+            .and_then(|text| text.formats().iter().nth(ordinal as usize))
+    }
+
+    fn format_property(
+        &self,
+        index: u32,
+        format_ordinal: u32,
+        property_ordinal: u32,
+    ) -> Option<(&str, &PropertyValue)> {
+        self.format(index, format_ordinal)
+            .and_then(|format| format.properties().iter().nth(property_ordinal as usize))
+            .map(|(name, value)| (name.as_str(), value))
     }
 }
 
@@ -169,10 +186,93 @@ impl BreditorProjection {
     #[must_use]
     #[wasm_bindgen(js_name = formatType)]
     pub fn format_type(&self, index: u32, ordinal: u32) -> Option<String> {
-        self.node(index)
-            .and_then(|record| record.node().as_text())
-            .and_then(|text| text.formats().iter().nth(ordinal as usize))
-            .map(|format| format.kind().as_str().to_owned())
+        self.format(index, ordinal).map(|format| format.kind().as_str().to_owned())
+    }
+
+    /// Returns the canonical property count for one text leaf format.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyCount)]
+    pub fn format_property_count(&self, index: u32, format_ordinal: u32) -> Option<u32> {
+        self.format(index, format_ordinal)
+            .and_then(|format| u32::try_from(format.properties().len()).ok())
+    }
+
+    /// Returns one format property's qualified name in canonical order.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyName)]
+    pub fn format_property_name(
+        &self,
+        index: u32,
+        format_ordinal: u32,
+        property_ordinal: u32,
+    ) -> Option<String> {
+        self.format_property(index, format_ordinal, property_ordinal)
+            .map(|(name, _)| name.to_owned())
+    }
+
+    /// Returns the closed scalar kind of one projected format property.
+    #[must_use]
+    #[wasm_bindgen(
+        js_name = formatPropertyValueKind,
+        unchecked_return_type = "BreditorProjectionPropertyValueKind | undefined"
+    )]
+    pub fn format_property_value_kind(
+        &self,
+        index: u32,
+        format_ordinal: u32,
+        property_ordinal: u32,
+    ) -> Option<String> {
+        let (_, value) = self.format_property(index, format_ordinal, property_ordinal)?;
+        match value.kind() {
+            PropertyValueKind::Boolean => Some("boolean".to_owned()),
+            PropertyValueKind::Integer => Some("integer".to_owned()),
+            PropertyValueKind::String => Some("string".to_owned()),
+            PropertyValueKind::Null | PropertyValueKind::Array | PropertyValueKind::Object => None,
+        }
+    }
+
+    /// Returns a Boolean property's value, or `undefined` for another kind.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyBoolean)]
+    pub fn format_property_boolean(
+        &self,
+        index: u32,
+        format_ordinal: u32,
+        property_ordinal: u32,
+    ) -> Option<bool> {
+        self.format_property(index, format_ordinal, property_ordinal)
+            .and_then(|(_, value)| value.as_boolean())
+    }
+
+    /// Returns an integer property's exactly representable JavaScript number.
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
+    #[wasm_bindgen(js_name = formatPropertyInteger)]
+    pub fn format_property_integer(
+        &self,
+        index: u32,
+        format_ordinal: u32,
+        property_ordinal: u32,
+    ) -> Option<f64> {
+        self.format_property(index, format_ordinal, property_ordinal)
+            .and_then(|(_, value)| value.as_integer())
+            // PropertyInteger is constrained to JavaScript's exactly
+            // representable inclusive integer range before projection.
+            .map(|value| value.get() as f64)
+    }
+
+    /// Returns a string property's exact Unicode scalar sequence.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyString)]
+    pub fn format_property_string(
+        &self,
+        index: u32,
+        format_ordinal: u32,
+        property_ordinal: u32,
+    ) -> Option<String> {
+        self.format_property(index, format_ordinal, property_ordinal)
+            .and_then(|(_, value)| value.as_string())
+            .map(str::to_owned)
     }
 }
 

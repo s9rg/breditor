@@ -114,6 +114,7 @@ export interface WasmCommandErrorView {
 /** Structural subset of the generated one-command result. */
 export interface WasmCommandResultView extends WasmProfileCorrelatedView {
   readonly status: "committed" | "disabled" | "unchanged" | "error";
+  readonly historyGroupClosedBefore: boolean;
   readonly eventKind:
     | "action"
     | "selection"
@@ -136,6 +137,7 @@ export interface WasmCommandResultView extends WasmProfileCorrelatedView {
 /** Structural subset of the generated semantic-intent route result. */
 export interface WasmIntentResultView extends WasmProfileCorrelatedView {
   readonly status: "committed" | "blocked" | "unhandled" | "error";
+  readonly historyGroupClosedBefore: boolean;
   readonly intentId: string | undefined;
   readonly bindingId: string | undefined;
   readonly actionId: string | undefined;
@@ -196,18 +198,39 @@ export interface WasmCommandEngineView extends WasmProfileCorrelatedView {
   executeNoInputAction(
     expected: WasmCommandObservationView,
     actionId: string,
+    closeHistoryGroupBefore: boolean,
   ): WasmCommandResultView;
   executeNoInputIntent(
     expected: WasmCommandObservationView,
     intentId: string,
+    closeHistoryGroupBefore: boolean,
   ): WasmIntentResultView;
   executeStringAction(
     expected: WasmCommandObservationView,
     actionId: string,
     value: string,
+    closeHistoryGroupBefore: boolean,
   ): WasmCommandResultView;
-  undo(expected: WasmCommandObservationView): WasmCommandResultView;
-  redo(expected: WasmCommandObservationView): WasmCommandResultView;
+  executeTypedActionJson(
+    expected: WasmCommandObservationView,
+    actionId: string,
+    inputJson: string,
+    closeHistoryGroupBefore: boolean,
+  ): WasmCommandResultView;
+  executeTypedIntentJson(
+    expected: WasmCommandObservationView,
+    intentId: string,
+    inputJson: string,
+    closeHistoryGroupBefore: boolean,
+  ): WasmIntentResultView;
+  undo(
+    expected: WasmCommandObservationView,
+    closeHistoryGroupBefore: boolean,
+  ): WasmCommandResultView;
+  redo(
+    expected: WasmCommandObservationView,
+    closeHistoryGroupBefore: boolean,
+  ): WasmCommandResultView;
   closeHistoryGroup(
     expected: WasmCommandObservationView,
   ): WasmCommandResultView;
@@ -333,6 +356,12 @@ export type WasmCommandOutcome =
       fallthroughs: readonly WasmIntentFallthrough[];
       snapshot: WasmCommandSnapshot;
     }>
+  | Readonly<{
+      /** A typed JSON command was deterministically rejected before mutation. */
+      status: "rejected";
+      error: WasmCommandError;
+      snapshot: WasmCommandSnapshot;
+    }>
   | Readonly<{ status: "unchanged"; snapshot: WasmCommandSnapshot }>;
 
 /** Selection prestage result, including an explicit no-DOM preservation path. */
@@ -405,7 +434,16 @@ type AdapterState =
   | "faulted"
   | "disposed";
 type ExpectedEventKind =
-  "selection" | "action" | "undo" | "redo" | "closeHistoryGroup";
+  | "selection"
+  | "action"
+  | "undo"
+  | "redo"
+  | "closeHistoryGroup";
+
+interface ConsumedCommandOutcome {
+  readonly outcome: WasmCommandOutcome;
+  readonly historyGroupClosedBefore: boolean;
+}
 
 interface PreparedSelection {
   readonly kind: "none" | "preserve" | "range";
@@ -1160,10 +1198,11 @@ export class BreditorWasmCommandAdapter {
   }
 
   /**
-   * Atomically serializes selection sync, history boundary, command, and render.
+   * Serializes selection sync, one Rust-atomic history/command step, and render.
    *
-   * "Atomic" here means non-interleaved delivery, not rollback: a selection or
-   * history prestage can remain effective if a later structured command fails.
+   * Selection synchronization remains a separately published prestage. A
+   * requested history close and the following action, intent, undo, or redo
+   * are checkpoint-admitted and published together by Rust.
    */
   execute(request: EditorCommandRequest): WasmCommandSequenceOutcome {
     return this.#execute(request);
@@ -1216,24 +1255,43 @@ export class BreditorWasmCommandAdapter {
         });
       }
 
-      let boundary: WasmCommandOutcome | undefined;
-      if (engineRequest.requirements.history === "closeBefore") {
-        boundary = this.#executeOne(
-          (expected) => this.#engine.closeHistoryGroup(expected),
-          "closeHistoryGroup",
-        );
-      }
-
-      const command = engineRequest.command.kind === "intent"
-        ? this.#executeIntent(engineRequest.command.intentId)
-        : this.#executeOne(
+      const closeBefore = engineRequest.requirements.history === "closeBefore";
+      const boundarySnapshot = this.#snapshot;
+      const consumed = engineRequest.command.kind === "intent"
+        ? this.#executeIntent(engineRequest.command, closeBefore)
+        : this.#executeOneWithBoundary(
             (expected) =>
-              invokeEngineCommand(this.#engine, expected, engineRequest.command),
+              invokeEngineCommand(
+                this.#engine,
+                expected,
+                engineRequest.command,
+                closeBefore,
+              ),
             expectedEventKind(engineRequest.command),
             engineRequest.command.kind === "action"
               ? engineRequest.command.actionId
               : undefined,
+            closeBefore,
+            engineRequest.command.kind === "action" &&
+              engineRequest.command.input.kind === "json",
           );
+      const command = consumed.outcome;
+      if (command.status === "rejected") {
+        this.#state = "live";
+        return Object.freeze({
+          status: "delivered",
+          selection: selectionOutcome,
+          boundary: undefined,
+          command,
+          rendered: this.#rendered,
+        });
+      }
+      const boundary = closeBefore
+        ? historyBoundaryOutcome(
+            consumed.historyGroupClosedBefore,
+            boundarySnapshot,
+          )
+        : undefined;
       this.#state = "live";
       return Object.freeze({
         status: "delivered",
@@ -1380,33 +1438,81 @@ export class BreditorWasmCommandAdapter {
     invoke: (expected: WasmCommandObservationView) => WasmCommandResultView,
     expectedKind: ExpectedEventKind,
     expectedActionId?: string,
+    containTypedRejection = false,
   ): WasmCommandOutcome {
-    const observation = this.#requireObservation();
-    const result = invoke(observation);
-    return this.#consumeResult(result, expectedKind, expectedActionId);
+    return this.#executeOneWithBoundary(
+      invoke,
+      expectedKind,
+      expectedActionId,
+      false,
+      containTypedRejection,
+    ).outcome;
   }
 
-  #executeIntent(intentId: string): WasmCommandOutcome {
+  #executeOneWithBoundary(
+    invoke: (expected: WasmCommandObservationView) => WasmCommandResultView,
+    expectedKind: ExpectedEventKind,
+    expectedActionId: string | undefined,
+    historyBoundaryRequested: boolean,
+    containTypedRejection: boolean,
+  ): ConsumedCommandOutcome {
+    const observation = this.#requireObservation();
+    const result = invoke(observation);
+    return this.#consumeResult(
+      result,
+      expectedKind,
+      expectedActionId,
+      historyBoundaryRequested,
+      containTypedRejection,
+    );
+  }
+
+  #executeIntent(
+    command: Extract<EngineCommand, { readonly kind: "intent" }>,
+    historyBoundaryRequested: boolean,
+  ): ConsumedCommandOutcome {
     const declaration = declaredIntent(
       this.#profileDescriptor,
-      intentId,
+      command.intentId,
     );
-    if (declaration === undefined || declaration.input.kind !== "none") {
+    if (
+      declaration === undefined ||
+      declaration.input.kind !== (command.input.kind === "none" ? "none" : "typed")
+    ) {
       throw new TypeError(
-        "intent command is not declared with a no-input contract",
+        "intent command input does not match its compiled contract",
       );
     }
     const observation = this.#requireObservation();
-    const result = this.#engine.executeNoInputIntent(observation, intentId);
-    return this.#consumeIntentResult(result, declaration);
+    const result = command.input.kind === "none"
+      ? this.#engine.executeNoInputIntent(
+          observation,
+          command.intentId,
+          historyBoundaryRequested,
+        )
+      : this.#engine.executeTypedIntentJson(
+          observation,
+          command.intentId,
+          command.input.value,
+          historyBoundaryRequested,
+        );
+    return this.#consumeIntentResult(
+      result,
+      declaration,
+      historyBoundaryRequested,
+      command.input.kind === "json",
+    );
   }
 
   #consumeResult(
     result: WasmCommandResultView,
     expectedKind: ExpectedEventKind,
     expectedActionId: string | undefined,
-  ): WasmCommandOutcome {
+    historyBoundaryRequested: boolean,
+    containTypedRejection: boolean,
+  ): ConsumedCommandOutcome {
     const previous = this.#requireObservation();
+    const boundarySnapshot = this.#snapshot;
     if (
       (result as unknown) === previous ||
       (result as unknown) === this.#engineOwner ||
@@ -1448,10 +1554,27 @@ export class BreditorWasmCommandAdapter {
     let updateView: SemanticProjectionUpdateView | undefined;
     try {
       const status = result.status;
+      const historyGroupClosedBefore = result.historyGroupClosedBefore;
       const eventKind = result.eventKind;
       const disabledActionId = result.disabledActionId;
       const disabledReasonCode = result.disabledReasonCode;
       const activation = result.activation;
+      if (!generatedScalarsAreSynchronous([
+        status,
+        historyGroupClosedBefore,
+        eventKind,
+        disabledActionId,
+        disabledReasonCode,
+        activation,
+      ])) {
+        throw new TypeError("Wasm command result scalars are asynchronous");
+      }
+      if (
+        typeof historyGroupClosedBefore !== "boolean" ||
+        (historyGroupClosedBefore && !historyBoundaryRequested)
+      ) {
+        throw new TypeError("Wasm command history-boundary result is invalid");
+      }
       errorView = result.error;
       if (errorView !== undefined) {
         claimSynchronousGeneratedHandle(owned, errorView, protectedHandles);
@@ -1477,6 +1600,7 @@ export class BreditorWasmCommandAdapter {
 
       if (status === "error") {
         if (
+          historyGroupClosedBefore ||
           eventKind !== undefined ||
           disabledActionId !== undefined ||
           disabledReasonCode !== undefined ||
@@ -1494,6 +1618,19 @@ export class BreditorWasmCommandAdapter {
         if (!cleanup.ok) throw cleanup.error;
         if (copiedError.stale) {
           this.#state = "faulted";
+        }
+        if (
+          containTypedRejection &&
+          typedPreflightErrorIsDeterministicRejection(copiedError)
+        ) {
+          return Object.freeze({
+            outcome: Object.freeze({
+              status: "rejected",
+              error: copiedError,
+              snapshot: this.#snapshot,
+            }),
+            historyGroupClosedBefore: false,
+          });
         }
         throw new KnownCommandRejection(copiedError);
       }
@@ -1633,6 +1770,9 @@ export class BreditorWasmCommandAdapter {
       this.#projection = transition.projection;
       this.#rendered = transition.rendered;
       successor = undefined;
+      if (historyGroupClosedBefore) {
+        this.#publishCoreCommit("closeHistoryGroup", boundarySnapshot);
+      }
       if (outcome.status === "committed") {
         this.#publishCoreCommit(outcome.eventKind, outcome.snapshot);
       }
@@ -1644,7 +1784,7 @@ export class BreditorWasmCommandAdapter {
         this.#state = "reconcile";
         throw new DomReconciliationRequired();
       }
-      return outcome;
+      return Object.freeze({ outcome, historyGroupClosedBefore });
     } finally {
       const cleanup = releaseGeneratedHandles(owned);
       if (!cleanup.ok && this.#state === "executing") {
@@ -1657,8 +1797,11 @@ export class BreditorWasmCommandAdapter {
   #consumeIntentResult(
     result: WasmIntentResultView,
     declaration: BrowserProfileIntentDescriptor,
-  ): WasmCommandOutcome {
+    historyBoundaryRequested: boolean,
+    containTypedRejection: boolean,
+  ): ConsumedCommandOutcome {
     const previous = this.#requireObservation();
+    const boundarySnapshot = this.#snapshot;
     if (
       (result as unknown) === previous ||
       (result as unknown) === this.#engineOwner ||
@@ -1700,6 +1843,7 @@ export class BreditorWasmCommandAdapter {
     let updateView: SemanticProjectionUpdateView | undefined;
     try {
       const status = result.status;
+      const historyGroupClosedBefore = result.historyGroupClosedBefore;
       const intentId = result.intentId;
       const bindingId = result.bindingId;
       const actionId = result.actionId;
@@ -1712,6 +1856,7 @@ export class BreditorWasmCommandAdapter {
       const fallthroughCount = result.fallthroughCount;
       if (!generatedScalarsAreSynchronous([
         status,
+        historyGroupClosedBefore,
         intentId,
         bindingId,
         actionId,
@@ -1724,6 +1869,12 @@ export class BreditorWasmCommandAdapter {
         fallthroughCount,
       ])) {
         throw new TypeError("Wasm intent result scalars are asynchronous");
+      }
+      if (
+        typeof historyGroupClosedBefore !== "boolean" ||
+        (historyGroupClosedBefore && !historyBoundaryRequested)
+      ) {
+        throw new TypeError("Wasm intent history-boundary result is invalid");
       }
       const fallthroughs = readIntentFallthroughs(result, fallthroughCount);
 
@@ -1754,6 +1905,7 @@ export class BreditorWasmCommandAdapter {
 
       if (status === "error") {
         if (
+          historyGroupClosedBefore ||
           intentId !== undefined ||
           bindingId !== undefined ||
           actionId !== undefined ||
@@ -1777,6 +1929,19 @@ export class BreditorWasmCommandAdapter {
         const cleanup = releaseGeneratedHandles(owned);
         if (!cleanup.ok) throw cleanup.error;
         if (copiedError.stale) this.#state = "faulted";
+        if (
+          containTypedRejection &&
+          typedPreflightErrorIsDeterministicRejection(copiedError)
+        ) {
+          return Object.freeze({
+            outcome: Object.freeze({
+              status: "rejected",
+              error: copiedError,
+              snapshot: this.#snapshot,
+            }),
+            historyGroupClosedBefore: false,
+          });
+        }
         throw new KnownCommandRejection(copiedError);
       }
 
@@ -1939,6 +2104,9 @@ export class BreditorWasmCommandAdapter {
       this.#projection = transition.projection;
       this.#rendered = transition.rendered;
       successor = undefined;
+      if (historyGroupClosedBefore) {
+        this.#publishCoreCommit("closeHistoryGroup", boundarySnapshot);
+      }
       if (outcome.status === "committed") {
         this.#publishCoreCommit("intent", outcome.snapshot);
       }
@@ -1950,7 +2118,7 @@ export class BreditorWasmCommandAdapter {
         this.#state = "reconcile";
         throw new DomReconciliationRequired();
       }
-      return outcome;
+      return Object.freeze({ outcome, historyGroupClosedBefore });
     } finally {
       const cleanup = releaseGeneratedHandles(owned);
       if (!cleanup.ok && this.#state === "executing") {
@@ -2263,6 +2431,7 @@ function invokeEngineCommand(
   engine: WasmCommandEngineView,
   expected: WasmCommandObservationView,
   command: EngineCommand,
+  closeHistoryGroupBefore: boolean,
 ): WasmCommandResultView {
   if (command.kind === "selection") {
     throw new TypeError(
@@ -2271,8 +2440,8 @@ function invokeEngineCommand(
   }
   if (command.kind === "history") {
     return command.operation === "undo"
-      ? engine.undo(expected)
-      : engine.redo(expected);
+      ? engine.undo(expected, closeHistoryGroupBefore)
+      : engine.redo(expected, closeHistoryGroupBefore);
   }
   if (command.kind === "control") {
     return engine.closeHistoryGroup(expected);
@@ -2281,12 +2450,38 @@ function invokeEngineCommand(
     throw new TypeError("semantic intents use the intent result boundary");
   }
   return command.input.kind === "none"
-    ? engine.executeNoInputAction(expected, command.actionId)
-    : engine.executeStringAction(
+    ? engine.executeNoInputAction(
         expected,
         command.actionId,
-        command.input.value,
-      );
+        closeHistoryGroupBefore,
+      )
+    : command.input.kind === "string"
+      ? engine.executeStringAction(
+          expected,
+          command.actionId,
+          command.input.value,
+          closeHistoryGroupBefore,
+        )
+      : engine.executeTypedActionJson(
+          expected,
+          command.actionId,
+          command.input.value,
+          closeHistoryGroupBefore,
+        );
+}
+
+function historyBoundaryOutcome(
+  closed: boolean,
+  snapshot: WasmCommandSnapshot,
+): WasmCommandOutcome {
+  return closed
+    ? Object.freeze({
+        status: "committed",
+        eventKind: "closeHistoryGroup",
+        snapshot,
+        render: undefined,
+      })
+    : Object.freeze({ status: "unchanged", snapshot });
 }
 
 function expectedEventKind(command: EngineCommand): ExpectedEventKind {
@@ -2321,7 +2516,11 @@ function snapshotAdapterOptions(
   let record = readExactDataRecord(value, [...legacyKeys, "durableMode"]);
   if (record === null) {
     record = readExactDataRecord(value, legacyKeys);
-  } else if (record["durableMode"] === "v1" || record["durableMode"] === "v2") {
+  } else if (
+    record["durableMode"] === "v1" ||
+    record["durableMode"] === "v2" ||
+    record["durableMode"] === "v3"
+  ) {
     durableMode = record["durableMode"];
   } else {
     return null;
@@ -2368,12 +2567,13 @@ function durableContractForProfile(
       descriptor.schema.fingerprint === BASE_SCHEMA_FINGERPRINT &&
       descriptor.formats.length === 1 &&
       descriptor.formats[0]?.kind === "breditor/strong" &&
-      descriptor.formats[0]?.revision === 1
+      descriptor.formats[0]?.revision === 1 &&
+      descriptor.formats[0]?.properties.length === 0
       ? Object.freeze({ mode: "v1" })
       : null;
   }
   return Object.freeze({
-    mode: "v2",
+    mode,
     schema: descriptor.schema,
     formats: descriptor.formats,
   });
@@ -2448,24 +2648,33 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
     const executeNoInputAction = receiver.executeNoInputAction;
     const executeNoInputIntent = receiver.executeNoInputIntent;
     const executeStringAction = receiver.executeStringAction;
+    const executeTypedActionJson = receiver.executeTypedActionJson;
+    const executeTypedIntentJson = receiver.executeTypedIntentJson;
     const undo = receiver.undo;
     const redo = receiver.redo;
     const closeHistoryGroup = receiver.closeHistoryGroup;
     const matchesProfileGeneration = receiver.matchesProfileGeneration;
+    const methods: readonly unknown[] = [
+      actionStates,
+      sessionCheckpointJson,
+      documentJson,
+      clearSelection,
+      setRangeSelection,
+      selection,
+      executeNoInputAction,
+      executeNoInputIntent,
+      executeStringAction,
+      executeTypedActionJson,
+      executeTypedIntentJson,
+      undo,
+      redo,
+      closeHistoryGroup,
+      matchesProfileGeneration,
+    ];
     if (
-      typeof actionStates !== "function" ||
-      typeof sessionCheckpointJson !== "function" ||
-      typeof documentJson !== "function" ||
-      typeof clearSelection !== "function" ||
-      typeof setRangeSelection !== "function" ||
-      typeof selection !== "function" ||
-      typeof executeNoInputAction !== "function" ||
-      typeof executeNoInputIntent !== "function" ||
-      typeof executeStringAction !== "function" ||
-      typeof undo !== "function" ||
-      typeof redo !== "function" ||
-      typeof closeHistoryGroup !== "function" ||
-      typeof matchesProfileGeneration !== "function"
+      methods.some((method) =>
+        typeof method !== "function" || containGeneratedThenable(method)
+      )
     ) {
       return null;
     }
@@ -2501,14 +2710,28 @@ function snapshotEngineView(value: unknown): WasmCommandEngineView | null {
           focusAffinity,
         ]),
       selection: (expected) => Reflect.apply(selection, value, [expected]),
-      executeNoInputAction: (expected, actionId) =>
-        Reflect.apply(executeNoInputAction, value, [expected, actionId]),
-      executeNoInputIntent: (expected, intentId) =>
-        Reflect.apply(executeNoInputIntent, value, [expected, intentId]),
-      executeStringAction: (expected, actionId, input) =>
-        Reflect.apply(executeStringAction, value, [expected, actionId, input]),
-      undo: (expected) => Reflect.apply(undo, value, [expected]),
-      redo: (expected) => Reflect.apply(redo, value, [expected]),
+      executeNoInputAction: (expected, actionId, closeBefore) =>
+        Reflect.apply(executeNoInputAction, value, [expected, actionId, closeBefore]),
+      executeNoInputIntent: (expected, intentId, closeBefore) =>
+        Reflect.apply(executeNoInputIntent, value, [expected, intentId, closeBefore]),
+      executeStringAction: (expected, actionId, input, closeBefore) =>
+        Reflect.apply(executeStringAction, value, [expected, actionId, input, closeBefore]),
+      executeTypedActionJson: (expected, actionId, inputJson, closeBefore) =>
+        Reflect.apply(executeTypedActionJson, value, [
+          expected,
+          actionId,
+          inputJson,
+          closeBefore,
+        ]),
+      executeTypedIntentJson: (expected, intentId, inputJson, closeBefore) =>
+        Reflect.apply(executeTypedIntentJson, value, [
+          expected,
+          intentId,
+          inputJson,
+          closeBefore,
+        ]),
+      undo: (expected, closeBefore) => Reflect.apply(undo, value, [expected, closeBefore]),
+      redo: (expected, closeBefore) => Reflect.apply(redo, value, [expected, closeBefore]),
       closeHistoryGroup: (expected) =>
         Reflect.apply(closeHistoryGroup, value, [expected]),
       matchesProfileGeneration: (generation) =>
@@ -2986,6 +3209,26 @@ function isStableCode(value: string): boolean {
     value.length <= 128 &&
     /^[a-z][a-z0-9._-]*(?:\/[a-z][a-z0-9._-]*)?$/u.test(value)
   );
+}
+
+function typedPreflightErrorIsDeterministicRejection(
+  error: WasmCommandError,
+): boolean {
+  if (error.stale) return false;
+  switch (error.code) {
+    case "breditor_wasm.action_value_json_limit":
+    case "breditor_wasm.invalid_action_value_json":
+    case "breditor_wasm.invalid_action_id":
+    case "breditor_wasm.unknown_action":
+    case "breditor_wasm.action_rejects_typed_input":
+    case "breditor_wasm.invalid_intent_id":
+    case "breditor_wasm.unknown_intent":
+    case "breditor_wasm.intent_rejects_typed_input":
+    case "breditor_wasm.typed_input_rejected":
+      return true;
+    default:
+      return false;
+  }
 }
 
 function canonicalU64(value: string): boolean {

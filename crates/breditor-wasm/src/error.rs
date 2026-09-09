@@ -9,6 +9,7 @@ use breditor_core::{
             INSERT_TEXT_EMPTY_INPUT_CODE, INSERT_TEXT_INPUT_LIMIT_CODE,
             INSERT_TEXT_INPUT_NOT_STRING_CODE,
         },
+        routing::IntentRouteError,
     },
     codec::CodecErrorCode,
     engine::{CheckpointedEditorEngineError, EditorEngineError},
@@ -22,10 +23,14 @@ pub(crate) const INVALID_ACTION_ID_CODE: &str = "breditor_wasm.invalid_action_id
 pub(crate) const UNKNOWN_ACTION_CODE: &str = "breditor_wasm.unknown_action";
 pub(crate) const ACTION_REQUIRES_STRING_CODE: &str = "breditor_wasm.action_requires_string_input";
 pub(crate) const ACTION_REJECTS_STRING_CODE: &str = "breditor_wasm.action_rejects_string_input";
+pub(crate) const ACTION_REJECTS_TYPED_CODE: &str = "breditor_wasm.action_rejects_typed_input";
 pub(crate) const UNSUPPORTED_ACTION_INPUT_CODE: &str =
     "breditor_wasm.unsupported_action_input_shape";
 pub(crate) const STRING_INPUT_LIMIT_CODE: &str = "breditor_wasm.string_input_limit";
 pub(crate) const ACTION_VALUE_ENCODING_CODE: &str = "breditor_wasm.action_value_encoding";
+pub(crate) const ACTION_VALUE_JSON_LIMIT_CODE: &str = "breditor_wasm.action_value_json_limit";
+pub(crate) const INVALID_ACTION_VALUE_JSON_CODE: &str = "breditor_wasm.invalid_action_value_json";
+pub(crate) const TYPED_INPUT_REJECTED_CODE: &str = "breditor_wasm.typed_input_rejected";
 pub(crate) const INVALID_SELECTION_POINT_KIND_CODE: &str =
     "breditor_wasm.invalid_selection_point_kind";
 pub(crate) const INVALID_SELECTION_COORDINATE_CODE: &str =
@@ -39,6 +44,10 @@ pub(crate) const INVALID_PROFILE_BOOTSTRAP_CODE: &str = "breditor_wasm.invalid_p
 pub(crate) const PROFILE_COMPILATION_CODE: &str = "breditor_wasm.profile_compilation";
 pub(crate) const INVALID_INTENT_ID_CODE: &str = "breditor_wasm.invalid_intent_id";
 pub(crate) const INTENT_REQUIRES_INPUT_CODE: &str = "breditor_wasm.intent_requires_input";
+pub(crate) const UNKNOWN_INTENT_CODE: &str = "breditor_wasm.unknown_intent";
+pub(crate) const INTENT_REJECTS_TYPED_CODE: &str = "breditor_wasm.intent_rejects_typed_input";
+pub(crate) const UNSUPPORTED_CHECKPOINT_FORMAT_CODE: &str =
+    "breditor_wasm.unsupported_checkpoint_format";
 
 /// Structured, stable, payload-redacting error returned by the Wasm boundary.
 ///
@@ -82,12 +91,34 @@ impl BreditorError {
         Self::new(error.code().as_str(), "the checkpoint-constrained editor command was rejected")
     }
 
+    pub(crate) fn typed_command(error: &CheckpointedEditorEngineError) -> Self {
+        if error.editor_engine_error().is_some_and(editor_error_is_invalid_typed_input) {
+            return Self::new(TYPED_INPUT_REJECTED_CODE, "the typed command input was rejected");
+        }
+        Self::checkpointed_engine(error)
+    }
+
     pub(crate) const fn codec(code: CodecErrorCode, message: &'static str) -> Self {
         Self::new(code.as_str(), message)
     }
 
     pub(crate) const fn action_state_read() -> Self {
         Self::new(ACTION_STATE_READ_CODE, "the complete action state could not be represented")
+    }
+}
+
+fn editor_error_is_invalid_typed_input(error: &EditorEngineError) -> bool {
+    match error {
+        EditorEngineError::ActionPreparation {
+            source: ActionPrepareError::InvalidInput { .. },
+        }
+        | EditorEngineError::IntentRouting { source: IntentRouteError::InvalidInput { .. } } => {
+            true
+        }
+        EditorEngineError::IntentRouting { source: IntentRouteError::Action { source, .. } } => {
+            matches!(source.as_ref(), ActionPrepareError::InvalidInput { .. })
+        }
+        _ => false,
     }
 }
 

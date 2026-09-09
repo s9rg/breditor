@@ -27,8 +27,8 @@ impl BreditorEngine {
         }
 
         let state = self.inner.state();
-        if self.inner.session_checkpoint_format_version() == 1 {
-            match DocumentJsonCodec::new(state.context().schema().clone())
+        match self.inner.session_checkpoint_format_version() {
+            1 => match DocumentJsonCodec::new(state.context().schema().clone())
                 .with_limits(state.context().limits().clone())
                 .encode(state.document())
             {
@@ -37,9 +37,8 @@ impl BreditorEngine {
                     error.code(),
                     "the current document could not be encoded",
                 )),
-            }
-        } else {
-            match DocumentJsonCodecV2::new(state.context().schema().clone())
+            },
+            2 | 3 => match DocumentJsonCodecV2::new(state.context().schema().clone())
                 .with_limits(state.context().limits().clone())
                 .encode(state.document())
             {
@@ -48,7 +47,11 @@ impl BreditorEngine {
                     error.code(),
                     "the current document could not be encoded",
                 )),
-            }
+            },
+            _ => BreditorStringResult::from_error(BreditorError::new(
+                crate::error::UNSUPPORTED_CHECKPOINT_FORMAT_CODE,
+                "the engine checkpoint format is unsupported",
+            )),
         }
     }
 }

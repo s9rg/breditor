@@ -1,6 +1,6 @@
 use breditor_core::{
     action::{ActionActivation, ActionStateValue},
-    codec::{CommitJsonCodec, CommitJsonCodecV2},
+    codec::{CommitJsonCodec, CommitJsonCodecV2, CommitJsonCodecV3},
     engine::{
         EditorActionOutcome, EditorDisabledAction, EditorEngineEvent, EditorEngineObservation,
     },
@@ -31,6 +31,7 @@ enum CommandResultValue {
 pub struct BreditorCommandResult {
     generation: CompiledProfileGeneration,
     checkpoint_format_version: u32,
+    history_group_closed_before: bool,
     value: CommandResultValue,
 }
 
@@ -39,6 +40,7 @@ impl BreditorCommandResult {
         Self {
             generation: engine.generation.clone(),
             checkpoint_format_version: engine.inner.session_checkpoint_format_version(),
+            history_group_closed_before: false,
             value,
         }
     }
@@ -69,6 +71,16 @@ impl BreditorCommandResult {
         }
     }
 
+    pub(crate) fn from_action_sequence(
+        engine: &BreditorEngine,
+        sequence: breditor_core::engine::EditorHistorySequenceOutcome<EditorActionOutcome>,
+    ) -> Self {
+        let (boundary, outcome) = sequence.into_parts();
+        let mut result = Self::from_action_outcome(engine, outcome);
+        result.history_group_closed_before = boundary.is_some();
+        result
+    }
+
     pub(crate) fn from_optional_event(
         engine: &BreditorEngine,
         event: Option<EditorEngineEvent>,
@@ -78,6 +90,16 @@ impl BreditorCommandResult {
             || Self::unchanged(engine, unchanged),
             |event| Self::committed(engine, event),
         )
+    }
+
+    pub(crate) fn from_optional_event_sequence(
+        engine: &BreditorEngine,
+        sequence: breditor_core::engine::EditorHistorySequenceOutcome<Option<EditorEngineEvent>>,
+    ) -> Self {
+        let (boundary, event) = sequence.into_parts();
+        let mut result = Self::from_optional_event(engine, event, engine.inner.observation());
+        result.history_group_closed_before = boundary.is_some();
+        result
     }
 
     fn disabled_value(&self) -> Option<&EditorDisabledAction> {
@@ -92,6 +114,13 @@ impl BreditorCommandResult {
 
 #[wasm_bindgen]
 impl BreditorCommandResult {
+    /// Reports whether this command atomically closed an open history group first.
+    #[must_use]
+    #[wasm_bindgen(getter, js_name = historyGroupClosedBefore)]
+    pub fn history_group_closed_before(&self) -> bool {
+        self.history_group_closed_before
+    }
+
     /// Checks the result's opaque process-local profile identity.
     #[must_use]
     #[wasm_bindgen(js_name = matchesProfileGeneration)]
@@ -162,7 +191,7 @@ impl BreditorCommandResult {
     /// Encoding is intentionally not part of command publication. `absent`
     /// means the outcome is disabled/unchanged or its effective event is a
     /// history-only control. `error` means publication succeeded but the
-    /// mode-selected Commit V1 or V2 could not be represented within the
+    /// mode-selected Commit V1, V2, or V3 could not be represented within the
     /// active codec budget.
     #[must_use]
     #[wasm_bindgen(js_name = commitJson)]
@@ -173,22 +202,32 @@ impl BreditorCommandResult {
         let Some(commit) = event.commit() else {
             return BreditorStringResult::absent();
         };
-        if self.checkpoint_format_version == 1 {
-            match CommitJsonCodec::new(commit.after().context().clone()).encode(commit) {
+        match self.checkpoint_format_version {
+            1 => match CommitJsonCodec::new(commit.after().context().clone()).encode(commit) {
                 Ok(json) => BreditorStringResult::from_value(json),
                 Err(error) => BreditorStringResult::from_error(BreditorError::codec(
                     error.code(),
                     "the published commit could not be encoded",
                 )),
-            }
-        } else {
-            match CommitJsonCodecV2::new(commit.after().context().clone()).encode(commit) {
+            },
+            2 => match CommitJsonCodecV2::new(commit.after().context().clone()).encode(commit) {
                 Ok(json) => BreditorStringResult::from_value(json),
                 Err(error) => BreditorStringResult::from_error(BreditorError::codec(
                     error.code(),
                     "the published commit could not be encoded",
                 )),
-            }
+            },
+            3 => match CommitJsonCodecV3::new(commit.after().context().clone()).encode(commit) {
+                Ok(json) => BreditorStringResult::from_value(json),
+                Err(error) => BreditorStringResult::from_error(BreditorError::codec(
+                    error.code(),
+                    "the published commit could not be encoded",
+                )),
+            },
+            _ => BreditorStringResult::from_error(BreditorError::new(
+                crate::error::UNSUPPORTED_CHECKPOINT_FORMAT_CODE,
+                "the engine checkpoint format is unsupported",
+            )),
         }
     }
 
@@ -327,6 +366,7 @@ mod tests {
             &baseline_observation,
             "breditor/insert-text",
             "private-after",
+            false,
         );
         let mut baseline_json = baseline_command.commit_json();
         let baseline_json = baseline_json
@@ -340,7 +380,7 @@ mod tests {
         let mut engine = engine_with_max_json_bytes(Some(tight_limit))?;
         let initial = engine.observation();
         let command =
-            engine.execute_string_action(&initial, "breditor/insert-text", "private-after");
+            engine.execute_string_action(&initial, "breditor/insert-text", "private-after", false);
         assert_eq!(command.status(), "committed");
         assert_eq!(command.event_kind().as_deref(), Some("action"));
         let successor = command
@@ -363,13 +403,13 @@ mod tests {
         assert!(checkpoint.take_value().is_some());
 
         let stale_retry =
-            engine.execute_string_action(&initial, "breditor/insert-text", "private-after");
+            engine.execute_string_action(&initial, "breditor/insert-text", "private-after", false);
         assert_eq!(stale_retry.status(), "error");
         assert_eq!(
             stale_retry.error().map(|error| error.code()),
             Some("editor_engine.stale_snapshot".to_owned())
         );
-        let undo = engine.undo(&successor);
+        let undo = engine.undo(&successor, false);
         assert_eq!(undo.status(), "unchanged");
         Ok(())
     }
@@ -385,6 +425,7 @@ mod tests {
             &baseline_observation,
             "breditor/insert-text",
             PRIVATE_CANDIDATE,
+            false,
         );
         assert_eq!(committed.status(), "committed");
         let candidate_checkpoint = require_checkpoint(&baseline)?.len();
@@ -396,7 +437,7 @@ mod tests {
         let before = engine.observation();
         let checkpoint_before = require_checkpoint(&engine)?;
         let rejected =
-            engine.execute_string_action(&before, "breditor/insert-text", PRIVATE_CANDIDATE);
+            engine.execute_string_action(&before, "breditor/insert-text", PRIVATE_CANDIDATE, false);
 
         assert_eq!(rejected.status(), "error");
         let error = rejected

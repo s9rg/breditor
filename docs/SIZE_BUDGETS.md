@@ -1,6 +1,7 @@
 # Browser release size budgets
 
-Status: required `0.2.0` release gate
+Status: required release gate, recalibrated for the unpublished
+`0.3.0-alpha.3` ABI-4 typed-profile/browser checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -11,17 +12,17 @@ total.
 
 The current release ceilings are deliberately explicit:
 
-- all emitted `@breditor/browser` JavaScript: 860,000 bytes;
-- all emitted browser declarations: 235,000 bytes;
+- all emitted `@breditor/browser` JavaScript: 910,000 bytes;
+- all emitted browser declarations: 245,000 bytes;
 - all emitted `@breditor/reference-highlight` JavaScript: 12,000 bytes;
 - all emitted reference Highlight declarations: 12,000 bytes;
-- generated Wasm binary: 1,500,000 bytes;
+- generated Wasm binary: 1,600,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 225,000 bytes;
 - packed `@breditor/reference-highlight` tarball: 20,000 bytes;
-- packed `@breditor/wasm` tarball: 455,000 bytes;
-- reference-application JavaScript: 750,000 raw and 200,000 gzip bytes; and
-- reference-application Wasm: 1,500,000 raw and 400,000 gzip bytes.
+- packed `@breditor/wasm` tarball: 520,000 bytes;
+- reference-application JavaScript: 775,000 raw and 210,000 gzip bytes; and
+- reference-application Wasm: 1,600,000 raw and 450,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
 825,000 browser-package bytes and from 700,000 to 725,000 reference-application
@@ -100,6 +101,31 @@ the prior packed ceiling is attributable to the reviewed property-aware action,
 validation, and exact replay paths now linked into the browser engine; package
 contents and deterministic two-build checks remain unchanged.
 
+The `0.3.0-alpha.3` checkpoint recalibrates the browser, declaration, Wasm,
+demo, and Wasm-tarball ceilings for the reviewed ABI 4 bridge: Profile Bootstrap
+V2, typed descriptor/projection getters, strict typed action/intent JSON,
+explicit V3 profile factories, browser property validation,
+`executeIntentJson()`, and Session V3 IndexedDB/autosave. Its passing actual /
+ceiling measurements are:
+
+- browser-package JavaScript: 905,441 / 910,000 bytes;
+- browser declarations: 235,040 / 245,000 bytes;
+- reference Highlight JavaScript: 8,088 / 12,000 bytes;
+- reference Highlight declarations: 7,880 / 12,000 bytes;
+- generated Wasm: 1,559,138 / 1,600,000 bytes;
+- generated Wasm JavaScript glue: 51,502 / 100,000 bytes;
+- reference-application JavaScript: 766,787 / 775,000 raw bytes and
+  202,015 / 210,000 gzip bytes;
+- reference-application Wasm: 1,559,138 / 1,600,000 raw bytes and
+  433,691 / 450,000 gzip bytes;
+- packed browser package: 221,799 / 225,000 bytes;
+- packed reference Highlight package: 9,529 / 20,000 bytes; and
+- packed Wasm package: 502,756 / 520,000 bytes.
+
+The packages remain unpublished. These are local deterministic-build and
+isolated-tarball gates, not registry size claims. Historical `0.2.0` and
+alpha.2 measurements above remain the results for those checkpoints.
+
 This includes the profile-aware projection path, descriptor-only bounded array
 admission, and brand-checked native Event-family, Selection,
 `AbstractRange`/`Range`/`StaticRange`, ClipboardEvent, and DataTransfer
@@ -135,9 +161,9 @@ canonical source-path remapping plus exact logical/physical build-root checks
 and common user-home pattern checks prevent host-specific workspace,
 Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
-panic locations. This reviewed recipe preserves the native
-throughput policy and keeps ABI 3 within the existing Wasm raw, gzip, glue, and
-tarball ceilings.
+panic locations. This reviewed recipe preserves the native throughput policy.
+It kept ABI 3 within the historical `0.2.0` ceilings and now keeps ABI 4 within
+the alpha.3 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

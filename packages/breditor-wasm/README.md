@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.2
+npm install @breditor/wasm@0.3.0-alpha.3
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,10 +25,11 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x` and exact-matched `0.2.x` browser bootstrap is the no-argument default
-asynchronous initializer shown above, called once in an HTTP(S) browser or
-browser bundler that resolves the adjacent generated Wasm asset, before passing
-the initialized namespace to the exactly matching `@breditor/browser` package.
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.3 browser bootstrap is
+the no-argument default asynchronous initializer shown above, called once in an
+HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
+asset, before passing the initialized namespace to the exactly matching
+`@breditor/browser` package.
 Synchronous `initSync`, initializer arguments, direct
 `@breditor/wasm/wasm` binary imports, and Node/file-URL initialization remain
 available to advanced hosts but do not carry the supported high-level
@@ -44,7 +45,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `3`.
+with ABI generation `4` for this unpublished alpha.3 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -69,10 +70,35 @@ Alpha.8 also leaves ABI generation 3 unchanged. It packages a callback-free
 reference Highlight profile outside the Wasm module and proves that profile
 through the exact-version browser/Wasm/reference tarball set.
 
-`0.3.0-alpha.2` also leaves ABI generation 3 unchanged. The Rust core's typed
-inline-format editing and V3 persistence contracts are not accepted by this
-ABI-local profile bootstrap and are not exposed by its browser-facing
-descriptor. The packaged Wasm path remains property-free.
+`0.3.0-alpha.2` also left ABI generation 3 unchanged: its typed inline-format
+editing and V3 persistence contracts were still Rust-only.
+
+`0.3.0-alpha.3` advances to ABI 4. The explicit
+`BreditorCompiledProfile.fromBootstrapJsonV2()` entry point accepts strict,
+bounded typed Boolean/integer/string property contracts and manifest-owned set
+declarations while preserving `fromBootstrapJson()` as exact Bootstrap V1.
+`BreditorCompiledProfileDescriptor` exposes canonical property names, presence,
+types, and bounds; `BreditorProjection` exposes canonical property names, value
+kinds, and Boolean/integer/string values for each format occurrence.
+
+Engines add `executeTypedActionJson()` and `executeTypedIntentJson()`. Rust
+derives the registered contract identity, preserves duplicate-key visibility,
+and rejects malformed, unsafe-number, duplicate, or over-limit JSON with
+payload-redacted errors. ABI-4 action, intent, undo, and redo calls accept a
+`closeHistoryGroupBefore` flag. When requested, Rust runs the boundary and
+command on one private checkpointed candidate and publishes both or neither;
+`historyGroupClosedBefore` reports whether the boundary was effective. Typed
+rejection therefore leaves undo grouping unchanged in one command evaluation.
+The explicit
+`createEngineFromDocumentJsonV3()` and
+`createEngineFromSessionCheckpointJsonV3()` profile factories select Session,
+Editor State, and Commit V3 around Document V2. Existing unsuffixed compiled-
+profile factories retain V2, and static exact-base factories retain V1; no
+entry point sniffs or converts generations.
+
+These packages remain unpublished. Typed data and commands now cross Wasm, but
+safe property-driven DOM recipes, URL/CSS policy, and typed toolbar controls are
+browser-layer work rather than Wasm capabilities.
 
 ## Reproducible build
 

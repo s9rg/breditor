@@ -64,6 +64,50 @@ const PROFILE_BOOTSTRAP_JSON = JSON.stringify({
 
 const PROFILE_INTENT = "example/toggle-highlight-intent";
 
+const TYPED_PROFILE_BOOTSTRAP_JSON = JSON.stringify({
+  format: "breditor/profile-bootstrap",
+  formatVersion: 2,
+  schema: { name: "example/link-editor", version: 1 },
+  extensions: [{
+    id: { name: "example/link-extension", version: 1 },
+    dependencies: [],
+    conflicts: [],
+    inlineFormats: [{ kind: "example/link", revision: 1 }],
+    inlineFormatPropertyContracts: [{
+      formatKind: "example/link",
+      properties: [
+        {
+          name: "example/href",
+          presence: "required",
+          valueType: {
+            kind: "string",
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: 2_048,
+          },
+        },
+        {
+          name: "example/open",
+          presence: "optional",
+          valueType: { kind: "boolean" },
+        },
+        {
+          name: "example/rank",
+          presence: "optional",
+          valueType: { kind: "integer", minimum: -10, maximum: 10 },
+        },
+      ],
+    }],
+    inlineFormatToggles: [],
+    inlineFormatSets: [{
+      formatKind: "example/link",
+      actionId: "example/set-link",
+      intentId: "example/set-link-intent",
+      bindingId: "example/set-link-binding",
+      actionStateId: "example/link-presence",
+    }],
+  }],
+});
+
 function profileDocument(descriptor, text) {
   return {
     format: "breditor/document",
@@ -170,7 +214,7 @@ function assertCommandError(result, expectedCode) {
   error.free();
 }
 
-assert.equal(api.breditorWasmAbiVersion(), "3");
+assert.equal(api.breditorWasmAbiVersion(), "4");
 assert.match(
   api.breditorVersion(),
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
@@ -366,6 +410,7 @@ unchangedProfileObservation.free();
 const blockedProfileIntent = profileEngine.executeNoInputIntent(
   profileObservation,
   PROFILE_INTENT,
+  false,
 );
 assert.equal(blockedProfileIntent.status, "blocked");
 assert.ok(blockedProfileIntent.matchesProfileGeneration(profileGeneration));
@@ -402,7 +447,7 @@ blockedSuccessor.free();
 blockedProfileIntent.free();
 
 const invalidProfileIntent =
-  profileEngine.executeNoInputIntent(profileObservation, "");
+  profileEngine.executeNoInputIntent(profileObservation, "", false);
 assert.equal(invalidProfileIntent.status, "error");
 assert.ok(invalidProfileIntent.matchesProfileGeneration(profileGeneration));
 const invalidProfileIntentError = invalidProfileIntent.error;
@@ -426,6 +471,7 @@ const selectedProfileObservation = selectedProfileEngine.observation();
 const committedProfileIntent = selectedProfileEngine.executeNoInputIntent(
   selectedProfileObservation,
   PROFILE_INTENT,
+  false,
 );
 assert.equal(committedProfileIntent.status, "committed");
 assert.ok(
@@ -537,6 +583,292 @@ independentGeneration.free();
 independentProfile.free();
 profileGeneration.free();
 
+// ABI 4 carries one typed profile through the real generated boundary, the
+// browser descriptor/projection adapters, V3 history, and exact restore.
+const typedProfileResult =
+  api.BreditorCompiledProfile.fromBootstrapJsonV2(TYPED_PROFILE_BOOTSTRAP_JSON);
+assert.equal(typedProfileResult.status, "profile");
+const typedProfile = typedProfileResult.takeProfile();
+typedProfileResult.free();
+const typedGeneration = typedProfile.generation();
+const typedDescriptorView = typedProfile.descriptor();
+assert.equal(typedDescriptorView.formatKind(1), "example/link");
+assert.equal(typedDescriptorView.formatPropertyCount(0), 0);
+assert.equal(typedDescriptorView.formatPropertyCount(1), 3);
+assert.equal(typedDescriptorView.formatPropertyName(1, 0), "example/href");
+assert.equal(typedDescriptorView.formatPropertyPresence(1, 0), "required");
+assert.equal(typedDescriptorView.formatPropertyValueType(1, 0), "string");
+assert.equal(typedDescriptorView.formatPropertyStringMinimumUtf8Bytes(1, 0), 1);
+assert.equal(
+  typedDescriptorView.formatPropertyStringMaximumUtf8Bytes(1, 0),
+  2_048,
+);
+assert.equal(typedDescriptorView.formatPropertyIntegerMinimum(1, 0), undefined);
+assert.equal(typedDescriptorView.formatPropertyName(1, 1), "example/open");
+assert.equal(typedDescriptorView.formatPropertyPresence(1, 1), "optional");
+assert.equal(typedDescriptorView.formatPropertyValueType(1, 1), "boolean");
+assert.equal(typedDescriptorView.formatPropertyName(1, 2), "example/rank");
+assert.equal(typedDescriptorView.formatPropertyPresence(1, 2), "optional");
+assert.equal(typedDescriptorView.formatPropertyValueType(1, 2), "integer");
+assert.equal(typedDescriptorView.formatPropertyIntegerMinimum(1, 2), -10);
+assert.equal(typedDescriptorView.formatPropertyIntegerMaximum(1, 2), 10);
+assert.equal(typedDescriptorView.formatPropertyName(1, 3), undefined);
+const typedDescriptorResult = browser.consumeWasmCompiledProfileDescriptor(
+  typedGeneration,
+  typedDescriptorView,
+);
+assert.equal(typedDescriptorResult.ok, true);
+const typedDescriptor = typedDescriptorResult.descriptor;
+assert.deepEqual(typedDescriptor.formats[1], {
+  kind: "example/link",
+  revision: 1,
+  properties: [
+    {
+      name: "example/href",
+      presence: "required",
+      valueType: {
+        kind: "string",
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 2_048,
+      },
+    },
+    {
+      name: "example/open",
+      presence: "optional",
+      valueType: { kind: "boolean" },
+    },
+    {
+      name: "example/rank",
+      presence: "optional",
+      valueType: { kind: "integer", minimum: -10, maximum: 10 },
+    },
+  ],
+});
+const typedDocumentJson = JSON.stringify(
+  profileDocument({
+    schemaName: typedDescriptor.schema.name,
+    schemaVersion: typedDescriptor.schema.version,
+    schemaFingerprint: typedDescriptor.schema.fingerprint,
+  }, "abc"),
+);
+const typedEngineResult = typedProfile.createEngineFromDocumentJsonV3(
+  "web-glue-typed-v3",
+  typedDocumentJson,
+  10,
+);
+assert.equal(typedEngineResult.status, "engine");
+const typedEngine = typedEngineResult.takeEngine();
+typedEngineResult.free();
+const typedInitial = typedEngine.observation();
+const typedSelectionResult = typedEngine.setRangeSelection(
+  typedInitial,
+  "text",
+  2,
+  0,
+  "before",
+  "text",
+  2,
+  3,
+  "after",
+);
+assert.equal(typedSelectionResult.status, "committed");
+const typedSelected = typedSelectionResult.observation();
+typedSelectionResult.free();
+typedInitial.free();
+
+const duplicateTypedIntent = typedEngine.executeTypedIntentJson(
+  typedSelected,
+  "example/set-link-intent",
+  '{"operation":"remove","operation":"set"}',
+  true,
+);
+assert.equal(duplicateTypedIntent.status, "error");
+assert.equal(duplicateTypedIntent.historyGroupClosedBefore, false);
+const duplicateTypedIntentError = duplicateTypedIntent.error;
+assert.equal(
+  duplicateTypedIntentError.code,
+  "breditor_wasm.invalid_action_value_json",
+);
+duplicateTypedIntentError.free();
+duplicateTypedIntent.free();
+
+const href = "https://example.test/path";
+const typedActionInput = JSON.stringify({
+  operation: "set",
+  properties: [
+    { name: "example/href", value: "https://action.example.test/path" },
+    { name: "example/open", value: true },
+    { name: "example/rank", value: -3 },
+  ],
+});
+const typedAction = typedEngine.executeTypedActionJson(
+  typedSelected,
+  "example/set-link",
+  typedActionInput,
+  false,
+);
+assert.equal(typedAction.status, "committed");
+assert.equal(typedAction.eventKind, "action");
+assert.equal(typedAction.historyGroupClosedBefore, false);
+assert.equal(JSON.parse(takeString(typedAction.commitJson())).formatVersion, 3);
+const typedActionCommitted = typedAction.observation();
+typedAction.free();
+typedSelected.free();
+
+const typedIntentInput = JSON.stringify({
+  operation: "set",
+  properties: [
+    { name: "example/href", value: href },
+    { name: "example/open", value: false },
+    { name: "example/rank", value: 7 },
+  ],
+});
+const typedIntent = typedEngine.executeTypedIntentJson(
+  typedActionCommitted,
+  "example/set-link-intent",
+  typedIntentInput,
+  true,
+);
+assert.equal(typedIntent.status, "committed");
+assert.equal(typedIntent.intentId, "example/set-link-intent");
+assert.equal(typedIntent.historyGroupClosedBefore, false);
+assert.equal(JSON.parse(takeString(typedIntent.commitJson())).formatVersion, 3);
+const typedCommitted = typedIntent.observation();
+typedIntent.free();
+typedActionCommitted.free();
+assert.equal(JSON.parse(takeString(typedEngine.stateJson())).formatVersion, 3);
+
+const typedProjectionResult = typedEngine.projection(typedCommitted);
+const typedProjectionView = typedProjectionResult.takeProjection();
+typedProjectionResult.free();
+assert.equal(typedProjectionView.formatCount(2), 1);
+assert.equal(typedProjectionView.formatType(2, 0), "example/link");
+assert.equal(typedProjectionView.formatPropertyCount(2, 0), 3);
+assert.equal(typedProjectionView.formatPropertyName(2, 0, 0), "example/href");
+assert.equal(typedProjectionView.formatPropertyValueKind(2, 0, 0), "string");
+assert.equal(typedProjectionView.formatPropertyString(2, 0, 0), href);
+assert.equal(typedProjectionView.formatPropertyBoolean(2, 0, 0), undefined);
+assert.equal(typedProjectionView.formatPropertyName(2, 0, 1), "example/open");
+assert.equal(typedProjectionView.formatPropertyValueKind(2, 0, 1), "boolean");
+assert.equal(typedProjectionView.formatPropertyBoolean(2, 0, 1), false);
+assert.equal(typedProjectionView.formatPropertyInteger(2, 0, 1), undefined);
+assert.equal(typedProjectionView.formatPropertyName(2, 0, 2), "example/rank");
+assert.equal(typedProjectionView.formatPropertyValueKind(2, 0, 2), "integer");
+assert.equal(typedProjectionView.formatPropertyInteger(2, 0, 2), 7);
+assert.equal(typedProjectionView.formatPropertyString(2, 0, 2), undefined);
+assert.equal(typedProjectionView.formatPropertyName(2, 0, 3), undefined);
+const typedBrowserProjectionResult = browser.consumeSemanticProjection(
+  typedProjectionView,
+  typedGeneration,
+  typedDescriptor,
+);
+assert.equal(typedBrowserProjectionResult.ok, true);
+const typedBrowserProjection = typedBrowserProjectionResult.value;
+assert.deepEqual(typedBrowserProjection.paragraphs, [{
+  runs: [{
+    text: "abc",
+    strong: false,
+    formatDetails: [{
+      kind: "example/link",
+      properties: [
+        { name: "example/href", value: href },
+        { name: "example/open", value: false },
+        { name: "example/rank", value: 7 },
+      ],
+    }],
+  }],
+}]);
+assert.deepEqual(typedBrowserProjection.paragraphs[0].runs[0].formats, [
+  "example/link",
+]);
+
+const typedCheckpoint = takeString(typedEngine.sessionCheckpointJson());
+assert.equal(JSON.parse(typedCheckpoint).formatVersion, 3);
+assert.match(typedCheckpoint, /https:\/\/example\.test\/path/);
+const typedUndo = typedEngine.undo(typedCommitted, false);
+assert.equal(typedUndo.status, "committed");
+const typedUndone = typedUndo.observation();
+typedUndo.free();
+const typedRedo = typedEngine.redo(typedUndone, false);
+assert.equal(typedRedo.status, "committed");
+const typedRedone = typedRedo.observation();
+typedRedo.free();
+typedUndone.free();
+const typedRestoreResult =
+  typedProfile.createEngineFromSessionCheckpointJsonV3(typedCheckpoint);
+assert.equal(typedRestoreResult.status, "engine");
+const typedRestored = typedRestoreResult.takeEngine();
+typedRestoreResult.free();
+assert.equal(takeString(typedRestored.sessionCheckpointJson()), typedCheckpoint);
+
+typedRedone.free();
+typedCommitted.free();
+typedRestored.free();
+typedEngine.free();
+typedGeneration.free();
+typedProfile.free();
+
+const atomicEngine = takeEngine("web-glue-atomic-history-sequence");
+const atomicInitial = atomicEngine.observation();
+const atomicSelection = atomicEngine.setRangeSelection(
+  atomicInitial,
+  "children",
+  1,
+  0,
+  "after",
+  "children",
+  1,
+  0,
+  "after",
+);
+const atomicSelected = atomicSelection.observation();
+atomicSelection.free();
+atomicInitial.free();
+const atomicFirst = atomicEngine.executeStringAction(
+  atomicSelected,
+  "breditor/insert-text",
+  "a",
+  false,
+);
+const atomicAfterFirst = atomicFirst.observation();
+assert.equal(atomicFirst.historyGroupClosedBefore, false);
+atomicFirst.free();
+atomicSelected.free();
+const atomicSecond = atomicEngine.executeStringAction(
+  atomicAfterFirst,
+  "breditor/insert-text",
+  "b",
+  true,
+);
+assert.equal(atomicSecond.status, "committed");
+assert.equal(atomicSecond.historyGroupClosedBefore, true);
+const atomicAfterSecond = atomicSecond.observation();
+atomicSecond.free();
+atomicAfterFirst.free();
+const atomicIntent = atomicEngine.executeNoInputIntent(
+  atomicAfterSecond,
+  "breditor/format-strong",
+  true,
+);
+assert.equal(atomicIntent.status, "committed");
+assert.equal(atomicIntent.historyGroupClosedBefore, true);
+const atomicAfterIntent = atomicIntent.observation();
+atomicIntent.free();
+atomicAfterSecond.free();
+const atomicUndo = atomicEngine.undo(atomicAfterIntent, true);
+assert.equal(atomicUndo.status, "committed");
+assert.equal(atomicUndo.historyGroupClosedBefore, false);
+const atomicAfterUndo = atomicUndo.observation();
+assert.equal(
+  JSON.parse(takeString(atomicEngine.documentJson(atomicAfterUndo))).root
+    .children[0].children[0].text,
+  "a",
+);
+atomicUndo.free();
+atomicAfterIntent.free();
+atomicAfterUndo.free();
+atomicEngine.free();
+
 const invalidFactory = api.BreditorEngine.fromDocumentJson(
   "web-glue-redaction",
   "private-invalid-document",
@@ -597,6 +929,7 @@ const unicodeDocumentCommand = documentEngine.executeStringAction(
   documentInitial,
   "breditor/insert-text",
   " é🦀中文",
+  false,
 );
 assert.equal(unicodeDocumentCommand.status, "committed");
 const documentAfterInsert = unicodeDocumentCommand.observation();
@@ -645,7 +978,7 @@ assert.equal(
 );
 foreignDocumentError.free();
 
-const documentUndo = documentEngine.undo(documentAfterInsert);
+const documentUndo = documentEngine.undo(documentAfterInsert, false);
 assert.equal(documentUndo.status, "committed");
 const documentAfterUndo = documentUndo.observation();
 documentUndo.free();
@@ -653,7 +986,7 @@ assert.equal(
   takeString(documentEngine.documentJson(documentAfterUndo)),
   initialDocument,
 );
-const documentRedo = documentEngine.redo(documentAfterUndo);
+const documentRedo = documentEngine.redo(documentAfterUndo, false);
 assert.equal(documentRedo.status, "committed");
 const documentAfterRedo = documentRedo.observation();
 documentRedo.free();
@@ -675,6 +1008,7 @@ const firstObservation = engine.observation();
 const disabled = engine.executeNoInputAction(
   firstObservation,
   "breditor/toggle-strong",
+  false,
 );
 assert.equal(disabled.status, "disabled");
 assert.equal(disabled.eventKind, undefined);
@@ -704,6 +1038,7 @@ const inserted = engine.executeStringAction(
   selectedObservation,
   "breditor/insert-text",
   "reload me",
+  false,
 );
 assert.equal(inserted.status, "committed");
 successor = inserted.observation();
@@ -772,7 +1107,7 @@ assert.equal(
   takeString(browserRestoredEngine.sessionCheckpointJson()),
   encodedCheckpoint,
 );
-const browserUndo = browserRestoredEngine.undo(browserRestoredObservation);
+const browserUndo = browserRestoredEngine.undo(browserRestoredObservation, false);
 assert.equal(browserUndo.status, "committed");
 const browserUndoObservation = browserUndo.observation();
 browserUndo.free();
@@ -781,7 +1116,7 @@ assert.doesNotMatch(
   takeString(browserRestoredEngine.documentJson(browserUndoObservation)),
   /"text":"reload me"/,
 );
-const browserRedo = browserRestoredEngine.redo(browserUndoObservation);
+const browserRedo = browserRestoredEngine.redo(browserUndoObservation, false);
 assert.equal(browserRedo.status, "committed");
 const browserRedoObservation = browserRedo.observation();
 browserRedo.free();
@@ -799,7 +1134,7 @@ browserRestore.profileGeneration.free();
 checkpointReader.close();
 
 const otherEngine = takeEngine("web-glue-other");
-const crossEngine = otherEngine.undo(successor);
+const crossEngine = otherEngine.undo(successor, false);
 assert.equal(crossEngine.status, "error");
 assert.equal(crossEngine.observation(), undefined);
 const crossEngineError = crossEngine.error;
@@ -815,6 +1150,7 @@ const tooLarge = engine.executeStringAction(
   successor,
   "breditor/insert-text",
   "x".repeat(65_537),
+  false,
 );
 assert.equal(tooLarge.status, "error");
 const tooLargeError = tooLarge.error;
@@ -827,7 +1163,7 @@ assert.throws(
     get length() {
       throw new Error("hostile string coercion ran before Rust");
     },
-  }),
+  }, false),
   /hostile string coercion ran before Rust/,
 );
 assert.equal(takeString(engine.stateJson()), encodedState);
@@ -835,7 +1171,7 @@ const afterUnchanged = engine.observation();
 assert.equal(afterUnchanged.snapshotRevision, successor.snapshotRevision);
 successor.free();
 
-assert.throws(() => otherEngine.undo({}), /expected instance/);
+assert.throws(() => otherEngine.undo({}, false), /expected instance/);
 const fabricatedEngine = new api.BreditorEngine();
 assert.throws(() => fabricatedEngine.observation());
 
@@ -899,6 +1235,7 @@ unchangedActionStateSnapshot.free();
 const toggleActionState = actionStateEngine.executeNoInputAction(
   actionStateInitial,
   "breditor/toggle-strong",
+  false,
 );
 const actionStateSuccessor = toggleActionState.observation();
 toggleActionState.free();
@@ -1163,7 +1500,7 @@ assert.deepEqual(browserBase.snapshot, {
   revision: "0",
 });
 assert.deepEqual(browserBase.paragraphs, [
-  { runs: [{ text: "a", strong: false }] },
+  { runs: [{ text: "a", strong: false, formatDetails: [] }] },
 ]);
 
 // Exercise the real generated selection view through the dependency-free
@@ -1208,6 +1545,7 @@ const projectionCommand = projectionEngine.executeStringAction(
   projectionObservation,
   "breditor/insert-text",
   "b",
+  false,
 );
 assert.equal(projectionCommand.status, "committed");
 const projectionSuccessor = projectionCommand.observation();
@@ -1250,13 +1588,13 @@ projectionGeneration.free();
 // leaves that receiver unusable. Keep each probe on a throwaway engine.
 const fabricatedVictim = takeEngine("web-glue-fabricated-victim");
 const fabricatedObservation = new api.BreditorObservation();
-assert.throws(() => fabricatedVictim.undo(fabricatedObservation));
+assert.throws(() => fabricatedVictim.undo(fabricatedObservation, false));
 assert.throws(() => fabricatedVictim.free());
 
 const freedVictim = takeEngine("web-glue-freed-victim");
 const freedObservation = freedVictim.observation();
 freedObservation.free();
-assert.throws(() => freedVictim.undo(freedObservation));
+assert.throws(() => freedVictim.undo(freedObservation, false));
 assert.throws(() => freedVictim.free());
 
 // Exercise the complete public owner with real generated Wasm. The DOM is a
@@ -1294,6 +1632,107 @@ Object.defineProperty(runtimeDom.window.InputEvent.prototype, "getTargetRanges",
     return [];
   },
 });
+
+// Exercise Profile Bootstrap V2 + Session V3 through the complete public
+// browser owner. A deterministic Rust rejection must remain contained before
+// history control, and a later valid property-bearing intent must still commit.
+const typedRuntimeHost = document.createElement("div");
+document.body.append(typedRuntimeHost);
+const typedRuntimeRendering = browser.createInlineFormatRenderManifest({
+  recipes: [
+    { formatKind: "breditor/strong", element: "strong" },
+    {
+      formatKind: "example/link",
+      element: "span",
+      classes: ["breditor-link"],
+    },
+  ],
+});
+const openedTypedRuntime = await browser.openBreditorBrowserEditor({
+  host: typedRuntimeHost,
+  label: "Generated typed editor",
+  wasm: api,
+  initialDocument: {
+    lineageId: "web-glue-public-typed-runtime",
+    documentJson: typedDocumentJson,
+    historyCapacity: 100,
+  },
+  semanticProfile: {
+    bootstrapJson: TYPED_PROFILE_BOOTSTRAP_JSON,
+    formatVersion: 2,
+  },
+  rendering: typedRuntimeRendering,
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+});
+assert.equal(
+  openedTypedRuntime.ok,
+  true,
+  openedTypedRuntime.ok
+    ? undefined
+    : `typed browser runtime failed: ${openedTypedRuntime.error.code}/${openedTypedRuntime.error.causeCode ?? "none"}`,
+);
+const typedRuntime = openedTypedRuntime.editor;
+const typedRuntimeText = typedRuntimeHost.querySelector("p")?.firstChild;
+assert.ok(typedRuntimeText instanceof runtimeDom.window.Text);
+runtimeDom.window.getSelection().setBaseAndExtent(
+  typedRuntimeText,
+  0,
+  typedRuntimeText,
+  3,
+);
+document.dispatchEvent(new runtimeDom.window.Event("selectionchange"));
+assert.equal(typedRuntime.getSnapshot().document.revision, "1");
+
+const typedRuntimeRejected = typedRuntime.executeIntentJson(
+  "example/set-link-intent",
+  '{"operation":"remove","operation":"set"}',
+);
+assert.deepEqual(typedRuntimeRejected, {
+  status: "rejected",
+  intentId: "example/set-link-intent",
+  reason: "invalidInput",
+  document: {
+    lineage: "web-glue-public-typed-runtime",
+    revision: "1",
+  },
+});
+assert.equal(typedRuntime.getStatus().phase, "live");
+
+const typedRuntimeSet = typedRuntime.executeIntentJson(
+  "example/set-link-intent",
+  JSON.stringify({
+    operation: "set",
+    properties: [
+      { name: "example/href", value: "https://runtime.example.test" },
+      { name: "example/open", value: true },
+      { name: "example/rank", value: 4 },
+    ],
+  }),
+);
+assert.equal(typedRuntimeSet.status, "committed");
+assert.equal(typedRuntimeSet.document.revision, "2");
+assert.equal(
+  typedRuntimeHost.innerHTML,
+  '<p><span class="breditor-link">abc</span></p>',
+);
+const typedRuntimeDocument = typedRuntime.exportContent("documentJson");
+assert.equal(typedRuntimeDocument.ok, true);
+assert.match(typedRuntimeDocument.value, /https:\/\/runtime\.example\.test/);
+
+const typedRuntimeRemove = typedRuntime.executeIntentJson(
+  "example/set-link-intent",
+  '{"operation":"remove"}',
+);
+assert.equal(typedRuntimeRemove.status, "committed");
+assert.equal(typedRuntimeRemove.document.revision, "3");
+assert.equal(typedRuntimeHost.innerHTML, "<p>abc</p>");
+assert.equal(typedRuntime.getStatus().phase, "live");
+typedRuntime.dispose();
+typedRuntimeHost.remove();
 
 const runtimeDatabase = new IDBFactory();
 const runtimeHost = document.createElement("div");

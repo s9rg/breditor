@@ -1,13 +1,12 @@
 import {
   documentJsonUtf8Bytes,
+  durableFormatRecordsMatchContract,
+  resolveWasmDurableJsonContract,
+  type ResolvedWasmDurableJsonContract,
   type WasmDurableJsonContract,
   type WasmDurableMode,
-  type WasmDurableSchemaBinding,
 } from "./wasm_document_json.js";
-import {
-  snapshotOwnDataArray,
-  snapshotProtectedHandleArray,
-} from "./protected_handle_snapshot.js";
+import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
 
 /** Maximum UTF-8 bytes admitted by the browser checkpoint boundary. */
 export const MAX_BROWSER_SESSION_CHECKPOINT_JSON_BYTES = 16_777_216;
@@ -55,8 +54,9 @@ function validatedCheckpointBytes(
 /**
  * Validates a checkpoint against an already selected durable contract.
  *
- * The mode is never inferred from the payload and a V2 mismatch is not retried
- * as V1. This helper intentionally returns only a byte count. @internal
+ * The mode is never inferred from the payload and a V2/V3 mismatch is never
+ * retried as another generation. This helper intentionally returns only a
+ * byte count. @internal
  */
 export function sessionCheckpointJsonMatchesDurableContract(
   value: unknown,
@@ -217,7 +217,15 @@ const JSON_STRINGIFY = JSON.stringify;
 const PROMISE_RESOLVE = Promise.resolve.bind(Promise);
 const PROMISE_CATCH = Promise.prototype.catch;
 const IGNORE_SETTLEMENT = (): undefined => undefined;
-const MAX_PROFILE_FORMATS = 256;
+const MAX_V3_HISTORY_CAPACITY = 100;
+const MAX_V3_OPERATIONS_PER_ENTRY = 1_024;
+const MAX_V3_AGGREGATE_OPERATIONS = 16_384;
+const MAX_V3_RETAINED_PROPERTY_VALUES = 100_000;
+const MAX_V3_RETAINED_PROPERTY_STRING_UTF8_BYTES = 64 * 1024 * 1024;
+const MAX_PATH_DEPTH = 256;
+const MAX_OPERATION_RUNS = 10_000;
+const MAX_OPERATION_PARAGRAPHS = 10_000;
+const MAX_OPERATION_TEXT_UTF8_BYTES = 1024 * 1024;
 
 interface OwnedHandle {
   readonly value: object;
@@ -228,6 +236,11 @@ interface HandleRegistry {
   readonly handles: OwnedHandle[];
   readonly seen: Set<object>;
   invalid: boolean;
+}
+
+interface RetainedPropertyLowerBound {
+  propertyValues: number;
+  propertyStringUtf8Bytes: number;
 }
 
 /**
@@ -419,7 +432,7 @@ function validateCheckpointEnvelope(
   } catch {
     return null;
   }
-  const binding = readDurableBinding(contract);
+  const binding = resolveWasmDurableJsonContract(contract);
   if (binding === null) return null;
 
   const envelopeKeys = binding.mode === "v1"
@@ -446,10 +459,11 @@ function validateCheckpointEnvelope(
         "openMergeGroup",
       ];
   const envelope = exactJsonRecord(parsed, envelopeKeys);
+  const expectedFormatVersion = durableFormatVersion(binding.mode);
   if (
     envelope === null ||
     envelope["format"] !== "breditor/session-checkpoint" ||
-    envelope["formatVersion"] !== (binding.mode === "v1" ? 1 : 2) ||
+    envelope["formatVersion"] !== expectedFormatVersion ||
     typeof envelope["currentRevision"] !== "string" ||
     !canonicalU64(envelope["currentRevision"])
   ) {
@@ -460,7 +474,7 @@ function validateCheckpointEnvelope(
   if (
     historyBase === null ||
     historyBase["format"] !== "breditor/editor-state" ||
-    historyBase["formatVersion"] !== (binding.mode === "v1" ? 1 : 2)
+    historyBase["formatVersion"] !== expectedFormatVersion
   ) {
     return null;
   }
@@ -523,6 +537,23 @@ function validateCheckpointEnvelope(
   ) {
     return null;
   }
+  if (binding.mode === "v3") {
+    const retainedProperties: RetainedPropertyLowerBound = {
+      propertyValues: 0,
+      propertyStringUtf8Bytes: 0,
+    };
+    if (
+      !observeHistoryBaseDocumentProperties(
+        exactHistoryBase["document"],
+        binding,
+        retainedProperties,
+      ) ||
+      !validEditorStateV3(exactHistoryBase, binding, retainedProperties) ||
+      !validSessionV3History(envelope, binding, retainedProperties)
+    ) {
+      return null;
+    }
+  }
   return Object.freeze({
     utf8Bytes,
     envelope,
@@ -530,59 +561,370 @@ function validateCheckpointEnvelope(
   });
 }
 
-function readDurableBinding(
-  contract: WasmDurableJsonContract,
-): Readonly<{
-  mode: WasmDurableMode;
-  schema: WasmDurableSchemaBinding | undefined;
-}> | null {
-  try {
-    const v1 = exactJsonRecord(contract, ["mode"]);
-    if (v1 !== null && v1["mode"] === "v1") {
-      return Object.freeze({ mode: "v1", schema: undefined });
-    }
-    const v2 = exactJsonRecord(contract, ["mode", "schema", "formats"]);
-    if (v2 === null || v2["mode"] !== "v2") {
-      return null;
-    }
-    const formats = snapshotOwnDataArray(v2["formats"], MAX_PROFILE_FORMATS);
-    const schema = exactJsonRecord(v2["schema"], [
-      "name",
-      "version",
-      "fingerprint",
-    ]);
-    if (
-      formats === null ||
-      schema === null ||
-      !isQualifiedName(schema["name"]) ||
-      !isPositiveU32(schema["version"]) ||
-      !isSchemaFingerprint(schema["fingerprint"])
-    ) {
-      return null;
-    }
-    return Object.freeze({
-      mode: "v2",
-      schema: Object.freeze({
-        name: schema["name"],
-        version: schema["version"],
-        fingerprint: schema["fingerprint"],
-      }),
-    });
-  } catch {
-    return null;
-  }
+function durableFormatVersion(mode: WasmDurableMode): number {
+  return mode === "v1" ? 1 : mode === "v2" ? 2 : 3;
 }
 
 function schemaBindingMatches(
   schemaValue: unknown,
   fingerprint: unknown,
-  expected: WasmDurableSchemaBinding | undefined,
+  expected: ResolvedWasmDurableJsonContract["schema"],
 ): boolean {
-  if (expected === undefined || fingerprint !== expected.fingerprint) return false;
+  if (
+    expected.fingerprint === undefined ||
+    fingerprint !== expected.fingerprint
+  ) return false;
   const schema = exactJsonRecord(schemaValue, ["name", "version"]);
   return schema !== null &&
     schema["name"] === expected.name &&
     schema["version"] === expected.version;
+}
+
+/** Strict bounded preflight for the V3-only editor-value payload generation. */
+function validEditorStateV3(
+  state: Record<string, unknown>,
+  contract: ResolvedWasmDurableJsonContract,
+  retainedProperties: RetainedPropertyLowerBound,
+): boolean {
+  return validSelection(state["selection"]) &&
+    validPendingFormats(
+      state["pendingFormats"],
+      contract,
+      retainedProperties,
+    );
+}
+
+/**
+ * Validates V3 history topology and every property-preserving recipe.
+ *
+ * The browser can exactly enforce static wire limits and a provable lower
+ * bound formed by the history-base properties plus every serialized result
+ * pending-format set. Result documents are derived rather than serialized, so
+ * their retained nodes, text, and properties cannot be counted without
+ * executing the recipes. Rust restore remains authoritative for those complete
+ * retained-boundary budgets, schema admission, and bidirectional replay.
+ */
+function validSessionV3History(
+  envelope: Record<string, unknown>,
+  contract: ResolvedWasmDurableJsonContract,
+  retainedProperties: RetainedPropertyLowerBound,
+): boolean {
+  const historyCapacity = envelope["historyCapacity"];
+  const cursor = envelope["cursor"];
+  const entries = envelope["entries"];
+  const openMergeGroup = envelope["openMergeGroup"];
+  if (
+    !isU32(historyCapacity) ||
+    historyCapacity > MAX_V3_HISTORY_CAPACITY ||
+    !isU32(cursor) ||
+    !Array.isArray(entries) ||
+    entries.length > historyCapacity ||
+    cursor > entries.length ||
+    !(
+      openMergeGroup === null ||
+      isQualifiedName(openMergeGroup)
+    ) ||
+    (openMergeGroup !== null && (cursor === 0 || cursor !== entries.length))
+  ) {
+    return false;
+  }
+
+  let aggregateOperations = 0;
+  for (const value of entries) {
+    const entry = exactJsonRecord(value, [
+      "forwardOperations",
+      "resultSelection",
+      "resultPendingFormats",
+    ]);
+    const operations = entry?.["forwardOperations"];
+    if (
+      entry === null ||
+      !Array.isArray(operations) ||
+      operations.length === 0 ||
+      operations.length > MAX_V3_OPERATIONS_PER_ENTRY
+    ) {
+      return false;
+    }
+    aggregateOperations += operations.length;
+    if (aggregateOperations > MAX_V3_AGGREGATE_OPERATIONS) return false;
+    for (const operation of operations) {
+      if (!validOperationV3Payload(operation, contract)) return false;
+    }
+    if (
+      !validSelection(entry["resultSelection"]) ||
+      !validPendingFormats(
+        entry["resultPendingFormats"],
+        contract,
+        retainedProperties,
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function validPendingFormats(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+  retainedProperties: RetainedPropertyLowerBound,
+): boolean {
+  return value === null ||
+    (durableFormatRecordsMatchContract(value, contract) &&
+      observeRetainedFormatProperties(value, retainedProperties));
+}
+
+/**
+ * Counts the one complete document that is present on the wire. Entry-result
+ * documents deliberately are not guessed here: only Rust replay can derive
+ * them and account for every complete retained boundary without false parity.
+ */
+function observeHistoryBaseDocumentProperties(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+  retainedProperties: RetainedPropertyLowerBound,
+): boolean {
+  const document = jsonRecord(value);
+  const root = jsonRecord(document?.["root"]);
+  const paragraphs = root?.["children"];
+  if (!Array.isArray(paragraphs)) return false;
+  for (const rawParagraph of paragraphs) {
+    const paragraph = jsonRecord(rawParagraph);
+    const runs = paragraph?.["children"];
+    if (!Array.isArray(runs)) return false;
+    for (const rawRun of runs) {
+      const run = jsonRecord(rawRun);
+      const formats = run?.["formats"];
+      if (
+        !durableFormatRecordsMatchContract(formats, contract) ||
+        !observeRetainedFormatProperties(formats, retainedProperties)
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function observeRetainedFormatProperties(
+  value: unknown,
+  retainedProperties: RetainedPropertyLowerBound,
+): boolean {
+  if (!Array.isArray(value)) return false;
+  for (const rawFormat of value) {
+    const format = jsonRecord(rawFormat);
+    const properties = jsonRecord(format?.["properties"]);
+    if (properties === null) return false;
+    const propertyNames = Object.keys(properties);
+    retainedProperties.propertyValues += propertyNames.length;
+    if (
+      retainedProperties.propertyValues > MAX_V3_RETAINED_PROPERTY_VALUES
+    ) {
+      return false;
+    }
+    for (const name of propertyNames) {
+      const propertyValue = properties[name];
+      if (typeof propertyValue !== "string") continue;
+      const stringBytes = wellFormedUtf8Length(
+        propertyValue,
+        MAX_V3_RETAINED_PROPERTY_STRING_UTF8_BYTES,
+      );
+      if (stringBytes === null) return false;
+      retainedProperties.propertyStringUtf8Bytes += stringBytes;
+      if (
+        retainedProperties.propertyStringUtf8Bytes >
+          MAX_V3_RETAINED_PROPERTY_STRING_UTF8_BYTES
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function validSelection(value: unknown): boolean {
+  if (value === null) return true;
+  const selection = exactJsonRecord(value, ["kind", "anchor", "focus"]);
+  return selection !== null &&
+    selection["kind"] === "range" &&
+    validPoint(selection["anchor"]) &&
+    validPoint(selection["focus"]);
+}
+
+function validPoint(value: unknown): boolean {
+  const text = exactJsonRecord(value, [
+    "kind",
+    "textPath",
+    "utf16Offset",
+    "affinity",
+  ]);
+  if (text !== null) {
+    return text["kind"] === "text" &&
+      validPath(text["textPath"]) &&
+      isU32(text["utf16Offset"]) &&
+      validAffinity(text["affinity"]);
+  }
+  const children = exactJsonRecord(value, [
+    "kind",
+    "parentPath",
+    "childIndex",
+    "affinity",
+  ]);
+  return children !== null &&
+    children["kind"] === "children" &&
+    validPath(children["parentPath"]) &&
+    isU32(children["childIndex"]) &&
+    validAffinity(children["affinity"]);
+}
+
+function validAffinity(value: unknown): boolean {
+  return value === "before" || value === "after";
+}
+
+function validOperationV3Payload(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): boolean {
+  const record = jsonRecord(value);
+  if (record === null) return false;
+  switch (record["kind"]) {
+    case "textSplice": {
+      const operation = exactJsonRecord(record, [
+        "kind",
+        "range",
+        "expectedRemoved",
+        "replacement",
+      ]);
+      return operation !== null &&
+        validTextRange(operation["range"]) &&
+        validTextFragment(operation["expectedRemoved"], contract) &&
+        validTextFragment(operation["replacement"], contract);
+    }
+    case "paragraphSplit": {
+      const operation = exactJsonRecord(record, [
+        "kind",
+        "paragraphPath",
+        "offset",
+        "expected",
+      ]);
+      return operation !== null &&
+        validPath(operation["paragraphPath"]) &&
+        isSafeUnsignedInteger(operation["offset"]) &&
+        validTextFragment(operation["expected"], contract);
+    }
+    case "paragraphJoin": {
+      const operation = exactJsonRecord(record, [
+        "kind",
+        "leftPath",
+        "expectedLeft",
+        "expectedRight",
+      ]);
+      return operation !== null &&
+        validPath(operation["leftPath"]) &&
+        validTextFragment(operation["expectedLeft"], contract) &&
+        validTextFragment(operation["expectedRight"], contract);
+    }
+    case "rootTextReplace": {
+      const operation = exactJsonRecord(record, [
+        "kind",
+        "range",
+        "expectedParagraphs",
+        "replacementParagraphs",
+      ]);
+      return operation !== null &&
+        validRootTextRange(operation["range"]) &&
+        validTextFragmentArray(operation["expectedParagraphs"], contract) &&
+        validTextFragmentArray(operation["replacementParagraphs"], contract);
+    }
+    default:
+      return false;
+  }
+}
+
+function validTextRange(value: unknown): boolean {
+  const range = exactJsonRecord(value, ["containerPath", "start", "end"]);
+  return range !== null &&
+    validPath(range["containerPath"]) &&
+    isSafeUnsignedInteger(range["start"]) &&
+    isSafeUnsignedInteger(range["end"]) &&
+    range["start"] <= range["end"];
+}
+
+function validRootTextRange(value: unknown): boolean {
+  const range = exactJsonRecord(value, ["start", "end"]);
+  return range !== null &&
+    validRootTextBoundary(range["start"]) &&
+    validRootTextBoundary(range["end"]);
+}
+
+function validRootTextBoundary(value: unknown): boolean {
+  const boundary = exactJsonRecord(value, ["paragraphPath", "offset"]);
+  return boundary !== null &&
+    validPath(boundary["paragraphPath"]) &&
+    isSafeUnsignedInteger(boundary["offset"]);
+}
+
+function validTextFragmentArray(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): boolean {
+  return Array.isArray(value) &&
+    value.length <= MAX_OPERATION_PARAGRAPHS &&
+    value.every((fragment) => validTextFragment(fragment, contract));
+}
+
+function validTextFragment(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): boolean {
+  const fragment = exactJsonRecord(value, ["runs"]);
+  const runs = fragment?.["runs"];
+  if (
+    fragment === null ||
+    !Array.isArray(runs) ||
+    runs.length > MAX_OPERATION_RUNS
+  ) {
+    return false;
+  }
+  let previousFormats: string | undefined;
+  for (const value of runs) {
+    const run = exactJsonRecord(value, ["text", "formats"]);
+    if (
+      run === null ||
+      typeof run["text"] !== "string" ||
+      run["text"].length === 0 ||
+      wellFormedUtf8Length(
+        run["text"],
+        MAX_OPERATION_TEXT_UTF8_BYTES,
+      ) === null ||
+      !durableFormatRecordsMatchContract(run["formats"], contract)
+    ) {
+      return false;
+    }
+    const formatKey = Reflect.apply(JSON_STRINGIFY, JSON, [run["formats"]]) as string;
+    if (formatKey === previousFormats) return false;
+    previousFormats = formatKey;
+  }
+  return true;
+}
+
+function validPath(value: unknown): boolean {
+  return Array.isArray(value) &&
+    value.length <= MAX_PATH_DEPTH &&
+    value.every(isU32);
+}
+
+function isU32(value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 4_294_967_295;
+}
+
+function isSafeUnsignedInteger(value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0;
 }
 
 function validLineage(value: unknown): value is string {
@@ -596,17 +938,6 @@ function isQualifiedName(value: unknown): value is string {
   return typeof value === "string" &&
     value.length <= 128 &&
     /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
-}
-
-function isPositiveU32(value: unknown): value is number {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 1 &&
-    value <= 4_294_967_295;
-}
-
-function isSchemaFingerprint(value: unknown): value is string {
-  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/u.test(value);
 }
 
 function exactJsonRecord(

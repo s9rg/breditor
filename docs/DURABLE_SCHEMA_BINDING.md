@@ -1,9 +1,9 @@
 # Durable schema binding contract
 
-Status: implemented in `0.2.0`; the `0.3.0-alpha.2` Rust core adds explicitly
-selected property-preserving V3 operation/state/replay families. Wasm ABI 3
-and the supported browser still select exact-base V1 or profile-aware V2
-persistence without sniffing or silently converting formats.
+Status: implemented in `0.2.0` and extended through the unpublished
+`0.3.0-alpha.3` checkpoint. Wasm ABI 4 and the browser explicitly select
+exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
+No path sniffs, silently converts, or falls back between record generations.
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.
@@ -164,6 +164,21 @@ unprofiled path retains the V1 `"current"` slot. Neither path falls back to
 fresh content after a mismatch, and a mismatch never repairs, deletes, or
 overwrites the retained record.
 
+Alpha.3 adds the separate ABI 4 Profile Bootstrap V2 path. Its explicit
+`createEngineFromDocumentJsonV3` factory starts a Session V3 from Document V2;
+`createEngineFromSessionCheckpointJsonV3` restores only Session Checkpoint V3.
+The browser selects that path only with
+`semanticProfile: { bootstrapJson, formatVersion: 2 }`, validates the complete
+compiled property contract plus the bounded structure and binding of the
+property-bearing Document/Session payload, and binds the existing profile-
+scoped IndexedDB outer record to `checkpointFormatVersion: 3`. The browser
+preflight does not replay history or reproduce the Rust codec's aggregate
+retained-node, text, and property accounting. Rust V3 restore performs those
+authoritative checks, so a browser-admissible checkpoint can still fail closed
+there. Autosave captures and structurally revalidates the same V3 mode.
+Bootstrap V1 continues to select the existing profile-aware V2 path, and
+omitting a semantic profile continues to select exact-base V1.
+
 V2 storage support stops at checked prepare, encode, decode, and selected-value
 normalization. It does not enter the existing `Prepared` -> `Uncertain`
 publication-attempt lifecycle, whose public types expose V1 frame projections.
@@ -214,8 +229,9 @@ helper from being mistaken for persistence migration.
   `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
   non-`breditor/*` `SchemaId` and manifest-owned inline formats. The `0.2.0`
   path is property-free; `0.3.0-alpha.1` adds closed typed scalar properties for
-  inline formats in Rust only, and alpha.2 adds the typed set declaration. It
-  still cannot express new nodes, element
+  inline formats, alpha.2 adds the typed set declaration, and alpha.3 carries
+  both through an explicitly selected Wasm/browser profile path. It still
+  cannot express new nodes, element
   properties, entities, exclusions, or normalization. Alpha.4 adds
   `CompiledEditorProfile::try_compile_base_text_profile` over that sealed
   compiler and co-owns its exact `ExtensionSet`, schema, generated registry,
@@ -242,15 +258,18 @@ helper from being mistaken for persistence migration.
   generation. Alpha.5 carries it through profile-created Rust engine/state
   observations and Wasm handles, but never serializes or exposes it as a
   scalar. Existing unprofiled native constructors remain advanced bypasses.
-- Wasm ABI 3 profile factories use V2. Alpha.6 browser validators, export,
-  autosave, and IndexedDB use V2 only with an exact compiled profile; the
-  unprofiled compatibility path remains exact-base V1. The default V2 slot is
-  schema-scoped rather than document-scoped, so applications opening multiple
-  documents under one schema must supply distinct caller slots. Intent-based
-  Alpha.7 intent/toolbar execution is process-local presentation and changes no
+- ABI 4 Profile Bootstrap V2 exposes the exact typed property declaration and
+  its set-action/typed-intent identities. Browser descriptor and projection
+  validation, Document export correlation, Session V3 restore, autosave, and
+  IndexedDB preserve the typed values. Bootstrap V1 remains profile-aware V2;
+  the unprofiled compatibility path remains exact-base V1. The default profiled
+  slot is schema-scoped rather than document-scoped, so applications opening
+  multiple documents under one schema must supply distinct caller slots.
+  Intent/toolbar execution remains process-local presentation and changes no
   durable binding or record bytes.
-  Alpha.2 does not widen the Wasm bootstrap or browser descriptor to declare
-  typed properties or typed action input.
+- Property-bearing Session V3 is a browser checkpoint boundary, not a new
+  local-log/storage generation. The current render recipe, safe-copy HTML, and
+  toolbar do not derive DOM attributes or typed controls from those properties.
 - The local-log entry, checkpoint, frame, root, and storage-generation families
   have no V3 codec. Property-bearing Session Checkpoint V3 bytes cannot enter
   the current V1/V2 local-log graph.

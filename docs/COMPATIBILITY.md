@@ -1,7 +1,8 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the `0.3.0-alpha.2` work adds an explicitly experimental Rust-only contract
+the unpublished `0.3.0-alpha.3` source checkpoint adds an explicitly selected
+ABI-4 typed-profile, browser projection/command, and Session-V3 durable path
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -257,10 +258,10 @@ manifest wire protocol. The package's callback-free data prevents a browser
 callback from becoming Rust mutation authority; importing the package still
 executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
 
-## `0.3.0-alpha.1` and `alpha.2` Rust boundary
+## Historical `0.3.0-alpha.1` and `alpha.2` Rust boundary
 
-This prerelease adds an experimental Rust-only typed inline-format property
-contract. It is not yet part of the supported browser package-root surface.
+Those prereleases added an experimental Rust-only typed inline-format property
+contract. It was not yet part of the supported browser package-root surface.
 One manifest-owned format may have one closed contract of 1 through 32 unique
 qualified keys. Each key is required or optional and accepts Boolean, a
 JavaScript-safe integer with optional inclusive bounds, or a string with
@@ -305,29 +306,55 @@ replacement, and structural plain-text insertion fail closed. There is no V3
 local-log, frame, root, or storage-generation family, and no automatic codec
 generation detection, upgrade, downgrade, or mixed nesting.
 
-Wasm ABI 3 is unchanged. Its bootstrap and browser descriptor cannot declare or
-expose typed contracts, and the browser cannot construct, render, edit, copy,
-paste, or add toolbar controls for them. The package-root profile path therefore
-remains property-free even when the matching workspace packages carry a
-`0.3.0-alpha.2` version. Typed validation proves only scalar shape and ranges;
-URL schemes, CSS safety, and renderer sanitization remain separate future
-contracts. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+At alpha.2, Wasm ABI 3 was unchanged. Its bootstrap and browser descriptor could
+not declare or expose typed contracts, and the package-root profile path
+remained property-free. Typed validation proved only scalar shape and ranges;
+URL schemes, CSS safety, and renderer sanitization remained separate contracts.
+
+## `0.3.0-alpha.3` ABI 4 and browser boundary
+
+Alpha.3 adds, without replacing the older paths:
+
+- explicit `BreditorCompiledProfile.fromBootstrapJsonV2()` compilation of
+  typed format-property contracts and same-manifest set declarations;
+- canonical property contract getters on the profile descriptor and canonical
+  scalar property-value getters on semantic projections;
+- strict bounded `executeTypedActionJson()` and `executeTypedIntentJson()` Wasm
+  commands whose registered contract identity cannot be supplied by JavaScript;
+- Rust-atomic `closeHistoryGroupBefore` action, intent, undo, and redo execution,
+  with `historyGroupClosedBefore` reporting the effective boundary and any
+  command/checkpoint error publishing neither logical result;
+- explicit `createEngineFromDocumentJsonV3()` and
+  `createEngineFromSessionCheckpointJsonV3()` factories selecting Session,
+  Editor State, and Commit V3 around Document V2; and
+- browser `{ bootstrapJson, formatVersion: 2 }` startup, complete typed
+  descriptor/projection validation, high-level `executeIntentJson()`, and
+  defensive Session Checkpoint V3 structural preflight plus IndexedDB
+  restore/autosave. Rust decode, aggregate retained-state limits, canonicality,
+  and replay remain authoritative for checkpoint acceptance.
+
+Bootstrap V1 retains its compiled-profile Session V2 behavior, and an omitted
+profile retains exact-base Session V1. No selector sniffs or retries another
+generation. The browser data and programmatic command paths now preserve typed
+properties; current DOM recipes, copy HTML, plain-text paste, and native-button
+toolbar remain property-insensitive. Safe property-driven DOM recipes and typed
+toolbar controls are the next compatibility boundary. See
+[`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; every `0.2.x` pair reports ABI `3`. The `0.2.x` path checks
-both the exact ABI string and exact embedded package version before reading the
-generated engine factory. ABI compatibility alone never makes mismatched
-official package versions a supported pair.
+ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.3 source pair reports ABI
+`4`. Startup checks both the exact ABI string and exact embedded package version
+before reading the generated engine factory. ABI compatibility alone never
+makes mismatched official package versions a supported pair.
 
-The current workspace reference configuration declares exactly matching
-`@breditor/browser@0.3.0-alpha.2`, `@breditor/wasm@0.3.0-alpha.2`, and
-`@breditor/reference-highlight@0.3.0-alpha.2` package versions. This is not a
-registry-availability or publication claim. The clean consumer gate first packs
-the local workspace tarballs, then installs those artifacts in an isolated
-consumer. The reference package declares
+The alpha.3 source configuration is tested as an exactly matching browser,
+Wasm, and reference-package set. It has not been published; this is not a
+registry-availability claim. The clean consumer gate first packs local
+workspace tarballs, then installs those artifacts in an isolated consumer. The
+reference package declares
 the exact browser version as a peer dependency. Its render and toolbar
 manifests are branded by the `@breditor/browser` module instance that created
 them, so a duplicate, nested, or mismatched browser copy is not a compatible
@@ -339,7 +366,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x` and `0.2.x`:
+form remains supported throughout `0.1.x`, `0.2.x`, and alpha.3:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -396,6 +423,14 @@ Highlight intent/state/toolbar delivery, mixed Strong/Highlight nesting,
 undo/redo, export/copy, formatting-stripping paste, persistence flush/reload,
 restored history, and disposal. It does not broaden the desktop, synthetic-IME,
 clipboard-permission, mobile, or assistive-technology claims above.
+
+The alpha.3 source gates additionally cover strict Bootstrap V2 admission,
+descriptor and projection property values, typed JSON action/intent rejection
+and success, explicit V3 fresh/restore factories, browser V3 structural
+preflight, Rust-owned restore/replay, IndexedDB/autosave correlation, and high-
+level `executeIntentJson()`. They do not yet claim a property-driven Link
+renderer or typed toolbar control, and no alpha.3 registry package has been
+published.
 
 ## Dependency boundary
 

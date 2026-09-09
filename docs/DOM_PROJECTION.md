@@ -33,11 +33,15 @@ and snapshot syntax, and produces a deeply frozen browser projection. It has
 no import-time dependency on a generated Wasm module.
 
 The alpha.6 profile adapter instead requires one exact live compiled-profile
-generation and descriptor. It admits the same document/paragraph/text grammar
-with any canonical set of property-free inline formats listed by that
-descriptor, retains the schema fingerprint, and binds the projection to one
-checked browser presentation. It does not add arbitrary blocks, properties, or
-DOM callbacks.
+generation and descriptor. Its original path admits the same
+document/paragraph/text grammar with any canonical set of property-free inline
+formats listed by that descriptor. The explicitly selected alpha.3 Profile
+Bootstrap V2 path additionally admits descriptor-correlated typed scalar
+properties and retains them in `formatDetails`. Both paths retain the schema
+fingerprint and bind the projection to one checked browser presentation. They
+do not add arbitrary blocks, element properties, entities, or DOM callbacks;
+alpha.3 presentation recipes still cannot derive DOM attributes from format
+property values.
 
 ## Safe DOM vocabulary
 
@@ -97,8 +101,9 @@ The browser-facing Wasm engine is backed by `CheckpointedEditorEngine`. Every
 effective action, selection update, undo, redo, history-group close, and history
 clear runs on a private same-identity candidate. The candidate's complete
 canonical session checkpoint is encoded in the engine's sealed mode—Session
-Checkpoint V1 for the legacy exact-base factory or Session Checkpoint V2 for a
-compiled-profile factory—before the owner and result event are published. A
+Checkpoint V1 for the legacy exact-base factory, Session Checkpoint V2 for a
+Bootstrap V1 compiled-profile factory, or Session Checkpoint V3 for a
+Bootstrap V2 typed-profile factory—before the owner and result event are published. A
 representation failure discards the candidate, returns a redacted structured
 error, and preserves the exact prior state, history identity, checkpoint bytes,
 and observation validity.
@@ -120,9 +125,11 @@ optimizations; they may not weaken failure atomicity.
 
 ## Known limits
 
-- The renderer supports the base-text grammar and property-free inline-format
-  presentations only. Arbitrary blocks, structural nesting, format properties,
-  entity IDs, callbacks, and application-defined DOM renderers are not accepted.
+- The renderer supports the base-text grammar and fixed, property-insensitive
+  inline-format presentations only. The typed profile path retains format
+  properties in its projection, but alpha.3 does not derive DOM attributes from
+  them. Arbitrary blocks, structural nesting, element properties, entity IDs,
+  callbacks, and application-defined DOM renderers are not accepted.
 - There are no persistent per-node IDs. Exact DOM reuse is proved only for a
   particular predecessor/successor pair; equal-looking nodes after reload or a
   full rebuild have no continuity promise.

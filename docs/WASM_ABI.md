@@ -1,9 +1,9 @@
 # Breditor Wasm boundary
 
-Status: `0.2.x` packaged boundary contract retained by `0.3.0-alpha.2`; ABI generation `3` is
-authoritative for the matching official browser/Wasm packages, while direct
-raw-handle use is an intentionally narrow, advanced, and experimental
-integration surface
+Status: the unpublished `0.3.0-alpha.3` source checkpoint uses ABI generation
+`4` for the exact matching browser/Wasm pair. It adds an explicitly selected
+typed-profile and Session-V3 path while preserving the ABI-3-era V1/V2 entry
+points. Direct raw-handle use remains a narrow advanced integration surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
 it is not a crates.io release because its `breditor-core` dependency has no
@@ -16,13 +16,13 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-`@breditor/browser@0.3.0-alpha.2` and `@breditor/wasm@0.3.0-alpha.2` are
-supported as an exact-version pair. The generated raw classes and ownership
-handles documented below remain available for advanced integrations, but they
-are not the high-level browser compatibility surface. The reference package
-also has version `0.3.0-alpha.2` and declares the exact browser package as a
-peer so its branded presentation values are created by the same module instance
-that admits them.
+When published, `@breditor/browser@0.3.0-alpha.3` and
+`@breditor/wasm@0.3.0-alpha.3` must be installed as an exact-version pair. No
+alpha.3 package has been published at this checkpoint. The generated raw
+classes and ownership handles documented below remain available for advanced
+integrations, but they are not the high-level browser compatibility surface.
+The reference package likewise requires the exact browser peer so its branded
+presentation values are created by the same module instance that admits them.
 
 Alpha.5 carries the Rust core's compiled semantic profile through ABI 3. A
 strict bounded bootstrap request creates a reusable compiled-profile owner;
@@ -34,11 +34,12 @@ unhandled, or error results with route provenance. The existing exact-base
 Document V1 and Session Checkpoint V1 static engine factories remain as an
 advanced compatibility path.
 
-`0.3.0-alpha.2` deliberately does not change ABI 3. The Rust core can compile,
-edit, and durably replay typed inline-format properties, but this bootstrap
-cannot declare them and this descriptor cannot expose them. The Wasm/browser
-profile path therefore remains property-free until a separately reviewed ABI
-revision explicitly carries the new data and behavior.
+`0.3.0-alpha.3` advances the transport to ABI 4. Explicit Profile Bootstrap V2
+declares typed inline-format property contracts and set bundles; descriptors
+and projections expose their canonical property metadata and values. Strict
+typed action/intent JSON methods and explicit V3 profile factories carry that
+data through Session, Editor State, and Commit V3. Bootstrap V1, compiled-
+profile V2 factories, and exact-base V1 factories keep their prior meanings.
 
 Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
 and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed
@@ -54,7 +55,7 @@ build-root prefixes plus common macOS, Linux, and Windows user-home path
 patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x` and exact-matched `0.2.x`
+initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.3
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported
@@ -79,7 +80,8 @@ classes:
 - `BreditorCompiledProfile` is a reusable immutable compiled-profile owner;
 - `BreditorCompiledProfileResult` is its one-shot strict-bootstrap result;
 - `BreditorCompiledProfileDescriptor` exposes bounded canonical declaration
-  metadata without executable callbacks;
+  metadata, including typed format-property contracts, without executable
+  callbacks;
 - `BreditorProfileGeneration` owns an opaque process-local correlation handle;
 - `BreditorEngine` owns one profile-correlated editor session and its complete
   profile action-state cache;
@@ -174,12 +176,66 @@ fingerprint-bearing Document V2. Changing only labels, classes, or wrapper
 presentation does not. The bootstrap remains ABI-local configuration rather
 than a public durable manifest protocol.
 
+`BreditorCompiledProfile.fromBootstrapJsonV2(profileJson)` is the only Profile
+Bootstrap V2 selector. It retains the V1 envelope identity and bounded extension
+graph, sets `formatVersion` to `2`, and requires every manifest to contain
+`inlineFormatPropertyContracts` and `inlineFormatSets` beside the existing
+fields. Omitting those arrays does not silently mean empty. One representative
+typed manifest is:
+
+```json
+{
+  "format": "breditor/profile-bootstrap",
+  "formatVersion": 2,
+  "schema": { "name": "example/editor", "version": 1 },
+  "extensions": [{
+    "id": { "name": "example/link-extension", "version": 1 },
+    "dependencies": [],
+    "conflicts": [],
+    "inlineFormats": [{ "kind": "example/link", "revision": 1 }],
+    "inlineFormatPropertyContracts": [{
+      "formatKind": "example/link",
+      "properties": [{
+        "name": "example/href",
+        "presence": "required",
+        "valueType": {
+          "kind": "string",
+          "minimumUtf8Bytes": 1,
+          "maximumUtf8Bytes": 2048
+        }
+      }]
+    }],
+    "inlineFormatToggles": [],
+    "inlineFormatSets": [{
+      "formatKind": "example/link",
+      "actionId": "example/set-link",
+      "intentId": "example/set-link-intent",
+      "bindingId": "example/set-link-binding",
+      "actionStateId": "example/link-control"
+    }]
+  }]
+}
+```
+
+Property presence is exactly `required` or `optional`. Value types are Boolean;
+integer with both nullable `minimum` and `maximum` JavaScript-safe integer
+fields; or string with inclusive `minimumUtf8Bytes` and `maximumUtf8Bytes`.
+The 8 MiB whole-envelope ceiling, fixed count/string/depth bounds, duplicate-key
+visibility, strict shape, canonical compilation, and payload-redacted errors
+apply before a profile can be returned. Bootstrap V2 is still ABI-local
+configuration, not a durable extension-manifest codec.
+
 A successful result transfers one reusable `BreditorCompiledProfile` through
 `takeProfile()`. `generation()` returns an independently disposable opaque
 generation handle. `descriptor()` returns an independently disposable,
 canonical descriptor containing the schema selector/fingerprint, every format
-kind/revision, every intent input and state contract, and every action-state
-contract plus its direct, routed, or history source.
+kind/revision and canonical property contract, every intent input and state
+contract, and every action-state contract plus its direct, routed, or history
+source. Property getters are `formatPropertyCount`, `formatPropertyName`,
+`formatPropertyPresence`, `formatPropertyValueType`,
+`formatPropertyIntegerMinimum`, `formatPropertyIntegerMaximum`,
+`formatPropertyStringMinimumUtf8Bytes`, and
+`formatPropertyStringMaximumUtf8Bytes`.
 
 `profile.createEngineFromDocumentJson(lineageId, documentJson,
 historyCapacity)` strictly decodes Document V2 under that exact compiled schema.
@@ -189,6 +245,14 @@ consume the profile, so one profile can create multiple engine instances that
 share its generation but reject each other's observations. Recompiling the same
 bootstrap can preserve the durable fingerprint while minting a different
 runtime generation.
+
+`profile.createEngineFromDocumentJsonV3(lineageId, documentJson,
+historyCapacity)` explicitly starts a Session-V3 engine from Document V2.
+`profile.createEngineFromSessionCheckpointJsonV3(checkpointJson)` explicitly
+decodes and replay-proves Session Checkpoint V3. These engines use Editor State
+V3 and Commit V3 egress while `documentJson()` remains Document V2. There is no
+Document V3. The unsuffixed profile factory names above keep selecting Session
+V2; neither factory family sniffs or converts another generation.
 
 `BreditorEngine.fromDocumentJson(lineageId, documentJson, historyCapacity)`
 strictly decodes Document V1 under the default base schema and interactive
@@ -211,7 +275,7 @@ egress remains V1.
 A failed factory returns no partial engine. The result's engine can be taken at
 most once. Its status changes from `engine` to `taken` after that transfer.
 
-`breditorWasmAbiVersion()` returns the transport generation (`"3"`), while
+`breditorWasmAbiVersion()` returns the transport generation (`"4"`), while
 `breditorVersion()` returns the crate release embedded in the module. A later
 TypeScript package can reject an incompatible generated module without opening
 or deserializing editor state.
@@ -254,18 +318,40 @@ covers the complete base action set supported by `0.1.0`; it is not a generic
 third-party Wasm plugin ABI. Undo, redo, close-history-group, and clear-history
 are separate guarded commands.
 
-`executeNoInputIntent(expected, intentId)` is the alpha.5 portable semantic
-surface. It first validates the complete observation, then parses the qualified
+ABI 4 adds
+`executeTypedActionJson(expected, actionId, inputJson, closeHistoryGroupBefore)`
+and
+`executeTypedIntentJson(expected, intentId, inputJson, closeHistoryGroupBefore)`.
+They first validate the complete observation and identity, then derive the exact
+registered value-contract name and version inside Rust. The caller supplies
+only JSON and cannot forge that contract identity. The strict bounded decoder
+retains duplicate-key visibility and rejects duplicates, invalid shape, floats,
+unsafe integers, excessive nesting/count/text/key bytes, and contract mismatch
+without retaining the rejected payload in its error.
+
+All ABI-4 action, intent, undo, and redo commands accept the same Boolean close
+option. When true, Rust closes an open merge group and executes the requested
+command on one private candidate, encodes the final combined checkpoint once,
+and publishes both results or neither. A command or checkpoint error discards
+the boundary too; a disabled, unchanged, blocked, or unhandled command can
+still publish an effective boundary. `historyGroupClosedBefore` on the command
+or intent result says whether that boundary was effective. Command evaluation
+and action preparation remain single-pass. Selection synchronization remains a
+separate guarded publication.
+
+The portable semantic surface introduced in alpha.5 is now
+`executeNoInputIntent(expected, intentId, closeHistoryGroupBefore)`. It first
+validates the complete observation, then parses the qualified
 intent identity and requires that its descriptor declares no input. Routing,
 action evaluation, transaction preflight, and route consumption complete once
 inside Rust; no prepared route crosses Wasm and no handler is rerun. The owned
 `BreditorIntentResult` reports `committed`, `blocked`, `unhandled`, or `error`.
 It retains intent, selected/blocking binding and action, binding priority,
 earlier disabled fallthroughs and reason details, blocked activation/value
-indicator, a successor observation for every non-error outcome, Commit V2 and
-projection update for a commit, and its profile generation. A generic typed
-`ActionValue` JSON intent method is deliberately absent because the existing
-contract identity does not define one portable value schema.
+indicator, a successor observation for every non-error outcome, the
+mode-selected Commit V2 or V3 and projection update for a commit, and its
+profile generation. ABI 4's typed JSON intent method uses the same routing and
+result contract for descriptor-declared typed inputs.
 
 `engine.selection(expected)` returns a guarded, one-shot semantic selection
 view correlated to the exact snapshot. `none` has no endpoint fields. `range`
@@ -411,7 +497,8 @@ engine, although allocation failure can still trap.
 Every effective command executes on a private candidate with the exact same
 profile, engine, and history observation identities. Rust encodes the complete
 candidate in the engine's sealed Session Checkpoint mode—V1 for the legacy
-factory, V2 for the compiled-profile factories—before replacing the
+factory, V2 for Bootstrap-V1 compiled-profile factories, and V3 for the
+explicit Bootstrap-V2/V3 factories—before replacing the
 authoritative owner or returning its event. A checkpoint representation error therefore means no mutation was
 published: state, history, cached bytes, and the supplied observation remain
 exact and reusable. Disabled actions and exact no-ops do not re-encode.
@@ -439,6 +526,14 @@ projection. A commit-bearing result can independently return
 `none`, `textContainers`, `rootSplice`, or `root` impact, and a one-shot complete
 final projection. Repeated `projectionUpdate()` calls create independent owned
 views; callers should consume one and promptly free it.
+
+For each format occurrence, `formatPropertyCount`, `formatPropertyName`, and
+`formatPropertyValueKind` expose the canonical property sequence.
+`formatPropertyBoolean`, `formatPropertyInteger`, and `formatPropertyString`
+return the exact scalar through its declared kind-specific getter. Missing,
+wrong-kind, and out-of-range indices are absent rather than coerced. The browser
+consumer validates these values against the compiled-profile descriptor before
+publishing its deeply frozen semantic projection.
 
 No projection method emits HTML, DOM nodes, persisted JSON, entity identity, or
 a generic extension-renderer instruction. The reviewed TypeScript adapter owns
@@ -484,7 +579,9 @@ trusted integration behavior rather than a sandbox guarantee.
 ## Representation and resource limits
 
 Durable document, state, checkpoint, and commit values cross as owned UTF-8 JSON
-strings and retain their existing versioned codec contracts. The semantic
+strings and retain their explicitly selected V1/V2/V3 codec contracts. Document
+itself has only V1 and V2; typed profile engines use Editor State, Commit, and
+Session Checkpoint V3 around Document V2. The semantic
 projection is an explicitly non-durable, non-JSON rendering view. Revisions
 remain canonical decimal strings rather than lossy JavaScript numbers. History
 capacity and depths are bounded `u32` values after checked admission. A
@@ -555,24 +652,29 @@ The token has no public constructor. The adapter's separate opaque
 consults the adapter's live state, so visible token diagnostics alone never
 authorize event cancellation or echo suppression.
 
-One accepted request synchronizes its already captured semantic selection,
-optionally closes the history merge group, and then executes one action, undo,
-or redo. The adapter verifies the exact result shape, handle distinctness,
-lineage, revision transition, event kind, disabled action identity, and
-projection-update correlation before adopting a successor. It consumes the
-update, renders the result, reads the core selection, writes it to the matching
-DOM generation, and independently frees old observations and temporary result
-handles. The returned outcome contains only copied primitives, browser
-projection values, and render metadata.
+One accepted request synchronizes its already captured semantic selection, then
+passes the optional close-before requirement into exactly one action, intent,
+undo, or redo call. Rust runs the requested history close and command on one
+private checkpointed candidate and publishes both or neither. The generated
+result's `historyGroupClosedBefore` flag reports an effective boundary. The
+adapter verifies that flag together with the exact result shape, handle
+distinctness, lineage, revision transition, event kind, disabled action
+identity, and projection-update correlation before adopting a successor. It
+consumes the update, renders the result, reads the core selection, writes it to
+the matching DOM generation, and independently frees old observations and
+temporary result handles. The returned outcome contains only copied primitives,
+browser projection values, and render metadata.
 
 Stale structured errors, malformed results, generated-handle aliasing, and
 uncertain glue or cleanup failures permanently fault the adapter and queue.
 When a fully correlated semantic successor has published but DOM rendering or
 selection installation fails, the successor is retained in an explicit
 reconciliation state and can be full-rendered without retrying the command.
-Selection synchronization and a history close are separate core publications,
-so they can remain effective if the later command fails; the browser sequence
-is non-interleaved but is not a rollback transaction.
+Selection synchronization remains a separate core publication and can remain
+effective if the later command fails. The requested history close cannot: it is
+checkpoint-admitted atomically with the action, intent, undo, or redo. The
+browser sequence is non-interleaved but DOM publication is not part of that Rust
+transaction.
 
 Version `0.0.54` adds no composition class, DOM handle, event object, or host
 callback to the Rust ABI. The TypeScript adapter instead reserves its exact
@@ -617,6 +719,23 @@ thenable, or error results are freed and rejected without publishing an engine.
 The Rust decoder remains authoritative for the complete nested V1 source
 contract, while the browser additionally validates the returned base-profile
 generation, descriptor, observation, and projection as one correlated result.
+
+In alpha.3, `bootstrapWasmEngine` keeps those exact-base V1 and Bootstrap-V1
+profile/V2 paths, and adds the explicit Bootstrap-V2 selector. That selector
+requires ABI 4, calls only the V3-suffixed profile factories, validates Session
+Checkpoint V3 around Document V2, and returns a property-bearing projection
+correlated with the descriptor. The high-level owner records
+`checkpointFormatVersion: 3` in the existing profile-bound outer IndexedDB
+record, validates that binding before restore, and uses the same generation for
+autosave capture. It never retries the bytes through a V2 or V1 factory.
+
+The browser's Session V3 validation is a bounded structural and binding
+preflight, not a second checkpoint implementation. It does not replay history
+or exactly reproduce the Rust codec's aggregate retained-node, text, and
+property limits. `createEngineFromSessionCheckpointJsonV3()` remains
+authoritative for complete decode, resource-limit enforcement, canonicality,
+and replay; a checkpoint that passes browser preflight can still fail closed in
+that factory.
 
 The command adapter emits a handle-free notification when—and only when—a
 validated committed successor is adopted. This point precedes any later DOM

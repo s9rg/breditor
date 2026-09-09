@@ -115,6 +115,25 @@ properties. Typed paragraph split/join/root replacement, Local Log V3, Wasm,
 browser rendering/input, clipboard, and toolbar support remain deferred. See
 the [`0.3.0` scope](docs/V0_3_SCOPE.md).
 
+The `0.3.0-alpha.3` source checkpoint carries that typed slice across Wasm ABI
+4 and the framework-neutral browser boundary. Explicit Profile Bootstrap V2
+declares typed inline-format contracts and set bundles; compiled descriptors
+and semantic projections expose their canonical property names, domains, and
+values. Wasm adds strict typed action/intent JSON commands and explicit
+Document-V2-to-Session-V3 and Session-Checkpoint-V3 factories. The browser
+selects this path only with `semanticProfile: { bootstrapJson, formatVersion:
+2 }`, validates the complete property catalog and bounded V3 wire structure,
+persists Session Checkpoint V3 through IndexedDB/autosave, and exposes
+synchronous `executeIntentJson()`. Rust restore remains authoritative for
+aggregate retained-state limits, replay, and canonical checkpoint acceptance.
+Requested close-before history boundaries now publish atomically with their
+action, intent, undo, or redo from one Rust checkpointed candidate; command
+rejection leaves the prior undo grouping unchanged.
+Bootstrap V1, the profile-aware V2 durable path, and the exact-base V1 path
+remain explicit compatibility routes. The packages are not published. Safe
+property-driven DOM recipes, HTML/clipboard attributes, and typed toolbar
+controls are the next browser work rather than implied by scalar validation.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -123,7 +142,8 @@ The implementation includes:
   property-string bytes;
 - a minimal compiled base schema plus a sealed compiler for adding
   inline formats to the same document/paragraph/text grammar, with optional
-  Rust-only closed typed scalar-property contracts;
+  closed typed scalar-property contracts that alpha.3 carries as data through
+  the explicitly selected Wasm/browser profile path;
 - separate Rust-only fingerprint-bearing V2 codecs for document, operation,
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
@@ -239,11 +259,12 @@ The implementation includes:
   exact successor observation;
 - a separate no-DOM `breditor-wasm` crate with opaque engine-created
   observation handles, structured domain results, guarded no-input/string
-  action commands and no-input semantic intents, history controls, reusable
-  compiled-profile and strict document/checkpoint factories, an opaque profile
-  generation and canonical descriptor, guarded mode-selected Document,
-  Commit, state, and session-checkpoint V1/V2 egress, runtime ABI/version
-  probes, and an exact generated TypeScript declaration gate;
+  action commands, strict typed action/intent JSON commands, history controls,
+  reusable Profile Bootstrap V1/V2 compiled profiles, an opaque profile
+  generation, canonical typed-property descriptor and projection getters,
+  explicit Session/State/Commit V3 engine factories and egress, preserved
+  V1/V2 factories, runtime ABI/version probes, and an exact generated
+  TypeScript declaration gate;
 - a checkpoint-constrained engine owner that admits every effective mutation
   only after its complete canonical session checkpoint encodes, plus a generic
   no-DOM semantic Wasm projection with conservative commit invalidation; and
@@ -264,10 +285,12 @@ The implementation includes:
   whose supported controls are validated as routed no-input intents or exact
   history directions, preserve semantic selection, and re-enter the same FIFO,
   plus a synchronous high-level no-input `executeIntent()` boundary with
-  immediate-only queue admission and public provenance redaction, plus synchronous,
-  snapshot-correlated mode-selected canonical Document V1/V2 and semantic
-  plain-text exports, plus schema-fingerprint/caller-slot IndexedDB binding that
-  never treats the DOM or storage envelope as content;
+  immediate-only queue admission and public provenance redaction, plus the
+  matching strict `executeIntentJson()` boundary for descriptor-declared typed
+  intents, plus synchronous, snapshot-correlated mode-selected canonical
+  Document V1/V2 and semantic plain-text exports, plus explicit V1/V2/V3
+  schema-fingerprint/caller-slot IndexedDB validation and autosave that never
+  treats the DOM or storage envelope as content;
 - `Commit` helpers that construct lower-level undo and redo transactions; and
 - document, fragment, operation-record, and fixed-width per-transaction
   operation limits plus host-configurable aggregate session-checkpoint
@@ -282,20 +305,23 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.2` Rust-core contract admits typed properties in
-Document V2 and supports explicit set/remove, typed pending insertion,
-paragraph-local splice/delete paths, exact history, and the Operation, Editor
-State, Transaction Request, Commit, and Session Checkpoint V3 families. It does
-not yet support typed `ParagraphSplit`, `ParagraphJoin`, or `RootTextReplace`,
-so paragraph breaks, paragraph-boundary deletes, cross-paragraph replacement,
-and the `InsertPlainTextAction` structural path remain property-free. No Local
-Log V3 exists, and the Wasm/bootstrap, renderer, clipboard, toolbar, and public
-browser input paths remain property-free. Boolean/integer/string shape
-validation is not URL or CSS sanitization. One manifest and one complete
-profile can each contribute at most 255 toggle declarations and at most 255 set
-declarations; every target is owned by that manifest, each typed ID is
-profile-unique in its namespace, and extension semantic IDs cannot use
-`breditor/*`.
+The experimental `0.3.0-alpha.3` contract admits typed properties in Document
+V2 and supports explicit set/remove, typed pending insertion, paragraph-local
+splice/delete paths, exact history, and the Operation, Editor State,
+Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 4
+and the browser now compile those contracts explicitly, validate and project
+their scalar values, execute descriptor-declared typed intents from strict JSON,
+and preserve them through Session Checkpoint V3 IndexedDB restore/autosave. It
+does not yet support typed `ParagraphSplit`, `ParagraphJoin`, or
+`RootTextReplace`, so paragraph breaks, paragraph-boundary deletes,
+cross-paragraph replacement, and the `InsertPlainTextAction` structural path
+remain property-free. No Local Log V3 exists. The current callback-free DOM
+recipe, HTML/clipboard mapping, and native-button toolbar do not consume format
+properties; Boolean/integer/string shape validation is not URL or CSS
+sanitization. One manifest and one complete profile can each contribute at most
+255 toggle declarations and at most 255 set declarations; every target is owned
+by that manifest, each typed ID is profile-unique in its namespace, and
+extension semantic IDs cannot use `breditor/*`.
 Structural edits
 beyond the compiler-minted direct-root base-text shape, asynchronous
 action-state delivery, dynamic catalog registration, presentation plugin
@@ -933,7 +959,9 @@ full-render recovery; malformed, stale, aliased, or uncertain results fault the
 adapter. At this historical checkpoint clipboard mutations remained staged;
 `0.0.55` replaces that staged command variant with a guarded browser clipboard
 owner. The multi-stage engine sequence is serialized but cannot roll back a
-selection/history prestage when a later action fails.
+selection prestage when a later action fails. At this historical checkpoint a
+history close was also a separate prestage; alpha.3 instead checkpoint-admits a
+requested close and its action, intent, undo, or redo as one Rust publication.
 
 Version `0.0.54` adds strict composition/IME ownership to the same
 [browser event pipeline contract](docs/BROWSER_EVENT_PIPELINE.md). A dedicated
@@ -1034,8 +1062,9 @@ token. Schema/version mismatch, corruption, conflict, quota, abort, connection,
 generation, and digest failures stay explicit and payload-redacted.
 
 Autosave observes the command adapter's exact adopted-core-commit boundary,
-not queue success. It therefore marks selection/history prestages and valid
-commits that later require DOM reconciliation. A trailing/max-latency
+not queue success. It therefore marks separate selection prestages, effective
+history boundaries returned with an atomic command, and valid commits that
+later require DOM reconciliation. A trailing/max-latency
 coordinator coalesces dirtiness, permits only one save, gives each `flush()` an
 exact epoch, and pauses until explicit retry after any failure. A bounded
 microtask status feed exposes that pause and its stable payload-free underlying

@@ -105,7 +105,7 @@ extern "C" {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn factory_observation_and_json_reads_are_structured() -> TestResult {
-    assert_eq!(breditor_wasm_abi_version(), "3");
+    assert_eq!(breditor_wasm_abi_version(), "4");
     assert_eq!(breditor_version(), env!("CARGO_PKG_VERSION"));
     let mut result = BreditorEngine::from_document_json("wasm-factory", EMPTY_DOCUMENT_JSON, 100.0);
     assert_eq!(result.status(), "engine");
@@ -272,7 +272,7 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     assert_eq!(unchanged.status(), "unchanged");
     assert!(unchanged.matches_profile_generation(&generation));
 
-    let blocked = engine.execute_no_input_intent(&observation, PROFILE_INTENT);
+    let blocked = engine.execute_no_input_intent(&observation, PROFILE_INTENT, false);
     assert_eq!(blocked.status(), "blocked");
     assert!(blocked.matches_profile_generation(&generation));
     assert_eq!(blocked.intent_id().as_deref(), Some(PROFILE_INTENT));
@@ -297,14 +297,14 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     assert_eq!(blocked_observation.snapshot_revision(), observation.snapshot_revision());
     assert!(blocked_observation.matches_profile_generation(&generation));
 
-    let invalid = engine.execute_no_input_intent(&observation, "");
+    let invalid = engine.execute_no_input_intent(&observation, "", false);
     assert_eq!(invalid.status(), "error");
     assert!(invalid.matches_profile_generation(&generation));
     assert_eq!(
         invalid.error().map(|error| error.code()).as_deref(),
         Some("breditor_wasm.invalid_intent_id")
     );
-    let unknown = engine.execute_no_input_intent(&observation, "example/unknown");
+    let unknown = engine.execute_no_input_intent(&observation, "example/unknown", false);
     assert_eq!(unknown.status(), "error");
     assert_eq!(
         unknown.error().map(|error| error.code()).as_deref(),
@@ -350,7 +350,7 @@ fn profile_intents_publish_v2_with_owned_provenance_and_successor_state() -> Tes
     let mut engine = require_engine(&mut engine_result)?;
     let initial = engine.observation();
 
-    let intent = engine.execute_no_input_intent(&initial, PROFILE_INTENT);
+    let intent = engine.execute_no_input_intent(&initial, PROFILE_INTENT, false);
     assert_eq!(intent.status(), "committed");
     assert!(intent.matches_profile_generation(&generation));
     assert_eq!(intent.intent_id().as_deref(), Some(PROFILE_INTENT));
@@ -519,7 +519,7 @@ fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> Test
     let baseline_snapshot = require_action_state_snapshot(&mut baseline)?;
     assert_eq!(baseline_snapshot.entry_activation(0).as_deref(), Some("inactive"));
 
-    let toggled = engine.execute_no_input_action(&initial, "breditor/toggle-strong");
+    let toggled = engine.execute_no_input_action(&initial, "breditor/toggle-strong", false);
     assert_eq!(toggled.status(), "committed");
     let after_toggle = require_observation(&toggled)?;
 
@@ -537,7 +537,7 @@ fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> Test
     assert_eq!(delta_snapshot.entry_status(2).as_deref(), Some("disabled"));
     assert_eq!(changed_ids(&delta_snapshot), ["breditor/control-bold".to_owned()]);
 
-    let inserted = engine.execute_string_action(&after_toggle, "breditor/insert-text", "x");
+    let inserted = engine.execute_string_action(&after_toggle, "breditor/insert-text", "x", false);
     assert_eq!(inserted.status(), "committed");
     let after_insert = require_observation(&inserted)?;
     let mut history_delta = engine.action_states(&after_insert);
@@ -546,7 +546,7 @@ fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> Test
     assert_eq!(history_snapshot.entry_status(2).as_deref(), Some("enabled"));
     assert_eq!(changed_ids(&history_snapshot), ["breditor/control-undo".to_owned()]);
 
-    let undone = engine.undo(&after_insert);
+    let undone = engine.undo(&after_insert, false);
     assert_eq!(undone.status(), "committed");
     let after_undo = require_observation(&undone)?;
     let mut replay_delta = engine.action_states(&after_undo);
@@ -570,7 +570,7 @@ fn projection_reads_reject_stale_observations_without_disclosing_content() -> Te
     let mut engine = require_engine(&mut result)?;
     let stale_observation = engine.observation();
     let committed =
-        engine.execute_string_action(&stale_observation, "breditor/insert-text", "private");
+        engine.execute_string_action(&stale_observation, "breditor/insert-text", "private", false);
     assert_eq!(committed.status(), "committed");
 
     let stale = engine.projection(&stale_observation);
@@ -620,7 +620,7 @@ fn document_json_is_lossless_canonical_and_tracks_content_replay_not_selection()
     assert!(initial_record.get("historyCapacity").is_none());
 
     let inserted =
-        engine.execute_string_action(&initial, "breditor/insert-text", UNICODE_INSERTION);
+        engine.execute_string_action(&initial, "breditor/insert-text", UNICODE_INSERTION, false);
     assert_eq!(inserted.status(), "committed");
     let after_insert = require_observation(&inserted)?;
     let inserted_document = require_string(engine.document_json(&after_insert))?;
@@ -641,12 +641,12 @@ fn document_json_is_lossless_canonical_and_tracks_content_replay_not_selection()
         "selection-only publication must not change exported content"
     );
 
-    let undone = engine.undo(&after_selection_only);
+    let undone = engine.undo(&after_selection_only, false);
     assert_eq!(undone.status(), "committed");
     let after_undo = require_observation(&undone)?;
     assert_eq!(require_string(engine.document_json(&after_undo))?, initial_document);
 
-    let redone = engine.redo(&after_undo);
+    let redone = engine.redo(&after_undo, false);
     assert_eq!(redone.status(), "committed");
     let after_redo = require_observation(&redone)?;
     assert_eq!(require_string(engine.document_json(&after_redo))?, inserted_document);
@@ -674,7 +674,7 @@ fn document_json_rejects_stale_history_and_foreign_observations_without_content_
     let stale_snapshot = engine.observation();
 
     let inserted =
-        engine.execute_string_action(&stale_snapshot, "breditor/insert-text", PRIVATE_TEXT);
+        engine.execute_string_action(&stale_snapshot, "breditor/insert-text", PRIVATE_TEXT, false);
     let before_history_change = require_observation(&inserted)?;
 
     let mut stale_result = engine.document_json(&stale_snapshot);
@@ -711,7 +711,7 @@ fn commit_projection_updates_classify_text_and_structural_changes() -> TestResul
     let mut engine = require_engine(&mut result)?;
     let initial = engine.observation();
 
-    let inserted = engine.execute_string_action(&initial, "breditor/insert-text", "b");
+    let inserted = engine.execute_string_action(&initial, "breditor/insert-text", "b", false);
     let mut text_update = inserted
         .projection_update()
         .ok_or_else(|| test_error("text commit omitted its projection update"))?;
@@ -736,7 +736,8 @@ fn commit_projection_updates_classify_text_and_structural_changes() -> TestResul
     assert!(closed.projection_update().is_none());
 
     let before_toggle = require_observation(&closed)?;
-    let pending_format = engine.execute_no_input_action(&before_toggle, "breditor/toggle-strong");
+    let pending_format =
+        engine.execute_no_input_action(&before_toggle, "breditor/toggle-strong", false);
     assert_eq!(pending_format.status(), "committed");
     let mut none_update = pending_format
         .projection_update()
@@ -756,6 +757,7 @@ fn commit_projection_updates_classify_text_and_structural_changes() -> TestResul
         &structural_observation,
         "breditor/insert-plain-text",
         "first\nsecond",
+        false,
     );
     let mut root_update = structural
         .projection_update()
@@ -1174,7 +1176,7 @@ fn disabled_and_unchanged_outcomes_carry_current_observations() -> TestResult {
     let mut engine = require_engine(&mut result)?;
     let initial = engine.observation();
 
-    let disabled = engine.execute_no_input_action(&initial, "breditor/toggle-strong");
+    let disabled = engine.execute_no_input_action(&initial, "breditor/toggle-strong", false);
     assert_eq!(disabled.status(), "disabled");
     assert_eq!(disabled.disabled_action_id().as_deref(), Some("breditor/toggle-strong"));
     assert_eq!(disabled.disabled_reason_code().as_deref(), Some("breditor/no-selection"));
@@ -1187,7 +1189,7 @@ fn disabled_and_unchanged_outcomes_carry_current_observations() -> TestResult {
     let after_disabled = require_observation(&disabled)?;
     assert_eq!(after_disabled.snapshot_revision(), "0");
 
-    let undo = engine.undo(&after_disabled);
+    let undo = engine.undo(&after_disabled, false);
     assert_eq!(undo.status(), "unchanged");
     assert_eq!(undo.event_kind(), None);
     assert!(undo.error().is_none());
@@ -1210,7 +1212,8 @@ fn string_action_commit_replay_and_stale_guards_are_preserved() -> TestResult {
     let mut engine = require_engine(&mut result)?;
     let initial = engine.observation();
 
-    let committed = engine.execute_string_action(&initial, "breditor/insert-text", PRIVATE_INPUT);
+    let committed =
+        engine.execute_string_action(&initial, "breditor/insert-text", PRIVATE_INPUT, false);
     assert_eq!(committed.status(), "committed");
     assert_eq!(committed.event_kind().as_deref(), Some("action"));
     assert!(committed.error().is_none());
@@ -1222,10 +1225,10 @@ fn string_action_commit_replay_and_stale_guards_are_preserved() -> TestResult {
     assert_eq!(after_insert.snapshot_revision(), "1");
     assert_eq!(after_insert.undo_depth(), 1);
 
-    let stale = engine.execute_no_input_action(&initial, "not even an action ID");
+    let stale = engine.execute_no_input_action(&initial, "not even an action ID", false);
     assert_command_error(&stale, "editor_engine.stale_snapshot", PRIVATE_INPUT)?;
 
-    let undo = engine.undo(&after_insert);
+    let undo = engine.undo(&after_insert, false);
     assert_eq!(undo.status(), "committed");
     assert_eq!(undo.event_kind().as_deref(), Some("undo"));
     let mut undo_update = undo
@@ -1241,7 +1244,7 @@ fn string_action_commit_replay_and_stale_guards_are_preserved() -> TestResult {
     assert_eq!(after_undo.snapshot_revision(), "2");
     assert_eq!(after_undo.redo_depth(), 1);
 
-    let redo = engine.redo(&after_undo);
+    let redo = engine.redo(&after_undo, false);
     assert_eq!(redo.status(), "committed");
     assert_eq!(redo.event_kind().as_deref(), Some("redo"));
     let mut redo_update = redo
@@ -1264,21 +1267,22 @@ fn action_shape_errors_are_adapter_owned_and_atomic() -> TestResult {
     let mut engine = require_engine(&mut result)?;
     let observation = engine.observation();
 
-    let missing = engine.execute_no_input_action(&observation, "test/missing");
+    let missing = engine.execute_no_input_action(&observation, "test/missing", false);
     assert_command_error(&missing, "breditor_wasm.unknown_action", "missing")?;
-    let malformed = engine.execute_no_input_action(&observation, "MALFORMED");
+    let malformed = engine.execute_no_input_action(&observation, "MALFORMED", false);
     assert_command_error(&malformed, "breditor_wasm.invalid_action_id", "MALFORMED")?;
-    let needs_string = engine.execute_no_input_action(&observation, "breditor/insert-text");
+    let needs_string = engine.execute_no_input_action(&observation, "breditor/insert-text", false);
     assert_command_error(
         &needs_string,
         "breditor_wasm.action_requires_string_input",
         "insert-text",
     )?;
     let rejects_string =
-        engine.execute_string_action(&observation, "breditor/toggle-strong", "private");
+        engine.execute_string_action(&observation, "breditor/toggle-strong", "private", false);
     assert_command_error(&rejects_string, "breditor_wasm.action_rejects_string_input", "private")?;
     let too_large = "x".repeat(65_537);
-    let limited = engine.execute_string_action(&observation, "breditor/insert-text", &too_large);
+    let limited =
+        engine.execute_string_action(&observation, "breditor/insert-text", &too_large, false);
     assert_command_error(&limited, "breditor_wasm.string_input_limit", &too_large)?;
     assert_eq!(engine.observation().snapshot_revision(), "0");
     Ok(())
@@ -1292,7 +1296,7 @@ fn known_string_value_rejections_keep_precise_safe_codes_and_are_atomic() -> Tes
     let mut engine = require_engine(&mut result)?;
     let observation = engine.observation();
 
-    let empty = engine.execute_string_action(&observation, "breditor/insert-text", "");
+    let empty = engine.execute_string_action(&observation, "breditor/insert-text", "", false);
     assert_command_error(&empty, "breditor/insert-text-input-empty", "private")?;
 
     let too_many_paragraphs = format!("private-paragraph\n{}", "\n".repeat(9_999));
@@ -1300,6 +1304,7 @@ fn known_string_value_rejections_keep_precise_safe_codes_and_are_atomic() -> Tes
         &observation,
         "breditor/insert-plain-text",
         &too_many_paragraphs,
+        false,
     );
     assert_command_error(
         &paragraph_limit,
@@ -1308,7 +1313,7 @@ fn known_string_value_rejections_keep_precise_safe_codes_and_are_atomic() -> Tes
     )?;
 
     assert_eq!(engine.observation().snapshot_revision(), "0");
-    let valid = engine.execute_string_action(&observation, "breditor/insert-text", "valid");
+    let valid = engine.execute_string_action(&observation, "breditor/insert-text", "valid", false);
     assert_eq!(valid.status(), "committed");
     assert_eq!(require_observation(&valid)?.snapshot_revision(), "1");
     Ok(())
@@ -1322,7 +1327,7 @@ fn history_only_publication_rotates_the_hidden_guard_at_the_same_revision() -> T
     let mut engine = require_engine(&mut result)?;
     let initial = engine.observation();
 
-    let inserted = engine.execute_string_action(&initial, "breditor/insert-text", "b");
+    let inserted = engine.execute_string_action(&initial, "breditor/insert-text", "b", false);
     let before_close = require_observation(&inserted)?;
     assert_eq!(before_close.snapshot_revision(), "1");
     assert_eq!(before_close.undo_depth(), 1);
@@ -1352,7 +1357,7 @@ fn history_only_publication_rotates_the_hidden_guard_at_the_same_revision() -> T
     assert_eq!(state_after_close.snapshot_revision(), "1");
     assert_eq!(state_after_close.changed_count(), 0);
 
-    let stale = engine.execute_no_input_action(&before_close, "not even an action ID");
+    let stale = engine.execute_no_input_action(&before_close, "not even an action ID", false);
     assert_command_error(&stale, "editor_engine.stale_history", "not even an action ID")?;
     let current = engine.observation();
     assert_eq!(current.snapshot_revision(), "1");
@@ -1368,8 +1373,12 @@ fn plain_text_action_and_effective_history_clear_cross_the_boundary() -> TestRes
     let mut engine = require_engine(&mut result)?;
     let initial = engine.observation();
 
-    let inserted =
-        engine.execute_string_action(&initial, "breditor/insert-plain-text", "first\nsecond");
+    let inserted = engine.execute_string_action(
+        &initial,
+        "breditor/insert-plain-text",
+        "first\nsecond",
+        false,
+    );
     assert_eq!(inserted.status(), "committed");
     assert_eq!(inserted.event_kind().as_deref(), Some("action"));
     let after_insert = require_observation(&inserted)?;
@@ -1388,9 +1397,9 @@ fn plain_text_action_and_effective_history_clear_cross_the_boundary() -> TestRes
     assert_eq!(after_clear.undo_depth(), 0);
     assert_eq!(after_clear.redo_depth(), 0);
 
-    let stale = engine.undo(&after_insert);
+    let stale = engine.undo(&after_insert, false);
     assert_command_error(&stale, "editor_engine.stale_history", "first\nsecond")?;
-    let unchanged = engine.undo(&after_clear);
+    let unchanged = engine.undo(&after_clear, false);
     assert_eq!(unchanged.status(), "unchanged");
     Ok(())
 }
@@ -1432,7 +1441,7 @@ fn checkpoint_restore_allocates_a_fresh_engine_identity() -> TestResult {
     let mut second_result = BreditorEngine::from_session_checkpoint_json(&encoded);
     let mut second = require_engine(&mut second_result)?;
 
-    let cross_engine = second.undo(&first_observation);
+    let cross_engine = second.undo(&first_observation, false);
     assert_command_error(
         &cross_engine,
         "editor_engine.profile_generation_mismatch",
@@ -1441,7 +1450,7 @@ fn checkpoint_restore_allocates_a_fresh_engine_identity() -> TestResult {
     assert_eq!(second.observation().snapshot_revision(), "0");
 
     let current = first.observation();
-    let first_undo = first.undo(&current);
+    let first_undo = first.undo(&current, false);
     assert_eq!(first_undo.status(), "unchanged");
     Ok(())
 }
@@ -1569,7 +1578,7 @@ fn deterministic_sequence(checkpoint: &str) -> TestResult<(String, String, Strin
     let mut engine = require_engine(&mut result)?;
     let observation = engine.observation();
     let command =
-        engine.execute_string_action(&observation, "breditor/insert-text", "deterministic");
+        engine.execute_string_action(&observation, "breditor/insert-text", "deterministic", false);
     assert_eq!(command.status(), "committed");
     assert_eq!(require_observation(&command)?.snapshot_revision(), "1");
     Ok((

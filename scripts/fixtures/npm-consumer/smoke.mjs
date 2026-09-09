@@ -73,8 +73,8 @@ assertInsideConsumer(realpathSync(browserRequire.resolve("parse5")), "parse5");
 
 const wasmUrl = import.meta.resolve("@breditor/wasm/wasm");
 initSync({ module: readFileSync(fileURLToPath(wasmUrl)) });
-assert.equal(breditorWasmAbiVersion(), "3");
-assert.equal(breditorVersion(), "0.3.0-alpha.2");
+assert.equal(breditorWasmAbiVersion(), "4");
+assert.equal(breditorVersion(), "0.3.0-alpha.3");
 
 function resolvedConsumerModule(specifier) {
   const resolved = realpathSync(fileURLToPath(import.meta.resolve(specifier)));

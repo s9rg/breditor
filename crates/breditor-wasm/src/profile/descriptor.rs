@@ -1,8 +1,11 @@
 use breditor_core::{
     action::ActionActivationContract,
+    document::PropertyInteger,
+    extension::{InlineFormatPropertySpecV1, InlineFormatPropertyTypeV1, PropertyPresenceV1},
     profile::{
         CompiledProfileActionStateDescriptor, CompiledProfileActionStateSource,
-        CompiledProfileDescriptor, CompiledProfileIntentDescriptor,
+        CompiledProfileDescriptor, CompiledProfileInlineFormatDescriptor,
+        CompiledProfileIntentDescriptor,
     },
     transaction::ReplayDirection,
 };
@@ -30,6 +33,21 @@ impl BreditorCompiledProfileDescriptor {
 
     fn action_state(&self, index: u32) -> Option<&CompiledProfileActionStateDescriptor> {
         self.inner.action_states().get(index as usize)
+    }
+
+    fn inline_format(&self, index: u32) -> Option<&CompiledProfileInlineFormatDescriptor> {
+        self.inner.inline_formats().get(index as usize)
+    }
+
+    fn inline_format_property(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<&InlineFormatPropertySpecV1> {
+        self.inline_format(format_index)?
+            .property_contract()?
+            .properties()
+            .get(property_index as usize)
     }
 }
 
@@ -84,10 +102,129 @@ impl BreditorCompiledProfileDescriptor {
     #[must_use]
     #[wasm_bindgen(js_name = formatRevision)]
     pub fn format_revision(&self, index: u32) -> Option<u32> {
-        self.inner
-            .inline_formats()
-            .get(index as usize)
-            .map(|descriptor| descriptor.revision().get())
+        self.inline_format(index).map(|descriptor| descriptor.revision().get())
+    }
+
+    /// Returns the number of declared properties for one admitted format.
+    ///
+    /// Property-free formats return zero; an out-of-range format index returns
+    /// `undefined` at the JavaScript boundary.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyCount)]
+    pub fn format_property_count(&self, format_index: u32) -> Option<u32> {
+        self.inline_format(format_index).map(|descriptor| {
+            descriptor
+                .property_contract()
+                .map_or(0, |contract| fixed_count(contract.properties().len()))
+        })
+    }
+
+    /// Returns one property's qualified identity.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyName)]
+    pub fn format_property_name(&self, format_index: u32, property_index: u32) -> Option<String> {
+        self.inline_format_property(format_index, property_index)
+            .map(|property| property.name().as_str().to_owned())
+    }
+
+    /// Returns `required` or `optional` for one property declaration.
+    #[must_use]
+    #[wasm_bindgen(
+        js_name = formatPropertyPresence,
+        unchecked_return_type = "BreditorProfilePropertyPresence | undefined"
+    )]
+    pub fn format_property_presence(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<String> {
+        self.inline_format_property(format_index, property_index)
+            .map(|property| property_presence(property.presence()).to_owned())
+    }
+
+    /// Returns `boolean`, `integer`, or `string` for one property declaration.
+    #[must_use]
+    #[wasm_bindgen(
+        js_name = formatPropertyValueType,
+        unchecked_return_type = "BreditorProfilePropertyValueType | undefined"
+    )]
+    pub fn format_property_value_type(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<String> {
+        self.inline_format_property(format_index, property_index)
+            .map(|property| property_value_type(property.value_type()).to_owned())
+    }
+
+    /// Returns one integer property's inclusive lower bound.
+    ///
+    /// `undefined` means the bound is open, the property has another type, or
+    /// either index is out of range.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyIntegerMinimum)]
+    pub fn format_property_integer_minimum(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<f64> {
+        let InlineFormatPropertyTypeV1::Integer(domain) =
+            self.inline_format_property(format_index, property_index)?.value_type()
+        else {
+            return None;
+        };
+        domain.minimum().map(property_integer_number)
+    }
+
+    /// Returns one integer property's inclusive upper bound.
+    ///
+    /// `undefined` means the bound is open, the property has another type, or
+    /// either index is out of range.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyIntegerMaximum)]
+    pub fn format_property_integer_maximum(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<f64> {
+        let InlineFormatPropertyTypeV1::Integer(domain) =
+            self.inline_format_property(format_index, property_index)?.value_type()
+        else {
+            return None;
+        };
+        domain.maximum().map(property_integer_number)
+    }
+
+    /// Returns one string property's inclusive minimum UTF-8 byte length.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyStringMinimumUtf8Bytes)]
+    pub fn format_property_string_minimum_utf8_bytes(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<u32> {
+        let InlineFormatPropertyTypeV1::String(domain) =
+            self.inline_format_property(format_index, property_index)?.value_type()
+        else {
+            return None;
+        };
+        Some(domain.minimum_utf8_bytes())
+    }
+
+    /// Returns one string property's inclusive maximum UTF-8 byte length.
+    #[must_use]
+    #[wasm_bindgen(js_name = formatPropertyStringMaximumUtf8Bytes)]
+    pub fn format_property_string_maximum_utf8_bytes(
+        &self,
+        format_index: u32,
+        property_index: u32,
+    ) -> Option<u32> {
+        let InlineFormatPropertyTypeV1::String(domain) =
+            self.inline_format_property(format_index, property_index)?.value_type()
+        else {
+            return None;
+        };
+        Some(domain.maximum_utf8_bytes())
     }
 
     /// Returns the number of semantic intents.
@@ -276,4 +413,26 @@ const fn activation_contract(contract: ActionActivationContract) -> &'static str
 
 fn fixed_count(value: usize) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
+}
+
+const fn property_presence(presence: PropertyPresenceV1) -> &'static str {
+    match presence {
+        PropertyPresenceV1::Required => "required",
+        PropertyPresenceV1::Optional => "optional",
+    }
+}
+
+const fn property_value_type(value_type: &InlineFormatPropertyTypeV1) -> &'static str {
+    match value_type {
+        InlineFormatPropertyTypeV1::Boolean => "boolean",
+        InlineFormatPropertyTypeV1::Integer(_) => "integer",
+        InlineFormatPropertyTypeV1::String(_) => "string",
+    }
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn property_integer_number(value: PropertyInteger) -> f64 {
+    // PropertyInteger is deliberately constrained to JavaScript's exact-safe
+    // range, so this conversion cannot lose an integer bit.
+    value.get() as f64
 }

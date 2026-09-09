@@ -32,6 +32,12 @@ export type BreditorCompiledProfileResultStatus = "profile" | "taken" | "error";
 /** Cross-language input envelope admitted by one semantic intent. */
 export type BreditorProfileIntentInputKind = "none" | "typed";
 
+/** Requiredness of one schema-admitted inline-format property. */
+export type BreditorProfilePropertyPresence = "required" | "optional";
+
+/** Closed scalar type of one schema-admitted inline-format property. */
+export type BreditorProfilePropertyValueType = "boolean" | "integer" | "string";
+
 /** Semantic source evaluated by one action-state entry. */
 export type BreditorProfileActionStateSourceKind = "direct" | "routed" | "history";
 
@@ -49,6 +55,9 @@ export type BreditorProjectionResultStatus = "projection" | "taken" | "error";
 
 /** Structural kind of one flattened semantic projection node. */
 export type BreditorProjectionNodeKind = "element" | "text";
+
+/** Scalar kind of one schema-admitted inline-format property. */
+export type BreditorProjectionPropertyValueKind = "boolean" | "integer" | "string";
 
 /** Conservative DOM invalidation derived from one proved commit. */
 export type BreditorProjectionImpact = "none" | "textContainers" | "rootSplice" | "root";

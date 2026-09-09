@@ -15,6 +15,7 @@ mod action_state;
 mod action_value_json;
 mod command;
 mod command_result;
+mod compiled_profile_engine_v3;
 mod document_json;
 mod engine;
 mod engine_result;

@@ -664,11 +664,25 @@
 //! in both directions before publication. Older generations remain immutable
 //! and fail closed whenever projection would discard typed values.
 //!
-//! This alpha still keeps structural typed editing deliberately closed:
+//! At that alpha.2 checkpoint, structural typed editing remained deliberately
+//! closed:
 //! paragraph split/join, cross-paragraph typed edits, root-text replacement,
-//! and local-log V3 persistence are not yet supported. Wasm ABI 3 and the
-//! browser path remain property-free. Typed scalar validation is a data-shape
-//! contract; it does not by itself define URL, CSS, HTML, or clipboard safety.
+//! and local-log V3 persistence were unsupported, while Wasm ABI 3 and the
+//! browser path remained property-free.
+//!
+//! Version `0.3.0-alpha.3` adds an explicit V3 policy to the guarded
+//! checkpointed engine and carries the existing Rust typed-property contract
+//! through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. That
+//! engine can also run one requested history close plus an action, intent, undo,
+//! or redo on a private candidate and publish both logical results or neither
+//! after final checkpoint admission. The ABI-4 path preserves typed action and
+//! intent input, projection values, and Session, Editor State, and Commit V3
+//! browser persistence while retaining Document V2.
+//! Exact-base V1 and Bootstrap-V1/Session-V2 paths remain distinct. Structural
+//! typed paragraph split/join and root replacement, local-log V3, property-
+//! driven DOM/clipboard presentation, and typed toolbar controls are still
+//! unsupported. Typed scalar validation is a data-shape contract; it does not
+//! by itself define URL, CSS, HTML, or clipboard safety.
 
 pub mod action;
 pub mod codec;

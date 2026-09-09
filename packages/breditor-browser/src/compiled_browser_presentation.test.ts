@@ -400,6 +400,15 @@ function ownedDescriptor(
     formatKind: (index) => formatKinds[index],
     formatRevision: (index) =>
       index >= 0 && index < formatKinds.length ? 1 : undefined,
+    formatPropertyCount: (index) =>
+      index >= 0 && index < formatKinds.length ? 0 : undefined,
+    formatPropertyName: absent,
+    formatPropertyPresence: absent,
+    formatPropertyValueType: absent,
+    formatPropertyIntegerMinimum: absent,
+    formatPropertyIntegerMaximum: absent,
+    formatPropertyStringMinimumUtf8Bytes: absent,
+    formatPropertyStringMaximumUtf8Bytes: absent,
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,

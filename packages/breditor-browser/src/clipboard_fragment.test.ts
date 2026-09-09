@@ -511,7 +511,12 @@ function createProfiledFixture(
         fingerprint: descriptor.schema.fingerprint,
       },
       snapshot: { lineage: "clipboard-fragment-profile", revision: "0" },
-      paragraphs: paragraphs.map((runs) => ({ runs })),
+      paragraphs: paragraphs.map((runs) => ({
+        runs: runs.map((run) => ({
+          text: run.text,
+          formatDetails: run.formats.map((kind) => ({ kind, properties: [] })),
+        })),
+      })),
     },
     generation,
     descriptor,
@@ -545,6 +550,15 @@ function ownedProfileDescriptor(
     formatKind: (index) => formatKinds[index],
     formatRevision: (index) =>
       index >= 0 && index < formatKinds.length ? 1 : undefined,
+    formatPropertyCount: (index) =>
+      index >= 0 && index < formatKinds.length ? 0 : undefined,
+    formatPropertyName: absent,
+    formatPropertyPresence: absent,
+    formatPropertyValueType: absent,
+    formatPropertyIntegerMinimum: absent,
+    formatPropertyIntegerMaximum: absent,
+    formatPropertyStringMinimumUtf8Bytes: absent,
+    formatPropertyStringMaximumUtf8Bytes: absent,
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,

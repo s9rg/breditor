@@ -84,7 +84,7 @@ struct InlineFormatToggleRecord {
     action_state_id: String,
 }
 
-/// Strictly decodes and compiles one complete ABI 3 profile request.
+/// Strictly decodes and compiles one legacy profile-bootstrap request.
 pub(crate) fn decode_compiled_profile(json: &str) -> Result<CompiledEditorProfile, BreditorError> {
     if json.len() > MAX_PROFILE_BOOTSTRAP_JSON_BYTES {
         return Err(BreditorError::new(

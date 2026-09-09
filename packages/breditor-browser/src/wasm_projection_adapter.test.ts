@@ -27,8 +27,19 @@ type FlatNode =
   | {
       readonly kind: "text";
       readonly text: string;
-      readonly formats: readonly string[];
+      readonly formats: readonly FlatFormat[];
     };
+
+type FlatProperty = Readonly<{
+  name: string;
+  kind: "boolean" | "integer" | "string";
+  value: boolean | number | string;
+}>;
+
+type FlatFormat = Readonly<{
+  kind: string;
+  properties: readonly FlatProperty[];
+}>;
 
 class FakeProjectionView implements SemanticProjectionView {
   readonly schemaName: string;
@@ -46,6 +57,7 @@ class FakeProjectionView implements SemanticProjectionView {
       text: string;
       strong: boolean;
       formats?: readonly string[];
+      formatDetails?: readonly FlatFormat[];
     }>[])[],
     schema: Readonly<{
       name: string;
@@ -75,7 +87,9 @@ class FakeProjectionView implements SemanticProjectionView {
         nodes.push({
           kind: "text",
           text: run.text,
-          formats: run.formats ?? (run.strong ? ["breditor/strong"] : []),
+          formats: run.formatDetails ??
+            (run.formats ?? (run.strong ? ["breditor/strong"] : []))
+              .map((kind) => ({ kind, properties: [] })),
         });
       }
       nodes[paragraphIndex] = {
@@ -127,7 +141,74 @@ class FakeProjectionView implements SemanticProjectionView {
 
   formatType(index: number, ordinal: number): string | undefined {
     const node = this.nodes[index];
-    return node?.kind === "text" ? node.formats[ordinal] : undefined;
+    return node?.kind === "text" ? node.formats[ordinal]?.kind : undefined;
+  }
+
+  formatPropertyCount(index: number, formatOrdinal: number): number | undefined {
+    const node = this.nodes[index];
+    return node?.kind === "text"
+      ? node.formats[formatOrdinal]?.properties.length
+      : undefined;
+  }
+
+  formatPropertyName(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): string | undefined {
+    return this.property(index, formatOrdinal, propertyOrdinal)?.name;
+  }
+
+  formatPropertyValueKind(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): "boolean" | "integer" | "string" | undefined {
+    return this.property(index, formatOrdinal, propertyOrdinal)?.kind;
+  }
+
+  formatPropertyBoolean(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): boolean | undefined {
+    const property = this.property(index, formatOrdinal, propertyOrdinal);
+    return property?.kind === "boolean" && typeof property.value === "boolean"
+      ? property.value
+      : undefined;
+  }
+
+  formatPropertyInteger(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): number | undefined {
+    const property = this.property(index, formatOrdinal, propertyOrdinal);
+    return property?.kind === "integer" && typeof property.value === "number"
+      ? property.value
+      : undefined;
+  }
+
+  formatPropertyString(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): string | undefined {
+    const property = this.property(index, formatOrdinal, propertyOrdinal);
+    return property?.kind === "string" && typeof property.value === "string"
+      ? property.value
+      : undefined;
+  }
+
+  private property(
+    index: number,
+    formatOrdinal: number,
+    propertyOrdinal: number,
+  ): FlatProperty | undefined {
+    const node = this.nodes[index];
+    return node?.kind === "text"
+      ? node.formats[formatOrdinal]?.properties[propertyOrdinal]
+      : undefined;
   }
 
   free(): void {
@@ -231,11 +312,32 @@ function valueOf<T>(result: BrowserProjectionResult<T>): T {
   return result.value;
 }
 
+type ProfilePropertyFixture = Readonly<{
+  name: string;
+  presence: "required" | "optional";
+  valueType:
+    | Readonly<{ kind: "boolean" }>
+    | Readonly<{ kind: "integer"; minimum?: number; maximum?: number }>
+    | Readonly<{
+        kind: "string";
+        minimumUtf8Bytes: number;
+        maximumUtf8Bytes: number;
+      }>;
+}>;
+
+type ProfileFormatFixture = string | Readonly<{
+  kind: string;
+  properties: readonly ProfilePropertyFixture[];
+}>;
+
 function ownedProfileDescriptor(
-  formats: readonly string[],
+  formats: readonly ProfileFormatFixture[],
   generation: WasmProfileGenerationView = TEST_PROFILE_GENERATION,
 ): BrowserCompiledProfileDescriptor {
   const absent = (): undefined => undefined;
+  const normalized = formats.map((format) => typeof format === "string"
+    ? { kind: format, properties: [] }
+    : format);
   const view: WasmCompiledProfileDescriptorView = {
     schemaName: "example/document",
     schemaVersion: 1,
@@ -244,9 +346,33 @@ function ownedProfileDescriptor(
     intentCount: 0,
     actionStateCount: 0,
     matchesProfileGeneration: (candidate) => candidate === generation,
-    formatKind: (index) => formats[index],
+    formatKind: (index) => normalized[index]?.kind,
     formatRevision: (index) =>
-      index >= 0 && index < formats.length ? 1 : undefined,
+      index >= 0 && index < normalized.length ? 1 : undefined,
+    formatPropertyCount: (formatIndex) =>
+      normalized[formatIndex]?.properties.length,
+    formatPropertyName: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.name,
+    formatPropertyPresence: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.presence,
+    formatPropertyValueType: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.valueType.kind,
+    formatPropertyIntegerMinimum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.minimum : undefined;
+    },
+    formatPropertyIntegerMaximum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.maximum : undefined;
+    },
+    formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.minimumUtf8Bytes : undefined;
+    },
+    formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.maximumUtf8Bytes : undefined;
+    },
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,
@@ -270,6 +396,76 @@ function ownedProfileDescriptor(
   );
   if (!result.ok) throw new Error("test profile descriptor was rejected");
   return result.descriptor;
+}
+
+const TYPED_FORMAT: Readonly<{
+  kind: string;
+  properties: readonly ProfilePropertyFixture[];
+}> = Object.freeze({
+  kind: "example/metadata",
+  properties: Object.freeze([
+    Object.freeze({
+      name: "example/enabled",
+      presence: "required" as const,
+      valueType: Object.freeze({ kind: "boolean" as const }),
+    }),
+    Object.freeze({
+      name: "example/priority",
+      presence: "optional" as const,
+      valueType: Object.freeze({
+        kind: "integer" as const,
+        minimum: 0,
+        maximum: 10,
+      }),
+    }),
+    Object.freeze({
+      name: "example/title",
+      presence: "required" as const,
+      valueType: Object.freeze({
+        kind: "string" as const,
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 64,
+      }),
+    }),
+  ]),
+});
+
+const PROPERTY_BUDGET_FORMAT: Readonly<{
+  kind: string;
+  properties: readonly ProfilePropertyFixture[];
+}> = Object.freeze({
+  kind: "example/value",
+  properties: Object.freeze([
+    Object.freeze({
+      name: "example/value",
+      presence: "required" as const,
+      valueType: Object.freeze({
+        kind: "string" as const,
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 65_536,
+      }),
+    }),
+  ]),
+});
+
+function typedProperties(priority = 7): readonly FlatProperty[] {
+  return Object.freeze([
+    Object.freeze({
+      name: "example/enabled",
+      kind: "boolean" as const,
+      value: true,
+    }),
+    Object.freeze({
+      name: "example/priority",
+      kind: "integer" as const,
+      value: priority,
+    }),
+    Object.freeze({
+      name: "example/title",
+      kind: "string" as const,
+      value: "safe title",
+    }),
+  ]);
 }
 
 describe("Wasm semantic projection adapter", () => {
@@ -318,6 +514,360 @@ describe("Wasm semantic projection adapter", () => {
       "example/highlight",
     ]);
     expect(update.result.paragraphs[0]?.runs[0]?.strong).toBe(false);
+  });
+
+  it("owns canonical typed format details while retaining the format-kind index", () => {
+    const descriptor = ownedProfileDescriptor([
+      "breditor/strong",
+      TYPED_FORMAT,
+    ]);
+    const view = new FakeProjectionView("0", [[{
+      text: "typed",
+      strong: true,
+      formatDetails: [
+        { kind: "breditor/strong", properties: [] },
+        { kind: TYPED_FORMAT.kind, properties: typedProperties() },
+      ],
+    }]], descriptor.schema);
+
+    const projection = valueOf(consumeSemanticProjectionRaw(
+      view,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ));
+    const run = projection.paragraphs[0]?.runs[0];
+
+    expect(run?.formats).toEqual(["breditor/strong", "example/metadata"]);
+    expect(run?.formatDetails).toEqual([
+      { kind: "breditor/strong", properties: [] },
+      {
+        kind: "example/metadata",
+        properties: [
+          { name: "example/enabled", value: true },
+          { name: "example/priority", value: 7 },
+          { name: "example/title", value: "safe title" },
+        ],
+      },
+    ]);
+    expect(Object.isFrozen(run)).toBe(true);
+    expect(Object.isFrozen(run?.formats)).toBe(true);
+    expect(Object.isFrozen(run?.formatDetails)).toBe(true);
+    expect(Object.isFrozen(run?.formatDetails[1])).toBe(true);
+    expect(Object.isFrozen(run?.formatDetails[1]?.properties)).toBe(true);
+    expect(Object.isFrozen(run?.formatDetails[1]?.properties[0])).toBe(true);
+    expect(Reflect.ownKeys(run ?? {})).toEqual([
+      "text",
+      "strong",
+      "formatDetails",
+      "formats",
+    ]);
+    expect(Object.keys(run ?? {})).toEqual(["text", "strong", "formatDetails"]);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("keeps adjacent runs separate when only typed property values differ", () => {
+    const descriptor = ownedProfileDescriptor([TYPED_FORMAT]);
+    const differing = new FakeProjectionView("0", [[
+      {
+        text: "left",
+        strong: false,
+        formatDetails: [{ kind: TYPED_FORMAT.kind, properties: typedProperties(1) }],
+      },
+      {
+        text: "right",
+        strong: false,
+        formatDetails: [{ kind: TYPED_FORMAT.kind, properties: typedProperties(2) }],
+      },
+    ]], descriptor.schema);
+    expect(consumeSemanticProjectionRaw(
+      differing,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(true);
+
+    const equivalent = new FakeProjectionView("0", [[
+      {
+        text: "left",
+        strong: false,
+        formatDetails: [{ kind: TYPED_FORMAT.kind, properties: typedProperties(1) }],
+      },
+      {
+        text: "right",
+        strong: false,
+        formatDetails: [{ kind: TYPED_FORMAT.kind, properties: typedProperties(1) }],
+      },
+    ]], descriptor.schema);
+    expect(consumeSemanticProjectionRaw(
+      equivalent,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(equivalent.freeCalls).toBe(1);
+  });
+
+  it("rejects noncanonical, uncontracted, wrong-domain, and unsafe property values", () => {
+    const descriptor = ownedProfileDescriptor([TYPED_FORMAT]);
+    const valid = typedProperties();
+    const cases: readonly [string, readonly FlatProperty[]][] = [
+      ["missing required", valid.slice(1)],
+      [
+        "unknown property",
+        [
+          valid[0] as FlatProperty,
+          { name: "example/rogue", kind: "boolean", value: true },
+          valid[2] as FlatProperty,
+        ],
+      ],
+      [
+        "noncanonical property order",
+        [valid[1] as FlatProperty, valid[0] as FlatProperty, valid[2] as FlatProperty],
+      ],
+      [
+        "integer below contract",
+        [
+          valid[0] as FlatProperty,
+          { name: "example/priority", kind: "integer", value: -1 },
+          valid[2] as FlatProperty,
+        ],
+      ],
+      [
+        "string below contract",
+        [
+          valid[0] as FlatProperty,
+          valid[1] as FlatProperty,
+          { name: "example/title", kind: "string", value: "" },
+        ],
+      ],
+      [
+        "unsafe integer",
+        [
+          valid[0] as FlatProperty,
+          {
+            name: "example/priority",
+            kind: "integer",
+            value: Number.MAX_SAFE_INTEGER + 1,
+          },
+          valid[2] as FlatProperty,
+        ],
+      ],
+      [
+        "negative zero",
+        [
+          valid[0] as FlatProperty,
+          { name: "example/priority", kind: "integer", value: -0 },
+          valid[2] as FlatProperty,
+        ],
+      ],
+    ];
+
+    for (const [_name, properties] of cases) {
+      const view = new FakeProjectionView("0", [[{
+        text: "typed",
+        strong: false,
+        formatDetails: [{ kind: TYPED_FORMAT.kind, properties }],
+      }]], descriptor.schema);
+      expect(consumeSemanticProjectionRaw(
+        view,
+        TEST_PROFILE_GENERATION,
+        descriptor,
+      ).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
+  });
+
+  it("requires exact scalar channels, bounded counts, and absent sentinels", () => {
+    const descriptor = ownedProfileDescriptor([TYPED_FORMAT]);
+    const createView = () => new FakeProjectionView("0", [[{
+      text: "typed",
+      strong: false,
+      formatDetails: [{ kind: TYPED_FORMAT.kind, properties: typedProperties() }],
+    }]], descriptor.schema);
+
+    const crossKind = createView();
+    const boolean = crossKind.formatPropertyBoolean.bind(crossKind);
+    crossKind.formatPropertyBoolean = (node, format, property) =>
+      property === 1 ? false : boolean(node, format, property);
+    expect(consumeSemanticProjectionRaw(
+      crossKind,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(crossKind.freeCalls).toBe(1);
+
+    const overCount = createView();
+    overCount.formatPropertyCount = () => 33;
+    expect(consumeSemanticProjectionRaw(
+      overCount,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(overCount.freeCalls).toBe(1);
+
+    const propertySentinelLeaks: readonly ((view: FakeProjectionView) => void)[] = [
+      (view) => {
+        const original = view.formatPropertyName.bind(view);
+        view.formatPropertyName = (node, format, property) =>
+          property === 3 ? "example/extra" : original(node, format, property);
+      },
+      (view) => {
+        const original = view.formatPropertyValueKind.bind(view);
+        view.formatPropertyValueKind = (node, format, property) =>
+          property === 3 ? "boolean" : original(node, format, property);
+      },
+      (view) => {
+        const original = view.formatPropertyBoolean.bind(view);
+        view.formatPropertyBoolean = (node, format, property) =>
+          property === 3 ? true : original(node, format, property);
+      },
+      (view) => {
+        const original = view.formatPropertyInteger.bind(view);
+        view.formatPropertyInteger = (node, format, property) =>
+          property === 3 ? 1 : original(node, format, property);
+      },
+      (view) => {
+        const original = view.formatPropertyString.bind(view);
+        view.formatPropertyString = (node, format, property) =>
+          property === 3 ? "extra" : original(node, format, property);
+      },
+    ];
+    for (const leak of propertySentinelLeaks) {
+      const sentinel = createView();
+      leak(sentinel);
+      expect(consumeSemanticProjectionRaw(
+        sentinel,
+        TEST_PROFILE_GENERATION,
+        descriptor,
+      ).ok).toBe(false);
+      expect(sentinel.freeCalls).toBe(1);
+    }
+
+    const formatSentinel = createView();
+    const formatPropertyCount = formatSentinel.formatPropertyCount.bind(formatSentinel);
+    formatSentinel.formatPropertyCount = (node, format) =>
+      format === 1 ? 0 : formatPropertyCount(node, format);
+    expect(consumeSemanticProjectionRaw(
+      formatSentinel,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(formatSentinel.freeCalls).toBe(1);
+  });
+
+  it("contains thenable property results and throwing method accessors", async () => {
+    const descriptor = ownedProfileDescriptor([TYPED_FORMAT]);
+    const createView = () => new FakeProjectionView("0", [[{
+      text: "typed",
+      strong: false,
+      formatDetails: [{ kind: TYPED_FORMAT.kind, properties: typedProperties() }],
+    }]], descriptor.schema);
+
+    const asynchronous = createView();
+    asynchronous.formatPropertyString = (() => Promise.reject(
+      new Error("projected property rejection must be contained"),
+    )) as unknown as SemanticProjectionView["formatPropertyString"];
+    expect(consumeSemanticProjectionRaw(
+      asynchronous,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(asynchronous.freeCalls).toBe(1);
+
+    const throwing = createView();
+    Object.defineProperty(throwing, "formatPropertyName", {
+      get() {
+        throw new Error("hostile method accessor");
+      },
+    });
+    expect(consumeSemanticProjectionRaw(
+      throwing,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(throwing.freeCalls).toBe(1);
+    await Promise.resolve();
+  });
+
+  it("matches the core aggregate property-value and string-byte budgets", () => {
+    const descriptor = ownedProfileDescriptor([PROPERTY_BUDGET_FORMAT]);
+    const exactValueRuns = Array.from({ length: 10_000 }, (_, index) => ({
+      text: "x",
+      strong: false,
+      formatDetails: [{
+        kind: PROPERTY_BUDGET_FORMAT.kind,
+        properties: propertyBudgetProjection(index % 2 === 0 ? "a" : "b"),
+      }],
+    }));
+    const exactValues = new FakeProjectionView(
+      "0",
+      [exactValueRuns],
+      descriptor.schema,
+    );
+    expect(consumeSemanticProjectionRaw(
+      exactValues,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(true);
+    expect(exactValues.freeCalls).toBe(1);
+
+    const overValues = new FakeProjectionView(
+      "0",
+      [exactValueRuns, [{
+        text: "x",
+        strong: false,
+        formatDetails: [{
+          kind: PROPERTY_BUDGET_FORMAT.kind,
+          properties: propertyBudgetProjection("c"),
+        }],
+      }]],
+      descriptor.schema,
+    );
+    expect(consumeSemanticProjectionRaw(
+      overValues,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(overValues.freeCalls).toBe(1);
+
+    const left = "💡".repeat(16_384);
+    const right = "🚀".repeat(16_384);
+    const exactStringRuns = Array.from({ length: 16 }, (_, index) => ({
+      text: "x",
+      strong: false,
+      formatDetails: [{
+        kind: PROPERTY_BUDGET_FORMAT.kind,
+        properties: propertyBudgetProjection(index % 2 === 0 ? left : right),
+      }],
+    }));
+    const exactStrings = new FakeProjectionView(
+      "0",
+      [exactStringRuns],
+      descriptor.schema,
+    );
+    expect(consumeSemanticProjectionRaw(
+      exactStrings,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(true);
+    expect(exactStrings.freeCalls).toBe(1);
+
+    const overStrings = new FakeProjectionView(
+      "0",
+      [[...exactStringRuns, {
+        text: "x",
+        strong: false,
+        formatDetails: [{
+          kind: PROPERTY_BUDGET_FORMAT.kind,
+          properties: propertyBudgetProjection("é"),
+        }],
+      }]],
+      descriptor.schema,
+    );
+    expect(consumeSemanticProjectionRaw(
+      overStrings,
+      TEST_PROFILE_GENERATION,
+      descriptor,
+    ).ok).toBe(false);
+    expect(overStrings.freeCalls).toBe(1);
   });
 
   it("rejects projections and updates from another profile generation", () => {
@@ -385,7 +935,16 @@ describe("Wasm semantic projection adapter", () => {
     expect(view.freeCalls).toBe(1);
     expect(projection.snapshot).toEqual({ lineage: "adapter-tests", revision: "0" });
     expect(projection.paragraphs).toEqual([
-      { runs: [{ text: "plain", strong: false }, { text: "strong", strong: true }] },
+      {
+        runs: [
+          { text: "plain", strong: false, formatDetails: [] },
+          {
+            text: "strong",
+            strong: true,
+            formatDetails: [{ kind: "breditor/strong", properties: [] }],
+          },
+        ],
+      },
       { runs: [] },
     ]);
   });
@@ -501,7 +1060,11 @@ describe("Wasm semantic projection adapter", () => {
 
     const update = valueOf(consumeSemanticProjectionUpdate(base, updateView));
     expect(update.impact).toEqual({ kind: "textContainers", paragraphIndexes: [0] });
-    expect(update.result.paragraphs[0]?.runs[0]).toEqual({ text: "LEFT", strong: true });
+    expect(update.result.paragraphs[0]?.runs[0]).toEqual({
+      text: "LEFT",
+      strong: true,
+      formatDetails: [{ kind: "breditor/strong", properties: [] }],
+    });
     expect(resultView.freeCalls).toBe(1);
     expect(updateView.freeCalls).toBe(1);
     expect(updateView.takeProjection()).toBeUndefined();
@@ -694,3 +1257,11 @@ describe("Wasm semantic projection adapter", () => {
     expect(free).toHaveBeenCalledOnce();
   });
 });
+
+function propertyBudgetProjection(value: string): readonly FlatProperty[] {
+  return [{
+    name: "example/value",
+    kind: "string",
+    value,
+  }];
+}

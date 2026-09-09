@@ -11,32 +11,52 @@ import {
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
 
 /** Explicit durable codec selected before any document payload is inspected. */
-export type WasmDurableMode = "v1" | "v2";
+export type WasmDurableMode = "v1" | "v2" | "v3";
 
-/** Exact schema selector and fingerprint required by a V2 durable codec. */
+/** Exact schema selector and fingerprint required by a compiled durable codec. */
 export interface WasmDurableSchemaBinding {
   readonly name: string;
   readonly version: number;
   readonly fingerprint: string;
 }
 
-/** One property-free inline format admitted by a compiled profile. */
+/** Closed scalar property type retained by the durable browser contract. */
+export type WasmDurablePropertyTypeBinding =
+  | Readonly<{ kind: "boolean" }>
+  | Readonly<{ kind: "integer"; minimum: number | null; maximum: number | null }>
+  | Readonly<{
+      kind: "string";
+      minimumUtf8Bytes: number;
+      maximumUtf8Bytes: number;
+    }>;
+
+/** One format-property declaration retained from a compiled profile. */
+export interface WasmDurablePropertyBinding {
+  readonly name: string;
+  readonly presence: "required" | "optional";
+  readonly valueType: WasmDurablePropertyTypeBinding;
+}
+
+/** One inline format admitted by a compiled profile. */
 export interface WasmDurableFormatBinding {
   readonly kind: string;
   readonly revision: number;
+  readonly properties: readonly WasmDurablePropertyBinding[];
 }
 
 /**
  * Browser-side durable contract selected independently of payload contents.
  *
- * V1 is the exact built-in base contract. V2 requires the complete selector,
- * fingerprint, and canonical format catalog copied from one compiled profile.
+ * V1 is the exact built-in base contract. V2 and V3 require the complete
+ * selector, fingerprint, and canonical format/property catalog copied from one
+ * compiled profile. Both use Document V2; the mode distinguishes session,
+ * state, commit, and operation generations.
  * @internal
  */
 export type WasmDurableJsonContract =
   | Readonly<{ readonly mode: "v1" }>
   | Readonly<{
-      readonly mode: "v2";
+      readonly mode: "v2" | "v3";
       readonly schema: WasmDurableSchemaBinding;
       readonly formats: readonly WasmDurableFormatBinding[];
     }>;
@@ -139,16 +159,20 @@ const MAX_TEXT_UTF8_BYTES = 1024 * 1024;
 const MAX_TOTAL_TEXT_UTF8_BYTES = 8 * 1024 * 1024;
 const MAX_PROFILE_FORMATS = 256;
 const MAX_FORMATS_PER_RUN = 32;
+const MAX_PROPERTY_VALUES = 10_000;
+const MAX_PROPERTY_STRING_UTF8_BYTES = 65_536;
+const MAX_TOTAL_PROPERTY_STRING_UTF8_BYTES = 1024 * 1024;
 const LEGACY_V1_CONTRACT: WasmDurableJsonContract = Object.freeze({ mode: "v1" });
 
-interface ResolvedDurableContract {
+/** Fully validated durable contract used only inside browser preflight. @internal */
+export interface ResolvedWasmDurableJsonContract {
   readonly mode: WasmDurableMode;
   readonly schema: Readonly<{
     name: string;
     version: number;
     fingerprint: string | undefined;
   }>;
-  readonly formatKinds: ReadonlySet<string>;
+  readonly formatsByKind: ReadonlyMap<string, WasmDurableFormatBinding>;
 }
 
 interface OwnedHandle {
@@ -234,7 +258,7 @@ export function documentJsonUtf8Bytes(
   } catch {
     return null;
   }
-  const resolved = readDurableContract(contract);
+  const resolved = resolveWasmDurableJsonContract(contract);
   return resolved !== null && validDocument(parsed, resolved) ? utf8Bytes : null;
 }
 
@@ -249,14 +273,14 @@ export function documentJsonMatchesProjection(
   projection: BaseDocumentProjection,
   contract: WasmDurableJsonContract = LEGACY_V1_CONTRACT,
 ): boolean {
-  const resolved = readDurableContract(contract);
+  const resolved = resolveWasmDurableJsonContract(contract);
   if (
     !isOwnedProjection(projection) ||
     resolved === null ||
     documentJsonUtf8Bytes(value, contract) === null ||
     projection.schema.name !== resolved.schema.name ||
     projection.schema.version !== resolved.schema.version ||
-    (resolved.mode === "v2" &&
+    (resolved.mode !== "v1" &&
       projection.schema.fingerprint !== resolved.schema.fingerprint)
   ) {
     return false;
@@ -280,9 +304,29 @@ export function documentJsonMatchesProjection(
         if (
           projected === undefined ||
           run["text"] !== projected.text ||
-          formats.length !== projected.formats.length ||
-          formats.some((format, formatIndex) =>
-            format["type"] !== projected.formats[formatIndex])
+          formats.length !== projected.formatDetails.length ||
+          !formats.every((format, formatIndex) => {
+            const projectedFormat = projected.formatDetails[formatIndex];
+            const properties = format["properties"] as Record<string, unknown>;
+            if (
+              projectedFormat === undefined ||
+              format["type"] !== projectedFormat.kind
+            ) {
+              return false;
+            }
+            const propertyNames = Reflect.apply(
+              OBJECT_KEYS,
+              Object,
+              [properties],
+            ) as string[];
+            return propertyNames.length === projectedFormat.properties.length &&
+              propertyNames.every((name, propertyIndex) => {
+                const projectedProperty = projectedFormat.properties[propertyIndex];
+                return projectedProperty !== undefined &&
+                  name === projectedProperty.name &&
+                  properties[name] === projectedProperty.value;
+              });
+          })
         ) {
           return false;
         }
@@ -396,13 +440,13 @@ function readOwnedError(
   }
 }
 
-function readDurableContract(
+/**
+ * Snapshots and validates a caller-owned durable contract without retaining it.
+ * @internal
+ */
+export function resolveWasmDurableJsonContract(
   value: WasmDurableJsonContract,
-): Readonly<{
-  mode: WasmDurableMode;
-  schema: WasmDurableSchemaBinding;
-  formatKinds: ReadonlySet<string>;
-}> | null {
+): ResolvedWasmDurableJsonContract | null {
   try {
     const v1 = exactJsonRecord(value, ["mode"]);
     if (v1 !== null && v1["mode"] === "v1") {
@@ -413,14 +457,26 @@ function readDurableContract(
           version: 1,
           fingerprint: "",
         }),
-        formatKinds: new Set(["breditor/strong"]),
+        formatsByKind: new Map([
+          [
+            "breditor/strong",
+            Object.freeze({
+              kind: "breditor/strong",
+              revision: 1,
+              properties: Object.freeze([]),
+            }),
+          ],
+        ]),
       });
     }
 
-    const v2 = exactJsonRecord(value, ["mode", "schema", "formats"]);
-    if (v2 === null || v2["mode"] !== "v2") return null;
-    const schema = exactJsonRecord(v2["schema"], ["name", "version", "fingerprint"]);
-    const formats = snapshotOwnDataArray(v2["formats"], MAX_PROFILE_FORMATS);
+    const compiled = exactJsonRecord(value, ["mode", "schema", "formats"]);
+    if (
+      compiled === null ||
+      (compiled["mode"] !== "v2" && compiled["mode"] !== "v3")
+    ) return null;
+    const schema = exactJsonRecord(compiled["schema"], ["name", "version", "fingerprint"]);
+    const formats = snapshotOwnDataArray(compiled["formats"], MAX_PROFILE_FORMATS);
     if (
       schema === null ||
       !isQualifiedName(schema["name"]) ||
@@ -430,43 +486,172 @@ function readDurableContract(
     ) {
       return null;
     }
-    const formatKinds = new Set<string>();
+    const formatsByKind = new Map<string, WasmDurableFormatBinding>();
     let prior = "";
     for (let index = 0; index < formats.length; index += 1) {
       const value = formats[index];
-      const format = exactJsonRecord(value, ["kind", "revision"]);
+      const format = readDurableFormatBinding(value);
       if (
         format === null ||
-        !isQualifiedName(format["kind"]) ||
-        !isPositiveU32(format["revision"]) ||
-        format["kind"] <= prior
+        format.kind <= prior
       ) {
         return null;
       }
-      prior = format["kind"];
-      formatKinds.add(format["kind"]);
+      prior = format.kind;
+      formatsByKind.set(format.kind, format);
     }
     return Object.freeze({
-      mode: "v2",
+      mode: compiled["mode"],
       schema: Object.freeze({
         name: schema["name"],
         version: schema["version"],
         fingerprint: schema["fingerprint"],
       }),
-      formatKinds,
+      formatsByKind,
     });
   } catch {
     return null;
   }
 }
 
+function readDurableFormatBinding(value: unknown): WasmDurableFormatBinding | null {
+  const format = exactJsonRecord(value, ["kind", "revision", "properties"]);
+  if (
+    format === null ||
+    !isQualifiedName(format["kind"]) ||
+    !isPositiveU32(format["revision"])
+  ) return null;
+  const rawProperties = snapshotOwnDataArray(format["properties"], 32);
+  if (rawProperties === null) return null;
+  const properties: WasmDurablePropertyBinding[] = [];
+  let prior = "";
+  for (const rawProperty of rawProperties) {
+    const property = exactJsonRecord(rawProperty, ["name", "presence", "valueType"]);
+    if (
+      property === null ||
+      !isQualifiedName(property["name"]) ||
+      property["name"] <= prior ||
+      (property["presence"] !== "required" && property["presence"] !== "optional")
+    ) return null;
+    const valueType = readDurablePropertyType(property["valueType"]);
+    if (valueType === null) return null;
+    prior = property["name"];
+    properties.push(Object.freeze({
+      name: property["name"],
+      presence: property["presence"],
+      valueType,
+    }));
+  }
+  return Object.freeze({
+    kind: format["kind"],
+    revision: format["revision"],
+    properties: Object.freeze(properties),
+  });
+}
+
+function readDurablePropertyType(value: unknown): WasmDurablePropertyTypeBinding | null {
+  const boolean = exactJsonRecord(value, ["kind"]);
+  if (boolean !== null && boolean["kind"] === "boolean") {
+    return Object.freeze({ kind: "boolean" });
+  }
+  const integer = exactJsonRecord(value, ["kind", "minimum", "maximum"]);
+  if (
+    integer !== null &&
+    integer["kind"] === "integer" &&
+    isNullableSafeInteger(integer["minimum"]) &&
+    isNullableSafeInteger(integer["maximum"]) &&
+    !(
+      typeof integer["minimum"] === "number" &&
+      typeof integer["maximum"] === "number" &&
+      integer["minimum"] > integer["maximum"]
+    )
+  ) {
+    return Object.freeze({
+      kind: "integer",
+      minimum: integer["minimum"],
+      maximum: integer["maximum"],
+    });
+  }
+  const string = exactJsonRecord(value, [
+    "kind",
+    "minimumUtf8Bytes",
+    "maximumUtf8Bytes",
+  ]);
+  if (
+    string === null ||
+    string["kind"] !== "string" ||
+    !isU32(string["minimumUtf8Bytes"]) ||
+    !isU32(string["maximumUtf8Bytes"]) ||
+    string["minimumUtf8Bytes"] > string["maximumUtf8Bytes"] ||
+    string["maximumUtf8Bytes"] > 65_536
+  ) return null;
+  return Object.freeze({
+    kind: "string",
+    minimumUtf8Bytes: string["minimumUtf8Bytes"],
+    maximumUtf8Bytes: string["maximumUtf8Bytes"],
+  });
+}
+
+function validFormatProperties(
+  value: unknown,
+  format: WasmDurableFormatBinding | undefined,
+  mode: WasmDurableMode,
+): FormatPropertySummary | null {
+  // V1 and V2 are deliberately frozen at the original property-free payload
+  // generation. Document V2 is shared by both compiled modes, but only V3 may
+  // use the descriptor's scalar property contracts.
+  if (mode !== "v3") {
+    return emptyJsonRecord(value) ? EMPTY_FORMAT_PROPERTY_SUMMARY : null;
+  }
+  const record = jsonRecord(value);
+  if (record === null || format === undefined) return null;
+  const keys = Reflect.apply(OBJECT_KEYS, Object, [record]) as string[];
+  if (keys.length > format.properties.length) return null;
+  let propertyIndex = 0;
+  let stringUtf8Bytes = 0;
+  for (const property of format.properties) {
+    const key = keys[propertyIndex];
+    if (key === property.name) {
+      const propertyStringUtf8Bytes = validPropertyScalar(
+        record[key],
+        property.valueType,
+      );
+      if (propertyStringUtf8Bytes === null) return null;
+      stringUtf8Bytes += propertyStringUtf8Bytes;
+      propertyIndex += 1;
+    } else if (property.presence === "required") {
+      return null;
+    }
+  }
+  return propertyIndex === keys.length
+    ? { values: propertyIndex, stringUtf8Bytes }
+    : null;
+}
+
+function validPropertyScalar(
+  value: unknown,
+  contract: WasmDurablePropertyTypeBinding,
+): number | null {
+  if (contract.kind === "boolean") return typeof value === "boolean" ? 0 : null;
+  if (contract.kind === "integer") {
+    return typeof value === "number" &&
+      Number.isSafeInteger(value) &&
+      (contract.minimum === null || value >= contract.minimum) &&
+      (contract.maximum === null || value <= contract.maximum)
+      ? 0
+      : null;
+  }
+  if (typeof value !== "string") return null;
+  const bytes = wellFormedUtf8Length(
+    value,
+    Math.min(contract.maximumUtf8Bytes, MAX_PROPERTY_STRING_UTF8_BYTES),
+  );
+  return bytes !== null && bytes >= contract.minimumUtf8Bytes ? bytes : null;
+}
+
 function validDocument(
   value: unknown,
-  contract: Readonly<{
-    mode: WasmDurableMode;
-    schema: WasmDurableSchemaBinding;
-    formatKinds: ReadonlySet<string>;
-  }>,
+  contract: ResolvedWasmDurableJsonContract,
 ): boolean {
   const expectedEnvelopeKeys = contract.mode === "v1"
     ? ["format", "formatVersion", "schema", "root"]
@@ -476,7 +661,7 @@ function validDocument(
     envelope === null ||
     envelope["format"] !== "breditor/document" ||
     envelope["formatVersion"] !== (contract.mode === "v1" ? 1 : 2) ||
-    (contract.mode === "v2" &&
+    (contract.mode !== "v1" &&
       envelope["schemaFingerprint"] !== contract.schema.fingerprint)
   ) {
     return false;
@@ -511,6 +696,8 @@ function validDocument(
 
   let nodes = 1 + root["children"].length;
   let totalTextBytes = 0;
+  let totalPropertyValues = 0;
+  let totalPropertyStringUtf8Bytes = 0;
   for (const rawParagraph of root["children"]) {
     const paragraph = exactJsonRecord(rawParagraph, [
       "kind",
@@ -543,7 +730,7 @@ function validDocument(
         run["text"].length === 0 ||
         !Array.isArray(run["formats"]) ||
         run["formats"].length > MAX_FORMATS_PER_RUN ||
-        run["formats"].length > contract.formatKinds.size
+        run["formats"].length > contract.formatsByKind.size
       ) {
         return false;
       }
@@ -552,28 +739,90 @@ function validDocument(
       totalTextBytes += textBytes;
       if (totalTextBytes > MAX_TOTAL_TEXT_UTF8_BYTES) return false;
 
-      const formatKinds: string[] = [];
-      let priorFormat = "";
-      for (const rawFormat of run["formats"]) {
-        const format = exactJsonRecord(rawFormat, ["type", "properties"]);
-        if (
-          format === null ||
-          !isQualifiedName(format["type"]) ||
-          !contract.formatKinds.has(format["type"]) ||
-          format["type"] <= priorFormat ||
-          !emptyJsonRecord(format["properties"])
-        ) {
-          return false;
-        }
-        priorFormat = format["type"];
-        formatKinds.push(format["type"]);
-      }
-      const formatKey = formatKinds.join("\u0000");
+      const propertySummary = summarizeDurableFormatRecords(
+        run["formats"],
+        contract,
+      );
+      if (propertySummary === null) return false;
+      totalPropertyValues += propertySummary.values;
+      totalPropertyStringUtf8Bytes += propertySummary.stringUtf8Bytes;
+      if (
+        totalPropertyValues > MAX_PROPERTY_VALUES ||
+        totalPropertyStringUtf8Bytes > MAX_TOTAL_PROPERTY_STRING_UTF8_BYTES
+      ) return false;
+      // Property values are semantic format identity in V3. Adjacent runs with
+      // the same kinds but different values must remain distinct; equal complete
+      // format arrays are noncanonical and should already have been coalesced.
+      const formatKey = Reflect.apply(JSON_STRINGIFY, JSON, [run["formats"]]) as string;
       if (previousFormats === formatKey) return false;
       previousFormats = formatKey;
     }
   }
   return true;
+}
+
+/**
+ * Validates one canonical inline-format array against an already resolved
+ * durable contract. Used by Document V2, Editor State V3 pending formats, and
+ * property-preserving V3 operation fragments. @internal
+ */
+export function durableFormatRecordsMatchContract(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): boolean {
+  return summarizeDurableFormatRecords(value, contract) !== null;
+}
+
+interface FormatPropertySummary {
+  readonly values: number;
+  readonly stringUtf8Bytes: number;
+}
+
+const EMPTY_FORMAT_PROPERTY_SUMMARY: FormatPropertySummary = Object.freeze({
+  values: 0,
+  stringUtf8Bytes: 0,
+});
+
+function summarizeDurableFormatRecords(
+  value: unknown,
+  contract: ResolvedWasmDurableJsonContract,
+): FormatPropertySummary | null {
+  if (
+    !Array.isArray(value) ||
+    value.length > MAX_FORMATS_PER_RUN ||
+    value.length > contract.formatsByKind.size
+  ) {
+    return null;
+  }
+  let priorFormat = "";
+  let propertyValues = 0;
+  let propertyStringUtf8Bytes = 0;
+  for (const rawFormat of value) {
+    const format = exactJsonRecord(rawFormat, ["type", "properties"]);
+    const propertySummary = format === null
+      ? null
+      : validFormatProperties(
+        format["properties"],
+        contract.formatsByKind.get(format["type"] as string),
+        contract.mode,
+      );
+    if (
+      format === null ||
+      !isQualifiedName(format["type"]) ||
+      !contract.formatsByKind.has(format["type"]) ||
+      format["type"] <= priorFormat ||
+      propertySummary === null
+    ) {
+      return null;
+    }
+    propertyValues += propertySummary.values;
+    propertyStringUtf8Bytes += propertySummary.stringUtf8Bytes;
+    priorFormat = format["type"];
+  }
+  return {
+    values: propertyValues,
+    stringUtf8Bytes: propertyStringUtf8Bytes,
+  };
 }
 
 function isQualifiedName(value: unknown): value is string {
@@ -587,6 +836,18 @@ function isPositiveU32(value: unknown): value is number {
     Number.isInteger(value) &&
     value >= 1 &&
     value <= 4_294_967_295;
+}
+
+function isU32(value: unknown): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 4_294_967_295;
+}
+
+function isNullableSafeInteger(value: unknown): value is number | null {
+  return value === null ||
+    (typeof value === "number" && Number.isSafeInteger(value));
 }
 
 function isSchemaFingerprint(value: unknown): value is string {

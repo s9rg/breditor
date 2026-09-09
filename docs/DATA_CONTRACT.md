@@ -19,13 +19,22 @@ intent/toolbar path without widening any Rust V1/V2 codec or Wasm ABI 3.
 `0.3.0-alpha.1` adds Rust-only typed inline-format property declarations,
 validation, fingerprinting, and retained-resource accounting. It does not widen
 Wasm ABI 3 or the supported browser path.
-The alpha.2 Rust core adds explicit typed set/remove input,
+The alpha.2 Rust core added explicit typed set/remove input,
 property-aware paragraph-local `TextSplice` insert/delete/format paths, exact
 relocation and undo/redo, and caller-selected Operation, Editor State,
 Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
-families retain Document V2. Typed structural paragraph split/join/root replace
-and Local Log V3 remain unsupported; Wasm and browser paths remain
-property-free.
+families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
+browser path remained property-free.
+
+The unpublished `0.3.0-alpha.3` source checkpoint carries those typed contracts
+through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. Its
+profile factories explicitly select Document V2 plus Session, Editor State,
+and Commit V3; typed action and intent JSON, descriptors, projections, and the
+browser's V3 restore/autosave path preserve property values. The existing
+exact-base V1 and Bootstrap-V1/Session-V2 paths remain separately available.
+Typed structural paragraph split/join/root replace, Local Log V3,
+property-driven DOM or clipboard attributes, and typed toolbar controls remain
+unsupported.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -1220,8 +1229,10 @@ changing any Rust format. The observation-owning adapter strictly consumes one
 complete `SessionCheckpoint` result, and restore transfers a newly decoded
 engine only after the generated result passes ownership and shape checks. A
 bounded handle-free commit feed fires exactly when a validated Rust successor
-is adopted, including same-revision history-group boundaries and prestages
-whose later delivery fails.
+is adopted, including same-revision history-group boundaries and separate
+selection prestages whose later delivery fails. Alpha.3 returns an effective
+requested boundary with its atomic action, intent, undo, or redo result; a
+failed combined command publishes neither and emits no boundary notification.
 
 JavaScript stores one complete checkpoint under one exact IndexedDB schema. It
 verifies a closed outer record, canonical nonzero storage generation, exact
@@ -1436,6 +1447,13 @@ carry typed operation and pending-format payloads while continuing to embed
 Document V2. Their V2 predecessors remain available only where no typed
 operation or pending value must be represented. Every V1 codec continues to
 require the exact built-in strong-only `breditor/base@1` definition.
+
+At the alpha.2 checkpoint these V3 families were Rust-only and the ABI-3
+browser route remained property-free. Alpha.3 does not reinterpret or sniff
+their records: Wasm ABI 4's explicit Profile Bootstrap V2 factories and the
+browser's `semanticProfile: { bootstrapJson, formatVersion: 2 }` path select
+them directly. The older exact-base V1 and Bootstrap-V1/Session-V2 routes keep
+their historical meanings.
 
 ## Text operation contract
 
@@ -1863,15 +1881,19 @@ state observes it as a routed source. The supported browser consumes that
 route synchronously but redacts binding/action/fallthrough provenance from its
 public result. Its immediate-only queue lease rejects composition, active
 delivery/read, and reentrant calls as busy rather than retaining stale command
-authority. Typed public intent input, custom keymaps, and custom
+authority. Alpha.3 adds strict typed public intent JSON on the explicitly
+selected Bootstrap V2 path; typed toolbar controls, custom keymaps, and custom
 `beforeinput` rules remain absent.
 
 `CheckpointedEditorEngine` seals its wire generation at construction. The
 legacy `try_new` path encodes Session Checkpoint V1 and therefore admits only
 the exact base schema. `try_new_v2` encodes fingerprint-bearing Session
 Checkpoint V2, including when the compiled profile is the trusted base
-definition. Every private mutation candidate uses the already selected codec
-before publication; the generation never changes implicitly.
+definition. Alpha.3 adds explicit `try_new_v3` for property-preserving Session
+Checkpoint V3. Every private mutation candidate uses the already selected codec
+before publication; the generation never changes implicitly. The alpha.3
+close-before action, intent, undo, and redo methods apply both logical steps to
+one private candidate and publish them only after its final checkpoint encodes.
 
 All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
@@ -5051,6 +5073,14 @@ same process-local engine and history identities. Only a successful complete
 candidate checkpoint encoding permits one owner replacement and event return.
 The wrapper exposes neither a mutable engine reference nor public cloning.
 
+Alpha.3 adds combined close-before action, intent, undo, and redo routes. Each
+closes an open merge group and executes the command on one private candidate,
+then encodes the final session once. A command or checkpoint failure publishes
+neither logical result; an effective boundary can still publish with a
+disabled, unchanged, blocked, or unhandled command. The returned
+`EditorHistorySequenceOutcome` retains the boundary and command results in
+order without exposing the candidate.
+
 A failed engine command or checkpoint representation drops the candidate and
 returns no event. The authoritative state, history topology and stamp, cached
 checkpoint bytes, and caller observation remain exact; the observation is
@@ -5352,13 +5382,15 @@ metadata leaves the executor. A valid published semantic successor is retained
 for explicit full-render recovery if DOM publication fails; stale or malformed
 results and uncertain glue/cleanup failures fault the adapter permanently.
 
-This sequence is serialized but not rollback-atomic across prestages. A
-selection update, and then a requested history close, may publish before a later
-action error. DOM APIs also cannot participate in a Rust transaction. The queue
-therefore fail-stops rather than retrying or pretending those earlier effects
-were undone. Clipboard mutation remained staged at `0.0.53`. IME composition
-still required the separate temporary-DOM lease implemented by `0.0.54`. The
-complete contract is in
+This sequence remains non-atomic across its separate selection prestage and the
+later command: a selection update may publish before a command error. Alpha.3
+makes the requested history close and following action, intent, undo, or redo
+one checkpointed Rust publication, so an error discards both of those logical
+results. DOM APIs still cannot participate in a Rust transaction. The queue
+therefore fail-stops rather than retrying or pretending an earlier selection or
+adopted combined result was undone. Clipboard mutation remained staged at
+`0.0.53`. IME composition still required the separate temporary-DOM lease
+implemented by `0.0.54`. The complete contract is in
 [`BROWSER_EVENT_PIPELINE.md`](BROWSER_EVENT_PIPELINE.md).
 
 ## Guarded browser composition delivery (`0.0.54`)

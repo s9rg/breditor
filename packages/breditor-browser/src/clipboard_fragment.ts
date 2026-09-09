@@ -369,6 +369,7 @@ function sliceParagraphRuns(
         text,
         strong: run.strong,
         formats: run.formats,
+        formatDetails: run.formatDetails,
       }));
     }
     runStart = runEnd;

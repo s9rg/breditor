@@ -15,6 +15,8 @@ import {
   type CommandQueueLeasedSubmission,
 } from "./command_queue.js";
 import {
+  browserCommandJsonIsAdmissible,
+  jsonIntentRequest,
   noInputIntentRequest,
   preserveSelectionSync,
 } from "./editor_command.js";
@@ -141,9 +143,9 @@ export interface BreditorBrowserWasmModule {
 }
 
 /** Strict compiled-profile bootstrap selected before any document is decoded. */
-export interface BreditorBrowserSemanticProfileOptions {
-  readonly bootstrapJson: string;
-}
+export type BreditorBrowserSemanticProfileOptions =
+  | Readonly<{ bootstrapJson: string }>
+  | Readonly<{ bootstrapJson: string; formatVersion: 2 }>;
 
 /** Stable choice of the IndexedDB key used by one editor profile. */
 export type BreditorBrowserEditorPersistenceScope =
@@ -176,7 +178,7 @@ export interface BreditorBrowserEditorOptions {
   readonly wasm: BreditorBrowserWasmModule;
   /** Used only when persistence is disabled or its exact slot is empty. */
   readonly initialDocument: BreditorBrowserInitialDocument;
-  /** Optional custom semantic profile; its documents/checkpoints use V2. */
+  /** Optional custom semantic profile; V2 bootstrap selects durable Session V3. */
   readonly semanticProfile?: BreditorBrowserSemanticProfileOptions;
   /** Exact callback-free render coverage for the selected semantic profile. */
   readonly rendering?: InlineFormatRenderManifest;
@@ -230,6 +232,8 @@ export type BreditorBrowserIntentRejectionReason =
   | "invalidIntent"
   | "unknownIntent"
   | "inputRequired"
+  | "inputNotAccepted"
+  | "invalidInput"
   | "busy"
   | "unavailable";
 
@@ -640,6 +644,7 @@ export class BreditorBrowserEditor {
         const binding = persistenceBinding(
           normalized.persistence.scope,
           preflightProfileDescriptor,
+          normalized.semanticProfile,
         );
         storage = new IndexedDbSessionCheckpointStore({
           indexedDB: normalized.persistence.indexedDB,
@@ -713,7 +718,9 @@ export class BreditorBrowserEditor {
       observation = bootstrap.observation;
       if (
         preflightProfileDescriptor !== undefined &&
-        (bootstrap.durableMode !== "v2" ||
+        (bootstrap.durableMode !== semanticProfileDurableMode(
+          normalized.semanticProfile,
+        ) ||
           !profileDurableBindingsEqual(
             preflightProfileDescriptor,
             bootstrap.profileDescriptor,
@@ -724,7 +731,7 @@ export class BreditorBrowserEditor {
           "engine_bootstrap.profile_changed_after_preflight",
         );
       }
-      if (bootstrap.durableMode === "v2") {
+      if (bootstrap.durableMode !== "v1") {
         try {
           presentation = compileBrowserPresentation(
             profileGeneration,
@@ -1058,6 +1065,106 @@ export class BreditorBrowserEditor {
       const document = this.#correlatedIntentDocument(outcome.snapshot);
       if (document === undefined || outcome.status === "disabled" ||
         outcome.status === "unchanged") {
+        throw new TypeError("intent command outcome is invalid");
+      }
+      if (
+        outcome.status === "committed" &&
+        outcome.eventKind === "intent" &&
+        outcome.intentId === intentId
+      ) {
+        return Object.freeze({ status: "committed", intentId, document });
+      }
+      if (
+        outcome.status === "blocked" &&
+        outcome.intentId === intentId &&
+        validBrowserIntentReasonCode(outcome.reasonCode) &&
+        validBrowserIntentActivation(outcome.activation)
+      ) {
+        return Object.freeze({
+          status: "blocked",
+          intentId,
+          reasonCode: outcome.reasonCode,
+          activation: outcome.activation,
+          document,
+        });
+      }
+      if (outcome.status === "unhandled" && outcome.intentId === intentId) {
+        return Object.freeze({ status: "unhandled", intentId, document });
+      }
+    } catch {
+      // The single uncertainty transition below owns every impossible shape.
+    }
+    this.#fault("queueUncertain");
+    return this.#intentFailed(intentId);
+  }
+
+  /**
+   * Executes one declared typed semantic intent from its exact JSON transport.
+   *
+   * The Rust profile supplies the value-contract identity; callers cannot
+   * forge it. JSON is kept byte-for-byte so duplicate keys and other
+   * non-deterministic forms remain visible to the strict Wasm decoder.
+   */
+  executeIntentJson(
+    intentId: string,
+    inputJson: string,
+  ): BreditorBrowserIntentResult {
+    const reportedIntentId = validBrowserIntentId(intentId) ? intentId : "";
+    if (!validBrowserIntentId(intentId)) {
+      return this.#intentRejected(reportedIntentId, "invalidIntent");
+    }
+    if (!browserCommandJsonIsAdmissible(inputJson)) {
+      return this.#intentRejected(intentId, "invalidInput");
+    }
+    const descriptor = findProfileIntent(this.#profileDescriptor, intentId);
+    if (descriptor === undefined) {
+      return this.#intentRejected(intentId, "unknownIntent");
+    }
+    if (descriptor.input.kind !== "typed") {
+      return this.#intentRejected(intentId, "inputNotAccepted");
+    }
+    if (this.#status.phase !== "live") {
+      return this.#intentRejected(intentId, "unavailable");
+    }
+
+    const delivery = this.#submitImmediate(() =>
+      jsonIntentRequest(
+        this.#adapter.deliveryToken(),
+        preserveSelectionSync(),
+        Object.freeze({ kind: "api" as const, detail: intentId }),
+        intentId,
+        inputJson,
+        "closeBefore",
+      ),
+    );
+    if (delivery.status === "busy" || delivery.status === "unavailable") {
+      return this.#intentRejected(intentId, delivery.status);
+    }
+    if (delivery.status === "failed") {
+      this.#fault("queueUncertain");
+      return this.#intentFailed(intentId);
+    }
+
+    try {
+      const sequence = delivery.submission.result;
+      if (sequence.status !== "delivered") {
+        throw new TypeError("intent delivery outcome is invalid");
+      }
+      const outcome = sequence.command;
+      const document = this.#correlatedIntentDocument(outcome.snapshot);
+      if (document !== undefined && outcome.status === "rejected") {
+        return Object.freeze({
+          status: "rejected",
+          intentId,
+          reason: "invalidInput",
+          document,
+        });
+      }
+      if (
+        document === undefined ||
+        outcome.status === "disabled" ||
+        outcome.status === "unchanged"
+      ) {
         throw new TypeError("intent command outcome is invalid");
       }
       if (
@@ -1784,6 +1891,9 @@ function toolbarSequenceOutcomeMatchesInvocation(
     if (sequence.status !== "delivered") return false;
     const outcome = sequence.command;
     const command = invocation.command;
+    if (outcome.status === "rejected") {
+      return command.kind === "action" || command.kind === "intent";
+    }
     if (command.kind === "intent") {
       return outcome.status === "committed"
         ? outcome.eventKind === "intent" && outcome.intentId === command.intentId
@@ -1815,6 +1925,49 @@ function adapterStateIsContentBusy(
   );
 }
 
+/** Copies the profile selector from one immutable own-data snapshot. */
+function snapshotSemanticProfileOptions(
+  value: unknown,
+): BreditorBrowserSemanticProfileOptions | null {
+  try {
+    if (!objectLike(value)) return null;
+    const keys = Reflect.ownKeys(value);
+    if (
+      keys.some((key) => typeof key !== "string") ||
+      (keys.length !== 1 && keys.length !== 2) ||
+      !keys.includes("bootstrapJson") ||
+      (keys.length === 2 && !keys.includes("formatVersion"))
+    ) {
+      return null;
+    }
+    const bootstrap = Reflect.getOwnPropertyDescriptor(value, "bootstrapJson");
+    if (
+      bootstrap === undefined ||
+      !("value" in bootstrap) ||
+      typeof bootstrap.value !== "string"
+    ) {
+      return null;
+    }
+    if (keys.length === 1) {
+      return Object.freeze({ bootstrapJson: bootstrap.value });
+    }
+    const formatVersion = Reflect.getOwnPropertyDescriptor(value, "formatVersion");
+    if (
+      formatVersion === undefined ||
+      !("value" in formatVersion) ||
+      formatVersion.value !== 2
+    ) {
+      return null;
+    }
+    return Object.freeze({
+      bootstrapJson: bootstrap.value,
+      formatVersion: 2 as const,
+    });
+  } catch {
+    return null;
+  }
+}
+
 function normalizeOptions(value: unknown): NormalizedOptions | null {
   try {
     if (!objectLike(value)) return null;
@@ -1824,6 +1977,10 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const wasm = options.wasm;
     const initial = options.initialDocument;
     const semanticProfile = options.semanticProfile;
+    const normalizedSemanticProfile = semanticProfile === undefined
+      ? undefined
+      : snapshotSemanticProfileOptions(semanticProfile);
+    if (normalizedSemanticProfile === null) return null;
     const rendering = options.rendering;
     const keyboard = options.keyboard;
     const toolbar = options.toolbar;
@@ -1840,9 +1997,6 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       !wellFormedUtf16(label) ||
       !objectLike(wasm) ||
       !objectLike(initial) ||
-      (semanticProfile !== undefined &&
-        (!objectLike(semanticProfile) ||
-          typeof semanticProfile.bootstrapJson !== "string")) ||
       (rendering !== undefined && semanticProfile === undefined) ||
       (rendering !== undefined && !isOwnedInlineFormatRenderManifest(rendering)) ||
       !validKeyboardPolicy(keyboard) ||
@@ -1856,9 +2010,6 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       documentJson: initial.documentJson,
       historyCapacity: initial.historyCapacity,
     });
-    const normalizedSemanticProfile = semanticProfile === undefined
-      ? undefined
-      : Object.freeze({ bootstrapJson: semanticProfile.bootstrapJson });
     let normalizedToolbar: NormalizedOptions["toolbar"];
     if (toolbar !== undefined) {
       if (
@@ -1943,6 +2094,7 @@ function normalizePersistenceScope(
 function persistenceBinding(
   scope: BreditorBrowserEditorPersistenceScope | undefined,
   profileDescriptor: BrowserCompiledProfileDescriptor | undefined,
+  semanticProfile: BreditorBrowserSemanticProfileOptions | undefined,
 ): IndexedDbSessionCheckpointBinding | undefined {
   if (scope === undefined && profileDescriptor === undefined) return undefined;
   const schemaFingerprint = profileDescriptor?.schema.fingerprint ??
@@ -1951,7 +2103,9 @@ function persistenceBinding(
   return Object.freeze({
     slot,
     schemaFingerprint,
-    checkpointFormatVersion: profileDescriptor === undefined ? 1 : 2,
+    checkpointFormatVersion: profileDescriptor === undefined
+      ? 1
+      : semanticProfileDurableMode(semanticProfile) === "v3" ? 3 : 2,
   });
 }
 
@@ -1967,8 +2121,38 @@ function profileDurableBindingsEqual(
       const other = right.formats[index];
       return other !== undefined &&
         format.kind === other.kind &&
-        format.revision === other.revision;
+        format.revision === other.revision &&
+        format.properties.length === other.properties.length &&
+        format.properties.every((property, propertyIndex) => {
+          const otherProperty = other.properties[propertyIndex];
+          return otherProperty !== undefined &&
+            property.name === otherProperty.name &&
+            property.presence === otherProperty.presence &&
+            formatPropertyTypesEqual(property.valueType, otherProperty.valueType);
+        });
     });
+}
+
+function semanticProfileDurableMode(
+  profile: BreditorBrowserSemanticProfileOptions | undefined,
+): "v2" | "v3" {
+  return profile !== undefined && "formatVersion" in profile ? "v3" : "v2";
+}
+
+function formatPropertyTypesEqual(
+  left: BrowserCompiledProfileDescriptor["formats"][number]["properties"][number]["valueType"],
+  right: BrowserCompiledProfileDescriptor["formats"][number]["properties"][number]["valueType"],
+): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "boolean") return right.kind === "boolean";
+  if (left.kind === "integer") {
+    return right.kind === "integer" &&
+      left.minimum === right.minimum &&
+      left.maximum === right.maximum;
+  }
+  return right.kind === "string" &&
+    left.minimumUtf8Bytes === right.minimumUtf8Bytes &&
+    left.maximumUtf8Bytes === right.maximumUtf8Bytes;
 }
 
 function normalizeAbortSignal(

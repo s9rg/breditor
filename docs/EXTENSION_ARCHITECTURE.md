@@ -3,9 +3,11 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-`0.3.0-alpha.2` adds Rust-only typed-property editing and replay on top of the
-Alpha.1 declaration refinement described in
-[`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+The unpublished `0.3.0-alpha.3` checkpoint now carries the alpha.2 typed-
+property editing/replay contract through Wasm ABI 4, browser projection and
+programmatic intent input, and explicit Session-V3 IndexedDB/autosave. Safe
+property-driven DOM recipes and typed toolbar controls remain next, as described
+in [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` ships. It complements
@@ -681,11 +683,55 @@ generated no-input toggles are rejected. Ordinary typed document admission and
 selection/state-only use remain possible, so this is not a claim that all state
 or checkpoint handling is disabled.
 
-Wasm ABI 3 and the browser remain property-free. Their bootstrap and descriptor
-cannot declare the contract, and there is no typed renderer, toolbar input,
-clipboard/HTML mapper, or URL/CSS sanitizer. The next checkpoint must prove an
-explicit property-aware operation, action input, inverse, undo/redo, and replay
-using a Link before this gate is narrowed.
+At alpha.1, Wasm ABI 3 and the browser remained property-free. Their bootstrap
+and descriptor could not declare the contract, and there was no typed renderer,
+toolbar input, clipboard/HTML mapper, or URL/CSS sanitizer. Alpha.2 subsequently
+proved the explicit property-aware operation, action input, inverse, undo/redo,
+and replay boundary described next.
+
+## `0.3.0-alpha.2` typed editing and replay
+
+Alpha.2 adds `InlineFormatSetSpecV1` and registration-owned
+`SetInlineFormatAction` for one same-manifest typed format. The declaration
+generates an explicit-input action, typed intent, priority-0 blocking binding,
+and routed presence state. Paragraph-local `TextSplice`, insertion/type-over,
+selection deletion, grapheme deletion, exact relocation, inverse, undo, and
+redo preserve complete canonical property maps.
+
+Operation, Editor State, Transaction Request, Commit, and Session Checkpoint V3
+are separate explicitly selected property-preserving families around Document
+V2. V1/V2 bytes remain unchanged and fail closed where their property-free
+operation or pending-format payload cannot represent a typed value. Structural
+typed paragraph split/join/root replacement and Local Log V3 remain absent.
+
+## `0.3.0-alpha.3` ABI 4 and browser bridge
+
+Profile Bootstrap V2 explicitly carries typed property contracts and set
+declarations through ABI 4. The compiled descriptor exposes property names,
+presence, scalar kinds, and bounds; semantic projections expose canonical
+Boolean, integer, and string values. Strict typed action and intent JSON derive
+their contract identity from the registered action/intent rather than caller
+input.
+
+ABI-4 action, intent, undo, and redo calls carry one close-before Boolean. The
+core runs an effective history boundary and the command on one checkpointed
+candidate and publishes both or neither; the result reports the boundary
+through `historyGroupClosedBefore`. Typed rejection therefore cannot split an
+undo group and command evaluation remains single-pass.
+
+Explicit V3 profile factories start from Document V2 or restore Session
+Checkpoint V3 and emit Session, Editor State, and Commit V3. Browser startup
+selects this only with `{ bootstrapJson, formatVersion: 2 }`, validates the
+complete descriptor/projection/durable binding, and uses Session V3 for
+IndexedDB restore and autosave. High-level `executeIntentJson()` exposes the
+typed semantic command path. Bootstrap V1/Profile V2 and exact-base V1 remain
+separate preserved paths with no sniffing or fallback.
+
+The browser projection now carries typed data, but the renderer recipe still
+selects only an inert safe wrapper, classes, and order. It cannot derive `href`,
+CSS, or other attributes from property values; safe-copy HTML and the native-
+button toolbar likewise have no typed property control. Those declarative,
+sanitized presentation/input contracts are the next extension seam.
 
 ## Deferred beyond 0.2.0
 
@@ -694,9 +740,10 @@ The following are explicitly deferred:
 - a public stable wire codec for extension manifests, unless separately frozen
   after the initial Rust value model proves itself;
 - arbitrary block, inline, leaf, atom, embed, table, or nested editable nodes;
-- the complete property-bearing Link/color path beyond alpha.1 Rust declaration,
-  validation, fingerprint, and resource accounting: mutation, replay, Wasm,
-  browser rendering, typed controls, clipboard/HTML conversion, and sanitizing;
+- the remaining property-bearing Link/color presentation path: safe declarative
+  DOM attributes, typed controls, clipboard/HTML conversion, and URL/CSS
+  sanitizing (mutation, replay, Wasm, browser projection, and programmatic typed
+  intent input now exist);
 - format exclusions, groups, inclusivity rules, multiple instances, and
   arbitrary normalization;
 - optional peer dependencies, capability selection, extension-version ranges,
@@ -817,6 +864,17 @@ accounting. It deliberately leaves the current base operation language,
 pending-format V1 shape, Wasm ABI 3, and browser presentation unchanged and
 fail-closed. The exact limitations and next Link checkpoint are in
 [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+
+`0.3.0-alpha.2` settles the manifest-owned typed set bundle, strict set/remove
+input, paragraph-local property-preserving splice/action/history path, and the
+explicit Operation/Editor State/Transaction Request/Commit/Session Checkpoint
+V3 codec families around Document V2.
+
+`0.3.0-alpha.3` settles ABI 4 Profile Bootstrap V2, descriptor and projection
+property getters, strict typed action/intent JSON, explicit V3 profile factories,
+browser typed validation, high-level `executeIntentJson()`, and Session V3
+IndexedDB/autosave. It does not settle property-driven DOM recipes, HTML
+attributes, URL/CSS policy, or typed toolbar controls.
 
 The following choice remains for a later release and may be settled without
 weakening the decisions above:

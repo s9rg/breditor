@@ -1,4 +1,5 @@
 mod bootstrap_json_v1;
+mod bootstrap_json_v2;
 mod compiled_profile;
 mod compiled_profile_result;
 mod create_engine_from_document_json;

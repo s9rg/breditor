@@ -221,14 +221,16 @@ new coordinator with the newly loaded token.
 
 The command adapter exposes a bounded, handle-free core-commit feed. It emits
 at the exact point where a validated Rust successor becomes the adapter's
-authoritative observation, including a selection or close-history prestage
-whose later command fails and a commit whose later DOM restoration requires
-reconciliation. The autosave `commitObserver` is synchronous and stable. It
-only marks an epoch dirty; checkpoint capture and IndexedDB work occur outside
-command delivery. Do not also wire autosave as a command-queue observer, which
-would count ordinary successful deliveries twice. While checkpoint capture is
-available, default scheduling starts an attempt after a 250 ms trailing delay
-and no later than 2 s into one continuously changing dirty interval.
+authoritative observation, including a separate selection prestage, an
+effective history boundary reported with an adopted atomic command result, and
+a commit whose later DOM restoration requires reconciliation. A requested
+history close whose command fails is discarded by Rust and emits nothing. The
+autosave `commitObserver` is synchronous and stable. It only marks an epoch
+dirty; checkpoint capture and IndexedDB work occur outside command delivery. Do
+not also wire autosave as a command-queue observer, which would count ordinary
+successful deliveries twice. While checkpoint capture is available, default
+scheduling starts an attempt after a 250 ms trailing delay and no later than 2
+s into one continuously changing dirty interval.
 
 Core-commit observers are notification-only. They run while the adapter still
 owns its non-reentrant execution lease, and the listener set is sampled at the
