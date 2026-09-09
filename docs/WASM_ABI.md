@@ -47,8 +47,13 @@ profile, `wasm-bindgen` removes name and producer sections, and Rolldown
 deterministically minifies the JavaScript glue while retaining its declaration
 link. The build first writes an isolated directory, compares its declaration
 byte-for-byte with the reviewed ABI, and only then replaces
-`packages/breditor-wasm/dist`. The package check compares the complete content
-hashes from two such clean builds. The no-argument default asynchronous
+`packages/breditor-wasm/dist`. On supported POSIX build hosts (macOS and Linux,
+including WSL), Rust source paths are remapped to canonical workspace, Cargo,
+and target roots. A byte-level gate rejects the exact logical and physical
+build-root prefixes plus common macOS, Linux, and Windows user-home path
+patterns. Native Windows path handling is not currently an official
+package-build host. The package check compares the complete
+content hashes from two such clean builds. The no-argument default asynchronous
 initializer is the supported `0.1.x` and exact-matched `0.2.x`
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,

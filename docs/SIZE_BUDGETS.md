@@ -117,9 +117,14 @@ size optimization, fat LTO, one code-generation unit, aborting panics, and
 stripped symbols. The pinned package pipeline also removes Wasm name and
 producer sections and uses exact `rolldown 1.2.7` to deterministically minify
 generated JavaScript glue while retaining its declaration link. Package checks
-rebuild twice and compare complete hashes, so those transformations cannot hide
-nondeterminism. This reviewed recipe preserves the native throughput policy and
-keeps ABI 3 within the existing Wasm raw, gzip, glue, and tarball ceilings.
+rebuild twice and compare complete hashes. On supported POSIX build hosts,
+canonical source-path remapping plus exact logical/physical build-root checks
+and common user-home pattern checks prevent host-specific workspace,
+Cargo-home, or target prefixes from entering the module. Canonical relative
+paths such as `cargo/registry/...` remain intentionally available for useful
+panic locations. This reviewed recipe preserves the native
+throughput policy and keeps ABI 3 within the existing Wasm raw, gzip, glue, and
+tarball ceilings.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

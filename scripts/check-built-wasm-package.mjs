@@ -4,6 +4,8 @@ import { readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { assertNoWasmHostPathLeaks } from "./wasm-path-leaks.mjs";
+
 const packageArgument = process.argv[2];
 if (packageArgument === undefined) {
   throw new Error("usage: check-built-wasm-package.mjs <package-directory>");
@@ -13,6 +15,28 @@ const packageDirectory = resolve(packageArgument);
 const packageJson = JSON.parse(
   await readFile(join(packageDirectory, "package.json"), "utf8"),
 );
+
+assert.doesNotThrow(() =>
+  assertNoWasmHostPathLeaks(
+    Buffer.from(
+      "cargo/registry/src/example.rs\0/rustc/toolchain/library/core/src/example.rs",
+    ),
+  ),
+);
+for (const leakedPath of [
+  "/Users/example/.cargo/registry/src/example.rs",
+  "/home/example/.cargo/registry/src/example.rs",
+  "/root/.cargo/registry/src/example.rs",
+  String.raw`C:\Users\example\.cargo\registry\src\example.rs`,
+]) {
+  assert.throws(() => assertNoWasmHostPathLeaks(Buffer.from(leakedPath)));
+}
+assert.throws(() =>
+  assertNoWasmHostPathLeaks(Buffer.from("/ci/private/build/example.rs"), [
+    "/ci/private/build",
+  ]),
+);
+
 assert.deepEqual(packageJson.files, [
   "dist",
   "index.d.ts",
@@ -46,6 +70,7 @@ assert.equal(
 );
 const moduleUrl = pathToFileURL(join(packageDirectory, "dist", "breditor_wasm.js"));
 const wasmBytes = await readFile(join(packageDirectory, "dist", "breditor_wasm_bg.wasm"));
+assertNoWasmHostPathLeaks(wasmBytes);
 const api = await import(moduleUrl.href);
 
 assert.equal(typeof api.default, "function");

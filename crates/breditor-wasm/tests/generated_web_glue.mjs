@@ -217,14 +217,28 @@ assert.equal(profileDescriptor.formatRevision(0), 1);
 assert.equal(profileDescriptor.formatKind(1), "example/highlight");
 assert.equal(profileDescriptor.formatRevision(1), 7);
 assert.equal(profileDescriptor.formatKind(2), undefined);
-assert.equal(profileDescriptor.intentCount, 1);
-assert.equal(profileDescriptor.intentId(0), "example/toggle-highlight-intent");
+assert.equal(profileDescriptor.intentCount, 2);
+assert.equal(profileDescriptor.intentId(0), "breditor/format-strong");
 assert.equal(profileDescriptor.intentInputKind(0), "none");
 assert.equal(profileDescriptor.intentInputContractName(0), undefined);
 assert.equal(profileDescriptor.intentInputContractVersion(0), undefined);
 assert.equal(profileDescriptor.intentActivationContract(0), "tracked");
 assert.equal(profileDescriptor.intentValueContractName(0), undefined);
 assert.equal(profileDescriptor.intentValueContractVersion(0), undefined);
+assert.equal(profileDescriptor.intentId(1), "example/toggle-highlight-intent");
+assert.equal(profileDescriptor.intentInputKind(1), "none");
+assert.equal(profileDescriptor.intentInputContractName(1), undefined);
+assert.equal(profileDescriptor.intentInputContractVersion(1), undefined);
+assert.equal(profileDescriptor.intentActivationContract(1), "tracked");
+assert.equal(profileDescriptor.intentValueContractName(1), undefined);
+assert.equal(profileDescriptor.intentValueContractVersion(1), undefined);
+assert.equal(profileDescriptor.intentId(2), undefined);
+assert.equal(profileDescriptor.intentInputKind(2), undefined);
+assert.equal(profileDescriptor.intentInputContractName(2), undefined);
+assert.equal(profileDescriptor.intentInputContractVersion(2), undefined);
+assert.equal(profileDescriptor.intentActivationContract(2), undefined);
+assert.equal(profileDescriptor.intentValueContractName(2), undefined);
+assert.equal(profileDescriptor.intentValueContractVersion(2), undefined);
 assert.equal(profileDescriptor.actionStateCount, 4);
 assert.equal(profileDescriptor.actionStateId(3), "example/highlight-control");
 assert.equal(profileDescriptor.actionStateSourceKind(3), "routed");
@@ -1255,6 +1269,7 @@ for (const name of [
   "window",
   "document",
   "Node",
+  "NodeList",
   "Element",
   "HTMLElement",
   "HTMLParagraphElement",
@@ -1273,6 +1288,12 @@ for (const name of [
     value: runtimeDom.window[name],
   });
 }
+Object.defineProperty(runtimeDom.window.InputEvent.prototype, "getTargetRanges", {
+  configurable: true,
+  value() {
+    return [];
+  },
+});
 
 const runtimeDatabase = new IDBFactory();
 const runtimeHost = document.createElement("div");
@@ -1299,7 +1320,13 @@ const openedRuntime = await browser.openBreditorBrowserEditor({
     autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
   },
 });
-assert.equal(openedRuntime.ok, true);
+assert.equal(
+  openedRuntime.ok,
+  true,
+  openedRuntime.ok
+    ? undefined
+    : `browser runtime failed: ${openedRuntime.error.code}/${openedRuntime.error.causeCode ?? "none"}`,
+);
 const runtime = openedRuntime.editor;
 assert.equal(runtime.getStatus().phase, "live");
 assert.equal(runtime.getSnapshot().document.revision, "0");
@@ -1325,12 +1352,17 @@ const insertEvent = new runtimeDom.window.InputEvent("beforeinput", {
   data: "runtime reload",
   inputType: "insertText",
 });
-Object.defineProperty(insertEvent, "getTargetRanges", {
-  value: () => [],
-});
 assert.equal(runtimeHost.dispatchEvent(insertEvent), false);
 assert.equal(insertEvent.defaultPrevented, true);
-assert.equal(runtimeHost.textContent, "runtime reload");
+assert.equal(
+  runtimeHost.textContent,
+  "runtime reload",
+  JSON.stringify({
+    html: runtimeHost.innerHTML,
+    snapshot: runtime.getSnapshot(),
+    status: runtime.getStatus(),
+  }),
+);
 assert.equal(runtime.getSnapshot().document.revision, "2");
 
 const undoEvent = new runtimeDom.window.KeyboardEvent("keydown", {

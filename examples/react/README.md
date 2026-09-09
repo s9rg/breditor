@@ -1,10 +1,19 @@
 # Breditor React reference
 
-This example demonstrates the intended React ownership boundary. React renders
-two permanently empty mount elements; `BreditorBrowserEditor` owns all toolbar
-and editor children beneath them. It initializes `@breditor/wasm` once, survives
+This example runs the complete `@breditor/reference-highlight` package through
+the public browser API: the canonical Highlight Document V2 sample, semantic
+profile bootstrap, render manifest, and toolbar manifest. The toolbar exposes
+Bold, Highlight, Undo, and Redo. Select some text, toggle a format, use the
+platform primary-modifier+B shortcut, and watch the truthful autosave status.
+
+It also demonstrates the intended React ownership boundary. React renders two
+permanently empty mount elements; `BreditorBrowserEditor` owns all toolbar and
+editor children beneath them. It initializes `@breditor/wasm` once, survives
 React Strict Mode's setup/cleanup probe, subscribes through
-`useSyncExternalStore`, and enables the single-slot IndexedDB checkpoint.
+`useSyncExternalStore`, and enables an explicit demo-slot IndexedDB checkpoint.
+Startup failures expose only stable, payload-redacted error codes and can be
+retried in place. A paused autosave exposes the same safe diagnostics and the
+public persistence retry operation.
 
 Prop changes and unmounts immediately make both Breditor mounts inert, request a
 checkpoint flush, and always dispose the old runtime afterward. Replacement
@@ -18,21 +27,36 @@ From the repository root:
 ```sh
 npm ci
 export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
-npm run build
+npm run demo
+```
+
+The top-level command builds every package before Vite starts. For focused
+development after a successful workspace build, use:
+
+```sh
 npm run dev --workspace @breditor/example-react
 ```
 
-After the package build above, the lifecycle regression suite covers Strict
-Mode, prop-driven replacement,
-failure recovery, stale asynchronous startup, dirty retirement ordering,
+The lifecycle regression suite covers the exact reference-package wiring,
+Strict Mode, prop-driven replacement, retryable startup failure, stale
+asynchronous startup, dirty retirement ordering, paused persistence retry,
 rejected and hung flushes, truthful persistence status, and exact disposal:
 
 ```sh
 npm run test --workspace @breditor/example-react
 ```
 
+The repository-level Chromium gate exercises the rendered page through actual
+selection, toolbar, history, input, IndexedDB reload, accessibility, and a
+320-pixel responsive viewport:
+
+```sh
+npm run test:demo
+```
+
 The example intentionally does not wrap the runtime in an `@breditor/react`
-package. The framework-neutral owner remains the product API for `0.1.0`.
+package. `@breditor/browser` remains the framework-neutral owner; React only
+adapts its lifecycle and external-store subscription.
 
 ## Controlled navigation
 

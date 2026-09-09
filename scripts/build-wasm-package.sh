@@ -8,10 +8,12 @@ set -euo pipefail
 
 readonly required_wasm_bindgen_version="0.2.127"
 readonly required_rolldown_version="rolldown v1.2.7"
-script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+script_directory="$(cd -L -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -L)"
 readonly script_directory
-repository_root="$(cd -- "${script_directory}/.." && pwd)"
+repository_root="$(cd -L -- "${script_directory}/.." && pwd -L)"
 readonly repository_root
+repository_root_physical="$(cd -P -- "${script_directory}/.." && pwd -P)"
+readonly repository_root_physical
 readonly package_directory="${repository_root}/packages/breditor-wasm"
 readonly output_directory="${package_directory}/dist"
 configured_cargo_target_directory="${CARGO_TARGET_DIR:-${repository_root}/target}"
@@ -30,6 +32,7 @@ readonly cargo_target_directory
 readonly wasm_manifest="${repository_root}/crates/breditor-wasm/Cargo.toml"
 readonly reviewed_declaration="${repository_root}/crates/breditor-wasm/api/breditor_wasm.d.ts"
 readonly third_party_checker="${repository_root}/scripts/check-wasm-third-party-notices.mjs"
+readonly wasm_path_checker="${repository_root}/scripts/wasm-path-leaks.mjs"
 readonly publication_lock_root="${repository_root}/target"
 readonly publication_lock_directory="${publication_lock_root}/breditor-wasm-dist.lock"
 generated_directory=""
@@ -39,6 +42,15 @@ fail() {
   printf 'build-wasm-package: %s\n' "$*" >&2
   exit 1
 }
+
+mkdir -p -- "${cargo_target_directory}" ||
+  fail "Cargo target directory could not be created: ${cargo_target_directory}"
+cargo_target_logical_directory="$(cd -L -- "${cargo_target_directory}" && pwd -L)" ||
+  fail "Cargo target directory could not be resolved for deterministic path remapping."
+cargo_target_physical_directory="$(cd -P -- "${cargo_target_directory}" && pwd -P)" ||
+  fail "Cargo target directory physical path could not be resolved for deterministic path remapping."
+readonly cargo_target_logical_directory
+readonly cargo_target_physical_directory
 
 cleanup() {
   if [[ -n "${generated_directory}" ]]; then
@@ -74,6 +86,35 @@ cargo_executable="$(resolve_executable "${cargo_candidate}")" ||
   fail "Cargo was not found; put it on PATH or set CARGO_BIN to its executable."
 readonly cargo_executable
 
+if [[ -n "${CARGO_HOME:-}" ]]; then
+  configured_cargo_home="${CARGO_HOME}"
+elif [[ -n "${HOME:-}" ]]; then
+  configured_cargo_home="${HOME}/.cargo"
+else
+  fail "CARGO_HOME and HOME are both unset; the Cargo source root cannot be remapped."
+fi
+case "${configured_cargo_home}" in
+  /*)
+    cargo_home_candidate="${configured_cargo_home}"
+    ;;
+  *)
+    cargo_home_candidate="${repository_root}/${configured_cargo_home}"
+    ;;
+esac
+mkdir -p -- "${cargo_home_candidate}" ||
+  fail "Cargo home could not be created: ${cargo_home_candidate}"
+cargo_home_logical_directory="$(cd -L -- "${cargo_home_candidate}" 2>/dev/null && pwd -L)" ||
+  fail "Cargo home could not be resolved for deterministic path remapping."
+cargo_home_physical_directory="$(cd -P -- "${cargo_home_candidate}" 2>/dev/null && pwd -P)" ||
+  fail "Cargo home physical path could not be resolved for deterministic path remapping."
+readonly cargo_home_logical_directory
+readonly cargo_home_physical_directory
+readonly rustflags_separator=$'\x1f'
+canonical_rustflags="--remap-path-prefix=${cargo_target_physical_directory}=target"
+canonical_rustflags+="${rustflags_separator}--remap-path-prefix=${cargo_home_physical_directory}=cargo"
+canonical_rustflags+="${rustflags_separator}--remap-path-prefix=${repository_root_physical}=breditor"
+readonly canonical_rustflags
+
 readonly wasm_bindgen_candidate="${WASM_BINDGEN_BIN:-wasm-bindgen}"
 wasm_bindgen_executable="$(resolve_executable "${wasm_bindgen_candidate}")" ||
   fail "wasm-bindgen ${required_wasm_bindgen_version} was not found; put it on PATH or set WASM_BINDGEN_BIN to its executable."
@@ -107,6 +148,7 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
   fail "missing reviewed TypeScript declaration: ${reviewed_declaration}"
 [[ -f "${third_party_checker}" ]] ||
   fail "missing third-party dependency checker: ${third_party_checker}"
+[[ -f "${wasm_path_checker}" ]] || fail "missing Wasm path-leak checker: ${wasm_path_checker}"
 [[ -f "${repository_root}/LICENSE-MIT" ]] || fail "missing repository MIT license"
 [[ -f "${repository_root}/LICENSE-APACHE" ]] || fail "missing repository Apache license"
 (
@@ -126,25 +168,29 @@ generated_directory="$(mktemp -d "${cargo_target_directory}/wasm-package.XXXXXX"
 
 printf 'build-wasm-package: checking locked dependency graph and third-party notices\n'
 CARGO_BIN="${cargo_executable}" \
+  CARGO_HOME="${cargo_home_physical_directory}" \
   "${node_executable}" "${third_party_checker}" \
   --copy-rust-notice \
   "${generated_directory}/third-party/rust-1.98.0/COPYRIGHT-library.html"
 
 printf 'build-wasm-package: building breditor-wasm for wasm32-unknown-unknown (wasm-release)\n'
 (
-  cd -- "${repository_root}"
+  cd -- "${repository_root_physical}"
   CARGO_INCREMENTAL=0 \
-  CARGO_TARGET_DIR="${cargo_target_directory}" \
-  SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-0}" \
+  CARGO_ENCODED_RUSTFLAGS="${canonical_rustflags}" \
+  CARGO_HOME="${cargo_home_physical_directory}" \
+  CARGO_TARGET_DIR="${cargo_target_physical_directory}" \
+  RUSTFLAGS= \
+  SOURCE_DATE_EPOCH=0 \
     "${cargo_executable}" build \
-    --manifest-path "${repository_root}/Cargo.toml" \
+    --manifest-path "${repository_root_physical}/Cargo.toml" \
     --locked \
     --package breditor-wasm \
     --profile wasm-release \
     --target wasm32-unknown-unknown
 )
 
-readonly compiled_wasm="${cargo_target_directory}/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm"
+readonly compiled_wasm="${cargo_target_physical_directory}/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm"
 [[ -f "${compiled_wasm}" ]] ||
   fail "Cargo did not produce the expected module: ${compiled_wasm}"
 
@@ -183,6 +229,16 @@ do
   [[ -f "${generated_directory}/${generated_name}" ]] ||
     fail "wasm-bindgen did not produce ${generated_name}"
 done
+
+"${node_executable}" \
+  "${wasm_path_checker}" \
+  "${generated_directory}/breditor_wasm_bg.wasm" \
+  "${repository_root}" \
+  "${repository_root_physical}" \
+  "${cargo_home_logical_directory}" \
+  "${cargo_home_physical_directory}" \
+  "${cargo_target_logical_directory}" \
+  "${cargo_target_physical_directory}"
 
 generated_file_count="$(find "${generated_directory}" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d '[:space:]')"
 readonly generated_file_count

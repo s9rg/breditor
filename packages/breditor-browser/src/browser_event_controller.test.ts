@@ -497,6 +497,185 @@ describe("BreditorBrowserEventController", () => {
     expect(delivered).toHaveLength(0);
   });
 
+  it("accepts Chromium's collapsed insert target before controlled trailing spaces", () => {
+    const fixture = createFixture("text  ");
+    installCollapsedDomSelection(fixture.host, 6);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const text = canonicalText(fixture.host);
+    const target = new StaticRange({
+      startContainer: text,
+      startOffset: 4,
+      endContainer: text,
+      endOffset: 4,
+    });
+    const event = inputEvent("beforeinput", "insertText", "x", [target]);
+
+    const disposition = dispatch(fixture.host, event, (observed) =>
+      controller.handleBeforeInput(
+        observed as InputEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+
+    expect(disposition.kind).toBe("handled");
+    expect(event.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(1);
+    expect(
+      delivered[0]?.selection.kind === "range"
+        ? delivered[0].selection.selection.anchor
+        : undefined,
+    ).toEqual(textPoint(6, "before"));
+    expect(delivered[0]?.command).toEqual({
+      kind: "action",
+      actionId: "breditor/insert-text",
+      input: { kind: "string", value: "x" },
+    });
+  });
+
+  it.each([
+    {
+      name: "replacement input",
+      text: "text  ",
+      inputType: "insertReplacementText",
+      selectionRun: 0,
+      selectionStart: 6,
+      selectionEnd: 6,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 4,
+    },
+    {
+      name: "noncollapsed captured selection",
+      text: "text  ",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 4,
+      selectionEnd: 6,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 4,
+    },
+    {
+      name: "noncollapsed target range",
+      text: "text  ",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 6,
+      selectionEnd: 6,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 6,
+    },
+    {
+      name: "different run path",
+      text: "  ",
+      followingText: "  ",
+      inputType: "insertText",
+      selectionRun: 1,
+      selectionStart: 2,
+      selectionEnd: 2,
+      targetRun: 0,
+      targetStart: 0,
+      targetEnd: 0,
+    },
+    {
+      name: "nonterminal formatted run",
+      text: "text  ",
+      followingText: "tail",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 6,
+      selectionEnd: 6,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 4,
+    },
+    {
+      name: "selection before run end",
+      text: "text  tail",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 6,
+      selectionEnd: 6,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 4,
+    },
+    {
+      name: "target after selection",
+      text: "text   ",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 5,
+      selectionEnd: 5,
+      targetRun: 0,
+      targetStart: 6,
+      targetEnd: 6,
+    },
+    {
+      name: "non-U+0020 whitespace gap",
+      text: "text\u00a0",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 5,
+      selectionEnd: 5,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 4,
+    },
+    {
+      name: "semantic-content gap",
+      text: "text x",
+      inputType: "insertText",
+      selectionRun: 0,
+      selectionStart: 6,
+      selectionEnd: 6,
+      targetRun: 0,
+      targetStart: 4,
+      targetEnd: 4,
+    },
+  ])("rejects a near-match with $name", (testCase) => {
+    const fixture = createFixture(testCase.text, testCase.followingText);
+    installDomSelectionInText(
+      fixture.host,
+      testCase.selectionRun,
+      testCase.selectionStart,
+      testCase.selectionEnd,
+    );
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const targetText = canonicalTextAt(fixture.host, testCase.targetRun);
+    const target = new StaticRange({
+      startContainer: targetText,
+      startOffset: testCase.targetStart,
+      endContainer: targetText,
+      endOffset: testCase.targetEnd,
+    });
+    const event = inputEvent(
+      "beforeinput",
+      testCase.inputType,
+      "x",
+      [target],
+    );
+
+    expect(
+      dispatch(fixture.host, event, (observed) =>
+        controller.handleBeforeInput(
+          observed as InputEvent,
+          fixture.rendered,
+          fixture.delivery,
+        ),
+      ),
+    ).toEqual({
+      kind: "blocked",
+      defaultPrevented: true,
+      reason: "targetRangeMismatch",
+    });
+    expect(delivered).toHaveLength(0);
+  });
+
   it("does not read or copy attacker-sized multiple target ranges", () => {
     const fixture = createFixture();
     installCollapsedDomSelection(fixture.host, 2);
@@ -953,12 +1132,19 @@ describe("BreditorBrowserEventController", () => {
   });
 });
 
-function createFixture(): Fixture {
+function createFixture(text = "hello", followingText?: string): Fixture {
   const projection = projectionValue(
     BaseDocumentProjection.create({
       schema: { name: "breditor/base", version: 1 },
       snapshot: { lineage: "browser-events", revision: "0" },
-      paragraphs: [{ runs: [{ text: "hello", strong: false }] }],
+      paragraphs: [{
+        runs: [
+          { text, strong: false },
+          ...(followingText === undefined
+            ? []
+            : [{ text: followingText, strong: true }]),
+        ],
+      }],
     }),
   );
   const host = document.createElement("div");
@@ -1113,7 +1299,16 @@ function installCollapsedDomSelection(host: HTMLElement, offset: number): void {
 }
 
 function installDomSelection(host: HTMLElement, start: number, end: number): void {
-  const text = canonicalText(host);
+  installDomSelectionInText(host, 0, start, end);
+}
+
+function installDomSelectionInText(
+  host: HTMLElement,
+  textIndex: number,
+  start: number,
+  end: number,
+): void {
+  const text = canonicalTextAt(host, textIndex);
   const range = host.ownerDocument.createRange();
   range.setStart(text, start);
   range.setEnd(text, end);
@@ -1126,7 +1321,15 @@ function installDomSelection(host: HTMLElement, start: number, end: number): voi
 }
 
 function canonicalText(host: HTMLElement): Text {
-  const text = host.firstChild?.firstChild;
+  return canonicalTextAt(host, 0);
+}
+
+function canonicalTextAt(host: HTMLElement, textIndex: number): Text {
+  const walker = host.ownerDocument.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+  let text: Node | null = null;
+  for (let index = 0; index <= textIndex; index += 1) {
+    text = walker.nextNode();
+  }
   if (!(text instanceof Text)) {
     throw new Error("canonical test text is missing");
   }

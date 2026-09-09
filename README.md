@@ -11,6 +11,24 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
+## Run the browser demo
+
+The React demo loads the packaged reference Highlight profile, its canonical
+Document V2 sample, renderer, and four-control toolbar. It also exercises local
+autosave and the explicit startup and persistence recovery paths.
+
+```sh
+npm ci
+export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
+npm run demo
+```
+
+`npm run demo` builds the workspace first, then starts Vite for the React
+example. The Wasm build requires the `wasm32-unknown-unknown` Rust target and a
+matching `wasm-bindgen` CLI. `npm run test:demo` runs the end-to-end Chromium
+demo gate for formatting, undo/redo, autosave reload, accessibility,
+and the narrow responsive layout.
+
 Version `0.2.0` retains the audited RC.1 immutable compiled editor profile
 through the guarded Rust engine, Wasm ABI 3, and the browser projection
 boundary. Profile-created engine

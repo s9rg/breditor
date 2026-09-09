@@ -8,21 +8,33 @@ set -euo pipefail
 
 readonly required_wasm_bindgen_version="0.2.127"
 readonly required_rolldown_version="rolldown v1.2.7"
-script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+script_directory="$(cd -L -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -L)"
 readonly script_directory
-repository_root="$(cd -- "${script_directory}/.." && pwd)"
+repository_root="$(cd -L -- "${script_directory}/.." && pwd -L)"
 readonly repository_root
+repository_root_physical="$(cd -P -- "${script_directory}/.." && pwd -P)"
+readonly repository_root_physical
 readonly cargo_target_directory="${repository_root}/target"
 readonly wasm_manifest="${repository_root}/crates/breditor-wasm/Cargo.toml"
 readonly checked_in_declaration="${repository_root}/crates/breditor-wasm/api/breditor_wasm.d.ts"
 readonly generated_glue_test="${repository_root}/crates/breditor-wasm/tests/generated_web_glue.mjs"
 readonly browser_projection_module="${repository_root}/packages/breditor-browser/dist/advanced.js"
 readonly abi_v3_baseline_check="${repository_root}/scripts/check-wasm-abi-v3-baseline.mjs"
+readonly wasm_path_checker="${repository_root}/scripts/wasm-path-leaks.mjs"
 
 fail() {
   printf 'check-wasm-api: %s\n' "$*" >&2
   exit 1
 }
+
+mkdir -p -- "${cargo_target_directory}" ||
+  fail "Cargo target directory could not be created: ${cargo_target_directory}"
+cargo_target_logical_directory="$(cd -L -- "${cargo_target_directory}" && pwd -L)" ||
+  fail "Cargo target directory could not be resolved for deterministic path remapping."
+cargo_target_physical_directory="$(cd -P -- "${cargo_target_directory}" && pwd -P)" ||
+  fail "Cargo target directory physical path could not be resolved for deterministic path remapping."
+readonly cargo_target_logical_directory
+readonly cargo_target_physical_directory
 
 resolve_executable() {
   local candidate="$1"
@@ -37,6 +49,35 @@ readonly cargo_candidate="${CARGO_BIN:-cargo}"
 cargo_executable="$(resolve_executable "${cargo_candidate}")" ||
   fail "Cargo was not found; put it on PATH or set CARGO_BIN to its executable."
 readonly cargo_executable
+
+if [[ -n "${CARGO_HOME:-}" ]]; then
+  configured_cargo_home="${CARGO_HOME}"
+elif [[ -n "${HOME:-}" ]]; then
+  configured_cargo_home="${HOME}/.cargo"
+else
+  fail "CARGO_HOME and HOME are both unset; the Cargo source root cannot be remapped."
+fi
+case "${configured_cargo_home}" in
+  /*)
+    cargo_home_candidate="${configured_cargo_home}"
+    ;;
+  *)
+    cargo_home_candidate="${repository_root}/${configured_cargo_home}"
+    ;;
+esac
+mkdir -p -- "${cargo_home_candidate}" ||
+  fail "Cargo home could not be created: ${cargo_home_candidate}"
+cargo_home_logical_directory="$(cd -L -- "${cargo_home_candidate}" 2>/dev/null && pwd -L)" ||
+  fail "Cargo home could not be resolved for deterministic path remapping."
+cargo_home_physical_directory="$(cd -P -- "${cargo_home_candidate}" 2>/dev/null && pwd -P)" ||
+  fail "Cargo home physical path could not be resolved for deterministic path remapping."
+readonly cargo_home_logical_directory
+readonly cargo_home_physical_directory
+readonly rustflags_separator=$'\x1f'
+canonical_rustflags="--remap-path-prefix=${cargo_target_physical_directory}=target"
+canonical_rustflags+="${rustflags_separator}--remap-path-prefix=${cargo_home_physical_directory}=cargo"
+canonical_rustflags+="${rustflags_separator}--remap-path-prefix=${repository_root_physical}=breditor"
+readonly canonical_rustflags
 
 readonly wasm_bindgen_candidate="${WASM_BINDGEN_BIN:-wasm-bindgen}"
 wasm_bindgen_executable="$(resolve_executable "${wasm_bindgen_candidate}")" ||
@@ -76,6 +117,7 @@ readonly expected_version_output="wasm-bindgen ${required_wasm_bindgen_version}"
   fail "missing built browser advanced module; run 'npm run build' first."
 [[ -f "${abi_v3_baseline_check}" ]] ||
   fail "missing ABI 3 baseline check: ${abi_v3_baseline_check}"
+[[ -f "${wasm_path_checker}" ]] || fail "missing Wasm path-leak checker: ${wasm_path_checker}"
 
 "${node_executable}" "${abi_v3_baseline_check}"
 
@@ -98,17 +140,22 @@ trap cleanup EXIT
 
 printf 'check-wasm-api: building breditor-wasm for wasm32-unknown-unknown (wasm-release)\n'
 (
-  cd -- "${repository_root}"
-  CARGO_INCREMENTAL=0 CARGO_TARGET_DIR="${cargo_target_directory}" \
+  cd -- "${repository_root_physical}"
+  CARGO_INCREMENTAL=0 \
+  CARGO_ENCODED_RUSTFLAGS="${canonical_rustflags}" \
+  CARGO_HOME="${cargo_home_physical_directory}" \
+  CARGO_TARGET_DIR="${cargo_target_physical_directory}" \
+  RUSTFLAGS= \
+  SOURCE_DATE_EPOCH=0 \
     "${cargo_executable}" build \
-    --manifest-path "${repository_root}/Cargo.toml" \
+    --manifest-path "${repository_root_physical}/Cargo.toml" \
     --locked \
     --package breditor-wasm \
     --profile wasm-release \
     --target wasm32-unknown-unknown
 )
 
-readonly compiled_wasm="${cargo_target_directory}/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm"
+readonly compiled_wasm="${cargo_target_physical_directory}/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm"
 [[ -f "${compiled_wasm}" ]] || fail "Cargo did not produce the expected module: ${compiled_wasm}"
 
 printf 'check-wasm-api: generating TypeScript declarations with %s\n' "${expected_version_output}"
@@ -137,6 +184,16 @@ readonly generated_module="${generated_directory}/breditor_wasm.mjs"
   fail "wasm-bindgen did not produce the expected JavaScript glue: ${generated_javascript}"
 [[ -f "${generated_webassembly}" ]] ||
   fail "wasm-bindgen did not produce the expected transformed module: ${generated_webassembly}"
+
+"${node_executable}" \
+  "${wasm_path_checker}" \
+  "${generated_webassembly}" \
+  "${repository_root}" \
+  "${repository_root_physical}" \
+  "${cargo_home_logical_directory}" \
+  "${cargo_home_physical_directory}" \
+  "${cargo_target_logical_directory}" \
+  "${cargo_target_physical_directory}"
 
 printf 'check-wasm-api: minifying JavaScript glue with %s\n' "${required_rolldown_version}"
 "${rolldown_executable}" "${generated_javascript}" \

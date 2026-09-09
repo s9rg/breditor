@@ -83,14 +83,20 @@ npm ci
 WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen npm run check:wasm-package
 ```
 
-The build requires the repository's pinned Rust toolchain, the locked Cargo
+The build is supported on POSIX build hosts (macOS and Linux, including WSL)
+and requires the repository's pinned Rust toolchain, the locked Cargo
 graph, the `wasm32-unknown-unknown` target, exactly `wasm-bindgen 0.2.127`, and
 the lockfile-installed `rolldown 1.2.7`. Cargo uses the dedicated
 size-oriented `wasm-release` profile; `wasm-bindgen` removes name and producer
 sections; Rolldown deterministically minifies the JavaScript glue while
 preserving its TypeScript declaration link. Generation occurs in an isolated
-directory before the package `dist` directory is replaced. The check compares
-the generated declaration byte-for-byte with the reviewed Rust ABI
+directory before the package `dist` directory is replaced. Rust source paths
+are canonically remapped away from the workspace, Cargo home, and target
+directory. A byte-level gate rejects the exact logical and physical build-root
+prefixes plus common macOS, Linux, and Windows user-home path patterns. Native
+Windows path handling is not currently an official package-build host. The
+check compares the generated declaration byte-for-byte
+with the reviewed Rust ABI
 declaration, verifies the exact reachable normal/build dependency graph and
 license metadata, verifies required third-party notice bytes, verifies that two
 clean builds produce the same bytes, and initializes the built module in

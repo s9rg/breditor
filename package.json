@@ -13,12 +13,15 @@
   "scripts": {
     "clean": "npm run clean --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
+    "demo": "npm run build && npm run dev --workspace @breditor/example-react",
     "check:wasm-package": "npm run check --workspace @breditor/wasm",
     "check:size": "npm run build && node scripts/check-size-budgets.mjs",
     "smoke:packages": "./scripts/smoke-npm-packages.sh",
     "test": "npm run test --workspaces --if-present",
     "test:browser": "npm run build && playwright test",
+    "test:demo": "npm run build && playwright test -c playwright.demo.config.ts",
     "typecheck:browser": "tsc -p tests/browser/tsconfig.json --noEmit",
+    "typecheck:demo": "tsc -p tests/demo/tsconfig.json --noEmit",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {

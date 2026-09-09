@@ -17,28 +17,15 @@ import {
   type BreditorBrowserEditorPersistenceStatus,
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
+import {
+  REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
+  REFERENCE_HIGHLIGHT_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+} from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
-const EMPTY_DOCUMENT_JSON = JSON.stringify({
-  format: "breditor/document",
-  formatVersion: 1,
-  schema: { name: "breditor/base", version: 1 },
-  root: {
-    kind: "element",
-    type: "breditor/document",
-    entityId: null,
-    properties: {},
-    children: [
-      {
-        kind: "element",
-        type: "breditor/paragraph",
-        entityId: null,
-        properties: {},
-        children: [],
-      },
-    ],
-  },
-});
+const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-highlight.v1";
 
 let wasmInitialization: Promise<unknown> | undefined;
 
@@ -94,6 +81,7 @@ export interface BreditorEditorHandle {
 interface EditorConfiguration {
   readonly label: string;
   readonly primaryModifier: "control" | "meta";
+  readonly startupAttempt: number;
 }
 
 type EditorLifecycle =
@@ -115,9 +103,12 @@ function hasConfiguration(
   lifecycle: EditorLifecycle,
   label: string,
   primaryModifier: "control" | "meta",
+  startupAttempt: number,
 ): boolean {
   return (
-    lifecycle.label === label && lifecycle.primaryModifier === primaryModifier
+    lifecycle.label === label &&
+    lifecycle.primaryModifier === primaryModifier &&
+    lifecycle.startupAttempt === startupAttempt
   );
 }
 
@@ -237,14 +228,63 @@ export const BreditorEditor = forwardRef<
 ): ReactElement {
   const [editorHost, setEditorHost] = useState<HTMLDivElement | null>(null);
   const [toolbarHost, setToolbarHost] = useState<HTMLDivElement | null>(null);
+  const [startupAttempt, setStartupAttempt] = useState(0);
+  const [persistenceRetryPending, setPersistenceRetryPending] = useState(false);
+  const [persistenceRetryFailed, setPersistenceRetryFailed] = useState(false);
   const [lifecycle, setLifecycle] = useState<EditorLifecycle>(() => ({
     phase: "starting",
     label,
     primaryModifier,
+    startupAttempt: 0,
   }));
   const generation = useRef(0);
   const activeEditor = useRef<BreditorBrowserEditor | undefined>(undefined);
+  const persistenceRetryEditor = useRef<BreditorBrowserEditor | undefined>(
+    undefined,
+  );
   const ownershipLane = useRef<Promise<void>>(Promise.resolve());
+
+  const retryStartup = useCallback(() => {
+    setPersistenceRetryFailed(false);
+    setStartupAttempt((attempt) =>
+      attempt === Number.MAX_SAFE_INTEGER ? 0 : attempt + 1,
+    );
+  }, []);
+
+  const retryPersistence = useCallback(() => {
+    const target = activeEditor.current;
+    if (target === undefined || persistenceRetryEditor.current === target) return;
+
+    persistenceRetryEditor.current = target;
+    setPersistenceRetryPending(true);
+    setPersistenceRetryFailed(false);
+    void Promise.resolve()
+      .then(() => target.retryPersistence())
+      .then(
+        (result) => {
+          if (
+            activeEditor.current === target &&
+            result.status !== "committed" &&
+            result.status !== "disabled"
+          ) {
+            setPersistenceRetryFailed(true);
+          }
+        },
+        () => {
+          if (activeEditor.current === target) {
+            setPersistenceRetryFailed(true);
+          }
+        },
+      )
+      .finally(() => {
+        if (persistenceRetryEditor.current === target) {
+          persistenceRetryEditor.current = undefined;
+        }
+        if (activeEditor.current === target) {
+          setPersistenceRetryPending(false);
+        }
+      });
+  }, []);
 
   useImperativeHandle(
     ref,
@@ -294,7 +334,9 @@ export const BreditorEditor = forwardRef<
     const abort = new AbortController();
     let owned: BreditorBrowserEditor | undefined;
 
-    setLifecycle({ phase: "starting", label, primaryModifier });
+    setPersistenceRetryPending(false);
+    setPersistenceRetryFailed(false);
+    setLifecycle({ phase: "starting", label, primaryModifier, startupAttempt });
 
     const opening = ownershipLane.current.then(async () => {
       try {
@@ -308,19 +350,27 @@ export const BreditorEditor = forwardRef<
           label,
           wasm: breditorWasm,
           initialDocument: {
-            lineageId: "breditor-react-reference",
-            documentJson: EMPTY_DOCUMENT_JSON,
+            lineageId: "breditor-react-reference-highlight",
+            documentJson: REFERENCE_HIGHLIGHT_SAMPLE_DOCUMENT_JSON,
             historyCapacity: 100,
           },
+          semanticProfile: {
+            bootstrapJson: REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+          },
+          rendering: REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
           keyboard: {
             editing: "beforeinputPrimary",
             primaryModifier,
             shortcuts: "enabled",
           },
-          toolbar: { host: toolbarHost },
+          toolbar: {
+            host: toolbarHost,
+            manifest: REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+          },
           persistence: {
             indexedDB: window.indexedDB,
             crypto: window.crypto.subtle,
+            scope: { kind: "slot", name: DEMO_PERSISTENCE_SLOT },
           },
           signal: abort.signal,
         });
@@ -333,6 +383,7 @@ export const BreditorEditor = forwardRef<
               phase: "failed",
               label,
               primaryModifier,
+              startupAttempt,
               error: result.error,
             });
           }
@@ -348,6 +399,7 @@ export const BreditorEditor = forwardRef<
           phase: "ready",
           label,
           primaryModifier,
+          startupAttempt,
           editor: owned,
         });
         owned.focus();
@@ -366,6 +418,7 @@ export const BreditorEditor = forwardRef<
             phase: "failed",
             label,
             primaryModifier,
+            startupAttempt,
             error: {
               code: "browser_editor.setup_failed",
               message: "The Breditor example could not start the editor.",
@@ -398,9 +451,14 @@ export const BreditorEditor = forwardRef<
       }
       owned = undefined;
     };
-  }, [editorHost, label, primaryModifier, toolbarHost]);
+  }, [editorHost, label, primaryModifier, startupAttempt, toolbarHost]);
 
-  const currentLifecycle = hasConfiguration(lifecycle, label, primaryModifier)
+  const currentLifecycle = hasConfiguration(
+    lifecycle,
+    label,
+    primaryModifier,
+    startupAttempt,
+  )
     ? lifecycle
     : undefined;
   const editor =
@@ -417,23 +475,95 @@ export const BreditorEditor = forwardRef<
     [editor],
   );
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const pausedPersistence =
+    snapshot?.persistence.phase === "paused"
+      ? snapshot.persistence
+      : undefined;
+  const statusMessage =
+    openError !== undefined
+      ? openError.message
+      : snapshot === undefined
+        ? "Starting editor…"
+        : snapshot.status.phase === "live"
+          ? persistenceRetryFailed && pausedPersistence !== undefined
+            ? "Autosave remains paused; the retry did not complete."
+            : persistenceMessage(snapshot.persistence)
+          : `Editor state: ${snapshot.status.phase}`;
 
   return (
     <section
       className="editor-shell"
       aria-busy={currentLifecycle?.phase !== "failed" && editor === undefined}
+      aria-label={`${label} editor`}
     >
       <div className="toolbar-mount" ref={setToolbarHost} />
       <div className="editor-mount" ref={setEditorHost} />
-      <p className="editor-status" role="status">
-        {openError !== undefined
-          ? openError.message
-          : snapshot === undefined
-            ? "Starting editor…"
-            : snapshot.status.phase === "live"
-              ? persistenceMessage(snapshot.persistence)
-              : `Editor state: ${snapshot.status.phase}`}
-      </p>
+      <div className="editor-footer">
+        <p className="editor-status" role="status">
+          {statusMessage}
+        </p>
+        {openError !== undefined ? (
+          <button
+            className="editor-retry"
+            type="button"
+            onClick={retryStartup}
+          >
+            Retry editor
+          </button>
+        ) : null}
+        {pausedPersistence !== undefined ? (
+          <button
+            className="editor-retry"
+            type="button"
+            disabled={persistenceRetryPending}
+            onClick={retryPersistence}
+          >
+            {persistenceRetryPending ? "Retrying save…" : "Retry saving"}
+          </button>
+        ) : null}
+      </div>
+      {openError !== undefined ? (
+        <details className="editor-details">
+          <summary>Startup details</summary>
+          <dl>
+            <div>
+              <dt>Error code</dt>
+              <dd>
+                <code>{openError.code}</code>
+              </dd>
+            </div>
+            {openError.causeCode === undefined ? null : (
+              <div>
+                <dt>Cause code</dt>
+                <dd>
+                  <code>{openError.causeCode}</code>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </details>
+      ) : null}
+      {pausedPersistence !== undefined ? (
+        <details className="editor-details editor-details--warning">
+          <summary>Autosave details</summary>
+          <dl>
+            <div>
+              <dt>Error code</dt>
+              <dd>
+                <code>{pausedPersistence.failure.code}</code>
+              </dd>
+            </div>
+            {pausedPersistence.failure.causeCode === undefined ? null : (
+              <div>
+                <dt>Cause code</dt>
+                <dd>
+                  <code>{pausedPersistence.failure.causeCode}</code>
+                </dd>
+              </div>
+            )}
+          </dl>
+        </details>
+      ) : null}
     </section>
   );
 });

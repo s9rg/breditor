@@ -28,6 +28,7 @@ reproducibility_directory="$(mktemp -d "${target_root}/wasm-package-repro.XXXXXX
   fail "could not create an isolated build directory under ${target_root}."
 readonly first_target_directory="${reproducibility_directory}/first"
 readonly second_target_directory="${reproducibility_directory}/second"
+readonly alias_directory="${reproducibility_directory}/aliases"
 
 cleanup() {
   if [[ -z "${reproducibility_directory}" ]]; then
@@ -63,9 +64,33 @@ first_snapshot="$(
 )"
 readonly first_snapshot
 
-printf 'check-wasm-package: building second isolated package snapshot\n'
-CARGO_TARGET_DIR="${second_target_directory}" \
-  "${script_directory}/build-wasm-package.sh"
+if [[ -n "${CARGO_HOME:-}" ]]; then
+  configured_cargo_home="${CARGO_HOME}"
+elif [[ -n "${HOME:-}" ]]; then
+  configured_cargo_home="${HOME}/.cargo"
+else
+  fail "CARGO_HOME and HOME are both unset; the Cargo source root cannot be aliased."
+fi
+case "${configured_cargo_home}" in
+  /*)
+    cargo_home_candidate="${configured_cargo_home}"
+    ;;
+  *)
+    cargo_home_candidate="${repository_root}/${configured_cargo_home}"
+    ;;
+esac
+mkdir -p -- "${cargo_home_candidate}" "${second_target_directory}" "${alias_directory}"
+cargo_home_directory="$(cd -L -- "${cargo_home_candidate}" && pwd -L)" ||
+  fail "Cargo home could not be resolved for the aliased package build."
+readonly cargo_home_directory
+ln -s -- "${repository_root}" "${alias_directory}/repository"
+ln -s -- "${cargo_home_directory}" "${alias_directory}/cargo-home"
+ln -s -- "${second_target_directory}" "${alias_directory}/target"
+
+printf 'check-wasm-package: building second snapshot through path aliases\n'
+CARGO_HOME="${alias_directory}/cargo-home" \
+CARGO_TARGET_DIR="${alias_directory}/target" \
+  "${alias_directory}/repository/scripts/build-wasm-package.sh"
 
 second_snapshot="$(
   "${node_executable}" \
@@ -74,7 +99,7 @@ second_snapshot="$(
 )"
 readonly second_snapshot
 [[ "${first_snapshot}" == "${second_snapshot}" ]] || {
-  printf 'check-wasm-package: two clean builds produced different package bytes.\n' >&2
+  printf 'check-wasm-package: direct and path-aliased builds produced different package bytes.\n' >&2
   diff -u -- <(printf '%s\n' "${first_snapshot}") <(printf '%s\n' "${second_snapshot}") || true
   exit 1
 }
@@ -83,4 +108,4 @@ readonly second_snapshot
   "${script_directory}/check-built-wasm-package.mjs" \
   "${repository_root}/packages/breditor-wasm"
 
-printf 'check-wasm-package: generated package passed reproducibility, declaration, and runtime checks.\n'
+printf 'check-wasm-package: generated package passed direct/path-aliased reproducibility, declaration, and runtime checks.\n'

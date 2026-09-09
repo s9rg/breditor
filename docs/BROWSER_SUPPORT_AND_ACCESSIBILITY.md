@@ -16,6 +16,8 @@ contracts:
 - programmatically dispatched `beforeinput` coverage for Unicode insertion and
   backward deletion across non-BMP text;
 - Playwright keyboard-driven ASCII typing, Backspace, and Delete;
+- ordinary Chromium typing after a formatted trailing-space boundary, with
+  only the exact collapsed U+0020 target-range alias admitted;
 - forward/collapsed and backward browser selection mapping;
 - composition lease settlement into one canonical Rust commit;
 - Bold, Undo, and Redo through the public toolbar and shared history, including
@@ -35,6 +37,12 @@ contracts:
   Highlight intent/state/toolbar behavior, Strong/Highlight nesting, undo/redo,
   export/copy, plain paste, persistence reload, restored history, and teardown.
 
+The separate `npm run test:demo` Chromium gate covers the complete React page:
+its canonical Highlight sample, ordinary keyboard editing after formatting and
+history replay, dirty-to-idle autosave, reload restoration, full-page axe scan,
+and toolbar containment at a 320-pixel viewport. It complements rather than
+replaces the three-engine package harness.
+
 Run the gate after generating the three public packages:
 
 ```sh
@@ -44,6 +52,8 @@ npm run build --workspace @breditor/browser
 npm run build --workspace @breditor/reference-highlight
 npm run typecheck:browser
 npm run test:browser
+npm run typecheck:demo
+npm run test:demo
 ```
 
 The Wasm package build requires the repository's pinned Rust toolchain and the

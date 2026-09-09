@@ -7,6 +7,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   initializeWasm: vi.fn(() => Promise.resolve()),
   openEditor: vi.fn(),
+  profileBootstrapJson: '{"profile":"reference-highlight"}',
+  renderManifest: Object.freeze({ recipes: Object.freeze([]) }),
+  sampleDocumentJson: '{"document":"reference-highlight-v2"}',
+  toolbarManifest: Object.freeze({
+    label: "Reference toolbar",
+    controls: Object.freeze([]),
+  }),
 }));
 
 vi.mock("@breditor/wasm", () => ({
@@ -16,6 +23,13 @@ vi.mock("@breditor/wasm", () => ({
 
 vi.mock("@breditor/browser", () => ({
   openBreditorBrowserEditor: mocks.openEditor,
+}));
+
+vi.mock("@breditor/reference-highlight", () => ({
+  REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
+  REFERENCE_HIGHLIGHT_RENDER_MANIFEST: mocks.renderManifest,
+  REFERENCE_HIGHLIGHT_SAMPLE_DOCUMENT_JSON: mocks.sampleDocumentJson,
+  REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST: mocks.toolbarManifest,
 }));
 
 import { BreditorEditor, type BreditorEditorHandle } from "./BreditorEditor.js";
@@ -35,6 +49,7 @@ interface FakeEditor {
   readonly getSnapshot: ReturnType<typeof vi.fn>;
   readonly getStatus: ReturnType<typeof vi.fn>;
   readonly flushPersistence: ReturnType<typeof vi.fn>;
+  readonly retryPersistence: ReturnType<typeof vi.fn>;
   readonly subscribe: ReturnType<typeof vi.fn>;
   readonly unsubscribe: ReturnType<typeof vi.fn>;
 }
@@ -70,6 +85,7 @@ function fakeEditor(
     flushPersistence: vi.fn(() => Promise.resolve({ status: "committed" })),
     getSnapshot: vi.fn(() => snapshot),
     getStatus: vi.fn(() => Object.freeze({ phase: "live" })),
+    retryPersistence: vi.fn(() => Promise.resolve({ status: "committed" })),
     subscribe: vi.fn(() => unsubscribe),
     unsubscribe,
   };
@@ -79,10 +95,14 @@ function successful(editor: FakeEditor): unknown {
   return { ok: true, editor };
 }
 
-function failed(message: string): unknown {
+function failed(message: string, causeCode?: string): unknown {
   return {
     ok: false,
-    error: { code: "browser_editor.setup_failed", message },
+    error: {
+      code: "browser_editor.setup_failed",
+      message,
+      ...(causeCode === undefined ? {} : { causeCode }),
+    },
   };
 }
 
@@ -146,6 +166,51 @@ afterEach(async () => {
 });
 
 describe("BreditorEditor lifecycle", () => {
+  it("opens an empty owned mount with the complete reference Highlight demo", async () => {
+    const editor = fakeEditor();
+    let mountsWereEmpty = false;
+    mocks.openEditor.mockImplementation((options: Record<string, unknown>) => {
+      const host = options["host"] as HTMLDivElement;
+      const toolbar = options["toolbar"] as {
+        readonly host: HTMLDivElement;
+        readonly manifest: unknown;
+      };
+      mountsWereEmpty =
+        host.childNodes.length === 0 && toolbar.host.childNodes.length === 0;
+      return Promise.resolve(successful(editor));
+    });
+
+    await render(view("Reference Highlight demo", "meta"));
+    await settle();
+
+    expect(mountsWereEmpty).toBe(true);
+    expect(mocks.openEditor).toHaveBeenCalledTimes(1);
+    expect(mocks.openEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: "Reference Highlight demo",
+        initialDocument: {
+          lineageId: "breditor-react-reference-highlight",
+          documentJson: mocks.sampleDocumentJson,
+          historyCapacity: 100,
+        },
+        semanticProfile: { bootstrapJson: mocks.profileBootstrapJson },
+        rendering: mocks.renderManifest,
+        keyboard: {
+          editing: "beforeinputPrimary",
+          primaryModifier: "meta",
+          shortcuts: "enabled",
+        },
+        toolbar: expect.objectContaining({ manifest: mocks.toolbarManifest }),
+        persistence: expect.objectContaining({
+          scope: {
+            kind: "slot",
+            name: "breditor.react-reference-highlight.v1",
+          },
+        }),
+      }),
+    );
+  });
+
   it("owns exactly one live editor through a StrictMode mount and cleanup", async () => {
     const editor = fakeEditor();
     mocks.openEditor.mockResolvedValue(successful(editor));
@@ -221,6 +286,37 @@ describe("BreditorEditor lifecycle", () => {
 
     expect(status(mounted.container)).toBe("Autosave is off.");
     expect(shell(mounted.container).getAttribute("aria-busy")).toBe("false");
+  });
+
+  it("shows redacted startup diagnostics and retries the editor in place", async () => {
+    const recovered = fakeEditor();
+    mocks.openEditor
+      .mockResolvedValueOnce(
+        failed("The editor profile could not be loaded.", "profile.invalid"),
+      )
+      .mockResolvedValueOnce(successful(recovered));
+
+    const mounted = await render(view("Recoverable editor"));
+    await settle();
+
+    expect(status(mounted.container)).toBe(
+      "The editor profile could not be loaded.",
+    );
+    expect(mounted.container.textContent).toContain(
+      "browser_editor.setup_failed",
+    );
+    expect(mounted.container.textContent).toContain("profile.invalid");
+    const retry = Array.from(
+      mounted.container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent === "Retry editor");
+    expect(retry).toBeDefined();
+
+    await act(async () => retry?.click());
+    await settle();
+
+    expect(mocks.openEditor).toHaveBeenCalledTimes(2);
+    expect(recovered.focus).toHaveBeenCalledTimes(1);
+    expect(status(mounted.container)).toBe("Autosave is off.");
   });
 
   it("disposes a stale async success without publishing or focusing it", async () => {
@@ -424,6 +520,47 @@ describe("BreditorEditor lifecycle", () => {
       expect(status(mounted.container)).not.toMatch(/^Saved state:/u);
     },
   );
+
+  it("offers one bounded persistence retry while autosave is paused", async () => {
+    const retry = deferred<unknown>();
+    const editor = fakeEditor(undefined, {
+      phase: "paused",
+      dirty: true,
+      failure: {
+        code: "session_checkpoint_autosave.save_failed",
+        causeCode: "indexed_db.transaction_failed",
+      },
+    });
+    editor.retryPersistence.mockReturnValue(retry.promise);
+    mocks.openEditor.mockResolvedValue(successful(editor));
+
+    const mounted = await render(view("Paused persistence"));
+    await settle();
+
+    expect(mounted.container.textContent).toContain(
+      "session_checkpoint_autosave.save_failed",
+    );
+    expect(mounted.container.textContent).toContain(
+      "indexed_db.transaction_failed",
+    );
+    const retryButton = Array.from(
+      mounted.container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent === "Retry saving");
+    expect(retryButton).toBeDefined();
+
+    await act(async () => retryButton?.click());
+    await settle();
+
+    expect(editor.retryPersistence).toHaveBeenCalledTimes(1);
+    expect(retryButton?.disabled).toBe(true);
+    expect(retryButton?.textContent).toBe("Retrying save…");
+
+    await act(async () => retry.resolve({ status: "committed" }));
+    await settle();
+
+    expect(retryButton?.disabled).toBe(false);
+    expect(editor.retryPersistence).toHaveBeenCalledTimes(1);
+  });
 
   it("exposes a bounded controlled-navigation flush without disposing", async () => {
     const editor = fakeEditor();

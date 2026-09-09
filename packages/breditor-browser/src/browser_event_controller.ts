@@ -678,12 +678,87 @@ function validateTargetRangeForTranslation(
   if (selection === undefined || selection.projection !== rendered.projection) {
     return "targetRangeMismatch";
   }
-  const start = selection.order === "backward" ? selection.focus : selection.anchor;
-  const end = selection.order === "backward" ? selection.anchor : selection.focus;
-  return baseSelectionPointsEqual(target.value.start, start) &&
-    baseSelectionPointsEqual(target.value.end, end)
+  const start =
+    selection.order === "backward" ? selection.focus : selection.anchor;
+  const end =
+    selection.order === "backward" ? selection.anchor : selection.focus;
+  return targetRangeMatchesSelection(
+    rendered,
+    inputType,
+    target.value.start,
+    target.value.end,
+    selection,
+    start,
+    end,
+  )
     ? null
     : "targetRangeMismatch";
+}
+
+/**
+ * Correlates the UA's proposed mutation range with the exact captured range.
+ *
+ * Chromium reports a collapsed `insertText` target immediately before trailing
+ * collapsible spaces even when the live DOM Selection is immediately after
+ * them. A controlled editor has already prevented Chromium from converting or
+ * deleting those spaces, so the semantic selection remains authoritative. The
+ * only admitted alias is that proven shape: both ranges collapsed in the same
+ * terminal text run and the entire gap consists of U+0020. Replacement and
+ * non-collapsed ranges continue to require exact endpoint equality.
+ */
+function targetRangeMatchesSelection(
+  rendered: RenderedProjection,
+  inputType: string,
+  targetStart: BaseRangeSelection["anchor"],
+  targetEnd: BaseRangeSelection["focus"],
+  selection: BaseRangeSelection,
+  selectionStart: BaseRangeSelection["anchor"],
+  selectionEnd: BaseRangeSelection["focus"],
+): boolean {
+  if (
+    baseSelectionPointsEqual(targetStart, selectionStart) &&
+    baseSelectionPointsEqual(targetEnd, selectionEnd)
+  ) {
+    return true;
+  }
+  if (
+    inputType !== "insertText" ||
+    selection.order !== "collapsed" ||
+    !baseSelectionPointsEqual(selectionStart, selectionEnd) ||
+    !baseSelectionPointsEqual(targetStart, targetEnd) ||
+    targetStart.kind !== "text" ||
+    selectionStart.kind !== "text" ||
+    targetStart.affinity !== "after" ||
+    selectionStart.affinity !== "before" ||
+    targetStart.textPath[0] !== selectionStart.textPath[0] ||
+    targetStart.textPath[1] !== selectionStart.textPath[1] ||
+    targetStart.utf16Offset >= selectionStart.utf16Offset
+  ) {
+    return false;
+  }
+
+  const paragraphIndex = selectionStart.textPath[0];
+  const runIndex = selectionStart.textPath[1];
+  const paragraph = paragraphIndex === undefined
+    ? undefined
+    : rendered.projection.paragraphs[paragraphIndex];
+  const run = runIndex === undefined ? undefined : paragraph?.runs[runIndex];
+  if (
+    paragraph === undefined ||
+    run === undefined ||
+    runIndex !== paragraph.runs.length - 1 ||
+    selectionStart.utf16Offset !== run.text.length
+  ) {
+    return false;
+  }
+  for (
+    let offset = targetStart.utf16Offset;
+    offset < selectionStart.utf16Offset;
+    offset += 1
+  ) {
+    if (run.text[offset] !== " ") return false;
+  }
+  return true;
 }
 
 function readEventBase(event: unknown): EventBase | null {

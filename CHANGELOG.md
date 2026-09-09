@@ -4,6 +4,34 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## Unreleased
+
+This demo-readiness checkpoint does not advance the package version, Wasm ABI,
+durable formats, schema fingerprint, or typed-property editing boundary.
+
+### Browser demo and input correctness
+
+- Reworked the React reference into an immediately usable Highlight demo with
+  a canonical sample, responsive four-control toolbar, truthful autosave state,
+  retryable startup/persistence failures, and explicit architecture guidance.
+- Added a dedicated Chromium demo gate covering ordinary keyboard input,
+  Highlight and Bold, undo/redo replay, IndexedDB reload, axe accessibility,
+  and toolbar containment at a 320-pixel viewport.
+- Admitted Chromium's narrowly proven collapsed `insertText` target-range alias
+  after trailing U+0020 spaces in one terminal text run. Exact target/selection
+  correlation remains mandatory for every other range and content shape.
+
+### Wasm build integrity
+
+- Canonically remapped Rust workspace, Cargo-home, and target paths out of
+  generated Wasm and added byte-level checks for the exact logical/physical
+  roots plus common user-home patterns.
+- Upgraded reproducibility to compare a direct build with a build reached
+  through workspace, Cargo-home, and target symlinks; both must produce the
+  same complete package hashes.
+- Repaired the generated-glue gate's current two-intent descriptor and native
+  JSDOM target-range fixture so the high-level runtime path executes again.
+
 ## 0.3.0-alpha.1 - 2026-09-08
 
 This checkpoint establishes typed inline-format properties as compiled Rust
