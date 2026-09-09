@@ -35,6 +35,16 @@ pub enum ProfileCompilationError {
         /// Target format kind absent from that manifest's declarations.
         format_kind: QualifiedName,
     },
+    /// A no-input toggle targeted a format whose instances require typed data.
+    #[error(
+        "extension {owner} cannot generate a property-free toggle for property-bearing inline format {format_kind}"
+    )]
+    InlineFormatToggleTargetHasProperties {
+        /// Manifest that owns the invalid toggle declaration.
+        owner: ExtensionId,
+        /// Property-bearing target format kind.
+        format_kind: QualifiedName,
+    },
     /// Two extension manifests claimed one generated action identity.
     #[error(
         "inline-format toggle action {action_id} is owned by both {first_owner} and {second_owner}"

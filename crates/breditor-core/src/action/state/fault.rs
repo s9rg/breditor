@@ -165,6 +165,9 @@ pub enum ActionStateOperationFault {
     /// A text splice used a different schema.
     #[error("text-splice schema mismatch")]
     TextSpliceSchemaMismatch,
+    /// The active compiled schema exceeds the text-splice operation language.
+    #[error("text-splice unsupported schema")]
+    TextSpliceUnsupportedSchema,
     /// A text-splice target path did not resolve.
     #[error("text-splice node lookup")]
     TextSpliceNodeLookup,
@@ -437,6 +440,9 @@ pub enum ActionStateResultFault {
     /// The result used an unknown pending format.
     #[error("pending format is unknown")]
     PendingFormatUnknownKind,
+    /// The result used a registered property-bearing format unsupported by pending state.
+    #[error("pending property-bearing format is unsupported")]
+    PendingFormatPropertyBearingKindUnsupported,
     /// The result used properties on a pending format that forbids them.
     #[error("pending-format properties are not allowed")]
     PendingFormatPropertiesNotAllowed,
@@ -667,6 +673,9 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             TextSpliceApplyError::SchemaMismatch { .. }
             | TextSpliceApplyError::DocumentProofMismatch(_) => {
                 ActionStateOperationFault::TextSpliceSchemaMismatch
+            }
+            TextSpliceApplyError::UnsupportedSchema { .. } => {
+                ActionStateOperationFault::TextSpliceUnsupportedSchema
             }
             TextSpliceApplyError::NodeLookup(_) => ActionStateOperationFault::TextSpliceNodeLookup,
             TextSpliceApplyError::InvalidTarget { .. } => {
@@ -907,6 +916,9 @@ fn project_result_error(error: EditorStateError) -> ActionStateResultFault {
             PendingFormatError::TooMany { .. } => ActionStateResultFault::PendingFormatCountLimit,
             PendingFormatError::UnknownKind { .. } => {
                 ActionStateResultFault::PendingFormatUnknownKind
+            }
+            PendingFormatError::PropertyBearingKindUnsupported { .. } => {
+                ActionStateResultFault::PendingFormatPropertyBearingKindUnsupported
             }
             PendingFormatError::PropertiesNotAllowed { .. } => {
                 ActionStateResultFault::PendingFormatPropertiesNotAllowed

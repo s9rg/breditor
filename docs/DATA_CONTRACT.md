@@ -16,6 +16,9 @@ browser AST/render/clipboard/export path and adds profile-bound IndexedDB outer
 records; it does not widen any Rust V1 or V2 codec. Alpha.7 adds the built-in
 strong-format intent route and the supported descriptor-validated browser
 intent/toolbar path without widening any Rust V1/V2 codec or Wasm ABI 3.
+`0.3.0-alpha.1` adds Rust-only typed inline-format property declarations,
+validation, fingerprinting, and retained-resource accounting. It does not widen
+Wasm ABI 3 or the supported browser path.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1` and `2`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -42,8 +45,9 @@ Base schema: `breditor/base`, version `1`
 The implemented Rust slice owns:
 
 - the canonical immutable AST and validated `Document`;
-- manifest-owned, canonically ordered property-free `InlineFormatSpecV1`
-  declarations with independent nonzero persisted type revisions, plus a
+- manifest-owned, canonically ordered `InlineFormatSpecV1` declarations with
+  independent nonzero persisted type revisions and optional closed typed
+  `InlineFormatPropertyContractV1` adjuncts, plus a
   sealed compiler that combines one resolved extension set with a caller-owned
   non-`breditor/*` `SchemaId` while retaining the built-in base-text shape;
 - immutable manifest-owned `InlineFormatToggleSpecV1` bundles and an immutable
@@ -221,9 +225,10 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- property-bearing formats, arbitrary structural schema kinds, custom extension
-  actions or inputs, callback planners, cross-extension toggle targets, shared
-  toggle routes, and fallback toggle routing;
+- property-aware mutation, pending typing, Wasm/bootstrap, browser rendering,
+  toolbar controls, arbitrary structural schema kinds, custom extension actions
+  or inputs, callback planners, cross-extension toggle targets, shared toggle
+  routes, and fallback toggle routing;
 - serialization, scalar exposure, or cross-compilation equality for
   `CompiledProfileGeneration`; native registry/router/engine APIs remain
   advanced bypasses outside compiled-profile correlation, while compiled-profile
@@ -1253,9 +1258,10 @@ The enforced laws are:
 - configured byte, depth, node, child, text, format, and property limits are
   checked before a runtime document is published.
 
-A sealed base-text extension profile changes only the format-kind rule in that
-list: it also admits its compiled property-free format kinds. Every other tree
-law remains identical, and V1 remains bound to the strong-only base rule.
+A sealed base-text extension profile may admit additional compiled format kinds.
+In `0.2.x` they are property-free. `0.3.0-alpha.1` lets the Rust compiler attach
+one typed scalar-property contract to an extension format while every structural
+tree law remains identical. V1 remains bound to the strong-only base rule.
 
 The strict decoder rejects non-canonical data. A separately named recovery
 importer may repair foreign or damaged data later, but it must return diagnostics
@@ -1273,6 +1279,29 @@ grammar `[A-Za-z_][A-Za-z0-9._-]*` and are at most 128 bytes. Restricting them t
 ASCII makes Rust byte ordering and JavaScript UTF-16 ordering identical. These
 rules remove numeric and key-order ambiguity from future canonical hashing and
 keep Rust, Wasm, and TypeScript lossless.
+
+`0.3.0-alpha.1` gives the Rust schema compiler a deliberately narrower semantic
+subset of that general value model for inline-format contracts. Each declared
+key is required or optional and accepts exactly Boolean, a JavaScript-safe
+integer with optional inclusive bounds, or a string with inclusive UTF-8 byte
+bounds. Null, floats, arrays, objects, unions, enums, patterns, defaults,
+coercion, normalization, and cross-property validation are not contract types.
+Optional means the key may be absent; a present null is still a type mismatch.
+Keys not declared by the closed contract are rejected.
+
+One contract contains 1 through 32 unique qualified property names, sorted
+canonically. Extension property names cannot use `breditor/*`. One manifest may
+own at most 255 contracts, and each must target one format declared by that same
+manifest. `PropertyMap::try_from_sorted` publicly constructs exact instances
+without sorting or overwriting caller input.
+
+The default host policy additionally limits one property string to 65,536
+decoded UTF-8 bytes and all property strings in a document to 1 MiB. These host
+limits are not schema meaning and therefore do not enter the fingerprint.
+`DocumentSummary` caches the admitted aggregate property-string bytes, and
+Session Checkpoint V2 applies a separate default 64 MiB ceiling across retained
+document boundaries. Validation reports retain at most 1,024 issues including
+one truncation marker.
 
 ## Point and selection contract
 
@@ -1332,18 +1361,21 @@ value and exposes revisions only through the canonical decimal-string boundary.
 Pending formats are an explicit typing override. `None` means derive formatting
 from context, while `Some(empty)` explicitly means unformatted. An override is
 valid only with a spatially collapsed range and formats permitted by the active
-schema.
+schema. The V1 pending-format value carries no typed property creation contract,
+so `0.3.0-alpha.1` rejects property-bearing kinds even when an empty property map
+is supplied.
 
 ## Sealed base-text profile contract
 
 `InlineFormatSpecV1` is a checked Rust value, not a wire envelope. It contains
 exactly one qualified format kind and one nonzero `PersistedTypeRevision`.
-Properties, entities, parameters, groups, exclusions, inclusivity,
-normalization, callbacks, and codecs are not representable. The containing
-`ExtensionManifest::try_new_with_inline_formats` constructor owns these
-declarations, sorts them by format kind, rejects duplicate kinds, and accepts
-at most 255 declarations. The legacy `ExtensionManifest::try_new` constructor
-remains the zero-format convenience path.
+Entities, groups, exclusions, inclusivity, normalization, callbacks, and codecs
+are not representable. `0.3.0-alpha.1` adds a separate optional
+`InlineFormatPropertyContractV1` owned by the same manifest rather than changing
+that format identity value. `ExtensionManifest::try_new_with_inline_format_declarations`
+is the complete constructor; older constructors remain convenience paths with
+no property contracts and/or toggles. Format declarations are sorted, duplicate
+kinds are rejected, and at most 255 formats are accepted.
 
 Alpha.4 adds the checked, behavior-free `InlineFormatToggleSpecV1` value. Each
 declaration contains exactly a target format kind, `ActionId`, `IntentId`,
@@ -1355,7 +1387,9 @@ and accepts at most 255; the older constructors remain zero-toggle convenience
 paths. Complete-profile compilation also caps the aggregate at 255, requires the
 target format to be declared by the same manifest, permits only one toggle per
 format, rejects duplicate typed identities across manifests, and reserves the
-complete `breditor/*` namespace from extension semantic IDs.
+complete `breditor/*` namespace from extension semantic IDs. A generated
+no-input toggle may target only a property-free format: it cannot invent a
+required Link target or another typed property set.
 
 `CompiledSchema::try_compile_base_text_profile` takes one resolved
 `ExtensionSet` and one caller-owned `SchemaId`. The schema name, every extension
@@ -1366,15 +1400,19 @@ Duplicate ownership across manifests fails even when the declarations are
 otherwise equal. Compilation is deterministic, all-or-nothing, and never
 infers a selector from an extension or reuses `breditor/base@1`.
 
-The result fixes the same root, paragraph, text, property/entity, and
+The result fixes the same root, paragraph, text, element-property/entity, and
 canonicality laws as the base definition. Its schema fingerprint includes the
-caller-owned schema selector plus every admitted format kind and persisted
-revision in canonical order. It excludes declaration order, manifest owner,
+caller-owned schema selector plus every admitted format kind, persisted
+revision, and typed property name/presence/scalar domain in canonical order. It
+excludes declaration order, manifest owner,
 `ExtensionVersion`, and every toggle action, intent, binding, and action-state
 identity. Adding or renaming only a semantic toggle declaration therefore does
 not change the schema fingerprint.
 `CompiledSchema::is_property_free_inline_format` is a read-only language query;
 it neither registers an action nor grants ownership.
+`CompiledSchema::inline_format_property_contract` returns the immutable typed
+contract when present. Property-free schemas retain exact compiler-contract
+version-1 bytes; any typed format selects compiler-contract version 2.
 The private compiler-minted base-text capability, rather than matching names
 alone, gates the primitive edit paths.
 
@@ -1383,6 +1421,15 @@ continues to require the exact built-in strong-only `breditor/base@1`
 definition.
 
 ## Text operation contract
+
+At `0.3.0-alpha.1`, all four existing operation variants fail closed when the
+compiled schema admits any property-bearing format. This global gate applies to
+capture, static validation, V2 codec admission, and transaction application,
+even when the current document does not use that format. It prevents property
+loss until a property-aware mutation and inverse contract exists. A rejected
+transaction leaves its base state unchanged. Valid typed documents and
+selection-only state can still exist; content-changing history and replay are
+not promised for this alpha.
 
 `TextSplice` replaces one half-open UTF-16 range inside one paragraph. Its range
 is paragraph-local rather than tied to unstable text-leaf paths, so one splice
@@ -2255,7 +2302,8 @@ session transition, and hand off append ownership as one protocol.
 
 The correctness-first implementation deliberately accepts costs that must be
 removed before large-document production use. Root-level node, depth, text-byte,
-and property-value measurements are cached for constant-time access. A
+property-value, and property-string-byte measurements are cached for
+constant-time access. A
 compiler-proved base-text paragraph splice now validates the generated
 paragraph and applies checked global deltas instead of rescanning a matching-
 profile document, but:

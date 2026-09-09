@@ -98,14 +98,28 @@ fn validate_toggle_targets(extensions: &ExtensionSet) -> Result<(), ProfileCompi
         .manifests()
         .flat_map(|manifest| {
             manifest.inline_format_toggles().iter().map(move |toggle| {
-                (toggle.format_kind().clone(), manifest.id().clone(), manifest.inline_formats())
+                (
+                    toggle.format_kind().clone(),
+                    manifest.id().clone(),
+                    manifest.inline_formats(),
+                    manifest.inline_format_property_contracts(),
+                )
             })
         })
         .collect::<Vec<_>>();
     declarations.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
-    for (format_kind, owner, owned_formats) in declarations {
+    for (format_kind, owner, owned_formats, property_contracts) in declarations {
         if !owned_formats.iter().any(|format| format.kind() == &format_kind) {
             return Err(ProfileCompilationError::InlineFormatToggleTargetNotOwned {
+                owner,
+                format_kind,
+            });
+        }
+        if property_contracts
+            .binary_search_by(|contract| contract.format_kind().cmp(&format_kind))
+            .is_ok()
+        {
+            return Err(ProfileCompilationError::InlineFormatToggleTargetHasProperties {
                 owner,
                 format_kind,
             });

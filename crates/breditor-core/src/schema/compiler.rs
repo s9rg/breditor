@@ -8,7 +8,10 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 use crate::{
-    extension::{ExtensionId, ExtensionSet},
+    extension::{
+        ExtensionId, ExtensionSet, InlineFormatPropertyContractV1, InlineFormatPropertyTypeV1,
+        PropertyPresenceV1,
+    },
     identity::QualifiedName,
     schema::{
         PersistedTypeRevision, SchemaCompilationError, SchemaFingerprint, SchemaId, SchemaVersion,
@@ -19,7 +22,8 @@ use super::compiled_schema::CompiledSchema;
 
 const CANONICAL_ENCODING_VERSION: u32 = 1;
 const SCHEMA_VALUE_MODEL_VERSION: u32 = 1;
-const SCHEMA_COMPILER_CONTRACT_VERSION: u32 = 1;
+const SCHEMA_COMPILER_CONTRACT_VERSION_V1: u32 = 1;
+const SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES: u32 = 2;
 const FINGERPRINT_DOMAIN: &[u8] = b"breditor/schema-fingerprint\0";
 
 const MAX_ELEMENT_TYPES: u32 = 256;
@@ -103,7 +107,7 @@ impl ElementDefinition {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct InlineFormatDefinition {
     revision: PersistedTypeRevision,
-    allows_properties: bool,
+    property_contract: Option<InlineFormatPropertyContractV1>,
 }
 
 impl InlineFormatDefinition {
@@ -111,8 +115,8 @@ impl InlineFormatDefinition {
         self.revision
     }
 
-    pub(super) const fn allows_properties(&self) -> bool {
-        self.allows_properties
+    pub(super) const fn property_contract(&self) -> Option<&InlineFormatPropertyContractV1> {
+        self.property_contract.as_ref()
     }
 }
 
@@ -232,7 +236,7 @@ struct InlineFormatSpec {
     kind: QualifiedName,
     owner: DeclarationOwner,
     revision: PersistedTypeRevision,
-    allows_properties: bool,
+    property_contract: Option<InlineFormatPropertyContractV1>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -263,6 +267,11 @@ enum SchemaCompilerError {
     DuplicateElement { kind: QualifiedName },
     #[error("inline-format type {kind} is declared more than once")]
     DuplicateInlineFormat { kind: QualifiedName },
+    #[error("inline-format {kind} carries a property contract targeting {contract_target}")]
+    InlineFormatPropertyContractTargetMismatch {
+        kind: QualifiedName,
+        contract_target: QualifiedName,
+    },
     #[error("root element {kind} is not registered")]
     UnknownRootElement { kind: QualifiedName },
     #[error("paragraph role element {kind} is not registered")]
@@ -320,7 +329,12 @@ pub(super) fn compile_base_text_profile(
         .manifests()
         .flat_map(|manifest| {
             manifest.inline_formats().iter().map(move |format| {
-                (format.kind().clone(), manifest.id().clone(), format.revision())
+                let property_contract = manifest
+                    .inline_format_property_contracts()
+                    .binary_search_by(|contract| contract.format_kind().cmp(format.kind()))
+                    .ok()
+                    .map(|index| manifest.inline_format_property_contracts()[index].clone());
+                (format.kind().clone(), manifest.id().clone(), format.revision(), property_contract)
             })
         })
         .collect::<Vec<_>>();
@@ -332,8 +346,8 @@ pub(super) fn compile_base_text_profile(
             second_owner: pair[1].1.clone(),
         });
     }
-    if let Some((kind, owner, _)) =
-        formats.iter().find(|(kind, _, _)| kind.namespace() == "breditor")
+    if let Some((kind, owner, _, _)) =
+        formats.iter().find(|(kind, _, _, _)| kind.namespace() == "breditor")
     {
         return Err(SchemaCompilationError::ReservedInlineFormatName {
             kind: kind.clone(),
@@ -344,14 +358,14 @@ pub(super) fn compile_base_text_profile(
     let mut spec = base_spec();
     spec.id = schema_id;
     spec.owner = DeclarationOwner::Profile;
-    spec.inline_formats.extend(formats.into_iter().map(|(kind, owner, revision)| {
-        InlineFormatSpec {
+    spec.inline_formats.extend(formats.into_iter().map(
+        |(kind, owner, revision, property_contract)| InlineFormatSpec {
             kind,
             owner: DeclarationOwner::Extension(owner),
             revision,
-            allows_properties: false,
-        }
-    }));
+            property_contract,
+        },
+    ));
     compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
 }
 
@@ -383,8 +397,8 @@ pub(super) fn supports_base_text_operations(definition: &CompiledSchemaDefinitio
         return false;
     };
     strong.revision == PersistedTypeRevision::one()
-        && !strong.allows_properties
-        && definition.inline_formats.values().all(|format| !format.allows_properties)
+        && strong.property_contract.is_none()
+        && definition.inline_formats.values().all(|format| format.property_contract.is_none())
 }
 
 #[cfg(test)]
@@ -445,6 +459,7 @@ fn compile(
     }
     for inline_format in &spec.inline_formats {
         reject_reserved_inline_format_name(inline_format)?;
+        reject_mismatched_inline_format_property_contract(inline_format)?;
     }
 
     let elements = spec
@@ -470,7 +485,7 @@ fn compile(
                 inline_format.kind.clone(),
                 InlineFormatDefinition {
                     revision: inline_format.revision,
-                    allows_properties: inline_format.allows_properties,
+                    property_contract: inline_format.property_contract.clone(),
                 },
             )
         })
@@ -556,6 +571,20 @@ fn reject_reserved_inline_format_name(
     Ok(())
 }
 
+fn reject_mismatched_inline_format_property_contract(
+    inline_format: &InlineFormatSpec,
+) -> Result<(), SchemaCompilerError> {
+    if let Some(contract) = &inline_format.property_contract
+        && contract.format_kind() != &inline_format.kind
+    {
+        return Err(SchemaCompilerError::InlineFormatPropertyContractTargetMismatch {
+            kind: inline_format.kind.clone(),
+            contract_target: contract.format_kind().clone(),
+        });
+    }
+    Ok(())
+}
+
 fn fingerprint(definition: &CompiledSchemaDefinition) -> SchemaFingerprint {
     let mut hasher = Sha256::new();
     encode_fingerprint(definition, |bytes| hasher.update(bytes));
@@ -566,7 +595,13 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
     let mut encoder = CanonicalFingerprintEncoder::new(sink);
     encoder.u32(0x01, CANONICAL_ENCODING_VERSION);
     encoder.u32(0x02, SCHEMA_VALUE_MODEL_VERSION);
-    encoder.u32(0x03, SCHEMA_COMPILER_CONTRACT_VERSION);
+    let compiler_contract_version =
+        if definition.inline_formats.values().any(|format| format.property_contract.is_some()) {
+            SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES
+        } else {
+            SCHEMA_COMPILER_CONTRACT_VERSION_V1
+        };
+    encoder.u32(0x03, compiler_contract_version);
     encoder.name(0x10, definition.id.name());
     encoder.u32(0x11, definition.id.version().get());
     encoder.name(0x12, &definition.root_kind);
@@ -596,7 +631,41 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
         encoder.tag(0x41);
         encoder.name(0x42, kind);
         encoder.u32(0x43, inline_format.revision.get());
-        encoder.boolean(0x44, inline_format.allows_properties);
+        encoder.boolean(0x44, inline_format.property_contract.is_some());
+        if let Some(contract) = &inline_format.property_contract {
+            encoder.u32(0x45, 1);
+            encoder.u32(0x46, fixed_count(contract.properties().len()));
+            for property in contract.properties() {
+                encoder.tag(0x47);
+                encoder.name(0x48, property.name());
+                encoder.byte(
+                    0x49,
+                    match property.presence() {
+                        PropertyPresenceV1::Required => 0,
+                        PropertyPresenceV1::Optional => 1,
+                    },
+                );
+                match property.value_type() {
+                    InlineFormatPropertyTypeV1::Boolean => encoder.byte(0x4a, 0),
+                    InlineFormatPropertyTypeV1::Integer(integer) => {
+                        encoder.byte(0x4a, 1);
+                        encoder.optional_i64(
+                            0x4b,
+                            integer.minimum().map(crate::document::PropertyInteger::get),
+                        );
+                        encoder.optional_i64(
+                            0x4c,
+                            integer.maximum().map(crate::document::PropertyInteger::get),
+                        );
+                    }
+                    InlineFormatPropertyTypeV1::String(string) => {
+                        encoder.byte(0x4a, 2);
+                        encoder.u32(0x4d, string.minimum_utf8_bytes());
+                        encoder.u32(0x4e, string.maximum_utf8_bytes());
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -622,6 +691,22 @@ where
     fn u32(&mut self, tag: u8, value: u32) {
         self.tag(tag);
         self.raw(&value.to_be_bytes());
+    }
+
+    fn byte(&mut self, tag: u8, value: u8) {
+        self.tag(tag);
+        self.raw(&[value]);
+    }
+
+    fn optional_i64(&mut self, tag: u8, value: Option<i64>) {
+        self.tag(tag);
+        match value {
+            None => self.raw(&[0]),
+            Some(value) => {
+                self.raw(&[1]);
+                self.raw(&value.to_be_bytes());
+            }
+        }
     }
 
     fn optional_u32(&mut self, tag: u8, value: Option<u32>) {
@@ -697,7 +782,7 @@ fn base_spec() -> SchemaSpec {
             kind: strong_kind,
             owner: DeclarationOwner::Breditor,
             revision: PersistedTypeRevision::one(),
-            allows_properties: false,
+            property_contract: None,
         }],
     }
 }
@@ -711,9 +796,15 @@ mod tests {
     use std::{collections::BTreeSet, error::Error, fmt::Write as _};
 
     use crate::{
-        extension::{ExtensionId, ExtensionVersion},
+        document::PropertyInteger,
+        extension::{
+            ExtensionId, ExtensionVersion, InlineFormatPropertyContractV1,
+            InlineFormatPropertySpecV1, InlineFormatPropertyTypeV1, PropertyPresenceV1,
+        },
         identity::QualifiedName,
-        schema::{DocumentLimits, PersistedTypeRevisionError},
+        schema::{
+            CompiledSchema, DocumentLimits, PersistedTypeRevisionError, SchemaId, SchemaVersion,
+        },
     };
 
     use super::{
@@ -748,8 +839,41 @@ mod tests {
             kind,
             owner,
             revision: PersistedTypeRevision::one(),
-            allows_properties: false,
+            property_contract: None,
         }
+    }
+
+    fn property_contract(
+        format_kind: QualifiedName,
+    ) -> Result<InlineFormatPropertyContractV1, Box<dyn Error>> {
+        Ok(InlineFormatPropertyContractV1::try_new(
+            format_kind,
+            vec![InlineFormatPropertySpecV1::new(
+                QualifiedName::try_new("example/value")?,
+                PropertyPresenceV1::Required,
+                InlineFormatPropertyTypeV1::boolean(),
+            )],
+        )?)
+    }
+
+    fn typed_property_schema(
+        properties: Vec<InlineFormatPropertySpecV1>,
+    ) -> Result<CompiledSchema, Box<dyn Error>> {
+        let link_kind = QualifiedName::try_new("example/link")?;
+        let contract = InlineFormatPropertyContractV1::try_new(link_kind.clone(), properties)?;
+        let mut spec = base_spec();
+        spec.id = SchemaId::new(
+            QualifiedName::try_new("example/property-matrix")?,
+            SchemaVersion::try_new(1)?,
+        );
+        spec.owner = DeclarationOwner::Profile;
+        spec.inline_formats.push(InlineFormatSpec {
+            kind: link_kind,
+            owner: external_owner("example/link-extension", 1)?,
+            revision: PersistedTypeRevision::one(),
+            property_contract: Some(contract),
+        });
+        compile(spec, CompilerLimits::default()).map_err(Into::into)
     }
 
     #[test]
@@ -796,6 +920,70 @@ mod tests {
     }
 
     #[test]
+    fn typed_property_canonical_bytes_are_a_locked_cross_implementation_vector() -> TestResult {
+        let link_kind = QualifiedName::try_new("example/link")?;
+        let contract = InlineFormatPropertyContractV1::try_new(
+            link_kind.clone(),
+            vec![InlineFormatPropertySpecV1::new(
+                QualifiedName::try_new("example/href")?,
+                PropertyPresenceV1::Required,
+                InlineFormatPropertyTypeV1::try_string(1, 2_048)?,
+            )],
+        )?;
+        let mut spec = base_spec();
+        spec.id = SchemaId::new(
+            QualifiedName::try_new("example/link-profile")?,
+            SchemaVersion::try_new(1)?,
+        );
+        spec.owner = DeclarationOwner::Profile;
+        spec.inline_formats.push(InlineFormatSpec {
+            kind: link_kind,
+            owner: external_owner("example/link-extension", 1)?,
+            revision: PersistedTypeRevision::one(),
+            property_contract: Some(contract),
+        });
+        let schema = compile(spec, CompilerLimits::default())?;
+        let mut bytes = Vec::new();
+        encode_fingerprint(schema.definition(), |chunk| bytes.extend_from_slice(chunk));
+
+        assert_eq!(bytes.len(), 356);
+        let mut actual_hex = String::with_capacity(bytes.len() * 2);
+        for byte in bytes {
+            write!(&mut actual_hex, "{byte:02x}")?;
+        }
+        assert_eq!(
+            actual_hex,
+            concat!(
+                "6272656469746f722f736368656d612d66696e6765727072696e7400",
+                "010000000102000000010300000002",
+                "10000000146578616d706c652f6c696e6b2d70726f66696c65",
+                "1100000001",
+                "12000000116272656469746f722f646f63756d656e74",
+                "13000000126272656469746f722f706172616772617068",
+                "140000000f6272656469746f722f7374726f6e67",
+                "200121012201230124013000000002",
+                "3132000000116272656469746f722f646f63756d656e74",
+                "330000000134003500",
+                "37000000126272656469746f722f706172616772617068",
+                "38000000013900",
+                "3132000000126272656469746f722f706172616772617068",
+                "3300000001340035003638000000003900",
+                "4000000002",
+                "41420000000f6272656469746f722f7374726f6e6743000000014400",
+                "41420000000c6578616d706c652f6c696e6b43000000014401",
+                "45000000014600000001",
+                "47480000000c6578616d706c652f6872656649004a02",
+                "4d000000014e00000800",
+            )
+        );
+        assert_eq!(
+            schema.fingerprint().to_string(),
+            "sha256:3903989dedf6015c4f81b16fdaaddafb4a7a100f1b7f61bfacef694b5141c9ef"
+        );
+        Ok(())
+    }
+
+    #[test]
     fn base_compilation_preserves_all_runtime_queries() {
         let schema = super::compile_breditor_base();
         assert_eq!(schema.id().to_string(), "breditor/base@1");
@@ -808,7 +996,7 @@ mod tests {
         assert!(schema.allows_text_format(schema.strong_kind()));
         assert!(!schema.element_allows_properties(schema.root_kind()));
         assert!(!schema.element_allows_entity_id(schema.root_kind()));
-        assert!(!schema.format_allows_properties(schema.strong_kind()));
+        assert!(schema.inline_format_property_contract(schema.strong_kind()).is_none());
         assert!(schema.is_exact_breditor_base());
         assert!(schema.supports_base_text_operations());
     }
@@ -843,7 +1031,8 @@ mod tests {
         let mut child_count = base.clone();
         child_count.elements[0].children.minimum = 2;
         let mut properties = base.clone();
-        properties.inline_formats[0].allows_properties = true;
+        properties.inline_formats[0].property_contract =
+            Some(property_contract(properties.inline_formats[0].kind.clone())?);
         let mut entity_identity = base.clone();
         entity_identity.elements[0].allows_entity_id = true;
         let mut maximum = base.clone();
@@ -854,6 +1043,76 @@ mod tests {
             .map(|spec| compile(spec, CompilerLimits::default()).map(|schema| schema.fingerprint()))
             .collect::<Result<BTreeSet<_>, _>>()?;
         assert_eq!(fingerprints.len(), 6);
+        Ok(())
+    }
+
+    #[test]
+    fn every_typed_property_dimension_changes_the_fingerprint() -> TestResult {
+        let property = |name, presence, value_type| {
+            QualifiedName::try_new(name)
+                .map(|name| InlineFormatPropertySpecV1::new(name, presence, value_type))
+        };
+        let required = PropertyPresenceV1::Required;
+        let optional = PropertyPresenceV1::Optional;
+        let zero = PropertyInteger::try_new(0)?;
+        let ten = PropertyInteger::try_new(10)?;
+        let variants = vec![
+            vec![property(
+                "example/value",
+                required,
+                InlineFormatPropertyTypeV1::try_string(1, 8)?,
+            )?],
+            vec![property(
+                "example/value",
+                optional,
+                InlineFormatPropertyTypeV1::try_string(1, 8)?,
+            )?],
+            vec![property(
+                "example/renamed",
+                required,
+                InlineFormatPropertyTypeV1::try_string(1, 8)?,
+            )?],
+            vec![property("example/value", required, InlineFormatPropertyTypeV1::boolean())?],
+            vec![property(
+                "example/value",
+                required,
+                InlineFormatPropertyTypeV1::try_integer(Some(zero), Some(ten))?,
+            )?],
+            vec![property(
+                "example/value",
+                required,
+                InlineFormatPropertyTypeV1::try_integer(Some(zero), None)?,
+            )?],
+            vec![property(
+                "example/value",
+                required,
+                InlineFormatPropertyTypeV1::try_integer(None, Some(ten))?,
+            )?],
+            vec![property(
+                "example/value",
+                required,
+                InlineFormatPropertyTypeV1::try_string(0, 8)?,
+            )?],
+            vec![property(
+                "example/value",
+                required,
+                InlineFormatPropertyTypeV1::try_string(1, 9)?,
+            )?],
+        ];
+        let fingerprints = variants
+            .into_iter()
+            .map(typed_property_schema)
+            .map(|result| result.map(|schema| schema.fingerprint()))
+            .collect::<Result<BTreeSet<_>, _>>()?;
+        assert_eq!(fingerprints.len(), 9);
+
+        let alpha = property("example/alpha", optional, InlineFormatPropertyTypeV1::boolean())?;
+        let omega =
+            property("example/omega", required, InlineFormatPropertyTypeV1::try_string(1, 8)?)?;
+        let forward = typed_property_schema(vec![alpha.clone(), omega.clone()])?;
+        let reversed = typed_property_schema(vec![omega, alpha])?;
+        assert_eq!(forward.fingerprint(), reversed.fingerprint());
+        assert_eq!(forward, reversed);
         Ok(())
     }
 
@@ -885,12 +1144,16 @@ mod tests {
             .with_max_json_bytes(1)
             .with_max_nodes(1)
             .with_max_text_bytes(1)
-            .with_max_total_text_bytes(1);
+            .with_max_total_text_bytes(1)
+            .with_max_property_string_bytes(1)
+            .with_max_total_property_string_bytes(1);
         let large = DocumentLimits::default()
             .with_max_json_bytes(usize::MAX)
             .with_max_nodes(usize::MAX)
             .with_max_text_bytes(usize::MAX)
-            .with_max_total_text_bytes(usize::MAX);
+            .with_max_total_text_bytes(usize::MAX)
+            .with_max_property_string_bytes(usize::MAX)
+            .with_max_total_property_string_bytes(usize::MAX);
 
         assert_ne!(small, large);
         assert_eq!(schema.fingerprint(), before);
@@ -1093,14 +1356,15 @@ mod tests {
         let mut property_format = base_spec();
         let mut added_format =
             external_format(QualifiedName::try_new("example/link")?, owner.clone());
-        added_format.allows_properties = true;
+        added_format.property_contract = Some(property_contract(added_format.kind.clone())?);
         property_format.inline_formats.push(added_format);
 
         let mut strong_revision = base_spec();
         strong_revision.inline_formats[0].revision = PersistedTypeRevision::try_new(2)?;
 
         let mut strong_properties = base_spec();
-        strong_properties.inline_formats[0].allows_properties = true;
+        strong_properties.inline_formats[0].property_contract =
+            Some(property_contract(strong_properties.inline_formats[0].kind.clone())?);
 
         let mut element_revision = base_spec();
         element_revision.elements[0].revision = PersistedTypeRevision::try_new(2)?;

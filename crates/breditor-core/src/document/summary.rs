@@ -10,6 +10,7 @@ pub struct DocumentSummary {
     max_node_depth: u32,
     total_text_bytes: u64,
     property_value_count: u64,
+    total_property_string_bytes: u64,
 }
 
 impl DocumentSummary {
@@ -37,12 +38,25 @@ impl DocumentSummary {
         self.property_value_count
     }
 
+    /// Returns combined UTF-8 bytes across all recursively nested property strings.
+    #[must_use]
+    pub const fn total_property_string_bytes(&self) -> u64 {
+        self.total_property_string_bytes
+    }
+
     pub(crate) const fn from_validation(
         node_count: u64,
         max_node_depth: u32,
         total_text_bytes: u64,
         property_value_count: u64,
+        total_property_string_bytes: u64,
     ) -> Self {
-        Self { node_count, max_node_depth, total_text_bytes, property_value_count }
+        Self {
+            node_count,
+            max_node_depth,
+            total_text_bytes,
+            property_value_count,
+            total_property_string_bytes,
+        }
     }
 }

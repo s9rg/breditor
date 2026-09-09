@@ -32,8 +32,12 @@ impl CompiledProfileDescriptor {
     ) -> Self {
         let inline_formats = schema
             .inline_formats()
-            .map(|(kind, revision)| {
-                CompiledProfileInlineFormatDescriptor::new(kind.clone(), revision)
+            .map(|(kind, revision, property_contract)| {
+                CompiledProfileInlineFormatDescriptor::new(
+                    kind.clone(),
+                    revision,
+                    property_contract.cloned(),
+                )
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();

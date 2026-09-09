@@ -25,6 +25,7 @@ struct SummaryOracle {
     max_node_depth: u32,
     total_text_bytes: u64,
     property_value_count: u64,
+    total_property_string_bytes: u64,
 }
 
 impl SummaryOracle {
@@ -39,6 +40,7 @@ impl SummaryOracle {
         self.max_node_depth = self.max_node_depth.max(u32::try_from(depth).unwrap_or(u32::MAX));
         if let Some(element) = node.as_element() {
             self.property_value_count += property_value_count(element.properties());
+            self.total_property_string_bytes += property_string_bytes(element.properties());
             for child in element.children() {
                 self.visit(child, depth + 1);
             }
@@ -49,8 +51,27 @@ impl SummaryOracle {
                 .iter()
                 .map(|format| property_value_count(format.properties()))
                 .sum::<u64>();
+            self.total_property_string_bytes += text
+                .formats()
+                .iter()
+                .map(|format| property_string_bytes(format.properties()))
+                .sum::<u64>();
         }
     }
+}
+
+fn property_string_bytes(properties: &PropertyMap) -> u64 {
+    properties.iter().map(|(_, value)| nested_property_string_bytes(value)).sum()
+}
+
+fn nested_property_string_bytes(value: &PropertyValue) -> u64 {
+    let own = value.as_string().map_or(0, |value| u64::try_from(value.len()).unwrap_or(u64::MAX));
+    let arrays =
+        value.as_array().map_or(0, |values| values.iter().map(nested_property_string_bytes).sum());
+    let objects = value.as_object().map_or(0, |values| {
+        values.iter().map(|(_, value)| nested_property_string_bytes(value)).sum()
+    });
+    own + arrays + objects
 }
 
 fn property_value_count(properties: &PropertyMap) -> u64 {
@@ -73,6 +94,7 @@ fn assert_matches_independent_oracle(document: &Document) {
     assert_eq!(actual.max_node_depth(), expected.max_node_depth);
     assert_eq!(actual.total_text_bytes(), expected.total_text_bytes);
     assert_eq!(actual.property_value_count(), expected.property_value_count);
+    assert_eq!(actual.total_property_string_bytes(), expected.total_property_string_bytes);
 }
 
 fn plain_fragment(text: &str) -> Result<TextFragment, Box<dyn Error>> {
@@ -92,6 +114,7 @@ fn minimal_summary_counts_root_and_empty_paragraph() -> TestResult {
     assert_eq!(document.summary().max_node_depth(), 1);
     assert_eq!(document.summary().total_text_bytes(), 0);
     assert_eq!(document.summary().property_value_count(), 0);
+    assert_eq!(document.summary().total_property_string_bytes(), 0);
     assert_matches_independent_oracle(&document);
     Ok(())
 }

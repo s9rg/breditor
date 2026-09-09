@@ -2,8 +2,8 @@
 //! sealed inline-format and toggle declarations.
 //!
 //! An [`ExtensionSet`] contains bounded manifests, exact-version dependency
-//! edges, explicit exact-version conflicts, and property-free
-//! [`InlineFormatSpecV1`] values, and behavior-free
+//! edges, explicit exact-version conflicts, [`InlineFormatSpecV1`] identities,
+//! optional typed [`InlineFormatPropertyContractV1`] values, and behavior-free
 //! [`InlineFormatToggleSpecV1`] values. Resolution itself never compiles a
 //! schema, installs an action, registers a renderer, executes extension code,
 //! or mutates editor state. A resolved set can be supplied explicitly to the
@@ -16,28 +16,44 @@
 //! or replay log is compatible with any extension implementation.
 
 mod id;
+mod inline_format_property_contract_v1;
+mod inline_format_property_contract_v1_error;
+mod inline_format_property_spec_v1;
+mod inline_format_property_type_v1;
+mod inline_format_property_type_v1_error;
 mod inline_format_spec_v1;
 mod inline_format_toggle_spec_v1;
 mod limits;
 mod limits_error;
 mod manifest;
 mod manifest_error;
+mod property_presence_v1;
 mod set;
 mod set_error;
 mod version;
 mod version_error;
 
 pub use id::ExtensionId;
+pub use inline_format_property_contract_v1::InlineFormatPropertyContractV1;
+pub use inline_format_property_contract_v1_error::InlineFormatPropertyContractV1Error;
+pub use inline_format_property_spec_v1::InlineFormatPropertySpecV1;
+pub use inline_format_property_type_v1::{
+    InlineFormatPropertyIntegerTypeV1, InlineFormatPropertyStringTypeV1, InlineFormatPropertyTypeV1,
+};
+pub use inline_format_property_type_v1_error::InlineFormatPropertyTypeV1Error;
 pub use inline_format_spec_v1::InlineFormatSpecV1;
 pub use inline_format_toggle_spec_v1::InlineFormatToggleSpecV1;
 pub use limits::{
     ExtensionLimits, MAX_EXTENSION_CONFLICTS_PER_MANIFEST, MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST,
+    MAX_EXTENSION_INLINE_FORMAT_PROPERTY_CONTRACTS_PER_MANIFEST,
     MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST, MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST,
     MAX_EXTENSION_SET_CONFLICTS, MAX_EXTENSION_SET_DEPENDENCIES, MAX_EXTENSION_SET_ENTRIES,
+    MAX_INLINE_FORMAT_PROPERTIES_PER_CONTRACT, MAX_INLINE_FORMAT_PROPERTY_STRING_BYTES,
 };
 pub use limits_error::ExtensionLimitsError;
 pub use manifest::ExtensionManifest;
 pub use manifest_error::ExtensionManifestError;
+pub use property_presence_v1::PropertyPresenceV1;
 pub use set::ExtensionSet;
 pub use set_error::ExtensionSetError;
 pub use version::ExtensionVersion;

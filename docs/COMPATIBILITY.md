@@ -1,6 +1,7 @@
 # Breditor compatibility policy
 
-Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces
+Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
+`0.3.0-alpha.1` adds an explicitly experimental Rust-only contract
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -256,6 +257,41 @@ manifest wire protocol. The package's callback-free data prevents a browser
 callback from becoming Rust mutation authority; importing the package still
 executes trusted same-realm JavaScript and is not a sandbox or provenance proof.
 
+## `0.3.0-alpha.1` Rust boundary
+
+This prerelease adds an experimental Rust-only typed inline-format property
+contract. It is not yet part of the supported browser package-root surface.
+One manifest-owned format may have one closed contract of 1 through 32 unique
+qualified keys. Each key is required or optional and accepts Boolean, a
+JavaScript-safe integer with optional inclusive bounds, or a string with
+inclusive UTF-8 byte bounds. Null, floats, arrays, objects, unions, enums,
+patterns, defaults, coercion, normalization, and cross-property rules are not
+contract types.
+
+The contract is compiled into document validation and durable schema identity.
+Property-free schemas retain exact compiler-contract version-1 fingerprint
+bytes. Any property-bearing format selects compiler-contract version 2 and
+encodes its sorted property names, presence, types, and bounds. Document V2 can
+admit valid typed instances against the exact Rust schema and fingerprint.
+Document and checkpoint limits now separately bound property-string bytes, and
+validation reports have a fixed 1,024-issue ceiling including a truncation
+marker.
+
+The alpha fails closed where preservation semantics do not yet exist. Any typed
+format globally disables all four content operation variants for its schema;
+property-bearing formats cannot enter V1 pending typing state or generated
+no-input toggles. Valid typed documents, ordinary selections without typed
+pending state, and empty-history Session Checkpoint V2 state can still be
+represented. This does not claim property-changing undo, redo, or replay.
+
+Wasm ABI 3 is unchanged. Its bootstrap and browser descriptor cannot declare or
+expose typed contracts, and the browser cannot construct, render, edit, copy,
+paste, or add toolbar controls for them. The package-root profile path therefore
+remains property-free even when the matching workspace packages carry a
+`0.3.0-alpha.1` version. Typed validation proves only scalar shape and ranges;
+URL schemes, CSS safety, and renderer sanitization remain separate future
+contracts. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
@@ -265,9 +301,9 @@ both the exact ABI string and exact embedded package version before reading the
 generated engine factory. ABI compatibility alone never makes mismatched
 official package versions a supported pair.
 
-The current `0.2.1` reference configuration installs exactly
-`@breditor/browser@0.2.1`, `@breditor/wasm@0.2.1`, and
-`@breditor/reference-highlight@0.2.1`. The reference package declares
+The current `0.3.0-alpha.1` reference configuration installs exactly
+`@breditor/browser@0.3.0-alpha.1`, `@breditor/wasm@0.3.0-alpha.1`, and
+`@breditor/reference-highlight@0.3.0-alpha.1`. The reference package declares
 the exact browser version as a peer dependency. Its render and toolbar
 manifests are branded by the `@breditor/browser` module instance that created
 them, so a duplicate, nested, or mismatched browser copy is not a compatible

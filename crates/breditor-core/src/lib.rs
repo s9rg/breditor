@@ -653,6 +653,22 @@
 //! blocked and unhandled routes remain complete unchanged outcomes. This is
 //! process-local classification only: it creates no [`local_log::LocalLogEntry`]
 //! identity, append ownership, I/O acknowledgement, or durability evidence.
+//!
+//! Version `0.3.0-alpha.1` adds the Rust-only typed inline-format property
+//! foundation. A manifest-owned format may attach a closed canonical contract
+//! of required or optional Boolean, JavaScript-safe integer, and UTF-8
+//! byte-bounded string properties. The compiled schema and Rust profile
+//! descriptor retain it, Document V2 validates exact keys/types/bounds, and any
+//! typed format selects compiler-contract fingerprint version 2 while
+//! property-free fingerprints remain byte-identical. Document and checkpoint
+//! limits separately account for property-string bytes, and validation reports
+//! are bounded.
+//!
+//! This alpha deliberately fails closed for behavior it cannot preserve. Any
+//! typed format disables the existing content-operation language for that
+//! schema, cannot enter V1 pending-format state, and cannot use a generated
+//! no-input toggle. Wasm ABI 3 and the browser path remain property-free. Typed
+//! scalar validation does not define URL, CSS, HTML, or clipboard safety.
 
 pub mod action;
 pub mod codec;

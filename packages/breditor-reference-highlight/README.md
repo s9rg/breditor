@@ -12,6 +12,10 @@ fingerprint-bound Document V2 fixtures, and complete owned browser render and
 toolbar manifests. It does not register JavaScript behavior, mutate the AST,
 or adopt a ProseMirror, Lexical, Tiptap, or CKEditor protocol.
 
+The `0.3.0-alpha.1` package remains the same property-free Highlight proof. It
+does not exercise the Rust-only typed-property contract introduced at that
+workspace checkpoint.
+
 ## Use
 
 This repository does not publish packages automatically. After a maintainer
@@ -20,9 +24,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.2.1 \
-  @breditor/wasm@0.2.1 \
-  @breditor/reference-highlight@0.2.1
+npm install @breditor/browser@0.3.0-alpha.1 \
+  @breditor/wasm@0.3.0-alpha.1 \
+  @breditor/reference-highlight@0.3.0-alpha.1
 ```
 
 ```ts

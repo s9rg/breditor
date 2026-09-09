@@ -66,6 +66,7 @@ impl TextSplice {
         replacement: TextFragment,
     ) -> Result<Self, TextSpliceApplyError> {
         ensure_document_proof(context, document)?;
+        ensure_schema_support(context)?;
         validate_fragment(context, FragmentRole::Replacement, &replacement)?;
         let element = resolve_text_container(context, document, range.container_path())?;
         let length = container_length(element, range.container_path())?;
@@ -99,6 +100,7 @@ impl TextSplice {
         document: &Document,
     ) -> Result<AppliedOperation, TextSpliceApplyError> {
         ensure_document_proof(context, document)?;
+        ensure_schema_support(context)?;
         validate_fragment(context, FragmentRole::ExpectedRemoved, &self.expected_removed)?;
         validate_fragment(context, FragmentRole::Replacement, &self.replacement)?;
 
@@ -216,6 +218,14 @@ fn ensure_document_proof(
         }
         mismatch => TextSpliceApplyError::DocumentProofMismatch(mismatch),
     })
+}
+
+fn ensure_schema_support(context: &EditorContext) -> Result<(), TextSpliceApplyError> {
+    if context.schema().supports_base_text_operations() {
+        Ok(())
+    } else {
+        Err(TextSpliceApplyError::UnsupportedSchema { schema: context.schema().id().clone() })
+    }
 }
 
 fn validate_fragment(
@@ -557,6 +567,12 @@ pub enum TextSpliceApplyError {
     /// The splice's range and expected source fragment are inconsistent.
     #[error(transparent)]
     Contract(#[from] TextSpliceError),
+    /// This compiled schema exceeds the closed base-text operation language.
+    #[error("text splice does not support schema {schema}")]
+    UnsupportedSchema {
+        /// Rejected active schema identity.
+        schema: SchemaId,
+    },
     /// The document was proven by a different compiled schema identity.
     #[error("document schema {document_schema} does not match context schema {context_schema}")]
     SchemaMismatch {

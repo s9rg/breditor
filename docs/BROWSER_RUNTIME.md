@@ -140,12 +140,13 @@ V1 and Session Checkpoint V1 behavior remains unchanged. With it, startup never
 sniffs or falls back between wire generations.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
-supported package roots. Install exactly matching current `0.2.x` packages:
+supported package roots. After a maintainer publishes this alpha, install the
+exactly matching `0.3.0-alpha.1` packages:
 
 ```sh
-npm install @breditor/browser@0.2.1 \
-  @breditor/wasm@0.2.1 \
-  @breditor/reference-highlight@0.2.1
+npm install @breditor/browser@0.3.0-alpha.1 \
+  @breditor/wasm@0.3.0-alpha.1 \
+  @breditor/reference-highlight@0.3.0-alpha.1
 ```
 
 Then import only the package roots and pass the exported data to the ordinary

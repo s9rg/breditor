@@ -228,6 +228,11 @@ fn validate_pending_formats(
         if !context.schema().allows_text_format(format.kind()) {
             return Err(PendingFormatError::UnknownKind { kind: format.kind().clone() });
         }
+        if !context.schema().is_property_free_inline_format(format.kind()) {
+            return Err(PendingFormatError::PropertyBearingKindUnsupported {
+                kind: format.kind().clone(),
+            });
+        }
         if !format.properties().is_empty() {
             return Err(PendingFormatError::PropertiesNotAllowed { kind: format.kind().clone() });
         }
@@ -279,6 +284,12 @@ pub enum PendingFormatError {
     #[error("pending format `{kind}` is not registered by the compiled schema")]
     UnknownKind {
         /// Rejected format kind.
+        kind: QualifiedName,
+    },
+    /// The registered format requires a typed instance contract unsupported by pending V1 state.
+    #[error("pending property-bearing format `{kind}` is unsupported")]
+    PropertyBearingKindUnsupported {
+        /// Rejected registered property-bearing format kind.
         kind: QualifiedName,
     },
     /// The base schema does not allow format properties.

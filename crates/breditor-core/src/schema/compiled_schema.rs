@@ -61,9 +61,10 @@ impl CompiledSchema {
 
     /// Compiles a sealed base-text schema from one resolved extension set.
     ///
-    /// The root, paragraph, text, built-in strong-format, property, entity, and
-    /// canonicality laws remain fixed by Breditor. Each manifest may only add
-    /// property-free [`crate::extension::InlineFormatSpecV1`] declarations.
+    /// The root, paragraph, text, built-in strong-format, element-property,
+    /// entity, and canonicality laws remain fixed by Breditor. Each manifest may
+    /// add [`crate::extension::InlineFormatSpecV1`] declarations and optional
+    /// closed typed property contracts for those formats.
     /// `schema_id` must use a non-`breditor/*` name: `breditor/base@1` continues
     /// to mean exactly the original strong-only schema. The complete operation
     /// is deterministic and publishes no partial schema on failure.
@@ -142,14 +143,36 @@ impl CompiledSchema {
     /// ownership. It reports only the compiled document-language rule.
     #[must_use]
     pub fn is_property_free_inline_format(&self, kind: &QualifiedName) -> bool {
-        self.definition.inline_format(kind).is_some_and(|format| !format.allows_properties())
+        self.definition
+            .inline_format(kind)
+            .is_some_and(|format| format.property_contract().is_none())
+    }
+
+    /// Returns the typed property contract for one admitted inline format.
+    ///
+    /// `None` means either the format is unknown or it is property-free; use
+    /// [`Self::is_property_free_inline_format`] to distinguish those cases.
+    #[must_use]
+    pub fn inline_format_property_contract(
+        &self,
+        kind: &QualifiedName,
+    ) -> Option<&crate::extension::InlineFormatPropertyContractV1> {
+        self.definition.inline_format(kind)?.property_contract()
     }
 
     /// Iterates every admitted inline-format identity in canonical lexical order.
     pub(crate) fn inline_formats(
         &self,
-    ) -> impl ExactSizeIterator<Item = (&QualifiedName, crate::schema::PersistedTypeRevision)> {
-        self.definition.inline_formats().map(|(kind, format)| (kind, format.revision()))
+    ) -> impl ExactSizeIterator<
+        Item = (
+            &QualifiedName,
+            crate::schema::PersistedTypeRevision,
+            Option<&crate::extension::InlineFormatPropertyContractV1>,
+        ),
+    > {
+        self.definition
+            .inline_formats()
+            .map(|(kind, format)| (kind, format.revision(), format.property_contract()))
     }
 
     pub(crate) fn paragraph_kind(&self) -> &QualifiedName {
@@ -185,10 +208,11 @@ impl CompiledSchema {
             .is_some_and(super::compiler::ElementDefinition::allows_entity_id)
     }
 
-    pub(crate) fn format_allows_properties(&self, kind: &QualifiedName) -> bool {
-        self.definition
-            .inline_format(kind)
-            .is_some_and(super::compiler::InlineFormatDefinition::allows_properties)
+    pub(crate) fn format_property_contract(
+        &self,
+        kind: &QualifiedName,
+    ) -> Option<&crate::extension::InlineFormatPropertyContractV1> {
+        self.definition.inline_format(kind)?.property_contract()
     }
 
     pub(super) fn element_child_constraint(

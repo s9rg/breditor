@@ -39,6 +39,8 @@ struct PreflightLimits {
     properties_per_owner: u64,
     property_depth: u64,
     property_values: u64,
+    property_string_bytes: u64,
+    total_property_string_bytes: u64,
     qualified_name_bytes: u64,
     entity_id_bytes: u64,
     property_object_key_bytes: u64,
@@ -63,6 +65,14 @@ impl PreflightLimits {
             ),
             property_depth: admitted_excess(as_u64(limits.max_property_depth()), raw_bytes),
             property_values: admitted_excess(as_u64(limits.max_property_values()), raw_bytes),
+            property_string_bytes: admitted_excess(
+                as_u64(limits.max_property_string_bytes()),
+                raw_bytes,
+            ),
+            total_property_string_bytes: admitted_excess(
+                as_u64(limits.max_total_property_string_bytes()),
+                raw_bytes,
+            ),
             qualified_name_bytes: admitted_excess(as_u64(MAX_QUALIFIED_NAME_BYTES), raw_bytes),
             entity_id_bytes: admitted_excess(as_u64(MAX_ENTITY_ID_BYTES), raw_bytes),
             property_object_key_bytes: admitted_excess(
@@ -86,6 +96,7 @@ struct DocumentBudget {
     nodes: u64,
     total_text_bytes: u64,
     property_values: u64,
+    total_property_string_bytes: u64,
 }
 
 impl DocumentBudget {
@@ -95,6 +106,7 @@ impl DocumentBudget {
             nodes: 0,
             total_text_bytes: 0,
             property_values: 0,
+            total_property_string_bytes: 0,
         }
     }
 
@@ -122,6 +134,17 @@ impl DocumentBudget {
             &mut self.property_values,
             self.limits.property_values,
             "document property values",
+        )
+    }
+
+    fn note_property_string(&mut self, value: &str) -> Result<(), PreflightLimit> {
+        let bytes = as_u64(value.len());
+        check_limit("bytes in one property string", bytes, self.limits.property_string_bytes)?;
+        self.total_property_string_bytes = self.total_property_string_bytes.saturating_add(bytes);
+        check_limit(
+            "aggregate document property string bytes",
+            self.total_property_string_bytes,
+            self.limits.total_property_string_bytes,
         )
     }
 }
@@ -763,16 +786,25 @@ impl<'de> Visitor<'de> for PropertyValueVisitor<'_> {
         deserializer.deserialize_any(Self { budget: self.budget, depth: self.depth })
     }
 
-    fn visit_borrowed_str<E>(self, _value: &str) -> Result<Self::Value, E> {
-        Ok(())
+    fn visit_borrowed_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.budget.note_property_string(value).map_err(E::custom)
     }
 
-    fn visit_str<E>(self, _value: &str) -> Result<Self::Value, E> {
-        Ok(())
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.budget.note_property_string(value).map_err(E::custom)
     }
 
-    fn visit_string<E>(self, _value: String) -> Result<Self::Value, E> {
-        Ok(())
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.budget.note_property_string(&value).map_err(E::custom)
     }
 
     fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
@@ -1160,6 +1192,51 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn property_string_limits_count_decoded_utf8_and_admit_only_the_first_excess() {
+        let leaf_limits = DocumentLimits::default().with_max_property_string_bytes(1);
+        assert!(
+            preflight_document_root(
+                &root(json!({"test/value": "ab"}), vec![paragraph(Vec::new())]),
+                &leaf_limits,
+            )
+            .is_ok()
+        );
+        assert!(
+            preflight_document_root(
+                &root(json!({"test/value": "abc"}), vec![paragraph(Vec::new())]),
+                &leaf_limits,
+            )
+            .is_err()
+        );
+
+        let total_limits = DocumentLimits::default()
+            .with_max_property_string_bytes(10)
+            .with_max_total_property_string_bytes(2);
+        assert!(
+            preflight_document_root(
+                &root(json!({"test/alpha": "a", "test/beta": "bc"}), vec![paragraph(Vec::new())],),
+                &total_limits,
+            )
+            .is_ok()
+        );
+        assert!(
+            preflight_document_root(
+                &root(json!({"test/alpha": "ab", "test/beta": "cd"}), vec![paragraph(Vec::new())],),
+                &total_limits,
+            )
+            .is_err()
+        );
+
+        let unicode_limits = DocumentLimits::default().with_max_property_string_bytes(3);
+        let escaped_exact = root(json!({"test/value": "😀"}), vec![paragraph(Vec::new())])
+            .replace("😀", "\\ud83d\\ude00");
+        let escaped_too_large = root(json!({"test/value": "😀a"}), vec![paragraph(Vec::new())])
+            .replace("😀", "\\ud83d\\ude00");
+        assert!(preflight_document_root(&escaped_exact, &unicode_limits).is_ok());
+        assert!(preflight_document_root(&escaped_too_large, &unicode_limits).is_err());
     }
 
     #[test]

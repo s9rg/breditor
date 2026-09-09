@@ -93,9 +93,27 @@ exact `example/highlight@7` reference profile as a separate callback-free npm
 package and exercises the compiled core through clean consumer and cross-
 browser integration gates.
 
+Version `0.3.0-alpha.1` adds the Rust-only typed inline-format property
+foundation. A manifest-owned format can attach one closed canonical contract of
+required or optional Boolean, JavaScript-safe integer, and UTF-8 byte-bounded
+string properties. The compiler retains that contract, Document V2 validates
+exact keys/types/bounds, and the Rust profile descriptor exposes it. Any typed
+format selects compiler-contract fingerprint version 2; property-free schemas
+keep exact version-1 bytes. Document and checkpoint policies separately bound
+property-string bytes, and capped validation reports include one truncation
+issue in the report's canonical sort order.
+
+This checkpoint intentionally has no property-aware edit protocol. Any typed
+format disables all four existing content operations for the schema; typed
+pending formats and generated no-input toggles are rejected. Wasm ABI 3,
+profile bootstrap, browser descriptors/rendering, clipboard, and toolbar
+controls remain property-free. Scalar validation is not URL or CSS
+sanitization.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
-[`0.2.0` scope](../../docs/V0_2_SCOPE.md), and exact
+[`0.2.0` scope](../../docs/V0_2_SCOPE.md),
+[`0.3.0` scope](../../docs/V0_3_SCOPE.md), and exact
 [schema fingerprint contract](../../docs/SCHEMA_FINGERPRINT.md) and
 [durable binding contract](../../docs/DURABLE_SCHEMA_BINDING.md).
 
@@ -179,8 +197,8 @@ Operation records retain exact optimistic guards and pass checked constructors
 plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The core
 stays platform-independent: it has no action-state subscription/delivery
-layer, presentation manifest, DOM or browser scheduler, property-bearing
-format attributes, log-storage I/O, checkpoint/log atomic replacement,
+layer, presentation manifest, DOM or browser scheduler, property-aware
+mutation/action protocol, log-storage I/O, checkpoint/log atomic replacement,
 storage-generation publication or initial scope provisioning, process-restart
 append reconstruction, or collaboration transform. Alpha.5 does propagate a
 compiled-profile generation through `EditorEngine`; the separate

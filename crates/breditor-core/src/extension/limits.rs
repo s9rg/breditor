@@ -6,10 +6,16 @@ pub const MAX_EXTENSION_SET_ENTRIES: u32 = 1_024;
 pub const MAX_EXTENSION_DEPENDENCIES_PER_MANIFEST: u32 = 256;
 /// Maximum explicit conflicts accepted by one manifest.
 pub const MAX_EXTENSION_CONFLICTS_PER_MANIFEST: u32 = 256;
-/// Maximum property-free inline-format declarations accepted by one manifest.
+/// Maximum inline-format declarations accepted by one manifest.
 pub const MAX_EXTENSION_INLINE_FORMATS_PER_MANIFEST: u32 = 255;
 /// Maximum inline-format toggle declarations accepted by one manifest.
 pub const MAX_EXTENSION_INLINE_FORMAT_TOGGLES_PER_MANIFEST: u32 = 255;
+/// Maximum typed inline-format property contracts accepted by one manifest.
+pub const MAX_EXTENSION_INLINE_FORMAT_PROPERTY_CONTRACTS_PER_MANIFEST: u32 = 255;
+/// Maximum named properties accepted by one typed inline-format contract.
+pub const MAX_INLINE_FORMAT_PROPERTIES_PER_CONTRACT: u32 = 32;
+/// Maximum UTF-8 byte ceiling expressible by one string property declaration.
+pub const MAX_INLINE_FORMAT_PROPERTY_STRING_BYTES: u32 = 65_536;
 /// Maximum aggregate exact dependency edges accepted by one extension set.
 pub const MAX_EXTENSION_SET_DEPENDENCIES: u32 = 16_384;
 /// Maximum aggregate explicit conflict edges accepted by one extension set.

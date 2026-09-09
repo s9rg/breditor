@@ -77,13 +77,28 @@ durability. It does not change Wasm ABI 3, browser behavior, schema
 fingerprints, or any V1/V2 wire format. The matching workspace package
 definitions remain unpublished.
 
+Version `0.3.0-alpha.1` starts the typed-format foundation in the Rust core.
+Manifest-owned inline formats may attach a closed, canonical contract of
+required or optional Boolean, JavaScript-safe integer, and UTF-8 byte-bounded
+string properties. Those rules enter Document V2 validation, the compiled
+profile's Rust descriptor, and compiler-contract fingerprint version 2;
+property-free schemas retain their exact version-1 fingerprint bytes. New
+per-string, aggregate-document, retained-checkpoint, and validation-report
+limits close the hostile-input boundaries. This is deliberately not an editing
+or browser release: any typed format disables all existing content operations
+for its schema, typed pending formats and generated no-input toggles fail
+closed, and Wasm ABI 3/browser bootstrap/rendering/toolbars remain
+property-free. See the [`0.3.0` scope](docs/V0_3_SCOPE.md).
+
 The implementation includes:
 
 - immutable, structurally shared document values;
 - proof-derived cached document measurements for node count, maximum depth,
-  total UTF-8 text bytes, and recursive property-value count;
+  total UTF-8 text bytes, recursive property-value count, and aggregate
+  property-string bytes;
 - a minimal compiled base schema plus a sealed compiler for adding
-  property-free inline formats to the same document/paragraph/text grammar;
+  inline formats to the same document/paragraph/text grammar, with optional
+  Rust-only closed typed scalar-property contracts;
 - separate Rust-only fingerprint-bearing V2 codecs for document, operation,
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
@@ -140,8 +155,9 @@ The implementation includes:
   bounded versioned inputs, exact prepared capabilities, and fail-closed
   extension conflicts;
 - an immutable extension-set resolver with exact identities, bounded
-  dependency/conflict metadata, manifest-owned property-free inline-format
-  declarations and toggle bundles, deterministic diagnostics, and canonical
+  dependency/conflict metadata, manifest-owned inline-format declarations,
+  optional typed property contracts, and property-free toggle bundles,
+  deterministic diagnostics, and canonical
   dependency-first order; schema compatibility exists only after explicit
   sealed compilation under a caller-owned profile `SchemaId`;
 - an immutable `CompiledEditorProfile` that co-owns the resolved extension set,
@@ -228,6 +244,10 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
+The experimental `0.3.0-alpha.1` Rust contract can admit typed properties for
+Document V2, but it intentionally supplies no property-aware operation,
+pending-typing, action, replay, Wasm, renderer, clipboard, or toolbar path yet.
+Boolean/integer/string shape validation is not URL or CSS sanitization.
 One manifest and one complete profile can each contribute at most 255 toggles;
 every target is owned by that manifest, each typed ID is profile-unique in its
 namespace, and extension semantic IDs cannot use `breditor/*`.

@@ -4,6 +4,8 @@ use thiserror::Error;
 
 use crate::identity::QualifiedName;
 
+use super::PropertyMapError;
+
 /// Largest positive integer that every JavaScript number represents exactly.
 pub const MAX_SAFE_INTEGER: i64 = 9_007_199_254_740_991;
 
@@ -273,6 +275,36 @@ impl<'a> IntoIterator for &'a PropertyObject {
 pub struct PropertyMap(Arc<BTreeMap<QualifiedName, PropertyValue>>);
 
 impl PropertyMap {
+    /// Constructs a map from entries already in strict canonical name order.
+    ///
+    /// This boundary deliberately does not sort or overwrite caller input, so
+    /// a duplicate or noncanonical sequence cannot be hidden before signing,
+    /// replay, or persistence code observes it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PropertyMapError`] at the first adjacent duplicate or order
+    /// inversion.
+    pub fn try_from_sorted(
+        values: Vec<(QualifiedName, PropertyValue)>,
+    ) -> Result<Self, PropertyMapError> {
+        for pair in values.windows(2) {
+            match pair[0].0.cmp(&pair[1].0) {
+                std::cmp::Ordering::Less => {}
+                std::cmp::Ordering::Equal => {
+                    return Err(PropertyMapError::DuplicateProperty { name: pair[0].0.clone() });
+                }
+                std::cmp::Ordering::Greater => {
+                    return Err(PropertyMapError::NonCanonicalOrder {
+                        previous: pair[0].0.clone(),
+                        current: pair[1].0.clone(),
+                    });
+                }
+            }
+        }
+        Ok(Self::from_map(values.into_iter().collect()))
+    }
+
     /// Returns the number of properties.
     #[must_use]
     pub fn len(&self) -> usize {

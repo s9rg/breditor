@@ -93,7 +93,7 @@ pub(crate) fn decode_pending_format_records_v1(
         let kind = QualifiedName::try_from(record.format_type).map_err(|source| {
             EditorValueRecordError::InvalidPendingFormatName { format_index, source }
         })?;
-        if !context.schema().allows_text_format(&kind) {
+        if !context.schema().is_property_free_inline_format(&kind) {
             return Err(EditorValueRecordError::PendingFormatNotAllowed { format_index });
         }
         debug_assert_eq!(record.properties, EmptyPropertyMapRecord);
@@ -118,7 +118,7 @@ pub(crate) fn encode_pending_format_records_v1(
         .enumerate()
         .map(|(format_index, format)| {
             let format_index = usize_to_u64(format_index);
-            if !context.schema().allows_text_format(format.kind()) {
+            if !context.schema().is_property_free_inline_format(format.kind()) {
                 return Err(EditorValueRecordError::PendingFormatNotAllowed { format_index });
             }
             if !format.properties().is_empty() {

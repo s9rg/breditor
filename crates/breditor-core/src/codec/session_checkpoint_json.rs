@@ -852,6 +852,7 @@ struct RetainedBoundaryBudget {
     nodes: u64,
     text_bytes: u64,
     property_values: u64,
+    property_string_bytes: u64,
 }
 
 impl RetainedBoundaryBudget {
@@ -896,6 +897,18 @@ impl RetainedBoundaryBudget {
             boundary_index,
             self.property_values,
             limits.max_retained_property_values(),
+        )?;
+        self.property_string_bytes = checked_retained_add(
+            RetainedResourceKind::PropertyStringBytes,
+            boundary_index,
+            self.property_string_bytes,
+            summary.total_property_string_bytes(),
+        )?;
+        check_retained_limit(
+            RetainedResourceKind::PropertyStringBytes,
+            boundary_index,
+            self.property_string_bytes,
+            limits.max_retained_property_string_bytes(),
         )
     }
 }

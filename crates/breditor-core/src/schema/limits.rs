@@ -15,6 +15,8 @@ pub struct DocumentLimits {
     pub(crate) max_properties_per_owner: usize,
     pub(crate) max_property_depth: usize,
     pub(crate) max_property_values: usize,
+    pub(crate) max_property_string_bytes: usize,
+    pub(crate) max_total_property_string_bytes: usize,
 }
 
 /// Runtime validity settings recorded on a completely proved document.
@@ -47,6 +49,8 @@ struct PropertyValidationProfile {
     entries_per_owner: usize,
     depth: usize,
     total_values: usize,
+    string_bytes: usize,
+    total_string_bytes: usize,
 }
 
 impl DocumentLimits {
@@ -108,6 +112,18 @@ impl DocumentLimits {
     #[must_use]
     pub const fn max_property_values(&self) -> usize {
         self.max_property_values
+    }
+
+    /// Returns the maximum UTF-8 byte length of one property string.
+    #[must_use]
+    pub const fn max_property_string_bytes(&self) -> usize {
+        self.max_property_string_bytes
+    }
+
+    /// Returns the maximum combined UTF-8 bytes across property strings.
+    #[must_use]
+    pub const fn max_total_property_string_bytes(&self) -> usize {
+        self.max_total_property_string_bytes
     }
 
     /// Sets the maximum accepted UTF-8 JSON input size.
@@ -180,6 +196,20 @@ impl DocumentLimits {
         self
     }
 
+    /// Sets the maximum UTF-8 byte length of one property string.
+    #[must_use]
+    pub const fn with_max_property_string_bytes(mut self, value: usize) -> Self {
+        self.max_property_string_bytes = value;
+        self
+    }
+
+    /// Sets the maximum combined UTF-8 bytes across property strings.
+    #[must_use]
+    pub const fn with_max_total_property_string_bytes(mut self, value: usize) -> Self {
+        self.max_total_property_string_bytes = value;
+        self
+    }
+
     pub(crate) const fn runtime_validation_profile(&self) -> RuntimeValidationProfile {
         RuntimeValidationProfile {
             tree: TreeValidationProfile {
@@ -196,6 +226,8 @@ impl DocumentLimits {
                 entries_per_owner: self.max_properties_per_owner,
                 depth: self.max_property_depth,
                 total_values: self.max_property_values,
+                string_bytes: self.max_property_string_bytes,
+                total_string_bytes: self.max_total_property_string_bytes,
             },
         }
     }
@@ -214,6 +246,8 @@ impl Default for DocumentLimits {
             max_properties_per_owner: 128,
             max_property_depth: 32,
             max_property_values: 10_000,
+            max_property_string_bytes: 65_536,
+            max_total_property_string_bytes: 1024 * 1024,
         }
     }
 }
@@ -246,6 +280,8 @@ mod tests {
         assert_eq!(limits.max_properties_per_owner(), 128);
         assert_eq!(limits.max_property_depth(), 32);
         assert_eq!(limits.max_property_values(), 10_000);
+        assert_eq!(limits.max_property_string_bytes(), 65_536);
+        assert_eq!(limits.max_total_property_string_bytes(), 1024 * 1024);
     }
 
     #[test]

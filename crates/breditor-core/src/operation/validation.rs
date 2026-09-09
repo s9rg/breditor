@@ -106,7 +106,7 @@ pub enum OperationRootChildSpanRole {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationValidationError {
-    /// A structural operation has no semantics under this compiled schema.
+    /// A base-text operation has no semantics under this compiled schema.
     #[error("{kind:?} does not support schema {schema}")]
     UnsupportedSchema {
         /// Rejected operation kind.
@@ -428,6 +428,7 @@ fn validate_text_splice(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::TextSplice;
+    validate_base_text_schema(context, kind)?;
     validate_path(
         context,
         kind,
@@ -528,7 +529,7 @@ fn validate_paragraph_split(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::ParagraphSplit;
-    validate_structural_schema(context, kind)?;
+    validate_base_text_schema(context, kind)?;
     validate_path(context, kind, OperationPathRole::Paragraph, operation.paragraph_path())?;
     validate_offset(context, kind, OperationOffsetRole::ParagraphSplit, operation.offset())?;
     let target_index = operation.paragraph_path().last_index().ok_or(
@@ -594,7 +595,7 @@ fn validate_paragraph_join(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::ParagraphJoin;
-    validate_structural_schema(context, kind)?;
+    validate_base_text_schema(context, kind)?;
     validate_path(context, kind, OperationPathRole::LeftParagraph, operation.left_path())?;
     let left_index = operation.left_path().last_index().ok_or(
         OperationValidationError::RootChildSpanStartMissing {
@@ -665,7 +666,7 @@ fn validate_root_text_replace(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::RootTextReplace;
-    validate_structural_schema(context, kind)?;
+    validate_base_text_schema(context, kind)?;
     validate_path(
         context,
         kind,
@@ -734,7 +735,7 @@ fn validate_root_text_replace(
     )
 }
 
-fn validate_structural_schema(
+fn validate_base_text_schema(
     context: &EditorContext,
     kind: OperationKind,
 ) -> Result<(), OperationValidationError> {

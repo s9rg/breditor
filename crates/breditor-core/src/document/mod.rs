@@ -8,6 +8,7 @@ mod local_paragraph_structure;
 mod local_text_splice;
 mod node_ref;
 mod property;
+mod property_map_error;
 mod schema_admission;
 mod schema_admission_error;
 mod summary;
@@ -28,6 +29,7 @@ pub use property::{
     MAX_SAFE_INTEGER, MIN_SAFE_INTEGER, PropertyInteger, PropertyIntegerError, PropertyMap,
     PropertyMapIter, PropertyObject, PropertyObjectIter, PropertyValue, PropertyValueKind,
 };
+pub use property_map_error::PropertyMapError;
 pub use schema_admission_error::DocumentSchemaAdmissionError;
 pub use summary::DocumentSummary;
 pub use text::TextNode;

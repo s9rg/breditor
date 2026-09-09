@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: `0.2.x` packaged boundary contract; ABI generation `3` is
+Status: `0.2.x` packaged boundary contract retained by `0.3.0-alpha.1`; ABI generation `3` is
 authoritative for the matching official browser/Wasm packages, while direct
 raw-handle use is an intentionally narrow, advanced, and experimental
 integration surface
@@ -16,11 +16,11 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-`@breditor/browser@0.2.1` and `@breditor/wasm@0.2.1` are
+`@breditor/browser@0.3.0-alpha.1` and `@breditor/wasm@0.3.0-alpha.1` are
 supported as an exact-version pair. The generated raw classes and ownership
 handles documented below remain available for advanced integrations, but they
 are not the high-level browser compatibility surface. The reference package
-also has version `0.2.1` and declares the exact browser package as a
+also has version `0.3.0-alpha.1` and declares the exact browser package as a
 peer so its branded presentation values are created by the same module instance
 that admits them.
 
@@ -33,6 +33,12 @@ representation. No-input semantic intents return committed, blocked,
 unhandled, or error results with route provenance. The existing exact-base
 Document V1 and Session Checkpoint V1 static engine factories remain as an
 advanced compatibility path.
+
+`0.3.0-alpha.1` deliberately does not change ABI 3. The Rust core can compile
+typed inline-format property contracts, but this bootstrap cannot declare them
+and this descriptor cannot expose them. The Wasm/browser profile path therefore
+remains property-free until a separately reviewed ABI revision or additive
+contract explicitly carries the new data and behavior.
 
 Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
 and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed

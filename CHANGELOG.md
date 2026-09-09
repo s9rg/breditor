@@ -4,6 +4,54 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.1 - 2026-09-08
+
+This checkpoint establishes typed inline-format properties as compiled Rust
+document-language data. It intentionally ships no property-aware editing or
+browser path and remains unpublished.
+
+### Typed property language
+
+- Added immutable manifest-owned `InlineFormatPropertyContractV1` declarations
+  for exact qualified keys with required/optional presence and Boolean,
+  JavaScript-safe integer, or UTF-8 byte-bounded string domains.
+- Added the public checked `PropertyMap::try_from_sorted` constructor. It
+  rejects duplicates and noncanonical input rather than sorting or overwriting
+  caller values.
+- Capped contracts at 32 properties and manifests at 255 contracts; contracts
+  must be nonempty, target a format owned by the same manifest, and cannot claim
+  `breditor/*` property names.
+
+### Compilation, validation, and identity
+
+- Compiled contracts into exact Document V2 key/type/range validation and the
+  owned Rust profile descriptor. Added stable structured validation codes for
+  unknown/missing/type/string-range/integer-range failures without retaining a
+  rejected scalar payload.
+- Added compiler-contract fingerprint version 2 for schemas containing typed
+  properties. Property-free schemas preserve their exact version-1 bytes and
+  the locked `breditor/base@1` digest. Locked the 356-byte Link fixture and
+  `sha256:3903989dedf6015c4f81b16fdaaddafb4a7a100f1b7f61bfacef694b5141c9ef`.
+- Added per-property-string and aggregate-document byte policies, cached
+  document property-string accounting, a retained Session Checkpoint V2 byte
+  budget, bounded JSON preflight, and a 1,024-entry validation-report ceiling
+  including one truncation issue.
+
+### Fail-closed alpha boundary
+
+- A schema containing any property-bearing format rejects all four existing
+  content operation variants at capture, validation, codec, and transaction
+  boundaries. This prevents silent loss until a property-aware mutation and
+  inverse protocol exists.
+- Property-bearing formats cannot enter the existing V1 pending-format state or
+  use generated no-input toggle declarations. Valid typed Document V2 values,
+  ordinary selections without typed pending state, and empty-history Session
+  Checkpoint V2 state remain representable.
+- Wasm ABI 3, ABI-local profile bootstrap, browser descriptors/rendering,
+  clipboard/HTML conversion, toolbar controls, and the reference Highlight
+  package remain property-free. Matching package metadata is a source
+  checkpoint only; no npm or crates.io publication occurs here.
+
 ## 0.2.1 - 2026-09-08
 
 This checkpoint closes the guarded engine's process-local replay-classification

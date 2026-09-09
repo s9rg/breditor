@@ -15,6 +15,9 @@ pub const DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_TEXT_BYTES: u64 = 64 * 1024 * 
 /// Default maximum property values summed over all retained history boundaries.
 pub const DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_VALUES: u64 = 100_000;
 
+/// Default property-string bytes summed over all retained history boundaries.
+pub const DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_STRING_BYTES: u64 = 64 * 1024 * 1024;
+
 /// Host-authoritative resource limits for durable session checkpoints.
 ///
 /// These limits are deliberately separate from [`crate::schema::DocumentLimits`].
@@ -29,10 +32,15 @@ pub struct SessionCheckpointLimits {
     max_retained_nodes: u64,
     max_retained_text_bytes: u64,
     max_retained_property_values: u64,
+    max_retained_property_string_bytes: u64,
 }
 
 impl SessionCheckpointLimits {
-    /// Creates a complete explicit checkpoint resource policy.
+    /// Creates a checkpoint policy using the original explicit ceilings.
+    ///
+    /// The retained property-string-byte ceiling uses
+    /// [`DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_STRING_BYTES`]. Use
+    /// [`Self::new_with_property_string_bytes`] when every ceiling must be explicit.
     #[must_use]
     pub const fn new(
         max_history_capacity: HistoryCapacity,
@@ -47,6 +55,28 @@ impl SessionCheckpointLimits {
             max_retained_nodes,
             max_retained_text_bytes,
             max_retained_property_values,
+            max_retained_property_string_bytes:
+                DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_STRING_BYTES,
+        }
+    }
+
+    /// Creates a complete explicit checkpoint resource policy.
+    #[must_use]
+    pub const fn new_with_property_string_bytes(
+        max_history_capacity: HistoryCapacity,
+        max_aggregate_forward_operations: u64,
+        max_retained_nodes: u64,
+        max_retained_text_bytes: u64,
+        max_retained_property_values: u64,
+        max_retained_property_string_bytes: u64,
+    ) -> Self {
+        Self {
+            max_history_capacity,
+            max_aggregate_forward_operations,
+            max_retained_nodes,
+            max_retained_text_bytes,
+            max_retained_property_values,
+            max_retained_property_string_bytes,
         }
     }
 
@@ -78,6 +108,12 @@ impl SessionCheckpointLimits {
     #[must_use]
     pub const fn max_retained_property_values(&self) -> u64 {
         self.max_retained_property_values
+    }
+
+    /// Returns the aggregate logical retained-property-string-byte ceiling.
+    #[must_use]
+    pub const fn max_retained_property_string_bytes(&self) -> u64 {
+        self.max_retained_property_string_bytes
     }
 
     /// Sets the greatest history capacity a wire checkpoint may install.
@@ -114,6 +150,13 @@ impl SessionCheckpointLimits {
         self.max_retained_property_values = maximum;
         self
     }
+
+    /// Sets the aggregate logical retained-property-string-byte ceiling.
+    #[must_use]
+    pub const fn with_max_retained_property_string_bytes(mut self, maximum: u64) -> Self {
+        self.max_retained_property_string_bytes = maximum;
+        self
+    }
 }
 
 impl Default for SessionCheckpointLimits {
@@ -125,6 +168,8 @@ impl Default for SessionCheckpointLimits {
             max_retained_nodes: DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
             max_retained_text_bytes: DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_TEXT_BYTES,
             max_retained_property_values: DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_VALUES,
+            max_retained_property_string_bytes:
+                DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_STRING_BYTES,
         }
     }
 }
@@ -135,6 +180,7 @@ mod tests {
         DEFAULT_SESSION_CHECKPOINT_MAX_AGGREGATE_FORWARD_OPERATIONS,
         DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY,
         DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
+        DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_STRING_BYTES,
         DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_VALUES,
         DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_TEXT_BYTES, SessionCheckpointLimits,
     };
@@ -160,6 +206,10 @@ mod tests {
         assert_eq!(
             limits.max_retained_property_values(),
             DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_VALUES
+        );
+        assert_eq!(
+            limits.max_retained_property_string_bytes(),
+            DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_PROPERTY_STRING_BYTES
         );
     }
 }

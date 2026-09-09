@@ -31,6 +31,6 @@ pub(crate) use limits::{child_count_fits_point_protocol, point_protocol_child_co
 pub use persisted_type_revision::{PersistedTypeRevision, PersistedTypeRevisionError};
 pub use schema_id::{SchemaId, SchemaVersion, SchemaVersionError};
 pub use validation::{
-    LimitKind, PropertyPathSegment, ValidationCode, ValidationDetail, ValidationIssue,
-    ValidationReport, ValidationSubject,
+    IntegerRangeViolation, LimitKind, MAX_VALIDATION_REPORT_ISSUES, PropertyPathSegment,
+    ValidationCode, ValidationDetail, ValidationIssue, ValidationReport, ValidationSubject,
 };

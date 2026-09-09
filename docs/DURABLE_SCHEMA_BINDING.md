@@ -181,16 +181,19 @@ helper from being mistaken for persistence migration.
 
 - The public schema compiler remains
   `CompiledSchema::try_compile_base_text_profile`. It accepts a caller-owned
-  non-`breditor/*` `SchemaId` and manifest-owned property-free inline formats;
-  it cannot express nodes, properties, entities, format parameters, exclusions,
-  or normalization. Alpha.4 adds
+  non-`breditor/*` `SchemaId` and manifest-owned inline formats. The `0.2.0`
+  path is property-free; `0.3.0-alpha.1` adds closed typed scalar properties for
+  inline formats in Rust only. It still cannot express new nodes, element
+  properties, entities, exclusions, or normalization. Alpha.4 adds
   `CompiledEditorProfile::try_compile_base_text_profile` over that sealed
   compiler and co-owns its exact `ExtensionSet`, schema, generated registry,
   router, and catalog.
 - Existing primitive operation validation now accepts the compiler-minted
-  sealed base-text capability. `TextSplice`, `ParagraphSplit`,
-  `ParagraphJoin`, and `RootTextReplace` preserve admitted extension formats,
-  exact inverses, undo/redo, and V2 checkpoint replay. No operation tag, wire
+  sealed property-free base-text capability. `TextSplice`, `ParagraphSplit`,
+  `ParagraphJoin`, and `RootTextReplace` preserve admitted property-free
+  extension formats, exact inverses, undo/redo, and V2 checkpoint replay. In
+  `0.3.0-alpha.1`, any typed format globally disables those operations until a
+  property-aware mutation/inverse contract exists. No operation tag, wire
   shape, inverse callback, or replay callback was added.
 - A manifest-owned toggle bundle contains one same-manifest format kind plus
   action, no-input intent, binding, and action-state IDs. Compilation generates
@@ -210,6 +213,8 @@ helper from being mistaken for persistence migration.
   documents under one schema must supply distinct caller slots. Intent-based
   Alpha.7 intent/toolbar execution is process-local presentation and changes no
   durable binding or record bytes.
+  `0.3.0-alpha.1` does not widen the Wasm bootstrap or browser descriptor to
+  declare typed properties.
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

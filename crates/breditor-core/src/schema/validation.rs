@@ -6,7 +6,14 @@ use std::{
 };
 
 use crate::{
-    document::{DocumentSummary, NodeRef, PropertyMap, PropertyValue, PropertyValueInner},
+    document::{
+        DocumentSummary, NodeRef, PropertyInteger, PropertyMap, PropertyValue, PropertyValueInner,
+        PropertyValueKind,
+    },
+    extension::{
+        InlineFormatPropertyContractV1, InlineFormatPropertySpecV1, InlineFormatPropertyTypeV1,
+        PropertyPresenceV1,
+    },
     identity::{EntityId, QualifiedName},
     position::{MAX_PATH_DEPTH, NodePath},
     schema::{
@@ -16,6 +23,10 @@ use crate::{
 };
 
 use super::compiler::ChildKind;
+
+/// Maximum issues retained by one validation report, including truncation metadata.
+pub const MAX_VALIDATION_REPORT_ISSUES: usize = 1_024;
+const MAX_DETAILED_VALIDATION_ISSUES: usize = MAX_VALIDATION_REPORT_ISSUES - 1;
 
 /// Stable machine-readable reason for document rejection.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -50,6 +61,16 @@ pub enum ValidationCode {
     DuplicateFormat,
     /// The current schema item does not allow supplied properties.
     PropertiesNotAllowed,
+    /// A property-bearing format contains a property absent from its contract.
+    UnknownFormatProperty,
+    /// A required property-bearing format property is absent.
+    MissingRequiredFormatProperty,
+    /// A format property uses a value variant different from its contract.
+    FormatPropertyTypeMismatch,
+    /// A string format property falls outside its declared UTF-8 byte range.
+    FormatPropertyStringBytesOutOfRange,
+    /// An integer format property falls outside its declared inclusive range.
+    FormatPropertyIntegerOutOfRange,
     /// The current schema item forbids a semantic entity ID.
     EntityIdForbidden,
     /// A semantic entity ID occurs on more than one element.
@@ -78,6 +99,15 @@ impl ValidationCode {
             Self::NonCanonicalFormatOrder => "document.noncanonical_format_order",
             Self::DuplicateFormat => "document.duplicate_format",
             Self::PropertiesNotAllowed => "document.properties_not_allowed",
+            Self::UnknownFormatProperty => "document.unknown_format_property",
+            Self::MissingRequiredFormatProperty => "document.missing_required_format_property",
+            Self::FormatPropertyTypeMismatch => "document.format_property_type_mismatch",
+            Self::FormatPropertyStringBytesOutOfRange => {
+                "document.format_property_string_bytes_out_of_range"
+            }
+            Self::FormatPropertyIntegerOutOfRange => {
+                "document.format_property_integer_out_of_range"
+            }
             Self::EntityIdForbidden => "document.entity_id_forbidden",
             Self::DuplicateEntityId => "document.duplicate_entity_id",
             Self::LimitExceeded => "document.limit_exceeded",
@@ -92,6 +122,15 @@ pub enum PropertyPathSegment {
     Index(usize),
     /// An object member.
     Key(Arc<str>),
+}
+
+/// Which inclusive integer bound a format property violated.
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub enum IntegerRangeViolation {
+    /// The value is smaller than the declared minimum.
+    BelowMinimum,
+    /// The value is greater than the declared maximum.
+    AboveMaximum,
 }
 
 /// The machine-actionable subpart of a node associated with an issue.
@@ -163,6 +202,12 @@ pub enum LimitKind {
     PropertyDepth,
     /// Total property values.
     PropertyValueCount,
+    /// UTF-8 bytes in one property string.
+    PropertyStringBytes,
+    /// Combined UTF-8 bytes across all property strings.
+    TotalPropertyStringBytes,
+    /// Detailed validation issues retained before report truncation.
+    ValidationIssueCount,
 }
 
 impl LimitKind {
@@ -181,6 +226,9 @@ impl LimitKind {
             Self::PropertyCount => "property_count",
             Self::PropertyDepth => "property_depth",
             Self::PropertyValueCount => "property_value_count",
+            Self::PropertyStringBytes => "property_string_bytes",
+            Self::TotalPropertyStringBytes => "total_property_string_bytes",
+            Self::ValidationIssueCount => "validation_issue_count",
         }
     }
 }
@@ -208,6 +256,31 @@ pub enum ValidationDetail {
     DuplicateEntityId {
         /// Path of the earlier element.
         first_path: NodePath,
+    },
+    /// Expected and actual variants for a typed format property.
+    FormatPropertyType {
+        /// Variant required by the compiled property contract.
+        expected: PropertyValueKind,
+        /// Variant supplied by the document.
+        actual: PropertyValueKind,
+    },
+    /// Inclusive bounds and violation direction for an integer format property.
+    FormatPropertyIntegerRange {
+        /// Inclusive lower bound, if any.
+        minimum: Option<PropertyInteger>,
+        /// Inclusive upper bound, if any.
+        maximum: Option<PropertyInteger>,
+        /// Bound crossed by the payload without retaining the payload value.
+        violation: IntegerRangeViolation,
+    },
+    /// Actual and inclusive UTF-8 byte bounds for a string format property.
+    FormatPropertyStringByteRange {
+        /// Rejected UTF-8 byte length.
+        actual: usize,
+        /// Inclusive lower byte bound.
+        minimum: u32,
+        /// Inclusive upper byte bound.
+        maximum: u32,
     },
 }
 
@@ -299,6 +372,25 @@ impl ValidationReport {
         });
         Self(Arc::from(issues))
     }
+
+    pub(crate) fn from_collected_issues(mut issues: Vec<ValidationIssue>, truncated: bool) -> Self {
+        if truncated {
+            issues.push(ValidationIssue::new(
+                ValidationCode::LimitExceeded,
+                NodePath::root(),
+                ValidationSubject::Limit { kind: LimitKind::ValidationIssueCount },
+                ValidationDetail::Limit {
+                    kind: LimitKind::ValidationIssueCount,
+                    actual: MAX_VALIDATION_REPORT_ISSUES,
+                    maximum: MAX_DETAILED_VALIDATION_ISSUES,
+                },
+                format!(
+                    "validation produced at least {MAX_VALIDATION_REPORT_ISSUES} issues; only the first {MAX_DETAILED_VALIDATION_ISSUES} detailed issues are retained"
+                ),
+            ));
+        }
+        Self::from_issues(issues)
+    }
 }
 
 impl<'a> IntoIterator for &'a ValidationReport {
@@ -336,10 +428,13 @@ struct ValidationState<'a> {
     schema: &'a CompiledSchema,
     limits: &'a DocumentLimits,
     issues: Vec<ValidationIssue>,
+    issue_count: u64,
+    report_truncated: bool,
     node_count: u64,
     max_node_depth: u32,
     total_text_bytes: u64,
     property_value_count: u64,
+    property_string_bytes: u64,
     entity_ids: BTreeMap<EntityId, NodePath>,
 }
 
@@ -349,24 +444,28 @@ impl<'a> ValidationState<'a> {
             schema,
             limits,
             issues: Vec::new(),
+            issue_count: 0,
+            report_truncated: false,
             node_count: 0,
             max_node_depth: 0,
             total_text_bytes: 0,
             property_value_count: 0,
+            property_string_bytes: 0,
             entity_ids: BTreeMap::new(),
         }
     }
 
     fn finish(self) -> Result<DocumentSummary, ValidationReport> {
-        if self.issues.is_empty() {
+        if self.issue_count == 0 {
             Ok(DocumentSummary::from_validation(
                 self.node_count,
                 self.max_node_depth,
                 self.total_text_bytes,
                 self.property_value_count,
+                self.property_string_bytes,
             ))
         } else {
-            Err(ValidationReport::from_issues(self.issues))
+            Err(ValidationReport::from_collected_issues(self.issues, self.report_truncated))
         }
     }
 
@@ -378,7 +477,19 @@ impl<'a> ValidationState<'a> {
         detail: ValidationDetail,
         message: String,
     ) {
-        self.issues.push(ValidationIssue::new(code, path.clone(), subject, detail, message));
+        if self.report_truncated {
+            return;
+        }
+        self.issue_count = self.issue_count.saturating_add(1);
+        if self.issues.len() < MAX_DETAILED_VALIDATION_ISSUES {
+            self.issues.push(ValidationIssue::new(code, path.clone(), subject, detail, message));
+        } else {
+            self.report_truncated = true;
+        }
+    }
+
+    const fn report_is_saturated(&self) -> bool {
+        self.report_truncated
     }
 
     fn limit_issue(&mut self, path: &NodePath, kind: LimitKind, actual: usize, maximum: usize) {
@@ -428,6 +539,9 @@ impl<'a> ValidationState<'a> {
     }
 
     fn visit_node(&mut self, node: &NodeRef, path: &NodePath) {
+        if self.report_is_saturated() {
+            return;
+        }
         if path.len() > self.limits.max_node_depth {
             self.limit_issue(path, LimitKind::NodeDepth, path.len(), self.limits.max_node_depth);
             return;
@@ -474,7 +588,13 @@ impl<'a> ValidationState<'a> {
             );
         }
         self.visit_entity_id(element, path);
+        if self.report_is_saturated() {
+            return;
+        }
         self.visit_properties(element.properties(), path, None);
+        if self.report_is_saturated() {
+            return;
+        }
         if !element.properties().is_empty()
             && !self.schema.element_allows_properties(element.kind())
         {
@@ -505,10 +625,16 @@ impl<'a> ValidationState<'a> {
             );
         }
         self.validate_child_shape(element, path);
+        if self.report_is_saturated() {
+            return;
+        }
         self.validate_adjacent_text(element, path);
 
         let child_limit = children.len().min(self.limits.max_children_per_element);
         for (index, child) in children.iter().take(child_limit).enumerate() {
+            if self.report_is_saturated() {
+                break;
+            }
             let Ok(index_u32) = u32::try_from(index) else {
                 let maximum = usize::try_from(u32::MAX).unwrap_or(usize::MAX);
                 self.limit_issue(path, LimitKind::ChildIndex, index, maximum);
@@ -581,7 +707,12 @@ impl<'a> ValidationState<'a> {
             );
         }
 
-        for (index, child) in element.children().iter().enumerate() {
+        for (index, child) in
+            element.children().iter().take(self.limits.max_children_per_element).enumerate()
+        {
+            if self.report_is_saturated() {
+                break;
+            }
             let within_maximum = constraint
                 .maximum()
                 .is_none_or(|maximum| u32::try_from(index).is_ok_and(|index| index < maximum));
@@ -628,12 +759,18 @@ impl<'a> ValidationState<'a> {
         if !self.schema.global_constraints().requires_merged_adjacent_equal_text() {
             return;
         }
-        for (left_index, pair) in
-            element.children().iter().collect::<Vec<_>>().windows(2).enumerate()
-        {
-            if let (Some(left), Some(right)) = (pair[0].as_text(), pair[1].as_text())
-                && left.formats() == right.formats()
+        let mut children = element.children().iter().take(self.limits.max_children_per_element);
+        let Some(mut left) = children.next() else {
+            return;
+        };
+        for (right_index, right) in children.enumerate() {
+            if self.report_is_saturated() {
+                break;
+            }
+            if let (Some(left_text), Some(right_text)) = (left.as_text(), right.as_text())
+                && left_text.formats() == right_text.formats()
             {
+                let left_index = right_index;
                 self.issue(
                     ValidationCode::AdjacentEqualText,
                     path,
@@ -645,6 +782,7 @@ impl<'a> ValidationState<'a> {
                     ),
                 );
             }
+            left = right;
         }
     }
 
@@ -691,7 +829,12 @@ impl<'a> ValidationState<'a> {
         }
 
         let mut previous: Option<&QualifiedName> = None;
-        for (index, format) in text.formats().iter().enumerate() {
+        for (index, format) in
+            text.formats().iter().take(self.limits.max_formats_per_text).enumerate()
+        {
+            if self.report_is_saturated() {
+                break;
+            }
             if let Some(previous_kind) = previous {
                 if previous_kind == format.kind()
                     && self.schema.global_constraints().requires_unique_format_kinds()
@@ -716,7 +859,8 @@ impl<'a> ValidationState<'a> {
                 }
             }
             previous = Some(format.kind());
-            if !self.schema.allows_text_format(format.kind()) {
+            let known_format = self.schema.allows_text_format(format.kind());
+            if !known_format {
                 self.issue(
                     ValidationCode::UnknownFormat,
                     path,
@@ -730,9 +874,11 @@ impl<'a> ValidationState<'a> {
                 );
             }
             self.visit_properties(format.properties(), path, Some(index));
-            if !format.properties().is_empty()
-                && !self.schema.format_allows_properties(format.kind())
-            {
+            let schema = self.schema;
+            let property_contract = schema.format_property_contract(format.kind());
+            if let Some(contract) = property_contract {
+                self.validate_format_property_contract(contract, format.properties(), path, index);
+            } else if !format.properties().is_empty() {
                 self.issue(
                     ValidationCode::PropertiesNotAllowed,
                     path,
@@ -742,6 +888,194 @@ impl<'a> ValidationState<'a> {
                 );
             }
         }
+    }
+
+    fn validate_format_property_contract(
+        &mut self,
+        contract: &InlineFormatPropertyContractV1,
+        properties: &PropertyMap,
+        path: &NodePath,
+        format_index: usize,
+    ) {
+        for property in contract.properties() {
+            if self.report_is_saturated() {
+                return;
+            }
+            if property.presence() == PropertyPresenceV1::Required
+                && properties.get(property.name()).is_none()
+            {
+                self.format_property_issue(
+                    ValidationCode::MissingRequiredFormatProperty,
+                    path,
+                    format_index,
+                    property.name(),
+                    ValidationDetail::None,
+                    format!(
+                        "format `{}` requires property `{}`",
+                        contract.format_kind(),
+                        property.name()
+                    ),
+                );
+            }
+        }
+
+        for (name, value) in properties.iter().take(self.limits.max_properties_per_owner) {
+            if self.report_is_saturated() {
+                return;
+            }
+            let Some(property) = contract.property(name) else {
+                self.format_property_issue(
+                    ValidationCode::UnknownFormatProperty,
+                    path,
+                    format_index,
+                    name,
+                    ValidationDetail::None,
+                    format!(
+                        "format `{}` does not declare property `{name}`",
+                        contract.format_kind()
+                    ),
+                );
+                continue;
+            };
+            self.validate_format_property_value(contract, property, value, path, format_index);
+        }
+    }
+
+    fn validate_format_property_value(
+        &mut self,
+        contract: &InlineFormatPropertyContractV1,
+        property: &InlineFormatPropertySpecV1,
+        value: &PropertyValue,
+        path: &NodePath,
+        format_index: usize,
+    ) {
+        match property.value_type() {
+            InlineFormatPropertyTypeV1::Boolean if value.as_boolean().is_some() => {}
+            InlineFormatPropertyTypeV1::Integer(bounds) => {
+                let Some(integer) = value.as_integer() else {
+                    self.format_property_type_issue(
+                        contract,
+                        property,
+                        value.kind(),
+                        path,
+                        format_index,
+                        PropertyValueKind::Integer,
+                    );
+                    return;
+                };
+                let violation = if bounds.minimum().is_some_and(|minimum| integer < minimum) {
+                    Some(IntegerRangeViolation::BelowMinimum)
+                } else if bounds.maximum().is_some_and(|maximum| integer > maximum) {
+                    Some(IntegerRangeViolation::AboveMaximum)
+                } else {
+                    None
+                };
+                if let Some(violation) = violation {
+                    self.format_property_issue(
+                        ValidationCode::FormatPropertyIntegerOutOfRange,
+                        path,
+                        format_index,
+                        property.name(),
+                        ValidationDetail::FormatPropertyIntegerRange {
+                            minimum: bounds.minimum(),
+                            maximum: bounds.maximum(),
+                            violation,
+                        },
+                        format!(
+                            "format `{}` property `{}` integer is outside its declared range",
+                            contract.format_kind(),
+                            property.name()
+                        ),
+                    );
+                }
+            }
+            InlineFormatPropertyTypeV1::String(bounds) => {
+                let Some(string) = value.as_string() else {
+                    self.format_property_type_issue(
+                        contract,
+                        property,
+                        value.kind(),
+                        path,
+                        format_index,
+                        PropertyValueKind::String,
+                    );
+                    return;
+                };
+                let length = u32::try_from(string.len()).unwrap_or(u32::MAX);
+                if length < bounds.minimum_utf8_bytes() || length > bounds.maximum_utf8_bytes() {
+                    self.format_property_issue(
+                        ValidationCode::FormatPropertyStringBytesOutOfRange,
+                        path,
+                        format_index,
+                        property.name(),
+                        ValidationDetail::FormatPropertyStringByteRange {
+                            actual: string.len(),
+                            minimum: bounds.minimum_utf8_bytes(),
+                            maximum: bounds.maximum_utf8_bytes(),
+                        },
+                        format!(
+                            "format `{}` property `{}` is {length} UTF-8 bytes, outside its declared range",
+                            contract.format_kind(),
+                            property.name()
+                        ),
+                    );
+                }
+            }
+            InlineFormatPropertyTypeV1::Boolean => self.format_property_type_issue(
+                contract,
+                property,
+                value.kind(),
+                path,
+                format_index,
+                PropertyValueKind::Boolean,
+            ),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn format_property_type_issue(
+        &mut self,
+        contract: &InlineFormatPropertyContractV1,
+        property: &InlineFormatPropertySpecV1,
+        actual: PropertyValueKind,
+        path: &NodePath,
+        format_index: usize,
+        expected: PropertyValueKind,
+    ) {
+        self.format_property_issue(
+            ValidationCode::FormatPropertyTypeMismatch,
+            path,
+            format_index,
+            property.name(),
+            ValidationDetail::FormatPropertyType { expected, actual },
+            format!(
+                "format `{}` property `{}` requires {expected:?}, found {actual:?}",
+                contract.format_kind(),
+                property.name()
+            ),
+        );
+    }
+
+    fn format_property_issue(
+        &mut self,
+        code: ValidationCode,
+        path: &NodePath,
+        format_index: usize,
+        name: &QualifiedName,
+        detail: ValidationDetail,
+        message: String,
+    ) {
+        self.issue(
+            code,
+            path,
+            ValidationSubject::FormatProperty {
+                format_index,
+                name: Arc::from(name.as_str()),
+                value_path: Arc::from([]),
+            },
+            detail,
+            message,
+        );
     }
 
     fn visit_properties(
@@ -759,6 +1093,9 @@ impl<'a> ValidationState<'a> {
             );
         }
         for (name, value) in properties.iter().take(self.limits.max_properties_per_owner) {
+            if self.report_is_saturated() {
+                break;
+            }
             let mut value_path = Vec::new();
             self.visit_property_value(value, path, format_index, name, &mut value_path);
         }
@@ -805,6 +1142,9 @@ impl<'a> ValidationState<'a> {
         match value.inner() {
             PropertyValueInner::Array(values) => {
                 for (index, value) in values.iter().enumerate() {
+                    if self.report_is_saturated() {
+                        break;
+                    }
                     value_path.push(PropertyPathSegment::Index(index));
                     self.visit_property_value(value, node_path, format_index, name, value_path);
                     value_path.pop();
@@ -812,15 +1152,47 @@ impl<'a> ValidationState<'a> {
             }
             PropertyValueInner::Object(values) => {
                 for (key, value) in values {
+                    if self.report_is_saturated() {
+                        break;
+                    }
                     value_path.push(PropertyPathSegment::Key(Arc::from(key)));
                     self.visit_property_value(value, node_path, format_index, name, value_path);
                     value_path.pop();
                 }
             }
+            PropertyValueInner::String(value) => {
+                if value.len() > self.limits.max_property_string_bytes {
+                    self.property_limit_issue(
+                        node_path,
+                        format_index,
+                        name,
+                        value_path,
+                        LimitKind::PropertyStringBytes,
+                        value.len(),
+                        self.limits.max_property_string_bytes,
+                    );
+                }
+                let Some(total) = self.property_string_bytes.checked_add(usize_as_u64(value.len()))
+                else {
+                    self.counter_overflow_issue(node_path, LimitKind::TotalPropertyStringBytes);
+                    return;
+                };
+                self.property_string_bytes = total;
+                if total > usize_as_u64(self.limits.max_total_property_string_bytes) {
+                    self.property_limit_issue(
+                        node_path,
+                        format_index,
+                        name,
+                        value_path,
+                        LimitKind::TotalPropertyStringBytes,
+                        u64_as_usize(total),
+                        self.limits.max_total_property_string_bytes,
+                    );
+                }
+            }
             PropertyValueInner::Null
             | PropertyValueInner::Boolean(_)
-            | PropertyValueInner::Integer(_)
-            | PropertyValueInner::String(_) => {}
+            | PropertyValueInner::Integer(_) => {}
         }
     }
 
@@ -858,4 +1230,36 @@ fn usize_as_u64(value: usize) -> u64 {
 
 fn u64_as_usize(value: u64) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LimitKind, ValidationCode};
+
+    #[test]
+    fn typed_property_diagnostic_names_are_stable() {
+        assert_eq!(
+            ValidationCode::UnknownFormatProperty.as_str(),
+            "document.unknown_format_property"
+        );
+        assert_eq!(
+            ValidationCode::MissingRequiredFormatProperty.as_str(),
+            "document.missing_required_format_property"
+        );
+        assert_eq!(
+            ValidationCode::FormatPropertyTypeMismatch.as_str(),
+            "document.format_property_type_mismatch"
+        );
+        assert_eq!(
+            ValidationCode::FormatPropertyStringBytesOutOfRange.as_str(),
+            "document.format_property_string_bytes_out_of_range"
+        );
+        assert_eq!(
+            ValidationCode::FormatPropertyIntegerOutOfRange.as_str(),
+            "document.format_property_integer_out_of_range"
+        );
+        assert_eq!(LimitKind::PropertyStringBytes.as_str(), "property_string_bytes");
+        assert_eq!(LimitKind::TotalPropertyStringBytes.as_str(), "total_property_string_bytes");
+        assert_eq!(LimitKind::ValidationIssueCount.as_str(), "validation_issue_count");
+    }
 }

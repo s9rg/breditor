@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.2.1
+npm install @breditor/wasm@0.3.0-alpha.1
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -68,6 +68,11 @@ identities and admits only immediate synchronous delivery.
 Alpha.8 also leaves ABI generation 3 unchanged. It packages a callback-free
 reference Highlight profile outside the Wasm module and proves that profile
 through the exact-version browser/Wasm/reference tarball set.
+
+`0.3.0-alpha.1` also leaves ABI generation 3 unchanged. The Rust core's new
+typed inline-format property contract is not accepted by this ABI-local profile
+bootstrap and is not exposed by its browser-facing descriptor. The packaged
+Wasm path remains property-free.
 
 ## Reproducible build
 

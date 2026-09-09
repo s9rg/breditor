@@ -45,6 +45,18 @@ pub enum ExtensionManifestError {
         /// Fixed per-manifest declaration ceiling.
         maximum: u32,
     },
+    /// The inline-format property-contract list exceeds its fixed ceiling.
+    #[error(
+        "extension {extension} has {actual} inline-format property contracts; the maximum is {maximum}"
+    )]
+    TooManyInlineFormatPropertyContracts {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// Rejected fixed-width contract count.
+        actual: u32,
+        /// Fixed per-manifest contract ceiling.
+        maximum: u32,
+    },
     /// The inline-format toggle declaration list exceeds its fixed ceiling.
     #[error("extension {extension} has {actual} inline-format toggles; the maximum is {maximum}")]
     TooManyInlineFormatToggles {
@@ -80,6 +92,26 @@ pub enum ExtensionManifestError {
         extension: ExtensionId,
         /// First duplicated format kind in canonical lexical order.
         kind: QualifiedName,
+    },
+    /// More than one typed property contract targets the same format.
+    #[error(
+        "extension {extension} declares an inline-format property contract for {format_kind} more than once"
+    )]
+    DuplicateInlineFormatPropertyContract {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// First duplicated target in canonical lexical order.
+        format_kind: QualifiedName,
+    },
+    /// A typed property contract targets a format not declared by its manifest.
+    #[error(
+        "extension {extension} does not own inline-format property contract target {format_kind}"
+    )]
+    InlineFormatPropertyContractTargetNotOwned {
+        /// Extension whose manifest was rejected.
+        extension: ExtensionId,
+        /// Target absent from the same manifest's format declarations.
+        format_kind: QualifiedName,
     },
     /// More than one toggle targets the same inline-format kind.
     #[error("extension {extension} declares an inline-format toggle for {kind} more than once")]

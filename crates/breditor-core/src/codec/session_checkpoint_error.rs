@@ -242,6 +242,8 @@ pub enum RetainedResourceKind {
     TextBytes,
     /// Top-level and recursively nested property values.
     PropertyValues,
+    /// UTF-8 bytes in property strings across retained boundaries.
+    PropertyStringBytes,
 }
 
 impl RetainedResourceKind {
@@ -252,6 +254,9 @@ impl RetainedResourceKind {
             Self::Nodes => "session_checkpoint_resource.retained_nodes",
             Self::TextBytes => "session_checkpoint_resource.retained_text_bytes",
             Self::PropertyValues => "session_checkpoint_resource.retained_property_values",
+            Self::PropertyStringBytes => {
+                "session_checkpoint_resource.retained_property_string_bytes"
+            }
         }
     }
 }
@@ -783,6 +788,10 @@ mod tests {
         assert_eq!(
             RetainedResourceKind::TextBytes.as_str(),
             "session_checkpoint_resource.retained_text_bytes"
+        );
+        assert_eq!(
+            RetainedResourceKind::PropertyStringBytes.as_str(),
+            "session_checkpoint_resource.retained_property_string_bytes"
         );
         assert_eq!(
             SessionCheckpointResourceLimit::AggregateForwardOperationsOverflow.code(),

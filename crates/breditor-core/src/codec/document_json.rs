@@ -19,10 +19,10 @@ use crate::{
         PropertyValueRecord,
     },
     schema::{
-        CompiledSchema, DocumentLimits, LimitKind, PropertyPathSegment, SchemaId, SchemaVersion,
-        ValidationCode, ValidationDetail, ValidationIssue, ValidationReport, ValidationSubject,
-        child_count_fits_point_protocol, point_protocol_child_count_maximum,
-        require_exact_breditor_base,
+        CompiledSchema, DocumentLimits, LimitKind, MAX_VALIDATION_REPORT_ISSUES,
+        PropertyPathSegment, SchemaId, SchemaVersion, ValidationCode, ValidationDetail,
+        ValidationIssue, ValidationReport, ValidationSubject, child_count_fits_point_protocol,
+        point_protocol_child_count_maximum, require_exact_breditor_base,
     },
 };
 
@@ -232,11 +232,12 @@ enum PropertyOwner {
 
 pub(super) struct RecordBuilder {
     issues: Vec<ValidationIssue>,
+    report_truncated: bool,
 }
 
 impl RecordBuilder {
     pub(super) const fn new() -> Self {
-        Self { issues: Vec::new() }
+        Self { issues: Vec::new(), report_truncated: false }
     }
 
     pub(super) fn build_root(mut self, record: &NodeRecordV1) -> Result<NodeRef, ValidationReport> {
@@ -256,10 +257,13 @@ impl RecordBuilder {
                 "document root could not be constructed".to_owned(),
             );
         }
-        Err(ValidationReport::from_issues(self.issues))
+        Err(ValidationReport::from_collected_issues(self.issues, self.report_truncated))
     }
 
     fn build_node(&mut self, record: &NodeRecordV1, path: &NodePath) -> Option<NodeRef> {
+        if self.report_truncated {
+            return None;
+        }
         match record {
             NodeRecordV1::Element { element_type, entity_id, properties, children } => {
                 self.build_element(element_type, entity_id.as_deref(), properties, children, path)
@@ -346,6 +350,10 @@ impl RecordBuilder {
         let mut children = Vec::with_capacity(child_records.len());
         let mut children_valid = true;
         for (index, child_record) in child_records.iter().enumerate() {
+            if self.report_truncated {
+                children_valid = false;
+                break;
+            }
             let Ok(index) = u32::try_from(index) else {
                 let maximum = usize::try_from(u32::MAX).unwrap_or(usize::MAX);
                 self.issue(
@@ -395,6 +403,10 @@ impl RecordBuilder {
         let mut original_format_indices = Vec::with_capacity(format_records.len());
         let mut valid = true;
         for (index, format_record) in format_records.iter().enumerate() {
+            if self.report_truncated {
+                valid = false;
+                break;
+            }
             let kind = match QualifiedName::try_new(&format_record.format_type) {
                 Ok(kind) => kind,
                 Err(error) => {
@@ -451,6 +463,10 @@ impl RecordBuilder {
         let mut values = BTreeMap::new();
         let mut valid = true;
         for (encoded_name, value_record) in &record.0 {
+            if self.report_truncated {
+                valid = false;
+                break;
+            }
             let name = match QualifiedName::try_new(encoded_name) {
                 Ok(name) => name,
                 Err(error) => {
@@ -485,6 +501,9 @@ impl RecordBuilder {
         property_name: &str,
         value_path: &mut Vec<PropertyPathSegment>,
     ) -> Option<PropertyValue> {
+        if self.report_truncated {
+            return None;
+        }
         match record {
             PropertyValueRecord::Null => Some(PropertyValue::null()),
             PropertyValueRecord::Boolean(value) => Some(PropertyValue::boolean(*value)),
@@ -633,7 +652,14 @@ impl RecordBuilder {
         detail: ValidationDetail,
         message: String,
     ) {
-        self.issues.push(ValidationIssue::new(code, path.clone(), subject, detail, message));
+        if self.report_truncated {
+            return;
+        }
+        if self.issues.len() < MAX_VALIDATION_REPORT_ISSUES - 1 {
+            self.issues.push(ValidationIssue::new(code, path.clone(), subject, detail, message));
+        } else {
+            self.report_truncated = true;
+        }
     }
 }
 

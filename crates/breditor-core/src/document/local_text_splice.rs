@@ -322,7 +322,7 @@ fn calculate_summary(
     if usize::try_from(max_node_depth).ok()? > limits.max_node_depth() {
         return None;
     }
-    Some(DocumentSummary::from_validation(node_count, max_node_depth, total_text_bytes, 0))
+    Some(DocumentSummary::from_validation(node_count, max_node_depth, total_text_bytes, 0, 0))
 }
 
 fn fits_limit(actual: u64, maximum: usize) -> bool {
