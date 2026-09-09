@@ -26,15 +26,20 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.3` source checkpoint carries those typed contracts
-through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. Its
+The unpublished `0.3.0-alpha.4` source checkpoint retains the alpha.3 typed
+transport through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
 browser's V3 restore/autosave path preserve property values. The existing
 exact-base V1 and Bootstrap-V1/Session-V2 paths remain separately available.
-Typed structural paragraph split/join/root replace, Local Log V3,
-property-driven DOM or clipboard attributes, and typed toolbar controls remain
-unsupported.
+Alpha.4 adds no Rust data contract or Wasm method. It corrects the generic
+toggle capability gate so collapsed and same-paragraph property-free toggles
+use the already defined property-preserving `TextSplice` path; cross-paragraph
+toggle remains structural and closed. Its browser-owned `safeLinkV1` policy is
+the sole property-to-DOM mapping, and its reference Link form calls the
+existing typed intent boundary. Typed structural paragraph split/join/root
+replace, Local Log V3, arbitrary attribute/CSS mapping, rich paste, and native
+typed toolbar controls remain unsupported.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -5118,14 +5123,14 @@ including multi-operation structural edits. Each update includes exact
 base/result snapshots and owns a complete final projection, so classification
 is never required for correctness.
 
-The framework-neutral browser package consumes the generic view into a
-deeply frozen closed-base-schema projection. Its DOM mapping is fixed and safe:
-the supplied host represents the document root, property-free `<p>` elements
-represent paragraphs, DOM text nodes represent text leaves, property-free
-`<strong>` wrappers represent strong presentation, and projection-only `<br>`
-nodes keep empty paragraphs visible. It never uses `innerHTML` or data-path
-attributes. Only host, paragraph, and text nodes have exact private AST paths;
-wrappers and placeholders are not semantic nodes.
+The framework-neutral browser package consumes the generic view into a deeply
+frozen base-text projection. Its DOM mapping is fixed and safe: the supplied
+host represents the document root, property-free `<p>` elements represent
+paragraphs, DOM text nodes represent text leaves, checked recipe wrappers
+represent inline presentation, and projection-only `<br>` nodes keep empty
+paragraphs visible. It never uses `innerHTML` or data-path attributes. Only
+host, paragraph, and text nodes have exact private AST paths; wrappers and
+placeholders are not semantic nodes.
 
 Browser update admission independently proves the same lineage and exact
 non-overflowing successor revision, then verifies all purportedly unchanged
@@ -5153,11 +5158,12 @@ there were no persistent node IDs, custom schema renderers, selection conversion
 Alpha.6 widens the browser consumer, not the Rust AST or operation language.
 The consumed view is still one document, one or more direct-root paragraphs,
 and nonempty text runs. A profiled run carries its complete canonical lexical
-set of zero through 32 property-free format kinds; the legacy `strong` flag is
-only a compatibility projection of `breditor/strong`. The browser verifies the
-schema selector and fingerprint, every format against the compiled descriptor,
-the adjacent-run canonicality law, Unicode, snapshot, and existing document
-resource limits before minting an immutable projection.
+set of zero through 32 format kinds; the alpha.3 typed path also carries their
+canonical scalar property entries. The legacy `strong` flag is only a
+compatibility projection of `breditor/strong`. The browser verifies the schema
+selector and fingerprint, every format and property against the compiled
+descriptor, the adjacent-run canonicality law, Unicode, snapshot, and existing
+document resource limits before minting an immutable projection.
 
 A profiled projection is privately correlated with the exact owned
 `CompiledProfileDescriptor` and live opaque profile generation that admitted
@@ -5169,14 +5175,35 @@ and browser presentation identity remain three separate contracts.
 
 Browser presentation is compiled all-or-nothing from one copied, frozen,
 callback-free render manifest. Every descriptor-admitted format requires
-exactly one recipe and no extra recipe is accepted. A recipe selects only
-`code`, `em`, `mark`, `s`, `span`, `strong`, `sub`, `sup`, or `u`; it may add up
-to eight canonical lowercase-ASCII class tokens and bounded `before`/`after`
-format references. Missing targets, cycles, self-order, duplicate relationships,
-and duplicate element/class signatures fail startup. A topological order
-determines outer-to-inner wrappers, with lexical format identity breaking
-unconstrained ties. Extension registration and object iteration order never
-decide DOM nesting.
+exactly one recipe and no extra recipe is accepted. A property-free recipe
+selects one element from the closed inline vocabulary, up to eight canonical
+lowercase-ASCII class tokens, and bounded `before`/`after` format references.
+Alpha.4 adds `<a>` only with the exact `breditor-link` class and a
+`safeLinkV1` attribute policy. Missing targets, cycles, self-order, duplicate
+relationships, duplicate element/class signatures, and mismatched property
+descriptors fail startup. A topological order determines outer-to-inner
+wrappers, with lexical format identity breaking unconstrained ties. Extension
+registration and object iteration order never decide DOM nesting.
+
+`safeLinkV1` must name the only two properties on its format. Both are
+required: `href` is a string with the exact `1..=2048` UTF-8-byte bounds, and
+the open-in-new-window value is Boolean. The browser normalizes and emits only
+absolute, credential-free `http:` or `https:` URLs without control or
+Unicode-whitespace scalars and within 2048 bytes before and after
+normalization. A safe same-window link receives only `href`; a safe new-window
+link also receives fixed `rel="noopener noreferrer"` and `target="_blank"`.
+A schema-valid URL that fails browser policy produces an inert
+`<a class="breditor-link">`, not an editor fault. The manifest cannot select
+arbitrary attributes, styles, callbacks, raw HTML, URL schemes, `rel`, or
+target values. Rust validates the declared string/Boolean shape and bounds; it
+does not parse URLs or decide browser navigation safety.
+
+Before parsing, the raw spelling must place a nonempty authority immediately
+after exactly `http://` or `https://`. The authority is restricted to visible
+ASCII and may contain neither percent escapes, backslashes, nor a raw `@`;
+internationalized host names use their explicit `xn--` ASCII spelling. Excess
+authority slashes and every other rejected spelling fail closed rather than
+relying on URL-parser repair.
 
 The renderer creates only paragraphs, text nodes, the exact compiled recipe
 wrappers, and empty-paragraph `<br>` placeholders. It preflights the complete
@@ -5191,22 +5218,28 @@ Selection maps a canonical wrapper boundary only through its bounded sole-child
 chain to the underlying semantic text start or end. It does not invent a path
 for a wrapper. Composition retains the existing one-range, one-paragraph lease:
 the target may temporarily contain text and exact known recipe wrappers in
-canonical order, but unknown elements, attributes, classes, wrapper order, or
-branching fail reconciliation. Accepted target wrappers are stripped to text
-before one existing Rust insertion/deletion action; the native DOM never
-becomes the AST. Every non-target paragraph and all unchanged target text must
-still match the authoritative projection.
+canonical order. A Link wrapper must use only an inert, canonical href-only, or
+canonical href/rel/target shape; unknown elements, attributes, classes, wrapper
+order, or branching fail reconciliation. A 1 MiB aggregate UTF-8 budget for
+transient dynamic attribute values is spent before URL parsing. Accepted target
+wrappers are stripped to text before one existing Rust insertion/deletion
+action; the native DOM never becomes the AST. Every non-target paragraph and
+all unchanged target text must still match the authoritative projection and
+resolved attributes.
 
 Copy and cut slice the semantic projection rather than reading DOM HTML.
 Profile-aware HTML uses escaped paragraph/text output plus the exact compiled
-element, class tokens, and wrapper order for each selected format. Paste gives
-advertised `text/plain` absolute precedence. Only when it is absent may the
-bounded parse5 path admit HTML whose repaired tree exactly matches the active
-presentation; even then, all wrappers are deterministically flattened and one
-plain-text action enters Rust. Source formatting is not transported, although
-the existing target pending/context-format rules still apply. There is no
-rich-fragment round trip. Copy may also exceed the much smaller one-action paste
-budget, so a successful Breditor copy is not promised to fit one Breditor paste.
+element, class tokens, wrapper order, and `safeLinkV1`-resolved attributes for
+each selected format. Unsafe Link values serialize as inert anchors. Paste
+gives advertised `text/plain` absolute precedence. Only when it is absent may
+the bounded parse5 path admit HTML whose repaired tree exactly matches the
+active presentation, including one of the three canonical Link attribute
+shapes; even then, all wrappers are deterministically flattened and one
+plain-text action enters Rust. Source formatting and properties are not
+transported, although the existing target pending/context-format rules still
+apply. There is no rich-fragment round trip. Copy may also exceed the much
+smaller one-action paste budget, so a successful Breditor copy is not promised
+to fit one Breditor paste.
 
 Canonical content export is selected before bytes are inspected. The legacy
 engine emits exact-base Document V1. A compiled semantic profile emits
@@ -5237,12 +5270,13 @@ deliberate double compilation is a bounded startup cost chosen so no generated
 profile authority survives across IndexedDB.
 
 This remains a sealed base-text editor, not a general rich-document system.
-Links and other property-bearing formats, arbitrary node kinds, headings,
-lists, tables, images, embeds, format exclusions/normalizers, extension DOM or
-action callbacks, rich paste, collaboration, CRDT/OT rebasing, remote
-selections, and selective undo are not implemented. ProseMirror, Lexical,
-Tiptap, and CKEditor remain design examples only; none of their AST, position,
-transaction, plugin, step, or wire protocols is used.
+Alpha.4 supports only the closed Link presentation above, not general
+property-bearing rendering. Arbitrary node kinds, headings, lists, tables,
+images, embeds, format exclusions/normalizers, extension DOM or action
+callbacks, rich paste, collaboration, CRDT/OT rebasing, remote selections, and
+selective undo are not implemented. ProseMirror, Lexical, Tiptap, and CKEditor
+remain design examples only; none of their AST, position, transaction, plugin,
+step, or wire protocols is used.
 
 ## Guarded browser selection mapping (`0.0.52`)
 
@@ -5408,9 +5442,12 @@ once and must remain in one paragraph. The renderer then temporarily makes its
 public handle non-current while retaining opaque host ownership. At settlement,
 all non-target paragraphs and unchanged text around the range must still match
 the authoritative projection; the target accepts only bounded Unicode text,
-the exact canonical property-free wrapper chains from the projection's checked
-browser presentation, a bare empty paragraph, or one sole empty-paragraph
-placeholder. This is a strict replacement check, not a DOM-to-AST parser.
+the exact canonical wrapper chains from the projection's checked browser
+presentation, a bare empty paragraph, or one sole empty-paragraph placeholder.
+At alpha.4 an admitted Link wrapper has only the inert, canonical href-only, or
+canonical href/rel/target attribute shape; unchanged Link wrappers must match
+their projected values exactly. This is a strict replacement check, not a
+DOM-to-AST parser.
 
 The adapter spends the lease, full-renders the retained authoritative projection,
 and restores the captured selection before the controller submits one existing
@@ -5450,7 +5487,9 @@ Copy slices the directional selection's spatial extent directly from the
 branded projection. Plain text joins paragraphs with LF; HTML uses escaped
 text, attribute-free paragraphs, a sole `<br>` for an empty paragraph, and the
 exact canonical wrapper chain from the projection's checked browser
-presentation. The legacy unprofiled path emits only attribute-free `<strong>`.
+presentation. Alpha.4 emits the `safeLinkV1`-resolved, HTML-escaped Link
+attributes; unsafe schema-valid URLs produce an inert anchor. The legacy
+unprofiled path emits only attribute-free `<strong>`.
 Cut first clears the clipboard, writes `text/plain`, then writes `text/html`,
 and confirms native cancellation. Only after all four steps succeed can one
 `breditor/delete-selection` action with a `closeBefore` history boundary run.
@@ -5464,10 +5503,12 @@ canonical empty paragraphs, and either legacy one-level attribute-free
 `<strong>`/`<b>` runs or exact profiled wrapper chains from the checked
 presentation, with an optional exact fragment-comment pair. Profiled chains
 are bounded to 32 wrappers and must preserve canonical outer-to-inner ordering
-and exact tag/class signatures. The admitted tree is flattened with LF and
-passed to one atomic `breditor/insert-plain-text` action with `closeBefore`;
-format structure is deliberately not preserved because the current action
-cannot represent mixed clipboard formats.
+and exact tag/class signatures. Alpha.4 Link input additionally admits only an
+inert anchor, one canonical safe `href`, or that `href` followed by exact
+`rel="noopener noreferrer"` and `target="_blank"`. The admitted tree is
+flattened with LF and passed to one atomic `breditor/insert-plain-text` action
+with `closeBefore`; format structure and properties are deliberately not
+preserved because the current action cannot represent mixed clipboard formats.
 
 This is a repaired-tree policy, not a source-language sanitizer. Source wrappers
 or attributes which parse5 discards are absent from the tree that admission

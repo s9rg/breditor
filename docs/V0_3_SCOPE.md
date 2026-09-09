@@ -1,18 +1,19 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.3` source checkpoint carries typed inline-format
-contracts, values, and commands through Wasm ABI 4 and the framework-neutral
-browser. Explicit Bootstrap V2 selects property-aware Session/State/Commit V3;
-V1 and V2 paths remain separately available. The packages remain unpublished.
-Safe property-driven DOM/clipboard recipes and typed toolbar controls are next.
+Status: the `0.3.0-alpha.4` source checkpoint retains the typed inline-format
+contract through Wasm ABI 4 and adds one closed browser presentation policy for
+Link plus application-owned React controls. Explicit Bootstrap V2 selects
+property-aware Session/State/Commit V3; V1 and V2 paths remain separately
+available. The packages remain unpublished.
 
 `0.3.0` is the path from property-free formatting to semantic formats such as
 links, mentions, text colors, and annotations. Alpha.1 defined and validated
 their closed data language. Alpha.2 made its safe paragraph-local subset
 editable and replayable. Alpha.3 transports that exact contract through Wasm,
 browser projection, strict programmatic input, and durable browser restore
-without claiming that property-aware DOM presentation or every structural edit
-is complete.
+without claiming that every structural edit is complete. Alpha.4 proves one
+safe Link rendering/copy slice without generalizing it into arbitrary DOM
+attributes or a native typed toolbar protocol.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -277,6 +278,64 @@ replay, canonicality, and resource-limit enforcement remain authoritative; a
 browser-admissible checkpoint can still be rejected there. No path sniffs,
 retries, upgrades, or falls back to another generation.
 
+## Alpha.4 closed `safeLinkV1` browser policy
+
+Alpha.4 does not change Wasm ABI 4, Profile Bootstrap V2, the schema
+fingerprint algorithm, or any durable record. It corrects Rust's generic
+property-free toggle gate to use the existing paragraph-local `TextSplice`
+capability for collapsed and same-paragraph selections; structural
+cross-paragraph toggles remain closed. It extends the callback-free browser
+render recipe with exactly one optional attribute policy:
+
+```json
+{
+  "kind": "safeLinkV1",
+  "hrefProperty": "example/href",
+  "openInNewWindowProperty": "example/open-in-new-window"
+}
+```
+
+The policy is admitted only on `<a class="breditor-link">`. The format
+descriptor must contain exactly the two distinct named properties, both
+required. The href property must have the exact string domain of 1 through
+2048 UTF-8 bytes; the open-in-new-window property must be Boolean. This exact
+coverage prevents a Link recipe from silently discarding another semantic
+property.
+
+The browser rejects navigation for a value containing a control or
+Unicode-whitespace scalar, relative or malformed URL, non-HTTP(S) scheme,
+credentials, empty host, or a source/normalized URL over 2048 UTF-8 bytes.
+The raw spelling must have a nonempty authority immediately after exactly two
+scheme slashes. That authority is restricted to visible ASCII and may contain
+no percent escape, backslash, or raw `@`; internationalized host names use
+their explicit `xn--` spelling. Repairing parser behavior therefore cannot
+erase invisible authority scalars or turn malformed authority syntax into
+navigation.
+Accepted values are emitted in canonical URL form. A safe same-window Link has
+only `href`; a safe new-window Link also has fixed
+`rel="noopener noreferrer"` and `target="_blank"`. A schema-valid value that
+fails this browser policy still renders its semantic text inside an inert
+`<a class="breditor-link">`; it does not fault the editor.
+
+The recipe cannot choose arbitrary attribute names, values, schemes, styles,
+callbacks, raw HTML, `rel`, or target behavior. Rust validates the declared
+string and Boolean shapes and bounds, not URL semantics. URL normalization and
+navigation admission are presentation-layer decisions.
+
+Full/incremental DOM rendering and drift checks compare the exact resolved
+attributes. A native-composition target admits only the inert, href-only, or
+canonical href/rel/target Link shapes and still becomes plain text before one
+Rust command. Transient composition attributes share a 1 MiB aggregate UTF-8
+work budget that is charged before URL parsing. Copy/cut derives HTML from the
+semantic projection and escapes the same attributes. HTML paste may admit those exact shapes, but every paste
+is flattened to plain text and reconstructs no source formats or properties.
+
+The additive Highlight + Link reference profile preserves all existing
+Highlight-only exports. Its URL field, new-window checkbox, and Apply/Remove
+buttons are React-owned application controls that call `executeIntentJson()`
+with exact set/remove input. The supported toolbar manifest remains a closed
+native-button protocol for no-input intent/history commands.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -291,18 +350,18 @@ action/intent JSON, explicit V3 engine factories, browser durable validation,
 IndexedDB/autosave, and programmatic `executeIntentJson()` now exercise the
 Rust typed path.
 
-The DOM and toolbar layers deliberately remain narrower. Current render recipes
-select only a fixed safe wrapper element, canonical classes, and wrapper order;
-they do not derive attributes, styles, URLs, or text from property values. Safe
-copy has no property-to-HTML attribute recipe, paste remains plain text, and
-the supported toolbar accepts no text field, menu, select, color control, or
-other typed-input control. The existing no-input toggle buttons continue to
-work for property-free formats.
+The DOM and toolbar layers deliberately remain narrower. Render recipes select
+a fixed safe wrapper element, canonical classes, and wrapper order; only the
+closed `safeLinkV1` policy derives attributes from properties. Safe copy emits
+those exact Link attributes, paste remains plain text, and the supported
+toolbar accepts no text field, menu, select, color control, or other typed-input
+control. Existing no-input toggle buttons continue to work for property-free
+formats, while typed Link input remains application UI.
 
-Typed scalar validation is not sanitization. A valid link string is not
-automatically a safe URL, and a valid color string is not automatically safe
-CSS. URL schemes, renderer attribute allowlists, CSS grammar, HTML import, and
-clipboard policy require separate browser-facing contracts.
+Typed scalar validation is not sanitization. A valid Link string is not
+automatically a navigable URL, and a valid color string is not automatically
+safe CSS. Alpha.4 supplies the exact browser-facing URL/attribute policy above;
+CSS grammar and other property presentations remain undefined.
 
 ## Remaining limitations
 
@@ -317,21 +376,22 @@ clipboard policy require separate browser-facing contracts.
   supported, with the action limitations described above.
 - No V3 local-log/storage family exists.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
-  and browser Session V3 persistence support typed properties. DOM rendering,
-  property-bearing HTML/clipboard conversion, and typed toolbar controls do not.
-- The callback-free reference Highlight profile remains property-free; no safe
-  reference Link recipe/control is claimed yet.
+  and browser Session V3 persistence support typed properties. DOM and copy
+  support only `safeLinkV1`; paste never reconstructs properties, and the native
+  toolbar has no typed-input control.
+- The additive reference Link proves one exact contract while preserving the
+  property-free Highlight-only profile. It is not a general Link schema,
+  renderer, URL validator, or toolbar-control registration protocol.
 - No migration, generation negotiation, collaboration transform, or unknown
   typed-format preservation is introduced.
 - Host limits can make a portable schema uninhabitable on that host.
 
 ## Next checkpoints
 
-The next browser checkpoint is a safe declarative property-to-DOM contract:
-explicit attribute targets, value transforms, URL-scheme policy, amplification
-bounds, canonical safe-copy output, and fail-closed DOM drift checks. Typed
-toolbar controls must then construct the exact JSON contract without becoming
-mutation callbacks or bypassing the intent router.
+Future browser work may add another separately closed property presentation or
+a reusable application-control layer, but must not silently widen
+`safeLinkV1`, accept arbitrary attributes/CSS, preserve source formatting on
+paste, or bypass the intent router.
 
 The remaining Rust structural checkpoint must make paragraph split, paragraph
 join, and root replacement preserve typed format instances and exact inverses

@@ -683,6 +683,17 @@
 //! driven DOM/clipboard presentation, and typed toolbar controls are still
 //! unsupported. Typed scalar validation is a data-shape contract; it does not
 //! by itself define URL, CSS, HTML, or clipboard safety.
+//!
+//! The unpublished `0.3.0-alpha.4` source checkpoint leaves the Rust data
+//! model, codec generations, fingerprints, and Wasm ABI unchanged. It corrects
+//! generic property-free toggle capability routing: collapsed and same-
+//! paragraph toggles use the existing property-preserving
+//! [`operation::TextSplice`] path in a typed schema, retain neighboring typed
+//! formats and pending typing state, and account for properties duplicated by
+//! run splitting. Cross-paragraph toggling still requires the property-free
+//! root-text-replacement structural path and fails closed for typed schemas.
+//! The browser's exact `safeLinkV1` policy is not a Rust URL contract; core
+//! continues to validate only declared scalar shape and bounds.
 
 pub mod action;
 pub mod codec;

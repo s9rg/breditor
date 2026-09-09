@@ -1,8 +1,9 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.3` source checkpoint adds an explicitly selected
-ABI-4 typed-profile, browser projection/command, and Session-V3 durable path
+the unpublished `0.3.0-alpha.4` source checkpoint retains the explicitly
+selected ABI-4 typed-profile, browser command, and Session-V3 path and adds the
+closed safe-Link presentation described below
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -341,16 +342,34 @@ toolbar remain property-insensitive. Safe property-driven DOM recipes and typed
 toolbar controls are the next compatibility boundary. See
 [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
+## `0.3.0-alpha.4` safe-Link boundary
+
+Alpha.4 retains every explicit alpha.3 generation and adds only the
+browser-owned `safeLinkV1` attribute policy. It is admitted for an exact two-property
+Link descriptor and emits only an inert anchor, canonical HTTP(S) `href`, or
+that href plus fixed protected-new-window attributes. Malformed authority,
+credentials, non-visible-ASCII or percent-escaped raw authority, unsafe schemes,
+controls, whitespace, and over-limit values stay inert. Internationalized host
+names use explicit `xn--` ASCII spelling. Composition and copy enforce the same
+closed shapes; paste remains plain text. React-owned typed controls use
+`executeIntentJson()`, while the supported toolbar remains a no-input button
+protocol.
+
+Alpha.4 also corrects property-free toggle capability routing: collapsed and
+same-paragraph Bold/extension toggles preserve property-bearing peer formats
+through `TextSplice`, including exact property-budget checks. Typed structural
+paragraph and cross-paragraph operations remain closed.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.3 source pair reports ABI
+ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 source pair reports ABI
 `4`. Startup checks both the exact ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.3 source configuration is tested as an exactly matching browser,
+The alpha.4 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -366,7 +385,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, and alpha.3:
+form remains supported throughout `0.1.x`, `0.2.x`, and alpha.4:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -431,6 +450,12 @@ preflight, Rust-owned restore/replay, IndexedDB/autosave correlation, and high-
 level `executeIntentJson()`. They do not yet claim a property-driven Link
 renderer or typed toolbar control, and no alpha.3 registry package has been
 published.
+
+The alpha.4 gates additionally cover exact safe-Link descriptor correlation,
+safe/inert rendering, DOM drift, bounded composition attributes, copy HTML,
+typed set/remove/undo/redo, Session-V3 reload, and a tarball-only combined
+Highlight + Link consumer in Chromium. These are still source-checkpoint tests,
+not a registry-publication claim.
 
 ## Dependency boundary
 

@@ -11,6 +11,11 @@ import {
   isOwnedBrowserCompiledPresentation,
   type BrowserCompiledPresentation,
 } from "./compiled_browser_presentation.js";
+import {
+  inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
+  type InlineFormatRenderAttribute,
+} from "./inline_format_render_attributes.js";
+import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
 
 /** Maximum UTF-16 code units read from one `text/html` clipboard item. */
 export const MAX_CLIPBOARD_HTML_SOURCE_UTF16 = 2 * 1024 * 1024;
@@ -64,6 +69,7 @@ interface AdmissionBudget {
 interface InlineWrapperAdmission {
   readonly formatKind: string;
   readonly order: number;
+  readonly recipe?: InlineFormatRenderRecipe;
 }
 
 interface InlineAdmission {
@@ -106,8 +112,8 @@ const ERROR_MESSAGES: Readonly<Record<ClipboardHtmlErrorCode, string>> =
  * - direct HTML-namespace, attribute-free `<p>` blocks;
  * - non-empty direct text runs and attribute-free `<strong>` or `<b>` runs
  *   when the optional presentation is omitted;
- * - otherwise, exact tag/class signatures from one owned presentation in its
- *   canonical outer-to-inner order;
+ * - otherwise, exact tag/class signatures and closed policy-derived attributes
+ *   from one owned presentation in its canonical outer-to-inner order;
  * - an empty paragraph represented by either no children or one sole `<br>`;
  * - optionally, exact `StartFragment` and `EndFragment` comments surrounding
  *   all top-level paragraphs.
@@ -449,7 +455,7 @@ function admitInlineRun(
     if (formats.length >= inlineAdmission.maximumFormatsPerRun) {
       return Object.freeze({ ok: false, code: "clipboard.html.resource_limit" });
     }
-    formats.push(wrapper.formatKind);
+    formats.push(wrapperFormatKey(current, wrapper));
     priorOrder = wrapper.order;
     const child = current.childNodes[0];
     if (child === undefined) {
@@ -502,7 +508,7 @@ function createInlineAdmission(
     if (wrappersBySignature.has(signature)) return null;
     wrappersBySignature.set(
       signature,
-      Object.freeze({ formatKind: recipe.formatKind, order }),
+      Object.freeze({ formatKind: recipe.formatKind, order, recipe }),
     );
   }
   return Object.freeze({
@@ -519,27 +525,76 @@ function wrapperAdmission(
   inlineAdmission: InlineAdmission,
 ): InlineWrapperAdmission | undefined {
   if (!isHtmlElement(node)) return undefined;
-  const classValue = exactClassAttributeValue(node);
-  return classValue === null
-    ? undefined
-    : inlineAdmission.wrappersBySignature.get(
-        `${node.tagName}\u0000${classValue}`,
-      );
+  const classValue = canonicalClassPrefixValue(node);
+  if (classValue === null) return undefined;
+  const admission = inlineAdmission.wrappersBySignature.get(
+    `${node.tagName}\u0000${classValue}`,
+  );
+  if (admission === undefined) return undefined;
+  if (admission.recipe === undefined) {
+    return node.attrs.length === 0 ? admission : undefined;
+  }
+  return wrapperAttributesMatchRecipe(node, admission.recipe)
+    ? admission
+    : undefined;
 }
 
-function exactClassAttributeValue(node: Element): string | null {
+function wrapperFormatKey(
+  node: Element,
+  admission: InlineWrapperAdmission,
+): string {
+  const recipe = admission.recipe;
+  if (recipe?.attributes === undefined) return admission.formatKind;
+  const offset = recipe.classes.length === 0 ? 0 : 1;
+  const dynamic = node.attrs.slice(offset).map(
+    ({ name, value }) => `${name}\u0002${value}`,
+  ).join("\u0003");
+  return `${admission.formatKind}\u0001${dynamic}`;
+}
+
+function canonicalClassPrefixValue(node: Element): string | null {
   if (node.attrs.length === 0) return "";
   const attribute = node.attrs[0];
+  if (attribute === undefined) return null;
+  return attribute.name === "class" &&
+      attribute.prefix === undefined &&
+      attribute.namespace === undefined
+    ? attribute.value
+    : "";
+}
+
+function wrapperAttributesMatchRecipe(
+  node: Element,
+  recipe: InlineFormatRenderRecipe,
+): boolean {
+  const offset = recipe.classes.length === 0 ? 0 : 1;
   if (
-    node.attrs.length !== 1 ||
-    attribute === undefined ||
-    attribute.name !== "class" ||
-    attribute.prefix !== undefined ||
-    attribute.namespace !== undefined
+    offset === 1 &&
+    (node.attrs[0]?.name !== "class" ||
+      node.attrs[0]?.prefix !== undefined ||
+      node.attrs[0]?.namespace !== undefined ||
+      node.attrs[0]?.value !== recipe.classes.join(" "))
   ) {
-    return null;
+    return false;
   }
-  return attribute.value;
+  const attributes: InlineFormatRenderAttribute[] = [];
+  for (let index = offset; index < node.attrs.length; index += 1) {
+    const attribute = node.attrs[index];
+    if (
+      attribute === undefined ||
+      (attribute.name !== "href" &&
+        attribute.name !== "rel" &&
+        attribute.name !== "target") ||
+      attribute.prefix !== undefined ||
+      attribute.namespace !== undefined
+    ) {
+      return false;
+    }
+    attributes.push({ name: attribute.name, value: attribute.value });
+  }
+  return recipe.attributes === undefined
+    ? attributes.length === 0 && node.attrs.length === offset
+    : inlineFormatRenderAttributesAreCanonicalSafeLinkV1(attributes);
 }
 
 function isExactElement(node: ChildNode | undefined, tagName: string): node is Element {

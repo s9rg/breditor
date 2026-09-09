@@ -68,6 +68,12 @@ fn map_compatibility_fault(source: ActionFault) -> ActionFault {
         "breditor/toggle-inline-format-cross-result-fault" => {
             "breditor/toggle-strong-cross-result-fault"
         }
+        "breditor/toggle-inline-format-property-validation-fault" => {
+            "breditor/toggle-strong-property-validation-fault"
+        }
+        "breditor/toggle-inline-format-property-budget-fault" => {
+            "breditor/toggle-strong-property-budget-fault"
+        }
         "breditor/toggle-inline-format-selection-order-fault" => {
             "breditor/toggle-strong-selection-order-fault"
         }
@@ -101,6 +107,8 @@ mod tests {
             "format-set-fault",
             "result-fold-fault",
             "cross-result-fault",
+            "property-validation-fault",
+            "property-budget-fault",
             "selection-order-fault",
             "selection-fault",
         ];

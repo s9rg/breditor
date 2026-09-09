@@ -1,0 +1,43 @@
+import {
+  MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES,
+  createInlineFormatRenderManifest,
+  type InlineFormatRenderAttribute,
+  type InlineFormatRenderAttributePolicy,
+  type InlineFormatRenderManifest,
+  type InlineFormatRenderRecipe,
+  type InlineFormatRenderSafeLinkV1Policy,
+} from "@breditor/browser";
+
+const safeLink: InlineFormatRenderSafeLinkV1Policy = {
+  kind: "safeLinkV1",
+  hrefProperty: "example/href",
+  openInNewWindowProperty: "example/open-in-new-window",
+};
+const attributePolicy: InlineFormatRenderAttributePolicy = safeLink;
+const recipe: InlineFormatRenderRecipe = {
+  formatKind: "example/link",
+  element: "a",
+  classes: ["breditor-link"],
+  before: [],
+  after: [],
+  attributes: attributePolicy,
+};
+const manifest: InlineFormatRenderManifest =
+  createInlineFormatRenderManifest({ recipes: [recipe] });
+const href: InlineFormatRenderAttribute = {
+  name: "href",
+  value: "https://example.test/",
+};
+const hrefLimit: 2_048 = MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES;
+
+void manifest;
+void href;
+void hrefLimit;
+
+// @ts-expect-error safeLinkV1 accepts only the closed href/new-window property pair
+const unsupportedPolicy: InlineFormatRenderAttributePolicy = { kind: "attributesV2" };
+void unsupportedPolicy;
+
+// @ts-expect-error arbitrary DOM attributes are outside the public policy contract
+const eventAttribute: InlineFormatRenderAttribute = { name: "onclick", value: "alert(1)" };
+void eventAttribute;

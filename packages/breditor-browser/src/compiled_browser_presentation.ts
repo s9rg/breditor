@@ -4,6 +4,12 @@ import {
   type InlineFormatRenderRecipe,
 } from "./inline_format_render_manifest.js";
 import {
+  inlineFormatRenderAttributePolicyMatchesFormatDescriptor,
+  resolveInlineFormatRenderAttributes,
+  type InlineFormatRenderAttribute,
+} from "./inline_format_render_attributes.js";
+import type { InlineFormatProjection } from "./projection.js";
+import {
   browserCompiledProfileDescriptorMatchesGeneration,
   isOwnedBrowserCompiledProfileDescriptor,
   wasmProfileGenerationIsLive,
@@ -30,6 +36,12 @@ export interface BrowserCompiledPresentation {
   readonly manifest: InlineFormatRenderManifest;
   /** Canonical ancestor/outer to descendant/inner wrapper order. */
   readonly recipesOuterToInner: readonly InlineFormatRenderRecipe[];
+}
+
+/** One checked static recipe paired with its run-specific inert attributes. @internal */
+export interface BrowserResolvedInlineFormatRenderRecipe {
+  readonly recipe: InlineFormatRenderRecipe;
+  readonly attributes: readonly InlineFormatRenderAttribute[];
 }
 
 interface PresentationMetadata {
@@ -85,8 +97,21 @@ export function compileBrowserPresentation(
   const recipesByKind = new Map<string, InlineFormatRenderRecipe>();
   for (const recipe of recipes) recipesByKind.set(recipe.formatKind, recipe);
   for (const format of formats) {
-    if (!recipesByKind.has(format.kind)) {
+    const recipe = recipesByKind.get(format.kind);
+    if (recipe === undefined) {
       throw new TypeError("browser presentation recipe coverage is incomplete");
+    }
+    if (
+      recipe.attributes === undefined
+        ? format.properties.length !== 0
+        : !inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+          recipe.attributes,
+          format,
+        )
+    ) {
+      throw new TypeError(
+        "browser presentation attribute policy does not match the format descriptor",
+      );
     }
   }
 
@@ -169,6 +194,40 @@ export function browserPresentationRecipeForFormat(
 ): InlineFormatRenderRecipe | undefined {
   if (!isOwnedBrowserCompiledPresentation(presentation)) return undefined;
   return PRESENTATION_METADATA.get(presentation)?.recipesByKind.get(formatKind);
+}
+
+/**
+ * Resolves canonical outer-to-inner wrappers for one projected text run.
+ *
+ * The projection boundary already proved each format's exact descriptor. An
+ * unsafe but schema-valid Link URL is therefore represented by an empty
+ * attribute list (an inert anchor), while missing recipe coverage fails.
+ * @internal
+ */
+export function browserPresentationRecipesForFormatDetails(
+  presentation: BrowserCompiledPresentation,
+  formats: readonly InlineFormatProjection[],
+): readonly BrowserResolvedInlineFormatRenderRecipe[] | undefined {
+  if (!isOwnedBrowserCompiledPresentation(presentation)) return undefined;
+  const selected = new Map<string, InlineFormatProjection>();
+  for (const format of formats) {
+    if (selected.has(format.kind)) return undefined;
+    selected.set(format.kind, format);
+  }
+  const resolved: BrowserResolvedInlineFormatRenderRecipe[] = [];
+  for (const recipe of presentation.recipesOuterToInner) {
+    const format = selected.get(recipe.formatKind);
+    if (format === undefined) continue;
+    resolved.push(Object.freeze({
+      recipe,
+      attributes: recipe.attributes === undefined
+        ? Object.freeze([])
+        : resolveInlineFormatRenderAttributes(recipe.attributes, format.properties),
+    }));
+  }
+  return resolved.length === formats.length
+    ? Object.freeze(resolved)
+    : undefined;
 }
 
 /** Checks identity ownership without treating a caller-forged object as proof. @internal */

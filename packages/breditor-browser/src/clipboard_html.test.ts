@@ -145,6 +145,113 @@ describe("parseClipboardHtmlToPlainText", () => {
     });
   });
 
+  it("round-trips canonical safe links and coalesces equal inert projections", () => {
+    const { generation, descriptor, presentation } = presentationFor(
+      [SAFE_LINK_FORMAT],
+      [{
+        formatKind: "example/link",
+        element: "a",
+        classes: ["breditor-link"],
+        attributes: {
+          kind: "safeLinkV1",
+          hrefProperty: "example/href",
+          openInNewWindowProperty: "example/open-in-new-window",
+        },
+      }],
+    );
+    const link = (href: string, openInNewWindow: boolean) => ({
+      kind: "example/link",
+      properties: [
+        { name: "example/href", value: href },
+        { name: "example/open-in-new-window", value: openInNewWindow },
+      ],
+    });
+    const projected = createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "clipboard-safe-link", revision: "0" },
+      paragraphs: [{ runs: [
+        {
+          text: "safe-one",
+          formatDetails: [link(
+            "HTTPS://Example.TEST:443/a/../path?q=one&b=two",
+            true,
+          )],
+        },
+        {
+          text: "safe-two",
+          formatDetails: [link("https://other.test/", false)],
+        },
+        {
+          text: "unsafe-one",
+          formatDetails: [link("javascript:alert(1)", true)],
+        },
+        {
+          text: "unsafe-two",
+          formatDetails: [link("data:text/plain,two", false)],
+        },
+      ] }],
+    }, generation, descriptor);
+    if (!projected.ok) throw new Error("safe-link projection fixture failed");
+    expect(bindProjectionPresentation(projected.value, presentation)).toBe(true);
+    const selected = BaseRangeSelection.create(projected.value, {
+      kind: "range",
+      anchor: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 0,
+        affinity: "after",
+      },
+      focus: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 4,
+        affinity: "before",
+      },
+    });
+    if (!selected.ok) throw new Error("safe-link selection fixture failed");
+
+    const serialized = serializeClipboardSelection(
+      selected.value,
+      presentation,
+    );
+
+    expect(serialized).toMatchObject({ ok: true });
+    if (!serialized.ok) throw new Error("safe-link serialization failed");
+    expect(serialized.value.html).toBe(
+      '<p><a class="breditor-link" href="https://example.test/path?q=one&amp;b=two" rel="noopener noreferrer" target="_blank">safe-one</a><a class="breditor-link" href="https://other.test/">safe-two</a><a class="breditor-link">unsafe-oneunsafe-two</a></p>',
+    );
+    expect(
+      parseClipboardHtmlToPlainText(serialized.value.html, presentation),
+    ).toEqual({ ok: true, value: serialized.value.plainText });
+
+    expect(
+      parseClipboardHtmlToPlainText(
+        '<p><a class="breditor-link">inert</a></p>',
+        presentation,
+      ),
+    ).toEqual({ ok: true, value: "inert" });
+    expect(
+      parseClipboardHtmlToPlainText(
+        '<p><a class="breditor-link" href="https://example.test/" rel="noopener noreferrer" target="_blank">safe</a></p>',
+        presentation,
+      ),
+    ).toEqual({ ok: true, value: "safe" });
+
+    for (const html of [
+      '<p><a class="breditor-link" href="javascript:alert(1)">x</a></p>',
+      '<p><a class="breditor-link" href="https://user@example.test/">x</a></p>',
+      '<p><a class="breditor-link" href="https://EXAMPLE.test">x</a></p>',
+      '<p><a class="breditor-link" href="https://example.test/" target="_blank">x</a></p>',
+      '<p><a class="breditor-link" target="_blank" rel="noopener noreferrer" href="https://example.test/">x</a></p>',
+      '<p><a class="breditor-link" href="https://example.test/" download>x</a></p>',
+    ]) {
+      expect(parseClipboardHtmlToPlainText(html, presentation)).toMatchObject({
+        ok: false,
+        error: { code: "clipboard.html.unsupported_structure" },
+      });
+    }
+  });
+
   it.each([
     '<p><span class="missing">x</span></p>',
     '<p><span class="highlight extra">x</span></p>',
@@ -473,7 +580,7 @@ function profiledPresentation(): Readonly<{
 }
 
 function presentationFor(
-  formatKinds: readonly string[],
+  formatKinds: readonly ProfileFormatFixture[],
   recipes: readonly unknown[],
 ): Readonly<{
   generation: WasmProfileGenerationView;
@@ -492,9 +599,12 @@ function presentationFor(
 
 function ownedProfileDescriptor(
   generation: WasmProfileGenerationView,
-  formatKinds: readonly string[],
+  formatKinds: readonly ProfileFormatFixture[],
 ): BrowserCompiledProfileDescriptor {
   const absent = (): undefined => undefined;
+  const normalized = formatKinds.map((format) => typeof format === "string"
+    ? { kind: format, properties: [] }
+    : format);
   const view: WasmCompiledProfileDescriptorView = {
     schemaName: "example/document",
     schemaVersion: 1,
@@ -503,18 +613,32 @@ function ownedProfileDescriptor(
     intentCount: 0,
     actionStateCount: 0,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
-    formatKind: (index) => formatKinds[index],
+    formatKind: (index) => normalized[index]?.kind,
     formatRevision: (index) =>
       index >= 0 && index < formatKinds.length ? 1 : undefined,
-    formatPropertyCount: (index) =>
-      index >= 0 && index < formatKinds.length ? 0 : undefined,
-    formatPropertyName: absent,
-    formatPropertyPresence: absent,
-    formatPropertyValueType: absent,
-    formatPropertyIntegerMinimum: absent,
-    formatPropertyIntegerMaximum: absent,
-    formatPropertyStringMinimumUtf8Bytes: absent,
-    formatPropertyStringMaximumUtf8Bytes: absent,
+    formatPropertyCount: (index) => normalized[index]?.properties.length,
+    formatPropertyName: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.name,
+    formatPropertyPresence: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.presence,
+    formatPropertyValueType: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.valueType.kind,
+    formatPropertyIntegerMinimum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.minimum : undefined;
+    },
+    formatPropertyIntegerMaximum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.maximum : undefined;
+    },
+    formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.minimumUtf8Bytes : undefined;
+    },
+    formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.maximumUtf8Bytes : undefined;
+    },
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,
@@ -536,3 +660,41 @@ function ownedProfileDescriptor(
   if (!result.ok) throw new Error("profile descriptor fixture was rejected");
   return result.descriptor;
 }
+
+type ProfilePropertyFixture = Readonly<{
+  name: string;
+  presence: "required" | "optional";
+  valueType:
+    | Readonly<{ kind: "boolean" }>
+    | Readonly<{ kind: "integer"; minimum?: number; maximum?: number }>
+    | Readonly<{
+      kind: "string";
+      minimumUtf8Bytes: number;
+      maximumUtf8Bytes: number;
+    }>;
+}>;
+
+type ProfileFormatFixture = string | Readonly<{
+  kind: string;
+  properties: readonly ProfilePropertyFixture[];
+}>;
+
+const SAFE_LINK_FORMAT: Exclude<ProfileFormatFixture, string> = Object.freeze({
+  kind: "example/link",
+  properties: Object.freeze([
+    Object.freeze({
+      name: "example/href",
+      presence: "required" as const,
+      valueType: Object.freeze({
+        kind: "string" as const,
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 2_048,
+      }),
+    }),
+    Object.freeze({
+      name: "example/open-in-new-window",
+      presence: "required" as const,
+      valueType: Object.freeze({ kind: "boolean" as const }),
+    }),
+  ]),
+});

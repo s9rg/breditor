@@ -1,8 +1,9 @@
 # Breditor clipboard contract
 
-Status: supported by the public `0.1.0` runtime for the closed base schema and
-extended by the supported `0.2.0` compiled-profile browser path;
-direct controller construction remains an advanced integration surface
+Status: supported by the public `0.1.0` runtime for the closed base schema,
+extended by the supported `0.2.0` compiled-profile browser path, and extended
+again by the unpublished `0.3.0-alpha.4` exact `safeLinkV1` policy; direct
+controller construction remains an advanced integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and
 CKEditor are design references only; Breditor does not adopt their slice,
@@ -89,9 +90,13 @@ The plain representation joins selected paragraph slices with LF. The HTML
 representation uses only attribute-free `<p>` blocks, sole empty-paragraph
 `<br>` elements, and the exact canonical wrapper chain from the projection's
 checked browser presentation. In the legacy unprofiled path that chain is only
-attribute-free `<strong>`; a profiled path may use `code`, `em`, `mark`, `s`,
-`span`, `strong`, `sub`, `sup`, or `u` with only the recipe's exact canonical
-class value. Caller text is escaped, including carriage return as `&#13;`.
+attribute-free `<strong>`; a profiled path may use `a`, `code`, `em`, `mark`,
+`s`, `span`, `strong`, `sub`, `sup`, or `u`. Property-free recipes emit only
+their exact canonical class value. The sole property-driven exception is
+`<a class="breditor-link">` under an exact `safeLinkV1` recipe: it emits either
+no dynamic attributes for an unsafe value, canonical `href`, or canonical
+`href` plus `rel="noopener noreferrer"` and `target="_blank"`. Caller text is
+escaped, including carriage return as `&#13;`.
 Scalars which strict HTML tokenization reports as controls or
 noncharacters are not representable in the paired HTML form: U+0000,
 U+0001–U+0008, U+000B, U+000E–U+001F, U+007F–U+009F, U+FDD0–U+FDEF, and each
@@ -139,13 +144,15 @@ repaired fragment must fit this closed allowlist:
   `<strong>` or `<b>` wrapper;
 - for a profiled path, only exact tag/class signatures from its checked
   presentation in canonical outer-to-inner order, with at most 32 wrappers per
-  run;
+  run; a `safeLinkV1` anchor must additionally have exactly the inert,
+  canonical href-only, or canonical href/rel/target attribute shape;
 - an empty paragraph with no children or one sole attribute-free `<br>`; and
 - optionally, exact `StartFragment` and `EndFragment` comments surrounding all
   paragraphs.
 
-Surviving attributes beyond one exact recipe class, styles, links, scripts,
-images, lists, tables, headings, unknown elements, foreign namespaces,
+Surviving attributes beyond one exact recipe class or the complete
+`safeLinkV1` output, styles, foreign or non-policy Link shapes, scripts, images,
+lists, tables, headings, unknown elements, foreign namespaces,
 noncanonical wrapper nesting, extra comments, and adjacent runs with the same
 complete format set are rejected. Parser errors are
 rejected except for the precisely audited control-character references emitted
@@ -156,10 +163,11 @@ to admission and therefore do not cause rejection; for example, an ignored
 `<html>`/`<body>` wrapper around an otherwise exact `<p>` is not source-level
 evidence retained by this policy.
 
-Admitted paragraphs are flattened with LF separators. Strong markup is
-deliberately discarded on paste because the current atomic multiline action
-accepts one plain string in the insertion context; mixed clipboard formatting
-cannot be represented honestly by that action yet.
+Admitted paragraphs are flattened with LF separators. All admitted wrapper
+markup and `safeLinkV1` attributes are deliberately discarded on paste because
+the current atomic multiline action accepts one plain string in the insertion
+context; mixed clipboard formatting cannot be represented honestly by that
+action yet.
 
 HTML admission limits are 2 MiB of source in both UTF-16 and UTF-8, 65,536
 inspected nodes, legacy depth three, profiled depth 34

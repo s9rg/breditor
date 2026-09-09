@@ -18,14 +18,16 @@ import {
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
 import {
-  REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
-  REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
-  REFERENCE_HIGHLIGHT_SAMPLE_DOCUMENT_JSON,
-  REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+  REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_FORMATTING_RENDER_MANIFEST,
+  REFERENCE_FORMATTING_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_FORMATTING_TOOLBAR_MANIFEST,
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
-const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-highlight.v1";
+import { LinkControls } from "./LinkControls.js";
+
+const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-formatting.v2";
 
 let wasmInitialization: Promise<unknown> | undefined;
 
@@ -216,8 +218,9 @@ function persistenceMessage(
 }
 
 /**
- * React owns only the two empty mounts and surrounding status UI. Breditor
- * exclusively owns every child installed beneath the editor and toolbar refs.
+ * React owns the two empty mounts, typed Link form, and surrounding status UI.
+ * Breditor exclusively owns every child installed beneath the editor and
+ * declarative-toolbar refs.
  */
 export const BreditorEditor = forwardRef<
   BreditorEditorHandle,
@@ -350,14 +353,15 @@ export const BreditorEditor = forwardRef<
           label,
           wasm: breditorWasm,
           initialDocument: {
-            lineageId: "breditor-react-reference-highlight",
-            documentJson: REFERENCE_HIGHLIGHT_SAMPLE_DOCUMENT_JSON,
+            lineageId: "breditor-react-reference-formatting",
+            documentJson: REFERENCE_FORMATTING_SAMPLE_DOCUMENT_JSON,
             historyCapacity: 100,
           },
           semanticProfile: {
-            bootstrapJson: REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
+            bootstrapJson: REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON,
+            formatVersion: 2,
           },
-          rendering: REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
+          rendering: REFERENCE_FORMATTING_RENDER_MANIFEST,
           keyboard: {
             editing: "beforeinputPrimary",
             primaryModifier,
@@ -365,7 +369,7 @@ export const BreditorEditor = forwardRef<
           },
           toolbar: {
             host: toolbarHost,
-            manifest: REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+            manifest: REFERENCE_FORMATTING_TOOLBAR_MANIFEST,
           },
           persistence: {
             indexedDB: window.indexedDB,
@@ -496,7 +500,10 @@ export const BreditorEditor = forwardRef<
       aria-busy={currentLifecycle?.phase !== "failed" && editor === undefined}
       aria-label={`${label} editor`}
     >
-      <div className="toolbar-mount" ref={setToolbarHost} />
+      <div className="editor-controls">
+        <div className="toolbar-mount" ref={setToolbarHost} />
+        <LinkControls editor={editor} snapshot={snapshot} />
+      </div>
       <div className="editor-mount" ref={setEditorHost} />
       <div className="editor-footer">
         <p className="editor-status" role="status">

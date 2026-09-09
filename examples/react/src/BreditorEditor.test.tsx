@@ -7,13 +7,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   initializeWasm: vi.fn(() => Promise.resolve()),
   openEditor: vi.fn(),
-  profileBootstrapJson: '{"profile":"reference-highlight"}',
+  profileBootstrapJson: '{"profile":"reference-formatting"}',
   renderManifest: Object.freeze({ recipes: Object.freeze([]) }),
-  sampleDocumentJson: '{"document":"reference-highlight-v2"}',
+  sampleDocumentJson: '{"document":"reference-formatting-v2"}',
   toolbarManifest: Object.freeze({
     label: "Reference toolbar",
     controls: Object.freeze([]),
   }),
+  formattingIds: Object.freeze({
+    linkHrefProperty: "example/href",
+    linkIntentId: "example/set-link-intent",
+    linkOpenInNewWindowProperty: "example/open-in-new-window",
+    linkPresenceStateId: "example/link-presence",
+  }),
+  createLinkSetInputJson: vi.fn(
+    (href: string, openInNewWindow = false) =>
+      JSON.stringify({
+        operation: "set",
+        properties: [
+          { name: "example/href", value: href },
+          { name: "example/open-in-new-window", value: openInNewWindow },
+        ],
+      }),
+  ),
+  createLinkRemoveInputJson: vi.fn(() => '{"operation":"remove"}'),
 }));
 
 vi.mock("@breditor/wasm", () => ({
@@ -26,10 +43,14 @@ vi.mock("@breditor/browser", () => ({
 }));
 
 vi.mock("@breditor/reference-highlight", () => ({
-  REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
-  REFERENCE_HIGHLIGHT_RENDER_MANIFEST: mocks.renderManifest,
-  REFERENCE_HIGHLIGHT_SAMPLE_DOCUMENT_JSON: mocks.sampleDocumentJson,
-  REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST: mocks.toolbarManifest,
+  MAX_REFERENCE_LINK_HREF_UTF8: 2_048,
+  REFERENCE_FORMATTING_IDS: mocks.formattingIds,
+  REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
+  REFERENCE_FORMATTING_RENDER_MANIFEST: mocks.renderManifest,
+  REFERENCE_FORMATTING_SAMPLE_DOCUMENT_JSON: mocks.sampleDocumentJson,
+  REFERENCE_FORMATTING_TOOLBAR_MANIFEST: mocks.toolbarManifest,
+  createReferenceLinkSetInputJson: mocks.createLinkSetInputJson,
+  createReferenceLinkRemoveInputJson: mocks.createLinkRemoveInputJson,
 }));
 
 import { BreditorEditor, type BreditorEditorHandle } from "./BreditorEditor.js";
@@ -45,6 +66,7 @@ interface Deferred<T> {
 
 interface FakeEditor {
   readonly dispose: ReturnType<typeof vi.fn>;
+  readonly executeIntentJson: ReturnType<typeof vi.fn>;
   readonly focus: ReturnType<typeof vi.fn>;
   readonly getSnapshot: ReturnType<typeof vi.fn>;
   readonly getStatus: ReturnType<typeof vi.fn>;
@@ -70,17 +92,23 @@ function fakeEditor(
     phase: "disabled",
     dirty: false,
   }),
+  actions: Readonly<Record<string, unknown>> | undefined = undefined,
 ): FakeEditor {
   const unsubscribe = vi.fn();
   const snapshot = Object.freeze({
     status: Object.freeze({ phase: "live" }),
     document: Object.freeze({ documentJson }),
-    actionState: Object.freeze({ phase: "ready" }),
-    actions: undefined,
+    actionState: Object.freeze({ status: "fresh", lastError: undefined }),
+    actions,
     persistence,
   });
   return {
     dispose: vi.fn(),
+    executeIntentJson: vi.fn(() => ({
+      status: "committed",
+      intentId: mocks.formattingIds.linkIntentId,
+      document: Object.freeze({ lineage: "demo", revision: "1" }),
+    })),
     focus: vi.fn(() => true),
     flushPersistence: vi.fn(() => Promise.resolve({ status: "committed" })),
     getSnapshot: vi.fn(() => snapshot),
@@ -166,7 +194,7 @@ afterEach(async () => {
 });
 
 describe("BreditorEditor lifecycle", () => {
-  it("opens an empty owned mount with the complete reference Highlight demo", async () => {
+  it("opens empty owned mounts with the complete reference formatting demo", async () => {
     const editor = fakeEditor();
     let mountsWereEmpty = false;
     mocks.openEditor.mockImplementation((options: Record<string, unknown>) => {
@@ -180,20 +208,23 @@ describe("BreditorEditor lifecycle", () => {
       return Promise.resolve(successful(editor));
     });
 
-    await render(view("Reference Highlight demo", "meta"));
+    await render(view("Reference formatting demo", "meta"));
     await settle();
 
     expect(mountsWereEmpty).toBe(true);
     expect(mocks.openEditor).toHaveBeenCalledTimes(1);
     expect(mocks.openEditor).toHaveBeenCalledWith(
       expect.objectContaining({
-        label: "Reference Highlight demo",
+        label: "Reference formatting demo",
         initialDocument: {
-          lineageId: "breditor-react-reference-highlight",
+          lineageId: "breditor-react-reference-formatting",
           documentJson: mocks.sampleDocumentJson,
           historyCapacity: 100,
         },
-        semanticProfile: { bootstrapJson: mocks.profileBootstrapJson },
+        semanticProfile: {
+          bootstrapJson: mocks.profileBootstrapJson,
+          formatVersion: 2,
+        },
         rendering: mocks.renderManifest,
         keyboard: {
           editing: "beforeinputPrimary",
@@ -204,12 +235,231 @@ describe("BreditorEditor lifecycle", () => {
         persistence: expect.objectContaining({
           scope: {
             kind: "slot",
-            name: "breditor.react-reference-highlight.v1",
+            name: "breditor.react-reference-formatting.v2",
           },
         }),
       }),
     );
   });
+
+  it("runs typed Link commands against preserved selection with redacted feedback", async () => {
+    const actions = Object.freeze({
+      snapshot: Object.freeze({ lineage: "demo", revision: "0" }),
+      entries: Object.freeze([
+        Object.freeze({
+          id: mocks.formattingIds.linkPresenceStateId,
+          availability: "enabled",
+          activation: "active",
+          reasonCode: undefined,
+          value: Object.freeze({ status: "unsupported" }),
+        }),
+      ]),
+    });
+    const editor = fakeEditor(undefined, undefined, actions);
+    const privateHref = "https://private.example.test/account/42";
+    editor.executeIntentJson
+      .mockImplementationOnce(() => {
+        expect(document.activeElement?.getAttribute("aria-label")).toBe(
+          "Link URL",
+        );
+        return {
+          status: "committed",
+          intentId: mocks.formattingIds.linkIntentId,
+          document: { lineage: "demo", revision: "1" },
+        };
+      })
+      .mockReturnValueOnce({
+        status: "blocked",
+        intentId: mocks.formattingIds.linkIntentId,
+        reasonCode: "example/link-selection-required",
+        activation: "active",
+        document: { lineage: "demo", revision: "1" },
+      })
+      .mockReturnValueOnce({
+        status: "rejected",
+        intentId: mocks.formattingIds.linkIntentId,
+        reason: "invalidInput",
+        document: { lineage: "demo", revision: "1" },
+      });
+    mocks.openEditor.mockResolvedValue(successful(editor));
+
+    const mounted = await render(view("Typed Link controls"));
+    await settle();
+
+    const url = mounted.container.querySelector<HTMLInputElement>(
+      'input[aria-label="Link URL"]',
+    );
+    const newWindow = mounted.container.querySelector<HTMLInputElement>(
+      'input[aria-label="Open in new window"]',
+    );
+    const buttons = Array.from(
+      mounted.container.querySelectorAll<HTMLButtonElement>(
+        ".link-controls button",
+      ),
+    );
+    const apply = buttons.find((button) => button.textContent === "Apply Link");
+    const remove = buttons.find(
+      (button) => button.textContent === "Remove Link",
+    );
+    expect(url?.disabled).toBe(false);
+    expect(newWindow?.disabled).toBe(false);
+    expect(apply?.hasAttribute("aria-pressed")).toBe(false);
+    expect(remove?.disabled).toBe(false);
+
+    await act(async () => {
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      valueSetter?.call(url, privateHref);
+      url?.dispatchEvent(new Event("input", { bubbles: true }));
+      newWindow?.click();
+    });
+    url?.focus();
+    await act(async () => apply?.click());
+
+    expect(mocks.createLinkSetInputJson).toHaveBeenCalledWith(privateHref, true);
+    expect(editor.executeIntentJson).toHaveBeenNthCalledWith(
+      1,
+      mocks.formattingIds.linkIntentId,
+      JSON.stringify({
+        operation: "set",
+        properties: [
+          { name: mocks.formattingIds.linkHrefProperty, value: privateHref },
+          {
+            name: mocks.formattingIds.linkOpenInNewWindowProperty,
+            value: true,
+          },
+        ],
+      }),
+    );
+    expect(mounted.container.textContent).toContain("Link applied.");
+    expect(mounted.container.textContent).not.toContain(privateHref);
+
+    await act(async () => remove?.click());
+    expect(mocks.createLinkRemoveInputJson).toHaveBeenCalledTimes(1);
+    expect(editor.executeIntentJson).toHaveBeenNthCalledWith(
+      2,
+      mocks.formattingIds.linkIntentId,
+      '{"operation":"remove"}',
+    );
+    expect(mounted.container.textContent).toContain(
+      "Link removal blocked (example/link-selection-required).",
+    );
+    expect(mounted.container.textContent).not.toContain(privateHref);
+
+    await act(async () => apply?.click());
+    expect(mounted.container.textContent).toContain(
+      "Link rejected (invalidInput).",
+    );
+    expect(mounted.container.textContent).not.toContain(privateHref);
+  });
+
+  it.each(["disabled", "blocked"] as const)(
+    "keeps Apply available when the remove-based presence probe is %s as unchanged",
+    async (availability) => {
+      const actions = Object.freeze({
+        snapshot: Object.freeze({ lineage: "demo", revision: "0" }),
+        entries: Object.freeze([
+          Object.freeze({
+            id: mocks.formattingIds.linkPresenceStateId,
+            availability,
+            activation: "inactive",
+            reasonCode: "breditor/inline-format-unchanged",
+            value: Object.freeze({ status: "unsupported" }),
+          }),
+        ]),
+      });
+      const editor = fakeEditor(undefined, undefined, actions);
+      mocks.openEditor.mockResolvedValue(successful(editor));
+      const mounted = await render(view("Plain selection Link controls"));
+      await settle();
+
+      const url = mounted.container.querySelector<HTMLInputElement>(
+        'input[aria-label="Link URL"]',
+      );
+      const apply = Array.from(
+        mounted.container.querySelectorAll<HTMLButtonElement>(
+          ".link-controls button",
+        ),
+      ).find((button) => button.textContent === "Apply Link");
+      const remove = Array.from(
+        mounted.container.querySelectorAll<HTMLButtonElement>(
+          ".link-controls button",
+        ),
+      ).find((button) => button.textContent === "Remove Link");
+
+      expect(url?.disabled).toBe(false);
+      expect(remove?.disabled).toBe(true);
+      await act(async () => {
+        const valueSetter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value",
+        )?.set;
+        valueSetter?.call(url, "https://example.test/new");
+        url?.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      expect(apply?.disabled).toBe(false);
+      await act(async () => apply?.click());
+      expect(editor.executeIntentJson).toHaveBeenCalledWith(
+        mocks.formattingIds.linkIntentId,
+        expect.stringContaining("https://example.test/new"),
+      );
+    },
+  );
+
+  it.each([
+    ["blocked", "inactive", "breditor/no-selection"],
+    ["blocked", "active", "breditor/result-limit-exceeded"],
+    ["unhandled", undefined, undefined],
+    ["faulted", undefined, undefined],
+  ] as const)(
+    "fails closed when the Link presence state is %s/%s",
+    async (availability, activation, reasonCode) => {
+      const actions = Object.freeze({
+        snapshot: Object.freeze({ lineage: "demo", revision: "0" }),
+        entries: Object.freeze([
+          Object.freeze({
+            id: mocks.formattingIds.linkPresenceStateId,
+            availability,
+            activation,
+            reasonCode,
+            value:
+              availability === "blocked"
+                ? Object.freeze({ status: "unsupported" })
+                : undefined,
+          }),
+        ]),
+      });
+      const editor = fakeEditor(undefined, undefined, actions);
+      mocks.openEditor.mockResolvedValue(successful(editor));
+      const mounted = await render(view(`${availability} Link controls`));
+      await settle();
+
+      const url = mounted.container.querySelector<HTMLInputElement>(
+        'input[aria-label="Link URL"]',
+      );
+      const buttons = Array.from(
+        mounted.container.querySelectorAll<HTMLButtonElement>(
+          ".link-controls button",
+        ),
+      );
+      const apply = buttons.find(
+        (button) => button.textContent === "Apply Link",
+      );
+      const remove = buttons.find(
+        (button) => button.textContent === "Remove Link",
+      );
+
+      expect(url?.disabled).toBe(true);
+      expect(apply?.disabled).toBe(true);
+      expect(remove?.disabled).toBe(true);
+      expect(mounted.container.textContent).toContain(
+        "Link controls are unavailable for the current selection.",
+      );
+      expect(editor.executeIntentJson).not.toHaveBeenCalled();
+    },
+  );
 
   it("owns exactly one live editor through a StrictMode mount and cleanup", async () => {
     const editor = fakeEditor();

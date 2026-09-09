@@ -4,6 +4,69 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.4 - 2026-09-09
+
+This source checkpoint adds the first property-driven browser presentation and
+typed application control without changing Wasm ABI 4 or any durable format.
+It also corrects the Rust capability gate for property-free toggles inside a
+property-aware schema. It has not been published to npm or crates.io.
+
+### Property-aware toggle compatibility
+
+- Built-in Bold and explicitly declared property-free extension toggle bundles
+  now use the same paragraph-local `TextSplice` capability as typed
+  insert/delete/set paths. A collapsed or same-paragraph toggle preserves
+  neighboring property-bearing formats and accounts for properties duplicated
+  by run splitting before it is enabled. This does not auto-register a toggle
+  or make a property-bearing format eligible for the no-input toggle contract.
+- Cross-paragraph toggling remains on `RootTextReplace` and still fails closed
+  for a property-aware schema until the structural property-preservation
+  checkpoint is complete.
+
+### Closed safe-Link presentation
+
+- Added the sole property-driven render policy, `safeLinkV1`. It is valid only
+  on `<a class="breditor-link">` and must bind a format whose descriptor has
+  exactly two required properties: a `1..=2048` UTF-8-byte string for `href`
+  and a Boolean open-in-new-window flag.
+- The browser admits navigation only for absolute, credential-free `http:` or
+  `https:` URLs without control or Unicode-whitespace scalars and emits their
+  canonical normalization. Both source and normalized URL fit the 2048-byte
+  ceiling. Raw authority syntax must begin immediately after exactly two
+  slashes and use visible ASCII without percent escapes, backslashes, or raw
+  `@` credentials; internationalized hosts use explicit `xn--` spelling.
+  Rejected authority spellings fail closed before URL parsing. A schema-valid
+  but unsafe URL deliberately renders as an inert anchor rather than faulting
+  the editor.
+- Attribute output is closed: a safe same-window link receives only `href`; a
+  safe new-window link additionally receives canonical
+  `rel="noopener noreferrer"` and `target="_blank"`. Recipes cannot choose
+  arbitrary attributes, schemes, styles, callbacks, raw HTML, `rel`, or target
+  values.
+
+### DOM, clipboard, and reference integration
+
+- Rendering and retained-DOM drift checks use the exact resolved attributes.
+  Composition reconciliation admits only the inert, href-only, or exact
+  href/rel/target Link shapes, applies a 1 MiB aggregate UTF-8 work budget to
+  transient dynamic attribute values before URL parsing, and still reduces the
+  leased DOM to text before one Rust command.
+- Semantic copy/cut HTML escapes and emits the same canonical Link attributes.
+  HTML paste may admit those exact shapes, but every paste remains plain text;
+  no source property or formatting is reconstructed.
+- Added an additive Highlight + Link reference profile and browser-owned render
+  manifest while preserving the existing Highlight-only exports. The React
+  demo owns its URL and new-window form and calls the existing strict
+  `executeIntentJson()` boundary; the built-in toolbar remains button-only.
+
+### Remaining boundary
+
+- Rust validates the declared scalar property types and bounds, not URL
+  semantics. URL admission is an explicit browser presentation policy.
+- Typed structural paragraph edits, rich paste, arbitrary property-to-DOM
+  mapping, CSS/color policies, custom toolbar control kinds, and Local Log V3
+  remain unsupported.
+
 ## 0.3.0-alpha.3 - 2026-09-09
 
 This source checkpoint advances the typed-property integration through Wasm

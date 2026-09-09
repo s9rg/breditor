@@ -13,7 +13,10 @@ import {
   type WasmCompiledProfileDescriptorView,
   type WasmProfileGenerationView,
 } from "./advanced.js";
-import { reconcileCompositionDom } from "./dom_composition_reconcile.js";
+import {
+  MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES,
+  reconcileCompositionDom,
+} from "./dom_composition_reconcile.js";
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
 import {
   nativeChildNodes,
@@ -125,6 +128,240 @@ describe("BreditorDomRenderer", () => {
     mark?.setAttribute("class", "accent extra");
     expect(rendered.validateCanonicalDom()).toBe(false);
     expect(rendered.nodeForAstPath([0, 0])).toBeNull();
+  });
+
+  it("derives canonical safe-link attributes and renders unsafe URLs inert", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [
+      "example/highlight",
+      SAFE_LINK_FORMAT,
+    ]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [
+          {
+            formatKind: "example/highlight",
+            element: "mark",
+            classes: ["accent"],
+            after: ["example/link"],
+          },
+          {
+            formatKind: "example/link",
+            element: "a",
+            classes: ["breditor-link"],
+            attributes: {
+              kind: "safeLinkV1",
+              hrefProperty: "example/href",
+              openInNewWindowProperty: "example/open-in-new-window",
+            },
+          },
+        ],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "safe-link-dom-tests", revision: "0" },
+      paragraphs: [{
+        runs: [
+          {
+            text: "safe",
+            formatDetails: [
+              { kind: "example/highlight", properties: [] },
+              {
+                kind: "example/link",
+                properties: [
+                  {
+                    name: "example/href",
+                    value: "HTTPS://Example.COM:443/a/../path?q=one&b=two",
+                  },
+                  { name: "example/open-in-new-window", value: true },
+                ],
+              },
+            ],
+          },
+          {
+            text: "unsafe",
+            formatDetails: [{
+              kind: "example/link",
+              properties: [
+                { name: "example/href", value: "javascript:alert(1)" },
+                { name: "example/open-in-new-window", value: true },
+              ],
+            }],
+          },
+        ],
+      }],
+    }, generation, descriptor));
+    const host = document.createElement("div");
+    const renderer = new BreditorDomRenderer(presentation);
+
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+
+    expect(host.innerHTML).toBe(
+      '<p><a class="breditor-link" href="https://example.com/path?q=one&amp;b=two" rel="noopener noreferrer" target="_blank"><mark class="accent">safe</mark></a><a class="breditor-link">unsafe</a></p>',
+    );
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    const safeAnchor = host.querySelector("a");
+    safeAnchor?.setAttribute("rel", "opener");
+    expect(rendered.validateCanonicalDom()).toBe(false);
+  });
+
+  it("admits only canonical safe links during a native-composition lease", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [SAFE_LINK_FORMAT]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{
+          formatKind: "example/link",
+          element: "a",
+          classes: ["breditor-link"],
+          attributes: {
+            kind: "safeLinkV1",
+            hrefProperty: "example/href",
+            openInNewWindowProperty: "example/open-in-new-window",
+          },
+        }],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "safe-link-composition-tests", revision: "0" },
+      paragraphs: [{ runs: [{
+        text: "abcdef",
+        formatDetails: [{
+          kind: "example/link",
+          properties: [
+            { name: "example/href", value: "https://example.test/path" },
+            { name: "example/open-in-new-window", value: false },
+          ],
+        }],
+      }] }],
+    }, generation, descriptor));
+    const selection = valueOf(BaseRangeSelection.create(profiled, {
+      kind: "range",
+      anchor: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 2,
+        affinity: "after",
+      },
+      focus: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 4,
+        affinity: "before",
+      },
+    }));
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+    expect(renderer.beginCompositionDomLease(rendered)).not.toBeNull();
+    const anchor = host.querySelector("a");
+    anchor?.replaceChildren(document.createTextNode("abXYef"));
+
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: true,
+      value: { originalText: "cd", text: "XY" },
+    });
+
+    anchor?.setAttribute("href", "javascript:alert(1)");
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.invalid_structure" },
+    });
+  });
+
+  it("bounds aggregate transient safe-link attribute validation before URL parsing", () => {
+    expect(MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES).toBe(1024 * 1024);
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [SAFE_LINK_FORMAT]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{
+          formatKind: "example/link",
+          element: "a",
+          classes: ["breditor-link"],
+          attributes: {
+            kind: "safeLinkV1",
+            hrefProperty: "example/href",
+            openInNewWindowProperty: "example/open-in-new-window",
+          },
+        }],
+      }),
+    );
+    const prefix = "https://example.test/";
+    const maximumHref = `${prefix}${"x".repeat(2_048 - prefix.length)}`;
+    expect(maximumHref).toHaveLength(2_048);
+    const linksAtLimit =
+      MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES / maximumHref.length;
+    expect(linksAtLimit).toBe(512);
+    const baseText = "x".repeat(linksAtLimit + 1);
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "safe-link-composition-budget-tests", revision: "0" },
+      paragraphs: [{ runs: [{
+        text: baseText,
+        formatDetails: [{
+          kind: "example/link",
+          properties: [
+            { name: "example/href", value: "https://example.test/" },
+            { name: "example/open-in-new-window", value: false },
+          ],
+        }],
+      }] }],
+    }, generation, descriptor));
+    const selection = valueOf(BaseRangeSelection.create(profiled, {
+      kind: "range",
+      anchor: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 0,
+        affinity: "after",
+      },
+      focus: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: baseText.length,
+        affinity: "before",
+      },
+    }));
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+    expect(renderer.beginCompositionDomLease(rendered)).not.toBeNull();
+    const paragraph = host.firstElementChild;
+    if (!(paragraph instanceof HTMLParagraphElement)) {
+      throw new Error("expected rendered paragraph");
+    }
+    const makeLink = (href: string): HTMLAnchorElement => {
+      const anchor = document.createElement("a");
+      anchor.setAttribute("class", "breditor-link");
+      anchor.setAttribute("href", href);
+      anchor.append(document.createTextNode("x"));
+      return anchor;
+    };
+
+    paragraph.replaceChildren(
+      ...Array.from({ length: linksAtLimit }, () => makeLink(maximumHref)),
+    );
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: true,
+      value: { text: "x".repeat(linksAtLimit) },
+    });
+
+    paragraph.append(makeLink("javascript:must-not-be-parsed()"));
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.resource_limit" },
+    });
   });
 
   it("reuses canonical profile paragraphs under the exact presentation", () => {
@@ -1410,9 +1647,12 @@ function profileGeneration(): WasmProfileGenerationView {
 
 function ownedProfileDescriptor(
   generation: WasmProfileGenerationView,
-  formats: readonly string[],
+  formats: readonly ProfileFormatFixture[],
 ): BrowserCompiledProfileDescriptor {
   const absent = (): undefined => undefined;
+  const normalized = formats.map((format) => typeof format === "string"
+    ? { kind: format, properties: [] }
+    : format);
   const view: WasmCompiledProfileDescriptorView = {
     schemaName: "example/document",
     schemaVersion: 1,
@@ -1421,18 +1661,32 @@ function ownedProfileDescriptor(
     intentCount: 0,
     actionStateCount: 0,
     matchesProfileGeneration: (candidate) => candidate === generation,
-    formatKind: (index) => formats[index],
+    formatKind: (index) => normalized[index]?.kind,
     formatRevision: (index) =>
       index >= 0 && index < formats.length ? 1 : undefined,
-    formatPropertyCount: (index) =>
-      index >= 0 && index < formats.length ? 0 : undefined,
-    formatPropertyName: absent,
-    formatPropertyPresence: absent,
-    formatPropertyValueType: absent,
-    formatPropertyIntegerMinimum: absent,
-    formatPropertyIntegerMaximum: absent,
-    formatPropertyStringMinimumUtf8Bytes: absent,
-    formatPropertyStringMaximumUtf8Bytes: absent,
+    formatPropertyCount: (index) => normalized[index]?.properties.length,
+    formatPropertyName: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.name,
+    formatPropertyPresence: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.presence,
+    formatPropertyValueType: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.valueType.kind,
+    formatPropertyIntegerMinimum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.minimum : undefined;
+    },
+    formatPropertyIntegerMaximum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.maximum : undefined;
+    },
+    formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.minimumUtf8Bytes : undefined;
+    },
+    formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.maximumUtf8Bytes : undefined;
+    },
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,
@@ -1454,6 +1708,44 @@ function ownedProfileDescriptor(
   if (!result.ok) throw new Error("test descriptor was rejected");
   return result.descriptor;
 }
+
+type ProfilePropertyFixture = Readonly<{
+  name: string;
+  presence: "required" | "optional";
+  valueType:
+    | Readonly<{ kind: "boolean" }>
+    | Readonly<{ kind: "integer"; minimum?: number; maximum?: number }>
+    | Readonly<{
+      kind: "string";
+      minimumUtf8Bytes: number;
+      maximumUtf8Bytes: number;
+    }>;
+}>;
+
+type ProfileFormatFixture = string | Readonly<{
+  kind: string;
+  properties: readonly ProfilePropertyFixture[];
+}>;
+
+const SAFE_LINK_FORMAT: Exclude<ProfileFormatFixture, string> = Object.freeze({
+  kind: "example/link",
+  properties: Object.freeze([
+    Object.freeze({
+      name: "example/href",
+      presence: "required" as const,
+      valueType: Object.freeze({
+        kind: "string" as const,
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 2_048,
+      }),
+    }),
+    Object.freeze({
+      name: "example/open-in-new-window",
+      presence: "required" as const,
+      valueType: Object.freeze({ kind: "boolean" as const }),
+    }),
+  ]),
+});
 
 function propertyFreeFormats(formats: readonly string[]) {
   return formats.map((kind) => ({ kind, properties: [] }));

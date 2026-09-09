@@ -17,8 +17,9 @@ use super::{
     support::{
         CrossParagraphTextSource, CrossParagraphTextSourceError, base_shape_fits,
         base_total_text_fits, capture_cross_paragraph_text_source, disabled,
-        effective_typing_formats, fault, fragment_range_parts, paragraph_fragment,
-        require_base_text_range, require_operation_budget, strict_relocation,
+        effective_typing_formats, fault, fragment_range_parts, property_result_fits,
+        require_operation_budget, require_text_splice_range, strict_relocation,
+        text_splice_paragraph_fragment,
     },
 };
 
@@ -26,10 +27,12 @@ use super::{
 ///
 /// A collapsed range changes the explicit pending typing formats without
 /// rewriting content. A same-paragraph extended range rewrites the selected
-/// formatted text through one exact guarded splice. A cross-paragraph range
-/// preserves every paragraph boundary through one same-count
+/// formatted text through one exact guarded splice while preserving complete
+/// property-bearing peer formats. In a property-free schema, a cross-paragraph
+/// range preserves every paragraph boundary through one same-count
 /// [`RootTextReplace`] and applies one activation-derived add/remove decision to
-/// all selected text. A structural-only selection remains mutation-disabled.
+/// all selected text. Property-bearing cross-paragraph schemas and
+/// structural-only selections remain mutation-disabled.
 ///
 /// The configured kind is immutable. Evaluation is enabled only when the
 /// active compiled schema admits that kind as a property-free inline format;
@@ -91,7 +94,7 @@ fn evaluate_toggle_inline_format(
     state: &EditorState,
     format_kind: &QualifiedName,
 ) -> Result<ActionEvaluation, ActionFault> {
-    let range = match require_base_text_range(state)? {
+    let range = match require_text_splice_range(state)? {
         Ok(range) => range,
         Err(reason) => {
             return Ok(evaluation(ActionDecision::Disabled(reason), ActionActivation::Inactive));
@@ -104,6 +107,13 @@ fn evaluate_toggle_inline_format(
         ));
     }
 
+    // RootTextReplace, and therefore cross-paragraph toggling, remains behind
+    // the broader property-free structural capability. Opening the exact
+    // paragraph-local TextSplice path must not route a property-bearing schema
+    // through operations whose preservation contract is not yet proven.
+    if !range.is_same_paragraph() && !state.context().schema().supports_base_text_operations() {
+        return Ok(evaluation(disabled("breditor/unsupported-schema"), ActionActivation::Inactive));
+    }
     if !range.is_same_paragraph() {
         return evaluate_cross_paragraph(state, &range, format_kind);
     }
@@ -118,8 +128,7 @@ fn evaluate_collapsed(
     range: &TextRangeSelection,
     format_kind: &QualifiedName,
 ) -> Result<ActionEvaluation, ActionFault> {
-    let fragment =
-        paragraph_fragment(state, range.start().paragraph_path(), range.start().offset())?;
+    let fragment = text_splice_paragraph_fragment(state, range.start().paragraph_path())?;
     let focus_affinity = source_range(state)?.focus().affinity();
     let formats =
         effective_typing_formats(state, &fragment, range.start().offset(), focus_affinity)?;
@@ -149,7 +158,7 @@ fn evaluate_extended(
     format_kind: &QualifiedName,
 ) -> Result<ActionEvaluation, ActionFault> {
     let paragraph_path = range.start().paragraph_path();
-    let source = paragraph_fragment(state, paragraph_path, range.start().offset())?;
+    let source = text_splice_paragraph_fragment(state, paragraph_path)?;
     let (prefix, selected, suffix) =
         fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
     let activation = activation_for_fragment(&selected, format_kind);
@@ -172,7 +181,15 @@ fn evaluate_extended(
     let Some(result) = concat_result(&prefix, &replacement, &suffix)? else {
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
     };
-    if !base_shape_fits(state, 1, source.len(), &[&result]) {
+    if !base_shape_fits(state, 1, source.len(), &[&result])
+        || !property_result_fits(
+            state,
+            &source,
+            &result,
+            "breditor/toggle-inline-format-property-validation-fault",
+            "breditor/toggle-inline-format-property-budget-fault",
+        )?
+    {
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
     }
 

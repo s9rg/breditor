@@ -2,8 +2,8 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.3` ABI-4 typed-profile, typed-intent, and explicit
-Session-V3 persistence path
+the unpublished `0.3.0-alpha.4` ABI-4 typed-profile, typed-intent, explicit
+Session-V3 persistence, and closed safe-Link presentation path
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -120,7 +120,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.3 source path verifies Wasm ABI generation `4` and the exact matching
+The alpha.4 source path verifies Wasm ABI generation `4` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -146,14 +146,21 @@ each run's canonical `formatDetails`, including the scalar value of every
 present property. Both are validated against the same opaque profile generation
 before the editor is published.
 
+Alpha.4 permits one property-driven recipe: `safeLinkV1` on exactly
+`<a class="breditor-link">`. Its exact two-property descriptor correlation,
+URL admission, inert unsafe-value behavior, fixed `href`/`rel`/`target`
+outputs, DOM/composition checks, and safe-copy rules are defined in
+[`DOM_PROJECTION.md`](DOM_PROJECTION.md). The native toolbar remains no-input;
+applications call `executeIntentJson()` from their own typed controls.
+
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.3` packages:
+exactly matching `0.3.0-alpha.4` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.3 \
-  @breditor/wasm@0.3.0-alpha.3 \
-  @breditor/reference-highlight@0.3.0-alpha.3
+npm install @breditor/browser@0.3.0-alpha.4 \
+  @breditor/wasm@0.3.0-alpha.4 \
+  @breditor/reference-highlight@0.3.0-alpha.4
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -668,8 +675,9 @@ Adding real behavior therefore proceeds from the core outward:
 2. For a property-free toggle, add a manifest button whose `stateId` and
    `intentId` match that descriptor. Typed set intents are currently invoked
    programmatically through `executeIntentJson()`.
-3. Supply a complete property-insensitive render recipe for the admitted
-   format.
+3. Supply a complete render recipe for the admitted format. Property-free
+   formats use an inert wrapper; the sole property-aware choice is the exact
+   browser-owned `safeLinkV1` policy.
 4. Supply the manifest at editor startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
@@ -677,9 +685,11 @@ There is no typed toolbar control, extension keymap or `beforeinput` rule,
 custom control kind, runtime JavaScript action registration, arbitrary callback
 command, dynamic manifest replacement, plugin unload, custom node renderer, or
 stable third-party Wasm plugin ABI in the supported surface. Direct concrete
-action toolbar declarations remain an advanced policy bypass. The current
-wrapper recipe cannot derive `href`, style, or any other DOM attribute from a
-format property; safe property-driven recipes and URL/CSS policy are next.
+action toolbar declarations remain an advanced policy bypass. The alpha.4
+`safeLinkV1` recipe can derive only its closed canonical Link attribute set
+from one exact two-property contract. Arbitrary attributes, style/CSS mapping,
+schemes, callbacks, raw HTML, and user-selected `rel` or target values remain
+unsupported.
 
 The high-level startup gate is all-or-nothing for presentation as well as
 semantic data. A missing or extra render recipe, missing or extra initial
@@ -749,13 +759,25 @@ safe DOM attributes or copy HTML, accept rich formatting on paste, or provide a
 typed-input toolbar control. Its structural typed-edit and Local Log V3 limits
 remain those documented in [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
-The reference package does not change those limits. It is trusted same-realm
-JavaScript that supplies frozen configuration and presentation values, not
-sandboxed code, a package-signature proof, or a dynamic Rust/Wasm plugin. The
-Alpha.8 Chromium/Firefox/WebKit matrix proves its Highlight intent/state/
+The unpublished alpha.4 source path adds one deliberately closed exception to
+those alpha.3 presentation limits. An exact two-property `safeLinkV1` format
+may render and copy as `<a class="breditor-link">` with only canonical safe
+`href` and, when requested, fixed `rel`/`target` attributes; unsafe but
+schema-valid URLs remain inert. Canonical HTML-only Link shapes can pass the
+paste allowlist, but paste and composition still flatten every wrapper and
+property to plain replacement text. Typed structural paragraph edits remain
+unsupported, and typed Link input remains an application-owned form calling
+`executeIntentJson()` rather than a new toolbar control kind.
+
+The reference package is trusted same-realm JavaScript that supplies frozen
+configuration and presentation values, not sandboxed code, a package-signature
+proof, or a dynamic Rust/Wasm plugin. Its original Alpha.8
+Chromium/Firefox/WebKit matrix proves the property-free Highlight intent/state/
 toolbar, mixed-format nesting, history, export/copy, plain paste, persistence
-reload, restored history, and teardown paths; it does not establish broad
-mobile, operating-system IME, or assistive-technology support.
+reload, restored history, and teardown paths. Alpha.4 adds the combined
+Highlight + Link profile and corresponding consumer/demo gates; neither matrix
+establishes broad mobile, operating-system IME, or assistive-technology
+support.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

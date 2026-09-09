@@ -146,6 +146,17 @@ Bootstrap-V1/Session-V2 paths remain separate. Property-driven DOM/clipboard
 attributes, typed toolbar controls, typed structural edits, and Local Log V3
 remain unsupported. Scalar validation is not URL or CSS sanitization.
 
+The unpublished `0.3.0-alpha.4` source checkpoint leaves the Rust data model,
+codec generations, fingerprints, and Wasm ABI unchanged. It corrects the
+generic property-free toggle's capability gate: collapsed and same-paragraph
+toggles now use the existing property-preserving `TextSplice` path inside a
+typed schema, retain neighboring typed formats and pending typing state, and
+account for property values duplicated by run splitting. Cross-paragraph
+toggling still requires the property-free `RootTextReplace` structural path and
+fails closed for typed schemas. The browser's exact `safeLinkV1` policy is not
+a Rust URL contract; core continues to validate only the declared scalar shape
+and bounds.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

@@ -16,8 +16,9 @@ use super::{
     super::text_position::{TextRangeSelection, point_at_fragment_offset},
     SetInlineFormatInput,
     support::{
-        base_shape_fits, disabled, fault, fragment_range_parts, require_operation_budget,
-        require_text_splice_range, strict_relocation, text_splice_paragraph_fragment,
+        base_shape_fits, disabled, fault, format_set_property_fits, fragment_range_parts,
+        property_result_fits, require_operation_budget, require_text_splice_range,
+        strict_relocation, text_splice_paragraph_fragment,
     },
 };
 
@@ -165,7 +166,12 @@ fn evaluate_collapsed(
     if replaced == formats {
         return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
     }
-    if !format_set_property_fits(state, &replaced)? {
+    if !format_set_property_fits(
+        state,
+        &replaced,
+        "breditor/set-inline-format-validation-fault",
+        "breditor/set-inline-format-property-budget-fault",
+    )? {
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
     }
     let plan = ActionPlan::new(
@@ -211,7 +217,13 @@ fn evaluate_extended(
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
     };
     if !base_shape_fits(state, 1, source.len(), &[&result])
-        || !property_result_fits(state, &source, &result)?
+        || !property_result_fits(
+            state,
+            &source,
+            &result,
+            "breditor/set-inline-format-validation-fault",
+            "breditor/set-inline-format-property-budget-fault",
+        )?
     {
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
     }
@@ -405,96 +417,6 @@ const fn fragment_error_is_capacity(error: &TextFragmentError) -> bool {
             | TextFragmentError::TextByteLengthOverflow
             | TextFragmentError::TextRun(_)
     )
-}
-
-fn property_result_fits(
-    state: &EditorState,
-    source: &TextFragment,
-    result: &TextFragment,
-) -> Result<bool, ActionFault> {
-    let source = fragment_property_summary(state, source)?;
-    let result = fragment_property_summary(state, result)?;
-    let current = state.document().summary();
-    let value_count = current
-        .property_value_count()
-        .checked_sub(source.property_value_count())
-        .and_then(|retained| retained.checked_add(result.property_value_count()));
-    let string_bytes = current
-        .total_property_string_bytes()
-        .checked_sub(source.property_string_bytes())
-        .and_then(|retained| retained.checked_add(result.property_string_bytes()));
-    let limits = state.context().limits();
-    Ok(value_count.is_some_and(|actual| {
-        usize::try_from(actual).is_ok_and(|actual| actual <= limits.max_property_values())
-    }) && string_bytes.is_some_and(|actual| {
-        usize::try_from(actual)
-            .is_ok_and(|actual| actual <= limits.max_total_property_string_bytes())
-    }))
-}
-
-fn format_set_property_fits(state: &EditorState, formats: &FormatSet) -> Result<bool, ActionFault> {
-    let summary = format_set_property_summary(state, formats)?;
-    let limits = state.context().limits();
-    Ok(usize::try_from(summary.property_value_count)
-        .is_ok_and(|actual| actual <= limits.max_property_values())
-        && usize::try_from(summary.property_string_bytes)
-            .is_ok_and(|actual| actual <= limits.max_total_property_string_bytes()))
-}
-
-fn fragment_property_summary(
-    state: &EditorState,
-    fragment: &TextFragment,
-) -> Result<PropertySummary, ActionFault> {
-    let mut property_value_count = 0_u64;
-    let mut property_string_bytes = 0_u64;
-    for run in fragment {
-        let summary = format_set_property_summary(state, run.formats())?;
-        property_value_count = property_value_count
-            .checked_add(summary.property_value_count)
-            .ok_or_else(|| fault("breditor/set-inline-format-property-budget-fault"))?;
-        property_string_bytes = property_string_bytes
-            .checked_add(summary.property_string_bytes)
-            .ok_or_else(|| fault("breditor/set-inline-format-property-budget-fault"))?;
-    }
-    Ok(PropertySummary { property_value_count, property_string_bytes })
-}
-
-fn format_set_property_summary(
-    state: &EditorState,
-    formats: &FormatSet,
-) -> Result<PropertySummary, ActionFault> {
-    let mut property_value_count = 0_u64;
-    let mut property_string_bytes = 0_u64;
-    for format in formats {
-        let summary = state
-            .context()
-            .schema()
-            .validate_inline_format_instance(state.context().limits(), format)
-            .map_err(|_| fault("breditor/set-inline-format-validation-fault"))?;
-        property_value_count = property_value_count
-            .checked_add(summary.property_value_count())
-            .ok_or_else(|| fault("breditor/set-inline-format-property-budget-fault"))?;
-        property_string_bytes = property_string_bytes
-            .checked_add(summary.property_string_bytes())
-            .ok_or_else(|| fault("breditor/set-inline-format-property-budget-fault"))?;
-    }
-    Ok(PropertySummary { property_value_count, property_string_bytes })
-}
-
-#[derive(Clone, Copy)]
-struct PropertySummary {
-    property_value_count: u64,
-    property_string_bytes: u64,
-}
-
-impl PropertySummary {
-    const fn property_value_count(self) -> u64 {
-        self.property_value_count
-    }
-
-    const fn property_string_bytes(self) -> u64 {
-        self.property_string_bytes
-    }
 }
 
 fn rebuild_selection(

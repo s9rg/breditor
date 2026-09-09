@@ -1,10 +1,14 @@
 import { MAX_BROWSER_PROFILE_FORMATS } from "./wasm_profile_descriptor.js";
+import {
+  createInlineFormatRenderAttributePolicy,
+  type InlineFormatRenderAttributePolicy,
+} from "./inline_format_render_attributes.js";
 
 /**
  * Maximum recipes in one browser presentation.
  *
  * This intentionally equals the Rust schema compiler's aggregate format limit:
- * every admitted property-free format requires exactly one browser recipe.
+ * every admitted format requires exactly one browser recipe.
  */
 export const MAX_INLINE_FORMAT_RENDER_RECIPES = MAX_BROWSER_PROFILE_FORMATS;
 
@@ -30,6 +34,7 @@ export const MAX_INLINE_FORMAT_RENDER_FORMAT_KIND_ASCII = 128;
 
 /** Closed element vocabulary allowed in editing and clipboard projections. */
 export const INLINE_FORMAT_RENDER_ELEMENTS = Object.freeze([
+  "a",
   "code",
   "em",
   "mark",
@@ -57,6 +62,7 @@ export interface InlineFormatRenderRecipe {
   readonly classes: readonly string[];
   readonly before: readonly string[];
   readonly after: readonly string[];
+  readonly attributes?: InlineFormatRenderAttributePolicy;
 }
 
 /** Complete immutable browser render declaration. */
@@ -77,10 +83,11 @@ const CLASS_TOKEN = /^[a-z][a-z0-9_-]*$/u;
  * Copies an application value into the exact inert render-manifest schema.
  *
  * The input object may contain only `recipes`. A recipe may contain only
- * `formatKind`, `element`, and the optional `classes`, `before`, and `after`
- * arrays. Every retained field and dense array element must be an own data
- * property. Consequently accessors, symbols, callbacks, DOM objects, HTML
- * strings, and hidden extension state cannot cross this boundary.
+ * `formatKind`, `element`, and the optional `classes`, `before`, `after`, and
+ * closed `attributes` declaration. Every retained field and dense array
+ * element must be an own data property. Consequently accessors, symbols,
+ * callbacks, DOM objects, HTML strings, and hidden extension state cannot
+ * cross this boundary.
  *
  * Recipes and every set-like child array are sorted lexically before the
  * complete copied graph is frozen. Graph target coverage and acyclicity are
@@ -111,7 +118,7 @@ export function createInlineFormatRenderManifest(
     const record = readExactDataRecord(
       rawRecipes[index],
       ["formatKind", "element"],
-      ["classes", "before", "after"],
+      ["classes", "before", "after", "attributes"],
       `inline-format render recipe ${index}`,
     );
     const formatKind = record["formatKind"];
@@ -133,6 +140,24 @@ export function createInlineFormatRenderManifest(
       validClassToken,
       "inline-format render recipe classes",
     );
+    const attributes = HAS_OWN(record, "attributes")
+      ? createInlineFormatRenderAttributePolicy(record["attributes"])
+      : undefined;
+    if (element === "a") {
+      if (
+        attributes === undefined ||
+        classes.length !== 1 ||
+        classes[0] !== "breditor-link"
+      ) {
+        throw new TypeError(
+          "inline-format link recipe requires safeLinkV1 attributes and the canonical class",
+        );
+      }
+    } else if (attributes !== undefined) {
+      throw new TypeError(
+        "inline-format render attributes are allowed only on link recipes",
+      );
+    }
     const before = readOptionalCanonicalStringSet(
       record,
       "before",
@@ -161,13 +186,24 @@ export function createInlineFormatRenderManifest(
 
     seenKinds.add(formatKind);
     recipes.push(
-      Object.freeze({
-        formatKind,
-        element: element as InlineFormatRenderElement,
-        classes,
-        before,
-        after,
-      }),
+      Object.freeze(
+        attributes === undefined
+          ? {
+            formatKind,
+            element: element as InlineFormatRenderElement,
+            classes,
+            before,
+            after,
+          }
+          : {
+            formatKind,
+            element: element as InlineFormatRenderElement,
+            classes,
+            before,
+            after,
+            attributes,
+          },
+      ),
     );
   }
 

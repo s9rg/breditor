@@ -1,9 +1,11 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.3` source checkpoint uses ABI generation
-`4` for the exact matching browser/Wasm pair. It adds an explicitly selected
-typed-profile and Session-V3 path while preserving the ABI-3-era V1/V2 entry
-points. Direct raw-handle use remains a narrow advanced integration surface.
+Status: the unpublished `0.3.0-alpha.4` source checkpoint uses ABI generation
+`4` for the exact matching browser/Wasm pair. It retains the explicitly
+selected typed-profile and Session-V3 path introduced in alpha.3 while
+preserving the ABI-3-era V1/V2 entry points; alpha.4 adds no Wasm method or wire
+generation. Direct raw-handle use remains a narrow advanced integration
+surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
 it is not a crates.io release because its `breditor-core` dependency has no
@@ -16,9 +18,9 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-When published, `@breditor/browser@0.3.0-alpha.3` and
-`@breditor/wasm@0.3.0-alpha.3` must be installed as an exact-version pair. No
-alpha.3 package has been published at this checkpoint. The generated raw
+When published, `@breditor/browser@0.3.0-alpha.4` and
+`@breditor/wasm@0.3.0-alpha.4` must be installed as an exact-version pair. No
+alpha.4 package has been published at this checkpoint. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.
 The reference package likewise requires the exact browser peer so its branded
@@ -55,7 +57,7 @@ build-root prefixes plus common macOS, Linux, and Windows user-home path
 patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.3
+initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.4
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported

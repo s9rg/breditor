@@ -432,6 +432,16 @@ export {
   type InlineFormatRenderRecipe,
 } from "./inline_format_render_manifest.js";
 export {
+  MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES,
+  createInlineFormatRenderAttributePolicy,
+  inlineFormatRenderAttributePolicyMatchesFormatDescriptor,
+  inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
+  resolveInlineFormatRenderAttributes,
+  type InlineFormatRenderAttribute,
+  type InlineFormatRenderAttributePolicy,
+  type InlineFormatRenderSafeLinkV1Policy,
+} from "./inline_format_render_attributes.js";
+export {
   browserPresentationMatchesProfile,
   browserPresentationOwnsIdentity,
   browserPresentationRecipeForFormat,

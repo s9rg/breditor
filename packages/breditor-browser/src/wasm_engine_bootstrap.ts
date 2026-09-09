@@ -31,7 +31,7 @@ import {
 export const BREDITOR_WASM_ABI_VERSION = "4" as const;
 
 /** Exact official Wasm package version paired with this browser build. */
-export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.3" as const;
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.4" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;

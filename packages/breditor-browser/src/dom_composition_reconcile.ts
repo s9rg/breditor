@@ -8,11 +8,20 @@ import { compositionFailure, compositionSuccess } from "./composition_result.js"
 import {
   type BaseDocumentProjection,
   type BaseParagraphProjection,
+  type BaseTextRunProjection,
   isOwnedProjection,
   projectionPresentation,
 } from "./projection.js";
-import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
+import {
+  browserPresentationRecipesForFormatDetails,
+  type BrowserCompiledPresentation,
+  type BrowserResolvedInlineFormatRenderRecipe,
+} from "./compiled_browser_presentation.js";
 import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
+import {
+  inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
+  type InlineFormatRenderAttribute,
+} from "./inline_format_render_attributes.js";
 import {
   nativeAttributeNames,
   nativeChildNodes,
@@ -39,6 +48,9 @@ export const MAX_COMPOSITION_DOM_TEXT_UTF16 =
 export const MAX_COMPOSITION_DOM_TEXT_UTF8 =
   8 * 1024 * 1024 + MAX_COMPOSITION_TEXT_UTF8;
 
+/** Aggregate UTF-8 work ceiling for transient policy-owned DOM attributes. */
+export const MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES = 1024 * 1024;
+
 /** Semantic replacement recovered from a strictly checked temporary DOM lease. */
 export interface DomCompositionReconciliation {
   readonly paragraphIndex: number;
@@ -52,6 +64,7 @@ export interface DomCompositionReconciliation {
 
 interface ScanBudget {
   nodes: number;
+  dynamicAttributeUtf8Bytes: number;
 }
 
 type DomScanFailure = "invalidStructure" | "resourceLimit" | "invalidUnicode";
@@ -70,9 +83,10 @@ interface TextAccumulator {
  * Extracts one replacement from a temporary native-composition DOM lease.
  *
  * The AST projection remains authoritative. Every non-target paragraph must
- * still be canonical, the target must use only text and property-free strong
- * wrappers, and unchanged prefix/suffix text must match the base exactly. No
- * DOM object is returned or retained.
+ * still be canonical, the target must use only text and wrappers admitted by
+ * the exact presentation (including closed safe-link attributes), and
+ * unchanged prefix/suffix text must match the base exactly. No DOM object is
+ * returned or retained.
  */
 export function reconcileCompositionDom(
   host: unknown,
@@ -111,7 +125,7 @@ export function reconcileCompositionDom(
     if (hostChildren.length !== projection.paragraphs.length) {
       return compositionFailure("composition.dom.invalid_structure");
     }
-    const budget: ScanBudget = { nodes: 1 };
+    const budget: ScanBudget = { nodes: 1, dynamicAttributeUtf8Bytes: 0 };
     let observedTargetText: string | null = null;
     for (let index = 0; index < projection.paragraphs.length; index += 1) {
       const paragraphNode = hostChildren[index];
@@ -234,7 +248,10 @@ function extractTargetText(
     }
     const leafChildren = knownWrapperLeafChildren(child, budget, presentation);
     if (leafChildren === null) {
-      return Object.freeze({ ok: false, reason: "invalidStructure" });
+      return Object.freeze({
+        ok: false,
+        reason: budgetExceeded(budget) ? "resourceLimit" : "invalidStructure",
+      });
     }
     for (let leafIndex = 0; leafIndex < leafChildren.length; leafIndex += 1) {
       const text = leafChildren[leafIndex];
@@ -309,7 +326,7 @@ function validateCanonicalParagraph(
         ? "resourceLimit"
         : "invalidStructure";
     }
-    const recipes = recipesForFormats(run.formats, presentation);
+    const recipes = recipesForRun(run, presentation);
     if (recipes === null) return "invalidStructure";
     let current = child;
     for (const recipe of recipes) {
@@ -340,22 +357,32 @@ const LEGACY_STRONG_RECIPE: InlineFormatRenderRecipe = Object.freeze({
   before: Object.freeze([]),
   after: Object.freeze([]),
 });
+const EMPTY_RENDER_ATTRIBUTES = Object.freeze([]);
+const LEGACY_STRONG_RESOLVED_RECIPE: BrowserResolvedInlineFormatRenderRecipe =
+  Object.freeze({
+    recipe: LEGACY_STRONG_RECIPE,
+    attributes: EMPTY_RENDER_ATTRIBUTES,
+  });
+const LEGACY_STRONG_RESOLVED_RECIPES = Object.freeze([
+  LEGACY_STRONG_RESOLVED_RECIPE,
+]);
+const EMPTY_RESOLVED_RECIPES: readonly BrowserResolvedInlineFormatRenderRecipe[] =
+  Object.freeze([]);
 
-function recipesForFormats(
-  formats: readonly string[],
+function recipesForRun(
+  run: BaseTextRunProjection,
   presentation: BrowserCompiledPresentation | undefined,
-): readonly InlineFormatRenderRecipe[] | null {
+): readonly BrowserResolvedInlineFormatRenderRecipe[] | null {
   if (presentation === undefined) {
-    if (formats.length === 0) return Object.freeze([]);
-    return formats.length === 1 && formats[0] === "breditor/strong"
-      ? Object.freeze([LEGACY_STRONG_RECIPE])
+    if (run.formats.length === 0) return EMPTY_RESOLVED_RECIPES;
+    return run.formats.length === 1 && run.formats[0] === "breditor/strong"
+      ? LEGACY_STRONG_RESOLVED_RECIPES
       : null;
   }
-  const selected = new Set(formats);
-  const recipes = presentation.recipesOuterToInner.filter((recipe) =>
-    selected.has(recipe.formatKind)
-  );
-  return recipes.length === formats.length ? recipes : null;
+  return browserPresentationRecipesForFormatDetails(
+    presentation,
+    run.formatDetails,
+  ) ?? null;
 }
 
 function knownWrapperLeafChildren(
@@ -367,7 +394,9 @@ function knownWrapperLeafChildren(
   let current = outer;
   let previousOrder = -1;
   for (let depth = 0; depth < 32; depth += 1) {
-    const order = known.findIndex((recipe) => recipeElementMatches(current, recipe));
+    const order = known.findIndex((recipe) =>
+      recipeElementIsAdmittedCompositionTarget(current, recipe, budget)
+    );
     if (order <= previousOrder) return null;
     previousOrder = order;
     const children = nativeChildNodes(current);
@@ -396,8 +425,9 @@ function knownWrapperLeafChildren(
 
 function recipeElementMatches(
   node: Node,
-  recipe: InlineFormatRenderRecipe,
+  resolved: BrowserResolvedInlineFormatRenderRecipe,
 ): node is Element {
+  const { recipe } = resolved;
   const facts = nativeHtmlHostFacts(node);
   if (
     facts === undefined ||
@@ -406,15 +436,90 @@ function recipeElementMatches(
     return false;
   }
   const attributeNames = nativeAttributeNames(facts.element);
-  if (recipe.classes.length === 0) return attributeNames.length === 0;
-  return attributeNames.length === 1 &&
-    attributeNames[0] === "class" &&
-    nativeGetAttribute(facts.element, "class") === recipe.classes.join(" ");
+  const expectedNames = recipe.classes.length === 0
+    ? resolved.attributes.map(({ name }) => name)
+    : ["class", ...resolved.attributes.map(({ name }) => name)];
+  if (
+    attributeNames.length !== expectedNames.length ||
+    attributeNames.some((name, index) => name !== expectedNames[index])
+  ) {
+    return false;
+  }
+  if (
+    recipe.classes.length !== 0 &&
+    nativeGetAttribute(facts.element, "class") !== recipe.classes.join(" ")
+  ) {
+    return false;
+  }
+  return resolved.attributes.every(
+    ({ name, value }) => nativeGetAttribute(facts.element, name) === value,
+  );
+}
+
+function recipeElementIsAdmittedCompositionTarget(
+  node: Node,
+  recipe: InlineFormatRenderRecipe,
+  budget: ScanBudget,
+): node is Element {
+  const facts = nativeHtmlHostFacts(node);
+  if (
+    facts === undefined ||
+    nativeElementLocalName(facts.element) !== recipe.element
+  ) {
+    return false;
+  }
+  const names = nativeAttributeNames(facts.element);
+  const offset = recipe.classes.length === 0 ? 0 : 1;
+  if (
+    offset === 1 &&
+    (names[0] !== "class" ||
+      nativeGetAttribute(facts.element, "class") !== recipe.classes.join(" "))
+  ) {
+    return false;
+  }
+  if (recipe.attributes === undefined) {
+    return names.length === offset;
+  }
+  const attributes: InlineFormatRenderAttribute[] = [];
+  for (let index = offset; index < names.length; index += 1) {
+    const name = names[index];
+    if (name !== "href" && name !== "rel" && name !== "target") return false;
+    const value = nativeGetAttribute(facts.element, name);
+    if (value === null) return false;
+    if (!consumeDynamicAttributeValue(budget, value)) return false;
+    attributes.push({ name, value });
+  }
+  return inlineFormatRenderAttributesAreCanonicalSafeLinkV1(attributes);
 }
 
 function consumeNode(budget: ScanBudget): boolean {
   budget.nodes += 1;
   return budget.nodes <= MAX_COMPOSITION_DOM_NODES;
+}
+
+function consumeDynamicAttributeValue(
+  budget: ScanBudget,
+  value: string,
+): boolean {
+  const remaining = MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES -
+    budget.dynamicAttributeUtf8Bytes;
+  if (remaining < 0) return false;
+  const measure = measureBoundedUnicodeText(value, remaining, remaining);
+  if (!measure.ok) {
+    if (measure.reason === "resourceLimit") {
+      budget.dynamicAttributeUtf8Bytes =
+        MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES + 1;
+    }
+    return false;
+  }
+  budget.dynamicAttributeUtf8Bytes += measure.utf8Length;
+  return true;
+}
+
+function budgetExceeded(budget: ScanBudget): boolean {
+  return budget.nodes > MAX_COMPOSITION_DOM_NODES ||
+    budget.dynamicAttributeUtf8Bytes >
+      MAX_COMPOSITION_DOM_DYNAMIC_ATTRIBUTE_UTF8_BYTES;
 }
 
 function isUsableConnectedHost(value: unknown): value is HTMLElement {

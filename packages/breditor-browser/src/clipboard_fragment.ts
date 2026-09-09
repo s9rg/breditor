@@ -7,7 +7,11 @@ import {
   projectionPresentation,
   projectionProfileDescriptor,
 } from "./projection.js";
-import type { BrowserCompiledPresentation } from "./compiled_browser_presentation.js";
+import {
+  browserPresentationRecipesForFormatDetails,
+  type BrowserCompiledPresentation,
+  type BrowserResolvedInlineFormatRenderRecipe,
+} from "./compiled_browser_presentation.js";
 import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
 import {
   isOwnedBaseRangeSelection,
@@ -104,9 +108,14 @@ const LEGACY_STRONG_RECIPE: InlineFormatRenderRecipe = Object.freeze({
   before: EMPTY_STRINGS,
   after: EMPTY_STRINGS,
 });
-const LEGACY_STRONG_RECIPES: readonly InlineFormatRenderRecipe[] =
-  Object.freeze([LEGACY_STRONG_RECIPE]);
-const EMPTY_RECIPES: readonly InlineFormatRenderRecipe[] = Object.freeze([]);
+const EMPTY_RENDER_ATTRIBUTES = Object.freeze([]);
+const LEGACY_STRONG_RECIPES: readonly BrowserResolvedInlineFormatRenderRecipe[] =
+  Object.freeze([Object.freeze({
+    recipe: LEGACY_STRONG_RECIPE,
+    attributes: EMPTY_RENDER_ATTRIBUTES,
+  })]);
+const EMPTY_RECIPES: readonly BrowserResolvedInlineFormatRenderRecipe[] =
+  Object.freeze([]);
 
 // A bounded base projection contains at most 100,000 AST nodes and about 8 MiB
 // of text. Profiled runs can add two chunks per format wrapper; block encoding
@@ -231,19 +240,28 @@ function serializeOwnedSelection(
         return failure("clipboard.fragment.resource_limit");
       }
     } else {
-      for (const run of runs) {
-        // The paired parser rejects tokenizer controls and noncharacters. Keep
-        // copy -> paste closed over the exact HTML representation by refusing
-        // those scalars here; cut can then fail before deleting content.
-        if (!htmlTextIsRepresentable(run.text)) {
-          return failure("clipboard.fragment.html_unrepresentable");
-        }
-        if (!appendPlain(plainChunks, budget, run.text)) {
-          return failure("clipboard.fragment.resource_limit");
+      let runIndex = 0;
+      while (runIndex < runs.length) {
+        const run = runs[runIndex];
+        if (run === undefined) {
+          return failure("clipboard.fragment.invalid_selection");
         }
         const recipes = recipesForRun(run, presentation);
         if (recipes === null) {
           return failure("clipboard.fragment.invalid_selection");
+        }
+        let groupEnd = runIndex + 1;
+        while (groupEnd < runs.length) {
+          const next = runs[groupEnd];
+          if (next === undefined) {
+            return failure("clipboard.fragment.invalid_selection");
+          }
+          const nextRecipes = recipesForRun(next, presentation);
+          if (nextRecipes === null) {
+            return failure("clipboard.fragment.invalid_selection");
+          }
+          if (!resolvedRecipesEqual(recipes, nextRecipes)) break;
+          groupEnd += 1;
         }
         formatWrapperCount += recipes.length;
         if (
@@ -256,18 +274,34 @@ function serializeOwnedSelection(
             return failure("clipboard.fragment.resource_limit");
           }
         }
-        if (!appendEscapedHtml(htmlChunks, budget, run.text)) {
-          return failure("clipboard.fragment.resource_limit");
+        for (let groupedIndex = runIndex; groupedIndex < groupEnd; groupedIndex += 1) {
+          const groupedRun = runs[groupedIndex];
+          if (groupedRun === undefined) {
+            return failure("clipboard.fragment.invalid_selection");
+          }
+          // The paired parser rejects tokenizer controls and noncharacters.
+          // Keep copy -> paste closed over the exact HTML representation by
+          // refusing those scalars before a cut can delete content.
+          if (!htmlTextIsRepresentable(groupedRun.text)) {
+            return failure("clipboard.fragment.html_unrepresentable");
+          }
+          if (!appendPlain(plainChunks, budget, groupedRun.text)) {
+            return failure("clipboard.fragment.resource_limit");
+          }
+          if (!appendEscapedHtml(htmlChunks, budget, groupedRun.text)) {
+            return failure("clipboard.fragment.resource_limit");
+          }
         }
         for (let index = recipes.length - 1; index >= 0; index -= 1) {
-          const recipe = recipes[index];
+          const resolved = recipes[index];
           if (
-            recipe === undefined ||
-            !appendHtml(htmlChunks, budget, `</${recipe.element}>`)
+            resolved === undefined ||
+            !appendHtml(htmlChunks, budget, `</${resolved.recipe.element}>`)
           ) {
             return failure("clipboard.fragment.resource_limit");
           }
         }
+        runIndex = groupEnd;
       }
     }
     if (!appendHtml(htmlChunks, budget, "</p>")) {
@@ -319,7 +353,7 @@ function resolveProjectionPresentation(
 function recipesForRun(
   run: BaseTextRunProjection,
   presentation: BrowserCompiledPresentation | undefined,
-): readonly InlineFormatRenderRecipe[] | null {
+): readonly BrowserResolvedInlineFormatRenderRecipe[] | null {
   if (presentation === undefined) {
     if (
       run.strong !== (run.formats.length === 1) ||
@@ -332,21 +366,46 @@ function recipesForRun(
   }
 
   if (run.strong !== run.formats.includes("breditor/strong")) return null;
-  const active = new Set(run.formats);
-  const recipes: InlineFormatRenderRecipe[] = [];
-  for (const recipe of presentation.recipesOuterToInner) {
-    if (active.has(recipe.formatKind)) recipes.push(recipe);
-  }
-  return recipes.length === run.formats.length
-    ? Object.freeze(recipes)
-    : null;
+  return browserPresentationRecipesForFormatDetails(
+    presentation,
+    run.formatDetails,
+  ) ?? null;
 }
 
-function openingWrapper(recipe: InlineFormatRenderRecipe): string {
+function openingWrapper(
+  resolved: BrowserResolvedInlineFormatRenderRecipe,
+): string {
+  const { recipe } = resolved;
   const classAttribute = recipe.classes.length === 0
     ? ""
     : ` class="${recipe.classes.join(" ")}"`;
-  return `<${recipe.element}${classAttribute}>`;
+  const dynamicAttributes = resolved.attributes.map(
+    ({ name, value }) => ` ${name}="${escapeSmallHtmlAttribute(value)}"`,
+  ).join("");
+  return `<${recipe.element}${classAttribute}${dynamicAttributes}>`;
+}
+
+function escapeSmallHtmlAttribute(value: string): string {
+  return escapeHtmlBlock(value, 0, value.length);
+}
+
+function resolvedRecipesEqual(
+  left: readonly BrowserResolvedInlineFormatRenderRecipe[],
+  right: readonly BrowserResolvedInlineFormatRenderRecipe[],
+): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((resolved, index) => {
+    const candidate = right[index];
+    return candidate !== undefined &&
+      resolved.recipe === candidate.recipe &&
+      resolved.attributes.length === candidate.attributes.length &&
+      resolved.attributes.every((attribute, attributeIndex) => {
+        const other = candidate.attributes[attributeIndex];
+        return other !== undefined &&
+          attribute.name === other.name &&
+          attribute.value === other.value;
+      });
+  });
 }
 
 function sliceParagraphRuns(

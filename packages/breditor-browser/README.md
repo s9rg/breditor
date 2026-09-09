@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the alpha.3 typed-profile source checkpoint.
+`0.2.0` extension surface, and the alpha.4 typed-profile source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -50,16 +50,15 @@ path in clean tarball and Chromium/Firefox/WebKit consumers. The former bare-
 factory and standalone restore seams are not accepted by the supported root
 API. `0.2.0` carries the audited RC.1 surface without feature widening.
 
-The unpublished `0.3.0-alpha.3` source package requires Wasm ABI 4 and adds an
-explicit typed-profile path. Profile Bootstrap V2, compiled property
-descriptors, property-bearing semantic projections, strict typed intent JSON,
-and Session Checkpoint V3 IndexedDB/autosave now cross the supported browser
-owner. Existing exact-base V1 and Bootstrap-V1 profile V2 paths remain
-separately selected. Rendering and toolbar presentation are still narrower:
-the safe wrapper recipe cannot derive DOM attributes from property values, and
-the native-button toolbar cannot collect typed input. A requested close-before
-history boundary and its action, intent, undo, or redo are admitted as one Rust
-checkpoint publication rather than separate browser-issued mutations.
+The unpublished `0.3.0-alpha.4` source package retains alpha.3's Wasm ABI 4,
+explicit typed-profile path, property-bearing projections, strict typed intent
+JSON, and Session Checkpoint V3 persistence. It adds the single browser-owned
+`safeLinkV1` property presentation: canonical safe URLs receive fixed Link
+attributes and unsafe-but-schema-valid URLs render as inert anchors. The native
+toolbar still cannot collect typed input; the reference React form calls
+`executeIntentJson()` as application UI. A requested close-before history
+boundary and its action, intent, undo, or redo remain one Rust checkpoint
+publication rather than separate browser-issued mutations.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
@@ -74,7 +73,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.3 @breditor/wasm@0.3.0-alpha.3
+npm install @breditor/browser@0.3.0-alpha.4 @breditor/wasm@0.3.0-alpha.4
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -137,7 +136,8 @@ matching Document/Session Checkpoint V2, and an owned `rendering` value from
 Bootstrap V2, Document V2, and Session Checkpoint V3. Omitting the semantic
 profile retains exact-base V1. No form sniffs or falls back to another
 generation. Rendering must cover every admitted format; current recipes contain
-only a safe element, checked classes, and explicit ordering edges.
+only a safe element, checked classes, explicit ordering edges, and optionally
+the exact `safeLinkV1` policy described below.
 
 The supported `0.2.0` configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
@@ -319,12 +319,34 @@ it creates only:
 
 A compiled presentation requires exactly one recipe for every descriptor format
 and rejects missing, extra, cyclic, self-referential, duplicate-signature, or
-generation-mismatched input. Each wrapper is one inert element from `code`,
-`em`, `mark`, `s`, `span`, `strong`, `sub`, `sup`, or `u`, with only its exact
-canonical class-token set. `before` and `after` edges determine
-outer-to-inner nesting; unconstrained ties use lexical format identity, never
-extension installation or object iteration order. The renderer preflights the
-complete DOM amplification bound before mutating the host.
+generation-mismatched input. A property-free wrapper is one inert element from
+`code`, `em`, `mark`, `s`, `span`, `strong`, `sub`, `sup`, or `u`, with only
+its exact canonical class-token set. `<a>` is admitted only with the exact
+`breditor-link` class and `safeLinkV1` policy. `before` and `after` edges
+determine outer-to-inner nesting; unconstrained ties use lexical format
+identity, never extension installation or object iteration order. The renderer
+preflights the complete DOM amplification bound before mutating the host.
+
+`safeLinkV1` names exactly two distinct required format properties. The href
+descriptor must be a string with exact inclusive UTF-8 bounds `1..=2048`; the
+open-in-new-window descriptor must be Boolean, and the format may declare no
+other properties. Only absolute, credential-free HTTP(S) URLs with no control
+or Unicode-whitespace scalar and at most 2048 UTF-8 bytes before and after
+normalization receive navigation attributes, and the emitted URL is canonical.
+Same-window output is only `href`; new-window output adds fixed
+`rel="noopener noreferrer"` and `target="_blank"`. A schema-valid unsafe URL
+renders an inert `<a class="breditor-link">` without faulting.
+
+Raw spelling must contain a nonempty authority immediately after exactly
+`http://` or `https://`. The raw authority is restricted to visible ASCII and
+may contain neither percent escapes, backslashes, nor `@`; internationalized
+host names use their explicit `xn--` ASCII spelling. Excess authority slashes
+and every other rejected spelling fail before the repairing URL parser runs.
+
+This is not a generic property-to-attribute API. A recipe cannot supply an
+attribute name, URL scheme, style, callback, raw HTML, `rel`, or target value.
+Rust validates the declared scalar shapes and bounds but does not parse or
+semantically validate URLs; browser presentation owns that policy.
 
 The renderer never calls `innerHTML`, installs untrusted markup, or stores AST
 paths in `data-*` attributes. It does not modify the host's own attributes.
@@ -482,8 +504,13 @@ inline; commands themselves remain synchronous. Reconciliation accepts one
 target paragraph which is empty, contains only text and exact known recipe
 wrappers in canonical nesting, or uses one sole empty `<br>` placeholder, while
 every other paragraph and all outside text must still match the projection.
-Unknown tags, classes, attributes, wrapper order, or branching fail closed.
-Temporary wrappers are stripped to replacement text and never become AST state.
+Known Link wrappers admit only the inert, canonical href-only, or canonical
+href/rel/target shape; unchanged Link wrappers must match their projected
+attributes exactly. Unknown tags, classes, attributes, wrapper order, or
+branching fail closed. Transient dynamic attribute values share a 1 MiB
+aggregate UTF-8 work budget charged before URL parsing. Temporary wrappers are
+stripped to replacement text and never become AST state or reconstructed
+properties.
 
 The adapter full-renders the authoritative base and restores the captured
 selection before one leased Rust submission. Insert and delete use
@@ -500,11 +527,13 @@ exact late terminal `input` echo.
 and their exact optional event echoes. It reserves the queue built from the
 exact adapter executor before reading an event, clipboard capability, or DOM
 selection. Copy slices the semantic projection, never DOM markup. Cut writes
-both `text/plain` and escaped HTML using the compiled recipe wrappers, confirms
-native cancellation, and only then submits one selection deletion. Paste gives
+both `text/plain` and escaped HTML using the compiled recipe wrappers and exact
+`safeLinkV1` attributes, confirms native cancellation, and only then submits
+one selection deletion. Unsafe Link values copy as inert anchors. Paste gives
 advertised plain text precedence; HTML is considered only when plain is absent,
-then must exactly match the active recipe allowlist. It is always flattened for
-one atomic plain-text insertion, so source formatting never enters the AST;
+then must exactly match the active recipe allowlist, including one of the three
+canonical Link attribute shapes. It is always flattened for one atomic
+plain-text insertion, so source formatting and properties never enter the AST;
 the existing target pending/context-format rules still apply.
 
 The controller never retains an event, `DataTransfer`, clipboard payload, or
@@ -668,7 +697,8 @@ backpressure; terminal adapter loss pauses autosave. See
   profile can contribute additional property-free format toggle intents and a
   custom manifest can omit, reorder, relabel, group, or expose them as the same
   native-button control kind. Typed intents are callable through
-  `executeIntentJson()`, but there are no typed toolbar controls, menus/selects,
+  `executeIntentJson()` and the reference app demonstrates React-owned Link
+  controls, but there are no native typed toolbar controls, menus/selects,
   extension keymaps or `beforeinput` rules, dynamic
   manifest replacement, JavaScript action/catalog registration, or packaged
   React wrapper.
@@ -679,10 +709,11 @@ backpressure; terminal adapter loss pauses autosave. See
   copied, but every paste is plain-text. There is no async Clipboard API,
   internal MIME, files/images, or rich paste.
 - Extensions may add closed typed scalar properties to inline formats in the
-  sealed paragraph/text AST. Current render recipes and copy HTML do not derive
-  attributes, URLs, or CSS from those values, so a safe rendered Link control is
-  not yet supported. Arbitrary nodes, entities, nested blocks, callbacks, and
-  extension-owned DOM renderers remain absent.
+  sealed paragraph/text AST. Rendering and copy HTML derive attributes only
+  through the exact `safeLinkV1` contract; there is no arbitrary attribute,
+  URL-policy, or CSS extension mechanism. Rust performs scalar validation, not
+  URL semantic validation. Arbitrary nodes, entities, nested blocks, callbacks,
+  and extension-owned DOM renderers remain absent.
 - History is local and linear; collaboration, CRDT/OT rebasing, remote
   selections, and selective undo are absent.
 - Public content egress is mode-selected Document V1/V2 or semantic plain text.

@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, recalibrated for the unpublished
-`0.3.0-alpha.3` ABI-4 typed-profile/browser checkpoint
+`0.3.0-alpha.4` safe-Link/reference-profile checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -12,16 +12,16 @@ total.
 
 The current release ceilings are deliberately explicit:
 
-- all emitted `@breditor/browser` JavaScript: 910,000 bytes;
+- all emitted `@breditor/browser` JavaScript: 950,000 bytes;
 - all emitted browser declarations: 245,000 bytes;
-- all emitted `@breditor/reference-highlight` JavaScript: 12,000 bytes;
-- all emitted reference Highlight declarations: 12,000 bytes;
+- all emitted `@breditor/reference-highlight` JavaScript: 28,000 bytes;
+- all emitted Highlight + Link reference declarations: 24,000 bytes;
 - generated Wasm binary: 1,600,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
-- packed `@breditor/browser` tarball: 225,000 bytes;
+- packed `@breditor/browser` tarball: 235,000 bytes;
 - packed `@breditor/reference-highlight` tarball: 20,000 bytes;
 - packed `@breditor/wasm` tarball: 520,000 bytes;
-- reference-application JavaScript: 775,000 raw and 210,000 gzip bytes; and
+- reference-application JavaScript: 800,000 raw and 210,000 gzip bytes; and
 - reference-application Wasm: 1,600,000 raw and 450,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
@@ -134,6 +134,32 @@ were not raised. The new raw ceilings are explicit headroom for reviewed
 semantic and browser-security code, not a code-splitting or file-enumeration
 escape.
 
+The `0.3.0-alpha.4` checkpoint recalibrates only the artifacts that now carry
+the reviewed closed `safeLinkV1` policy, the additive Highlight + Link reference
+profile, and the React-owned typed Link form. Its final clean-build actual /
+ceiling measurements are:
+
+- browser-package JavaScript: 931,778 / 950,000 bytes;
+- browser declarations: 240,208 / 245,000 bytes;
+- Highlight + Link reference JavaScript: 25,391 / 28,000 bytes;
+- Highlight + Link reference declarations: 21,764 / 24,000 bytes;
+- generated Wasm: 1,558,739 / 1,600,000 bytes;
+- generated Wasm JavaScript glue: 51,502 / 100,000 bytes;
+- reference-application JavaScript: 783,144 / 800,000 raw bytes and
+  206,251 / 210,000 gzip bytes;
+- reference-application Wasm: 1,558,739 / 1,600,000 raw bytes and
+  433,449 / 450,000 gzip bytes;
+- packed browser package: 228,658 / 235,000 bytes;
+- packed Highlight + Link reference package: 14,624 / 20,000 bytes; and
+- packed Wasm package: 502,604 / 520,000 bytes.
+
+The browser JavaScript, reference JavaScript/declaration, application raw
+JavaScript, and browser-tarball ceilings move from their alpha.3 values. The
+browser declaration, gzip, Wasm, glue, reference-tarball, and Wasm-tarball
+ceilings remain unchanged. Alpha.4 changes neither Wasm ABI 4 nor a durable
+format; the small Wasm-size movement is deterministic release-string and
+link-layout variation rather than a new transport surface.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -162,8 +188,8 @@ and common user-home pattern checks prevent host-specific workspace,
 Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
-It kept ABI 3 within the historical `0.2.0` ceilings and now keeps ABI 4 within
-the alpha.3 ceilings listed above.
+It kept ABI 3 within the historical `0.2.0` ceilings and keeps ABI 4 within the
+current alpha.4 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

@@ -1,7 +1,8 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed
+accessibility gate passed; the unpublished alpha.4 source checkpoint adds the
+separate combined Highlight + Link Chromium gates described below
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -37,11 +38,19 @@ contracts:
   Highlight intent/state/toolbar behavior, Strong/Highlight nesting, undo/redo,
   export/copy, plain paste, persistence reload, restored history, and teardown.
 
+Alpha.4's separate clean tarball-only Chromium consumer opens the unchanged
+Highlight profile beside the additive Bootstrap-V2 Highlight + Link profile,
+executes typed Link set/remove/set commands, checks canonical safe-Link
+attributes and wrapper nesting, and disposes both editors without workspace
+imports.
+
 The separate `npm run test:demo` Chromium gate covers the complete React page:
-its canonical Highlight sample, ordinary keyboard editing after formatting and
-history replay, dirty-to-idle autosave, reload restoration, full-page axe scan,
-and toolbar containment at a 320-pixel viewport. It complements rather than
-replaces the three-engine package harness.
+its canonical Highlight + Link sample, React-owned URL and new-window controls,
+typed Link set/remove, canonical anchor attributes, Bold/Highlight coexistence,
+undo/redo, ordinary keyboard editing, dirty-to-idle Session-V3 autosave and
+reload restoration, a full-page axe scan, and toolbar containment at a
+320-pixel viewport. It complements rather than replaces the three-engine
+package harness.
 
 Run the gate after generating the three public packages:
 

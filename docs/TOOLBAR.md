@@ -207,6 +207,13 @@ manifests are branded by their creating browser module instance. Clean-consumer
 and Chromium/Firefox/WebKit tests exercise the actual package rather than an
 inline imitation.
 
+Alpha.4's additive Highlight + Link reference profile does not widen this
+toolbar protocol. Its URL field, open-in-new-window checkbox, Apply Link, and
+Remove Link buttons are React-owned application UI beside the declarative
+toolbar. They construct exact typed set/remove JSON and call the existing
+`executeIntentJson()` boundary. They are not toolbar manifest controls and do
+not receive renderer, selection, or Rust mutation authority.
+
 ## Accessible DOM behavior
 
 `BreditorToolbar` treats its constructor element as a mount. It accepts only an
@@ -293,10 +300,11 @@ toolbar.
   bridges status into a bounded, immutable external-store subscription.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
-- The alpha.3 public editor can execute descriptor-declared typed intent JSON,
-  but the toolbar has no typed-input control kind. There are no custom control
-  kinds, menus/selects, extension keymaps or `beforeinput` rules, dynamic
-  manifest replacement, or asynchronous toolbar dispatch.
+- The public editor can execute descriptor-declared typed intent JSON. Alpha.4
+  demonstrates a React-owned Link form, but the toolbar still has no typed-input
+  control kind. There are no custom control kinds, menus/selects, extension
+  keymaps or `beforeinput` rules, dynamic manifest replacement, or asynchronous
+  toolbar dispatch.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
 - The `0.1.0` automated gate covers keyboard navigation, computed focus

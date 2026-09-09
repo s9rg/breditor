@@ -14,9 +14,10 @@ import {
   projectionPresentation,
 } from "./projection.js";
 import {
-  browserPresentationRecipeForFormat,
+  browserPresentationRecipesForFormatDetails,
   isOwnedBrowserCompiledPresentation,
   type BrowserCompiledPresentation,
+  type BrowserResolvedInlineFormatRenderRecipe,
 } from "./compiled_browser_presentation.js";
 import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
 import {
@@ -33,6 +34,7 @@ import {
   nativeParentNode,
   nativeRemoveElement,
   nativeReplaceChildren,
+  nativeSetAttribute,
 } from "./html_host.js";
 import {
   type BaseProjectionUpdate,
@@ -578,9 +580,10 @@ export class BreditorDomRenderer {
   /**
    * Replaces a host's children with a complete safe DOM projection.
    *
-   * The renderer creates only paragraphs, property-free `strong` wrappers,
-   * empty-paragraph `br` placeholders, and text nodes. It never interprets
-   * HTML or adds AST paths as DOM attributes.
+   * The renderer creates only paragraphs, manifest-admitted inert inline
+   * wrappers, empty-paragraph `br` placeholders, and text nodes. The sole
+   * dynamic attribute mapping is the closed `safeLinkV1` href/rel/target
+   * policy. It never interprets HTML or exposes AST paths as DOM attributes.
    */
   render(
     host: HTMLElement,
@@ -1104,12 +1107,12 @@ function buildParagraphChildren(
     const path = textRunAstPath(paragraphIndex, runIndex);
     const text = createTextNode(document, run.text);
     mapNode(text, path, maps.astToDom, maps.domToAst, true);
-    const recipes = recipesForRun(run.formats, presentation);
+    const recipes = recipesForRun(run, presentation);
     let child: Node = text;
     for (let recipeIndex = recipes.length - 1; recipeIndex >= 0; recipeIndex -= 1) {
-      const recipe = recipes[recipeIndex];
-      if (recipe === undefined) throw new TypeError("render recipe is unavailable");
-      const wrapper = createRecipeElement(document, recipe);
+      const resolved = recipes[recipeIndex];
+      if (resolved === undefined) throw new TypeError("render recipe is unavailable");
+      const wrapper = createRecipeElement(document, resolved);
       wrapper.append(child);
       child = wrapper;
     }
@@ -1144,7 +1147,7 @@ function paragraphDomMatches(
   }
   return paragraph.runs.every((run, runIndex) => {
     const child = children[runIndex];
-    return child !== undefined && runDomMatches(child, run.text, run.formats, presentation);
+    return child !== undefined && runDomMatches(child, run, presentation);
   });
 }
 
@@ -1185,37 +1188,44 @@ const LEGACY_STRONG_RECIPE: InlineFormatRenderRecipe = Object.freeze({
   before: Object.freeze([]),
   after: Object.freeze([]),
 });
+const EMPTY_RENDER_ATTRIBUTES = Object.freeze([]);
+const LEGACY_STRONG_RESOLVED_RECIPE: BrowserResolvedInlineFormatRenderRecipe =
+  Object.freeze({
+    recipe: LEGACY_STRONG_RECIPE,
+    attributes: EMPTY_RENDER_ATTRIBUTES,
+  });
+const LEGACY_STRONG_RESOLVED_RECIPES = Object.freeze([
+  LEGACY_STRONG_RESOLVED_RECIPE,
+]);
+const EMPTY_RESOLVED_RECIPES: readonly BrowserResolvedInlineFormatRenderRecipe[] =
+  Object.freeze([]);
 
 function recipesForRun(
-  formats: readonly string[],
+  run: BaseTextRunProjection,
   presentation: BrowserCompiledPresentation | undefined,
-): readonly InlineFormatRenderRecipe[] {
+): readonly BrowserResolvedInlineFormatRenderRecipe[] {
   if (presentation === undefined) {
-    if (formats.length === 0) return Object.freeze([]);
-    if (formats.length === 1 && formats[0] === "breditor/strong") {
-      return Object.freeze([LEGACY_STRONG_RECIPE]);
+    if (run.formats.length === 0) return EMPTY_RESOLVED_RECIPES;
+    if (run.formats.length === 1 && run.formats[0] === "breditor/strong") {
+      return LEGACY_STRONG_RESOLVED_RECIPES;
     }
     throw new TypeError("legacy renderer received an unsupported format");
   }
-  const selected = new Set(formats);
-  const recipes = presentation.recipesOuterToInner.filter((recipe) =>
-    selected.has(recipe.formatKind)
+  const recipes = browserPresentationRecipesForFormatDetails(
+    presentation,
+    run.formatDetails,
   );
-  if (recipes.length !== formats.length) {
+  if (recipes === undefined) {
     throw new TypeError("profile renderer is missing a format recipe");
-  }
-  for (const format of formats) {
-    if (browserPresentationRecipeForFormat(presentation, format) === undefined) {
-      throw new TypeError("profile renderer received an unsupported format");
-    }
   }
   return recipes;
 }
 
 function createRecipeElement(
   document: Document,
-  recipe: InlineFormatRenderRecipe,
+  resolved: BrowserResolvedInlineFormatRenderRecipe,
 ): HTMLElement {
+  const { recipe } = resolved;
   const element = document.createElementNS(HTML_NAMESPACE, recipe.element);
   if (
     !isFreshHtmlElement(document, element, recipe.element.toUpperCase())
@@ -1223,9 +1233,12 @@ function createRecipeElement(
     throw new TypeError("The host document did not create the requested HTML element.");
   }
   if (recipe.classes.length !== 0) {
-    element.setAttribute("class", recipe.classes.join(" "));
+    nativeSetAttribute(element, "class", recipe.classes.join(" "));
   }
-  if (!recipeElementMatches(element, recipe)) {
+  for (const attribute of resolved.attributes) {
+    nativeSetAttribute(element, attribute.name, attribute.value);
+  }
+  if (!recipeElementMatches(element, resolved)) {
     throw new TypeError("The host document did not retain the requested render recipe.");
   }
   return element;
@@ -1233,13 +1246,12 @@ function createRecipeElement(
 
 function runDomMatches(
   outer: Node,
-  textValue: string,
-  formats: readonly string[],
+  run: BaseTextRunProjection,
   presentation: BrowserCompiledPresentation | undefined,
 ): boolean {
-  let recipes: readonly InlineFormatRenderRecipe[];
+  let recipes: readonly BrowserResolvedInlineFormatRenderRecipe[];
   try {
-    recipes = recipesForRun(formats, presentation);
+    recipes = recipesForRun(run, presentation);
   } catch {
     return false;
   }
@@ -1255,7 +1267,7 @@ function runDomMatches(
     }
     current = children[0];
   }
-  return nativeNodeType(current) === 3 && nativeNodeValue(current) === textValue;
+  return nativeNodeType(current) === 3 && nativeNodeValue(current) === run.text;
 }
 
 function textNodeForRunDom(
@@ -1263,9 +1275,9 @@ function textNodeForRunDom(
   run: BaseTextRunProjection,
   presentation: BrowserCompiledPresentation | undefined,
 ): Text | undefined {
-  let recipes: readonly InlineFormatRenderRecipe[];
+  let recipes: readonly BrowserResolvedInlineFormatRenderRecipe[];
   try {
-    recipes = recipesForRun(run.formats, presentation);
+    recipes = recipesForRun(run, presentation);
   } catch {
     return undefined;
   }
@@ -1288,14 +1300,29 @@ function textNodeForRunDom(
 
 function recipeElementMatches(
   node: Node,
-  recipe: InlineFormatRenderRecipe,
+  resolved: BrowserResolvedInlineFormatRenderRecipe,
 ): node is HTMLElement {
+  const { recipe } = resolved;
   if (!isHtmlElementNamed(node, recipe.element.toUpperCase())) return false;
   const attributeNames = nativeAttributeNames(node);
-  if (recipe.classes.length === 0) return attributeNames.length === 0;
-  return attributeNames.length === 1 &&
-    attributeNames[0] === "class" &&
-    nativeGetAttribute(node, "class") === recipe.classes.join(" ");
+  const expectedNames = recipe.classes.length === 0
+    ? resolved.attributes.map(({ name }) => name)
+    : ["class", ...resolved.attributes.map(({ name }) => name)];
+  if (
+    attributeNames.length !== expectedNames.length ||
+    attributeNames.some((name, index) => name !== expectedNames[index])
+  ) {
+    return false;
+  }
+  if (
+    recipe.classes.length !== 0 &&
+    nativeGetAttribute(node, "class") !== recipe.classes.join(" ")
+  ) {
+    return false;
+  }
+  return resolved.attributes.every(
+    ({ name, value }) => nativeGetAttribute(node, name) === value,
+  );
 }
 
 function wrappersAreUnmapped(

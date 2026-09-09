@@ -13,9 +13,10 @@ history is in the [Changelog](CHANGELOG.md).
 
 ## Run the browser demo
 
-The React demo loads the packaged reference Highlight profile, its canonical
-Document V2 sample, renderer, and four-control toolbar. It also exercises local
-autosave and the explicit startup and persistence recovery paths.
+The React demo loads the packaged reference Highlight + Link profile, its
+canonical Document V2 sample, renderer, four-button toolbar, and React-owned
+typed Link form. It also exercises local autosave and the explicit startup and
+persistence recovery paths.
 
 ```sh
 npm ci
@@ -134,6 +135,27 @@ remain explicit compatibility routes. The packages are not published. Safe
 property-driven DOM recipes, HTML/clipboard attributes, and typed toolbar
 controls are the next browser work rather than implied by scalar validation.
 
+The `0.3.0-alpha.4` source checkpoint adds one deliberately closed
+property-driven browser presentation without changing Wasm ABI 4 or durable
+formats. It also routes collapsed and same-paragraph property-free toggles
+through the existing property-preserving `TextSplice` capability, so Bold and
+Highlight coexist with Link while cross-paragraph structural toggles remain
+closed. A `safeLinkV1` recipe is valid only for
+`<a class="breditor-link">` and only when its format declares exactly two
+required properties: a `1..=2048` UTF-8-byte href string and a Boolean
+open-in-new-window flag. The browser emits a canonical `href` only for absolute,
+credential-free HTTP(S) URLs without control or Unicode-whitespace scalars. A
+raw authority must use visible ASCII with no percent escapes, backslashes, or
+`@`; internationalized host names use explicit `xn--` spelling. A safe
+new-window link also receives fixed `rel="noopener noreferrer"` and
+`target="_blank"`; a schema-valid but unsafe URL renders as an inert anchor.
+DOM drift, composition reconciliation, and safe-copy HTML enforce the same
+closed shapes. HTML paste may admit them but still inserts plain text and
+reconstructs no source formatting or properties. The additive reference Link
+profile uses a React-owned form and the existing strict `executeIntentJson()`
+path; the native toolbar remains button-only. These packages remain
+unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -143,7 +165,8 @@ The implementation includes:
 - a minimal compiled base schema plus a sealed compiler for adding
   inline formats to the same document/paragraph/text grammar, with optional
   closed typed scalar-property contracts that alpha.3 carries as data through
-  the explicitly selected Wasm/browser profile path;
+  the explicitly selected Wasm/browser profile path and that alpha.4 can map
+  only through the browser-owned `safeLinkV1` presentation policy;
 - separate Rust-only fingerprint-bearing V2 codecs for document, operation,
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
@@ -305,20 +328,25 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.3` contract admits typed properties in Document
+The experimental `0.3.0-alpha.4` contract admits typed properties in Document
 V2 and supports explicit set/remove, typed pending insertion, paragraph-local
 splice/delete paths, exact history, and the Operation, Editor State,
 Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 4
 and the browser now compile those contracts explicitly, validate and project
 their scalar values, execute descriptor-declared typed intents from strict JSON,
-and preserve them through Session Checkpoint V3 IndexedDB restore/autosave. It
+and preserve them through Session Checkpoint V3 IndexedDB restore/autosave. The
+browser's single closed `safeLinkV1` policy maps an exact two-property Link to
+canonical fixed attributes; unsafe-but-schema-valid URLs stay visible as inert
+anchors. React reference controls construct typed Link inputs outside the
+native toolbar. It
 does not yet support typed `ParagraphSplit`, `ParagraphJoin`, or
 `RootTextReplace`, so paragraph breaks, paragraph-boundary deletes,
 cross-paragraph replacement, and the `InsertPlainTextAction` structural path
-remain property-free. No Local Log V3 exists. The current callback-free DOM
-recipe, HTML/clipboard mapping, and native-button toolbar do not consume format
-properties; Boolean/integer/string shape validation is not URL or CSS
-sanitization. One manifest and one complete profile can each contribute at most
+remain property-free. No Local Log V3 exists. Paste remains plain text and
+reconstructs no Link properties; there is no arbitrary attribute or CSS
+mapping, and the native toolbar has no typed-input control. Rust's
+Boolean/integer/string validation is not URL or CSS sanitization. One manifest
+and one complete profile can each contribute at most
 255 toggle declarations and at most 255 set declarations; every target is owned
 by that manifest, each typed ID is profile-unique in its namespace, and
 extension semantic IDs cannot use `breditor/*`.
@@ -1165,8 +1193,10 @@ npx playwright install
 npm run check:size
 npm run typecheck
 npm run typecheck:browser
+npm run typecheck:demo
 npm test
 npm run test:browser
+npm run test:demo
 npm run check:wasm-package
 npm run smoke:packages
 ./scripts/check-wasm-api.sh

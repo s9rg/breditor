@@ -193,6 +193,52 @@ describe("compiled browser presentation", () => {
     ).toThrow(/coverage/u);
   });
 
+  it("requires every propertyful format to have one exact closed attribute policy", () => {
+    const generation = new Generation();
+    const descriptor = ownedDescriptor(generation, [SAFE_LINK_FORMAT]);
+    const linked = renderManifest([{
+      formatKind: "example/link",
+      element: "a",
+      classes: ["breditor-link"],
+      attributes: {
+        kind: "safeLinkV1",
+        hrefProperty: "example/href",
+        openInNewWindowProperty: "example/open-in-new-window",
+      },
+    }]);
+    const silentlyDiscarded = renderManifest([{
+      formatKind: "example/link",
+      element: "span",
+      classes: ["link"],
+    }]);
+
+    expect(() =>
+      compileBrowserPresentation(generation, descriptor, linked)
+    ).not.toThrow();
+    expect(() =>
+      compileBrowserPresentation(generation, descriptor, silentlyDiscarded)
+    ).toThrow(/attribute policy/u);
+
+    const wrongContract = ownedDescriptor(generation, [{
+      ...SAFE_LINK_FORMAT,
+      properties: [
+        {
+          name: "example/href",
+          presence: "required" as const,
+          valueType: {
+            kind: "string" as const,
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: 1_024,
+          },
+        },
+        SAFE_LINK_FORMAT.properties[1] as ProfilePropertyFixture,
+      ],
+    }]);
+    expect(() =>
+      compileBrowserPresentation(generation, wrongContract, linked)
+    ).toThrow(/attribute policy/u);
+  });
+
   it("requires the descriptor's exact opaque generation correlation", () => {
     const sourceGeneration = new Generation();
     const descriptor = ownedDescriptor(sourceGeneration, ["example/alpha"]);
@@ -386,9 +432,12 @@ function renderManifest(recipes: readonly unknown[]): InlineFormatRenderManifest
 
 function ownedDescriptor(
   generation: WasmProfileGenerationView,
-  formatKinds: readonly string[],
+  formatKinds: readonly ProfileFormatFixture[],
 ): BrowserCompiledProfileDescriptor {
   const absent = (): undefined => undefined;
+  const normalized = formatKinds.map((format) => typeof format === "string"
+    ? { kind: format, properties: [] }
+    : format);
   const view: WasmCompiledProfileDescriptorView = {
     schemaName: "example/document",
     schemaVersion: 1,
@@ -397,18 +446,32 @@ function ownedDescriptor(
     intentCount: 0,
     actionStateCount: 0,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
-    formatKind: (index) => formatKinds[index],
+    formatKind: (index) => normalized[index]?.kind,
     formatRevision: (index) =>
       index >= 0 && index < formatKinds.length ? 1 : undefined,
-    formatPropertyCount: (index) =>
-      index >= 0 && index < formatKinds.length ? 0 : undefined,
-    formatPropertyName: absent,
-    formatPropertyPresence: absent,
-    formatPropertyValueType: absent,
-    formatPropertyIntegerMinimum: absent,
-    formatPropertyIntegerMaximum: absent,
-    formatPropertyStringMinimumUtf8Bytes: absent,
-    formatPropertyStringMaximumUtf8Bytes: absent,
+    formatPropertyCount: (index) => normalized[index]?.properties.length,
+    formatPropertyName: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.name,
+    formatPropertyPresence: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.presence,
+    formatPropertyValueType: (formatIndex, propertyIndex) =>
+      normalized[formatIndex]?.properties[propertyIndex]?.valueType.kind,
+    formatPropertyIntegerMinimum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.minimum : undefined;
+    },
+    formatPropertyIntegerMaximum: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "integer" ? type.maximum : undefined;
+    },
+    formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.minimumUtf8Bytes : undefined;
+    },
+    formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const type = normalized[formatIndex]?.properties[propertyIndex]?.valueType;
+      return type?.kind === "string" ? type.maximumUtf8Bytes : undefined;
+    },
     intentId: absent,
     intentInputKind: absent,
     intentInputContractName: absent,
@@ -430,3 +493,41 @@ function ownedDescriptor(
   if (!result.ok) throw new Error("test descriptor was rejected");
   return result.descriptor;
 }
+
+type ProfilePropertyFixture = Readonly<{
+  name: string;
+  presence: "required" | "optional";
+  valueType:
+    | Readonly<{ kind: "boolean" }>
+    | Readonly<{ kind: "integer"; minimum?: number; maximum?: number }>
+    | Readonly<{
+      kind: "string";
+      minimumUtf8Bytes: number;
+      maximumUtf8Bytes: number;
+    }>;
+}>;
+
+type ProfileFormatFixture = string | Readonly<{
+  kind: string;
+  properties: readonly ProfilePropertyFixture[];
+}>;
+
+const SAFE_LINK_FORMAT: Exclude<ProfileFormatFixture, string> = Object.freeze({
+  kind: "example/link",
+  properties: Object.freeze([
+    Object.freeze({
+      name: "example/href",
+      presence: "required" as const,
+      valueType: Object.freeze({
+        kind: "string" as const,
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 2_048,
+      }),
+    }),
+    Object.freeze({
+      name: "example/open-in-new-window",
+      presence: "required" as const,
+      valueType: Object.freeze({ kind: "boolean" as const }),
+    }),
+  ]),
+});

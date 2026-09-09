@@ -90,21 +90,164 @@ describe("inline-format render manifest", () => {
     }
   });
 
+  it("owns the one exact canonical safe-link recipe", () => {
+    const source = {
+      recipes: [
+        {
+          formatKind: "example/link",
+          element: "a",
+          classes: ["breditor-link"],
+          attributes: {
+            kind: "safeLinkV1",
+            hrefProperty: "example/href",
+            openInNewWindowProperty: "example/open-in-new-window",
+          },
+        },
+      ],
+    };
+    const manifest = createInlineFormatRenderManifest(source);
+    source.recipes[0]!.attributes.hrefProperty = "example/changed";
+
+    expect(manifest).toEqual({
+      recipes: [
+        {
+          formatKind: "example/link",
+          element: "a",
+          classes: ["breditor-link"],
+          before: [],
+          after: [],
+          attributes: {
+            kind: "safeLinkV1",
+            hrefProperty: "example/href",
+            openInNewWindowProperty: "example/open-in-new-window",
+          },
+        },
+      ],
+    });
+    expect(Object.isFrozen(manifest.recipes[0]?.attributes)).toBe(true);
+  });
+
   it("admits only the closed safe inline element vocabulary", () => {
     for (const element of INLINE_FORMAT_RENDER_ELEMENTS) {
       expect(() =>
         createInlineFormatRenderManifest({
-          recipes: [{ formatKind: "example/format", element }],
+          recipes: [element === "a"
+            ? {
+              formatKind: "example/format",
+              element,
+              classes: ["breditor-link"],
+              attributes: {
+                kind: "safeLinkV1",
+                hrefProperty: "example/href",
+                openInNewWindowProperty: "example/open",
+              },
+            }
+            : { formatKind: "example/format", element }],
         }),
       ).not.toThrow();
     }
-    for (const element of ["a", "b", "div", "img", "script", "STYLE", "x-widget"]) {
+    for (const element of ["b", "div", "img", "script", "STYLE", "x-widget"]) {
       expect(() =>
         createInlineFormatRenderManifest({
           recipes: [{ formatKind: "example/format", element }],
         }),
       ).toThrow(/element/u);
     }
+  });
+
+  it("keeps the security-bearing link element, class, and policy inseparable", () => {
+    const attributes = {
+      kind: "safeLinkV1",
+      hrefProperty: "example/href",
+      openInNewWindowProperty: "example/open",
+    };
+    expect(() =>
+      createInlineFormatRenderManifest({
+        recipes: [{ formatKind: "example/link", element: "a" }],
+      }),
+    ).toThrow(/requires safeLinkV1/u);
+    for (const classes of [
+      [],
+      ["custom-link"],
+      ["breditor-link", "custom-link"],
+    ]) {
+      expect(() =>
+        createInlineFormatRenderManifest({
+          recipes: [
+            {
+              formatKind: "example/link",
+              element: "a",
+              classes,
+              attributes,
+            },
+          ],
+        }),
+      ).toThrow(/canonical class/u);
+    }
+    expect(() =>
+      createInlineFormatRenderManifest({
+        recipes: [
+          {
+            formatKind: "example/link",
+            element: "span",
+            attributes,
+          },
+        ],
+      }),
+    ).toThrow(/only on link/u);
+  });
+
+  it("rejects widened, aliased, or executable safe-link policies", () => {
+    const recipe = (attributes: unknown): unknown => ({
+      formatKind: "example/link",
+      element: "a",
+      classes: ["breditor-link"],
+      attributes,
+    });
+    for (const attributes of [
+      {
+        kind: "generic",
+        hrefProperty: "example/href",
+        openInNewWindowProperty: "example/open",
+      },
+      {
+        kind: "safeLinkV1",
+        hrefProperty: "not-qualified",
+        openInNewWindowProperty: "example/open",
+      },
+      {
+        kind: "safeLinkV1",
+        hrefProperty: "example/same",
+        openInNewWindowProperty: "example/same",
+      },
+      {
+        kind: "safeLinkV1",
+        hrefProperty: "example/href",
+        openInNewWindowProperty: "example/open",
+        target: "_blank",
+      },
+    ]) {
+      expect(() =>
+        createInlineFormatRenderManifest({ recipes: [recipe(attributes)] }),
+      ).toThrow();
+    }
+
+    let reads = 0;
+    const attributes = {
+      kind: "safeLinkV1",
+      hrefProperty: "example/href",
+    } as Record<string, unknown>;
+    Object.defineProperty(attributes, "openInNewWindowProperty", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return "example/open";
+      },
+    });
+    expect(() =>
+      createInlineFormatRenderManifest({ recipes: [recipe(attributes)] }),
+    ).toThrow(/own data properties/u);
+    expect(reads).toBe(0);
   });
 
   it("rejects unknown executable fields and symbols without reading them", () => {

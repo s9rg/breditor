@@ -229,18 +229,25 @@ but it must enqueue the callback for a future task; invoking it inline is
 rejected. The default uses a 20 ms timer. Command execution and leased queue
 delivery remain synchronous and promise-free.
 
-At settlement every paragraph element must still be a property-free `<p>`, and
-every non-target paragraph must remain canonical. The one target paragraph may
-be empty, contain only text nodes and property-free `<strong>` wrappers whose
-children are text, or use one sole property-free `<br>` to represent empty text.
-Text outside the captured replacement range must match the authoritative
-projection exactly. The extracted replacement is bounded valid Unicode.
-Composition event text and the extracted candidate each fit both the 65,536
-UTF-16-code-unit and 65,536 UTF-8-byte ceilings.
-Cross-paragraph replacement, changed surrounding text, attributes, comments,
-spans, nested markup, unrelated host changes, or conflicting event evidence
-fail closed. This is strict reconciliation of one known replacement, not a
-generic DOM-to-AST or HTML parser.
+At settlement every paragraph element must still be an attribute-free `<p>`,
+and every non-target paragraph must remain canonical at the DOM projection
+level, including its resolved wrapper attributes. The one target paragraph may
+be empty, use one sole attribute-free `<br>` to represent empty text, or contain
+text under a monotonically ordered subset of the exact checked presentation
+wrappers. Property-free wrappers retain only their canonical class;
+`safeLinkV1` wrappers admit only the inert, canonical href-only, or canonical
+href/rel/target shapes. Those wrappers and attributes are structural evidence
+only and are discarded when the replacement text is submitted to Rust. Text
+outside the captured replacement range must match the authoritative projection
+exactly. The extracted replacement is bounded valid Unicode. Composition event
+text and the extracted candidate each fit both the 65,536 UTF-16-code-unit and
+65,536 UTF-8-byte ceilings; transient dynamic attribute values share a 1 MiB
+UTF-8 work budget before URL validation.
+Cross-paragraph replacement, changed surrounding text, unknown or noncanonical
+attributes, comments, unknown wrappers, invalid wrapper order or depth,
+unrelated host changes, or conflicting event evidence fail closed. This is
+strict reconciliation of one known replacement, not a generic DOM-to-AST or
+HTML parser.
 
 Before any semantic command is delivered, the adapter spends the composition
 token, discards the temporary DOM through a full render of the authoritative
@@ -279,10 +286,14 @@ before-release rule. Exposed failures use stable payload-redacted reasons.
 
 The `0.0.54` composition slice deliberately supports one connected light-DOM
 host, one browser range, one target range, and one paragraph-local replacement.
-It does not support cross-block composition, shadow/composed ranges, browser
-multi-range selection, nested editable controls, arbitrary native IME markup,
-or an asynchronous executor. The temporary target DOM vocabulary is limited to
-text and property-free strong structure plus the empty-paragraph placeholder.
+The `0.2.0` profile path admits its exact checked wrapper vocabulary, and the
+unpublished `0.3.0-alpha.4` path also admits the closed `safeLinkV1` attribute
+shapes described above. It does not support cross-block composition,
+shadow/composed ranges, browser multi-range selection, nested editable
+controls, arbitrary native IME markup, or an asynchronous executor. The
+temporary target DOM vocabulary remains closed to plain text, the
+empty-paragraph placeholder, and presentation-owned wrappers in canonical
+order; all wrapper semantics are flattened before the Rust command.
 
 The scheduler and controller are covered by deterministic DOM unit tests. The
 `0.1.0` Playwright release gate, introduced at checkpoint `0.0.59`, also

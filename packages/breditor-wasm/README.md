@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.3
+npm install @breditor/wasm@0.3.0-alpha.4
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.3 browser bootstrap is
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.4 browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, before passing the initialized namespace to the exactly matching
@@ -45,7 +45,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `4` for this unpublished alpha.3 source checkpoint.
+with ABI generation `4` for this unpublished alpha.4 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -96,9 +96,14 @@ Editor State, and Commit V3 around Document V2. Existing unsuffixed compiled-
 profile factories retain V2, and static exact-base factories retain V1; no
 entry point sniffs or converts generations.
 
-These packages remain unpublished. Typed data and commands now cross Wasm, but
-safe property-driven DOM recipes, URL/CSS policy, and typed toolbar controls are
-browser-layer work rather than Wasm capabilities.
+`0.3.0-alpha.4` leaves ABI 4 and every durable record generation unchanged.
+The matching browser package consumes existing typed descriptors and
+projections through its one closed `safeLinkV1` policy; URL admission and DOM
+attributes remain browser behavior rather than Wasm capabilities. The Rust
+core also corrects paragraph-local property-free toggle capability routing, and
+that behavior is observable through the existing ABI without adding a method.
+Native typed toolbar controls remain unsupported; the reference Link form is
+application-owned. These packages remain unpublished.
 
 ## Reproducible build
 

@@ -106,7 +106,7 @@ adapter, catching ABI/duck-type drift between the two packages.
 
 ## Package boundary
 
-Both public npm packages are dual-licensed under `MIT OR Apache-2.0`. Their
+All three public npm packages are dual-licensed under `MIT OR Apache-2.0`. Their
 builds start from clean `dist` directories and include byte-checked copies of
 both complete license texts in the published artifact. The browser package
 intentionally disables declaration maps because its source files are not

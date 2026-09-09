@@ -108,6 +108,49 @@ const TYPED_PROFILE_BOOTSTRAP_JSON = JSON.stringify({
   }],
 });
 
+// The browser intentionally renders property-bearing formats only through a
+// closed policy whose semantic descriptor is exact. Keep this profile separate
+// from the broader typed ABI fixture above, which also exercises optional and
+// integer properties that no built-in DOM policy claims to present.
+const SAFE_LINK_PROFILE_BOOTSTRAP_JSON = JSON.stringify({
+  format: "breditor/profile-bootstrap",
+  formatVersion: 2,
+  schema: { name: "example/safe-link-editor", version: 1 },
+  extensions: [{
+    id: { name: "example/safe-link-extension", version: 1 },
+    dependencies: [],
+    conflicts: [],
+    inlineFormats: [{ kind: "example/link", revision: 1 }],
+    inlineFormatPropertyContracts: [{
+      formatKind: "example/link",
+      properties: [
+        {
+          name: "example/href",
+          presence: "required",
+          valueType: {
+            kind: "string",
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: 2_048,
+          },
+        },
+        {
+          name: "example/open",
+          presence: "required",
+          valueType: { kind: "boolean" },
+        },
+      ],
+    }],
+    inlineFormatToggles: [],
+    inlineFormatSets: [{
+      formatKind: "example/link",
+      actionId: "example/set-link",
+      intentId: "example/set-link-intent",
+      bindingId: "example/set-link-binding",
+      actionStateId: "example/link-presence",
+    }],
+  }],
+});
+
 function profileDocument(descriptor, text) {
   return {
     format: "breditor/document",
@@ -1634,8 +1677,35 @@ Object.defineProperty(runtimeDom.window.InputEvent.prototype, "getTargetRanges",
 });
 
 // Exercise Profile Bootstrap V2 + Session V3 through the complete public
-// browser owner. A deterministic Rust rejection must remain contained before
-// history control, and a later valid property-bearing intent must still commit.
+// browser owner. Derive the initial document binding from the dedicated exact
+// safe-Link descriptor instead of weakening the browser policy to accommodate
+// the broader typed ABI fixture. A deterministic Rust rejection must remain
+// contained before history control, and a later valid property-bearing intent
+// must still commit.
+const safeLinkProfileResult =
+  api.BreditorCompiledProfile.fromBootstrapJsonV2(
+    SAFE_LINK_PROFILE_BOOTSTRAP_JSON,
+  );
+assert.equal(safeLinkProfileResult.status, "profile");
+const safeLinkProfile = safeLinkProfileResult.takeProfile();
+safeLinkProfileResult.free();
+const safeLinkGeneration = safeLinkProfile.generation();
+const safeLinkDescriptorResult = browser.consumeWasmCompiledProfileDescriptor(
+  safeLinkGeneration,
+  safeLinkProfile.descriptor(),
+);
+assert.equal(safeLinkDescriptorResult.ok, true);
+const safeLinkDescriptor = safeLinkDescriptorResult.descriptor;
+const safeLinkDocumentJson = JSON.stringify(
+  profileDocument({
+    schemaName: safeLinkDescriptor.schema.name,
+    schemaVersion: safeLinkDescriptor.schema.version,
+    schemaFingerprint: safeLinkDescriptor.schema.fingerprint,
+  }, "abc"),
+);
+safeLinkGeneration.free();
+safeLinkProfile.free();
+
 const typedRuntimeHost = document.createElement("div");
 document.body.append(typedRuntimeHost);
 const typedRuntimeRendering = browser.createInlineFormatRenderManifest({
@@ -1643,8 +1713,13 @@ const typedRuntimeRendering = browser.createInlineFormatRenderManifest({
     { formatKind: "breditor/strong", element: "strong" },
     {
       formatKind: "example/link",
-      element: "span",
+      element: "a",
       classes: ["breditor-link"],
+      attributes: {
+        kind: "safeLinkV1",
+        hrefProperty: "example/href",
+        openInNewWindowProperty: "example/open",
+      },
     },
   ],
 });
@@ -1654,11 +1729,11 @@ const openedTypedRuntime = await browser.openBreditorBrowserEditor({
   wasm: api,
   initialDocument: {
     lineageId: "web-glue-public-typed-runtime",
-    documentJson: typedDocumentJson,
+    documentJson: safeLinkDocumentJson,
     historyCapacity: 100,
   },
   semanticProfile: {
-    bootstrapJson: TYPED_PROFILE_BOOTSTRAP_JSON,
+    bootstrapJson: SAFE_LINK_PROFILE_BOOTSTRAP_JSON,
     formatVersion: 2,
   },
   rendering: typedRuntimeRendering,
@@ -1709,7 +1784,6 @@ const typedRuntimeSet = typedRuntime.executeIntentJson(
     properties: [
       { name: "example/href", value: "https://runtime.example.test" },
       { name: "example/open", value: true },
-      { name: "example/rank", value: 4 },
     ],
   }),
 );
@@ -1717,7 +1791,7 @@ assert.equal(typedRuntimeSet.status, "committed");
 assert.equal(typedRuntimeSet.document.revision, "2");
 assert.equal(
   typedRuntimeHost.innerHTML,
-  '<p><span class="breditor-link">abc</span></p>',
+  '<p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">abc</a></p>',
 );
 const typedRuntimeDocument = typedRuntime.exportContent("documentJson");
 assert.equal(typedRuntimeDocument.ok, true);

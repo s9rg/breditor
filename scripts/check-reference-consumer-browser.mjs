@@ -66,6 +66,29 @@ try {
       plainText: smoke?.plainText,
       snapshot: smoke?.snapshot,
       profile: smoke?.profile,
+      fixturesFrozen: smoke?.fixturesFrozen,
+      formatting: smoke?.formatting,
+      formattingContentEditable: document
+        .getElementById("formatting-editor")
+        ?.getAttribute("contenteditable"),
+      formattingToolbarButtons: document.querySelectorAll(
+        "#formatting-toolbar button",
+      ).length,
+      formattingDom: (() => {
+        const anchor = document.querySelector(
+          "#formatting-editor > p > a.breditor-link",
+        );
+        return {
+          attributes: anchor ? [...anchor.getAttributeNames()].sort() : [],
+          className: anchor?.getAttribute("class"),
+          href: anchor?.getAttribute("href"),
+          rel: anchor?.getAttribute("rel"),
+          target: anchor?.getAttribute("target"),
+          markedText: anchor?.querySelector(
+            "mark.breditor-reference-highlight",
+          )?.textContent,
+        };
+      })(),
     };
   });
 
@@ -88,6 +111,77 @@ try {
     JSON.parse(outcome.documentJson?.value ?? "null").schemaFingerprint,
     outcome.profile?.schemaFingerprint,
   );
+  assert.equal(outcome.fixturesFrozen, true);
+
+  assert.equal(outcome.formattingContentEditable, "true");
+  assert.equal(outcome.formattingToolbarButtons, 4);
+  assert.deepEqual(outcome.formattingDom.attributes, [
+    "class",
+    "href",
+    "rel",
+    "target",
+  ]);
+  assert.equal(outcome.formattingDom.className, "breditor-link");
+  assert.equal(
+    outcome.formattingDom.href,
+    "https://example.test/reference/path?source=tarball#proof",
+  );
+  assert.equal(outcome.formattingDom.rel, "noopener noreferrer");
+  assert.equal(outcome.formattingDom.target, "_blank");
+  assert.equal(outcome.formattingDom.markedText, "Combined Highlight and Link");
+  assert.equal(outcome.formatting?.firstSet.status, "committed");
+  assert.equal(
+    outcome.formatting?.firstSet.intentId,
+    "example/set-link-intent",
+  );
+  assert.equal(outcome.formatting?.remove.status, "committed");
+  assert.equal(outcome.formatting?.remove.intentId, "example/set-link-intent");
+  assert.equal(outcome.formatting?.removedAnchor, true);
+  assert.equal(outcome.formatting?.finalSet.status, "committed");
+  assert.equal(
+    outcome.formatting?.finalSet.intentId,
+    "example/set-link-intent",
+  );
+  assert.deepEqual(outcome.formatting?.firstSetDom, outcome.formatting?.finalDom);
+  assert.equal(
+    outcome.formatting?.finalDom.href,
+    outcome.formatting?.canonicalHref,
+  );
+  assert.notEqual(
+    outcome.formatting?.sourceHref,
+    outcome.formatting?.canonicalHref,
+  );
+  assert.equal(outcome.formatting?.profile.bootstrapFormatVersion, 2);
+  assert.equal(outcome.formatting?.profile.linkFormatKind, "example/link");
+  assert.equal(
+    outcome.formatting?.profile.linkIntentId,
+    "example/set-link-intent",
+  );
+  assert.equal(
+    outcome.formatting?.profile.schemaFingerprint,
+    "sha256:33d6e87ffa2d10a504a3319d64a71a2c980ec90c3e1c9e4f6cf97809982113cc",
+  );
+  assert.equal(
+    outcome.formatting?.plainText.value,
+    "Combined Highlight and Link",
+  );
+  const formattingDocument = JSON.parse(
+    outcome.formatting?.documentJson.value ?? "null",
+  );
+  assert.equal(
+    formattingDocument.schemaFingerprint,
+    outcome.formatting?.profile.schemaFingerprint,
+  );
+  assert.deepEqual(formattingDocument.root.children[0].children[0].formats, [
+    { type: "example/highlight", properties: {} },
+    {
+      type: "example/link",
+      properties: {
+        "example/href": outcome.formatting?.sourceHref,
+        "example/open-in-new-window": true,
+      },
+    },
+  ]);
 
   const disposed = await page.evaluate(() => {
     const smoke = globalThis.__breditorReferencePackageSmoke;
@@ -96,8 +190,11 @@ try {
   });
   const expectedDisposal = {
     status: "disposed",
+    formattingStatus: "disposed",
     editorChildren: 0,
     toolbarChildren: 0,
+    formattingEditorChildren: 0,
+    formattingToolbarChildren: 0,
   };
   assert.deepEqual(disposed.first, expectedDisposal);
   assert.deepEqual(disposed.second, expectedDisposal);
@@ -114,7 +211,7 @@ try {
 }
 
 console.log(
-  "check-reference-consumer-browser: supported-root tarballs initialized the reference profile in Chromium.",
+  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight and combined typed-Link profiles in Chromium.",
 );
 
 async function serve(rawUrl, response) {

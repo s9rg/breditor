@@ -127,6 +127,7 @@ h1 {
 }
 
 .toolbar-mount button,
+.link-controls button,
 .editor-retry {
   min-height: 2.35rem;
   padding: 0.4rem 0.8rem;
@@ -145,6 +146,7 @@ h1 {
 }
 
 .toolbar-mount button:hover:not([aria-disabled="true"]),
+.link-controls button:hover:not(:disabled),
 .editor-retry:hover:not(:disabled) {
   border-color: #4c8667;
   background: #f8fcf8;
@@ -158,17 +160,98 @@ h1 {
 }
 
 .toolbar-mount button[aria-disabled="true"],
+.link-controls button:disabled,
 .editor-retry:disabled {
   cursor: not-allowed;
   opacity: 0.48;
 }
 
 .toolbar-mount button:focus-visible,
+.link-controls button:focus-visible,
+.link-controls input:focus-visible,
 .editor-mount:focus-visible,
 .editor-retry:focus-visible,
 .editor-details summary:focus-visible {
   outline: 3px solid #1b7e4d;
   outline-offset: 3px;
+}
+
+.link-controls {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto auto;
+  gap: 0.5rem 0.75rem;
+  align-items: end;
+  padding: 0.75rem;
+  border-top: 1px solid #dce4df;
+  background: #f8faf7;
+}
+
+.link-controls__url {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.link-controls__url label,
+.link-controls__checkbox {
+  color: #3e594c;
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+.link-controls__url input {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.42rem 0.58rem;
+  border: 1px solid #aebbb2;
+  border-radius: 0.45rem;
+  background: #fff;
+  color: #173126;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.link-controls__url input:disabled,
+.link-controls__checkbox input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.link-controls__checkbox {
+  display: flex;
+  gap: 0.42rem;
+  align-items: center;
+  min-height: 2.35rem;
+  padding-bottom: 0.06rem;
+}
+
+.link-controls__checkbox input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: #17663d;
+}
+
+.link-controls__actions {
+  display: flex;
+  gap: 0.42rem;
+}
+
+.link-controls__state,
+.link-controls__feedback {
+  margin: 0;
+  color: #5b6f64;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.link-controls__state {
+  grid-column: 1 / 2;
+}
+
+.link-controls__feedback {
+  grid-column: 2 / -1;
+  min-height: 1em;
+  text-align: right;
 }
 
 .editor-mount {
@@ -342,6 +425,25 @@ kbd {
     align-items: stretch;
   }
 
+  .link-controls {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .link-controls__actions {
+    flex-wrap: wrap;
+  }
+
+  .link-controls__actions button {
+    flex: 1 1 8rem;
+  }
+
+  .link-controls__state,
+  .link-controls__feedback {
+    grid-column: 1;
+    text-align: left;
+  }
+
   .editor-retry {
     width: 100%;
   }
@@ -349,6 +451,7 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .toolbar-mount button,
+  .link-controls button,
   .editor-retry {
     transition: none;
   }

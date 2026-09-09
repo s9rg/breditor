@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.3` checkpoint. Wasm ABI 4 and the browser explicitly select
+`0.3.0-alpha.4` checkpoint. Wasm ABI 4 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -268,8 +268,10 @@ helper from being mistaken for persistence migration.
   Intent/toolbar execution remains process-local presentation and changes no
   durable binding or record bytes.
 - Property-bearing Session V3 is a browser checkpoint boundary, not a new
-  local-log/storage generation. The current render recipe, safe-copy HTML, and
-  toolbar do not derive DOM attributes or typed controls from those properties.
+  local-log/storage generation. Alpha.4's sole browser-owned `safeLinkV1`
+  policy derives only its fixed canonical Link attributes and matching
+  safe-copy HTML from one exact two-property contract. The native toolbar still
+  derives no typed controls; the reference Link form is application-owned.
 - The local-log entry, checkpoint, frame, root, and storage-generation families
   have no V3 codec. Property-bearing Session Checkpoint V3 bytes cannot enter
   the current V1/V2 local-log graph.

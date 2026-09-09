@@ -1,8 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const EDITOR_LABEL = "Breditor Highlight reference document";
-const SAMPLE_TEXT = "Highlighted text";
+const EDITOR_LABEL = "Breditor formatting reference document";
+const SAMPLE_TEXT = "Highlighted link";
 const APPENDED_TEXT = " demo-ready";
 
 async function openDemo(page: Page): Promise<{
@@ -79,17 +79,69 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   const highlight = page.getByRole("button", { name: "Highlight" });
   const undo = page.getByRole("button", { name: "Undo" });
   const redo = page.getByRole("button", { name: "Redo" });
+  const linkUrl = page.getByRole("textbox", { name: "Link URL" });
+  const newWindow = page.getByRole("checkbox", { name: "Open in new window" });
+  const applyLink = page.getByRole("button", { name: "Apply Link" });
+  const removeLink = page.getByRole("button", { name: "Remove Link" });
 
   await expect(editor).toHaveText(SAMPLE_TEXT);
   await expect(
     editor.locator("mark.breditor-reference-highlight"),
   ).toHaveText(SAMPLE_TEXT);
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "href",
+    "https://example.test/reference",
+  );
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "rel",
+    "noopener noreferrer",
+  );
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "target",
+    "_blank",
+  );
+
+  // The React-owned form intentionally takes DOM focus. The typed intent still
+  // acts on the Rust-owned semantic range selected immediately beforehand.
+  await selectEditorText(editor, 0, SAMPLE_TEXT.length);
   await expect(highlight).toHaveAttribute("aria-pressed", "true");
+  await expect(linkUrl).toBeEnabled();
+  await expect(applyLink).toBeDisabled();
+  await linkUrl.fill("HTTPS://Example.COM:443/a/../docs?q=one&b=two");
+  await expect(applyLink).toBeEnabled();
+  await newWindow.uncheck();
+  await applyLink.click();
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "href",
+    "https://example.com/docs?q=one&b=two",
+  );
+  await expect(editor.locator("a.breditor-link")).not.toHaveAttribute("target");
+  await expect(page.getByText("Link applied.", { exact: true })).toBeVisible();
+
+  await undo.click();
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "href",
+    "https://example.test/reference",
+  );
+  await redo.click();
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "href",
+    "https://example.com/docs?q=one&b=two",
+  );
+  await expect(removeLink).toBeEnabled();
+  await removeLink.click();
+  await expect(editor.locator("a.breditor-link")).toHaveCount(0);
+  await expect(applyLink).toBeEnabled();
+  await undo.click();
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "href",
+    "https://example.com/docs?q=one&b=two",
+  );
 
   await selectEditorText(editor, 12, 16);
   await expect(bold).toHaveAttribute("aria-pressed", "false");
   await bold.click();
-  await expect(editor.locator("strong")).toHaveText("text");
+  await expect(editor.locator("strong")).toHaveText("link");
   await expect(bold).toHaveAttribute("aria-pressed", "true");
 
   await undo.click();
@@ -99,7 +151,7 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   );
 
   await redo.click();
-  await expect(editor.locator("strong")).toHaveText("text");
+  await expect(editor.locator("strong")).toHaveText("link");
 
   await selectEditorText(editor, SAMPLE_TEXT.length, SAMPLE_TEXT.length);
   await page.keyboard.type(APPENDED_TEXT, { delay: 25 });
@@ -114,11 +166,21 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   const restored = await openDemo(page);
   await expect(restored.editor).toHaveText(SAMPLE_TEXT + APPENDED_TEXT);
   await expect(restored.editor.locator("strong")).toHaveText(
-    "text" + APPENDED_TEXT,
+    "link" + APPENDED_TEXT,
   );
   await expect(
     restored.editor.locator("mark.breditor-reference-highlight"),
-  ).toHaveText(["Highlighted ", "text" + APPENDED_TEXT]);
+  ).toHaveText(["Highlighted ", "link" + APPENDED_TEXT]);
+  const restoredLinks = restored.editor.locator("a.breditor-link");
+  await expect(restoredLinks).toHaveCount(2);
+  expect(
+    await restoredLinks.evaluateAll((links) =>
+      links.map((link) => link.getAttribute("href")),
+    ),
+  ).toEqual([
+    "https://example.com/docs?q=one&b=two",
+    "https://example.com/docs?q=one&b=two",
+  ]);
   await expect(page.getByRole("button", { name: "Highlight" })).toHaveAttribute(
     "aria-pressed",
     "true",
@@ -176,6 +238,6 @@ test(
     await page.keyboard.type(" xy", { delay: 25 });
 
     await expect(editor).toHaveText(SAMPLE_TEXT + " xy");
-    await expect(editor.locator("strong")).toHaveText("text xy");
+    await expect(editor.locator("strong")).toHaveText("link xy");
   },
 );

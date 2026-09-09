@@ -2,7 +2,9 @@
 
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
-adapter and renderer construction remains advanced and experimental
+adapter and renderer construction remains advanced and experimental. The
+unpublished `0.3.0-alpha.4` source checkpoint adds the one closed
+property-driven Link presentation described below.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -39,9 +41,9 @@ formats listed by that descriptor. The explicitly selected alpha.3 Profile
 Bootstrap V2 path additionally admits descriptor-correlated typed scalar
 properties and retains them in `formatDetails`. Both paths retain the schema
 fingerprint and bind the projection to one checked browser presentation. They
-do not add arbitrary blocks, element properties, entities, or DOM callbacks;
-alpha.3 presentation recipes still cannot derive DOM attributes from format
-property values.
+do not add arbitrary blocks, element properties, entities, or DOM callbacks.
+Alpha.4 permits property-derived attributes only through the closed
+browser-owned `safeLinkV1` recipe; it is not a generic attribute mapping.
 
 ## Safe DOM vocabulary
 
@@ -58,6 +60,30 @@ attributes. The structural mapping is fixed:
   wrapper chain compiled from its presentation (legacy strong text uses one
   property-free `<strong>`); and
 - an empty paragraph renders a projection-only `<br>` placeholder.
+
+The only attribute-bearing wrapper is `<a class="breditor-link">` with
+`attributes.kind: "safeLinkV1"`. Compilation requires the bound format to have
+exactly two required properties: the named href property must be a string with
+the exact inclusive UTF-8 bounds `1..=2048`, and the named
+open-in-new-window property must be Boolean. The browser admits navigation only
+for absolute, credential-free `http:` and `https:` URLs containing no control
+or Unicode-whitespace scalar and fitting 2048 UTF-8 bytes both before and after
+normalization, then emits the canonical URL. A safe same-window URL produces
+only `href`; `true` additionally
+produces `rel="noopener noreferrer"` followed by `target="_blank"`. An unsafe
+but schema-valid URL produces an inert anchor with only the canonical class;
+it is still semantic Link content and does not fault rendering.
+
+The policy cannot choose an attribute name, tag, class, `rel`, target, URL
+scheme, style, callback, or HTML string. Rust validates only the two declared
+scalar property contracts; URL parsing and admission belong to this browser
+presentation boundary.
+
+Raw URL spelling is also part of admission: the authority must start
+immediately after exactly `http://` or `https://`; excess authority slashes,
+non-visible-ASCII authority scalars, authority percent escapes, backslashes,
+and a raw authority `@` are rejected before the repairing URL parser runs.
+Internationalized host names use their explicit `xn--` ASCII spelling.
 
 Only the host, paragraph elements, and text nodes are exact AST-backed DOM
 nodes. Presentation wrappers and `<br>` placeholders deliberately have no
@@ -125,10 +151,9 @@ optimizations; they may not weaken failure atomicity.
 
 ## Known limits
 
-- The renderer supports the base-text grammar and fixed, property-insensitive
-  inline-format presentations only. The typed profile path retains format
-  properties in its projection, but alpha.3 does not derive DOM attributes from
-  them. Arbitrary blocks, structural nesting, element properties, entity IDs,
+- The renderer supports the base-text grammar, fixed property-free recipes,
+  and the single `safeLinkV1` property policy. Arbitrary property-to-attribute
+  or CSS mappings, blocks, structural nesting, element properties, entity IDs,
   callbacks, and application-defined DOM renderers are not accepted.
 - There are no persistent per-node IDs. Exact DOM reuse is proved only for a
   particular predecessor/successor pair; equal-looking nodes after reload or a
@@ -151,6 +176,16 @@ optimizations; they may not weaken failure atomicity.
   arrived in `0.0.55`; see [`CLIPBOARD.md`](CLIPBOARD.md). Guarded action-state
   and toolbar delivery arrived in `0.0.56`; see [`TOOLBAR.md`](TOOLBAR.md).
   Persistence I/O and framework integration remain separate checkpoints.
+
+During a native composition lease, known Link wrappers are admitted only in
+the inert, canonical href-only, or canonical href/rel/target shapes. Unchanged
+content must still match the exact projected attributes, and the reconciler
+spends at most a 1 MiB aggregate UTF-8 budget on transient dynamic attribute
+values before invoking URL normalization. It reduces the leased range to text
+before issuing one Rust command. Semantic
+copy/cut escapes and emits the same resolved attributes. HTML paste may admit
+those exact shapes, but it flattens the repaired fragment and inserts plain
+text; it never reconstructs source formats or Link properties.
 
 The package-level API and development commands are documented in
 `packages/breditor-browser/README.md`.

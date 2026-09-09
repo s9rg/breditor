@@ -435,6 +435,112 @@ pub(super) fn base_total_text_fits(
         .is_some_and(|total| total <= maximum)
 }
 
+/// Checks the exact document-wide property delta of one paragraph replacement.
+///
+/// Callers supply their action-specific stable fault vocabulary. Measuring the
+/// complete folded result is essential: a local edit can split one formatted
+/// source run into multiple owners, duplicating its complete property map even
+/// when the inserted or toggled format itself is property-free.
+pub(super) fn property_result_fits(
+    state: &EditorState,
+    source: &TextFragment,
+    result: &TextFragment,
+    validation_fault_code: &'static str,
+    budget_fault_code: &'static str,
+) -> Result<bool, ActionFault> {
+    let source =
+        fragment_property_summary(state, source, validation_fault_code, budget_fault_code)?;
+    let result =
+        fragment_property_summary(state, result, validation_fault_code, budget_fault_code)?;
+    let current = state.document().summary();
+    let value_count = current
+        .property_value_count()
+        .checked_sub(source.property_value_count)
+        .and_then(|retained| retained.checked_add(result.property_value_count));
+    let string_bytes = current
+        .total_property_string_bytes()
+        .checked_sub(source.property_string_bytes)
+        .and_then(|retained| retained.checked_add(result.property_string_bytes));
+    let limits = state.context().limits();
+    Ok(value_count.is_some_and(|actual| {
+        usize::try_from(actual).is_ok_and(|actual| actual <= limits.max_property_values())
+    }) && string_bytes.is_some_and(|actual| {
+        usize::try_from(actual)
+            .is_ok_and(|actual| actual <= limits.max_total_property_string_bytes())
+    }))
+}
+
+/// Checks one pending format set against the property-resource ceilings.
+pub(super) fn format_set_property_fits(
+    state: &EditorState,
+    formats: &FormatSet,
+    validation_fault_code: &'static str,
+    budget_fault_code: &'static str,
+) -> Result<bool, ActionFault> {
+    let summary =
+        format_set_property_summary(state, formats, validation_fault_code, budget_fault_code)?;
+    let limits = state.context().limits();
+    Ok(usize::try_from(summary.property_value_count)
+        .is_ok_and(|actual| actual <= limits.max_property_values())
+        && usize::try_from(summary.property_string_bytes)
+            .is_ok_and(|actual| actual <= limits.max_total_property_string_bytes()))
+}
+
+fn fragment_property_summary(
+    state: &EditorState,
+    fragment: &TextFragment,
+    validation_fault_code: &'static str,
+    budget_fault_code: &'static str,
+) -> Result<PropertySummary, ActionFault> {
+    let mut property_value_count = 0_u64;
+    let mut property_string_bytes = 0_u64;
+    for run in fragment {
+        let summary = format_set_property_summary(
+            state,
+            run.formats(),
+            validation_fault_code,
+            budget_fault_code,
+        )?;
+        property_value_count = property_value_count
+            .checked_add(summary.property_value_count)
+            .ok_or_else(|| fault(budget_fault_code))?;
+        property_string_bytes = property_string_bytes
+            .checked_add(summary.property_string_bytes)
+            .ok_or_else(|| fault(budget_fault_code))?;
+    }
+    Ok(PropertySummary { property_value_count, property_string_bytes })
+}
+
+fn format_set_property_summary(
+    state: &EditorState,
+    formats: &FormatSet,
+    validation_fault_code: &'static str,
+    budget_fault_code: &'static str,
+) -> Result<PropertySummary, ActionFault> {
+    let mut property_value_count = 0_u64;
+    let mut property_string_bytes = 0_u64;
+    for format in formats {
+        let summary = state
+            .context()
+            .schema()
+            .validate_inline_format_instance(state.context().limits(), format)
+            .map_err(|_| fault(validation_fault_code))?;
+        property_value_count = property_value_count
+            .checked_add(summary.property_value_count())
+            .ok_or_else(|| fault(budget_fault_code))?;
+        property_string_bytes = property_string_bytes
+            .checked_add(summary.property_string_bytes())
+            .ok_or_else(|| fault(budget_fault_code))?;
+    }
+    Ok(PropertySummary { property_value_count, property_string_bytes })
+}
+
+#[derive(Clone, Copy)]
+struct PropertySummary {
+    property_value_count: u64,
+    property_string_bytes: u64,
+}
+
 pub(super) fn collapsed_selection_at(
     paragraph_path: &NodePath,
     fragment: &TextFragment,

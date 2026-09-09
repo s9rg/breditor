@@ -22,8 +22,9 @@ use super::super::text_position::TextRangeSelection;
 use super::support::{
     CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
     capture_cross_paragraph_text_source, collapsed_selection_at_with_affinity, disabled,
-    effective_typing_formats, fault, fragment_range_parts, require_operation_budget,
-    require_text_splice_range, strict_relocation, text_splice_paragraph_fragment,
+    effective_typing_formats, fault, fragment_range_parts, property_result_fits,
+    require_operation_budget, require_text_splice_range, strict_relocation,
+    text_splice_paragraph_fragment,
 };
 
 /// Stable qualified name of the built-in semantic text-insertion action.
@@ -305,7 +306,13 @@ fn evaluate_insert_text(
     };
     if !base_shape_fits(state, 1, source.len(), &[&result])
         || !base_total_text_fits(state, source.text_bytes(), result.text_bytes())
-        || !property_result_fits(state, &source, &result)?
+        || !property_result_fits(
+            state,
+            &source,
+            &result,
+            "breditor/insert-text-property-validation-fault",
+            "breditor/insert-text-property-budget-fault",
+        )?
     {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }
@@ -444,67 +451,6 @@ fn concat_result(
         Err(error) if fragment_error_is_capacity(&error) => Ok(None),
         Err(_) => Err(fault("breditor/insert-text-result-fold-fault")),
     }
-}
-
-/// Checks the exact property-resource delta of replacing one complete paragraph.
-///
-/// This must measure the folded result rather than only the inserted run. A
-/// pending format that differs from the surrounding run can split that run into
-/// two retained owners, duplicating its property contribution around the new
-/// text even though the insertion itself carries only one format instance.
-fn property_result_fits(
-    state: &EditorState,
-    source: &TextFragment,
-    result: &TextFragment,
-) -> Result<bool, ActionFault> {
-    let source = fragment_property_summary(state, source)?;
-    let result = fragment_property_summary(state, result)?;
-    let current = state.document().summary();
-    let value_count = current
-        .property_value_count()
-        .checked_sub(source.property_value_count)
-        .and_then(|retained| retained.checked_add(result.property_value_count));
-    let string_bytes = current
-        .total_property_string_bytes()
-        .checked_sub(source.property_string_bytes)
-        .and_then(|retained| retained.checked_add(result.property_string_bytes));
-    let limits = state.context().limits();
-    Ok(value_count.is_some_and(|actual| {
-        usize::try_from(actual).is_ok_and(|actual| actual <= limits.max_property_values())
-    }) && string_bytes.is_some_and(|actual| {
-        usize::try_from(actual)
-            .is_ok_and(|actual| actual <= limits.max_total_property_string_bytes())
-    }))
-}
-
-fn fragment_property_summary(
-    state: &EditorState,
-    fragment: &TextFragment,
-) -> Result<PropertySummary, ActionFault> {
-    let mut property_value_count = 0_u64;
-    let mut property_string_bytes = 0_u64;
-    for run in fragment {
-        for format in run.formats() {
-            let summary = state
-                .context()
-                .schema()
-                .validate_inline_format_instance(state.context().limits(), format)
-                .map_err(|_| fault("breditor/insert-text-property-validation-fault"))?;
-            property_value_count = property_value_count
-                .checked_add(summary.property_value_count())
-                .ok_or_else(|| fault("breditor/insert-text-property-budget-fault"))?;
-            property_string_bytes = property_string_bytes
-                .checked_add(summary.property_string_bytes())
-                .ok_or_else(|| fault("breditor/insert-text-property-budget-fault"))?;
-        }
-    }
-    Ok(PropertySummary { property_value_count, property_string_bytes })
-}
-
-#[derive(Clone, Copy)]
-struct PropertySummary {
-    property_value_count: u64,
-    property_string_bytes: u64,
 }
 
 const fn fragment_error_is_capacity(error: &TextFragmentError) -> bool {

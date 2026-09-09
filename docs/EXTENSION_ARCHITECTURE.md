@@ -3,11 +3,11 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.3` checkpoint now carries the alpha.2 typed-
-property editing/replay contract through Wasm ABI 4, browser projection and
-programmatic intent input, and explicit Session-V3 IndexedDB/autosave. Safe
-property-driven DOM recipes and typed toolbar controls remain next, as described
-in [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+The unpublished `0.3.0-alpha.4` checkpoint retains the alpha.3 typed-property
+Wasm/browser bridge and adds the first closed property-driven presentation:
+browser-owned `safeLinkV1`, an additive reference Link profile, and React-owned
+typed controls. It does not introduce a generic attribute protocol or a native
+typed toolbar control. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` ships. It complements
@@ -551,9 +551,9 @@ semantic implementation or an executable extension lifecycle.
 
 The editing DOM is a disposable projection of Rust-owned AST and selection.
 For the `0.2.0` subset, browser render contributions are bounded declarative
-recipes over a fixed safe element and attribute vocabulary. They are not DOM
-callbacks, framework components, arbitrary element constructors, or HTML
-strings.
+recipes over a fixed safe element vocabulary. Alpha.4 adds one closed
+attribute policy, `safeLinkV1`; neither surface admits DOM callbacks, framework
+components, arbitrary element constructors, or HTML strings.
 
 At browser startup, the combined built-in and extension presentation set must
 contain exactly one valid render recipe for every format admitted by the active
@@ -590,11 +590,11 @@ which may contain selection scaffolding, composition sentinels, decorations, or
 browser workarounds.
 
 Clipboard ingress remains deliberately plain text. Copy may safely serialize
-the admitted formatting for external consumers, but paste transports no source
-formatting into the existing bounded text insertion path. Inserted text still
-inherits the target caret's pending or contextual formats under the existing
-action contract. There is no private rich-fragment codec or rich copy-to-paste
-round trip in `0.2.0`.
+the admitted formatting and alpha.4's canonical Link attributes for external
+consumers, but paste transports no source formatting or properties into the
+existing bounded text insertion path. Inserted text still inherits the target
+caret's pending or contextual formats under the existing action contract.
+There is no private rich-fragment codec or rich copy-to-paste round trip.
 `innerHTML` is not a semantic transaction and raw HTML is not canonical AST.
 
 A generic HTML compatibility system, executable portable converters, and full
@@ -733,6 +733,36 @@ CSS, or other attributes from property values; safe-copy HTML and the native-
 button toolbar likewise have no typed property control. Those declarative,
 sanitized presentation/input contracts are the next extension seam.
 
+## `0.3.0-alpha.4` closed Link presentation
+
+Alpha.4 adds one browser-owned property policy rather than a general attribute
+mapper. A recipe with `attributes.kind: "safeLinkV1"` must be exactly
+`<a class="breditor-link">` and must bind a format with exactly two required
+properties: the named href is a string with the exact inclusive UTF-8 bounds
+`1..=2048`, and the named open-in-new-window value is Boolean. Profile
+compilation rejects every other descriptor/policy pairing.
+
+The browser accepts navigation only for absolute, credential-free `http:` or
+`https:` URLs without control or Unicode-whitespace scalars and within 2048
+UTF-8 bytes before and after normalization, then emits the canonical URL. A
+safe same-window link emits only `href`; a safe new-window link also emits fixed
+`rel="noopener noreferrer"` and `target="_blank"`. A schema-valid unsafe value
+renders as an inert anchor. Recipes cannot supply arbitrary attributes, styles,
+callbacks, raw HTML, URL schemes, `rel`, or target values. Rust continues to
+validate scalar contract shape and bounds only; URL semantics belong to the
+browser policy.
+
+DOM creation, retained-DOM checks, native-composition admission, and semantic
+copy HTML use those exact resolved shapes. HTML paste may admit the same inert,
+href-only, or href/rel/target forms, but all admitted markup is flattened to
+plain text; source formats and properties are never reconstructed.
+
+The additive reference Highlight + Link profile preserves all prior
+Highlight-only exports. Its application-owned React form creates exact typed
+set/remove JSON and calls `executeIntentJson()`. The built-in declarative
+toolbar remains restricted to native no-input buttons; the form is an example
+of host UI, not a new toolbar plugin or callback surface.
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:
@@ -740,10 +770,9 @@ The following are explicitly deferred:
 - a public stable wire codec for extension manifests, unless separately frozen
   after the initial Rust value model proves itself;
 - arbitrary block, inline, leaf, atom, embed, table, or nested editable nodes;
-- the remaining property-bearing Link/color presentation path: safe declarative
-  DOM attributes, typed controls, clipboard/HTML conversion, and URL/CSS
-  sanitizing (mutation, replay, Wasm, browser projection, and programmatic typed
-  intent input now exist);
+- property-bearing presentation beyond the exact `safeLinkV1` policy, including
+  general DOM attributes, color/CSS policies, renderer callbacks, and native
+  typed toolbar controls;
 - format exclusions, groups, inclusivity rules, multiple instances, and
   arbitrary normalization;
 - optional peer dependencies, capability selection, extension-version ranges,
@@ -875,6 +904,12 @@ property getters, strict typed action/intent JSON, explicit V3 profile factories
 browser typed validation, high-level `executeIntentJson()`, and Session V3
 IndexedDB/autosave. It does not settle property-driven DOM recipes, HTML
 attributes, URL/CSS policy, or typed toolbar controls.
+
+`0.3.0-alpha.4` settles only the closed browser-owned `safeLinkV1` mapping, its
+exact DOM/composition/copy-HTML shapes, and an application-owned reference Link
+form. It does not widen Rust, Wasm ABI 4, durable formats, plain-text paste, or
+the native-button toolbar, and it does not establish a general attribute or CSS
+protocol.
 
 The following choice remains for a later release and may be settled without
 weakening the decisions above:

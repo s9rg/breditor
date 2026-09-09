@@ -7,6 +7,8 @@ profile-aware browser persistence selector are implemented in `0.2.0`.
 contract version 2 while preserving exact version-1 bytes for every property-
 free schema. The unpublished alpha.3 ABI-4/browser bridge exposes and validates
 that same digest-bound property contract; it does not change fingerprint bytes.
+Alpha.4's closed browser-owned safe-Link presentation also remains outside the
+fingerprint and changes no fingerprint bytes.
 Immutable compiled semantic profiles keep action/intent/state
 and browser-presentation declarations outside this digest; their separate
 runtime generation crosses the engine/Wasm/browser boundary without being

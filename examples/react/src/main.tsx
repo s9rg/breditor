@@ -19,8 +19,8 @@ createRoot(root).render(
         <h1>Breditor</h1>
         <p className="hero-copy">
           A small, real browser editor built on a typed document tree and
-          semantic commands. This page runs the reference Highlight extension
-          end to end.
+          semantic commands. This page runs reference Highlight and safe Link
+          formatting end to end.
         </p>
       </header>
 
@@ -31,20 +31,21 @@ createRoot(root).render(
             <h2 id="demo-heading">Format, undo, and keep writing.</h2>
           </div>
           <p>
-            Select some text, then use Bold or Highlight. Undo and Redo replay
-            the same semantic operations through the Rust-owned editor state.
+            Select some text, then use Bold, Highlight, or the Link form. Undo
+            and Redo replay the same semantic operations through the Rust-owned
+            editor state.
           </p>
         </div>
 
         <BreditorEditor
-          label="Breditor Highlight reference document"
+          label="Breditor formatting reference document"
           primaryModifier={primaryModifier}
         />
 
         <aside className="demo-hints" aria-label="Demo tips">
           <p>
             <span className="hint-number">01</span>
-            Click in “Highlighted text,” select a range, and toggle its format.
+            Select a range, enter an HTTPS URL, then apply a safe Link.
           </p>
           <p>
             <span className="hint-number">02</span>
@@ -60,9 +61,9 @@ createRoot(root).render(
       </section>
 
       <footer className="architecture-note">
-        React owns the frame. Breditor owns the toolbar and editable DOM. The
-        canonical document AST and history live behind the WebAssembly
-        boundary.
+        React owns the frame and typed Link form. Breditor owns the declarative
+        toolbar and editable DOM. The canonical document AST and history live
+        behind the WebAssembly boundary.
       </footer>
     </main>
   </StrictMode>,
