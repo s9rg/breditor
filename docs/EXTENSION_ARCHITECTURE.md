@@ -3,12 +3,14 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.6` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.7` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
-contract for cross-paragraph typed set/remove. It does not introduce a
-generic attribute protocol, a native typed toolbar control, or an extensible
-operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+contract for cross-paragraph typed set/remove. It adds one closed browser-owned
+typed form correlated through a new ABI-5 process-local set-surface triple. It
+does not introduce a generic attribute protocol, arbitrary toolbar widget, or
+extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
+normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` ships. It complements
@@ -620,21 +622,22 @@ The stock Wasm module cannot dynamically link arbitrary third-party Rust. A
 separate Wasm module has separate memory, tables, allocator, panic behavior,
 and versioning; Rust's native ABI is not a stable plugin ABI.
 
-The supported `0.2.0` ABI path is Wasm ABI 3. Alpha.5 carries a compiled profile
-and its opaque generation through Rust-owned engines and Wasm handles. New
-profile factories explicitly accept Document V2 or Session Checkpoint V2; the
-legacy exact-base factory remains a separate V1 compatibility path. The
-supported Alpha.7 browser path consumes ABI 3 and admits either the exact built-in
-base descriptor or one completely correlated compiled-profile descriptor plus
-callback-free browser presentation. Alpha.7 does not change the ABI number or
-durable formats; it consumes the existing intent-result provenance through a
-public redaction boundary. Alpha.8 retains that same ABI and proves the path
-from three exact-version tarballs. `@breditor/reference-highlight` declares an
+The supported `0.2.0` path introduced Wasm ABI 3. Its Alpha.5 checkpoint carries
+a compiled profile and opaque generation through Rust-owned engines and Wasm
+handles. The `0.3.0-alpha.3` source checkpoint advances to ABI 4 for the
+explicit Profile Bootstrap V2 factories that accept Document V2 or Session
+Checkpoint V3; the legacy exact-base factory remains a separate V1
+compatibility path. The supported `0.3.0-alpha.7` browser path requires ABI 5
+and adds only the canonical typed-set format/intent/action-state correlation.
+It admits either the exact built-in base descriptor or one completely
+correlated compiled-profile descriptor plus callback-free browser
+presentation. Profile Bootstrap V2, schema fingerprints, and every durable
+format remain unchanged. `@breditor/reference-highlight` declares an
 exact `@breditor/browser` peer because render and toolbar manifests are branded
 by the browser module instance that creates and admits them; a nested or
 mismatched browser copy is not a supported substitute.
 
-The ABI 3 boundary:
+The ABI 3 bootstrap boundary, retained by later ABI generations:
 
 1. pass the complete manifest set during fresh or restored profile/engine
    bootstrap through the generated bounded value boundary;
@@ -797,6 +800,29 @@ that exact V3 operation contract. Wasm ABI 4, Profile Bootstrap V2, descriptor
 and projection shapes, schema fingerprints, Document V2, and V3 format numbers
 are unchanged.
 
+## `0.3.0-alpha.7` closed typed toolbar form
+
+Alpha.7 adds no semantic action, operation, replay rule, or durable codec. Rust
+adds one UI-neutral descriptor triple for every compiled typed setter: format
+kind, intent ID, and routed action-state ID, canonically ordered by format.
+Wasm ABI 5 exposes only that process-local correlation. Action and binding
+identity, form fields, labels, drafts, focus, and rendering remain absent from
+Rust and the bootstrap.
+
+The browser may bind that triple to one callback-free `inlineFormatForm` whose
+fields exactly cover the target format's required properties. The closed field
+vocabulary is URL-presented bounded string and Boolean-default-false. Apply is
+a complete lexically ordered map replacement; Remove is the canonical remove
+input. No URL scheme or navigation decision happens at input time;
+`safeLinkV1` owns that policy when rendering.
+
+The APG `role="toolbar"` retains only roving native command and launcher
+buttons. The interactive nonmodal form is a sibling under the caller's toolbar
+mount, focuses its first field when opened, and returns focus on Escape or
+Close. Drafts are neither hydrated from current selection values nor persisted.
+Apply/Remove preserve semantic selection, use the existing synchronous queue,
+request the existing history boundary, and replay only the committed operation.
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:
@@ -805,8 +831,8 @@ The following are explicitly deferred:
   after the initial Rust value model proves itself;
 - arbitrary block, inline, leaf, atom, embed, table, or nested editable nodes;
 - property-bearing presentation beyond the exact `safeLinkV1` policy, including
-  general DOM attributes, color/CSS policies, renderer callbacks, and native
-  typed toolbar controls;
+  general DOM attributes, color/CSS policies, and renderer callbacks; toolbar
+  fields beyond the closed required URL-string/Boolean form;
 - format exclusions, groups, inclusivity rules, multiple instances, and
   arbitrary normalization;
 - optional peer dependencies, capability selection, extension-version ranges,
@@ -823,8 +849,8 @@ The following are explicitly deferred:
 - collaboration, CRDT/OT rebasing, selective undo, remote cursors, and profile
   negotiation;
 - package discovery, downloading, registry policy, or permission UI;
-- extension keymaps, `beforeinput` rules, menus, selects, and custom toolbar
-  controls beyond the supported intent-based toggle button;
+- extension keymaps, `beforeinput` rules, menus, selects, optional or integer
+  fields, partial property patches, and arbitrary custom toolbar controls;
 - sandboxing browser presentation code supplied by the host;
 - generic HTML fidelity, arbitrary executable portable converters, and a
   framework-neutral server-side renderer.
@@ -846,8 +872,9 @@ These are product constraints, not implementation details to conceal:
 - Headings, links, lists, images, tables, embeds, arbitrary properties, and
   custom nodes are not supported by the extension path.
 - Extension code cannot add an operation variant or run during replay.
-- The alpha.4 manifest path can request only one built-in generic no-input
-  toggle for each same-manifest property-free format. It cannot define custom
+- The alpha.4 manifest path can opt in with at most one admitted built-in
+  generic no-input toggle declaration for a same-manifest property-free
+  format; a format declaration alone generates no toggle. It cannot define custom
   actions or inputs, target another extension's format, share a toggle identity,
   or add fallback routing.
 - Native action-registry, intent-router, catalog, and engine APIs remain
@@ -944,6 +971,13 @@ exact DOM/composition/copy-HTML shapes, and an application-owned reference Link
 form. It does not widen Rust, Wasm ABI 4, durable formats, plain-text paste, or
 the native-button toolbar, and it does not establish a general attribute or CSS
 protocol.
+
+`0.3.0-alpha.5` makes the existing direct-root paragraph operations preserve
+typed format instances, and alpha.6 uses that exact operation language for
+cross-paragraph complete-map set/remove. `0.3.0-alpha.7` advances to ABI 5 and
+settles the canonical set-surface correlation plus one browser-only closed
+URL-string/Boolean form. Bootstrap V2, fingerprint bytes, Document V2, and V3
+durable bytes remain unchanged.
 
 The following choice remains for a later release and may be settled without
 weakening the decisions above:

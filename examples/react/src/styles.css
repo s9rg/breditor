@@ -127,7 +127,6 @@ h1 {
 }
 
 .toolbar-mount button,
-.link-controls button,
 .editor-retry {
   min-height: 2.35rem;
   padding: 0.4rem 0.8rem;
@@ -146,29 +145,28 @@ h1 {
 }
 
 .toolbar-mount button:hover:not([aria-disabled="true"]),
-.link-controls button:hover:not(:disabled),
 .editor-retry:hover:not(:disabled) {
   border-color: #4c8667;
   background: #f8fcf8;
   transform: translateY(-1px);
 }
 
-.toolbar-mount button[aria-pressed="true"] {
+.toolbar-mount button[aria-pressed="true"],
+.toolbar-mount
+  button[data-breditor-control-kind="inline-format-form"][aria-expanded="true"] {
   border-color: #17663d;
   background: #dcefe4;
   color: #0c512e;
 }
 
 .toolbar-mount button[aria-disabled="true"],
-.link-controls button:disabled,
 .editor-retry:disabled {
   cursor: not-allowed;
   opacity: 0.48;
 }
 
 .toolbar-mount button:focus-visible,
-.link-controls button:focus-visible,
-.link-controls input:focus-visible,
+.toolbar-mount [data-breditor-property]:focus-visible,
 .editor-mount:focus-visible,
 .editor-retry:focus-visible,
 .editor-details summary:focus-visible {
@@ -176,29 +174,35 @@ h1 {
   outline-offset: 3px;
 }
 
-.link-controls {
+.toolbar-mount > [data-breditor-toolbar-panel] {
   display: grid;
   grid-template-columns: minmax(12rem, 1fr) auto auto;
   gap: 0.5rem 0.75rem;
   align-items: end;
+  margin: 0;
   padding: 0.75rem;
   border-top: 1px solid #dce4df;
   background: #f8faf7;
 }
 
-.link-controls__url {
-  display: grid;
-  gap: 0.28rem;
+.toolbar-mount > [data-breditor-toolbar-panel][hidden] {
+  display: none;
 }
 
-.link-controls__url label,
-.link-controls__checkbox {
+.toolbar-mount [data-breditor-toolbar-field] {
   color: #3e594c;
   font-size: 0.76rem;
   font-weight: 720;
 }
 
-.link-controls__url input {
+.toolbar-mount [data-breditor-toolbar-field="string"] {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.toolbar-mount
+  [data-breditor-toolbar-field="string"]
+  > [data-breditor-property] {
   width: 100%;
   min-height: 2.35rem;
   padding: 0.42rem 0.58rem;
@@ -210,13 +214,12 @@ h1 {
   font-size: 0.875rem;
 }
 
-.link-controls__url input:disabled,
-.link-controls__checkbox input:disabled {
+.toolbar-mount [data-breditor-property]:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.link-controls__checkbox {
+.toolbar-mount [data-breditor-toolbar-field="boolean"] {
   display: flex;
   gap: 0.42rem;
   align-items: center;
@@ -224,31 +227,33 @@ h1 {
   padding-bottom: 0.06rem;
 }
 
-.link-controls__checkbox input {
+.toolbar-mount
+  [data-breditor-toolbar-field="boolean"]
+  > [data-breditor-property] {
   width: 1rem;
   height: 1rem;
   margin: 0;
   accent-color: #17663d;
 }
 
-.link-controls__actions {
+.toolbar-mount [data-breditor-toolbar-form-actions] {
   display: flex;
   gap: 0.42rem;
 }
 
-.link-controls__state,
-.link-controls__feedback {
+.toolbar-mount [data-breditor-toolbar-form-state],
+.toolbar-mount [data-breditor-toolbar-form-feedback] {
   margin: 0;
   color: #5b6f64;
   font-size: 0.72rem;
   line-height: 1.35;
 }
 
-.link-controls__state {
+.toolbar-mount [data-breditor-toolbar-form-state] {
   grid-column: 1 / 2;
 }
 
-.link-controls__feedback {
+.toolbar-mount [data-breditor-toolbar-form-feedback] {
   grid-column: 2 / -1;
   min-height: 1em;
   text-align: right;
@@ -425,21 +430,21 @@ kbd {
     align-items: stretch;
   }
 
-  .link-controls {
+  .toolbar-mount > [data-breditor-toolbar-panel] {
     grid-template-columns: 1fr;
     align-items: stretch;
   }
 
-  .link-controls__actions {
+  .toolbar-mount [data-breditor-toolbar-form-actions] {
     flex-wrap: wrap;
   }
 
-  .link-controls__actions button {
+  .toolbar-mount [data-breditor-toolbar-form-actions] button {
     flex: 1 1 8rem;
   }
 
-  .link-controls__state,
-  .link-controls__feedback {
+  .toolbar-mount [data-breditor-toolbar-form-state],
+  .toolbar-mount [data-breditor-toolbar-form-feedback] {
     grid-column: 1;
     text-align: left;
   }
@@ -451,7 +456,6 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .toolbar-mount button,
-  .link-controls button,
   .editor-retry {
     transition: none;
   }

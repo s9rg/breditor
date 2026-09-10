@@ -7,7 +7,9 @@ import {
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
 import {
+  browserCommandJsonIsAdmissible,
   historyRequest,
+  jsonIntentRequest,
   noInputActionRequest,
   noInputIntentRequest,
   preserveSelectionSync,
@@ -22,14 +24,12 @@ import {
   nativeAttributeNames,
   nativeChildNodes,
   nativeCreateHtmlElement,
-  nativeDocumentActiveElement,
   nativeFocusHtmlElement,
   nativeGetAttribute,
   nativeHasAttribute,
   nativeHtmlHostFacts,
   nativeNodeType,
   nativeNodeValue,
-  nativeOwnerDocument,
   nativeParentElement,
   nativeParentNode,
   nativeRemoveAttribute,
@@ -37,6 +37,8 @@ import {
   nativeRemoveEventListener,
   nativeReplaceChildren,
   nativeSetAttribute,
+  nativeTreeRoot,
+  nativeTreeRootActiveElement,
 } from "./html_host.js";
 import {
   preventDomEventDefault,
@@ -44,6 +46,10 @@ import {
   readDomKeyboardEvent,
   readDomMouseEvent,
 } from "./dom_event_intrinsics.js";
+import {
+  BreditorToolbarInlineFormatForm,
+  type ToolbarInlineFormatFormActionState,
+} from "./toolbar_inline_format_form.js";
 
 /** Maximum entries inspected from one browser action-state snapshot. */
 export const MAX_TOOLBAR_STATE_ENTRIES = 512;
@@ -62,6 +68,7 @@ export interface ToolbarActionStateEntry {
     "enabled" | "disabled" | "blocked" | "unhandled" | "faulted";
   readonly activation:
     "stateless" | "inactive" | "active" | "mixed" | undefined;
+  readonly reasonCode?: string | undefined;
 }
 
 /** Complete state read model needed by a toolbar refresh. */
@@ -82,10 +89,21 @@ export interface ToolbarActionStateStore {
  * One presentation invocation. `preserve` requires the runtime to use its last
  * exact semantic editor selection even when keyboard focus is in the toolbar.
  */
+export interface ToolbarJsonIntentCommand {
+  readonly kind: "intentJson";
+  readonly intentId: string;
+  readonly inputJson: string;
+}
+
+/** One closed command emitted by either a button or a native typed form. */
+export type ToolbarInvocationCommand =
+  | ToolbarCommandDeclaration
+  | ToolbarJsonIntentCommand;
+
 export interface ToolbarCommandInvocation {
   readonly stateId: string;
   readonly selection: "preserve";
-  readonly command: ToolbarCommandDeclaration;
+  readonly command: ToolbarInvocationCommand;
 }
 
 /** Closed synchronous outcome returned by a toolbar command dispatcher. */
@@ -98,9 +116,11 @@ const OWNED_TOOLBAR_DISPATCH_RESULTS = new WeakSet<object>();
 /**
  * Mints one immutable dispatch outcome accepted by `BreditorToolbar`.
  *
- * `completed` means the command finished synchronously, `rejected` means no
- * command ran, and `failed` means the runtime can no longer prove a safe
- * outcome. A failed or structurally invalid result faults the toolbar closed.
+ * `completed` means the requested target command finished synchronously,
+ * `rejected` means that target was not applied, and `failed` means the runtime
+ * can no longer prove a safe outcome. A rejected typed intent may still have
+ * completed its explicitly requested history boundary before Rust reported a
+ * blocked or unhandled target. Failed or malformed results fault the toolbar.
  */
 export function toolbarCommandDispatchResult(
   status: ToolbarCommandDispatchResult["status"],
@@ -152,6 +172,16 @@ export function toolbarCommandRequest(
       preserved,
       source,
       command.intentId,
+      "closeBefore",
+    );
+  }
+  if (command.kind === "intentJson") {
+    return jsonIntentRequest(
+      delivery,
+      preserved,
+      source,
+      command.intentId,
+      command.inputJson,
       "closeBefore",
     );
   }
@@ -217,11 +247,61 @@ function snapshotToolbarInvocation(
     return Object.freeze({
       stateId,
       selection,
-      command: snapshotToolbarCommandDeclaration(read("command")),
+      command: snapshotToolbarInvocationCommand(read("command")),
     });
   } catch {
     return null;
   }
+}
+
+function snapshotToolbarInvocationCommand(
+  value: unknown,
+): ToolbarInvocationCommand {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new TypeError("toolbar invocation command is invalid");
+  }
+  try {
+    const kindDescriptor = Object.getOwnPropertyDescriptor(value, "kind");
+    if (
+      kindDescriptor !== undefined &&
+      "value" in kindDescriptor &&
+      kindDescriptor.value === "intentJson"
+    ) {
+      const keys = Reflect.ownKeys(value);
+      const expected = ["kind", "intentId", "inputJson"] as const;
+      if (
+        keys.length !== expected.length ||
+        keys.some(
+          (key) =>
+            typeof key !== "string" ||
+            !expected.some((expectedKey) => expectedKey === key),
+        )
+      ) {
+        throw new TypeError("toolbar JSON intent command is invalid");
+      }
+      const read = (key: (typeof expected)[number]): unknown => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (descriptor === undefined || !("value" in descriptor)) {
+          throw new TypeError("toolbar JSON intent command is invalid");
+        }
+        return descriptor.value;
+      };
+      const intentId = read("intentId");
+      const inputJson = read("inputJson");
+      if (
+        typeof intentId !== "string" ||
+        intentId.length > 128 ||
+        !/^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(intentId) ||
+        !browserCommandJsonIsAdmissible(inputJson)
+      ) {
+        throw new TypeError("toolbar JSON intent command is invalid");
+      }
+      return Object.freeze({ kind: "intentJson", intentId, inputJson });
+    }
+  } catch {
+    throw new TypeError("toolbar invocation command is invalid");
+  }
+  return snapshotToolbarCommandDeclaration(value);
 }
 
 /** Observable lifecycle of one mounted toolbar. */
@@ -235,7 +315,8 @@ export type BreditorToolbarSubscriber = (
 interface ButtonRecord {
   readonly declaration: ToolbarControlDeclaration;
   readonly button: HTMLButtonElement;
-  readonly invocation: ToolbarCommandInvocation;
+  invocation: ToolbarCommandInvocation | undefined;
+  form: BreditorToolbarInlineFormatForm | undefined;
   readonly onPointerDown: (event: PointerEvent) => void;
   readonly onMouseDown: (event: MouseEvent) => void;
   readonly onFocus: () => void;
@@ -248,6 +329,7 @@ interface ButtonRecord {
 interface NormalizedActionState {
   readonly availability: ToolbarActionStateEntry["availability"];
   readonly activation: ToolbarActionStateEntry["activation"];
+  readonly reasonCode: string | undefined;
 }
 
 interface ToolbarSubscriberSlot {
@@ -255,8 +337,24 @@ interface ToolbarSubscriberSlot {
   references: number;
 }
 
+interface ToolbarFormFocusRestore {
+  readonly form: BreditorToolbarInlineFormatForm;
+  readonly control: HTMLElement;
+}
+
 const TOOLBAR_HOSTS = new WeakMap<HTMLElement, BreditorToolbar>();
 const NOOP_UNSUBSCRIBE = Object.freeze((): void => {});
+
+function nodeSequenceHasPrefix(
+  actual: readonly ChildNode[],
+  prefix: readonly ChildNode[],
+): boolean {
+  if (actual.length < prefix.length) return false;
+  for (let index = 0; index < prefix.length; index += 1) {
+    if (actual[index] !== prefix[index]) return false;
+  }
+  return true;
+}
 
 /**
  * Accessible native-button toolbar driven only by a frozen manifest and store.
@@ -271,15 +369,18 @@ const NOOP_UNSUBSCRIBE = Object.freeze((): void => {});
 export class BreditorToolbar {
   readonly #host: HTMLElement;
   readonly #ownerDocument: Document;
+  readonly #baselineChildren!: readonly ChildNode[];
   readonly #element!: HTMLDivElement;
   readonly #manifest!: ToolbarManifest;
   readonly #readSnapshot!: () => ToolbarActionStateSnapshot | undefined;
   readonly #readStoreStatus!: () => unknown;
   readonly #dispatch!: (invocation: ToolbarCommandInvocation) => unknown;
   readonly #buttons: ButtonRecord[] = [];
+  readonly #forms: BreditorToolbarInlineFormatForm[] = [];
   readonly #subscribers: ToolbarSubscriberSlot[] = [];
   #unsubscribe: (() => void) | undefined;
   #activeIndex = 0;
+  #formDispatching = false;
   #state: BreditorToolbarState = "live";
 
   constructor(
@@ -304,6 +405,7 @@ export class BreditorToolbar {
     TOOLBAR_HOSTS.set(host, this);
 
     try {
+      this.#baselineChildren = nativeChildNodes(host);
       this.#manifest = isOwnedToolbarManifest(manifest)
         ? manifest
         : createToolbarManifest(manifest);
@@ -342,8 +444,15 @@ export class BreditorToolbar {
       nativeSetAttribute(element, "aria-label", this.#manifest.label);
       nativeSetAttribute(element, "aria-orientation", "horizontal");
       this.#element = element;
-      this.#installButtons();
+      const currentHostChildren = nativeChildNodes(host);
+      if (
+        currentHostChildren.length !== this.#baselineChildren.length ||
+        !nodeSequenceHasPrefix(currentHostChildren, this.#baselineChildren)
+      ) {
+        throw new TypeError("toolbar host changed during construction");
+      }
       nativeAppendChild(host, element);
+      this.#installButtons();
       const unsubscribe = Reflect.apply(subscribe, stateStore, [
         this.#refreshFromStore,
       ]);
@@ -353,6 +462,9 @@ export class BreditorToolbar {
       this.#unsubscribe = unsubscribe;
       if (this.#state === "live") {
         this.#refreshFromStore();
+        if (this.#state === "live" && !this.validateCanonicalDom()) {
+          throw new TypeError("toolbar host changed during construction");
+        }
       } else {
         this.#releaseSubscription();
       }
@@ -405,8 +517,10 @@ export class BreditorToolbar {
         rootFacts.ownerDocument === this.#ownerDocument &&
         rootFacts.tagName === "DIV" &&
         nativeParentElement(this.#element) === this.#host &&
-        hostChildren.length === 1 &&
-        hostChildren[0] === this.#element &&
+        hostChildren.length ===
+          this.#baselineChildren.length + 1 + this.#forms.length &&
+        nodeSequenceHasPrefix(hostChildren, this.#baselineChildren) &&
+        hostChildren[this.#baselineChildren.length] === this.#element &&
         rootAttributeNames.length === 4 &&
         nativeHasAttribute(this.#element, "data-breditor-toolbar-root") &&
         nativeGetAttribute(this.#element, "data-breditor-toolbar-root") === "" &&
@@ -424,6 +538,12 @@ export class BreditorToolbar {
               index,
               this.#activeIndex,
             ),
+        ) &&
+        this.#forms.every(
+          (form, index) =>
+            hostChildren[this.#baselineChildren.length + index + 1] ===
+              form.panel &&
+            form.validateCanonicalDom(this.#element),
         )
       );
     } catch {
@@ -495,15 +615,21 @@ export class BreditorToolbar {
       if (declaration.group !== undefined) {
         nativeSetAttribute(button, "data-breditor-group", declaration.group);
       }
-      if (declaration.activation === "tracked") {
+      if (
+        declaration.kind === "button" &&
+        declaration.activation === "tracked"
+      ) {
         nativeSetAttribute(button, "aria-pressed", "false");
       }
 
-      const invocation: ToolbarCommandInvocation = Object.freeze({
-        stateId: declaration.stateId,
-        selection: "preserve",
-        command: declaration.command,
-      });
+      const invocation: ToolbarCommandInvocation | undefined =
+        declaration.kind === "button"
+          ? Object.freeze({
+              stateId: declaration.stateId,
+              selection: "preserve",
+              command: declaration.command,
+            })
+          : undefined;
       const record = {} as ButtonRecord;
       const onPointerDown = (event: PointerEvent) => {
         this.#guardEvent(() => this.#handlePointerDown(index, event));
@@ -524,13 +650,17 @@ export class BreditorToolbar {
         declaration,
         button,
         invocation,
+        form: undefined,
         onPointerDown,
         onMouseDown,
         onFocus,
         onKeyDown,
         onClick,
         enabled: false,
-        pressed: declaration.activation === "tracked" ? "false" : undefined,
+        pressed:
+          declaration.kind === "button" && declaration.activation === "tracked"
+            ? "false"
+            : undefined,
       });
       this.#buttons.push(record);
       nativeAddEventListener(button, "pointerdown", onPointerDown);
@@ -539,6 +669,20 @@ export class BreditorToolbar {
       nativeAddEventListener(button, "keydown", onKeyDown);
       nativeAddEventListener(button, "click", onClick);
       nativeAppendChild(this.#element, button);
+      if (declaration.kind === "inlineFormatForm") {
+        const form = new BreditorToolbarInlineFormatForm(
+          this.#ownerDocument,
+          this.#host,
+          button,
+          declaration,
+          (operation, inputJson) =>
+            this.#dispatchInlineFormatForm(record, operation, inputJson),
+          (callback) => this.#guardEvent(callback),
+          (opening) => this.#closeOtherForms(opening),
+        );
+        record.form = form;
+        this.#forms.push(form);
+      }
     }
   }
 
@@ -579,6 +723,19 @@ export class BreditorToolbar {
     record: ButtonRecord,
     entry: NormalizedActionState | undefined,
   ): void {
+    if (record.declaration.kind === "inlineFormatForm") {
+      nativeRemoveAttribute(record.button, "aria-pressed");
+      record.pressed = undefined;
+      record.form?.renderState(entry);
+      record.enabled =
+        this.#state === "live" && record.form?.formReady === true;
+      nativeSetAttribute(
+        record.button,
+        "aria-disabled",
+        record.enabled ? "false" : "true",
+      );
+      return;
+    }
     let contractMatches = false;
     if (record.declaration.activation === "tracked") {
       const pressed =
@@ -743,11 +900,28 @@ export class BreditorToolbar {
     ) {
       return;
     }
-    this.#refreshFromStore();
-    if (!record.enabled || this.#state !== "live") return;
     const restoreToolbarFocus = toolbarButtonHasFocus(record.button);
+    const restoreFormFocus = restoreToolbarFocus
+      ? undefined
+      : this.#captureOpenFormFocus();
+    this.#refreshFromStore();
+    if (this.#state !== "live") return;
+    if (!this.validateCanonicalDom()) {
+      this.#fault();
+      return;
+    }
+    if (!record.enabled) return;
+    if (record.form !== undefined) {
+      record.form.toggle();
+      return;
+    }
+    const invocation = record.invocation;
+    if (invocation === undefined) {
+      this.#fault();
+      return;
+    }
     try {
-      const result = this.#dispatch(record.invocation);
+      const result = this.#dispatch(invocation);
       if (isPromiseLike(result)) {
         void Promise.resolve(result).catch(() => undefined);
         this.#fault();
@@ -766,10 +940,82 @@ export class BreditorToolbar {
         if (!toolbarButtonHasFocus(record.button)) {
           this.#fault();
         }
+      } else if (restoreFormFocus !== undefined && this.#state === "live") {
+        restoreFormFocus.form.restoreFocusedControl(restoreFormFocus.control);
       }
     } catch {
       this.#fault();
     }
+  }
+
+  #dispatchInlineFormatForm(
+    record: ButtonRecord,
+    operation: "set" | "remove",
+    inputJson: string,
+  ): "completed" | "rejected" | "failed" {
+    if (
+      this.#state !== "live" ||
+      record.declaration.kind !== "inlineFormatForm" ||
+      record.form === undefined ||
+      this.#formDispatching
+    ) {
+      return "rejected";
+    }
+    this.#formDispatching = true;
+    try {
+      this.#refreshFromStore();
+      if (
+        this.#state !== "live" ||
+        !record.form.isOpen ||
+        !record.form.formReady ||
+        (operation === "remove" && !record.form.removeReady) ||
+        !this.validateCanonicalDom()
+      ) {
+        return "rejected";
+      }
+      const invocation: ToolbarCommandInvocation = Object.freeze({
+        stateId: record.declaration.stateId,
+        selection: "preserve",
+        command: Object.freeze({
+          kind: "intentJson",
+          intentId: record.declaration.intentId,
+          inputJson,
+        }),
+      });
+      const result = this.#dispatch(invocation);
+      if (isPromiseLike(result)) {
+        void Promise.resolve(result).catch(() => undefined);
+        this.#fault();
+        return "failed";
+      }
+      if (!isOwnedToolbarDispatchResult(result) || result.status === "failed") {
+        this.#fault();
+        return "failed";
+      }
+      if (this.#state !== "live") {
+        return this.#state === "faulted" ? "failed" : "rejected";
+      }
+      return result.status;
+    } catch {
+      this.#fault();
+      return "failed";
+    } finally {
+      this.#formDispatching = false;
+    }
+  }
+
+  #closeOtherForms(opening: BreditorToolbarInlineFormatForm): void {
+    for (const form of this.#forms) {
+      if (form !== opening && form.isOpen) form.close(false, true);
+    }
+  }
+
+  #captureOpenFormFocus(): ToolbarFormFocusRestore | undefined {
+    for (const form of this.#forms) {
+      const control = form.captureFocusedControl();
+      if (control !== undefined) return Object.freeze({ form, control });
+    }
+    return undefined;
   }
 
   #fault(): void {
@@ -778,6 +1024,9 @@ export class BreditorToolbar {
     this.#releaseSubscription();
     for (const record of this.#buttons) {
       record.enabled = false;
+      if (record.form !== undefined) {
+        bestEffort(() => record.form?.close(false, true));
+      }
       try {
         nativeSetAttribute(record.button, "aria-disabled", "true");
       } catch {
@@ -800,6 +1049,8 @@ export class BreditorToolbar {
   }
 
   #disposeInstalledDom(): void {
+    for (const form of this.#forms) bestEffort(() => form.dispose());
+    this.#forms.splice(0, this.#forms.length);
     for (const record of this.#buttons) {
       bestEffort(() =>
         nativeRemoveEventListener(
@@ -874,10 +1125,13 @@ function isCanonicalToolbarButton(
     return false;
   }
   const children = nativeChildNodes(button);
+  const tracked =
+    declaration.kind === "button" && declaration.activation === "tracked";
   const expectedAttributeCount =
     5 +
     (declaration.group === undefined ? 0 : 1) +
-    (declaration.activation === "tracked" ? 1 : 0);
+    (tracked ? 1 : 0) +
+    (declaration.kind === "inlineFormatForm" ? 4 : 0);
   return (
     children.length === 1 &&
     nativeNodeType(children[0]!) === 3 &&
@@ -896,19 +1150,28 @@ function isCanonicalToolbarButton(
       ? !nativeHasAttribute(button, "data-breditor-group")
       : nativeGetAttribute(button, "data-breditor-group") ===
         declaration.group) &&
-    (declaration.activation === "tracked"
+    (tracked
       ? record.pressed !== undefined &&
         nativeGetAttribute(button, "aria-pressed") === record.pressed
-      : !nativeHasAttribute(button, "aria-pressed"))
+      : !nativeHasAttribute(button, "aria-pressed")) &&
+    (declaration.kind === "inlineFormatForm"
+      ? record.form !== undefined &&
+        nativeGetAttribute(button, "data-breditor-control-kind") ===
+          "inline-format-form" &&
+        nativeGetAttribute(button, "data-breditor-activation") !== null &&
+        nativeGetAttribute(button, "aria-controls") ===
+          nativeGetAttribute(record.form.panel, "id") &&
+        nativeGetAttribute(button, "aria-expanded") ===
+          (record.form.isOpen ? "true" : "false")
+      : !nativeHasAttribute(button, "data-breditor-control-kind") &&
+        !nativeHasAttribute(button, "data-breditor-activation") &&
+        !nativeHasAttribute(button, "aria-controls") &&
+        !nativeHasAttribute(button, "aria-expanded"))
   );
 }
 
 function toolbarButtonHasFocus(button: HTMLButtonElement): boolean {
-  const ownerDocument = nativeOwnerDocument(button);
-  return (
-    ownerDocument !== null &&
-    nativeDocumentActiveElement(ownerDocument) === button
-  );
+  return nativeTreeRootActiveElement(nativeTreeRoot(button)) === button;
 }
 
 function normalizeActionStates(
@@ -933,17 +1196,25 @@ function normalizeActionStates(
     const id = entry["id"];
     const availability = entry["availability"];
     const activation = entry["activation"];
+    const reasonCode = entry["reasonCode"];
     if (
       typeof id !== "string" ||
       id.length > 128 ||
       !/^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(id) ||
       !isAvailability(availability) ||
       !isActivation(activation) ||
+      (reasonCode !== undefined &&
+        (typeof reasonCode !== "string" ||
+          reasonCode.length > 128 ||
+          !/^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(reasonCode))) ||
       normalized.has(id)
     ) {
       return null;
     }
-    normalized.set(id, Object.freeze({ availability, activation }));
+    normalized.set(
+      id,
+      Object.freeze({ availability, activation, reasonCode }),
+    );
   }
   return normalized;
 }

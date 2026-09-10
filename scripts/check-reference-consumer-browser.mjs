@@ -72,7 +72,7 @@ try {
         .getElementById("formatting-editor")
         ?.getAttribute("contenteditable"),
       formattingToolbarButtons: document.querySelectorAll(
-        "#formatting-toolbar button",
+        "#formatting-toolbar > [data-breditor-toolbar-root] > button",
       ).length,
       formattingDom: (() => {
         const anchor = document.querySelector(
@@ -114,7 +114,7 @@ try {
   assert.equal(outcome.fixturesFrozen, true);
 
   assert.equal(outcome.formattingContentEditable, "true");
-  assert.equal(outcome.formattingToolbarButtons, 4);
+  assert.equal(outcome.formattingToolbarButtons, 5);
   assert.deepEqual(outcome.formattingDom.attributes, [
     "class",
     "href",
@@ -183,6 +183,60 @@ try {
     },
   ]);
 
+  const nativeForm = await page.evaluate(() => {
+    const toolbar = document.getElementById("formatting-toolbar");
+    const editor = document.getElementById("formatting-editor");
+    const launcher = [...(toolbar?.querySelectorAll(
+      ":scope > [data-breditor-toolbar-root] > button",
+    ) ?? [])].find((button) => button.textContent === "Link");
+    if (!(launcher instanceof HTMLButtonElement)) {
+      throw new Error("native Link launcher is unavailable");
+    }
+    launcher.click();
+    const form = toolbar?.querySelector("form[data-breditor-toolbar-panel]");
+    const url = form?.querySelector('input[type="url"]');
+    const newWindow = form?.querySelector('input[type="checkbox"]');
+    const apply = [...(form?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent === "Apply Link",
+    );
+    if (
+      !(form instanceof HTMLFormElement) ||
+      !(url instanceof HTMLInputElement) ||
+      !(newWindow instanceof HTMLInputElement) ||
+      !(apply instanceof HTMLButtonElement)
+    ) {
+      throw new Error("native Link form is unavailable");
+    }
+    url.value = "https://example.test/native-form-proof";
+    url.dispatchEvent(new Event("input", { bubbles: true }));
+    newWindow.checked = false;
+    newWindow.dispatchEvent(new Event("change", { bubbles: true }));
+    apply.click();
+    const anchor = editor?.querySelector("a.breditor-link");
+    return {
+      formHidden: form.hidden,
+      noValidate: form.noValidate,
+      urlRequired: url.required,
+      feedback: form.querySelector(
+        "[data-breditor-toolbar-form-feedback]",
+      )?.textContent,
+      href: anchor?.getAttribute("href"),
+      rel: anchor?.getAttribute("rel"),
+      target: anchor?.getAttribute("target"),
+      text: anchor?.textContent,
+    };
+  });
+  assert.deepEqual(nativeForm, {
+    formHidden: false,
+    noValidate: true,
+    urlRequired: true,
+    feedback: "Link applied.",
+    href: "https://example.test/native-form-proof",
+    rel: null,
+    target: null,
+    text: "Combined Highlight and Link",
+  });
+
   const disposed = await page.evaluate(() => {
     const smoke = globalThis.__breditorReferencePackageSmoke;
     if (smoke === undefined) throw new Error("missing reference smoke owner");
@@ -211,7 +265,7 @@ try {
 }
 
 console.log(
-  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight and combined typed-Link profiles in Chromium.",
+  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight and combined typed-Link profiles and submitted the native Link form in Chromium.",
 );
 
 async function serve(rawUrl, response) {

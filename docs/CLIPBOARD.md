@@ -2,8 +2,9 @@
 
 Status: supported by the public `0.1.0` runtime for the closed base schema,
 extended by the supported `0.2.0` compiled-profile browser path, and extended
-again by the unpublished `0.3.0-alpha.6` exact `safeLinkV1` and typed target-
-context insertion paths; direct controller construction remains an advanced
+again by the unpublished `0.3.0-alpha.4` exact `safeLinkV1` policy and
+`0.3.0-alpha.5` typed target-context insertion path. Alpha.6 and alpha.7 retain
+those rules unchanged; direct controller construction remains an advanced
 integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and

@@ -5,6 +5,7 @@ import {
   consumeWasmCompiledProfileDescriptor,
   consumeWasmCompiledProfileDescriptorWithCleanup,
   isOwnedBrowserCompiledProfileDescriptor,
+  MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS,
   wasmProfileGenerationIsLive,
   wasmViewMatchesProfileGeneration,
   type WasmCompiledProfileDescriptorView,
@@ -51,9 +52,10 @@ class Descriptor implements WasmCompiledProfileDescriptorView {
   readonly schemaName = "example/document";
   readonly schemaVersion = 7;
   readonly schemaFingerprint = FINGERPRINT;
-  readonly formatCount = 2;
-  readonly intentCount = 2;
-  readonly actionStateCount = 3;
+  readonly formatCount: number = 2;
+  readonly intentCount: number = 2;
+  readonly actionStateCount: number = 3;
+  readonly inlineFormatSetCount: number = 0;
   freeCalls = 0;
 
   constructor(readonly generation: WasmProfileGenerationView) {}
@@ -74,13 +76,35 @@ class Descriptor implements WasmCompiledProfileDescriptorView {
     return index === 0 || index === 1 ? 0 : undefined;
   }
 
-  formatPropertyName(): undefined { return undefined; }
-  formatPropertyPresence(): undefined { return undefined; }
-  formatPropertyValueType(): undefined { return undefined; }
-  formatPropertyIntegerMinimum(): undefined { return undefined; }
-  formatPropertyIntegerMaximum(): undefined { return undefined; }
-  formatPropertyStringMinimumUtf8Bytes(): undefined { return undefined; }
-  formatPropertyStringMaximumUtf8Bytes(): undefined { return undefined; }
+  formatPropertyName(_formatIndex: number, _propertyIndex: number): string | undefined {
+    return undefined;
+  }
+  formatPropertyPresence(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): "required" | "optional" | undefined { return undefined; }
+  formatPropertyValueType(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): "boolean" | "integer" | "string" | undefined {
+    return undefined;
+  }
+  formatPropertyIntegerMinimum(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+  formatPropertyIntegerMaximum(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+  formatPropertyStringMinimumUtf8Bytes(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
+  formatPropertyStringMaximumUtf8Bytes(
+    _formatIndex: number,
+    _propertyIndex: number,
+  ): number | undefined { return undefined; }
 
   intentId(index: number): string | undefined {
     return ["example/set-link", "example/toggle-mark"][index];
@@ -146,8 +170,149 @@ class Descriptor implements WasmCompiledProfileDescriptorView {
     return index === 1 ? 1 : undefined;
   }
 
+  inlineFormatSetFormatKind(_index: number): string | undefined {
+    return undefined;
+  }
+
+  inlineFormatSetIntentId(_index: number): string | undefined {
+    return undefined;
+  }
+
+  inlineFormatSetActionStateId(_index: number): string | undefined {
+    return undefined;
+  }
+
   free(): void {
     this.freeCalls += 1;
+  }
+}
+
+class TwoSetDescriptor extends Descriptor {
+  override readonly actionStateCount = 4;
+  override readonly inlineFormatSetCount = 2;
+
+  override formatPropertyCount(index: number): number | undefined {
+    return index === 0 || index === 1 ? 1 : undefined;
+  }
+
+  override formatPropertyName(
+    formatIndex: number,
+    propertyIndex: number,
+  ): string | undefined {
+    return propertyIndex === 0
+      ? ["example/comment-value", "example/highlight-value"][formatIndex]
+      : undefined;
+  }
+
+  override formatPropertyPresence(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "required" | undefined {
+    return (formatIndex === 0 || formatIndex === 1) && propertyIndex === 0
+      ? "required"
+      : undefined;
+  }
+
+  override formatPropertyValueType(
+    formatIndex: number,
+    propertyIndex: number,
+  ): "string" | undefined {
+    return (formatIndex === 0 || formatIndex === 1) && propertyIndex === 0
+      ? "string"
+      : undefined;
+  }
+
+  override formatPropertyStringMinimumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined {
+    return (formatIndex === 0 || formatIndex === 1) && propertyIndex === 0
+      ? 1
+      : undefined;
+  }
+
+  override formatPropertyStringMaximumUtf8Bytes(
+    formatIndex: number,
+    propertyIndex: number,
+  ): number | undefined {
+    return (formatIndex === 0 || formatIndex === 1) && propertyIndex === 0
+      ? 64
+      : undefined;
+  }
+
+  override intentInputKind(index: number): "typed" | undefined {
+    return index === 0 || index === 1 ? "typed" : undefined;
+  }
+
+  override intentInputContractName(index: number): string | undefined {
+    return index === 0 || index === 1
+      ? "breditor/set-inline-format-input"
+      : undefined;
+  }
+
+  override intentInputContractVersion(index: number): number | undefined {
+    return index === 0 || index === 1 ? 1 : undefined;
+  }
+
+  override intentValueContractName(): undefined { return undefined; }
+  override intentValueContractVersion(): undefined { return undefined; }
+
+  override actionStateId(index: number): string | undefined {
+    return [
+      "example/control-direct",
+      "example/control-link",
+      "example/control-mark",
+      "example/control-undo",
+    ][index];
+  }
+
+  override actionStateSourceKind(
+    index: number,
+  ): "direct" | "routed" | "history" | undefined {
+    return index === 0
+      ? "direct"
+      : index === 1 || index === 2
+        ? "routed"
+        : index === 3
+          ? "history"
+          : undefined;
+  }
+
+  override actionStateSourceIntentId(index: number): string | undefined {
+    return index === 1
+      ? "example/set-link"
+      : index === 2
+        ? "example/toggle-mark"
+        : undefined;
+  }
+
+  override actionStateHistoryDirection(index: number): "undo" | undefined {
+    return index === 3 ? "undo" : undefined;
+  }
+
+  override actionStateActivationContract(
+    index: number,
+  ): "stateless" | "tracked" | undefined {
+    return index === 0 || index === 3
+      ? "stateless"
+      : index === 1 || index === 2
+        ? "tracked"
+        : undefined;
+  }
+
+  override actionStateValueContractName(): undefined { return undefined; }
+  override actionStateValueContractVersion(): undefined { return undefined; }
+
+  override inlineFormatSetFormatKind(index: number): string | undefined {
+    return ["example/comment", "example/highlight"][index];
+  }
+
+  override inlineFormatSetIntentId(index: number): string | undefined {
+    return ["example/set-link", "example/toggle-mark"][index];
+  }
+
+  override inlineFormatSetActionStateId(index: number): string | undefined {
+    return ["example/control-link", "example/control-mark"][index];
   }
 }
 
@@ -208,6 +373,7 @@ describe("compiled Wasm profile descriptor boundary", () => {
           state: { activation: "stateless", value: undefined },
         },
       ],
+      inlineFormatSets: [],
     });
     expect(Object.isFrozen(result.descriptor)).toBe(true);
     expect(Object.isFrozen(result.descriptor.schema)).toBe(true);
@@ -215,6 +381,7 @@ describe("compiled Wasm profile descriptor boundary", () => {
     expect(Object.isFrozen(result.descriptor.formats[0]?.properties)).toBe(true);
     expect(Object.isFrozen(result.descriptor.intents[0]?.input)).toBe(true);
     expect(Object.isFrozen(result.descriptor.actionStates[1]?.source)).toBe(true);
+    expect(Object.isFrozen(result.descriptor.inlineFormatSets)).toBe(true);
     expect(isOwnedBrowserCompiledProfileDescriptor(result.descriptor)).toBe(true);
     expect(
       browserCompiledProfileDescriptorMatchesGeneration(
@@ -251,6 +418,7 @@ describe("compiled Wasm profile descriptor boundary", () => {
       "formats",
       "intents",
       "actionStates",
+      "inlineFormatSets",
     ]);
 
     generation.free();
@@ -391,6 +559,135 @@ describe("compiled Wasm profile descriptor boundary", () => {
     });
     expect(view.freeCalls).toBe(1);
     expect(generation.freeCalls).toBe(0);
+  });
+
+  it("requires bounded canonical and uniquely correlated inline-format sets", () => {
+    const validGeneration = new Generation();
+    const valid = consumeWasmCompiledProfileDescriptor(
+      validGeneration,
+      new TwoSetDescriptor(validGeneration),
+    );
+    expect(valid.ok).toBe(true);
+    if (valid.ok) {
+      expect(valid.descriptor.inlineFormatSets).toEqual([
+        {
+          formatKind: "example/comment",
+          intentId: "example/set-link",
+          actionStateId: "example/control-link",
+        },
+        {
+          formatKind: "example/highlight",
+          intentId: "example/toggle-mark",
+          actionStateId: "example/control-mark",
+        },
+      ]);
+    }
+
+    const invalidMutations: Array<(view: TwoSetDescriptor) => void> = [
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetCount", {
+          value: MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS + 1,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetFormatKind", {
+          value: (index: number) => ["example/highlight", "example/comment"][index],
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetIntentId", {
+          value: (index: number) => index < 2 ? "example/set-link" : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetActionStateId", {
+          value: (index: number) => index < 2 ? "example/control-link" : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetFormatKind", {
+          value: (index: number) => index === 0
+            ? "example/missing"
+            : index === 1
+              ? "example/highlight"
+              : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetActionStateId", {
+          value: (index: number) => index === 0
+            ? "example/control-direct"
+            : index === 1
+              ? "example/control-mark"
+              : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "formatPropertyCount", {
+          value: (index: number) => index === 0 ? 0 : index === 1 ? 1 : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "intentInputContractName", {
+          value: (index: number) => index === 0
+            ? "example/other-input"
+            : index === 1
+              ? "breditor/set-inline-format-input"
+              : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "intentInputContractVersion", {
+          value: (index: number) => index === 0 ? 2 : index === 1 ? 1 : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "intentActivationContract", {
+          value: (index: number) => index === 0
+            ? "stateless"
+            : index === 1
+              ? "tracked"
+              : undefined,
+        });
+        Object.defineProperty(view, "actionStateActivationContract", {
+          value: (index: number) => index === 1
+            ? "stateless"
+            : index === 2
+              ? "tracked"
+              : index === 0 || index === 3
+                ? "stateless"
+                : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "intentValueContractName", {
+          value: (index: number) => index === 0 ? "example/value" : undefined,
+        });
+        Object.defineProperty(view, "intentValueContractVersion", {
+          value: (index: number) => index === 0 ? 1 : undefined,
+        });
+        Object.defineProperty(view, "actionStateValueContractName", {
+          value: (index: number) => index === 1 ? "example/value" : undefined,
+        });
+        Object.defineProperty(view, "actionStateValueContractVersion", {
+          value: (index: number) => index === 1 ? 1 : undefined,
+        });
+      },
+      (view) => {
+        Object.defineProperty(view, "inlineFormatSetIntentId", {
+          value: (index: number) => index === 2
+            ? "example/extra"
+            : ["example/set-link", "example/toggle-mark"][index],
+        });
+      },
+    ];
+    for (const mutate of invalidMutations) {
+      const generation = new Generation();
+      const view = new TwoSetDescriptor(generation);
+      mutate(view);
+      expect(consumeWasmCompiledProfileDescriptor(generation, view).ok).toBe(false);
+      expect(view.freeCalls).toBe(1);
+    }
   });
 
   it("rejects aliases without releasing the protected owner", () => {

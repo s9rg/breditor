@@ -4,7 +4,7 @@
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format for the `0.3.0-alpha.6` path.
+`example/link` format for the `0.3.0-alpha.7` path.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -27,6 +27,10 @@ Alpha.6 changes no reference data. The same application-owned Link form can set
 or remove the complete Link instance across a multi-paragraph selection while
 Highlight peers, empty paragraphs, edge text, undo/redo, and Session V3 reload
 remain exact.
+Alpha.7 moves that Link form into the callback-free toolbar declaration. The
+browser runtime owns its draft URL and Boolean values and submits the existing
+typed intent; the semantic profile, durable fingerprint, and public Link input
+helpers remain unchanged.
 
 ## Use
 
@@ -36,9 +40,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.6 \
-  @breditor/wasm@0.3.0-alpha.6 \
-  @breditor/reference-highlight@0.3.0-alpha.6
+npm install @breditor/browser@0.3.0-alpha.7 \
+  @breditor/wasm@0.3.0-alpha.7 \
+  @breditor/reference-highlight@0.3.0-alpha.7
 ```
 
 ```ts
@@ -156,11 +160,12 @@ absolute HTTP(S) URLs become `href` values. A true
 stored URLs leave an inert anchor rather than becoming DOM attributes.
 
 Link is deterministically outermost when formats overlap; Strong is outside
-Highlight inside it. The declarative toolbar still owns only no-input Bold,
-Highlight, Undo, and Redo buttons. An application-owned URL form calls
-`executeIntentJson` with `createReferenceLinkSetInputJson` or
-`createReferenceLinkRemoveInputJson`; no callback or captured URL is placed in
-the static toolbar manifest.
+Highlight inside it. Between Highlight and Undo, the declarative toolbar adds
+a runtime-owned Link form with a required URL field, an open-in-new-window
+Boolean choice, and Apply/Remove controls. Draft values stay outside the frozen
+manifest. Applications can still call `executeIntentJson` with
+`createReferenceLinkSetInputJson` or `createReferenceLinkRemoveInputJson` for
+the same supported typed intent.
 
 `createReferenceFormattingDocumentJson(text, options)` creates bounded
 single-run examples. Set `highlighted: true` and/or provide
@@ -209,11 +214,17 @@ the durable schema fingerprint.
 
 This package demonstrates one immutable property-free format and one closed
 typed Link format. It does not provide dynamic installation, arbitrary nodes
-or attributes, colors, custom JavaScript/Rust callbacks, typed toolbar forms,
-keymaps, `beforeinput` rules, converters, rich paste, or a native/Wasm plugin
-ABI. The Link href contract validates scalar shape and size; URL safety remains
-a separate browser-owned presentation policy. Reconstruct the editor with a
-newly compiled profile when semantic extensions change.
+or attributes, colors, custom JavaScript/Rust callbacks, arbitrary typed toolbar
+forms, keymaps, `beforeinput` rules, converters, rich paste, or a native/Wasm
+plugin ABI. The one Link form uses the browser's closed string/Boolean field
+vocabulary. The Link href contract validates scalar shape and size; URL safety
+remains a separate browser-owned presentation policy. Reconstruct the editor
+with a newly compiled profile when semantic extensions change.
+
+Form drafts are not hydrated from the current selection and are not persisted.
+The reference package is trusted same-realm JavaScript configuration, not a
+sandbox boundary. See the normative
+[typed toolbar decision](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
 The package uses only supported package-root APIs. Its profile bootstrap is an
 ABI-local Wasm configuration value, not a stable general manifest wire format.

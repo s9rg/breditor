@@ -212,6 +212,7 @@ function compiledDescriptor(
     formatCount: 0,
     intentCount: 0,
     actionStateCount: declarations.length,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: (generation) =>
       generation === TEST_PROFILE_GENERATION,
     formatKind: () => undefined,
@@ -244,6 +245,9 @@ function compiledDescriptor(
     actionStateValueContractName: (index) => declarations[index]?.value?.name,
     actionStateValueContractVersion: (index) =>
       declarations[index]?.value?.version,
+    inlineFormatSetFormatKind: () => undefined,
+    inlineFormatSetIntentId: () => undefined,
+    inlineFormatSetActionStateId: () => undefined,
     free: vi.fn(),
   };
   const result = consumeWasmCompiledProfileDescriptor(

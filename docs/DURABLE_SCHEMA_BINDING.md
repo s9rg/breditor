@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.6` checkpoint. Wasm ABI 4 and the browser explicitly select
+`0.3.0-alpha.7` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -283,7 +283,7 @@ helper from being mistaken for persistence migration.
   generation. Alpha.5 carries it through profile-created Rust engine/state
   observations and Wasm handles, but never serializes or exposes it as a
   scalar. Existing unprofiled native constructors remain advanced bypasses.
-- ABI 4 Profile Bootstrap V2 exposes the exact typed property declaration and
+- ABI 5 retains Profile Bootstrap V2 and exposes the exact typed property declaration and
   its set-action/typed-intent identities. Browser descriptor and projection
   validation, Document export correlation, Session V3 restore, autosave, and
   IndexedDB preserve the typed values. Bootstrap V1 remains profile-aware V2;
@@ -291,12 +291,16 @@ helper from being mistaken for persistence migration.
   slot is schema-scoped rather than document-scoped, so applications opening
   multiple documents under one schema must supply distinct caller slots.
   Intent/toolbar execution remains process-local presentation and changes no
-  durable binding or record bytes.
+  durable binding or record bytes. Alpha.7's set-surface descriptor triple and
+  browser-only typed form are likewise excluded from every durable identity
+  and record; see
+  [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 - Property-bearing Session V3 is a browser checkpoint boundary, not a new
   local-log/storage generation. Alpha.4's sole browser-owned `safeLinkV1`
   policy derives only its fixed canonical Link attributes and matching
-  safe-copy HTML from one exact two-property contract. The native toolbar still
-  derives no typed controls; the reference Link form is application-owned.
+  safe-copy HTML from one exact two-property contract. Alpha.7's native Link
+  form remains ephemeral browser presentation and stores only committed
+  semantic properties through the existing Session V3 path.
 - The local-log entry, checkpoint, frame, root, and storage-generation families
   have no V3 codec. Property-bearing Session Checkpoint V3 bytes cannot enter
   the current V1/V2 local-log graph.

@@ -112,38 +112,84 @@ describe("reference Highlight + Link browser presentation", () => {
     expectDataOnlyFrozenGraph(REFERENCE_FORMATTING_RENDER_MANIFEST);
   });
 
-  it("keeps typed Link input outside the static native-button toolbar", () => {
+  it("declares exact Bold, Highlight, Link, Undo, and Redo control order", () => {
     expect(REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls).toEqual([
-      expect.objectContaining({
+      {
+        kind: "button",
         stateId: BASE_TOOLBAR_STATE_IDS.bold,
+        label: "Bold",
+        activation: "tracked",
+        group: "inline",
         command: { kind: "intent", intentId: BASE_INTENT_IDS.formatStrong },
-      }),
-      expect.objectContaining({
+      },
+      {
+        kind: "button",
         stateId: REFERENCE_FORMATTING_IDS.highlightActionStateId,
+        label: "Highlight",
+        activation: "tracked",
+        group: "inline",
         command: {
           kind: "intent",
           intentId: REFERENCE_FORMATTING_IDS.highlightIntentId,
         },
-      }),
-      expect.objectContaining({
+      },
+      {
+        kind: "inlineFormatForm",
+        stateId: REFERENCE_FORMATTING_IDS.linkPresenceStateId,
+        label: "Link",
+        group: "inline",
+        formatKind: REFERENCE_FORMATTING_IDS.linkFormatKind,
+        intentId: REFERENCE_FORMATTING_IDS.linkIntentId,
+        fields: [
+          {
+            kind: "string",
+            propertyName: REFERENCE_FORMATTING_IDS.linkHrefProperty,
+            label: "Link URL",
+            presentation: "url",
+            autocomplete: "url",
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: MAX_REFERENCE_LINK_HREF_UTF8,
+          },
+          {
+            kind: "boolean",
+            propertyName:
+              REFERENCE_FORMATTING_IDS.linkOpenInNewWindowProperty,
+            label: "Open in new window",
+            defaultValue: false,
+          },
+        ],
+        applyLabel: "Apply Link",
+        removeLabel: "Remove Link",
+        closeLabel: "Close",
+      },
+      {
+        kind: "button",
         stateId: BASE_TOOLBAR_STATE_IDS.undo,
+        label: "Undo",
+        activation: "stateless",
+        group: "history",
         command: { kind: "history", operation: "undo" },
-      }),
-      expect.objectContaining({
+      },
+      {
+        kind: "button",
         stateId: BASE_TOOLBAR_STATE_IDS.redo,
+        label: "Redo",
+        activation: "stateless",
+        group: "history",
         command: { kind: "history", operation: "redo" },
-      }),
+      },
     ]);
-    expect(REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[0]?.command).toEqual({
-      kind: "intent",
-      intentId: BASE_INTENT_IDS.formatStrong,
-    });
     expect(
-      REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls.some(
-        (control) =>
-          control.stateId === REFERENCE_FORMATTING_IDS.linkPresenceStateId,
+      REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls.map(
+        (control) => control.stateId,
       ),
-    ).toBe(false);
+    ).toEqual([
+      BASE_TOOLBAR_STATE_IDS.bold,
+      REFERENCE_FORMATTING_IDS.highlightActionStateId,
+      REFERENCE_FORMATTING_IDS.linkPresenceStateId,
+      BASE_TOOLBAR_STATE_IDS.undo,
+      BASE_TOOLBAR_STATE_IDS.redo,
+    ]);
     expectDataOnlyFrozenGraph(REFERENCE_FORMATTING_TOOLBAR_MANIFEST);
   });
 });

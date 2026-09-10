@@ -823,58 +823,29 @@ function readListenerIntrinsics(
 function readTargetListenerIntrinsics(
   target: object,
 ): TargetListenerIntrinsics | null {
-  const prototypes: object[] = [];
-  let candidate = Object.getPrototypeOf(target) as object | null;
-  while (candidate !== null) {
-    prototypes.push(candidate);
-    candidate = Object.getPrototypeOf(candidate) as object | null;
-  }
-
-  let nodePlatformIndex = -1;
-  // A host-only prototype can imitate one or both Node getter names. The
-  // actual Node prototype is deeper in the chain, so retain the deepest
-  // non-root prototype which owns both accessors before looking for listener
-  // methods. Mutating the realm-wide platform chain itself is outside the
-  // application-owned-host contract.
-  for (let index = 0; index < prototypes.length - 1; index += 1) {
-    candidate = prototypes[index] ?? null;
-    if (candidate === null) continue;
-    const nodeType = Object.getOwnPropertyDescriptor(
-      candidate,
-      "nodeType",
-    )?.get;
-    const ownerDocument = Object.getOwnPropertyDescriptor(
-      candidate,
-      "ownerDocument",
-    )?.get;
-    if (typeof nodeType === "function" && typeof ownerDocument === "function") {
-      nodePlatformIndex = index;
-    }
-  }
-  if (nodePlatformIndex === -1) return null;
-
-  // Starting at that deepest Node marker necessarily excludes host-local
-  // prototype layers. The first listener-owning prototype below it is the
-  // target realm's EventTarget prototype in supported browser DOMs.
-  for (let index = nodePlatformIndex; index < prototypes.length - 1; index += 1) {
-    candidate = prototypes[index] ?? null;
-    if (candidate === null) continue;
-    const add = Object.getOwnPropertyDescriptor(
-      candidate,
-      "addEventListener",
-    )?.value;
-    const remove = Object.getOwnPropertyDescriptor(
-      candidate,
-      "removeEventListener",
-    )?.value;
-    if (typeof add === "function" && typeof remove === "function") {
-      return Object.freeze({
-        add: add as typeof EventTarget.prototype.addEventListener,
-        remove: remove as typeof EventTarget.prototype.removeEventListener,
-      });
-    }
-  }
-  return null;
+  const prototype =
+    typeof EventTarget === "function" ? EventTarget.prototype : undefined;
+  const add = Object.getOwnPropertyDescriptor(
+    prototype ?? Object.prototype,
+    "addEventListener",
+  )?.value;
+  const remove = Object.getOwnPropertyDescriptor(
+    prototype ?? Object.prototype,
+    "removeEventListener",
+  )?.value;
+  if (typeof add !== "function" || typeof remove !== "function") return null;
+  const intrinsics = Object.freeze({
+    add: add as typeof EventTarget.prototype.addEventListener,
+    remove: remove as typeof EventTarget.prototype.removeEventListener,
+  });
+  // A no-op native removal supplies the receiver brand check without
+  // consulting, registering with, or exposing callbacks to its prototype.
+  Reflect.apply(intrinsics.remove, target, [
+    "breditor-intrinsics-probe",
+    NOOP_UNSUBSCRIBE,
+    false,
+  ]);
+  return intrinsics;
 }
 
 function snapshotOptions(options: BrowserEventRouterOptions): Readonly<{

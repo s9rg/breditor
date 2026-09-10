@@ -1,0 +1,260 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  createToolbarManifest,
+  type ToolbarInlineFormatFormDeclaration,
+} from "./toolbar_manifest.js";
+import {
+  TOOLBAR_INLINE_FORMAT_FORM_REMOVE_INPUT_JSON,
+  createToolbarInlineFormatFormRemoveInputJson,
+  createToolbarInlineFormatFormSetInputJson,
+} from "./toolbar_inline_format_form_input.js";
+
+const HREF = "example/href";
+const NEW_WINDOW = "example/open-in-new-window";
+
+function linkForm(
+  minimumUtf8Bytes = 1,
+  maximumUtf8Bytes = 2_048,
+): ToolbarInlineFormatFormDeclaration {
+  const manifest = createToolbarManifest({
+    label: "Editor controls",
+    controls: [
+      {
+        kind: "inlineFormatForm",
+        stateId: "example/link-presence",
+        label: "Link formatting",
+        formatKind: "example/link",
+        intentId: "example/set-link-intent",
+        fields: [
+          {
+            kind: "boolean",
+            propertyName: NEW_WINDOW,
+            label: "Open in new window",
+            defaultValue: false,
+          },
+          {
+            kind: "string",
+            propertyName: HREF,
+            label: "Link URL",
+            presentation: "url",
+            autocomplete: "url",
+            minimumUtf8Bytes,
+            maximumUtf8Bytes,
+            placeholder: "https://example.com",
+          },
+        ],
+        applyLabel: "Apply Link",
+        removeLabel: "Remove Link",
+        closeLabel: "Close Link controls",
+      },
+    ],
+  });
+  const form = manifest.controls[0];
+  if (form?.kind !== "inlineFormatForm") {
+    throw new Error("Link form fixture was not admitted");
+  }
+  return form;
+}
+
+describe("toolbar inline-format form input", () => {
+  it("sorts properties lexically independent of declaration and record order", () => {
+    expect(
+      createToolbarInlineFormatFormSetInputJson(linkForm(), {
+        [NEW_WINDOW]: true,
+        [HREF]: "https://example.test/a",
+      }),
+    ).toBe(
+      '{"operation":"set","properties":[{"name":"example/href","value":"https://example.test/a"},{"name":"example/open-in-new-window","value":true}]}',
+    );
+  });
+
+  it("returns one fixed canonical remove input", () => {
+    expect(createToolbarInlineFormatFormRemoveInputJson()).toBe(
+      '{"operation":"remove"}',
+    );
+    expect(TOOLBAR_INLINE_FORMAT_FORM_REMOVE_INPUT_JSON).toBe(
+      createToolbarInlineFormatFormRemoveInputJson(),
+    );
+  });
+
+  it("escapes strings canonically without imposing a URL scheme policy", () => {
+    const value = 'javascript:alert("quoted\\path")\nnext';
+    const json = createToolbarInlineFormatFormSetInputJson(linkForm(), {
+      [HREF]: value,
+      [NEW_WINDOW]: false,
+    });
+    expect(json).toBe(
+      '{"operation":"set","properties":[{"name":"example/href","value":"javascript:alert(\\"quoted\\\\path\\")\\nnext"},{"name":"example/open-in-new-window","value":false}]}',
+    );
+    expect(JSON.parse(json)).toEqual({
+      operation: "set",
+      properties: [
+        { name: HREF, value },
+        { name: NEW_WINDOW, value: false },
+      ],
+    });
+  });
+
+  it("measures astral Unicode by UTF-8 bytes", () => {
+    const form = linkForm(4, 4);
+    expect(
+      createToolbarInlineFormatFormSetInputJson(form, {
+        [HREF]: "😀",
+        [NEW_WINDOW]: false,
+      }),
+    ).toContain('"value":"😀"');
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(linkForm(1, 3), {
+        [HREF]: "😀",
+        [NEW_WINDOW]: false,
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it("rejects lower and upper string bounds without disclosing values", () => {
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(linkForm(1, 8), {
+        [HREF]: "",
+        [NEW_WINDOW]: false,
+      }),
+    ).toThrow(RangeError);
+
+    const privateValue = "private-value-that-must-not-be-reported";
+    let failure: unknown;
+    try {
+      createToolbarInlineFormatFormSetInputJson(linkForm(1, 8), {
+        [HREF]: privateValue,
+        [NEW_WINDOW]: false,
+      });
+    } catch (error: unknown) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(RangeError);
+    expect(String(failure)).not.toContain(privateValue);
+
+    const preEncodingOverflow = "x".repeat(65_537);
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(linkForm(1, 65_536), {
+        [HREF]: preEncodingOverflow,
+        [NEW_WINDOW]: false,
+      }),
+    ).toThrow(RangeError);
+  });
+
+  it("rejects malformed UTF-16 and exact primitive type mismatches", () => {
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(linkForm(), {
+        [HREF]: "\ud800",
+        [NEW_WINDOW]: false,
+      }),
+    ).toThrow(TypeError);
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(linkForm(), {
+        [HREF]: "https://example.test",
+        [NEW_WINDOW]: 1,
+      }),
+    ).toThrow(TypeError);
+  });
+
+  it("rejects missing, extra, inherited, and symbol-keyed values", () => {
+    const form = linkForm();
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(form, {
+        [HREF]: "https://example.test",
+      }),
+    ).toThrow(TypeError);
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(form, {
+        [HREF]: "https://example.test",
+        [NEW_WINDOW]: false,
+        "example/extra": true,
+      }),
+    ).toThrow(TypeError);
+
+    const inherited = Object.create({ [HREF]: "https://example.test" }) as Record<
+      string,
+      unknown
+    >;
+    inherited[NEW_WINDOW] = false;
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(form, inherited),
+    ).toThrow(TypeError);
+
+    const symbolic: Record<PropertyKey, unknown> = {
+      [HREF]: "https://example.test",
+      [NEW_WINDOW]: false,
+      [Symbol("extra")]: true,
+    };
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(form, symbolic),
+    ).toThrow(TypeError);
+  });
+
+  it("never invokes value accessors and redacts hostile proxy failures", () => {
+    const privateValue = "proxy-private-value";
+    let getterCalls = 0;
+    const accessor = {
+      [NEW_WINDOW]: false,
+      get [HREF]() {
+        getterCalls += 1;
+        return privateValue;
+      },
+    };
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(linkForm(), accessor),
+    ).toThrow(TypeError);
+    expect(getterCalls).toBe(0);
+
+    const hostile = new Proxy(Object.create(null) as Record<string, unknown>, {
+      ownKeys() {
+        throw new Error(privateValue);
+      },
+    });
+    let failure: unknown;
+    try {
+      createToolbarInlineFormatFormSetInputJson(linkForm(), hostile);
+    } catch (error: unknown) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(TypeError);
+    expect(String(failure)).not.toContain(privateValue);
+  });
+
+  it("defensively rejects duplicate declarations and duplicate proxy keys", () => {
+    const form = linkForm();
+    const duplicateDeclaration = {
+      ...form,
+      fields: [form.fields[0], form.fields[0]],
+    } as ToolbarInlineFormatFormDeclaration;
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(duplicateDeclaration, {
+        [NEW_WINDOW]: false,
+      }),
+    ).toThrow(TypeError);
+
+    const duplicateKeys = new Proxy(
+      {
+        [HREF]: "https://example.test",
+        [NEW_WINDOW]: false,
+      },
+      {
+        ownKeys() {
+          return [HREF, HREF, NEW_WINDOW];
+        },
+      },
+    );
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(form, duplicateKeys),
+    ).toThrow(TypeError);
+  });
+
+  it("accepts an exact null-prototype value record", () => {
+    const values = Object.create(null) as Record<string, unknown>;
+    values[HREF] = "https://example.test/null-prototype";
+    values[NEW_WINDOW] = false;
+    expect(createToolbarInlineFormatFormSetInputJson(linkForm(), values)).toContain(
+      "https://example.test/null-prototype",
+    );
+  });
+});

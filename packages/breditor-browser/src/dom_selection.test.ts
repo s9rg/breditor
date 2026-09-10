@@ -954,6 +954,43 @@ describe("BreditorDomSelectionBridge", () => {
     expect(rendered.current).toBe(false);
   });
 
+  it("rejects selection reads and writes after a live host moves into a ShadowRoot", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer();
+    const documentProjection = projection(0);
+    const { rendered } = render(renderer, host, documentProjection);
+    const bridge = new BreditorDomSelectionBridge();
+    const collapsed = semanticSelection(
+      documentProjection,
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 0,
+        affinity: "after",
+      },
+      {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 0,
+        affinity: "after",
+      },
+    );
+    const shadowOwner = document.createElement("section");
+    document.body.append(shadowOwner);
+    const shadowRoot = shadowOwner.attachShadow({ mode: "open" });
+    shadowRoot.append(host);
+
+    expect(bridge.read(rendered)).toMatchObject({
+      ok: false,
+      error: { code: "selection.dom_drift" },
+    });
+    expect(bridge.write(rendered, collapsed)).toMatchObject({
+      ok: false,
+      error: { code: "selection.dom_drift" },
+    });
+  });
+
   it("cannot bypass canonical validation by replacing branded-handle methods", () => {
     const host = document.createElement("div");
     document.body.append(host);
@@ -1634,6 +1671,7 @@ function selectionProfileDescriptor(
     formatCount: formats.length,
     intentCount: 0,
     actionStateCount: 0,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: (candidate) => candidate === generation,
     formatKind: (index) => formats[index],
     formatRevision: (index) =>
@@ -1662,6 +1700,9 @@ function selectionProfileDescriptor(
     actionStateActivationContract: absent,
     actionStateValueContractName: absent,
     actionStateValueContractVersion: absent,
+    inlineFormatSetFormatKind: absent,
+    inlineFormatSetIntentId: absent,
+    inlineFormatSetActionStateId: absent,
     free: () => undefined,
   };
   const result = consumeWasmCompiledProfileDescriptor(generation, view);

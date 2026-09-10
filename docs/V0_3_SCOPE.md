@@ -1,9 +1,10 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.6` source checkpoint adds cross-paragraph complete-map
+Status: the `0.3.0-alpha.7` source checkpoint adds one callback-free native
+typed Link form over alpha.6's cross-paragraph complete-map
 typed set/remove over the property-preserving paragraph structure completed in
-alpha.5. The existing Wasm ABI 4 and browser typed-intent path expose it without
-a new method. Explicit Bootstrap V2 still selects property-aware
+alpha.5. Wasm ABI 5 adds only canonical typed-set presentation correlation.
+Explicit Bootstrap V2 still selects property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
 
@@ -18,7 +19,9 @@ attributes or a native typed toolbar protocol. Alpha.5 completes typed
 property preservation for Breditor's existing direct-root paragraph operation
 algebra without broadening that algebra into a general block model. Alpha.6
 defines the multi-paragraph value, state, selection, history, and replay
-semantics for the existing registration-owned typed setter.
+semantics for the existing registration-owned typed setter. Alpha.7 adds one
+closed browser input/presentation contract without making UI durable or
+executable in Rust.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -442,6 +445,37 @@ reducer already understand the identical property-preserving root replacement.
 Wasm ABI 4, Profile Bootstrap V2, descriptor/projection shapes, the schema
 fingerprint, Document V2, and every V3 record number remain exact.
 
+## Alpha.7 closed native typed control
+
+Alpha.7 advances the process-local Wasm transport to ABI 5 and adds exactly one
+Rust descriptor shape: the canonical format-kind, intent-ID, action-state-ID
+triple for every admitted `InlineFormatSetSpecV1`. Action and binding identity,
+labels, fields, drafts, focus, and rendering do not enter Rust, Profile
+Bootstrap V2, the schema fingerprint, or a durable record.
+
+The browser admits one callback-free `inlineFormatForm` only when its triple
+matches the descriptor and its fields exactly cover the format's required
+properties. Fields are limited to URL-presented strings carrying the exact
+profile UTF-8 bounds and Booleans with a false default. Apply constructs the
+existing canonical complete-map set input; Remove constructs the existing
+canonical remove input. There is no optional field, integer field, coercion,
+partial patch, arbitrary widget, or captured callback.
+
+The launcher is a native button in the APG roving toolbar. The nonmodal form is
+a sibling under the toolbar mount so editing controls do not conflict with
+toolbar Arrow-key navigation. Opening focuses the first field; Escape and Close
+clear the draft and restore the launcher. Apply/Remove preserve the semantic
+editor selection, enter the existing synchronous queue, use fresh action state,
+and request the existing close-before history boundary. Replay and undo/redo
+consume the committed `TextSplice` or `RootTextReplace`, never the form.
+
+Draft values are not hydrated from the current selection, saved in Session V3,
+or restored after reload. URL presentation validates string shape and bounds,
+not schemes or navigation safety; the closed `safeLinkV1` renderer owns that
+policy. Same-realm JavaScript configuration remains trusted rather than
+sandboxed. The normative decision and threat model are in
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -458,13 +492,17 @@ Rust typed path. Alpha.5 uses those same paths for typed structural operations;
 alpha.6 routes cross-paragraph typed set/remove through them. Neither adds a
 Wasm method, browser protocol, or durable generation.
 
+Alpha.7 advances to Wasm ABI 5 solely for the canonical typed-set
+format/intent/state descriptor getters. It adds no durable generation or
+semantic mutation protocol.
+
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
 closed `safeLinkV1` policy derives attributes from properties. Safe copy emits
-those exact Link attributes, paste remains plain text, and the supported
-toolbar accepts no text field, menu, select, color control, or other typed-input
-control. Existing no-input toggle buttons continue to work for property-free
-formats, while typed Link input remains application UI.
+those exact Link attributes and paste remains plain text. The supported toolbar
+accepts the closed required URL-string/Boolean Link form, but no optional or
+integer field, partial patch, menu, select, color control, or arbitrary widget.
+Existing no-input toggle buttons continue to work for property-free formats.
 
 Typed scalar validation is not sanitization. A valid Link string is not
 automatically a navigable URL, and a valid color string is not automatically
@@ -488,10 +526,13 @@ CSS grammar and other property presentations remain undefined.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
   support only `safeLinkV1`; paste never reconstructs properties, and the native
-  toolbar has no typed-input control.
+  toolbar supports only the closed required URL-string/Boolean form.
 - The additive reference Link proves one exact contract while preserving the
   property-free Highlight-only profile. It is not a general Link schema,
-  renderer, URL validator, or toolbar-control registration protocol.
+  renderer, URL validator, or arbitrary toolbar-control registration protocol.
+- Set is complete-map replacement; there is no partial property patch. Form
+  values are not hydrated from selection state or persisted, and same-realm
+  JavaScript declarations are not sandboxed.
 - No migration, generation negotiation, collaboration transform, or unknown
   typed-format preservation is introduced.
 - Host limits can make a portable schema uninhabitable on that host.
@@ -499,7 +540,7 @@ CSS grammar and other property presentations remain undefined.
 ## Next checkpoints
 
 Future browser work may add another separately closed property presentation or
-a reusable application-control layer, but must not silently widen
+field vocabulary, but must not silently widen
 `safeLinkV1`, accept arbitrary attributes/CSS, preserve source formatting on
 paste, or bypass the intent router.
 

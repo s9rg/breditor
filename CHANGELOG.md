@@ -4,6 +4,71 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.7 - 2026-09-10
+
+This unpublished source checkpoint adds the first native typed toolbar control
+for a compiled property-aware inline-format set surface. It advances the
+reviewed Wasm transport to ABI 5 while preserving Profile Bootstrap V2, schema
+fingerprint bytes, Document V2, and every V3 durable record generation.
+
+### Canonical set-surface identity
+
+- Added the UI-neutral `CompiledProfileInlineFormatSetDescriptor`, derived from
+  each admitted `InlineFormatSetSpecV1`. Canonical rows correlate exactly one
+  target format, typed semantic intent, and routed presence-state identity;
+  concrete action and binding identities remain private to Rust routing.
+- Added the ABI-5 descriptor count and indexed format/intent/state getters.
+  Browser consumption validates strict order, uniqueness, property-bearing
+  format ownership, the exact `breditor/set-inline-format-input@1` contract,
+  tracked/value-free state shape, routed cross-links, and the out-of-range
+  sentinel before publishing frozen handle-free metadata.
+- Kept the new descriptor process-local and presentation-neutral. No set
+  surface, label, field, or property value enters Bootstrap V2 or a durable
+  document/checkpoint/fingerprint contract.
+
+### Callback-free Link form
+
+- Added the browser-only `inlineFormatForm` toolbar declaration. Alpha.7 admits
+  required URL-presented bounded string fields and required Boolean fields with
+  default `false`; field declarations must exactly cover the target format's
+  required property contract. Values remain per-toolbar draft state.
+- Added canonical complete-map Set JSON and fixed Remove JSON construction with
+  lexical property order, allocation-bounded Unicode/UTF-8 validation, exact
+  plain-record keys and types, hostile-accessor containment, and payload-
+  redacted failures. URL presentation does not grant navigation authority;
+  `safeLinkV1` remains the only Link-to-DOM safety policy.
+- Kept APG roving navigation on native buttons inside `role="toolbar"`. Each
+  typed form is a nonmodal sibling of that root, so native field editing does
+  not conflict with toolbar Arrow keys. Opening focuses the first field;
+  Escape/Close restores the launcher; active IME composition suppresses
+  Escape and submit; teardown clears drafts and listeners.
+- Routed Apply and Remove through the existing synchronous typed intent queue
+  with semantic selection preservation and a close-before history boundary.
+  Rust still revalidates applicability and records/replays only the resulting
+  typed operation. Form focus, draft values, and feedback are not persisted or
+  restored.
+- Updated the combined reference Highlight + Link toolbar to place the native
+  Link launcher/form between Highlight and Undo. The Highlight-only toolbar and
+  all public programmatic Link input helpers remain unchanged.
+- Hardened browser DOM access around module-realm, brand-checked Document,
+  input, Selection, Range, and EventTarget intrinsics. Standalone toolbars work
+  in a Document or ShadowRoot and lock any pre-existing mount children as an
+  exact non-owned baseline. Editor hosts remain deliberately light-DOM-only;
+  startup, live event routing, selection access, and API/toolbar dispatch all
+  fail closed if a connected host crosses into a ShadowRoot.
+
+### Compatibility and limits
+
+- ABI-4 and ABI-5 browser/Wasm packages cannot be mixed; startup rejects the
+  mismatch. Existing button-only manifests keep their runtime meaning, while
+  TypeScript consumers must now narrow the public control union by `kind`.
+- There is no current-property hydration, optional or integer field, partial
+  property patch, arbitrary widget/callback, rich-paste Link reconstruction,
+  dynamic manifest replacement, or same-realm JavaScript sandbox. Set still
+  replaces one complete property map.
+- The complete decision and threat model are in
+  [`docs/TYPED_TOOLBAR_CONTROLS.md`](docs/TYPED_TOOLBAR_CONTROLS.md).
+
 ## 0.3.0-alpha.6 - 2026-09-09
 
 This unpublished source checkpoint completes property-aware inline formatting

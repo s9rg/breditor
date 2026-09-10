@@ -6,6 +6,7 @@ import {
   nativeNodeType,
   nativeOwnerDocument,
   nativeParentNode,
+  nativeTreeRoot,
 } from "./html_host.js";
 
 const MAX_EVENT_TARGET_ANCESTORS = 64;
@@ -37,6 +38,9 @@ export function classifyDomEventOwnership(
     }
     if (!hostFacts.isConnected) {
       return "outsideHost";
+    }
+    if (nativeTreeRoot(hostFacts.element) !== hostFacts.ownerDocument) {
+      return "invalid";
     }
     if (typeof target !== "object" || target === null) {
       return "outsideHost";

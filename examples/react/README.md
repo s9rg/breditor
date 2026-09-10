@@ -4,31 +4,34 @@ This example runs the complete `@breditor/reference-highlight` formatting
 profile through the public browser API: the canonical Document V2 sample,
 Bootstrap V2 semantic profile, render manifest, and toolbar manifest. The
 runtime-owned toolbar exposes Bold, Highlight, Undo, and Redo. A sibling
-React-owned Link form demonstrates typed extension input with a URL and an
-optional new-window policy. Select some text, apply or remove a link, toggle a
-format, use the platform primary-modifier+B shortcut, and watch the truthful
-autosave status.
+runtime-owned Link form is launched by the fifth toolbar control and
+demonstrates typed extension input with a required URL string and Boolean
+new-window choice. Select some text, apply or remove a link, toggle a format,
+use the platform primary-modifier+B shortcut, and watch the truthful autosave
+status.
 
 It also demonstrates the intended React ownership boundary. React renders two
-permanently empty mount elements plus the Link form;
-`BreditorBrowserEditor` owns all toolbar and editor children beneath the empty
-mounts, while React owns every Link control. It initializes `@breditor/wasm`
+permanently empty mount elements; `BreditorBrowserEditor` owns all toolbar,
+typed-form, and editor children beneath them. It initializes `@breditor/wasm`
 once, survives React Strict Mode's setup/cleanup probe, subscribes through
 `useSyncExternalStore`, and enables an explicit demo-slot IndexedDB checkpoint.
-The Link form reads only the public action-state snapshot and calls
-`executeIntentJson`; Rust's preserved semantic selection remains authoritative
-while keyboard focus is in the URL or checkbox controls. Rejected and blocked
+The callback-free Link declaration is correlated with the Rust-compiled set
+surface, and the runtime submits its complete-map input through the shared
+typed intent queue. Rust's preserved semantic selection remains authoritative
+while keyboard focus is in the URL or checkbox control. Rejected and blocked
 results are reported without echoing the URL or exposing internal routing.
 The current action-state projection reports Link availability and presence, not
 the selected Link's property values, so the form is an explicit replacement
 input rather than a property inspector. The browser-owned `safeLinkV1` renderer
 activates only absolute, credential-free HTTP(S) URLs; other persisted values
 remain visible as inert text-bearing anchors.
-In the alpha.6 source checkpoint the same form can apply or remove the complete
-Link instance across selected text in multiple paragraphs. Rust preserves
+At the alpha.6 source checkpoint, the then-React-owned form could apply or
+remove the complete Link instance across selected text in multiple paragraphs.
+Rust preserves
 Highlight peers, empty middle paragraphs, unselected edge text, directional
-selection, and one exact undo/redo unit; the form still owns only typed input
-and receives no operation-planning authority.
+selection, and one exact undo/redo unit. Alpha.7 moves that typed input into the
+runtime-owned form without giving the presentation layer operation-planning
+authority.
 Startup failures expose only stable, payload-redacted error codes and can be
 retried in place. A paused autosave exposes the same safe diagnostics and the
 public persistence retry operation.

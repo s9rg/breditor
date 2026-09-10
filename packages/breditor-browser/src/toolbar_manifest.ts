@@ -25,6 +25,18 @@ export const MAX_TOOLBAR_GROUP_UTF8 = 256;
 /** Maximum ASCII length of a toolbar state or action qualified name. */
 export const MAX_TOOLBAR_QUALIFIED_NAME_ASCII = 128;
 
+/** Minimum fields admitted by one inline-format form control. */
+export const MIN_TOOLBAR_INLINE_FORMAT_FORM_FIELDS = 1;
+
+/** Maximum fields admitted by one inline-format form control. */
+export const MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS = 32;
+
+/** Maximum fields admitted across all inline-format forms in one manifest. */
+export const MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL = 64;
+
+/** Maximum UTF-8 ceiling admitted by one URL-presented string field. */
+export const MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8 = 65_536;
+
 /** Fixed observable identities used by the base toolbar/action-state catalog. */
 export const BASE_TOOLBAR_STATE_IDS = Object.freeze({
   bold: "breditor/control-bold",
@@ -46,7 +58,7 @@ export type ToolbarCommandDeclaration =
   | Readonly<{ kind: "history"; operation: "undo" | "redo" }>;
 
 /** One native-button presentation bound to an observable action-state entry. */
-export interface ToolbarControlDeclaration {
+export interface ToolbarButtonDeclaration {
   readonly kind: "button";
   /** Unique `ActionStateId` used for both presentation identity and state lookup. */
   readonly stateId: string;
@@ -58,6 +70,53 @@ export interface ToolbarControlDeclaration {
   readonly group?: string;
   readonly command: ToolbarCommandDeclaration;
 }
+
+/** Required URL-presented string property collected by an inline-format form. */
+export interface ToolbarInlineFormatFormStringFieldDeclaration {
+  readonly kind: "string";
+  readonly propertyName: string;
+  readonly label: string;
+  readonly presentation: "url";
+  readonly autocomplete: "url" | "off";
+  readonly minimumUtf8Bytes: number;
+  readonly maximumUtf8Bytes: number;
+  readonly placeholder?: string;
+}
+
+/** Required Boolean property collected by an inline-format form. */
+export interface ToolbarInlineFormatFormBooleanFieldDeclaration {
+  readonly kind: "boolean";
+  readonly propertyName: string;
+  readonly label: string;
+  readonly defaultValue: false;
+}
+
+/** Closed field vocabulary supported by the alpha.7 inline-format form. */
+export type ToolbarInlineFormatFormFieldDeclaration =
+  | ToolbarInlineFormatFormStringFieldDeclaration
+  | ToolbarInlineFormatFormBooleanFieldDeclaration;
+
+/** Callback-free, runtime-rendered form for one property-aware inline format. */
+export interface ToolbarInlineFormatFormDeclaration {
+  readonly kind: "inlineFormatForm";
+  /** Unique `ActionStateId` used for both presentation identity and state lookup. */
+  readonly stateId: string;
+  /** Visible launcher text and accessible name. */
+  readonly label: string;
+  /** Optional non-semantic host grouping key. */
+  readonly group?: string;
+  readonly formatKind: string;
+  readonly intentId: string;
+  readonly fields: readonly ToolbarInlineFormatFormFieldDeclaration[];
+  readonly applyLabel: string;
+  readonly removeLabel: string;
+  readonly closeLabel: string;
+}
+
+/** One closed runtime-rendered toolbar control declaration. */
+export type ToolbarControlDeclaration =
+  | ToolbarButtonDeclaration
+  | ToolbarInlineFormatFormDeclaration;
 
 /** Immutable, bounded toolbar presentation data with no executable members. */
 export interface ToolbarManifest {
@@ -75,7 +134,8 @@ const numberIsSafeInteger = Number.isSafeInteger;
  *
  * Only the closed primitive schema is retained. Extra properties, including
  * callbacks, DOM nodes, and mutable plugin objects, are deliberately dropped.
- * The returned object, control array, controls, commands, and inputs are frozen.
+ * The returned object, arrays, controls, commands, inputs, and form fields are
+ * frozen.
  */
 export function createToolbarManifest(value: unknown): ToolbarManifest {
   const manifest = snapshotRecord(value, "toolbar manifest");
@@ -112,6 +172,7 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
 
   const seenStateIds = new Set<string>();
   const safeControls: ToolbarControlDeclaration[] = [];
+  let inlineFormatFormFieldCount = 0;
   for (let index = 0; index < controlCount; index += 1) {
     const rawControl = requiredOwnDataProperty(
       controls,
@@ -134,24 +195,11 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
       "label",
       "toolbar control label",
     );
-    const activation = requiredOwnDataProperty(
-      control,
-      "activation",
-      "toolbar activation presentation",
-    );
     const group = optionalOwnDataProperty(
       control,
       "group",
       "toolbar presentation group",
     );
-    const command = requiredOwnDataProperty(
-      control,
-      "command",
-      "toolbar command",
-    );
-    if (kind !== "button") {
-      throw new TypeError("toolbar control kind is invalid");
-    }
     if (!validQualifiedName(stateId)) {
       throw new TypeError("toolbar state identity is invalid");
     }
@@ -160,9 +208,6 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
     }
     if (!validLabel(controlLabel)) {
       throw new TypeError("toolbar control label is invalid");
-    }
-    if (activation !== "stateless" && activation !== "tracked") {
-      throw new TypeError("toolbar activation presentation is invalid");
     }
     if (
       group !== undefined &&
@@ -173,6 +218,43 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
       )
     ) {
       throw new TypeError("toolbar presentation group is invalid");
+    }
+
+    if (kind === "inlineFormatForm") {
+      const safeForm = snapshotInlineFormatForm(
+        control,
+        stateId,
+        controlLabel,
+        group,
+      );
+      inlineFormatFormFieldCount += safeForm.fields.length;
+      if (
+        inlineFormatFormFieldCount >
+        MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL
+      ) {
+        throw new RangeError(
+          "toolbar inline-format form field count is outside its fixed aggregate bound",
+        );
+      }
+      seenStateIds.add(stateId);
+      safeControls.push(safeForm);
+      continue;
+    }
+    if (kind !== "button") {
+      throw new TypeError("toolbar control kind is invalid");
+    }
+    const activation = requiredOwnDataProperty(
+      control,
+      "activation",
+      "toolbar activation presentation",
+    );
+    const command = requiredOwnDataProperty(
+      control,
+      "command",
+      "toolbar command",
+    );
+    if (activation !== "stateless" && activation !== "tracked") {
+      throw new TypeError("toolbar activation presentation is invalid");
     }
     const safeCommand = snapshotCommand(command);
     seenStateIds.add(stateId);
@@ -194,6 +276,217 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
   });
   OWNED_MANIFESTS.add(safeManifest);
   return safeManifest;
+}
+
+function snapshotInlineFormatForm(
+  control: object,
+  stateId: string,
+  label: string,
+  group: unknown,
+): ToolbarInlineFormatFormDeclaration {
+  const formatKind = requiredOwnDataProperty(
+    control,
+    "formatKind",
+    "toolbar inline-format form format identity",
+  );
+  const intentId = requiredOwnDataProperty(
+    control,
+    "intentId",
+    "toolbar inline-format form intent identity",
+  );
+  const fields = requiredOwnDataProperty(
+    control,
+    "fields",
+    "toolbar inline-format form fields",
+  );
+  const applyLabel = requiredOwnDataProperty(
+    control,
+    "applyLabel",
+    "toolbar inline-format form apply label",
+  );
+  const removeLabel = requiredOwnDataProperty(
+    control,
+    "removeLabel",
+    "toolbar inline-format form remove label",
+  );
+  const closeLabel = requiredOwnDataProperty(
+    control,
+    "closeLabel",
+    "toolbar inline-format form close label",
+  );
+  if (!validQualifiedName(formatKind)) {
+    throw new TypeError("toolbar inline-format form format identity is invalid");
+  }
+  if (!validQualifiedName(intentId)) {
+    throw new TypeError("toolbar inline-format form intent identity is invalid");
+  }
+  if (
+    !validLabel(applyLabel) ||
+    !validLabel(removeLabel) ||
+    !validLabel(closeLabel)
+  ) {
+    throw new TypeError("toolbar inline-format form action label is invalid");
+  }
+  if (!arrayIsArray(fields)) {
+    throw new TypeError("toolbar inline-format form fields must be an array");
+  }
+  const rawFieldCount = requiredOwnDataProperty(
+    fields,
+    "length",
+    "toolbar inline-format form field count",
+  );
+  if (
+    typeof rawFieldCount !== "number" ||
+    !numberIsSafeInteger(rawFieldCount)
+  ) {
+    throw new TypeError("toolbar inline-format form field count is invalid");
+  }
+  if (
+    rawFieldCount < MIN_TOOLBAR_INLINE_FORMAT_FORM_FIELDS ||
+    rawFieldCount > MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS
+  ) {
+    throw new RangeError(
+      "toolbar inline-format form field count is outside its fixed bounds",
+    );
+  }
+
+  const safeFields: ToolbarInlineFormatFormFieldDeclaration[] = [];
+  const seenPropertyNames = new Set<string>();
+  let hasUrlField = false;
+  for (let index = 0; index < rawFieldCount; index += 1) {
+    const field = snapshotInlineFormatFormField(
+      requiredOwnDataProperty(
+        fields,
+        String(index),
+        `toolbar inline-format form field ${index}`,
+      ),
+    );
+    if (seenPropertyNames.has(field.propertyName)) {
+      throw new TypeError(
+        "toolbar inline-format form property identity is duplicated",
+      );
+    }
+    seenPropertyNames.add(field.propertyName);
+    if (field.kind === "string") hasUrlField = true;
+    safeFields.push(field);
+  }
+  if (!hasUrlField) {
+    throw new TypeError(
+      "toolbar inline-format form requires a URL-presented string field",
+    );
+  }
+
+  return Object.freeze({
+    kind: "inlineFormatForm",
+    stateId,
+    label,
+    ...(group === undefined ? {} : { group: group as string }),
+    formatKind,
+    intentId,
+    fields: Object.freeze(safeFields),
+    applyLabel,
+    removeLabel,
+    closeLabel,
+  });
+}
+
+function snapshotInlineFormatFormField(
+  value: unknown,
+): ToolbarInlineFormatFormFieldDeclaration {
+  const field = snapshotRecord(value, "toolbar inline-format form field");
+  const kind = requiredOwnDataProperty(
+    field,
+    "kind",
+    "toolbar inline-format form field kind",
+  );
+  const propertyName = requiredOwnDataProperty(
+    field,
+    "propertyName",
+    "toolbar inline-format form property identity",
+  );
+  const label = requiredOwnDataProperty(
+    field,
+    "label",
+    "toolbar inline-format form field label",
+  );
+  if (!validQualifiedName(propertyName)) {
+    throw new TypeError("toolbar inline-format form property identity is invalid");
+  }
+  if (!validLabel(label)) {
+    throw new TypeError("toolbar inline-format form field label is invalid");
+  }
+
+  if (kind === "boolean") {
+    const defaultValue = requiredOwnDataProperty(
+      field,
+      "defaultValue",
+      "toolbar inline-format form Boolean default",
+    );
+    if (defaultValue !== false) {
+      throw new TypeError("toolbar inline-format form Boolean default is invalid");
+    }
+    return Object.freeze({ kind, propertyName, label, defaultValue });
+  }
+  if (kind !== "string") {
+    throw new TypeError("toolbar inline-format form field kind is invalid");
+  }
+  const presentation = requiredOwnDataProperty(
+    field,
+    "presentation",
+    "toolbar inline-format form string presentation",
+  );
+  const autocomplete = requiredOwnDataProperty(
+    field,
+    "autocomplete",
+    "toolbar inline-format form string autocomplete",
+  );
+  const minimumUtf8Bytes = requiredOwnDataProperty(
+    field,
+    "minimumUtf8Bytes",
+    "toolbar inline-format form string minimum",
+  );
+  const maximumUtf8Bytes = requiredOwnDataProperty(
+    field,
+    "maximumUtf8Bytes",
+    "toolbar inline-format form string maximum",
+  );
+  const placeholder = optionalOwnDataProperty(
+    field,
+    "placeholder",
+    "toolbar inline-format form string placeholder",
+  );
+  if (presentation !== "url") {
+    throw new TypeError("toolbar inline-format form string presentation is invalid");
+  }
+  if (autocomplete !== "url" && autocomplete !== "off") {
+    throw new TypeError("toolbar inline-format form string autocomplete is invalid");
+  }
+  if (
+    typeof minimumUtf8Bytes !== "number" ||
+    !numberIsSafeInteger(minimumUtf8Bytes) ||
+    minimumUtf8Bytes < 1 ||
+    typeof maximumUtf8Bytes !== "number" ||
+    !numberIsSafeInteger(maximumUtf8Bytes) ||
+    maximumUtf8Bytes < minimumUtf8Bytes ||
+    maximumUtf8Bytes > MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8
+  ) {
+    throw new RangeError(
+      "toolbar inline-format form string bounds are outside their fixed limits",
+    );
+  }
+  if (placeholder !== undefined && !validLabel(placeholder)) {
+    throw new TypeError("toolbar inline-format form string placeholder is invalid");
+  }
+  return Object.freeze({
+    kind,
+    propertyName,
+    label,
+    presentation,
+    autocomplete,
+    minimumUtf8Bytes,
+    maximumUtf8Bytes,
+    ...(placeholder === undefined ? {} : { placeholder }),
+  });
 }
 
 /** Returns whether a value is a manifest produced by this module. */

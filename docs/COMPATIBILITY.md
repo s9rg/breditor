@@ -1,10 +1,10 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.6` source checkpoint retains the explicitly
-selected ABI-4 typed-profile, browser command, Session-V3, and closed safe-Link
-paths while enabling property-preserving structural paragraph edits described
-below
+the unpublished `0.3.0-alpha.7` source checkpoint retains the explicitly
+selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
+advances the process-local transport to ABI 5, and adds one closed browser
+typed-form declaration described below
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -421,16 +421,39 @@ number. Alpha.6 restores conforming alpha.5 checkpoints. Alpha.5 also restores
 and replays conforming alpha.6 cross-set history because it already implements
 the identical property-aware `RootTextReplace` V3 contract.
 
+## `0.3.0-alpha.7` ABI-5 typed-control boundary
+
+Alpha.7 adds one canonical set-surface triple to the compiled-profile
+descriptor and exposes its count plus format-kind, intent-ID, and
+action-state-ID indexed getters through Wasm ABI 5. The triple is process-local
+observation data. It does not change Profile Bootstrap V2, fingerprint bytes,
+Document V2, or any Session/State/Commit V3 byte.
+
+The browser manifest union additively gains callback-free
+`inlineFormatForm`. A form is admitted only against an exact set-surface triple
+and exact required property contract. Its closed fields are URL-presented
+bounded strings and Boolean-default-false. Apply remains complete-map
+replacement; Remove remains the existing canonical remove request. Existing
+button-only manifests retain their meaning, but exhaustive TypeScript switches
+over the prerelease declaration union must handle the new discriminant.
+
+The launcher remains a native APG-toolbar button and its interactive nonmodal
+form is a sibling. Drafts are not hydrated or persisted. URL presentation does
+not grant navigation safety; `safeLinkV1` owns that policy. Same-realm
+JavaScript is trusted rather than sandboxed. The normative contract is
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`. Startup checks both the exact ABI string and exact embedded package version
+pairs report ABI `4`; alpha.7 reports ABI `5`. Startup checks both the exact
+ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.6 source configuration is tested as an exactly matching browser,
+The alpha.7 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -446,7 +469,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, and alpha.6:
+form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

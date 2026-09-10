@@ -436,6 +436,18 @@ export class BreditorCompiledProfileDescriptor {
      */
     formatRevision(index: number): number | undefined;
     /**
+     * Returns the presence-state identity of one generated set surface.
+     */
+    inlineFormatSetActionStateId(index: number): string | undefined;
+    /**
+     * Returns the target format of one generated property-aware set surface.
+     */
+    inlineFormatSetFormatKind(index: number): string | undefined;
+    /**
+     * Returns the typed intent of one generated property-aware set surface.
+     */
+    inlineFormatSetIntentId(index: number): string | undefined;
+    /**
      * Returns one intent's activation shape contract.
      */
     intentActivationContract(index: number): BreditorProfileActivationContract | undefined;
@@ -475,6 +487,10 @@ export class BreditorCompiledProfileDescriptor {
      * Returns the number of admitted inline formats.
      */
     readonly formatCount: number;
+    /**
+     * Returns the number of generated property-aware inline-format surfaces.
+     */
+    readonly inlineFormatSetCount: number;
     /**
      * Returns the number of semantic intents.
      */
@@ -1343,6 +1359,9 @@ export interface InitOutput {
     readonly breditorcompiledprofiledescriptor_formatPropertyStringMinimumUtf8Bytes: (a: number, b: number, c: number) => number;
     readonly breditorcompiledprofiledescriptor_formatPropertyValueType: (a: number, b: number, c: number, d: number) => void;
     readonly breditorcompiledprofiledescriptor_formatRevision: (a: number, b: number) => number;
+    readonly breditorcompiledprofiledescriptor_inlineFormatSetActionStateId: (a: number, b: number, c: number) => void;
+    readonly breditorcompiledprofiledescriptor_inlineFormatSetFormatKind: (a: number, b: number, c: number) => void;
+    readonly breditorcompiledprofiledescriptor_inlineFormatSetIntentId: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentActivationContract: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentId: (a: number, b: number, c: number) => void;
     readonly breditorcompiledprofiledescriptor_intentInputContractName: (a: number, b: number, c: number) => void;
@@ -1476,6 +1495,7 @@ export interface InitOutput {
     readonly breditoractionstatesnapshot_changedCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_actionStateCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_formatCount: (a: number) => number;
+    readonly breditorcompiledprofiledescriptor_inlineFormatSetCount: (a: number) => number;
     readonly breditorcompiledprofiledescriptor_intentCount: (a: number) => number;
     readonly breditorobservation_historyCapacity: (a: number) => number;
     readonly breditorobservation_redoDepth: (a: number) => number;

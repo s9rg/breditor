@@ -1619,18 +1619,21 @@ export class BreditorWasmCommandAdapter {
         if (copiedError.stale) {
           this.#state = "faulted";
         }
-        if (
-          containTypedRejection &&
-          typedPreflightErrorIsDeterministicRejection(copiedError)
-        ) {
-          return Object.freeze({
-            outcome: Object.freeze({
-              status: "rejected",
-              error: copiedError,
-              snapshot: this.#snapshot,
-            }),
-            historyGroupClosedBefore: false,
-          });
+        if (containTypedRejection) {
+          if (typedPreflightErrorIsDeterministicRejection(copiedError)) {
+            return Object.freeze({
+              outcome: Object.freeze({
+                status: "rejected",
+                error: copiedError,
+                snapshot: this.#snapshot,
+              }),
+              historyGroupClosedBefore: false,
+            });
+          }
+          this.#state = "faulted";
+          throw new TypeError(
+            "Wasm typed action contradicted its compiled input contract",
+          );
         }
         throw new KnownCommandRejection(copiedError);
       }
@@ -1929,18 +1932,21 @@ export class BreditorWasmCommandAdapter {
         const cleanup = releaseGeneratedHandles(owned);
         if (!cleanup.ok) throw cleanup.error;
         if (copiedError.stale) this.#state = "faulted";
-        if (
-          containTypedRejection &&
-          typedPreflightErrorIsDeterministicRejection(copiedError)
-        ) {
-          return Object.freeze({
-            outcome: Object.freeze({
-              status: "rejected",
-              error: copiedError,
-              snapshot: this.#snapshot,
-            }),
-            historyGroupClosedBefore: false,
-          });
+        if (containTypedRejection) {
+          if (typedPreflightErrorIsDeterministicRejection(copiedError)) {
+            return Object.freeze({
+              outcome: Object.freeze({
+                status: "rejected",
+                error: copiedError,
+                snapshot: this.#snapshot,
+              }),
+              historyGroupClosedBefore: false,
+            });
+          }
+          this.#state = "faulted";
+          throw new TypeError(
+            "Wasm typed intent contradicted its compiled input contract",
+          );
         }
         throw new KnownCommandRejection(copiedError);
       }
@@ -3218,12 +3224,6 @@ function typedPreflightErrorIsDeterministicRejection(
   switch (error.code) {
     case "breditor_wasm.action_value_json_limit":
     case "breditor_wasm.invalid_action_value_json":
-    case "breditor_wasm.invalid_action_id":
-    case "breditor_wasm.unknown_action":
-    case "breditor_wasm.action_rejects_typed_input":
-    case "breditor_wasm.invalid_intent_id":
-    case "breditor_wasm.unknown_intent":
-    case "breditor_wasm.intent_rejects_typed_input":
     case "breditor_wasm.typed_input_rejected":
       return true;
     default:

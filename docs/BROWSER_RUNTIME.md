@@ -2,9 +2,9 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.6` ABI-4 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.7` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
-paragraph-structure path
+paragraph-structure path plus one closed native typed Link form
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -91,8 +91,10 @@ editor.focus();
 ```
 
 The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
-`header`, `main`, `nav`, or `section`. The distinct optional toolbar host uses
-the same tag allowlist, has no `tabindex` attribute, and is outside an effective
+`header`, `main`, `nav`, or `section` in the owner Document's light DOM.
+ShadowRoot editor hosts are rejected because cross-engine shadow-selection
+endpoints are not interoperable. The distinct optional toolbar host uses the
+same tag allowlist, may be mounted in a ShadowRoot, has no `tabindex` attribute, and is outside an effective
 editable region. It has no role, an empty role, or
 only case-insensitive tokens from `banner`, `complementary`, `contentinfo`,
 `form`, `generic`, `group`, `main`, `navigation`, `none`, `presentation`,
@@ -121,7 +123,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.6 source path verifies Wasm ABI generation `4` and the exact matching
+The alpha.7 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -137,8 +139,9 @@ Profile Bootstrap V1 with Document/Session Checkpoint V2.
 V2 with Document V2 and Session Checkpoint V3. The last form admits typed
 property contracts and set-intent declarations. A required callback-free
 `rendering` manifest must cover every descriptor format; the supplied toolbar
-must still match the supported no-input intent/routed-state or exact history
-contracts. Startup never sniffs, upgrades, or falls back between modes.
+must match a supported no-input intent/routed-state, exact history contract, or
+ABI-5 typed-set format/intent/state triple. Startup never sniffs, upgrades, or
+falls back between modes.
 
 For Bootstrap V2, the owned `BrowserCompiledProfileDescriptor` deep-freezes
 each format's canonical `properties` list: name, required/optional presence,
@@ -147,21 +150,31 @@ each run's canonical `formatDetails`, including the scalar value of every
 present property. Both are validated against the same opaque profile generation
 before the editor is published.
 
-Alpha.4 permits one property-driven recipe: `safeLinkV1` on exactly
+At the Alpha.4 checkpoint, one property-driven recipe was permitted:
+`safeLinkV1` on exactly
 `<a class="breditor-link">`. Its exact two-property descriptor correlation,
 URL admission, inert unsafe-value behavior, fixed `href`/`rel`/`target`
 outputs, DOM/composition checks, and safe-copy rules are defined in
-[`DOM_PROJECTION.md`](DOM_PROJECTION.md). The native toolbar remains no-input;
-applications call `executeIntentJson()` from their own typed controls.
+[`DOM_PROJECTION.md`](DOM_PROJECTION.md). At that checkpoint the native toolbar
+remained no-input, so applications called `executeIntentJson()` from their own
+typed controls.
+
+Alpha.7 adds one browser-only `inlineFormatForm` presentation declaration. It
+contains no callbacks or draft values and admits only required URL-presented
+strings plus required Booleans that exactly cover the target format contract.
+Its launcher stays in the APG button toolbar; the nonmodal form is a sibling of
+the toolbar root. Rust supplies only the canonical set-surface correlation, and
+`safeLinkV1` remains solely responsible for navigation safety. See
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.6` packages:
+exactly matching `0.3.0-alpha.7` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.6 \
-  @breditor/wasm@0.3.0-alpha.6 \
-  @breditor/reference-highlight@0.3.0-alpha.6
+npm install @breditor/browser@0.3.0-alpha.7 \
+  @breditor/wasm@0.3.0-alpha.7 \
+  @breditor/reference-highlight@0.3.0-alpha.7
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -459,6 +472,13 @@ and rebuilds directional selection/affinities. The existing generated presence
 state and queue remain authoritative; no browser action table or toolbar input
 kind is added.
 
+Alpha.7 moves the reference Link input into the native callback-free toolbar
+manifest. Apply and Remove preserve the current semantic selection, enter the
+same synchronous queue, request a history close before an effective mutation,
+and rely on fresh routed presence state for availability. UI drafts are
+cleared on close or completed delivery, are not replay input, and are neither
+hydrated from selection values nor persisted.
+
 No ProseMirror, Lexical, Tiptap, CKEditor, DOM-operation, or plugin protocol is
 implemented. Those projects are design references only; Breditor's AST,
 positions, actions, history, and persistence formats are independent contracts.
@@ -652,9 +672,10 @@ is discarded and physical engine release waits for the read handle to unwind.
 
 Omitting `toolbar` installs no toolbar. Passing `{ host }` installs the default
 Bold, Undo, and Redo manifest. A custom manifest must first pass
-`createToolbarManifest` and must contain 1 through 64 native-button
-declarations. Toolbar/control labels are nonblank, control-free valid Unicode
-bounded to 128 UTF-16 code units and 512 UTF-8 bytes; state/action IDs use the
+`createToolbarManifest` and must contain 1 through 64 button or
+`inlineFormatForm` declarations. Toolbar/control labels are nonblank,
+control-free valid Unicode bounded to 128 UTF-16 code units and 512 UTF-8 bytes;
+state/action IDs use the
 lowercase, 128-character `namespace/local-name` grammar; optional valid-Unicode,
 trimmed groups are bounded to 64 UTF-16 code units and 256 UTF-8 bytes; and
 nonempty advanced string-action inputs are bounded to 65,536 UTF-16 code units
@@ -698,6 +719,15 @@ catalog publishes fresh availability. Toolbar focus uses
 the last exact semantic editor selection, and dispatch still requires a fresh
 delivery token.
 
+An `inlineFormatForm` must correlate its `formatKind`, `intentId`, and
+`stateId` with one ABI-5 set-surface descriptor and exactly cover that format's
+required properties. The closed field vocabulary is a URL-presented string
+with exact profile bounds and a Boolean whose default is `false`. Values are
+copied from an exact plain property-name-keyed record; Apply serializes a
+complete lexically ordered property map and Remove serializes only
+`{"operation":"remove"}`. The runtime never treats URL presentation as URL
+sanitization.
+
 The default profile publishes the routed `breditor/format-strong` Bold state
 plus Undo and Redo. A compiled extension toggle may contribute another tracked
 no-input intent and routed state; a manifest can expose it as the same native
@@ -708,17 +738,19 @@ Adding real behavior therefore proceeds from the core outward:
 1. Declare a property-free toggle or typed set bundle in the extension profile
    so Rust compiles its action, intent, blocking binding, and routed state.
 2. For a property-free toggle, add a manifest button whose `stateId` and
-   `intentId` match that descriptor. Typed set intents are currently invoked
-   programmatically through `executeIntentJson()`.
+   `intentId` match that descriptor. For the closed typed setter, add an
+   `inlineFormatForm` whose format/intent/state triple and exact field set match
+   the descriptor and profile.
 3. Supply a complete render recipe for the admitted format. Property-free
    formats use an inert wrapper; the sole property-aware choice is the exact
    browser-owned `safeLinkV1` policy.
 4. Supply the manifest at editor startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
-There is no typed toolbar control, extension keymap or `beforeinput` rule,
-custom control kind, runtime JavaScript action registration, arbitrary callback
-command, dynamic manifest replacement, plugin unload, custom node renderer, or
+There is no optional/integer form field, partial property patch, arbitrary
+widget, extension keymap or `beforeinput` rule, runtime JavaScript action
+registration, arbitrary callback command, dynamic manifest replacement, plugin
+unload, custom node renderer, or
 stable third-party Wasm plugin ABI in the supported surface. Direct concrete
 action toolbar declarations remain an advanced policy bypass. The alpha.4
 `safeLinkV1` recipe can derive only its closed canonical Link attribute set
@@ -813,6 +845,11 @@ sealed grammar. Structural commands still run
 synchronously, validate complete property deltas, and can be disabled when a
 split or multiline insertion duplicates typed property owners beyond the
 configured limits.
+
+Alpha.7 adds only the closed URL-string/Boolean native form described above.
+It does not hydrate a draft from the current selection, persist UI state,
+expose partial patches, or create a general widget protocol. Its same-realm
+JavaScript declarations are trusted configuration, not sandboxed code.
 
 The reference package is trusted same-realm JavaScript that supplies frozen
 configuration and presentation values, not sandboxed code, a package-signature

@@ -3,7 +3,7 @@ members = ["crates/breditor-core", "crates/breditor-wasm"]
 resolver = "3"
 
 [workspace.package]
-version = "0.3.0-alpha.6"
+version = "0.3.0-alpha.7"
 edition = "2024"
 rust-version = "1.98"
 authors = ["Breditor contributors"]
@@ -27,7 +27,7 @@ lto = false
 codegen-units = 1
 
 # The package scripts are the only supported path for producing shipped Wasm.
-# Size-oriented LLVM optimization plus whole-program LTO keeps ABI 4 below its
+# Size-oriented LLVM optimization plus whole-program LTO keeps ABI 5 below its
 # checked release budgets without a post-link binary rewriter. Aborting panics
 # match wasm32's fail-closed boundary, while stripping symbols prevents debug
 # metadata from leaking into the distributable module.

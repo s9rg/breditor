@@ -1,8 +1,12 @@
 import {
+  REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_FORMATTING_RENDER_MANIFEST,
+  REFERENCE_FORMATTING_TOOLBAR_MANIFEST,
   REFERENCE_HIGHLIGHT_IDS,
   REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
   REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
   REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+  createReferenceFormattingDocumentJson,
   createReferenceHighlightDocumentJson,
 } from "@breditor/reference-highlight";
 import {
@@ -163,6 +167,17 @@ interface ReferenceHighlightProbeResult {
   readonly finalToolbarEmpty: boolean;
 }
 
+interface ReferenceFormattingMountResult {
+  readonly probeId: string;
+  readonly editorLabel: string;
+  readonly text: string;
+}
+
+interface ReferenceFormattingProbe {
+  readonly root: HTMLDivElement;
+  readonly editor: BreditorBrowserEditor;
+}
+
 interface BreditorBrowserHarness {
   readonly phase: "ready";
   text(): string;
@@ -199,6 +214,10 @@ interface BreditorBrowserHarness {
   ): DetachedToolbarButtonShadowProbeResult;
   probeAdoptedEditorHost(): Promise<AdoptedEditorHostProbeResult>;
   probeReferenceHighlight(): Promise<ReferenceHighlightProbeResult>;
+  mountReferenceFormatting(
+    toolbarInShadow?: boolean,
+  ): Promise<ReferenceFormattingMountResult>;
+  cleanupReferenceFormatting(probeId?: string): void;
   dispose(): void;
 }
 
@@ -217,6 +236,8 @@ const INPUT_TARGET_RANGES = new WeakMap<
 const editorHost = requiredElement("editor");
 const toolbarHost = requiredElement("toolbar");
 const status = requiredElement("status");
+const referenceFormattingProbes = new Map<string, ReferenceFormattingProbe>();
+let nextReferenceFormattingProbeId = 1;
 
 void start().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : "unknown startup failure";
@@ -295,7 +316,12 @@ async function start(): Promise<void> {
       probeDetachedToolbarButtonShadow(editor, mode),
     probeAdoptedEditorHost: () => probeAdoptedEditorHost(),
     probeReferenceHighlight: () => probeReferenceHighlight(),
+    mountReferenceFormatting: (toolbarInShadow = false) =>
+      mountReferenceFormatting(toolbarInShadow),
+    cleanupReferenceFormatting: (probeId?: string) =>
+      cleanupReferenceFormatting(probeId),
     dispose: () => {
+      cleanupReferenceFormatting();
       releaseStatus();
       editor.dispose();
       status.textContent = "Editor disposed.";
@@ -303,6 +329,112 @@ async function start(): Promise<void> {
   };
   window.__breditorHarness = Object.freeze(harness);
   document.documentElement.dataset["breditorReady"] = "true";
+}
+
+async function mountReferenceFormatting(
+  toolbarInShadow = false,
+): Promise<ReferenceFormattingMountResult> {
+  const sequence = nextReferenceFormattingProbeId;
+  nextReferenceFormattingProbeId += 1;
+  const probeId = `reference-formatting-${sequence}`;
+  const editorLabel = `Reference formatting Link editor ${sequence}`;
+  const text = "Highlighted text ready for a Link";
+  const root = document.createElement("div");
+  const toolbar = document.createElement("div");
+  const host = document.createElement("div");
+  root.setAttribute("data-breditor-reference-formatting-probe", probeId);
+  toolbar.setAttribute("data-breditor-reference-formatting-toolbar", "");
+  host.setAttribute("data-breditor-reference-formatting-editor", "");
+  if (toolbarInShadow) {
+    const shadowHost = document.createElement("div");
+    shadowHost.setAttribute("data-breditor-reference-toolbar-shadow-host", "");
+    shadowHost.attachShadow({ mode: "open" }).append(toolbar);
+    root.append(shadowHost, host);
+  } else {
+    root.append(toolbar, host);
+  }
+  requiredElement("fixture").append(root);
+
+  let editor: BreditorBrowserEditor | undefined;
+  try {
+    const opened = await openBreditorBrowserEditor({
+      host,
+      label: editorLabel,
+      wasm: breditorWasm,
+      initialDocument: {
+        lineageId: `browser-${probeId}`,
+        documentJson: createReferenceFormattingDocumentJson(text, {
+          highlighted: true,
+        }),
+        historyCapacity: 20,
+      },
+      semanticProfile: {
+        bootstrapJson: REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON,
+        formatVersion: 2,
+      },
+      rendering: REFERENCE_FORMATTING_RENDER_MANIFEST,
+      keyboard: {
+        editing: "beforeinputPrimary",
+        primaryModifier: "control",
+        shortcuts: "enabled",
+      },
+      toolbar: {
+        host: toolbar,
+        manifest: REFERENCE_FORMATTING_TOOLBAR_MANIFEST,
+      },
+    });
+    if (!opened.ok) {
+      throw new Error(`reference formatting open failed: ${opened.error.code}`);
+    }
+    editor = opened.editor;
+    await selectAllTextInHost(host);
+    const link = requiredToolbarButton(toolbar, "Link");
+    await waitForProbe(
+      () => link.getAttribute("aria-disabled") === "false",
+      "reference formatting selection did not enable its Link control",
+    );
+    referenceFormattingProbes.set(probeId, { root, editor });
+    return Object.freeze({ probeId, editorLabel, text });
+  } catch (error) {
+    try {
+      editor?.dispose();
+    } catch {
+      // Opening failures must not retain their temporary editor owner.
+    }
+    try {
+      root.remove();
+    } catch {
+      // Opening failures must not retain their temporary DOM owner.
+    }
+    throw error;
+  }
+}
+
+function cleanupReferenceFormatting(probeId?: string): void {
+  const probeIds =
+    probeId === undefined ? [...referenceFormattingProbes.keys()] : [probeId];
+  for (const id of probeIds) {
+    const probe = referenceFormattingProbes.get(id);
+    if (probe === undefined) continue;
+    referenceFormattingProbes.delete(id);
+    try {
+      probe.editor.dispose();
+    } catch {
+      // Test cleanup must still detach its DOM after an unexpected fault.
+    }
+    try {
+      probe.root.remove();
+    } catch {
+      // A damaged probe root cannot retain the editor through this registry.
+    }
+  }
+  if (referenceFormattingProbes.size === 0) {
+    try {
+      window.getSelection()?.removeAllRanges();
+    } catch {
+      // Selection cleanup is best effort after all persistent probes retire.
+    }
+  }
 }
 
 async function probeReferenceHighlight(): Promise<ReferenceHighlightProbeResult> {

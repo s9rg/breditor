@@ -28,10 +28,10 @@ import {
 } from "./wasm_profile_descriptor.js";
 
 /** JavaScript-visible Wasm transport generation accepted by this bootstrap. */
-export const BREDITOR_WASM_ABI_VERSION = "4" as const;
+export const BREDITOR_WASM_ABI_VERSION = "5" as const;
 
 /** Exact official Wasm package version paired with this browser build. */
-export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.6" as const;
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.7" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
@@ -310,7 +310,7 @@ interface ObservationSnapshot {
 /**
  * Constructs one browser-ready generated engine and its exact initial AST.
  *
- * A generated module namespace must report ABI `4` and the exact package
+ * A generated module namespace must report ABI `5` and the exact package
  * version paired with this browser build before its factory is accessed. All generated
  * handles are claimed before `then` or sibling getters are inspected. Result,
  * error, and projection handles are consumed here; only a frozen engine
@@ -1611,7 +1611,11 @@ function compiledProfileDescriptorsEqual(
     sameArray(left.actionStates, right.actionStates, (a, b) =>
       a.id === b.id &&
       actionStateSourcesEqual(a.source, b.source) &&
-      stateContractsEqual(a.state, b.state));
+      stateContractsEqual(a.state, b.state)) &&
+    sameArray(left.inlineFormatSets, right.inlineFormatSets, (a, b) =>
+      a.formatKind === b.formatKind &&
+      a.intentId === b.intentId &&
+      a.actionStateId === b.actionStateId);
 }
 
 function formatPropertyValueTypesEqual(
@@ -1678,7 +1682,7 @@ function actionStateSourcesEqual(
 function isExactBuiltInBaseDescriptor(
   descriptor: BrowserCompiledProfileDescriptor,
 ): boolean {
-  const { schema, formats, intents, actionStates } = descriptor;
+  const { schema, formats, intents, actionStates, inlineFormatSets } = descriptor;
   return schema.name === "breditor/base" &&
     schema.version === 1 &&
     schema.fingerprint === BREDITOR_BASE_SCHEMA_FINGERPRINT &&
@@ -1692,6 +1696,7 @@ function isExactBuiltInBaseDescriptor(
     intents[0]?.state.activation === "tracked" &&
     intents[0]?.state.value === undefined &&
     actionStates.length === 3 &&
+    inlineFormatSets.length === 0 &&
     actionStateMatches(
       actionStates[0],
       "breditor/control-bold",

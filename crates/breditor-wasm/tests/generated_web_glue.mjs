@@ -271,7 +271,7 @@ function assertCommandError(result, expectedCode) {
   error.free();
 }
 
-assert.equal(api.breditorWasmAbiVersion(), "4");
+assert.equal(api.breditorWasmAbiVersion(), "5");
 assert.match(
   api.breditorVersion(),
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/,
@@ -623,8 +623,12 @@ foreignGenerationError.free();
 
 // Factories clone profile identity: every retained engine and observation
 // remains valid after the originating profile and descriptor are disposed.
+const retainedProfileDescriptor = profile.descriptor();
 profileDescriptor.free();
 profile.free();
+assert.equal(retainedProfileDescriptor.schemaName, "example/editor");
+assert.equal(retainedProfileDescriptor.formatKind(1), "example/highlight");
+retainedProfileDescriptor.free();
 assert.ok(profileEngine.matchesProfileGeneration(profileGeneration));
 assert.ok(
   selectedProfileEngine.matchesProfileGeneration(profileGeneration),
@@ -640,7 +644,7 @@ independentGeneration.free();
 independentProfile.free();
 profileGeneration.free();
 
-// ABI 4 carries one typed profile through the real generated boundary, the
+// ABI 5 carries one typed profile through the real generated boundary, the
 // browser descriptor/projection adapters, V3 history, and exact restore.
 const typedProfileResult =
   api.BreditorCompiledProfile.fromBootstrapJsonV2(TYPED_PROFILE_BOOTSTRAP_JSON);
@@ -650,6 +654,19 @@ typedProfileResult.free();
 const typedGeneration = typedProfile.generation();
 const typedDescriptorView = typedProfile.descriptor();
 assert.equal(typedDescriptorView.formatKind(1), "example/link");
+assert.equal(typedDescriptorView.inlineFormatSetCount, 1);
+assert.equal(typedDescriptorView.inlineFormatSetFormatKind(0), "example/link");
+assert.equal(
+  typedDescriptorView.inlineFormatSetIntentId(0),
+  "example/set-link-intent",
+);
+assert.equal(
+  typedDescriptorView.inlineFormatSetActionStateId(0),
+  "example/link-presence",
+);
+assert.equal(typedDescriptorView.inlineFormatSetFormatKind(1), undefined);
+assert.equal(typedDescriptorView.inlineFormatSetIntentId(1), undefined);
+assert.equal(typedDescriptorView.inlineFormatSetActionStateId(1), undefined);
 assert.equal(typedDescriptorView.formatPropertyCount(0), 0);
 assert.equal(typedDescriptorView.formatPropertyCount(1), 3);
 assert.equal(typedDescriptorView.formatPropertyName(1, 0), "example/href");
@@ -1663,10 +1680,14 @@ const runtimeDom = new JSDOM("<!doctype html><body></body>", {
 for (const name of [
   "window",
   "document",
+  "Document",
+  "DocumentFragment",
+  "ShadowRoot",
   "Node",
   "NodeList",
   "Element",
   "HTMLElement",
+  "HTMLInputElement",
   "HTMLParagraphElement",
   "Text",
   "Range",

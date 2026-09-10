@@ -3,9 +3,11 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.6` source checkpoint retains alpha.4's one closed
+unpublished `0.3.0-alpha.7` source checkpoint retains alpha.4's one closed
 property-driven Link presentation and carries it through typed structural
-paragraph edits described below.
+paragraph edits described below. The Alpha.7 form's `presentation: "url"`
+does not alter this renderer contract: only `safeLinkV1` grants navigation
+attributes.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an

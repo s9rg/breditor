@@ -2,7 +2,9 @@
 
 Status: supported by the public `0.1.0` runtime and carried unchanged into the
 `0.2.0` descriptor-validated intent toolbar and reference-package
-consumer/cross-browser release
+consumer/cross-browser release; `0.3.0-alpha.7` adds the closed callback-free
+typed inline-format form defined in
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md)
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -28,7 +30,8 @@ later click.
 5. The presentation manifest is bounded, immutable, callback-free, and
    independent from Rust catalog order. Adding a control does not add a switch
    statement to the toolbar renderer.
-6. The base UI uses native buttons and the WAI-ARIA toolbar interaction model.
+6. The APG toolbar uses only native command or launcher buttons. A typed
+   launcher's nonmodal form is a sibling, not a descendant of `role="toolbar"`.
    CSS, icons, localization, and framework wrappers remain optional layers.
 
 ## Base state catalog
@@ -161,8 +164,8 @@ most 128 ASCII characters and follows the lowercase
 trimmed, nonempty, control-free, and at most 64 UTF-16 code units / 256 UTF-8
 bytes. A string action input is nonempty valid Unicode and at most 65,536 UTF-16
 code units / 65,536 UTF-8 bytes. The public package root exports constants for
-these bounds. The manifest and every nested value are copied and frozen. It
-admits primitive data only:
+these bounds. The manifest and every nested value are copied and frozen. Button
+declarations retain primitive data only:
 
 - a bounded toolbar label;
 - a unique qualified action-state ID per button;
@@ -171,6 +174,14 @@ admits primitive data only:
 - an optional presentation group; and
 - a declarative semantic intent, no-input/string direct action, or undo/redo
   command.
+
+Alpha.7 adds `inlineFormatForm`, containing a unique state ID, format kind,
+typed intent ID, bounded labels, and 1 through 32 fields. Across all forms one
+toolbar admits at most 64 fields. At least one field is a required
+`presentation: "url"` string with its exact profile UTF-8 minimum and maximum;
+the other closed field shape is a required Boolean with `defaultValue: false`.
+Property names are unique inside the form. The declaration carries no value,
+callback, URL policy, DOM node, or executable object.
 
 It accepts no callback, DOM node, HTML, CSS, icon markup, Wasm handle, or
 executable object. Hosts can map their own icons or localized labels by stable
@@ -188,8 +199,15 @@ against the owned compiled-profile descriptor. An intent control must name a
 routed action-state entry sourced from the same declared no-input intent, match
 its tracked/stateless activation, and declare no value on either side. A
 history control must match the state entry's exact Undo or Redo direction.
-Missing state or intent declarations, direct sources, typed inputs, value
-contracts, and any source/activation mismatch reject the complete startup.
+For a button, missing state or intent declarations, direct sources, typed
+inputs, value contracts, and any source/activation mismatch reject the complete
+startup.
+
+An `inlineFormatForm` instead must match one ABI-5 canonical typed-set triple:
+format kind, typed intent ID, and routed action-state ID. Its fields must
+exactly cover the profile's required properties with equal types and string
+bounds. Optional properties, integer fields, omitted or extra keys, partial
+patches, and property-value state are rejected.
 
 Custom validated manifests can omit, reorder, relabel, group, or expose
 additional compiled property-free format toggle intents as native buttons. A
@@ -226,6 +244,14 @@ when none does, and unavailable/inactive for a structural-only range. This does
 not make the form a toolbar manifest control or allow the toolbar to collect a
 property value.
 
+Alpha.7 replaces that application-only presentation in the combined reference
+manifest with one native `inlineFormatForm` launcher between Highlight and
+Undo. The existing public Link JSON helpers remain available for programmatic
+calls. Apply builds the same canonical complete-map set input; Remove builds
+the same canonical remove input. Drafts are runtime-owned, cleared on Close,
+Escape, completed delivery, and disposal, and are not hydrated from selection
+values or persisted.
+
 ## Accessible DOM behavior
 
 `BreditorToolbar` treats its constructor element as a mount. It accepts only an
@@ -238,8 +264,18 @@ requires a connected, empty, distinct toolbar host. The toolbar appends one
 owned inner `<div data-breditor-toolbar-root>`. Only that inner root
 receives `role="toolbar"`, its accessible name, horizontal orientation, and the
 generated native `<button type="button">` controls. Existing mount attributes
-and children remain outside the toolbar role. `.element` returns the owned
-inner root.
+and children remain outside the toolbar role. Their exact node identities and
+order form an immutable baseline for the toolbar lifetime; drift faults before
+dispatch, while disposal removes only Breditor-owned nodes. `.element` returns
+the owned inner root.
+
+Each typed form is appended under the toolbar mount as a hidden sibling of the
+owned toolbar root. Its launcher carries the expansion/control relationship.
+Opening one form closes any other and focuses its first field. Escape or the
+explicit Close button clears the draft, hides the form, and restores launcher
+focus. The form is nonmodal: it has no dialog role, focus trap, backdrop, or
+page inerting, and its fields therefore do not participate in toolbar Arrow-key
+navigation.
 
 Exactly one generated button has `tabindex="0"`; Left/Right (and Up/Down), Home,
 and End implement roving focus. Pointer down prevents the primary pointer from
@@ -268,9 +304,13 @@ disables dispatch with `aria-disabled="true"`. Tracked activation maps to
 before dispatch, but the queue and Rust remain authoritative.
 
 Dispatch must return an outcome minted by `toolbarCommandDispatchResult`:
-`completed` means synchronous completion, `rejected` means no command ran, and
-`failed` means the runtime cannot prove a safe outcome. Thrown, asynchronous,
-forged, malformed, and failed outcomes fault the toolbar closed. The public
+`completed` means the requested target command completed synchronously,
+`rejected` means that target was not applied, and `failed` means the runtime
+cannot prove a safe outcome. For a typed intent, `rejected` can still follow an
+effective `closeBefore` history boundary when Rust reports the target blocked
+or unhandled; the form retains its draft and authoritative state is refreshed.
+A deterministic typed-input decoder rejection does not publish that boundary.
+Thrown, asynchronous, forged, malformed, and failed outcomes fault the toolbar closed. The public
 high-level runtime owns this dispatcher and routes intent controls without
 exposing selected action or binding provenance; advanced low-level
 construction still requires a host-supplied implementation.
@@ -291,9 +331,9 @@ toolbar.
 
 ## Explicit limits
 
-- The default catalog contains Bold, Undo, and Redo. Alpha.7 compiled profiles
-  can add property-free format toggle intents/states, but all supported controls
-  remain the same native-button kind.
+- The default catalog contains Bold, Undo, and Redo. Compiled profiles can add
+  property-free format toggle intents/states as native buttons; Alpha.7 also
+  supports the closed typed-form launcher and sibling form.
 - One browser action-state snapshot admits at most 512 entries. One uniform
   value admits at most 524,288 encoded JSON bytes; one complete snapshot admits
   at most 8,388,608 such encoded bytes, 65,536 decoded values, and 1,048,576
@@ -312,11 +352,15 @@ toolbar.
   bridges status into a bounded, immutable external-store subscription.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
-- The public editor can execute descriptor-declared typed intent JSON. Alpha.6
-  demonstrates a React-owned Link form, but the toolbar still has no typed-input
-  control kind. There are no custom control kinds, menus/selects, extension
+- The public editor can execute descriptor-declared typed intent JSON. Alpha.7
+  adds required URL-string and Boolean fields only. There is no hydration,
+  persisted draft, optional/integer field, partial patch, or arbitrary widget.
+  There are no menus/selects, extension
   keymaps or `beforeinput` rules, dynamic manifest replacement, or asynchronous
   toolbar dispatch.
+- URL presentation checks only string shape and UTF-8 bounds. `safeLinkV1`
+  independently owns scheme and navigation safety. Same-realm JavaScript is
+  trusted configuration and is not sandboxed.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
 - The `0.1.0` automated gate covers keyboard navigation, computed focus

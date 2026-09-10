@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the alpha.6 typed-profile source checkpoint.
+`0.2.0` extension surface, and the alpha.7 typed-toolbar source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -78,6 +78,17 @@ exact no-ops remain operation-free. No browser API, Wasm ABI 4 method,
 Bootstrap V2 shape, projection shape, fingerprint, Document V2, or V3 format
 changes.
 
+The unpublished `0.3.0-alpha.7` source package requires Wasm ABI 5 and adds one
+closed, callback-free `inlineFormatForm` declaration for an admitted typed
+setter. Rust supplies only the canonical format/intent/state correlation;
+browser-owned immutable data declares required URL-presented strings and
+required Boolean choices. A launcher remains a native button in the APG
+toolbar while its nonmodal form is a sibling of the toolbar root. Draft values
+are ephemeral, complete-map Apply/Remove requests use the existing guarded
+queue and history contract, and `safeLinkV1` alone decides navigation safety.
+See the normative
+[typed toolbar decision](../../docs/TYPED_TOOLBAR_CONTROLS.md).
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -91,7 +102,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.6 @breditor/wasm@0.3.0-alpha.6
+npm install @breditor/browser@0.3.0-alpha.7 @breditor/wasm@0.3.0-alpha.7
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -195,8 +206,10 @@ When shortcuts are enabled, primary-modifier+B and native `beforeinput`
 concrete strong action at the supported browser boundary.
 
 The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
-`header`, `main`, `nav`, or `section`. The distinct toolbar host uses the same
-tag allowlist, has no `tabindex`, and is outside an effective editable region.
+`header`, `main`, `nav`, or `section` in the owner Document's light DOM.
+ShadowRoot editor hosts are rejected because cross-engine shadow selection is
+not interoperable. The distinct toolbar host uses the same tag allowlist, may
+be mounted in a ShadowRoot, has no `tabindex`, and is outside an effective editable region.
 Its optional case-insensitive role tokens are limited to
 `banner`, `complementary`, `contentinfo`, `form`, `generic`, `group`, `main`,
 `navigation`, `none`, `presentation`, `region`, or `search` (an empty role is
@@ -613,10 +626,12 @@ relation is never mistaken for an individual consumer's baseline.
 `BreditorToolbar` is driven by a bounded immutable presentation manifest. The
 default manifest contains Bold, Undo, and Redo, but visible order, labels, and
 optional grouping keys are browser-owned. `createToolbarManifest` accepts a
-dense array of 1 through 64 own data controls. Toolbar/control labels are valid
-Unicode with non-whitespace content, no ASCII controls or DEL, at most 128
-UTF-16 code units, and at most 512 UTF-8 bytes. Unique state, intent, and action IDs
-are at most 128 lowercase ASCII characters in `namespace/local-name` form.
+dense array of 1 through 64 own data controls. Alpha.7 admits native buttons
+and the closed callback-free `inlineFormatForm`. Toolbar/control labels are
+valid Unicode with non-whitespace content, no ASCII controls or DEL, at most
+128 UTF-16 code units, and at most 512 UTF-8 bytes. Unique state, intent, and
+action IDs are at most 128 lowercase ASCII characters in
+`namespace/local-name` form.
 Optional groups are valid Unicode, trimmed, nonempty, control-free, and at most
 64 UTF-16 code units / 256 UTF-8 bytes. Nonempty string inputs are valid Unicode
 and at most 65,536 UTF-16 code units / 65,536 UTF-8 bytes. The package root
@@ -633,6 +648,15 @@ with `toolbarCommandRequest` and sends them through the same queue; Rust
 revalidates every command against the current observation. The complete
 manifest contract is documented in `docs/TOOLBAR.md` in the repository.
 
+An `inlineFormatForm` launcher is one of those APG-toolbar buttons. Its
+interactive nonmodal form is a sibling of the toolbar root so field Arrow keys
+retain native behavior. Fields are limited to required URL-presented bounded
+strings and required Booleans and must exactly cover one profile format.
+Apply/Remove use the existing typed-intent queue and complete-map contract;
+drafts are neither selection-hydrated nor persisted. The exact surface and
+threat model are in
+[`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
+
 A custom manifest does not register behavior. In the supported Alpha.7 editor,
 startup accepts an intent button only when its state ID names a descriptor
 entry routed from the same declared no-input intent, its tracked/stateless
@@ -641,6 +665,12 @@ name the descriptor's exact Undo or Redo source. A mismatch fails startup
 before a toolbar becomes live. The same manifest parser still understands
 concrete action commands for the advanced low-level toolbar, but the high-level
 runtime rejects those controls as policy bypasses.
+
+An inline-format form is admitted only when its format/intent/state triple
+matches an ABI-5 set-surface descriptor and its field types and UTF-8 bounds
+exactly match all required format properties. Form presentation does not
+sanitize URLs; only the separate `safeLinkV1` renderer decides whether a stored
+value becomes a navigable anchor.
 
 ## Session checkpoint persistence
 
@@ -716,10 +746,11 @@ backpressure; terminal adapter loss pauses autosave. See
 - The default toolbar contains Bold, Undo, and Redo. A compiled semantic
   profile can contribute additional property-free format toggle intents and a
   custom manifest can omit, reorder, relabel, group, or expose them as the same
-  native-button control kind. Typed intents are callable through
-  `executeIntentJson()` and the reference app demonstrates React-owned Link
-  controls, but there are no native typed toolbar controls, menus/selects,
-  extension keymaps or `beforeinput` rules, dynamic
+  native-button control kind. The closed native `inlineFormatForm` supports
+  required URL-presented strings and required Booleans for exact complete-map
+  set/remove only. There are no optional/integer fields, partial patches,
+  arbitrary widgets, menus/selects, extension keymaps or `beforeinput` rules,
+  dynamic
   manifest replacement, JavaScript action/catalog registration, or packaged
   React wrapper.
 - Each checkpoint owner uses one best-effort local slot. Slots may coexist but

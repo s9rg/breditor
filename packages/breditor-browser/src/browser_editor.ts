@@ -44,17 +44,17 @@ import {
 import {
   isSafeFlowContainerHost,
   nativeBlurHtmlElement,
-  nativeDocumentActiveElement,
   nativeFocusHtmlElement,
   nativeGetAttribute,
   nativeHasAttribute,
   nativeHtmlHostFacts,
-  nativeOwnerDocument,
   nativeParentElement,
   nativeRemoveAttribute,
   nativeRemoveElement,
   nativeReplaceChildren,
   nativeSetAttribute,
+  nativeTreeRoot,
+  nativeTreeRootActiveElement,
 } from "./html_host.js";
 import type { KeyboardTranslationPolicy } from "./keyboard.js";
 import {
@@ -610,15 +610,13 @@ export class BreditorBrowserEditor {
     let actionStore: BreditorActionStateStore | undefined;
     let queue: BreditorCommandQueue<WasmCommandSequenceOutcome> | undefined;
     let queueLeasePort:
-      | CommandQueueLeasePort<WasmCommandSequenceOutcome>
-      | undefined;
+      CommandQueueLeasePort<WasmCommandSequenceOutcome> | undefined;
     let autosave:
       | BreditorSessionCheckpointAutosave<IndexedDbSessionCheckpointCasToken>
       | undefined;
     let editor: BreditorBrowserEditor | undefined;
     let preflightProfileDescriptor:
-      | BrowserCompiledProfileDescriptor
-      | undefined;
+      BrowserCompiledProfileDescriptor | undefined;
     let transferred = false;
 
     try {
@@ -718,9 +716,8 @@ export class BreditorBrowserEditor {
       observation = bootstrap.observation;
       if (
         preflightProfileDescriptor !== undefined &&
-        (bootstrap.durableMode !== semanticProfileDurableMode(
-          normalized.semanticProfile,
-        ) ||
+        (bootstrap.durableMode !==
+          semanticProfileDurableMode(normalized.semanticProfile) ||
           !profileDurableBindingsEqual(
             preflightProfileDescriptor,
             bootstrap.profileDescriptor,
@@ -796,7 +793,8 @@ export class BreditorBrowserEditor {
         );
       }
       rendered = initialRender.value.rendered;
-      installedHostChildren = snapshotRenderedHostChildren(rendered) ?? undefined;
+      installedHostChildren =
+        snapshotRenderedHostChildren(rendered) ?? undefined;
       if (installedHostChildren === undefined) {
         return openFailure("browser_editor.setup_failed");
       }
@@ -818,7 +816,9 @@ export class BreditorBrowserEditor {
       }
 
       const restored = adapter.restoreCanonicalRender();
-      const restoredHostChildren = snapshotRenderedHostChildren(adapter.rendered);
+      const restoredHostChildren = snapshotRenderedHostChildren(
+        adapter.rendered,
+      );
       if (restoredHostChildren !== null) {
         installedHostChildren = restoredHostChildren;
       }
@@ -828,8 +828,8 @@ export class BreditorBrowserEditor {
           initialSelectionCauseCode(restored.reason),
         );
       }
-      installedHostChildren = snapshotRenderedHostChildren(adapter.rendered) ??
-        undefined;
+      installedHostChildren =
+        snapshotRenderedHostChildren(adapter.rendered) ?? undefined;
       if (installedHostChildren === undefined) {
         return openFailure("browser_editor.setup_failed");
       }
@@ -978,7 +978,8 @@ export class BreditorBrowserEditor {
           }
           bestEffortIntrinsic(selectionBridge, SELECTION_BRIDGE_DISPOSE);
           if (observation !== undefined) bestEffortFree(observation);
-          if (profileGeneration !== undefined) bestEffortFree(profileGeneration);
+          if (profileGeneration !== undefined)
+            bestEffortFree(profileGeneration);
           if (engine !== undefined) bestEffortFree(engine);
           bestEffortIntrinsic(storage, STORAGE_CLOSE);
           if (hostAttributes !== undefined) {
@@ -1063,8 +1064,11 @@ export class BreditorBrowserEditor {
       }
       const outcome = sequence.command;
       const document = this.#correlatedIntentDocument(outcome.snapshot);
-      if (document === undefined || outcome.status === "disabled" ||
-        outcome.status === "unchanged") {
+      if (
+        document === undefined ||
+        outcome.status === "disabled" ||
+        outcome.status === "unchanged"
+      ) {
         throw new TypeError("intent command outcome is invalid");
       }
       if (
@@ -1334,10 +1338,8 @@ export class BreditorBrowserEditor {
     if (this.#status.phase !== "live") return false;
     try {
       nativeFocusHtmlElement(this.#host);
-      const ownerDocument = nativeOwnerDocument(this.#host);
       const focused =
-        ownerDocument !== null &&
-        nativeDocumentActiveElement(ownerDocument) === this.#host;
+        nativeTreeRootActiveElement(nativeTreeRoot(this.#host)) === this.#host;
       return this.#status.phase === "live" && focused;
     } catch {
       return false;
@@ -1508,6 +1510,9 @@ export class BreditorBrowserEditor {
       return Object.freeze({ status: "unavailable" });
     }
     try {
+      if (!liveCommandHostIsCanonical(this.#host, this.#adapter.rendered)) {
+        return Object.freeze({ status: "failed" });
+      }
       const adapterState = this.#adapter.state;
       if (
         adapterState === "composition" ||
@@ -1547,8 +1552,7 @@ export class BreditorBrowserEditor {
     }
 
     let submission:
-      | CommandQueueLeasedSubmission<WasmCommandSequenceOutcome>
-      | undefined;
+      CommandQueueLeasedSubmission<WasmCommandSequenceOutcome> | undefined;
     let released = false;
     try {
       const request = buildRequest();
@@ -1578,10 +1582,7 @@ export class BreditorBrowserEditor {
     if (submission?.status === "failed") {
       return Object.freeze({ status: "failed" });
     }
-    if (
-      submission?.status === "rejected" &&
-      submission.reason === "disposed"
-    ) {
+    if (submission?.status === "rejected" && submission.reason === "disposed") {
       return Object.freeze({ status: "unavailable" });
     }
     if (submission === undefined && this.#status.phase !== "live") {
@@ -1649,14 +1650,12 @@ export class BreditorBrowserEditor {
     if (delivery.status === "busy" || delivery.status === "unavailable") {
       return toolbarCommandDispatchResult("rejected");
     }
-    if (
-      delivery.status === "completed" &&
-      toolbarSequenceOutcomeMatchesInvocation(
+    if (delivery.status === "completed") {
+      const status = toolbarSequenceOutcomeDispatchStatus(
         delivery.submission.result,
         invocation,
-      )
-    ) {
-      return toolbarCommandDispatchResult("completed");
+      );
+      if (status !== undefined) return toolbarCommandDispatchResult(status);
     }
     this.#fault("toolbarDispatchFailed");
     return toolbarCommandDispatchResult("failed");
@@ -1846,19 +1845,23 @@ function validBrowserDocumentSnapshot(
   if (!objectLike(value)) return false;
   try {
     const snapshot = value as Partial<BreditorBrowserDocumentSnapshot>;
-    return typeof snapshot.lineage === "string" &&
+    return (
+      typeof snapshot.lineage === "string" &&
       snapshot.lineage.length >= 1 &&
       typeof snapshot.revision === "string" &&
-      /^(0|[1-9][0-9]*)$/u.test(snapshot.revision);
+      /^(0|[1-9][0-9]*)$/u.test(snapshot.revision)
+    );
   } catch {
     return false;
   }
 }
 
 function validBrowserIntentId(value: unknown): value is string {
-  return typeof value === "string" &&
+  return (
+    typeof value === "string" &&
     value.length <= 128 &&
-    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value);
+    /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u.test(value)
+  );
 }
 
 function validBrowserIntentReasonCode(value: unknown): value is string {
@@ -1868,8 +1871,12 @@ function validBrowserIntentReasonCode(value: unknown): value is string {
 function validBrowserIntentActivation(
   value: unknown,
 ): value is "stateless" | "inactive" | "active" | "mixed" {
-  return value === "stateless" || value === "inactive" ||
-    value === "active" || value === "mixed";
+  return (
+    value === "stateless" ||
+    value === "inactive" ||
+    value === "active" ||
+    value === "mixed"
+  );
 }
 
 function findProfileIntent(
@@ -1883,33 +1890,55 @@ function findProfileIntent(
   return undefined;
 }
 
-function toolbarSequenceOutcomeMatchesInvocation(
+function toolbarSequenceOutcomeDispatchStatus(
   sequence: WasmCommandSequenceOutcome,
   invocation: ToolbarCommandInvocation,
-): boolean {
+): "completed" | "rejected" | undefined {
   try {
-    if (sequence.status !== "delivered") return false;
+    if (sequence.status !== "delivered") return undefined;
     const outcome = sequence.command;
     const command = invocation.command;
     if (outcome.status === "rejected") {
-      return command.kind === "action" || command.kind === "intent";
+      if (command.kind === "intentJson") return "rejected";
+      return command.kind === "action" || command.kind === "intent"
+        ? "completed"
+        : undefined;
+    }
+    if (command.kind === "intentJson") {
+      if (outcome.status === "committed") {
+        return outcome.eventKind === "intent" &&
+          outcome.intentId === command.intentId
+          ? "completed"
+          : undefined;
+      }
+      return (outcome.status === "blocked" || outcome.status === "unhandled") &&
+        outcome.intentId === command.intentId
+        ? "rejected"
+        : undefined;
     }
     if (command.kind === "intent") {
-      return outcome.status === "committed"
-        ? outcome.eventKind === "intent" && outcome.intentId === command.intentId
-        : (outcome.status === "blocked" || outcome.status === "unhandled") &&
+      const matches =
+        outcome.status === "committed"
+          ? outcome.eventKind === "intent" &&
+            outcome.intentId === command.intentId
+          : (outcome.status === "blocked" || outcome.status === "unhandled") &&
             outcome.intentId === command.intentId;
+      return matches ? "completed" : undefined;
     }
     if (command.kind === "history") {
       return outcome.status === "unchanged" ||
         (outcome.status === "committed" &&
-          outcome.eventKind === command.operation);
+          outcome.eventKind === command.operation)
+        ? "completed"
+        : undefined;
     }
-    return outcome.status === "disabled"
-      ? outcome.actionId === command.actionId
-      : outcome.status === "committed" && outcome.eventKind === "action";
+    const matches =
+      outcome.status === "disabled"
+        ? outcome.actionId === command.actionId
+        : outcome.status === "committed" && outcome.eventKind === "action";
+    return matches ? "completed" : undefined;
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -1951,7 +1980,10 @@ function snapshotSemanticProfileOptions(
     if (keys.length === 1) {
       return Object.freeze({ bootstrapJson: bootstrap.value });
     }
-    const formatVersion = Reflect.getOwnPropertyDescriptor(value, "formatVersion");
+    const formatVersion = Reflect.getOwnPropertyDescriptor(
+      value,
+      "formatVersion",
+    );
     if (
       formatVersion === undefined ||
       !("value" in formatVersion) ||
@@ -1977,9 +2009,10 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const wasm = options.wasm;
     const initial = options.initialDocument;
     const semanticProfile = options.semanticProfile;
-    const normalizedSemanticProfile = semanticProfile === undefined
-      ? undefined
-      : snapshotSemanticProfileOptions(semanticProfile);
+    const normalizedSemanticProfile =
+      semanticProfile === undefined
+        ? undefined
+        : snapshotSemanticProfileOptions(semanticProfile);
     if (normalizedSemanticProfile === null) return null;
     const rendering = options.rendering;
     const keyboard = options.keyboard;
@@ -1998,7 +2031,8 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       !objectLike(wasm) ||
       !objectLike(initial) ||
       (rendering !== undefined && semanticProfile === undefined) ||
-      (rendering !== undefined && !isOwnedInlineFormatRenderManifest(rendering)) ||
+      (rendering !== undefined &&
+        !isOwnedInlineFormatRenderManifest(rendering)) ||
       !validKeyboardPolicy(keyboard) ||
       typeof spellcheck !== "boolean" ||
       (scheduleTask !== undefined && typeof scheduleTask !== "function")
@@ -2097,15 +2131,18 @@ function persistenceBinding(
   semanticProfile: BreditorBrowserSemanticProfileOptions | undefined,
 ): IndexedDbSessionCheckpointBinding | undefined {
   if (scope === undefined && profileDescriptor === undefined) return undefined;
-  const schemaFingerprint = profileDescriptor?.schema.fingerprint ??
-    BREDITOR_BASE_SCHEMA_FINGERPRINT;
+  const schemaFingerprint =
+    profileDescriptor?.schema.fingerprint ?? BREDITOR_BASE_SCHEMA_FINGERPRINT;
   const slot = scope?.kind === "slot" ? scope.name : schemaFingerprint;
   return Object.freeze({
     slot,
     schemaFingerprint,
-    checkpointFormatVersion: profileDescriptor === undefined
-      ? 1
-      : semanticProfileDurableMode(semanticProfile) === "v3" ? 3 : 2,
+    checkpointFormatVersion:
+      profileDescriptor === undefined
+        ? 1
+        : semanticProfileDurableMode(semanticProfile) === "v3"
+          ? 3
+          : 2,
   });
 }
 
@@ -2113,24 +2150,33 @@ function profileDurableBindingsEqual(
   left: BrowserCompiledProfileDescriptor,
   right: BrowserCompiledProfileDescriptor,
 ): boolean {
-  return left.schema.name === right.schema.name &&
+  return (
+    left.schema.name === right.schema.name &&
     left.schema.version === right.schema.version &&
     left.schema.fingerprint === right.schema.fingerprint &&
     left.formats.length === right.formats.length &&
     left.formats.every((format, index) => {
       const other = right.formats[index];
-      return other !== undefined &&
+      return (
+        other !== undefined &&
         format.kind === other.kind &&
         format.revision === other.revision &&
         format.properties.length === other.properties.length &&
         format.properties.every((property, propertyIndex) => {
           const otherProperty = other.properties[propertyIndex];
-          return otherProperty !== undefined &&
+          return (
+            otherProperty !== undefined &&
             property.name === otherProperty.name &&
             property.presence === otherProperty.presence &&
-            formatPropertyTypesEqual(property.valueType, otherProperty.valueType);
-        });
-    });
+            formatPropertyTypesEqual(
+              property.valueType,
+              otherProperty.valueType,
+            )
+          );
+        })
+      );
+    })
+  );
 }
 
 function semanticProfileDurableMode(
@@ -2146,13 +2192,17 @@ function formatPropertyTypesEqual(
   if (left.kind !== right.kind) return false;
   if (left.kind === "boolean") return right.kind === "boolean";
   if (left.kind === "integer") {
-    return right.kind === "integer" &&
+    return (
+      right.kind === "integer" &&
       left.minimum === right.minimum &&
-      left.maximum === right.maximum;
+      left.maximum === right.maximum
+    );
   }
-  return right.kind === "string" &&
+  return (
+    right.kind === "string" &&
     left.minimumUtf8Bytes === right.minimumUtf8Bytes &&
-    left.maximumUtf8Bytes === right.maximumUtf8Bytes;
+    left.maximumUtf8Bytes === right.maximumUtf8Bytes
+  );
 }
 
 function normalizeAbortSignal(
@@ -2175,7 +2225,11 @@ function normalizeAbortSignal(
         }
       },
       add: (listener: () => void) => {
-        Reflect.apply(intrinsics.add, signal, ["abort", listener, { once: true }]);
+        Reflect.apply(intrinsics.add, signal, [
+          "abort",
+          listener,
+          { once: true },
+        ]);
       },
       remove: (listener: () => void) => {
         Reflect.apply(intrinsics.remove, signal, ["abort", listener]);
@@ -2192,9 +2246,10 @@ function readAbortSignalIntrinsics(): AbortSignalIntrinsics | null {
     // embedding environment, so resolve the current realm only at admission.
     const signalPrototype =
       typeof AbortSignal === "function" ? AbortSignal.prototype : undefined;
-    const aborted = signalPrototype === undefined
-      ? undefined
-      : Object.getOwnPropertyDescriptor(signalPrototype, "aborted")?.get;
+    const aborted =
+      signalPrototype === undefined
+        ? undefined
+        : Object.getOwnPropertyDescriptor(signalPrototype, "aborted")?.get;
     // Some embeddings install AbortSignal and EventTarget from distinct DOM
     // realms. Walk from AbortSignal.prototype so the listener methods carry the
     // same implementation brand as the signal getter.
@@ -2302,7 +2357,14 @@ function usableEmptyHost(value: unknown): value is HTMLElement {
 
 function usableEmptyEditorHost(value: unknown): value is HTMLElement {
   try {
-    return usableEmptyHost(value) && isSafeFlowContainerHost(value);
+    const facts = nativeHtmlHostFacts(value);
+    return (
+      facts !== undefined &&
+      facts.isConnected &&
+      !facts.hasChildren &&
+      isSafeFlowContainerHost(value) &&
+      nativeTreeRoot(facts.element) === facts.ownerDocument
+    );
   } catch {
     return false;
   }
@@ -2365,6 +2427,7 @@ function startupRenderIsCanonical(
       facts !== undefined &&
       facts.isConnected &&
       isSafeFlowContainerHost(options.host) &&
+      nativeTreeRoot(facts.element) === facts.ownerDocument &&
       installedHostAttributesMatch(options) &&
       renderer.owns(adapter.rendered) &&
       (requireEmptyToolbar
@@ -2374,6 +2437,25 @@ function startupRenderIsCanonical(
           ? toolbar === undefined
           : toolbar !== undefined &&
             Reflect.apply(TOOLBAR_VALIDATE_CANONICAL_DOM, toolbar, []) === true)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function liveCommandHostIsCanonical(
+  host: HTMLElement,
+  rendered: RenderedProjection,
+): boolean {
+  try {
+    const facts = nativeHtmlHostFacts(host);
+    return (
+      facts !== undefined &&
+      facts.isConnected &&
+      nativeTreeRoot(facts.element) === facts.ownerDocument &&
+      rendered.host === facts.element &&
+      rendered.current &&
+      rendered.validateCanonicalDom()
     );
   } catch {
     return false;
@@ -2527,11 +2609,7 @@ function quiesceFaultedHost(host: HTMLElement): void {
   try {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       nativeBlurHtmlElement(host);
-      const ownerDocument = nativeOwnerDocument(host);
-      if (
-        ownerDocument === null ||
-        nativeDocumentActiveElement(ownerDocument) !== host
-      ) {
+      if (nativeTreeRootActiveElement(nativeTreeRoot(host)) !== host) {
         return;
       }
     }

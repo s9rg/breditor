@@ -105,7 +105,7 @@ extern "C" {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 fn factory_observation_and_json_reads_are_structured() -> TestResult {
-    assert_eq!(breditor_wasm_abi_version(), "4");
+    assert_eq!(breditor_wasm_abi_version(), "5");
     assert_eq!(breditor_version(), env!("CARGO_PKG_VERSION"));
     let mut result = BreditorEngine::from_document_json("wasm-factory", EMPTY_DOCUMENT_JSON, 100.0);
     assert_eq!(result.status(), "engine");
@@ -181,6 +181,10 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     assert_eq!(descriptor.format_revision(1), Some(7));
     assert_eq!(descriptor.format_kind(2), None);
     assert_eq!(descriptor.format_revision(2), None);
+    assert_eq!(descriptor.inline_format_set_count(), 0);
+    assert_eq!(descriptor.inline_format_set_format_kind(0), None);
+    assert_eq!(descriptor.inline_format_set_intent_id(0), None);
+    assert_eq!(descriptor.inline_format_set_action_state_id(0), None);
 
     assert_eq!(descriptor.intent_count(), 2);
     assert_eq!(descriptor.intent_id(0).as_deref(), Some(BASE_FORMAT_STRONG_INTENT));

@@ -7,6 +7,8 @@ import {
   toolbarCommandRequest,
   type ToolbarActionStateEntry,
   type ToolbarActionStateSnapshot,
+  type ToolbarActionStateStore,
+  type ToolbarCommandDispatcher,
   type ToolbarCommandInvocation,
 } from "./toolbar.js";
 import { BreditorDomRenderer } from "./dom_renderer.js";
@@ -19,6 +21,8 @@ import {
   BASE_TOOLBAR_STATE_IDS,
   DEFAULT_TOOLBAR_MANIFEST,
   createToolbarManifest,
+  type ToolbarCommandDeclaration,
+  type ToolbarManifest,
 } from "./toolbar_manifest.js";
 
 beforeEach(() => {
@@ -193,6 +197,63 @@ describe("BreditorToolbar", () => {
     );
 
     toolbar.dispose();
+  });
+
+  it.each(["label", "root relocation"] as const)(
+    "faults instead of dispatching through %s drift",
+    (violation) => {
+      const host = mountHost();
+      const dispatch = vi.fn(completedDispatch);
+      const toolbar = new BreditorToolbar(
+        host,
+        DEFAULT_TOOLBAR_MANIFEST,
+        new TestStateStore(baseEntries()),
+        { dispatch },
+      );
+      const bold = toolbarButtons(host)[0];
+      if (bold === undefined) throw new Error("missing Bold toolbar button");
+      if (violation === "label") {
+        bold.replaceChildren("Undo");
+      } else {
+        const other = document.createElement("div");
+        document.body.append(other);
+        other.append(toolbar.element);
+      }
+
+      bold.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+
+      expect(dispatch).not.toHaveBeenCalled();
+      expect(toolbar.state).toBe("faulted");
+      toolbar.dispose();
+    },
+  );
+
+  it("faults instead of dispatching after retained mount children are reordered", () => {
+    const host = mountHost();
+    const first = document.createTextNode("first");
+    const second = document.createComment("second");
+    host.append(first, second);
+    const dispatch = vi.fn(completedDispatch);
+    const toolbar = new BreditorToolbar(
+      host,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch },
+    );
+    const bold = toolbarButtons(host)[0];
+    if (bold === undefined) throw new Error("missing Bold toolbar button");
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+
+    host.insertBefore(second, first);
+    bold.click();
+
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(toolbar.state).toBe("faulted");
+    expect([...host.childNodes]).toEqual([second, first, toolbar.element]);
+    toolbar.dispose();
+    expect([...host.childNodes]).toEqual([second, first]);
   });
 
   it("uses native host DOM operations despite own mutation shadows", () => {
@@ -471,11 +532,11 @@ describe("BreditorToolbar", () => {
     expect(invocations[0]).toEqual({
       stateId: BASE_TOOLBAR_STATE_IDS.bold,
       selection: "preserve",
-      command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+      command: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
     });
     expect(Object.isFrozen(invocations[0])).toBe(true);
     expect(invocations[0]?.command).toBe(
-      DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+      manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
     );
     expect(document.activeElement).toBe(editor);
     expect(selection.toString()).toBe("selected");
@@ -761,7 +822,7 @@ describe("BreditorToolbar", () => {
     const bold = toolbarCommandRequest(delivery, {
       stateId: BASE_TOOLBAR_STATE_IDS.bold,
       selection: "preserve",
-      command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+      command: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
     });
     expect(bold).toMatchObject({
       delivery,
@@ -778,9 +839,29 @@ describe("BreditorToolbar", () => {
 
     expect(
       toolbarCommandRequest(delivery, {
+        stateId: "example/link-presence",
+        selection: "preserve",
+        command: {
+          kind: "intentJson",
+          intentId: "example/set-link-intent",
+          inputJson: '{"operation":"remove"}',
+        },
+      }),
+    ).toMatchObject({
+      selection: { kind: "preserve" },
+      requirements: { selection: "preserve", history: "closeBefore" },
+      command: {
+        kind: "intent",
+        intentId: "example/set-link-intent",
+        input: { kind: "json", value: '{"operation":"remove"}' },
+      },
+    });
+
+    expect(
+      toolbarCommandRequest(delivery, {
         stateId: BASE_TOOLBAR_STATE_IDS.undo,
         selection: "preserve",
-        command: DEFAULT_TOOLBAR_MANIFEST.controls[1]!.command,
+        command: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 1),
       }),
     ).toMatchObject({
       selection: { kind: "preserve" },
@@ -809,7 +890,7 @@ describe("BreditorToolbar", () => {
       toolbarCommandRequest(delivery, {
         stateId: stringManifest.controls[0]!.stateId,
         selection: "preserve",
-        command: stringManifest.controls[0]!.command,
+        command: manifestButtonCommand(stringManifest, 0),
       }),
     ).toMatchObject({
       selection: { kind: "preserve" },
@@ -836,7 +917,7 @@ describe("BreditorToolbar", () => {
       selection: { enumerable: true, value: "preserve" },
       command: {
         enumerable: true,
-        value: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+        value: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
       },
     });
     expect(() =>
@@ -869,7 +950,7 @@ describe("BreditorToolbar", () => {
       toolbarCommandRequest(delivery, {
         stateId: BASE_TOOLBAR_STATE_IDS.bold,
         selection: "preserve",
-        command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+        command: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
         extra: true,
       } as ToolbarCommandInvocation),
     ).toThrow(/toolbar invocation/u);
@@ -878,7 +959,7 @@ describe("BreditorToolbar", () => {
       {
         stateId: BASE_TOOLBAR_STATE_IDS.bold,
         selection: "preserve" as const,
-        command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+        command: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
       },
       {
         ownKeys() {
@@ -894,7 +975,7 @@ describe("BreditorToolbar", () => {
       Object.create({ stateId: BASE_TOOLBAR_STATE_IDS.bold }),
       {
         selection: "preserve",
-        command: DEFAULT_TOOLBAR_MANIFEST.controls[0]!.command,
+        command: manifestButtonCommand(DEFAULT_TOOLBAR_MANIFEST, 0),
       },
     ) as ToolbarCommandInvocation;
     expect(() => toolbarCommandRequest(delivery, inherited)).toThrow(
@@ -1047,6 +1128,8 @@ describe("BreditorToolbar", () => {
     });
     const oldButton = toolbarButtons(host)[0]!;
     expect(store.listenerCount).toBe(1);
+    oldButton.click();
+    expect(dispatches).toBe(1);
 
     expect(() => toolbar.dispose()).not.toThrow();
     expect(() => toolbar.dispose()).not.toThrow();
@@ -1063,7 +1146,7 @@ describe("BreditorToolbar", () => {
     expect(toolbarButtons(host)).toHaveLength(0);
     oldButton.click();
     store.publish(baseEntries());
-    expect(dispatches).toBe(0);
+    expect(dispatches).toBe(1);
 
     const replacement = new BreditorToolbar(
       host,
@@ -1215,6 +1298,68 @@ describe("BreditorToolbar", () => {
     expect(nestedStore.listenerCount).toBe(0);
     toolbar.dispose();
   });
+
+  it.each(["dispatcher getter", "initial state read"] as const)(
+    "re-proves retained mount children after a hostile %s",
+    (phase) => {
+      const host = mountHost();
+      const first = document.createTextNode("first");
+      const second = document.createElement("aside");
+      second.textContent = "second";
+      host.append(first, second);
+      let changed = false;
+      const changeBaseline = vi.fn(() => {
+        if (changed) return;
+        changed = true;
+        host.append(first);
+      });
+      const stateStore: ToolbarActionStateStore =
+        phase === "initial state read"
+          ? {
+              getSnapshot: () => {
+                changeBaseline();
+                return { entries: baseEntries() };
+              },
+              getStatus: () => ({ status: "fresh" as const }),
+              subscribe: () => () => undefined,
+            }
+          : new TestStateStore(baseEntries());
+      const dispatcher: ToolbarCommandDispatcher =
+        phase === "dispatcher getter"
+          ? {
+              get dispatch() {
+                changeBaseline();
+                return completedDispatch;
+              },
+            }
+          : { dispatch: completedDispatch };
+
+      expect(
+        () =>
+          new BreditorToolbar(
+            host,
+            DEFAULT_TOOLBAR_MANIFEST,
+            stateStore,
+            dispatcher,
+          ),
+      ).toThrow(/host changed/u);
+      expect(changeBaseline).toHaveBeenCalledOnce();
+      expect([...host.childNodes]).toEqual([second, first]);
+      expect(
+        host.querySelector("[data-breditor-toolbar-root]"),
+      ).toBeNull();
+
+      const replacement = new BreditorToolbar(
+        host,
+        DEFAULT_TOOLBAR_MANIFEST,
+        new TestStateStore(baseEntries()),
+        { dispatch: completedDispatch },
+      );
+      expect(replacement.validateCanonicalDom()).toBe(true);
+      replacement.dispose();
+      expect([...host.childNodes]).toEqual([second, first]);
+    },
+  );
 
   it("makes a callback retained by an invalid subscriber inert before rollback", () => {
     const host = mountHost();
@@ -1409,6 +1554,15 @@ function tabIndexes(
 
 function completedDispatch() {
   return toolbarCommandDispatchResult("completed");
+}
+
+function manifestButtonCommand(
+  manifest: ToolbarManifest,
+  index: number,
+): ToolbarCommandDeclaration {
+  const control = manifest.controls[index];
+  if (control?.kind !== "button") throw new Error("missing button declaration");
+  return control.command;
 }
 
 function key(button: HTMLButtonElement, value: string): KeyboardEvent {

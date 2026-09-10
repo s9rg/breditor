@@ -44,7 +44,7 @@ assert.equal(typeof openBreditorBrowserEditor, "function");
 assert.equal(typeof initializeWasm, "function");
 assert.equal(typeof breditorWasmAbiVersion, "function");
 assert.equal(typeof breditorVersion, "function");
-assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.6");
+assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.7");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatKind, "example/highlight");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatRevision, 7);
 assert.equal(
@@ -87,7 +87,14 @@ assert.equal(
   REFERENCE_FORMATTING_RENDER_MANIFEST.recipes[2].attributes.kind,
   "safeLinkV1",
 );
-assert.equal(REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls.length, 4);
+assert.deepEqual(
+  REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls.map((control) => control.label),
+  ["Bold", "Highlight", "Link", "Undo", "Redo"],
+);
+assert.equal(
+  REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[2].kind,
+  "inlineFormatForm",
+);
 
 const linkSetInput = createReferenceLinkSetInput(
   "HTTPS://Example.TEST:443/package-proof",

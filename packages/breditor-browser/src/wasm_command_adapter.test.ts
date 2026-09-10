@@ -8,6 +8,7 @@ import {
   editorDeliveryAuthorityAccepts,
   historyRequest,
   jsonActionRequest,
+  jsonIntentRequest,
   noInputActionRequest,
   noInputIntentRequest,
   noSelectionSync,
@@ -93,6 +94,7 @@ const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
     formatCount: 1,
     intentCount: 1,
     actionStateCount: 0,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: (generation) =>
       generation === TEST_PROFILE_GENERATION,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
@@ -113,6 +115,9 @@ const TEST_PROFILE_DESCRIPTOR: BrowserCompiledProfileDescriptor = (() => {
     actionStateActivationContract: noEntry,
     actionStateValueContractName: noEntry,
     actionStateValueContractVersion: noEntry,
+    inlineFormatSetFormatKind: noEntry,
+    inlineFormatSetIntentId: noEntry,
+    inlineFormatSetActionStateId: noEntry,
     free: () => undefined,
   };
   const result = consumeWasmCompiledProfileDescriptor(
@@ -1283,10 +1288,14 @@ describe("BreditorWasmCommandAdapter", () => {
     adapter.dispose();
   });
 
-  it("contains deterministic typed rejection without publishing history control", () => {
+  it.each([
+    "breditor_wasm.action_value_json_limit",
+    "breditor_wasm.invalid_action_value_json",
+    "breditor_wasm.typed_input_rejected",
+  ])("contains retryable typed rejection %s without publishing history control", (code) => {
     const base = projectionFixture(0, "a");
     const initial = observation(0);
-    const rejected = commandError("breditor_wasm.invalid_action_value_json");
+    const rejected = commandError(code);
     const engine = engineQueues({ typedAction: [rejected.view] });
     const close = vi.spyOn(engine, "closeHistoryGroup");
     const execute = vi.spyOn(engine, "executeTypedActionJson");
@@ -1310,7 +1319,7 @@ describe("BreditorWasmCommandAdapter", () => {
     expect(outcome.boundary).toBeUndefined();
     expect(outcome.command).toMatchObject({
       status: "rejected",
-      error: { code: "breditor_wasm.invalid_action_value_json", stale: false },
+      error: { code, stale: false },
       snapshot: { lineage: "adapter-tests", revision: "0" },
     });
     expect(adapter.state).toBe("live");
@@ -1321,6 +1330,41 @@ describe("BreditorWasmCommandAdapter", () => {
       '{"operation":"remove","operation":"set"}',
       true,
     );
+    expect(rejected.free).toHaveBeenCalledOnce();
+    expect(rejected.errorFree).toHaveBeenCalledOnce();
+    adapter.dispose();
+  });
+
+  it.each([
+    "breditor_wasm.invalid_action_id",
+    "breditor_wasm.unknown_action",
+    "breditor_wasm.action_rejects_typed_input",
+  ])("faults when a typed action contradicts its admitted contract with %s", (code) => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const rejected = commandError(code);
+    const adapter = new BreditorWasmCommandAdapter(
+      engineQueues({ typedAction: [rejected.view] }),
+      initial,
+      {
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        jsonActionRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "api", detail: "typed-action-contradiction" },
+          "example/set-link",
+          '{"operation":"remove"}',
+        ),
+      ),
+    ).toThrow(/contradicted its compiled input contract/u);
+    expect(adapter.state).toBe("faulted");
     expect(rejected.free).toHaveBeenCalledOnce();
     expect(rejected.errorFree).toHaveBeenCalledOnce();
     adapter.dispose();
@@ -1653,6 +1697,46 @@ describe("BreditorWasmCommandAdapter", () => {
     )).toThrow(/compiled contract/u);
     expect(execute).not.toHaveBeenCalled();
     expect(adapter.state).toBe("faulted");
+    adapter.dispose();
+  });
+
+  it.each([
+    "breditor_wasm.invalid_intent_id",
+    "breditor_wasm.unknown_intent",
+    "breditor_wasm.intent_rejects_typed_input",
+  ])("faults when a typed intent contradicts its admitted contract with %s", (code) => {
+    const base = projectionFixture(0, "a");
+    const initial = observation(0);
+    const rejected = intentError(code);
+    const adapter = new RawBreditorWasmCommandAdapter(
+      engineQueues({ typedIntents: [rejected.view] }),
+      initial,
+      {
+        profileGeneration: TEST_PROFILE_GENERATION,
+        profileDescriptor: profileDescriptorWithIntentContract({
+          input: "typed",
+          value: false,
+        }),
+        renderer: base.renderer,
+        rendered: base.rendered,
+        selectionBridge: new BreditorDomSelectionBridge(),
+      },
+    );
+
+    expect(() =>
+      adapter.execute(
+        jsonIntentRequest(
+          adapter.deliveryToken(),
+          preserveSelectionSync(),
+          { kind: "api", detail: "typed-intent-contradiction" },
+          TEST_INTENT_ID,
+          '{"operation":"remove"}',
+        ),
+      ),
+    ).toThrow(/contradicted its compiled input contract/u);
+    expect(adapter.state).toBe("faulted");
+    expect(rejected.free).toHaveBeenCalledOnce();
+    expect(rejected.errorFree).toHaveBeenCalledOnce();
     adapter.dispose();
   });
 
@@ -4020,6 +4104,7 @@ function profileDescriptorWithActionState(): BrowserCompiledProfileDescriptor {
     formatCount: 1,
     intentCount: 1,
     actionStateCount: 1,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: matchesTestProfile,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
@@ -4039,6 +4124,9 @@ function profileDescriptorWithActionState(): BrowserCompiledProfileDescriptor {
     actionStateActivationContract: (index) => index === 0 ? "tracked" : undefined,
     actionStateValueContractName: noEntry,
     actionStateValueContractVersion: noEntry,
+    inlineFormatSetFormatKind: noEntry,
+    inlineFormatSetIntentId: noEntry,
+    inlineFormatSetActionStateId: noEntry,
     free: () => undefined,
   };
   const consumed = consumeWasmCompiledProfileDescriptor(
@@ -4061,6 +4149,7 @@ function profileDescriptorWithIntentContract(options: Readonly<{
     formatCount: 1,
     intentCount: 1,
     actionStateCount: 0,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: matchesTestProfile,
     formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
     formatRevision: (index) => index === 0 ? 1 : undefined,
@@ -4084,6 +4173,9 @@ function profileDescriptorWithIntentContract(options: Readonly<{
     actionStateActivationContract: noEntry,
     actionStateValueContractName: noEntry,
     actionStateValueContractVersion: noEntry,
+    inlineFormatSetFormatKind: noEntry,
+    inlineFormatSetIntentId: noEntry,
+    inlineFormatSetActionStateId: noEntry,
     free: () => undefined,
   };
   const consumed = consumeWasmCompiledProfileDescriptor(

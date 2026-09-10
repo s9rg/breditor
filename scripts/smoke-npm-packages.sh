@@ -84,9 +84,9 @@ printf 'smoke-npm-packages: packing explicitly verified artifacts with lifecycle
     --pack-destination "${tarball_directory}" >/dev/null
 )
 
-readonly browser_tarball="${tarball_directory}/breditor-browser-0.3.0-alpha.6.tgz"
-readonly reference_tarball="${tarball_directory}/breditor-reference-highlight-0.3.0-alpha.6.tgz"
-readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.3.0-alpha.6.tgz"
+readonly browser_tarball="${tarball_directory}/breditor-browser-0.3.0-alpha.7.tgz"
+readonly reference_tarball="${tarball_directory}/breditor-reference-highlight-0.3.0-alpha.7.tgz"
+readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.3.0-alpha.7.tgz"
 [[ -f "${browser_tarball}" ]] || fail "missing @breditor/browser tarball"
 [[ -f "${reference_tarball}" ]] || fail "missing @breditor/reference-highlight tarball"
 [[ -f "${wasm_tarball}" ]] || fail "missing @breditor/wasm tarball"
@@ -105,7 +105,7 @@ assert_archive_size() {
     "${label}" "${actual}" "${maximum}"
 }
 
-assert_archive_size "@breditor/browser" "${browser_tarball}" 235000
+assert_archive_size "@breditor/browser" "${browser_tarball}" 248000
 assert_archive_size "@breditor/reference-highlight" "${reference_tarball}" 20000
 assert_archive_size "@breditor/wasm" "${wasm_tarball}" 520000
 

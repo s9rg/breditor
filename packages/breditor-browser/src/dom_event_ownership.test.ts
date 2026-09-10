@@ -60,4 +60,20 @@ describe("classifyDomEventOwnership", () => {
     expect(classifyDomEventOwnership(host, nestedEditor)).toBe("outsideHost");
     expect(connectedShadow).not.toHaveBeenCalled();
   });
+
+  it("invalidates a live host moved into an attached ShadowRoot", () => {
+    const host = document.createElement("div");
+    const text = document.createTextNode("editor text");
+    host.append(text);
+    document.body.append(host);
+    expect(classifyDomEventOwnership(host, text)).toBe("owned");
+    const shadowOwner = document.createElement("section");
+    document.body.append(shadowOwner);
+    const shadowRoot = shadowOwner.attachShadow({ mode: "open" });
+
+    shadowRoot.append(host);
+
+    expect(host.isConnected).toBe(true);
+    expect(classifyDomEventOwnership(host, text)).toBe("invalid");
+  });
 });

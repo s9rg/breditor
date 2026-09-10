@@ -65,15 +65,30 @@ export {
   MAX_TOOLBAR_CONTROLS,
   MAX_TOOLBAR_GROUP_UTF16,
   MAX_TOOLBAR_GROUP_UTF8,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_LABEL_UTF16,
   MAX_TOOLBAR_LABEL_UTF8,
   MAX_TOOLBAR_QUALIFIED_NAME_ASCII,
   MIN_TOOLBAR_CONTROLS,
+  MIN_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
   createToolbarManifest,
+  type ToolbarButtonDeclaration,
   type ToolbarCommandDeclaration,
   type ToolbarControlDeclaration,
+  type ToolbarInlineFormatFormBooleanFieldDeclaration,
+  type ToolbarInlineFormatFormDeclaration,
+  type ToolbarInlineFormatFormFieldDeclaration,
+  type ToolbarInlineFormatFormStringFieldDeclaration,
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
+export {
+  TOOLBAR_INLINE_FORMAT_FORM_REMOVE_INPUT_JSON,
+  createToolbarInlineFormatFormRemoveInputJson,
+  createToolbarInlineFormatFormSetInputJson,
+  type ToolbarInlineFormatFormValues,
+} from "./toolbar_inline_format_form_input.js";
 
 /** Public command-input bounds and typed-JSON preflight. */
 export {

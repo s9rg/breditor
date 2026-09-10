@@ -73,10 +73,7 @@ const OTHER_PROFILE_SCHEMA = Object.freeze({
   version: 4,
   fingerprint: `sha256:${"7".repeat(64)}`,
 });
-const PROFILE_FORMATS = Object.freeze([
-  "breditor/strong",
-  "example/highlight",
-]);
+const PROFILE_FORMATS = Object.freeze(["breditor/strong", "example/highlight"]);
 const PROFILE_FORMAT_DESCRIPTORS = Object.freeze([
   Object.freeze({
     kind: "breditor/strong",
@@ -89,9 +86,34 @@ const PROFILE_FORMAT_DESCRIPTORS = Object.freeze([
     properties: Object.freeze([]),
   }),
 ]);
+const PROFILE_LINK_FORMAT_KIND = "example/link";
+const PROFILE_LINK_HREF_PROPERTY = "example/href";
+const PROFILE_LINK_TARGET_PROPERTY = "example/open-in-new-window";
+const PROFILE_LINK_FORMAT_DESCRIPTORS = Object.freeze([
+  ...PROFILE_FORMAT_DESCRIPTORS,
+  Object.freeze({
+    kind: PROFILE_LINK_FORMAT_KIND,
+    revision: 1,
+    properties: Object.freeze([
+      Object.freeze({
+        name: PROFILE_LINK_HREF_PROPERTY,
+        presence: "required" as const,
+        valueType: Object.freeze({
+          kind: "string" as const,
+          minimumUtf8Bytes: 1,
+          maximumUtf8Bytes: 2_048,
+        }),
+      }),
+      Object.freeze({
+        name: PROFILE_LINK_TARGET_PROPERTY,
+        presence: "required" as const,
+        valueType: Object.freeze({ kind: "boolean" as const }),
+      }),
+    ]),
+  }),
+]);
 const PROFILE_BOOTSTRAP = Object.freeze({
-  bootstrapJson:
-    '{"format":"breditor/profile-bootstrap","formatVersion":1}',
+  bootstrapJson: '{"format":"breditor/profile-bootstrap","formatVersion":1}',
 });
 const PROFILE_RENDERING = createInlineFormatRenderManifest({
   recipes: [
@@ -104,6 +126,31 @@ const PROFILE_RENDERING = createInlineFormatRenderManifest({
       formatKind: "example/highlight",
       element: "mark",
       classes: ["breditor-highlight"],
+    },
+  ],
+});
+const PROFILE_LINK_RENDERING = createInlineFormatRenderManifest({
+  recipes: [
+    {
+      formatKind: "breditor/strong",
+      element: "strong",
+      before: ["example/highlight"],
+    },
+    {
+      formatKind: "example/highlight",
+      element: "mark",
+      classes: ["breditor-highlight"],
+    },
+    {
+      formatKind: PROFILE_LINK_FORMAT_KIND,
+      element: "a",
+      classes: ["breditor-link"],
+      before: ["breditor/strong", "example/highlight"],
+      attributes: {
+        kind: "safeLinkV1",
+        hrefProperty: PROFILE_LINK_HREF_PROPERTY,
+        openInNewWindowProperty: PROFILE_LINK_TARGET_PROPERTY,
+      },
     },
   ],
 });
@@ -124,6 +171,38 @@ const TOOLBAR_MANIFEST = createToolbarManifest({
         kind: "intent",
         intentId: INTENT_ID,
       },
+    },
+  ],
+});
+const PROFILE_LINK_TOOLBAR_MANIFEST = createToolbarManifest({
+  label: "Test controls",
+  controls: [
+    {
+      kind: "inlineFormatForm",
+      stateId: STATE_ID,
+      label: "Link",
+      formatKind: PROFILE_LINK_FORMAT_KIND,
+      intentId: INTENT_ID,
+      fields: [
+        {
+          kind: "string",
+          propertyName: PROFILE_LINK_HREF_PROPERTY,
+          label: "Link URL",
+          presentation: "url",
+          autocomplete: "url",
+          minimumUtf8Bytes: 1,
+          maximumUtf8Bytes: 2_048,
+        },
+        {
+          kind: "boolean",
+          propertyName: PROFILE_LINK_TARGET_PROPERTY,
+          label: "Open in new window",
+          defaultValue: false,
+        },
+      ],
+      applyLabel: "Apply Link",
+      removeLabel: "Remove Link",
+      closeLabel: "Close",
     },
   ],
 });
@@ -180,10 +259,29 @@ interface ProfileSchemaFixture {
   readonly fingerprint: string;
 }
 
+type ProfileFormatPropertyValueFixture =
+  | Readonly<{ kind: "boolean" }>
+  | Readonly<{
+      kind: "integer";
+      minimum: number | undefined;
+      maximum: number | undefined;
+    }>
+  | Readonly<{
+      kind: "string";
+      minimumUtf8Bytes: number;
+      maximumUtf8Bytes: number;
+    }>;
+
+interface ProfileFormatPropertyFixture {
+  readonly name: string;
+  readonly presence: "required" | "optional";
+  readonly valueType: ProfileFormatPropertyValueFixture;
+}
+
 interface ProfileFormatFixture {
   readonly kind: string;
   readonly revision: number;
-  readonly properties?: readonly never[];
+  readonly properties?: readonly ProfileFormatPropertyFixture[];
 }
 
 interface ProfileModuleFixtureOptions {
@@ -192,6 +290,8 @@ interface ProfileModuleFixtureOptions {
   readonly formatsByCompilation?: readonly (readonly ProfileFormatFixture[])[];
   readonly intentInputKind?: "none" | "typed";
   readonly typedIntentErrorCode?: string;
+  readonly typedIntentOutcome?: "committed" | "blocked" | "unhandled";
+  readonly inlineFormatSetFormatKind?: string;
   readonly onCreateEngine?: (compilationIndex: number) => void;
 }
 
@@ -259,6 +359,26 @@ describe("BreditorBrowserEditor", () => {
     },
   );
 
+  it("rejects an editor host inside a ShadowRoot before Wasm startup", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const shadowRoot = container.attachShadow({ mode: "open" });
+    const host = document.createElement("div");
+    shadowRoot.append(host);
+    const fixture = moduleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.invalid_options" },
+    });
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+    expect(host.childNodes).toHaveLength(0);
+  });
+
   it("uses native host identity and topology despite own shadow properties", async () => {
     const fixture = moduleFixture();
     const disguisedInput = document.createElement("input");
@@ -319,7 +439,8 @@ describe("BreditorBrowserEditor", () => {
       AbortSignal.prototype,
       "aborted",
     )?.get;
-    if (abortedGetter === undefined) throw new Error("AbortSignal getter missing");
+    if (abortedGetter === undefined)
+      throw new Error("AbortSignal getter missing");
     let reads = 0;
     vi.spyOn(AbortSignal.prototype, "aborted", "get").mockImplementation(
       function (this: AbortSignal): boolean {
@@ -514,6 +635,33 @@ describe("BreditorBrowserEditor", () => {
     opened.editor.dispose();
   });
 
+  it("faults before an API command can commit after the live host moves into a ShadowRoot", async () => {
+    const host = mountHost();
+    const fixture = moduleFixture({ enableAction: true, text: "before" });
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+    if (!opened.ok) throw new Error(opened.error.code);
+    const shadowOwner = document.createElement("section");
+    document.body.append(shadowOwner);
+    const shadowRoot = shadowOwner.attachShadow({ mode: "open" });
+    shadowRoot.append(host);
+
+    const result = opened.editor.executeIntent(INTENT_ID);
+
+    expect(result).toEqual({
+      status: "failed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(fixture.engines[0]?.executeNoInputIntent).not.toHaveBeenCalled();
+    expect(opened.editor.getStatus()).toEqual({
+      phase: "faulted",
+      reason: "queueUncertain",
+    });
+    opened.editor.dispose();
+  });
+
   it("preserves a committed intent result when disposal reenters its delivery", async () => {
     let editor: BreditorBrowserEditor | undefined;
     const fixture = moduleFixture({
@@ -664,7 +812,8 @@ describe("BreditorBrowserEditor", () => {
         rendering: PROFILE_RENDERING,
       }),
     );
-    if (!typed.ok) throw new Error(`${typed.error.code}:${typed.error.causeCode}`);
+    if (!typed.ok)
+      throw new Error(`${typed.error.code}:${typed.error.causeCode}`);
     expect(typed.editor.executeIntent(INTENT_ID)).toMatchObject({
       status: "rejected",
       intentId: INTENT_ID,
@@ -708,7 +857,8 @@ describe("BreditorBrowserEditor", () => {
         rendering: PROFILE_RENDERING,
       }),
     );
-    if (!opened.ok) throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+    if (!opened.ok)
+      throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
 
     expect(
       opened.editor.executeIntentJson(
@@ -738,12 +888,181 @@ describe("BreditorBrowserEditor", () => {
     opened.editor.dispose();
   });
 
+  it.each([
+    "breditor_wasm.unknown_intent",
+    "breditor_wasm.intent_rejects_typed_input",
+  ])("faults when Rust contradicts an admitted typed intent with %s", async (code) => {
+    const profile = profileModuleFixture({
+      intentInputKind: "typed",
+      typedIntentErrorCode: code,
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), profile.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("profile text", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+      }),
+    );
+    if (!opened.ok) {
+      throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+    }
+
+    expect(
+      opened.editor.executeIntentJson(INTENT_ID, '{"operation":"remove"}'),
+    ).toEqual({
+      status: "failed",
+      intentId: INTENT_ID,
+      document: { lineage: LINEAGE, revision: "0" },
+    });
+    expect(opened.editor.getStatus()).toEqual({
+      phase: "faulted",
+      reason: "queueUncertain",
+    });
+    opened.editor.dispose();
+  });
+
+  it("keeps a toolbar form draft when Rust rejects typed input and clears it only after commit", async () => {
+    const toolbarHost = mountHost();
+    const profile = profileModuleFixture({
+      formatsByCompilation: [
+        PROFILE_LINK_FORMAT_DESCRIPTORS,
+        PROFILE_LINK_FORMAT_DESCRIPTORS,
+      ],
+      intentInputKind: "typed",
+      typedIntentErrorCode: "breditor_wasm.invalid_action_value_json",
+      inlineFormatSetFormatKind: PROFILE_LINK_FORMAT_KIND,
+    });
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), profile.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("profile text", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: Object.freeze({
+          bootstrapJson: PROFILE_BOOTSTRAP.bootstrapJson,
+          formatVersion: 2 as const,
+        }),
+        rendering: PROFILE_LINK_RENDERING,
+        toolbar: {
+          host: toolbarHost,
+          manifest: PROFILE_LINK_TOOLBAR_MANIFEST,
+        },
+      }),
+    );
+    if (!opened.ok)
+      throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+    const launcher = toolbarHost.querySelector<HTMLButtonElement>(
+      '[data-breditor-control-kind="inline-format-form"]',
+    );
+    const panel = toolbarHost.querySelector<HTMLFormElement>(
+      "[data-breditor-toolbar-panel]",
+    );
+    const href = toolbarHost.querySelector<HTMLInputElement>(
+      `[data-breditor-property="${PROFILE_LINK_HREF_PROPERTY}"]`,
+    );
+    if (launcher === null || panel === null || href === null) {
+      throw new Error("link form fixture is unavailable");
+    }
+    launcher.click();
+    href.value = "https://retry.example/private";
+    href.dispatchEvent(new Event("input", { bubbles: true }));
+
+    panel.dispatchEvent(
+      new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+    );
+
+    expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+    expect(href.value).toBe("https://retry.example/private");
+    expect(panel.textContent).toContain("Check the fields and selection");
+    expect(panel.textContent).not.toContain("retry.example");
+    expect(profile.engines[0]?.executeTypedIntentJson).toHaveBeenCalledOnce();
+
+    panel.dispatchEvent(
+      new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+    );
+
+    expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+    expect(href.value).toBe("");
+    expect(panel.textContent).toContain("Link applied.");
+    expect(profile.engines[0]?.executeTypedIntentJson).toHaveBeenCalledTimes(2);
+    opened.editor.dispose();
+  });
+
+  it.each(["blocked", "unhandled"] as const)(
+    "keeps a toolbar form draft when a typed intent is %s",
+    async (typedIntentOutcome) => {
+      const toolbarHost = mountHost();
+      const profile = profileModuleFixture({
+        formatsByCompilation: [
+          PROFILE_LINK_FORMAT_DESCRIPTORS,
+          PROFILE_LINK_FORMAT_DESCRIPTORS,
+        ],
+        intentInputKind: "typed",
+        typedIntentOutcome,
+        inlineFormatSetFormatKind: PROFILE_LINK_FORMAT_KIND,
+      });
+      const opened = await BreditorBrowserEditor.open(
+        options(mountHost(), profile.module, {
+          initialDocument: {
+            lineageId: LINEAGE,
+            documentJson: profileDocumentJson("profile text", PROFILE_SCHEMA),
+            historyCapacity: 100,
+          },
+          semanticProfile: Object.freeze({
+            bootstrapJson: PROFILE_BOOTSTRAP.bootstrapJson,
+            formatVersion: 2 as const,
+          }),
+          rendering: PROFILE_LINK_RENDERING,
+          toolbar: {
+            host: toolbarHost,
+            manifest: PROFILE_LINK_TOOLBAR_MANIFEST,
+          },
+        }),
+      );
+      if (!opened.ok) {
+        throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+      }
+      const launcher = toolbarHost.querySelector<HTMLButtonElement>(
+        '[data-breditor-control-kind="inline-format-form"]',
+      );
+      const panel = toolbarHost.querySelector<HTMLFormElement>(
+        "[data-breditor-toolbar-panel]",
+      );
+      const href = toolbarHost.querySelector<HTMLInputElement>(
+        `[data-breditor-property="${PROFILE_LINK_HREF_PROPERTY}"]`,
+      );
+      if (launcher === null || panel === null || href === null) {
+        throw new Error("link form fixture is unavailable");
+      }
+      launcher.click();
+      href.value = "https://retry.example/blocked";
+      href.dispatchEvent(new Event("input", { bubbles: true }));
+
+      panel.dispatchEvent(
+        new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+      );
+
+      expect(opened.editor.getStatus()).toEqual({ phase: "live" });
+      expect(opened.editor.getSnapshot().document.revision).toBe("0");
+      expect(href.value).toBe("https://retry.example/blocked");
+      expect(panel.textContent).toContain("Check the fields and selection");
+      expect(panel.textContent).not.toContain("retry.example");
+      expect(profile.engines[0]?.executeTypedIntentJson).toHaveBeenCalledOnce();
+      opened.editor.dispose();
+    },
+  );
+
   it("rejects reentrant and authoritative-read intent admission as busy without queueing", async () => {
     let editor: BreditorBrowserEditor | undefined;
-    let duringExecution: ReturnType<BreditorBrowserEditor["executeIntent"]> |
-      undefined;
-    let duringRead: ReturnType<BreditorBrowserEditor["executeIntent"]> |
-      undefined;
+    let duringExecution:
+      ReturnType<BreditorBrowserEditor["executeIntent"]> | undefined;
+    let duringRead:
+      ReturnType<BreditorBrowserEditor["executeIntent"]> | undefined;
     const fixture = moduleFixture({
       enableAction: true,
       onAction: () => {
@@ -882,24 +1201,28 @@ describe("BreditorBrowserEditor", () => {
       const host = mountHost();
       const fixture = profileModuleFixture({ text: "must not render" });
       const rendering = createInlineFormatRenderManifest({
-        recipes: coverage === "missing"
-          ? [{ formatKind: "breditor/strong", element: "strong" }]
-          : [
-              {
-                formatKind: "breditor/strong",
-                element: "strong",
-                before: ["example/highlight"],
-              },
-              { formatKind: "example/highlight", element: "mark" },
-              { formatKind: "example/extra", element: "em" },
-            ],
+        recipes:
+          coverage === "missing"
+            ? [{ formatKind: "breditor/strong", element: "strong" }]
+            : [
+                {
+                  formatKind: "breditor/strong",
+                  element: "strong",
+                  before: ["example/highlight"],
+                },
+                { formatKind: "example/highlight", element: "mark" },
+                { formatKind: "example/extra", element: "em" },
+              ],
       });
 
       const opened = await BreditorBrowserEditor.open(
         options(host, fixture.module, {
           initialDocument: {
             lineageId: LINEAGE,
-            documentJson: profileDocumentJson("must not render", PROFILE_SCHEMA),
+            documentJson: profileDocumentJson(
+              "must not render",
+              PROFILE_SCHEMA,
+            ),
             historyCapacity: 100,
           },
           semanticProfile: PROFILE_BOOTSTRAP,
@@ -1669,7 +1992,9 @@ describe("BreditorBrowserEditor", () => {
         if (target === "editor") {
           host.append(applicationEditorNode);
         } else {
-          toolbarHost.append(document.createTextNode("application toolbar content"));
+          toolbarHost.append(
+            document.createTextNode("application toolbar content"),
+          );
         }
       });
       const fixture = moduleFixture({ onActionStateStatusRead });
@@ -1705,14 +2030,49 @@ describe("BreditorBrowserEditor", () => {
     },
   );
 
+  it("rejects an editor host moved into a ShadowRoot during startup and rolls back only owned DOM", async () => {
+    const host = mountHost();
+    const shadowOwner = document.createElement("section");
+    const foreignSibling = document.createElement("aside");
+    foreignSibling.textContent = "application shadow content";
+    document.body.append(shadowOwner);
+    const shadowRoot = shadowOwner.attachShadow({ mode: "open" });
+    shadowRoot.append(foreignSibling);
+    let moved = false;
+    const onActionStateStatusRead = vi.fn(() => {
+      if (moved) return;
+      moved = true;
+      shadowRoot.append(host);
+    });
+    const fixture = moduleFixture({ onActionStateStatusRead });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module),
+    );
+
+    expect(opened).toEqual({
+      ok: false,
+      error: {
+        code: "browser_editor.setup_failed",
+        message: "The browser editor runtime could not be installed safely.",
+      },
+    });
+    expect(onActionStateStatusRead).toHaveBeenCalled();
+    expect(host.parentNode).toBe(shadowRoot);
+    expect([...shadowRoot.childNodes]).toEqual([foreignSibling, host]);
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+    expect(fixture.engines[0]?.observationFrees[0]).toHaveBeenCalledOnce();
+  });
+
   it("removes only the owned toolbar root when toolbar construction adds a foreign sibling", async () => {
     const host = mountHost();
     const toolbarHost = mountHost();
     const foreignSibling = document.createElement("aside");
     foreignSibling.textContent = "application toolbar sibling";
     const fixture = moduleFixture();
-    const originalGetSnapshot =
-      BreditorActionStateStore.prototype.getSnapshot;
+    const originalGetSnapshot = BreditorActionStateStore.prototype.getSnapshot;
     const injectDuringToolbarRefresh = vi
       .spyOn(BreditorActionStateStore.prototype, "getSnapshot")
       .mockImplementation(function (this: BreditorActionStateStore) {
@@ -2130,11 +2490,15 @@ describe("BreditorBrowserEditor", () => {
   it("uses the V2 schema fingerprint slot without reading or replacing legacy current", async () => {
     const indexedDB = new IDBFactory();
     const crypto = digestFixture();
-    const legacyStore = new IndexedDbSessionCheckpointStore({ indexedDB, crypto });
+    const legacyStore = new IndexedDbSessionCheckpointStore({
+      indexedDB,
+      crypto,
+    });
     const legacyEmpty = await legacyStore.load();
     if (!legacyEmpty.ok) throw new Error(legacyEmpty.error.code);
     expect(
-      (await legacyStore.save(legacyEmpty.token, checkpointJson("legacy", 0))).ok,
+      (await legacyStore.save(legacyEmpty.token, checkpointJson("legacy", 0)))
+        .ok,
     ).toBe(true);
     legacyStore.close();
     const legacyBefore = await rawCheckpointRecord(
@@ -2173,7 +2537,8 @@ describe("BreditorBrowserEditor", () => {
         },
       }),
     );
-    if (!opened.ok) throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+    if (!opened.ok)
+      throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
     expect(host.textContent).toBe("restored profile");
     expect(fixture.fromBootstrapJson).toHaveBeenCalledTimes(2);
     expect(
@@ -2190,7 +2555,8 @@ describe("BreditorBrowserEditor", () => {
     ).toHaveBeenCalledOnce();
 
     const button = toolbarHost.querySelector("button");
-    if (!(button instanceof HTMLButtonElement)) throw new Error("toolbar missing");
+    if (!(button instanceof HTMLButtonElement))
+      throw new Error("toolbar missing");
     button.click();
     await expect(opened.editor.flushPersistence()).resolves.toEqual({
       status: "committed",
@@ -2213,9 +2579,9 @@ describe("BreditorBrowserEditor", () => {
         PROFILE_SCHEMA,
       ),
     });
-    expect(await rawCheckpointRecord(indexedDB, SESSION_CHECKPOINT_SLOT)).toEqual(
-      legacyBefore,
-    );
+    expect(
+      await rawCheckpointRecord(indexedDB, SESSION_CHECKPOINT_SLOT),
+    ).toEqual(legacyBefore);
 
     opened.editor.dispose();
   });
@@ -2244,7 +2610,10 @@ describe("BreditorBrowserEditor", () => {
       profileCheckpointJson("second", 0, "second slot", PROFILE_SCHEMA),
     );
     const firstBefore = await rawCheckpointRecord(indexedDB, firstBinding.slot);
-    const secondBefore = await rawCheckpointRecord(indexedDB, secondBinding.slot);
+    const secondBefore = await rawCheckpointRecord(
+      indexedDB,
+      secondBinding.slot,
+    );
 
     for (const [slot, lineage, expectedText] of [
       [firstBinding.slot, "first", "first slot"],
@@ -2268,7 +2637,8 @@ describe("BreditorBrowserEditor", () => {
           },
         }),
       );
-      if (!opened.ok) throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
+      if (!opened.ok)
+        throw new Error(`${opened.error.code}:${opened.error.causeCode}`);
       expect(host.textContent).toBe(expectedText);
       expect(opened.editor.getSnapshot().document).toEqual({
         lineage,
@@ -2290,8 +2660,10 @@ describe("BreditorBrowserEditor", () => {
 
   it("preserves a caller slot on profile-binding mismatch without engine bootstrap or digest", async () => {
     const indexedDB = new IDBFactory();
-    const digest = vi.fn(async (_algorithm: AlgorithmIdentifier, data: BufferSource) =>
-      pseudoDigest(data));
+    const digest = vi.fn(
+      async (_algorithm: AlgorithmIdentifier, data: BufferSource) =>
+        pseudoDigest(data),
+    );
     const crypto: Pick<SubtleCrypto, "digest"> = { digest };
     const slot = "profile.shared";
     await seedCheckpoint(
@@ -2590,7 +2962,10 @@ describe("BreditorBrowserEditor", () => {
     if (!opened.ok) throw new Error(opened.error.code);
     const paragraph = host.firstElementChild;
     const text = paragraph?.firstChild;
-    if (!(paragraph instanceof HTMLParagraphElement) || !(text instanceof Text)) {
+    if (
+      !(paragraph instanceof HTMLParagraphElement) ||
+      !(text instanceof Text)
+    ) {
       throw new Error("composition fixture is unavailable");
     }
     const range = document.createRange();
@@ -3049,18 +3424,18 @@ describe("BreditorBrowserEditor", () => {
       AbortSignal.prototype,
     ) as EventTarget;
     const originalRemove = signalEventTargetPrototype.removeEventListener;
-    vi.spyOn(signalEventTargetPrototype, "removeEventListener")
-      .mockImplementation(
-        function (
-          this: EventTarget,
-          type: string,
-          listener: EventListenerOrEventListenerObject | null,
-          options?: boolean | EventListenerOptions,
-        ): void {
-          if (this === controller.signal && type === "abort") return;
-          Reflect.apply(originalRemove, this, [type, listener, options]);
-        },
-      );
+    vi.spyOn(
+      signalEventTargetPrototype,
+      "removeEventListener",
+    ).mockImplementation(function (
+      this: EventTarget,
+      type: string,
+      listener: EventListenerOrEventListenerObject | null,
+      options?: boolean | EventListenerOptions,
+    ): void {
+      if (this === controller.signal && type === "abort") return;
+      Reflect.apply(originalRemove, this, [type, listener, options]);
+    });
     const opened = await BreditorBrowserEditor.open(
       options(host, fixture.module, {
         signal: controller.signal,
@@ -3336,12 +3711,22 @@ function profileModuleFixture(
       const schema =
         config.schemasByCompilation?.[compilationIndex] ?? PROFILE_SCHEMA;
       const formats = Object.freeze(
-        (config.formatsByCompilation?.[compilationIndex] ??
-          PROFILE_FORMAT_DESCRIPTORS).map((format) =>
+        (
+          config.formatsByCompilation?.[compilationIndex] ??
+          PROFILE_FORMAT_DESCRIPTORS
+        ).map((format) =>
           Object.freeze({
             kind: format.kind,
             revision: format.revision,
-            properties: Object.freeze([]),
+            properties: Object.freeze(
+              (format.properties ?? []).map((property) =>
+                Object.freeze({
+                  name: property.name,
+                  presence: property.presence,
+                  valueType: Object.freeze({ ...property.valueType }),
+                }),
+              ),
+            ),
           }),
         ),
       );
@@ -3356,6 +3741,7 @@ function profileModuleFixture(
         schema,
         formats,
         config.intentInputKind,
+        config.inlineFormatSetFormatKind,
       );
       descriptorFrees.push(profileDescriptor.free);
       let record: ProfileCompilationRecord;
@@ -3375,6 +3761,8 @@ function profileModuleFixture(
           token,
           config.intentInputKind,
           config.typedIntentErrorCode,
+          config.typedIntentOutcome,
+          config.inlineFormatSetFormatKind,
         );
         engines.push(built.record);
         engineGenerations.push(built.engineGeneration);
@@ -3470,6 +3858,7 @@ function profileDescriptorFixture(
   schema: ProfileSchemaFixture,
   formats: readonly ProfileFormatFixture[],
   intentInputKind: "none" | "typed" = "none",
+  inlineFormatSetFormatKind?: string,
 ): WasmCompiledProfileDescriptorView & {
   readonly free: VoidMock;
 } {
@@ -3480,41 +3869,76 @@ function profileDescriptorFixture(
     formatCount: formats.length,
     intentCount: 1,
     actionStateCount: 1,
+    inlineFormatSetCount: inlineFormatSetFormatKind === undefined ? 0 : 1,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     formatKind: (index) => formats[index]?.kind,
     formatRevision: (index) => formats[index]?.revision,
     formatPropertyCount: (formatIndex) =>
-      formats[formatIndex] === undefined ? undefined : 0,
-    formatPropertyName: () => undefined,
-    formatPropertyPresence: () => undefined,
-    formatPropertyValueType: () => undefined,
-    formatPropertyIntegerMinimum: () => undefined,
-    formatPropertyIntegerMaximum: () => undefined,
-    formatPropertyStringMinimumUtf8Bytes: () => undefined,
-    formatPropertyStringMaximumUtf8Bytes: () => undefined,
-    intentId: (index) => index === 0 ? INTENT_ID : undefined,
-    intentInputKind: (index) => index === 0 ? intentInputKind : undefined,
-    intentInputContractName: (index) =>
-      index === 0 && intentInputKind === "typed"
+      formats[formatIndex] === undefined
+        ? undefined
+        : (formats[formatIndex]?.properties?.length ?? 0),
+    formatPropertyName: (formatIndex, propertyIndex) =>
+      formats[formatIndex]?.properties?.[propertyIndex]?.name,
+    formatPropertyPresence: (formatIndex, propertyIndex) =>
+      formats[formatIndex]?.properties?.[propertyIndex]?.presence,
+    formatPropertyValueType: (formatIndex, propertyIndex) =>
+      formats[formatIndex]?.properties?.[propertyIndex]?.valueType.kind,
+    formatPropertyIntegerMinimum: (formatIndex, propertyIndex) => {
+      const valueType =
+        formats[formatIndex]?.properties?.[propertyIndex]?.valueType;
+      return valueType?.kind === "integer" ? valueType.minimum : undefined;
+    },
+    formatPropertyIntegerMaximum: (formatIndex, propertyIndex) => {
+      const valueType =
+        formats[formatIndex]?.properties?.[propertyIndex]?.valueType;
+      return valueType?.kind === "integer" ? valueType.maximum : undefined;
+    },
+    formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const valueType =
+        formats[formatIndex]?.properties?.[propertyIndex]?.valueType;
+      return valueType?.kind === "string"
+        ? valueType.minimumUtf8Bytes
+        : undefined;
+    },
+    formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) => {
+      const valueType =
+        formats[formatIndex]?.properties?.[propertyIndex]?.valueType;
+      return valueType?.kind === "string"
+        ? valueType.maximumUtf8Bytes
+        : undefined;
+    },
+    intentId: (index) => (index === 0 ? INTENT_ID : undefined),
+    intentInputKind: (index) => (index === 0 ? intentInputKind : undefined),
+    intentInputContractName: (index) => {
+      if (index !== 0 || intentInputKind !== "typed") return undefined;
+      return inlineFormatSetFormatKind === undefined
         ? "example/intent-input"
-        : undefined,
+        : "breditor/set-inline-format-input";
+    },
     intentInputContractVersion: (index) =>
       index === 0 && intentInputKind === "typed" ? 1 : undefined,
-    intentActivationContract: (index) =>
-      index === 0 ? "tracked" : undefined,
+    intentActivationContract: (index) => (index === 0 ? "tracked" : undefined),
     intentValueContractName: () => undefined,
     intentValueContractVersion: () => undefined,
     actionStateId: (index) => (index === 0 ? STATE_ID : undefined),
-    actionStateSourceKind: (index) =>
-      index === 0 ? "routed" : undefined,
+    actionStateSourceKind: (index) => (index === 0 ? "routed" : undefined),
     actionStateSourceActionId: () => undefined,
-    actionStateSourceIntentId: (index) =>
-      index === 0 ? INTENT_ID : undefined,
+    actionStateSourceIntentId: (index) => (index === 0 ? INTENT_ID : undefined),
     actionStateHistoryDirection: () => undefined,
     actionStateActivationContract: (index) =>
       index === 0 ? "tracked" : undefined,
     actionStateValueContractName: () => undefined,
     actionStateValueContractVersion: () => undefined,
+    inlineFormatSetFormatKind: (index) =>
+      index === 0 ? inlineFormatSetFormatKind : undefined,
+    inlineFormatSetIntentId: (index) =>
+      index === 0 && inlineFormatSetFormatKind !== undefined
+        ? INTENT_ID
+        : undefined,
+    inlineFormatSetActionStateId: (index) =>
+      index === 0 && inlineFormatSetFormatKind !== undefined
+        ? STATE_ID
+        : undefined,
     free: vi.fn<() => void>(),
   };
 }
@@ -3528,6 +3952,8 @@ function profileEngineFixture(
   token: object,
   intentInputKind: "none" | "typed" = "none",
   typedIntentErrorCode?: string,
+  typedIntentOutcome: "committed" | "blocked" | "unhandled" = "committed",
+  inlineFormatSetFormatKind?: string,
 ): Readonly<{
   engine: WasmBootstrappedEngineView;
   record: EngineRecord;
@@ -3540,6 +3966,7 @@ function profileEngineFixture(
     schema,
     formats,
     intentInputKind,
+    inlineFormatSetFormatKind,
   );
   let revision = initialRevision;
   let text = initialText;
@@ -3615,30 +4042,30 @@ function profileEngineFixture(
     intentId: string,
     closeHistoryGroupBefore: boolean,
   ) => {
-      if (intentId !== INTENT_ID) throw new Error("unexpected profile intent");
-      const baseRevision = Number(expected.snapshotRevision);
-      const successorRevision = baseRevision + 1;
-      const successor = makeObservation(successorRevision);
-      const baseText = text;
-      revision = successorRevision;
-      text = "after";
-      active = true;
-      return committedIntentResult(
-        successor,
-        profileProjectionUpdate(
-          lineage,
-          baseRevision,
-          baseText,
-          successorRevision,
-          text,
-          schema,
-          formats,
-          engineGeneration,
-        ),
+    if (intentId !== INTENT_ID) throw new Error("unexpected profile intent");
+    const baseRevision = Number(expected.snapshotRevision);
+    const successorRevision = baseRevision + 1;
+    const successor = makeObservation(successorRevision);
+    const baseText = text;
+    revision = successorRevision;
+    text = "after";
+    active = true;
+    return committedIntentResult(
+      successor,
+      profileProjectionUpdate(
+        lineage,
+        baseRevision,
+        baseText,
+        successorRevision,
+        text,
+        schema,
+        formats,
         engineGeneration,
-        closeHistoryGroupBefore,
-      );
-    };
+      ),
+      engineGeneration,
+      closeHistoryGroupBefore,
+    );
+  };
   const executeNoInputIntent = vi.fn(
     (
       expected: WasmCommandObservationView,
@@ -3653,7 +4080,7 @@ function profileEngineFixture(
   );
   const executeStringAction = vi.fn(() => unexpected("executeStringAction"));
   const executeTypedActionJson = vi.fn(() =>
-    unexpected("executeTypedActionJson")
+    unexpected("executeTypedActionJson"),
   );
   let typedIntentCalls = 0;
   const executeTypedIntentJson = vi.fn(
@@ -3670,16 +4097,26 @@ function profileEngineFixture(
       if (typedIntentErrorCode !== undefined && typedIntentCalls === 1) {
         return errorIntentResult(typedIntentErrorCode, engineGeneration);
       }
-      return executeIntentCommit(
-        expected,
-        intentId,
-        closeHistoryGroupBefore,
-      );
+      if (typedIntentOutcome === "blocked") {
+        return blockedIntentResult(
+          makeObservation(Number(expected.snapshotRevision)),
+          engineGeneration,
+          closeHistoryGroupBefore,
+        );
+      }
+      if (typedIntentOutcome === "unhandled") {
+        return unhandledIntentResult(
+          makeObservation(Number(expected.snapshotRevision)),
+          engineGeneration,
+          closeHistoryGroupBefore,
+        );
+      }
+      return executeIntentCommit(expected, intentId, closeHistoryGroupBefore);
     },
   );
   const setRangeSelection = vi.fn(() => unexpected("setRangeSelection"));
   const closeHistoryGroup = vi.fn(() =>
-    unchangedCommandResult(makeObservation(revision), engineGeneration)
+    unchangedCommandResult(makeObservation(revision), engineGeneration),
   );
   const documentJson = vi.fn((_expected: WasmCommandObservationView) =>
     stringResult(profileDocumentJson(text, schema)),
@@ -3914,7 +4351,7 @@ function engineFixture(
     return unchangedCommandResult(makeObservation(revision), generation);
   });
   const closeHistoryGroup = vi.fn(() =>
-    unchangedCommandResult(makeObservation(revision), generation)
+    unchangedCommandResult(makeObservation(revision), generation),
   );
   const executeStringAction = vi.fn(
     (
@@ -3933,7 +4370,10 @@ function engineFixture(
       const successorRevision = baseRevision + 1;
       const successor = makeObservation(successorRevision);
       const baseText = text;
-      const offset = Math.min(config.selectionOffset ?? text.length, text.length);
+      const offset = Math.min(
+        config.selectionOffset ?? text.length,
+        text.length,
+      );
       text = `${text.slice(0, offset)}${value}${text.slice(offset)}`;
       revision = successorRevision;
       return commandResult(
@@ -3952,10 +4392,10 @@ function engineFixture(
     },
   );
   const executeTypedActionJson = vi.fn(() =>
-    unexpected("executeTypedActionJson")
+    unexpected("executeTypedActionJson"),
   );
   const executeTypedIntentJson = vi.fn(() =>
-    unexpected("executeTypedIntentJson")
+    unexpected("executeTypedIntentJson"),
   );
   const engine: WasmBootstrappedEngineView = {
     actionStates,
@@ -4084,6 +4524,9 @@ function profileProjectionView(
   formats: readonly ProfileFormatFixture[],
   generation: WasmProfileGenerationView,
 ): SemanticProjectionView {
+  const projectedFormats = formats.filter(
+    (format) => (format.properties?.length ?? 0) === 0,
+  );
   return {
     schemaName: schema.name,
     schemaVersion: schema.version,
@@ -4104,11 +4547,13 @@ function profileProjectionView(
     childAt: (index, ordinal) =>
       ordinal !== 0 ? undefined : index === 0 ? 1 : index === 1 ? 2 : undefined,
     text: (index) => (index === 2 ? text : undefined),
-    formatCount: (index) => (index === 2 ? formats.length : undefined),
+    formatCount: (index) => (index === 2 ? projectedFormats.length : undefined),
     formatType: (index, ordinal) =>
-      index === 2 ? formats[ordinal]?.kind : undefined,
+      index === 2 ? projectedFormats[ordinal]?.kind : undefined,
     formatPropertyCount: (index, formatOrdinal) =>
-      index === 2 && formats[formatOrdinal] !== undefined ? 0 : undefined,
+      index === 2 && projectedFormats[formatOrdinal] !== undefined
+        ? 0
+        : undefined,
     formatPropertyName: () => undefined,
     formatPropertyValueKind: () => undefined,
     formatPropertyBoolean: () => undefined,
@@ -4198,11 +4643,12 @@ function actionStatesResult(
   const canonicalIds: readonly string[] = includeHistory
     ? [STATE_ID, "breditor/control-redo", "breditor/control-undo"]
     : [STATE_ID];
-  const ids: readonly string[] = catalogViolation === "missing"
-    ? canonicalIds.slice(0, -1)
-    : catalogViolation === "extra"
-      ? [...canonicalIds, "example/control-extra"]
-      : canonicalIds;
+  const ids: readonly string[] =
+    catalogViolation === "missing"
+      ? canonicalIds.slice(0, -1)
+      : catalogViolation === "extra"
+        ? [...canonicalIds, "example/control-extra"]
+        : canonicalIds;
   const entryCount = ids.length;
   const snapshot: WasmActionStateSnapshotView = {
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
@@ -4213,13 +4659,17 @@ function actionStatesResult(
     entryId: (index) => ids[index],
     entryStatus: (index) =>
       index === 0
-        ? (enabled ? "enabled" : "disabled")
+        ? enabled
+          ? "enabled"
+          : "disabled"
         : index < entryCount
           ? "disabled"
           : undefined,
     entryActivation: (index) =>
       index === 0
-        ? (active ? "active" : "inactive")
+        ? active
+          ? "active"
+          : "inactive"
         : index < entryCount
           ? "stateless"
           : undefined,
@@ -4227,12 +4677,14 @@ function actionStatesResult(
       index >= entryCount
         ? undefined
         : index === 0
-        ? (enabled ? undefined : "breditor/not-enabled")
-        : index === 1
-          ? "breditor/nothing-to-redo"
-          : index === 2
-            ? "breditor/nothing-to-undo"
-            : "breditor/not-enabled",
+          ? enabled
+            ? undefined
+            : "breditor/not-enabled"
+          : index === 1
+            ? "breditor/nothing-to-redo"
+            : index === 2
+              ? "breditor/nothing-to-undo"
+              : "breditor/not-enabled",
     entryValueStatus: (index) =>
       index < entryCount ? "unsupported" : undefined,
     entryValueContractName: () => undefined,
@@ -4558,10 +5010,11 @@ function baseDescriptor(
     formatCount: 1,
     intentCount: 1,
     actionStateCount: 3,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: (candidate) => candidate === generation,
-    formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
-    formatRevision: (index) => index === 0 ? 1 : undefined,
-    formatPropertyCount: (formatIndex) => formatIndex === 0 ? 0 : undefined,
+    formatKind: (index) => (index === 0 ? "breditor/strong" : undefined),
+    formatRevision: (index) => (index === 0 ? 1 : undefined),
+    formatPropertyCount: (formatIndex) => (formatIndex === 0 ? 0 : undefined),
     formatPropertyName: () => undefined,
     formatPropertyPresence: () => undefined,
     formatPropertyValueType: () => undefined,
@@ -4569,30 +5022,40 @@ function baseDescriptor(
     formatPropertyIntegerMaximum: () => undefined,
     formatPropertyStringMinimumUtf8Bytes: () => undefined,
     formatPropertyStringMaximumUtf8Bytes: () => undefined,
-    intentId: (index) => index === 0 ? INTENT_ID : undefined,
-    intentInputKind: (index) => index === 0 ? "none" : undefined,
+    intentId: (index) => (index === 0 ? INTENT_ID : undefined),
+    intentInputKind: (index) => (index === 0 ? "none" : undefined),
     intentInputContractName: () => undefined,
     intentInputContractVersion: () => undefined,
-    intentActivationContract: (index) =>
-      index === 0 ? "tracked" : undefined,
+    intentActivationContract: (index) => (index === 0 ? "tracked" : undefined),
     intentValueContractName: () => undefined,
     intentValueContractVersion: () => undefined,
-    actionStateId: (index) => [
-      "breditor/control-bold",
-      "breditor/control-redo",
-      "breditor/control-undo",
-    ][index],
+    actionStateId: (index) =>
+      [
+        "breditor/control-bold",
+        "breditor/control-redo",
+        "breditor/control-undo",
+      ][index],
     actionStateSourceKind: (index) =>
-      index === 0 ? "routed" : index === 1 || index === 2 ? "history" : undefined,
+      index === 0
+        ? "routed"
+        : index === 1 || index === 2
+          ? "history"
+          : undefined,
     actionStateSourceActionId: () => undefined,
-    actionStateSourceIntentId: (index) =>
-      index === 0 ? INTENT_ID : undefined,
+    actionStateSourceIntentId: (index) => (index === 0 ? INTENT_ID : undefined),
     actionStateHistoryDirection: (index) =>
       index === 1 ? "redo" : index === 2 ? "undo" : undefined,
     actionStateActivationContract: (index) =>
-      index === 0 ? "tracked" : index === 1 || index === 2 ? "stateless" : undefined,
+      index === 0
+        ? "tracked"
+        : index === 1 || index === 2
+          ? "stateless"
+          : undefined,
     actionStateValueContractName: () => undefined,
     actionStateValueContractVersion: () => undefined,
+    inlineFormatSetFormatKind: () => undefined,
+    inlineFormatSetIntentId: () => undefined,
+    inlineFormatSetActionStateId: () => undefined,
     free: vi.fn(),
   };
 }
@@ -4768,9 +5231,9 @@ function profileDocumentText(value: string): string | undefined {
   }
 }
 
-function profileCheckpointState(value: string):
-  | Readonly<{ lineage: string; revision: number; text: string }>
-  | undefined {
+function profileCheckpointState(
+  value: string,
+): Readonly<{ lineage: string; revision: number; text: string }> | undefined {
   try {
     const parsed = JSON.parse(value) as {
       currentRevision?: unknown;
@@ -4783,8 +5246,10 @@ function profileCheckpointState(value: string):
     const revision = Number(parsed.currentRevision);
     const documentJson = JSON.stringify(parsed.historyBase?.document);
     const text = profileDocumentText(documentJson);
-    return typeof lineage === "string" && Number.isSafeInteger(revision) &&
-        revision >= 0 && text !== undefined
+    return typeof lineage === "string" &&
+      Number.isSafeInteger(revision) &&
+      revision >= 0 &&
+      text !== undefined
       ? { lineage, revision, text }
       : undefined;
   } catch {
@@ -4869,7 +5334,8 @@ async function rawCheckpointRecord(
 function indexedDbRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error("IndexedDB request failed"));
+    request.onerror = () =>
+      reject(request.error ?? new Error("IndexedDB request failed"));
   });
 }
 
@@ -4894,7 +5360,7 @@ function installNativeClipboardPaste(html: string) {
   );
   const transfers = new WeakSet<object>();
   const eventTransfers = new WeakMap<object, object>();
-  const getData = vi.fn((type: string) => type === "text/html" ? html : "");
+  const getData = vi.fn((type: string) => (type === "text/html" ? html : ""));
 
   class PlatformDataTransfer {
     constructor() {

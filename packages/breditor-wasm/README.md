@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.6
+npm install @breditor/wasm@0.3.0-alpha.7
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.6 browser bootstrap is
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, before passing the initialized namespace to the exactly matching
@@ -45,7 +45,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `4` for this unpublished alpha.6 source checkpoint.
+with ABI generation `5` for this unpublished alpha.7 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -57,7 +57,7 @@ V1 and Session Checkpoint V1 `BreditorEngine` factories remain an advanced
 compatibility path; they now create trusted-profile-correlated engines but do
 not auto-detect or convert wire generations.
 
-Alpha.7 does not change ABI generation 3. It adds the core-owned tracked,
+`0.2.0-alpha.7` does not change ABI generation 3. It adds the core-owned tracked,
 no-input `breditor/format-strong` declaration and priority-zero blocking route
 to `breditor/toggle-strong` to every compiled base profile, and makes
 `breditor/control-bold` observe that intent route. Raw
@@ -66,7 +66,7 @@ provenance to advanced handle-owning hosts. The supported high-level browser
 API consumes the same result but deliberately redacts concrete binding/action
 identities and admits only immediate synchronous delivery.
 
-Alpha.8 also leaves ABI generation 3 unchanged. It packages a callback-free
+`0.2.0-alpha.8` also leaves ABI generation 3 unchanged. It packages a callback-free
 reference Highlight profile outside the Wasm module and proves that profile
 through the exact-version browser/Wasm/reference tarball set.
 
@@ -122,6 +122,15 @@ operation protocol. Existing state methods report all/partial/absent presence
 as active/mixed/inactive, and Session V3 preserves undo and redo branches.
 Alpha.5 can restore and replay this alpha.6 history because it already
 understands the same root-replacement V3 recipe.
+
+`0.3.0-alpha.7` advances only the process-local Wasm transport to ABI 5. The
+compiled profile descriptor now exposes one canonical set-surface triple for
+each admitted typed setter: format kind, intent ID, and action-state ID. The
+matching browser uses it to correlate a callback-free typed form declaration;
+Rust/Wasm owns no form fields, labels, draft state, focus behavior, or URL
+policy. Profile Bootstrap V2, fingerprint bytes, Document V2, and every V3
+durable format remain unchanged. See the normative
+[typed toolbar decision](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
 ## Reproducible build
 

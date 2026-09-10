@@ -77,6 +77,7 @@ impl CompiledEditorProfile {
     ) -> Self {
         let generation = CompiledProfileGeneration::fresh();
         let descriptor = Arc::new(CompiledProfileDescriptor::from_compilation(
+            &extensions,
             &schema,
             &router,
             &action_states,

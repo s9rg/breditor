@@ -207,6 +207,16 @@ can restore that alpha.6 recipe because the property-preserving
 action. Wasm ABI 4, Profile Bootstrap V2, fingerprint bytes, Document V2, and
 all V3 format numbers remain unchanged.
 
+The unpublished `0.3.0-alpha.7` source checkpoint adds a canonical,
+process-local set-surface descriptor triple: format kind, typed intent ID, and
+routed action-state ID. It is UI-neutral and omits action/binding identity,
+labels, fields, callbacks, and drafts. Wasm ABI 5 exposes that triple so the
+browser can admit one callback-free typed form against the already compiled
+setter. This changes no Profile Bootstrap V2 shape, schema fingerprint,
+Document V2 byte, or Session/State/Commit V3 byte. The exact browser-side
+contract is documented in
+[`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

@@ -1245,6 +1245,7 @@ function controllerProfileDescriptor(
     formatCount: formats.length,
     intentCount: 0,
     actionStateCount: 0,
+    inlineFormatSetCount: 0,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     formatKind: (index) => formats[index],
     formatRevision: (index) =>
@@ -1273,6 +1274,9 @@ function controllerProfileDescriptor(
     actionStateActivationContract: absent,
     actionStateValueContractName: absent,
     actionStateValueContractVersion: absent,
+    inlineFormatSetFormatKind: absent,
+    inlineFormatSetIntentId: absent,
+    inlineFormatSetActionStateId: absent,
     free: () => undefined,
   };
   const result = consumeWasmCompiledProfileDescriptor(generation, view);

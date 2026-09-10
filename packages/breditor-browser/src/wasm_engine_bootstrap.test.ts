@@ -49,6 +49,7 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
   readonly formatCount: number = 1;
   readonly intentCount: number = 1;
   readonly actionStateCount: number = 3;
+  readonly inlineFormatSetCount: number = 0;
   freeCalls = 0;
 
   constructor(readonly generation: WasmProfileGenerationView) {}
@@ -142,6 +143,9 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
 
   actionStateValueContractName(): undefined { return undefined; }
   actionStateValueContractVersion(): undefined { return undefined; }
+  inlineFormatSetFormatKind(): undefined { return undefined; }
+  inlineFormatSetIntentId(): undefined { return undefined; }
+  inlineFormatSetActionStateId(): undefined { return undefined; }
 
   free(): void {
     this.freeCalls += 1;

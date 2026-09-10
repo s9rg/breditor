@@ -617,6 +617,19 @@ mod tests {
         assert_eq!(descriptor.format_property_value_type(1, 2).as_deref(), Some("boolean"));
         assert_eq!(descriptor.format_property_integer_minimum(1, 2), None);
         assert_eq!(descriptor.format_property_name(1, 3), None);
+        assert_eq!(descriptor.inline_format_set_count(), 1);
+        assert_eq!(descriptor.inline_format_set_format_kind(0).as_deref(), Some("example/link"));
+        assert_eq!(
+            descriptor.inline_format_set_intent_id(0).as_deref(),
+            Some("example/set-link-intent")
+        );
+        assert_eq!(
+            descriptor.inline_format_set_action_state_id(0).as_deref(),
+            Some("example/link-control")
+        );
+        assert_eq!(descriptor.inline_format_set_format_kind(1), None);
+        assert_eq!(descriptor.inline_format_set_intent_id(1), None);
+        assert_eq!(descriptor.inline_format_set_action_state_id(1), None);
         Ok(())
     }
 

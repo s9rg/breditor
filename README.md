@@ -14,9 +14,10 @@ history is in the [Changelog](CHANGELOG.md).
 ## Run the browser demo
 
 The React demo loads the packaged reference Highlight + Link profile, its
-canonical Document V2 sample, renderer, four-button toolbar, and React-owned
-typed Link form. It also exercises local autosave and the explicit startup and
-persistence recovery paths.
+canonical Document V2 sample, renderer, and five-control native toolbar. Its
+Link launcher opens a runtime-owned nonmodal form beside the APG toolbar root.
+The demo also exercises local autosave and the explicit startup and persistence
+recovery paths.
 
 ```sh
 npm ci
@@ -189,6 +190,21 @@ branch. Alpha.5 can restore that alpha.6 history because it already understands
 the same typed `RootTextReplace` V3 recipe. This adds no Wasm ABI 4 method and
 changes no Bootstrap V2 shape, schema fingerprint, Document V2, or V3 record
 number. The packages remain unpublished.
+
+The `0.3.0-alpha.7` source checkpoint adds the first callback-free native typed
+toolbar form and advances the reviewed Wasm transport to ABI 5. Rust now
+projects each admitted inline-format set as one canonical
+format/intent/action-state triple. Browser startup cross-checks that triple,
+the exact `breditor/set-inline-format-input@1` contract, tracked presence state,
+and the form's complete required string/Boolean field coverage before mounting
+UI. The APG toolbar retains only roving native command/launcher buttons; the
+interactive form is a nonmodal sibling, preserving the semantic editor
+selection while its fields have focus. Apply and Remove use the existing typed
+intent queue with a close-before history boundary, and Rust remains
+authoritative for mutation, undo/redo, and replay. No draft value is hydrated
+or persisted. Profile Bootstrap V2, schema fingerprint bytes, Document V2, and
+all V3 record formats remain unchanged. See the
+[typed toolbar decision](docs/TYPED_TOOLBAR_CONTROLS.md).
 
 The implementation includes:
 
@@ -364,26 +380,29 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.6` contract admits typed properties in Document
+The experimental `0.3.0-alpha.7` contract admits typed properties in Document
 V2 and supports explicit set/remove, typed pending insertion, paragraph-local
 splice/delete paths, exact history, and the Operation, Editor State,
-Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 4
+Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 5
 and the browser now compile those contracts explicitly, validate and project
 their scalar values, execute descriptor-declared typed intents from strict JSON,
 and preserve them through Session Checkpoint V3 IndexedDB restore/autosave. The
 browser's single closed `safeLinkV1` policy maps an exact two-property Link to
 canonical fixed attributes; unsafe-but-schema-valid URLs stay visible as inert
-anchors. React reference controls construct typed Link inputs outside the
-native toolbar. Alpha.5 adds typed `ParagraphSplit`, `ParagraphJoin`, and
+anchors. The combined reference manifest supplies the closed runtime-owned
+Link form, while public helpers still construct identical programmatic inputs.
+Alpha.5 adds typed `ParagraphSplit`, `ParagraphJoin`, and
 `RootTextReplace` for that sealed base-text shape, lifting Enter, boundary
 joins, multiline insertion, cross-paragraph type-over/delete, and property-free
 toggles while retaining typed peers. Alpha.6 uses the same guarded root
 replacement to set or remove a complete typed format instance across multiple
-paragraphs, including through the application-owned Link form. No Local Log V3
+paragraphs. Alpha.7 supplies the callback-free native Link form through the
+canonical compiled set-surface triple; draft values remain browser-local and
+the set operation still replaces the complete property map. No Local Log V3
 exists. Paste remains plain text and reconstructs no
 source Link properties, though target-context Link can be inherited; there is
-no arbitrary attribute or CSS mapping, and the native toolbar has no typed-
-input control. Rust's
+no arbitrary attribute or CSS mapping, current-value hydration, optional or
+integer form field, partial property patch, or arbitrary toolbar widget. Rust's
 Boolean/integer/string validation is not URL or CSS sanitization. One manifest
 and one complete profile can each contribute at most
 255 toggle declarations and at most 255 set declarations; every target is owned
@@ -1175,7 +1194,9 @@ The Alpha.7 browser path validates the complete descriptor/action-state catalog
 before startup publication and on every refresh. It also validates every
 supplied toolbar control against the descriptor before installing DOM: toggle
 buttons name no-input semantic intents and routed state, while Undo/Redo name
-their exact history sources. Public `executeIntent()` shares that route but
+their exact history sources; a typed form must match one ABI-5
+format/intent/state set-surface triple and the format's exact required property
+contract. Public `executeIntent()` shares that route but
 uses an immediate idle-queue lease, so composition, authoritative reads, active
 delivery, and reentrant calls return busy instead of becoming stale queued
 work. Public results omit concrete action and binding provenance; advanced

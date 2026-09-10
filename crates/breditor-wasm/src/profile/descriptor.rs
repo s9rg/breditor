@@ -5,7 +5,7 @@ use breditor_core::{
     profile::{
         CompiledProfileActionStateDescriptor, CompiledProfileActionStateSource,
         CompiledProfileDescriptor, CompiledProfileInlineFormatDescriptor,
-        CompiledProfileIntentDescriptor,
+        CompiledProfileInlineFormatSetDescriptor, CompiledProfileIntentDescriptor,
     },
     transaction::ReplayDirection,
 };
@@ -37,6 +37,10 @@ impl BreditorCompiledProfileDescriptor {
 
     fn inline_format(&self, index: u32) -> Option<&CompiledProfileInlineFormatDescriptor> {
         self.inner.inline_formats().get(index as usize)
+    }
+
+    fn inline_format_set(&self, index: u32) -> Option<&CompiledProfileInlineFormatSetDescriptor> {
+        self.inner.inline_format_sets().get(index as usize)
     }
 
     fn inline_format_property(
@@ -225,6 +229,35 @@ impl BreditorCompiledProfileDescriptor {
             return None;
         };
         Some(domain.maximum_utf8_bytes())
+    }
+
+    /// Returns the number of generated property-aware inline-format surfaces.
+    #[must_use]
+    #[wasm_bindgen(getter, js_name = inlineFormatSetCount)]
+    pub fn inline_format_set_count(&self) -> u32 {
+        fixed_count(self.inner.inline_format_sets().len())
+    }
+
+    /// Returns the target format of one generated property-aware set surface.
+    #[must_use]
+    #[wasm_bindgen(js_name = inlineFormatSetFormatKind)]
+    pub fn inline_format_set_format_kind(&self, index: u32) -> Option<String> {
+        self.inline_format_set(index).map(|descriptor| descriptor.format_kind().as_str().to_owned())
+    }
+
+    /// Returns the typed intent of one generated property-aware set surface.
+    #[must_use]
+    #[wasm_bindgen(js_name = inlineFormatSetIntentId)]
+    pub fn inline_format_set_intent_id(&self, index: u32) -> Option<String> {
+        self.inline_format_set(index).map(|descriptor| descriptor.intent_id().as_str().to_owned())
+    }
+
+    /// Returns the presence-state identity of one generated set surface.
+    #[must_use]
+    #[wasm_bindgen(js_name = inlineFormatSetActionStateId)]
+    pub fn inline_format_set_action_state_id(&self, index: u32) -> Option<String> {
+        self.inline_format_set(index)
+            .map(|descriptor| descriptor.action_state_id().as_str().to_owned())
     }
 
     /// Returns the number of semantic intents.

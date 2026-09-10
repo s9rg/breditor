@@ -25,8 +25,6 @@ import {
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
-import { LinkControls } from "./LinkControls.js";
-
 const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-formatting.v2";
 
 let wasmInitialization: Promise<unknown> | undefined;
@@ -218,9 +216,9 @@ function persistenceMessage(
 }
 
 /**
- * React owns the two empty mounts, typed Link form, and surrounding status UI.
- * Breditor exclusively owns every child installed beneath the editor and
- * declarative-toolbar refs.
+ * React owns the two empty mounts and surrounding status UI. Breditor
+ * exclusively owns every child installed beneath the editor and declarative
+ * toolbar mounts, including typed inline-format forms.
  */
 export const BreditorEditor = forwardRef<
   BreditorEditorHandle,
@@ -500,10 +498,7 @@ export const BreditorEditor = forwardRef<
       aria-busy={currentLifecycle?.phase !== "failed" && editor === undefined}
       aria-label={`${label} editor`}
     >
-      <div className="editor-controls">
-        <div className="toolbar-mount" ref={setToolbarHost} />
-        <LinkControls editor={editor} snapshot={snapshot} />
-      </div>
+      <div className="toolbar-mount" ref={setToolbarHost} />
       <div className="editor-mount" ref={setEditorHost} />
       <div className="editor-footer">
         <p className="editor-status" role="status">

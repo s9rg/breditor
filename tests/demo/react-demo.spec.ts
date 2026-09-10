@@ -20,7 +20,7 @@ async function openDemo(page: Page): Promise<{
     name: `${EDITOR_LABEL} editor`,
   });
   const editor = page.getByRole("textbox", { name: EDITOR_LABEL });
-  const status = shell.getByRole("status");
+  const status = shell.locator(".editor-status");
 
   await expect(shell).toHaveAttribute("aria-busy", "false");
   await expect(editor).toHaveAttribute("contenteditable", "true");
@@ -398,6 +398,7 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   const toolbar = page.getByRole("toolbar", { name: "Editor controls" });
   const bold = page.getByRole("button", { name: "Bold" });
   const highlight = page.getByRole("button", { name: "Highlight" });
+  const link = page.getByRole("button", { name: "Link" });
   const undo = page.getByRole("button", { name: "Undo" });
   const redo = page.getByRole("button", { name: "Redo" });
   const linkUrl = page.getByRole("textbox", { name: "Link URL" });
@@ -422,10 +423,11 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
     "_blank",
   );
 
-  // The React-owned form intentionally takes DOM focus. The typed intent still
+  // The runtime-owned form intentionally takes DOM focus. The typed intent still
   // acts on the Rust-owned semantic range selected immediately beforehand.
   await selectEditorText(editor, 0, SAMPLE_TEXT.length);
   await expect(highlight).toHaveAttribute("aria-pressed", "true");
+  await link.click();
   await expect(linkUrl).toBeEnabled();
   await expect(applyLink).toBeDisabled();
   await linkUrl.fill("HTTPS://Example.COM:443/a/../docs?q=one&b=two");
@@ -452,7 +454,7 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   await expect(removeLink).toBeEnabled();
   await removeLink.click();
   await expect(editor.locator("a.breditor-link")).toHaveCount(0);
-  await expect(applyLink).toBeEnabled();
+  await expect(applyLink).toBeDisabled();
   await undo.click();
   await expect(editor.locator("a.breditor-link")).toHaveAttribute(
     "href",
@@ -619,6 +621,7 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
   const { editor, status } = await openDemo(page);
   const undo = page.getByRole("button", { name: "Undo" });
   const redo = page.getByRole("button", { name: "Redo" });
+  const link = page.getByRole("button", { name: "Link" });
   const linkUrl = page.getByRole("textbox", { name: "Link URL" });
   const newWindow = page.getByRole("checkbox", { name: "Open in new window" });
   const applyLink = page.getByRole("button", { name: "Apply Link" });
@@ -661,6 +664,7 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
 
   // Form focus intentionally replaces the DOM selection. The typed intent
   // must still use the preserved cross-paragraph semantic selection.
+  await link.click();
   await expect(linkUrl).toBeEnabled();
   await linkUrl.fill(CROSS_PARAGRAPH_LINK_INPUT);
   await newWindow.check();
@@ -676,7 +680,7 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
   // expose the Rust-generated mixed presence state to the React controls.
   await selectParagraphRange(editor, 0, 0, 1, paragraphs[1].length);
   await expect(
-    page.getByText("Link formatting is mixed across the selection.", {
+    page.getByText("Link is mixed.", {
       exact: true,
     }),
   ).toBeVisible();

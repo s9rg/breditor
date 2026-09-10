@@ -102,7 +102,8 @@ describe("reference Highlight browser presentation", () => {
     });
     expect(
       REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST.controls.some(
-        (control) => control.command.kind === "action",
+        (control) =>
+          control.kind === "button" && control.command.kind === "action",
       ),
     ).toBe(false);
     expectDataOnlyFrozenGraph(REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST);

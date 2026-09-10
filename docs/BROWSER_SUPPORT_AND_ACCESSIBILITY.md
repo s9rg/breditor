@@ -1,9 +1,9 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.6 source checkpoint retains
-the combined Highlight + Link Chromium gates and adds the typed structural
-history/reload proof described below
+accessibility gate passed; the unpublished alpha.7 source checkpoint retains
+the combined Highlight + Link Chromium gates and adds the closed native typed
+form proof described below
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -46,11 +46,11 @@ attributes and wrapper nesting, and disposes both editors without workspace
 imports.
 
 The separate `npm run test:demo` Chromium gate covers the complete React page:
-its canonical Highlight + Link sample, React-owned URL and new-window controls,
-typed Link set/remove, canonical anchor attributes, Bold/Highlight coexistence,
-undo/redo, ordinary keyboard editing, dirty-to-idle Session-V3 autosave and
-reload restoration, a full-page axe scan, and toolbar containment at a
-320-pixel viewport. It complements rather than replaces the three-engine
+its canonical Highlight + Link sample, runtime-owned native URL and new-window
+controls, typed Link set/remove, canonical anchor attributes, Bold/Highlight
+coexistence, undo/redo, ordinary keyboard editing, dirty-to-idle Session-V3
+autosave and reload restoration, a full-page axe scan, and toolbar containment
+at a 320-pixel viewport. It complements rather than replaces the three-engine
 package harness.
 
 Alpha.5 extends that demo gate without changing the browser protocol. One safe
@@ -65,6 +65,14 @@ owned form and Chromium demo. It verifies Highlight peers and unselected edge
 text, generated mixed/presence state, undo/redo, and reload without adding a
 native toolbar control or broadening the desktop, synthetic-IME, mobile, or
 assistive-technology claim.
+
+Alpha.7 moves those controls into a native callback-free toolbar declaration.
+The APG toolbar retains a Link launcher button while the interactive nonmodal
+form is a sibling, so field Arrow keys do not enter roving-toolbar navigation.
+The gate covers launcher/field/Close focus, Escape, URL and Boolean input,
+Apply/Remove, selection preservation, state, history, teardown, and axe. It
+does not establish a screen-reader, mobile, or WCAG-conformance claim. See
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
 Run the gate after generating the three public packages:
 

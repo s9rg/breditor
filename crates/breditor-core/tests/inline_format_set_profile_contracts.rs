@@ -313,8 +313,77 @@ fn setter_identities_do_not_change_the_document_schema() -> TestResult {
     assert_eq!(profile_with_set.schema(), profile_with_renamed_set.schema());
     assert_eq!(profile_with_set.schema(), schema_only.schema());
     assert_eq!(profile_with_set.schema().fingerprint(), schema_only.schema().fingerprint());
+    assert_ne!(
+        profile_with_set.descriptor().inline_format_sets(),
+        profile_with_renamed_set.descriptor().inline_format_sets()
+    );
+    assert!(schema_only.descriptor().inline_format_sets().is_empty());
     assert_eq!(schema_only.intent_router().intent_count(), 1);
     assert_eq!(profile_with_set.intent_router().intent_count(), 2);
+    Ok(())
+}
+
+#[test]
+fn compiled_set_surface_descriptors_are_canonical_lookupable_and_ui_neutral() -> TestResult {
+    let alpha = manifest(
+        "example/zeta-owner",
+        vec![format("example/alpha")?],
+        vec![contract("example/alpha")?],
+        Vec::new(),
+        vec![setter(
+            "example/alpha",
+            "example/alpha-set-action",
+            "example/alpha-set-intent",
+            "example/alpha-set-binding",
+            "example/alpha-set-state",
+        )?],
+    )?;
+    let zeta = manifest(
+        "example/alpha-owner",
+        vec![format("example/zeta")?],
+        vec![contract("example/zeta")?],
+        Vec::new(),
+        vec![setter(
+            "example/zeta",
+            "example/zeta-set-action",
+            "example/zeta-set-intent",
+            "example/zeta-set-binding",
+            "example/zeta-set-state",
+        )?],
+    )?;
+    let profile = CompiledEditorProfile::try_compile_base_text_profile(
+        schema_id("example/set-descriptor-profile")?,
+        extension_set(vec![zeta, alpha])?,
+    )?;
+
+    let descriptors = profile.descriptor().inline_format_sets();
+    assert_eq!(descriptors.len(), 2);
+    assert_eq!(descriptors[0].format_kind().as_str(), "example/alpha");
+    assert_eq!(descriptors[0].intent_id().as_str(), "example/alpha-set-intent");
+    assert_eq!(descriptors[0].action_state_id().as_str(), "example/alpha-set-state");
+    assert_eq!(descriptors[1].format_kind().as_str(), "example/zeta");
+    assert_eq!(descriptors[1].intent_id().as_str(), "example/zeta-set-intent");
+    assert_eq!(descriptors[1].action_state_id().as_str(), "example/zeta-set-state");
+
+    let found = profile
+        .descriptor()
+        .inline_format_set(&name("example/zeta")?)
+        .ok_or_else(|| test_error("compiled set surface was not lookupable"))?;
+    assert_eq!(found, &descriptors[1]);
+    assert!(profile.descriptor().intent(found.intent_id()).is_some());
+    let state = profile
+        .descriptor()
+        .action_state(found.action_state_id())
+        .ok_or_else(|| test_error("compiled set presence state was not lookupable"))?;
+    assert_eq!(
+        state.source(),
+        &CompiledProfileActionStateSource::Routed(found.intent_id().clone())
+    );
+    assert!(profile.descriptor().inline_format_set(&name("example/missing")?).is_none());
+
+    let base = CompiledEditorProfile::try_compile_breditor_base()?;
+    assert!(base.descriptor().inline_format_sets().is_empty());
+    assert!(base.descriptor().inline_format_set(&name(LINK)?).is_none());
     Ok(())
 }
 
@@ -699,6 +768,10 @@ fn exact_profile_set_limit_compiles_and_aggregate_first_excess_precedes_schema()
     assert_eq!(
         profile.action_state_catalog().len(),
         usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 3
+    );
+    assert_eq!(
+        profile.descriptor().inline_format_sets().len(),
+        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)?
     );
 
     let alpha = manifest(

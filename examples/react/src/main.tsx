@@ -61,9 +61,9 @@ createRoot(root).render(
       </section>
 
       <footer className="architecture-note">
-        React owns the frame and typed Link form. Breditor owns the declarative
-        toolbar and editable DOM. The canonical document AST and history live
-        behind the WebAssembly boundary.
+        React owns the frame and empty mounts. Breditor owns the declarative
+        toolbar, typed Link form, and editable DOM. The canonical document AST
+        and history live behind the WebAssembly boundary.
       </footer>
     </main>
   </StrictMode>,

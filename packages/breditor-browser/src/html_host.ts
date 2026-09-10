@@ -12,6 +12,7 @@ const SAFE_FLOW_CONTAINER_TAGS: ReadonlySet<string> = new Set([
 ]);
 
 type NativeGetter = (this: unknown) => unknown;
+type NativeSetter = (this: unknown, value: unknown) => void;
 type NativeMethod = (this: unknown, ...args: unknown[]) => unknown;
 
 interface DomIntrinsics {
@@ -20,6 +21,7 @@ interface DomIntrinsics {
   readonly childNodes: NativeGetter;
   readonly parentNode: NativeGetter;
   readonly nodeValue: NativeGetter;
+  readonly getRootNode: NativeMethod;
   readonly nodeListLength: NativeGetter;
   readonly nodeListItem: NativeMethod;
   readonly isConnected: NativeGetter;
@@ -44,6 +46,32 @@ interface DomIntrinsics {
 interface HtmlElementFocusIntrinsics {
   readonly focus: NativeMethod;
   readonly blur: NativeMethod;
+}
+
+interface HtmlInputElementIntrinsics {
+  readonly value: NativeGetter;
+  readonly setValue: NativeSetter;
+  readonly checked: NativeGetter;
+  readonly setChecked: NativeSetter;
+  readonly indeterminate: NativeGetter;
+  readonly setIndeterminate: NativeSetter;
+}
+
+interface DocumentIntrinsics {
+  readonly activeElement: NativeGetter;
+  readonly defaultView: NativeGetter;
+  readonly getElementById: NativeMethod;
+  readonly getSelection: NativeMethod;
+  readonly createRange: NativeMethod;
+  readonly createElement: NativeMethod;
+}
+
+interface DocumentFragmentIntrinsics {
+  readonly getElementById: NativeMethod;
+}
+
+interface ShadowRootIntrinsics {
+  readonly activeElement: NativeGetter;
 }
 
 interface SelectionIntrinsics {
@@ -75,13 +103,17 @@ interface RangeIntrinsics extends AbstractRangeIntrinsics {
 
 let capturedDomIntrinsics: DomIntrinsics | undefined;
 let capturedHtmlElementFocusIntrinsics: HtmlElementFocusIntrinsics | undefined;
-const ACTIVE_ELEMENT_GETTERS = new WeakMap<object, NativeGetter>();
-const DEFAULT_VIEW_GETTERS = new WeakMap<object, NativeGetter>();
-const DOCUMENT_GET_SELECTION_METHODS = new WeakMap<object, NativeMethod>();
-const DOCUMENT_CREATE_RANGE_METHODS = new WeakMap<object, NativeMethod>();
-const SELECTION_INTRINSICS = new WeakMap<object, SelectionIntrinsics>();
-const ABSTRACT_RANGE_INTRINSICS = new WeakMap<object, AbstractRangeIntrinsics>();
-const RANGE_INTRINSICS = new WeakMap<object, RangeIntrinsics>();
+let capturedHtmlInputElementIntrinsics:
+  | HtmlInputElementIntrinsics
+  | undefined;
+let capturedDocumentIntrinsics: DocumentIntrinsics | undefined;
+let capturedDocumentFragmentIntrinsics:
+  | DocumentFragmentIntrinsics
+  | undefined;
+let capturedShadowRootIntrinsics: ShadowRootIntrinsics | undefined;
+let capturedSelectionIntrinsics: SelectionIntrinsics | undefined;
+let capturedAbstractRangeIntrinsics: AbstractRangeIntrinsics | undefined;
+let capturedRangeIntrinsics: RangeIntrinsics | undefined;
 
 /** Maximum children copied by one native topology snapshot. */
 export const MAX_NATIVE_CHILD_NODE_SNAPSHOT = 262_144;
@@ -265,6 +297,76 @@ export function nativeOwnerDocument(node: Node): Document | null {
   return ownerDocument as Document;
 }
 
+/** Returns the node's exact non-composed Document or ShadowRoot. */
+export function nativeTreeRoot(node: Node): Document | ShadowRoot {
+  const intrinsics = domIntrinsics();
+  if (intrinsics === undefined) throw new TypeError("DOM is unavailable");
+  const root = Reflect.apply(intrinsics.getRootNode, node, []) as unknown;
+  if (typeof root !== "object" || root === null) {
+    throw new TypeError("DOM tree root is invalid");
+  }
+  const type = nativeNodeType(root as Node);
+  if (type !== 9 && type !== 11) {
+    throw new TypeError("DOM tree root is unsupported");
+  }
+  const self = Reflect.apply(intrinsics.getRootNode, root, []) as unknown;
+  if (self !== root) throw new TypeError("DOM tree root is invalid");
+  return root as Document | ShadowRoot;
+}
+
+/** Reads the focused element scoped to one exact Document or ShadowRoot. */
+export function nativeTreeRootActiveElement(
+  root: Document | ShadowRoot,
+): Element | null {
+  const type = nativeNodeType(root);
+  const activeElement =
+    type === 9
+      ? documentIntrinsics().activeElement
+      : type === 11
+        ? shadowRootIntrinsics().activeElement
+        : undefined;
+  if (activeElement === undefined) {
+    throw new TypeError("DOM root focus is unavailable");
+  }
+  const value = Reflect.apply(activeElement, root, []) as unknown;
+  if (value === null) return null;
+  if (
+    typeof value !== "object" ||
+    nativeNodeType(value as Node) !== 1 ||
+    nativeTreeRoot(value as Node) !== root
+  ) {
+    throw new TypeError("DOM root focus result is invalid");
+  }
+  return value as Element;
+}
+
+/** Looks up an ID inside one exact Document or ShadowRoot tree. */
+export function nativeTreeRootGetElementById(
+  root: Document | ShadowRoot,
+  id: string,
+): Element | null {
+  const type = nativeNodeType(root);
+  const getElementById =
+    type === 9
+      ? documentIntrinsics().getElementById
+      : type === 11
+        ? documentFragmentIntrinsics().getElementById
+        : undefined;
+  if (getElementById === undefined) {
+    throw new TypeError("DOM root lookup is unavailable");
+  }
+  const value = Reflect.apply(getElementById, root, [id]) as unknown;
+  if (value === null) return null;
+  if (
+    typeof value !== "object" ||
+    nativeNodeType(value as Node) !== 1 ||
+    nativeTreeRoot(value as Node) !== root
+  ) {
+    throw new TypeError("DOM root lookup result is invalid");
+  }
+  return value as Element;
+}
+
 /**
  * Snapshots a node's children through the captured, brand-checked native
  * getter. An own `childNodes` shadow therefore cannot forge the baseline used
@@ -374,16 +476,7 @@ export function nativeBlurHtmlElement(element: HTMLElement): void {
 export function nativeDocumentActiveElement(
   ownerDocument: Document,
 ): Element | null {
-  const prototype = Object.getPrototypeOf(ownerDocument) as object | null;
-  if (prototype === null) throw new TypeError("DOM focus is unavailable");
-  let activeElement = ACTIVE_ELEMENT_GETTERS.get(prototype);
-  if (activeElement === undefined) {
-    activeElement = deepestGetter(prototype, "activeElement");
-    if (activeElement === undefined) {
-      throw new TypeError("DOM focus is unavailable");
-    }
-    ACTIVE_ELEMENT_GETTERS.set(prototype, activeElement);
-  }
+  const { activeElement } = documentIntrinsics();
   const active = Reflect.apply(activeElement, ownerDocument, []) as unknown;
   if (active !== null && typeof active !== "object") {
     throw new TypeError("DOM active element is invalid");
@@ -395,14 +488,7 @@ export function nativeDocumentActiveElement(
 export function nativeDocumentDefaultView(
   ownerDocument: Document,
 ): (Window & typeof globalThis) | null {
-  const prototype = Object.getPrototypeOf(ownerDocument) as object | null;
-  if (prototype === null) throw new TypeError("DOM window is unavailable");
-  let defaultView = DEFAULT_VIEW_GETTERS.get(prototype);
-  if (defaultView === undefined) {
-    defaultView = deepestGetter(prototype, "defaultView");
-    if (defaultView === undefined) throw new TypeError("DOM window is unavailable");
-    DEFAULT_VIEW_GETTERS.set(prototype, defaultView);
-  }
+  const { defaultView } = documentIntrinsics();
   const view = Reflect.apply(defaultView, ownerDocument, []) as unknown;
   if (view === null) return null;
   if (typeof view !== "object" && typeof view !== "function") {
@@ -411,19 +497,85 @@ export function nativeDocumentDefaultView(
   return view as Window & typeof globalThis;
 }
 
+/** Looks up an element ID through the document realm's captured native method. */
+export function nativeDocumentGetElementById(
+  ownerDocument: Document,
+  id: string,
+): Element | null {
+  const { getElementById } = documentIntrinsics();
+  const value = Reflect.apply(getElementById, ownerDocument, [id]) as unknown;
+  if (value === null) return null;
+  if (
+    typeof value !== "object" ||
+    nativeNodeType(value as Node) !== 1 ||
+    nativeOwnerDocument(value as Node) !== ownerDocument
+  ) {
+    throw new TypeError("DOM lookup result is invalid");
+  }
+  return value as Element;
+}
+
+/** Reads a real input's string value through its realm's native accessor. */
+export function nativeInputValue(input: HTMLInputElement): string {
+  const value = Reflect.apply(inputElementIntrinsics(input).value, input, []) as unknown;
+  if (typeof value !== "string") throw new TypeError("DOM input value is invalid");
+  return value;
+}
+
+/** Writes a real input's string value through its realm's native accessor. */
+export function nativeSetInputValue(
+  input: HTMLInputElement,
+  value: string,
+): void {
+  Reflect.apply(inputElementIntrinsics(input).setValue, input, [value]);
+}
+
+/** Reads a real input's Boolean checked state through its native accessor. */
+export function nativeInputChecked(input: HTMLInputElement): boolean {
+  const value = Reflect.apply(
+    inputElementIntrinsics(input).checked,
+    input,
+    [],
+  ) as unknown;
+  if (typeof value !== "boolean") {
+    throw new TypeError("DOM input checked state is invalid");
+  }
+  return value;
+}
+
+/** Writes a real input's checked state through its realm's native accessor. */
+export function nativeSetInputChecked(
+  input: HTMLInputElement,
+  value: boolean,
+): void {
+  Reflect.apply(inputElementIntrinsics(input).setChecked, input, [value]);
+}
+
+/** Reads a real input's non-reflected indeterminate state. */
+export function nativeInputIndeterminate(input: HTMLInputElement): boolean {
+  const value = Reflect.apply(
+    inputElementIntrinsics(input).indeterminate,
+    input,
+    [],
+  ) as unknown;
+  if (typeof value !== "boolean") {
+    throw new TypeError("DOM input indeterminate state is invalid");
+  }
+  return value;
+}
+
+/** Writes a real input's non-reflected indeterminate state. */
+export function nativeSetInputIndeterminate(
+  input: HTMLInputElement,
+  value: boolean,
+): void {
+  Reflect.apply(inputElementIntrinsics(input).setIndeterminate, input, [value]);
+}
+
 /** Returns the real selection owned by a document's native associated Window. */
 export function nativeDocumentSelection(ownerDocument: Document): Selection | null {
   if (nativeDocumentDefaultView(ownerDocument) === null) return null;
-  const prototype = Object.getPrototypeOf(ownerDocument) as object | null;
-  if (prototype === null) throw new TypeError("DOM selection is unavailable");
-  let getSelection = DOCUMENT_GET_SELECTION_METHODS.get(prototype);
-  if (getSelection === undefined) {
-    getSelection = deepestMethod(prototype, "getSelection");
-    if (getSelection === undefined) {
-      throw new TypeError("DOM selection is unavailable");
-    }
-    DOCUMENT_GET_SELECTION_METHODS.set(prototype, getSelection);
-  }
+  const { getSelection } = documentIntrinsics();
   const selection = Reflect.apply(getSelection, ownerDocument, []) as unknown;
   if (selection === null) return null;
   if (typeof selection !== "object") {
@@ -436,14 +588,7 @@ export function nativeDocumentSelection(ownerDocument: Document): Selection | nu
 
 /** Creates a real Range through the document's captured native method. */
 export function nativeDocumentCreateRange(ownerDocument: Document): Range {
-  const prototype = Object.getPrototypeOf(ownerDocument) as object | null;
-  if (prototype === null) throw new TypeError("DOM Range is unavailable");
-  let createRange = DOCUMENT_CREATE_RANGE_METHODS.get(prototype);
-  if (createRange === undefined) {
-    createRange = deepestMethod(prototype, "createRange");
-    if (createRange === undefined) throw new TypeError("DOM Range is unavailable");
-    DOCUMENT_CREATE_RANGE_METHODS.set(prototype, createRange);
-  }
+  const { createRange } = documentIntrinsics();
   const range = Reflect.apply(createRange, ownerDocument, []) as unknown;
   if (typeof range !== "object" || range === null) {
     throw new TypeError("DOM Range is invalid");
@@ -689,12 +834,18 @@ export function nativeCreateHtmlElement<K extends keyof HTMLElementTagNameMap>(
   ownerDocument: Document,
   localName: K,
 ): HTMLElementTagNameMap[K] {
-  const prototype = Object.getPrototypeOf(ownerDocument) as object | null;
-  const createElement = deepestMethod(prototype ?? undefined, "createElement");
-  if (createElement === undefined) throw new TypeError("DOM is unavailable");
-  return Reflect.apply(createElement, ownerDocument, [
-    localName,
-  ]) as HTMLElementTagNameMap[K];
+  const { createElement } = documentIntrinsics();
+  const value = Reflect.apply(createElement, ownerDocument, [localName]) as unknown;
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    nativeNodeType(value as Node) !== 1 ||
+    nativeOwnerDocument(value as Node) !== ownerDocument ||
+    nativeElementLocalName(value as Element) !== localName
+  ) {
+    throw new TypeError("DOM element creation is invalid");
+  }
+  return value as HTMLElementTagNameMap[K];
 }
 
 /** Reads the native parent element without consulting an own shadow property. */
@@ -720,6 +871,7 @@ function domIntrinsics(): DomIntrinsics | undefined {
   const childNodes = getter(nodePrototype, "childNodes");
   const parentNode = getter(nodePrototype, "parentNode");
   const nodeValue = getter(nodePrototype, "nodeValue");
+  const getRootNode = method(nodePrototype, "getRootNode");
   const nodeListLength = getter(nodeListPrototype, "length");
   const nodeListItem = method(nodeListPrototype, "item");
   const isConnected = getter(nodePrototype, "isConnected");
@@ -745,6 +897,7 @@ function domIntrinsics(): DomIntrinsics | undefined {
     childNodes === undefined ||
     parentNode === undefined ||
     nodeValue === undefined ||
+    getRootNode === undefined ||
     nodeListLength === undefined ||
     nodeListItem === undefined ||
     isConnected === undefined ||
@@ -773,6 +926,7 @@ function domIntrinsics(): DomIntrinsics | undefined {
     childNodes,
     parentNode,
     nodeValue,
+    getRootNode,
     nodeListLength,
     nodeListItem,
     isConnected,
@@ -809,124 +963,227 @@ function htmlElementFocusIntrinsics(): HtmlElementFocusIntrinsics | undefined {
   return capturedHtmlElementFocusIntrinsics;
 }
 
-function selectionIntrinsics(selection: Selection): SelectionIntrinsics {
-  const prototype = Object.getPrototypeOf(selection) as object | null;
-  if (prototype === null) throw new TypeError("DOM Selection is invalid");
-  const cached = SELECTION_INTRINSICS.get(prototype);
-  if (cached !== undefined) {
-    Reflect.apply(cached.rangeCount, selection, []);
-    return cached;
+/**
+ * Captures Document operations from this module's platform realm.
+ *
+ * Web IDL brand checks accept genuine same-origin platform objects from other
+ * realms. Starting from the trusted platform prototype, instead of an
+ * application's mutable instance prototype, prevents a locally detached or
+ * inserted prototype from supplying forged document facts or factory methods.
+ */
+function documentIntrinsics(): DocumentIntrinsics {
+  if (capturedDocumentIntrinsics !== undefined) {
+    return capturedDocumentIntrinsics;
   }
-  const rangeCount = deepestGetter(prototype, "rangeCount");
-  const anchorNode = deepestGetter(prototype, "anchorNode");
-  const anchorOffset = deepestGetter(prototype, "anchorOffset");
-  const focusNode = deepestGetter(prototype, "focusNode");
-  const focusOffset = deepestGetter(prototype, "focusOffset");
-  const getRangeAt = deepestMethod(prototype, "getRangeAt");
-  const addRange = deepestMethod(prototype, "addRange");
-  const removeAllRanges = deepestMethod(prototype, "removeAllRanges");
+  const prototype =
+    typeof Document === "function" ? Document.prototype : undefined;
+  const activeElement = getter(prototype, "activeElement");
+  const defaultView = getter(prototype, "defaultView");
+  const getElementById = method(prototype, "getElementById");
+  const getSelection = method(prototype, "getSelection");
+  const createRange = method(prototype, "createRange");
+  const createElement = method(prototype, "createElement");
   if (
-    rangeCount === undefined ||
-    anchorNode === undefined ||
-    anchorOffset === undefined ||
-    focusNode === undefined ||
-    focusOffset === undefined ||
-    getRangeAt === undefined ||
-    addRange === undefined ||
-    removeAllRanges === undefined
+    activeElement === undefined ||
+    defaultView === undefined ||
+    getElementById === undefined ||
+    getSelection === undefined ||
+    createRange === undefined ||
+    createElement === undefined
   ) {
-    throw new TypeError("DOM Selection is invalid");
+    throw new TypeError("DOM Document intrinsics are unavailable");
   }
-  const captured = Object.freeze({
-    rangeCount,
-    anchorNode,
-    anchorOffset,
-    focusNode,
-    focusOffset,
-    getRangeAt,
-    addRange,
-    removeAllRanges,
-    setBaseAndExtent: deepestMethod(prototype, "setBaseAndExtent"),
-    collapse: deepestMethod(prototype, "collapse"),
-    extend: deepestMethod(prototype, "extend"),
+  capturedDocumentIntrinsics = Object.freeze({
+    activeElement,
+    defaultView,
+    getElementById,
+    getSelection,
+    createRange,
+    createElement,
   });
-  SELECTION_INTRINSICS.set(prototype, captured);
-  // Prove the candidate's brand before caching its prototype as authoritative.
-  Reflect.apply(rangeCount, selection, []);
-  return captured;
+  return capturedDocumentIntrinsics;
+}
+
+function documentFragmentIntrinsics(): DocumentFragmentIntrinsics {
+  if (capturedDocumentFragmentIntrinsics !== undefined) {
+    return capturedDocumentFragmentIntrinsics;
+  }
+  const prototype =
+    typeof DocumentFragment === "function"
+      ? DocumentFragment.prototype
+      : undefined;
+  const getElementById = method(prototype, "getElementById");
+  if (getElementById === undefined) {
+    throw new TypeError("DOM DocumentFragment intrinsics are unavailable");
+  }
+  capturedDocumentFragmentIntrinsics = Object.freeze({ getElementById });
+  return capturedDocumentFragmentIntrinsics;
+}
+
+function shadowRootIntrinsics(): ShadowRootIntrinsics {
+  if (capturedShadowRootIntrinsics !== undefined) {
+    return capturedShadowRootIntrinsics;
+  }
+  const prototype =
+    typeof ShadowRoot === "function" ? ShadowRoot.prototype : undefined;
+  const activeElement = getter(prototype, "activeElement");
+  if (activeElement === undefined) {
+    throw new TypeError("DOM ShadowRoot intrinsics are unavailable");
+  }
+  capturedShadowRootIntrinsics = Object.freeze({ activeElement });
+  return capturedShadowRootIntrinsics;
+}
+
+function inputElementIntrinsics(
+  input: HTMLInputElement,
+): HtmlInputElementIntrinsics {
+  let intrinsics = capturedHtmlInputElementIntrinsics;
+  if (intrinsics === undefined) {
+    const prototype =
+      typeof HTMLInputElement === "function"
+        ? HTMLInputElement.prototype
+        : undefined;
+    const value = getter(prototype, "value");
+    const setValue = setter(prototype, "value");
+    const checked = getter(prototype, "checked");
+    const setChecked = setter(prototype, "checked");
+    const indeterminate = getter(prototype, "indeterminate");
+    const setIndeterminate = setter(prototype, "indeterminate");
+    if (
+      value === undefined ||
+      setValue === undefined ||
+      checked === undefined ||
+      setChecked === undefined ||
+      indeterminate === undefined ||
+      setIndeterminate === undefined
+    ) {
+      throw new TypeError("DOM input is invalid");
+    }
+    intrinsics = Object.freeze({
+      value,
+      setValue,
+      checked,
+      setChecked,
+      indeterminate,
+      setIndeterminate,
+    });
+    capturedHtmlInputElementIntrinsics = intrinsics;
+  }
+  // Run the platform brand checks on every use; instance prototypes are never
+  // consulted and therefore cannot intercept either reads or writes.
+  Reflect.apply(intrinsics.value, input, []);
+  Reflect.apply(intrinsics.checked, input, []);
+  Reflect.apply(intrinsics.indeterminate, input, []);
+  return intrinsics;
+}
+
+function selectionIntrinsics(selection: Selection): SelectionIntrinsics {
+  let intrinsics = capturedSelectionIntrinsics;
+  if (intrinsics === undefined) {
+    const prototype =
+      typeof Selection === "function" ? Selection.prototype : undefined;
+    const rangeCount = getter(prototype, "rangeCount");
+    const anchorNode = getter(prototype, "anchorNode");
+    const anchorOffset = getter(prototype, "anchorOffset");
+    const focusNode = getter(prototype, "focusNode");
+    const focusOffset = getter(prototype, "focusOffset");
+    const getRangeAt = method(prototype, "getRangeAt");
+    const addRange = method(prototype, "addRange");
+    const removeAllRanges = method(prototype, "removeAllRanges");
+    if (
+      rangeCount === undefined ||
+      anchorNode === undefined ||
+      anchorOffset === undefined ||
+      focusNode === undefined ||
+      focusOffset === undefined ||
+      getRangeAt === undefined ||
+      addRange === undefined ||
+      removeAllRanges === undefined
+    ) {
+      throw new TypeError("DOM Selection is invalid");
+    }
+    intrinsics = Object.freeze({
+      rangeCount,
+      anchorNode,
+      anchorOffset,
+      focusNode,
+      focusOffset,
+      getRangeAt,
+      addRange,
+      removeAllRanges,
+      setBaseAndExtent: method(prototype, "setBaseAndExtent"),
+      collapse: method(prototype, "collapse"),
+      extend: method(prototype, "extend"),
+    });
+    capturedSelectionIntrinsics = intrinsics;
+  }
+  Reflect.apply(intrinsics.rangeCount, selection, []);
+  return intrinsics;
 }
 
 function rangeIntrinsics(range: Range): RangeIntrinsics {
-  const prototype = Object.getPrototypeOf(range) as object | null;
-  if (prototype === null) throw new TypeError("DOM Range is invalid");
-  const cached = RANGE_INTRINSICS.get(prototype);
-  if (cached !== undefined) {
-    Reflect.apply(cached.startContainer, range, []);
-    return cached;
+  let intrinsics = capturedRangeIntrinsics;
+  if (intrinsics === undefined) {
+    const prototype = typeof Range === "function" ? Range.prototype : undefined;
+    const startContainer = getter(prototype, "startContainer");
+    const startOffset = getter(prototype, "startOffset");
+    const endContainer = getter(prototype, "endContainer");
+    const endOffset = getter(prototype, "endOffset");
+    const setStart = method(prototype, "setStart");
+    const setEnd = method(prototype, "setEnd");
+    const intersectsNode = method(prototype, "intersectsNode");
+    if (
+      startContainer === undefined ||
+      startOffset === undefined ||
+      endContainer === undefined ||
+      endOffset === undefined ||
+      setStart === undefined ||
+      setEnd === undefined ||
+      intersectsNode === undefined
+    ) {
+      throw new TypeError("DOM Range is invalid");
+    }
+    intrinsics = Object.freeze({
+      startContainer,
+      startOffset,
+      endContainer,
+      endOffset,
+      setStart,
+      setEnd,
+      intersectsNode,
+    });
+    capturedRangeIntrinsics = intrinsics;
   }
-  const startContainer = deepestGetter(prototype, "startContainer");
-  const startOffset = deepestGetter(prototype, "startOffset");
-  const endContainer = deepestGetter(prototype, "endContainer");
-  const endOffset = deepestGetter(prototype, "endOffset");
-  const setStart = deepestMethod(prototype, "setStart");
-  const setEnd = deepestMethod(prototype, "setEnd");
-  const intersectsNode = deepestMethod(prototype, "intersectsNode");
-  if (
-    startContainer === undefined ||
-    startOffset === undefined ||
-    endContainer === undefined ||
-    endOffset === undefined ||
-    setStart === undefined ||
-    setEnd === undefined ||
-    intersectsNode === undefined
-  ) {
-    throw new TypeError("DOM Range is invalid");
-  }
-  const captured = Object.freeze({
-    startContainer,
-    startOffset,
-    endContainer,
-    endOffset,
-    setStart,
-    setEnd,
-    intersectsNode,
-  });
-  RANGE_INTRINSICS.set(prototype, captured);
-  // Prove the candidate's brand before caching its prototype as authoritative.
-  Reflect.apply(startContainer, range, []);
-  return captured;
+  Reflect.apply(intrinsics.startContainer, range, []);
+  return intrinsics;
 }
 
 function abstractRangeIntrinsics(range: AbstractRange): AbstractRangeIntrinsics {
-  const prototype = Object.getPrototypeOf(range) as object | null;
-  if (prototype === null) throw new TypeError("DOM AbstractRange is invalid");
-  const cached = ABSTRACT_RANGE_INTRINSICS.get(prototype);
-  if (cached !== undefined) {
-    Reflect.apply(cached.startContainer, range, []);
-    return cached;
+  let intrinsics = capturedAbstractRangeIntrinsics;
+  if (intrinsics === undefined) {
+    const prototype = typeof Range === "function" ? Range.prototype : undefined;
+    const startContainer = getter(prototype, "startContainer");
+    const startOffset = getter(prototype, "startOffset");
+    const endContainer = getter(prototype, "endContainer");
+    const endOffset = getter(prototype, "endOffset");
+    if (
+      startContainer === undefined ||
+      startOffset === undefined ||
+      endContainer === undefined ||
+      endOffset === undefined
+    ) {
+      throw new TypeError("DOM AbstractRange is invalid");
+    }
+    intrinsics = Object.freeze({
+      startContainer,
+      startOffset,
+      endContainer,
+      endOffset,
+    });
+    capturedAbstractRangeIntrinsics = intrinsics;
   }
-  const startContainer = deepestGetter(prototype, "startContainer");
-  const startOffset = deepestGetter(prototype, "startOffset");
-  const endContainer = deepestGetter(prototype, "endContainer");
-  const endOffset = deepestGetter(prototype, "endOffset");
-  if (
-    startContainer === undefined ||
-    startOffset === undefined ||
-    endContainer === undefined ||
-    endOffset === undefined
-  ) {
-    throw new TypeError("DOM AbstractRange is invalid");
-  }
-  const captured = Object.freeze({
-    startContainer,
-    startOffset,
-    endContainer,
-    endOffset,
-  });
-  ABSTRACT_RANGE_INTRINSICS.set(prototype, captured);
-  // Brand proof runs on cache misses and hits; plain prototype impostors fail.
-  Reflect.apply(startContainer, range, []);
-  return captured;
+  Reflect.apply(intrinsics.startContainer, range, []);
+  return intrinsics;
 }
 
 function getter(
@@ -937,6 +1194,19 @@ function getter(
   while (candidate !== undefined && candidate !== null) {
     const found = Object.getOwnPropertyDescriptor(candidate, name)?.get;
     if (found !== undefined) return found;
+    candidate = Object.getPrototypeOf(candidate) as object | null;
+  }
+  return undefined;
+}
+
+function setter(
+  prototype: object | undefined,
+  name: string,
+): NativeSetter | undefined {
+  let candidate: object | null | undefined = prototype;
+  while (candidate !== undefined && candidate !== null) {
+    const found = Object.getOwnPropertyDescriptor(candidate, name)?.set;
+    if (typeof found === "function") return found as NativeSetter;
     candidate = Object.getPrototypeOf(candidate) as object | null;
   }
   return undefined;
@@ -953,43 +1223,4 @@ function method(
     candidate = Object.getPrototypeOf(candidate) as object | null;
   }
   return undefined;
-}
-
-/**
- * Selects the deepest non-root getter in one instance's prototype chain.
- * Host-local prototype layers can imitate platform names, while the genuine
- * realm prototype remains deeper. Realm-wide prototype mutation is outside
- * the application-owned-host contract.
- */
-function deepestGetter(
-  prototype: object | undefined,
-  name: string,
-): NativeGetter | undefined {
-  let candidate: object | null | undefined = prototype;
-  let found: NativeGetter | undefined;
-  while (candidate !== undefined && candidate !== null) {
-    const parent = Object.getPrototypeOf(candidate) as object | null;
-    if (parent === null) break;
-    const value = Object.getOwnPropertyDescriptor(candidate, name)?.get;
-    if (typeof value === "function") found = value;
-    candidate = parent;
-  }
-  return found;
-}
-
-/** Deepest-method counterpart to {@link deepestGetter}. */
-function deepestMethod(
-  prototype: object | undefined,
-  name: string,
-): NativeMethod | undefined {
-  let candidate: object | null | undefined = prototype;
-  let found: NativeMethod | undefined;
-  while (candidate !== undefined && candidate !== null) {
-    const parent = Object.getPrototypeOf(candidate) as object | null;
-    if (parent === null) break;
-    const value = Object.getOwnPropertyDescriptor(candidate, name)?.value;
-    if (typeof value === "function") found = value as NativeMethod;
-    candidate = parent;
-  }
-  return found;
 }

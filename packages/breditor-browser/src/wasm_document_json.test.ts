@@ -104,6 +104,7 @@ class FakeProfileDescriptor implements WasmCompiledProfileDescriptorView {
   readonly formatCount = 2;
   readonly intentCount = 0;
   readonly actionStateCount = 0;
+  readonly inlineFormatSetCount = 0;
 
   constructor(readonly generation: WasmProfileGenerationView) {}
 
@@ -146,6 +147,9 @@ class FakeProfileDescriptor implements WasmCompiledProfileDescriptorView {
   actionStateActivationContract(): undefined { return undefined; }
   actionStateValueContractName(): undefined { return undefined; }
   actionStateValueContractVersion(): undefined { return undefined; }
+  inlineFormatSetFormatKind(): undefined { return undefined; }
+  inlineFormatSetIntentId(): undefined { return undefined; }
+  inlineFormatSetActionStateId(): undefined { return undefined; }
   free(): void {}
 }
 
@@ -156,6 +160,7 @@ class FakeTypedProfileDescriptor implements WasmCompiledProfileDescriptorView {
   readonly formatCount = 2;
   readonly intentCount = 0;
   readonly actionStateCount = 0;
+  readonly inlineFormatSetCount = 0;
 
   constructor(readonly generation: WasmProfileGenerationView) {}
 
@@ -236,6 +241,9 @@ class FakeTypedProfileDescriptor implements WasmCompiledProfileDescriptorView {
   actionStateActivationContract(): undefined { return undefined; }
   actionStateValueContractName(): undefined { return undefined; }
   actionStateValueContractVersion(): undefined { return undefined; }
+  inlineFormatSetFormatKind(): undefined { return undefined; }
+  inlineFormatSetIntentId(): undefined { return undefined; }
+  inlineFormatSetActionStateId(): undefined { return undefined; }
   free(): void {}
 }
 

@@ -730,6 +730,16 @@
 //! alpha.6 history because it already implements the same V3 operation recipe;
 //! replay does not rerun the action. Wasm ABI 4, Profile Bootstrap V2, schema
 //! fingerprints, Document V2, and all V3 record numbers remain unchanged.
+//!
+//! The unpublished `0.3.0-alpha.7` source checkpoint adds one process-local,
+//! UI-neutral descriptor for every admitted typed inline-format setter. Its
+//! canonical `(format kind, intent ID, action-state ID)` triple lets the Wasm
+//! ABI 5 and browser presentation layers correlate an input form without
+//! exposing action or binding identity and without adding executable metadata
+//! to Rust. The browser-only form declaration, drafts, labels, focus, URL
+//! presentation, and navigation policy are not Rust data. Profile Bootstrap
+//! V2, schema-fingerprint bytes, Document V2, and all V3 durable record bytes
+//! remain exact.
 
 pub mod action;
 pub mod codec;

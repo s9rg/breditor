@@ -1,11 +1,11 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.6` source checkpoint uses ABI generation
-`4` for the exact matching browser/Wasm pair. It retains the explicitly
+Status: the unpublished `0.3.0-alpha.7` source checkpoint uses ABI generation
+`5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
-preserving the ABI-3-era V1/V2 entry points; alpha.5 adds no Wasm method or wire
-generation; alpha.6 routes cross-paragraph typed set/remove through existing
-methods. Direct raw-handle use remains a narrow advanced integration
+preserving the ABI-3-era V1/V2 entry points. Alpha.7 adds only canonical
+typed-set presentation-correlation getters; it changes no bootstrap or durable
+wire generation. Direct raw-handle use remains a narrow advanced integration
 surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
@@ -19,9 +19,10 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-When published, `@breditor/browser@0.3.0-alpha.6` and
-`@breditor/wasm@0.3.0-alpha.6` must be installed as an exact-version pair. No
-alpha.6 package has been published at this checkpoint. The generated raw
+After publication, `@breditor/browser@0.3.0-alpha.7` and
+`@breditor/wasm@0.3.0-alpha.7` must be installed as an exact-version pair. No
+alpha.7 package has been published at this checkpoint; repository development
+uses the local workspace/tarball smoke path. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.
 The reference package likewise requires the exact browser peer so its branded
@@ -69,6 +70,15 @@ existing Session-V3 factory retains this operation on undo and redo branches.
 Alpha.5 can restore and replay it because the operation payload and reducer
 meaning were already complete; no action input or JavaScript planner is replayed.
 
+Alpha.7 advances the Wasm transport to ABI 5. The compiled descriptor exposes
+one canonical, process-local set-surface triple for each admitted typed setter:
+format kind, intent ID, and action-state ID. Count and indexed getters add no
+action or binding identity, callback, UI metadata, or durable bytes. The
+browser correlates its own callback-free form declaration against that triple;
+Profile Bootstrap V2, fingerprints, Document V2, and Session/State/Commit V3
+remain byte-for-byte unchanged. The normative contract is in
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+
 Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
 and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed
 `rolldown 1.2.7`. Cargo uses the dedicated size-oriented `wasm-release`
@@ -83,7 +93,7 @@ build-root prefixes plus common macOS, Linux, and Windows user-home path
 patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.6
+initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.7
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported
@@ -108,8 +118,8 @@ classes:
 - `BreditorCompiledProfile` is a reusable immutable compiled-profile owner;
 - `BreditorCompiledProfileResult` is its one-shot strict-bootstrap result;
 - `BreditorCompiledProfileDescriptor` exposes bounded canonical declaration
-  metadata, including typed format-property contracts, without executable
-  callbacks;
+  metadata, including typed format-property contracts and ABI-5 typed-set
+  format/intent/state correlation triples, without executable callbacks;
 - `BreditorProfileGeneration` owns an opaque process-local correlation handle;
 - `BreditorEngine` owns one profile-correlated editor session and its complete
   profile action-state cache;
@@ -309,7 +319,7 @@ egress remains V1.
 A failed factory returns no partial engine. The result's engine can be taken at
 most once. Its status changes from `engine` to `taken` after that transfer.
 
-`breditorWasmAbiVersion()` returns the transport generation (`"4"`), while
+`breditorWasmAbiVersion()` returns the transport generation (`"5"`), while
 `breditorVersion()` returns the crate release embedded in the module. A later
 TypeScript package can reject an incompatible generated module without opening
 or deserializing editor state.
@@ -505,7 +515,7 @@ contract for future select, color, font, and plugin controls without forcing
 every toolbar refresh through a complete JSON document. The isolated value
 payload remains bounded by the core action-value limits.
 
-The Alpha.7 browser consumer additionally correlates every complete snapshot
+The `0.2.0-alpha.7` browser consumer additionally correlates every complete snapshot
 with the owned descriptor's exact action-state count, lexical IDs, activation
 contracts, and value-contract name/version before publication. This is a
 browser admission check over ABI 3, not a new ABI generation. Missing, extra,

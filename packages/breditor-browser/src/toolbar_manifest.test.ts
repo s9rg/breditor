@@ -5,6 +5,9 @@ import {
   DEFAULT_TOOLBAR_MANIFEST,
   MAX_TOOLBAR_CONTROLS,
   MAX_TOOLBAR_GROUP_UTF16,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_LABEL_UTF16,
   createToolbarManifest,
   isOwnedToolbarManifest,
@@ -46,6 +49,7 @@ describe("toolbar manifest", () => {
     expect(Object.isFrozen(DEFAULT_TOOLBAR_MANIFEST.controls)).toBe(true);
     for (const control of DEFAULT_TOOLBAR_MANIFEST.controls) {
       expect(Object.isFrozen(control)).toBe(true);
+      if (control.kind !== "button") throw new Error("unexpected base control");
       expect(Object.isFrozen(control.command)).toBe(true);
       if (control.command.kind === "action") {
         expect(Object.isFrozen(control.command.input)).toBe(true);
@@ -123,7 +127,9 @@ describe("toolbar manifest", () => {
     expect("onRefresh" in manifest).toBe(false);
     expect("onClick" in manifest.controls[0]!).toBe(false);
     expect("ariaKeyShortcuts" in manifest.controls[0]!).toBe(false);
-    const command = manifest.controls[0]!.command;
+    const control = manifest.controls[0]!;
+    if (control.kind !== "button") throw new Error("unexpected control kind");
+    const command = control.command;
     expect(command.kind).toBe("action");
     expect("execute" in command).toBe(false);
     expect(command.kind === "action" && "callback" in command.input).toBe(false);
@@ -152,15 +158,222 @@ describe("toolbar manifest", () => {
 
     const manifest = createToolbarManifest(source);
     source.controls[0]!.command.intentId = "example/changed";
+    const control = manifest.controls[0]!;
+    if (control.kind !== "button") throw new Error("unexpected control kind");
 
-    expect(manifest.controls[0]?.command).toEqual({
+    expect(control.command).toEqual({
       kind: "intent",
       intentId: "example/format-highlight",
     });
-    expect(Object.isFrozen(manifest.controls[0]?.command)).toBe(true);
-    expect("history" in manifest.controls[0]!.command).toBe(false);
-    expect("input" in manifest.controls[0]!.command).toBe(false);
-    expect("execute" in manifest.controls[0]!.command).toBe(false);
+    expect(Object.isFrozen(control.command)).toBe(true);
+    expect("history" in control.command).toBe(false);
+    expect("input" in control.command).toBe(false);
+    expect("execute" in control.command).toBe(false);
+  });
+
+  it("deeply snapshots a callback-free inline-format form", () => {
+    const source = inlineFormatForm("example/link-presence", [
+      {
+        kind: "string",
+        propertyName: "example/href",
+        label: "Address",
+        presentation: "url",
+        autocomplete: "url",
+        minimumUtf8Bytes: 1,
+        maximumUtf8Bytes: 2_048,
+        placeholder: "https://example.test",
+        onInput: () => undefined,
+      },
+      {
+        kind: "boolean",
+        propertyName: "example/open-in-new-window",
+        label: "Open in new window",
+        defaultValue: false,
+        onChange: () => undefined,
+      },
+    ]) as ReturnType<typeof inlineFormatForm> & {
+      fields: Array<Record<string, unknown>>;
+    };
+    Object.assign(source, {
+      group: "links",
+      onApply: () => undefined,
+      executable: { run: () => undefined },
+    });
+
+    const manifest = createToolbarManifest({ label: "Links", controls: [source] });
+    source["label"] = "Changed";
+    source.fields[0]!["label"] = "Changed";
+
+    expect(manifest).toEqual({
+      label: "Links",
+      controls: [
+        {
+          kind: "inlineFormatForm",
+          stateId: "example/link-presence",
+          label: "Link",
+          group: "links",
+          formatKind: "example/link",
+          intentId: "example/set-link-intent",
+          fields: [
+            {
+              kind: "string",
+              propertyName: "example/href",
+              label: "Address",
+              presentation: "url",
+              autocomplete: "url",
+              minimumUtf8Bytes: 1,
+              maximumUtf8Bytes: 2_048,
+              placeholder: "https://example.test",
+            },
+            {
+              kind: "boolean",
+              propertyName: "example/open-in-new-window",
+              label: "Open in new window",
+              defaultValue: false,
+            },
+          ],
+          applyLabel: "Apply",
+          removeLabel: "Remove",
+          closeLabel: "Close",
+        },
+      ],
+    });
+    const control = manifest.controls[0]!;
+    if (control.kind !== "inlineFormatForm") {
+      throw new Error("unexpected control kind");
+    }
+    expect(Object.isFrozen(control)).toBe(true);
+    expect(Object.isFrozen(control.fields)).toBe(true);
+    expect(control.fields.every(Object.isFrozen)).toBe(true);
+    expect("onApply" in control).toBe(false);
+    expect("executable" in control).toBe(false);
+    expect("onInput" in control.fields[0]!).toBe(false);
+    expect("onChange" in control.fields[1]!).toBe(false);
+  });
+
+  it("rejects retained form accessors without executing them", () => {
+    let reads = 0;
+    const form = inlineFormatForm("example/link-presence");
+    Object.defineProperty(form, "applyLabel", {
+      configurable: true,
+      get: () => {
+        reads += 1;
+        return "Apply";
+      },
+    });
+    expect(() => createToolbarManifest({ label: "Tools", controls: [form] }))
+      .toThrow(/own data property/u);
+
+    const field = urlField("example/href");
+    Object.defineProperty(field, "minimumUtf8Bytes", {
+      configurable: true,
+      get: () => {
+        reads += 1;
+        return 1;
+      },
+    });
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/link-presence", [field])],
+    })).toThrow(/own data property/u);
+
+    const fields = [urlField("example/href")];
+    Object.defineProperty(fields, "0", {
+      configurable: true,
+      get: () => {
+        reads += 1;
+        return urlField("example/href");
+      },
+    });
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/link-presence", fields)],
+    })).toThrow(/own data property/u);
+    expect(reads).toBe(0);
+  });
+
+  it("requires unique state and property identities across the closed union", () => {
+    const form = inlineFormatForm("example/control-shared");
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [
+        historyControl("example/control-shared", "History", "undo"),
+        form,
+      ],
+    })).toThrow(/state identity is duplicated/u);
+
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/link-presence", [
+        urlField("example/href"),
+        urlField("example/href"),
+      ])],
+    })).toThrow(/property identity is duplicated/u);
+  });
+
+  it("enforces per-form and aggregate field bounds and requires a URL field", () => {
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/link-presence", [])],
+    })).toThrow(RangeError);
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm(
+        "example/link-presence",
+        Array.from(
+          { length: MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS + 1 },
+          (_, index) => index === 0
+            ? urlField("example/href")
+            : booleanField(`example/flag-${index}`),
+        ),
+      )],
+    })).toThrow(RangeError);
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/link-presence", [
+        booleanField("example/open-in-new-window"),
+      ])],
+    })).toThrow(/requires a URL-presented string field/u);
+
+    const fieldCountPerForm =
+      Math.floor(MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL / 3) + 1;
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [0, 1, 2].map((formIndex) => inlineFormatForm(
+        `example/link-presence-${formIndex}`,
+        Array.from({ length: fieldCountPerForm }, (_, fieldIndex) =>
+          fieldIndex === 0
+            ? urlField(`example/href-${formIndex}`)
+            : booleanField(`example/flag-${formIndex}-${fieldIndex}`)),
+      )),
+    })).toThrow(/aggregate bound/u);
+  });
+
+  it("enforces URL metadata, exact integer bounds, false Boolean defaults, and labels", () => {
+    const invalidFields: unknown[] = [
+      { ...urlField("example/href"), presentation: "text" },
+      { ...urlField("example/href"), autocomplete: "email" },
+      { ...urlField("example/href"), minimumUtf8Bytes: 0 },
+      { ...urlField("example/href"), minimumUtf8Bytes: 2, maximumUtf8Bytes: 1 },
+      {
+        ...urlField("example/href"),
+        maximumUtf8Bytes: MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8 + 1,
+      },
+      { ...urlField("example/href"), minimumUtf8Bytes: 1.5 },
+      { ...booleanField("example/open-in-new-window"), defaultValue: true },
+    ];
+    for (const field of invalidFields) {
+      expect(() => createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/link-presence", [field])],
+      })).toThrow();
+    }
+    for (const field of ["applyLabel", "removeLabel", "closeLabel"] as const) {
+      expect(() => createToolbarManifest({
+        label: "Tools",
+        controls: [{ ...inlineFormatForm("example/link-presence"), [field]: "" }],
+      })).toThrow(/action label/u);
+    }
   });
 
   it("rejects retained-field accessors without executing them", () => {
@@ -490,5 +703,46 @@ function historyControl(stateId: string, label: string, operation: unknown): unk
     label,
     activation: "stateless",
     command: { kind: "history", operation },
+  };
+}
+
+function inlineFormatForm(
+  stateId: string,
+  fields: unknown[] = [
+    urlField("example/href"),
+    booleanField("example/open-in-new-window"),
+  ],
+) {
+  return {
+    kind: "inlineFormatForm",
+    stateId,
+    label: "Link",
+    formatKind: "example/link",
+    intentId: "example/set-link-intent",
+    fields,
+    applyLabel: "Apply",
+    removeLabel: "Remove",
+    closeLabel: "Close",
+  };
+}
+
+function urlField(propertyName: string): Record<string, unknown> {
+  return {
+    kind: "string",
+    propertyName,
+    label: "Address",
+    presentation: "url",
+    autocomplete: "url",
+    minimumUtf8Bytes: 1,
+    maximumUtf8Bytes: 2_048,
+  };
+}
+
+function booleanField(propertyName: string): Record<string, unknown> {
+  return {
+    kind: "boolean",
+    propertyName,
+    label: "Open in new window",
+    defaultValue: false,
   };
 }

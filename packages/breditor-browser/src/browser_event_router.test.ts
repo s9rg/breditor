@@ -4,6 +4,7 @@ import { BreditorBrowserEventController } from "./browser_event_controller.js";
 import {
   BreditorBrowserEventRouter,
   MAX_BROWSER_EVENT_ROUTER_SUBSCRIBERS,
+  type BrowserEventRouterStatus,
 } from "./browser_event_router.js";
 import { BreditorClipboardController } from "./clipboard_controller.js";
 import { BreditorCommandQueue } from "./command_queue.js";
@@ -677,6 +678,50 @@ describe("BreditorBrowserEventRouter", () => {
     }
   });
 
+  it("installs real listeners below chain-severing host and Document prototypes", () => {
+    const adapter = new FakeAdapter(projection());
+    installDomSelection(adapter.host, 1);
+    const queue = new BreditorCommandQueue(adapter.commandExecutor);
+    const hostPrototype = Object.getPrototypeOf(adapter.host) as object;
+    const documentPrototype = Object.getPrototypeOf(document) as object;
+    const trap = vi.fn();
+    const poison = (): object => {
+      const value = Object.create(Object.prototype) as object;
+      Object.defineProperties(value, {
+        nodeType: { configurable: true, get: trap },
+        ownerDocument: { configurable: true, get: trap },
+        addEventListener: { configurable: true, value: trap },
+        removeEventListener: { configurable: true, value: trap },
+      });
+      return value;
+    };
+    const dispatchEvent = EventTarget.prototype.dispatchEvent;
+    let router: BreditorBrowserEventRouter | undefined;
+    let cancelled = false;
+    let disposed: BrowserEventRouterStatus | undefined;
+    try {
+      Object.setPrototypeOf(adapter.host, poison());
+      Object.setPrototypeOf(document, poison());
+      router = new BreditorBrowserEventRouter(
+        queue,
+        adapter as unknown as BreditorWasmCommandAdapter,
+        options(new TaskScheduler()),
+      );
+    } finally {
+      Object.setPrototypeOf(document, documentPrototype);
+      Object.setPrototypeOf(adapter.host, hostPrototype);
+    }
+    cancelled = !Reflect.apply(dispatchEvent, adapter.host, [
+      keyEvent("b", "KeyB", { ctrlKey: true }),
+    ]);
+    disposed = router?.dispose();
+
+    expect(cancelled).toBe(true);
+    expect(adapter.requests).toHaveLength(1);
+    expect(disposed).toEqual({ kind: "disposed" });
+    expect(trap).not.toHaveBeenCalled();
+  });
+
   it("restores canonical DOM after a reconciliation disposition", () => {
     const fixture = setup();
     fixture.adapter.host.firstElementChild?.append("drift");
@@ -846,8 +891,18 @@ describe("BreditorBrowserEventRouter", () => {
           throw new Error("installed then threw");
         }
       });
+    const originalRemove = EventTarget.prototype.removeEventListener;
     const remove = vi.spyOn(EventTarget.prototype, "removeEventListener")
-      .mockImplementation(() => {
+      .mockImplementation(function (
+        this: EventTarget,
+        type: string,
+        listener: EventListenerOrEventListenerObject | null,
+        options?: boolean | EventListenerOptions,
+      ): void {
+        if (type === "breditor-intrinsics-probe") {
+          Reflect.apply(originalRemove, this, [type, listener, options]);
+          return;
+        }
         throw new Error("platform removal failed");
       });
 

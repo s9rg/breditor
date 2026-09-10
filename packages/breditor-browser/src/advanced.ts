@@ -243,15 +243,30 @@ export {
   MAX_TOOLBAR_CONTROLS,
   MAX_TOOLBAR_GROUP_UTF16,
   MAX_TOOLBAR_GROUP_UTF8,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_LABEL_UTF16,
   MAX_TOOLBAR_LABEL_UTF8,
   MAX_TOOLBAR_QUALIFIED_NAME_ASCII,
   MIN_TOOLBAR_CONTROLS,
+  MIN_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
   createToolbarManifest,
+  type ToolbarButtonDeclaration,
   type ToolbarCommandDeclaration,
   type ToolbarControlDeclaration,
+  type ToolbarInlineFormatFormBooleanFieldDeclaration,
+  type ToolbarInlineFormatFormDeclaration,
+  type ToolbarInlineFormatFormFieldDeclaration,
+  type ToolbarInlineFormatFormStringFieldDeclaration,
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
+export {
+  TOOLBAR_INLINE_FORMAT_FORM_REMOVE_INPUT_JSON,
+  createToolbarInlineFormatFormRemoveInputJson,
+  createToolbarInlineFormatFormSetInputJson,
+  type ToolbarInlineFormatFormValues,
+} from "./toolbar_inline_format_form_input.js";
 export {
   BreditorToolbar,
   MAX_TOOLBAR_LIFECYCLE_SUBSCRIBERS,
@@ -266,6 +281,8 @@ export {
   type ToolbarCommandDispatcher,
   type ToolbarCommandDispatchResult,
   type ToolbarCommandInvocation,
+  type ToolbarInvocationCommand,
+  type ToolbarJsonIntentCommand,
 } from "./toolbar.js";
 export {
   MAX_BROWSER_SESSION_CHECKPOINT_JSON_BYTES,
@@ -394,6 +411,7 @@ export {
 export {
   MAX_BROWSER_PROFILE_ACTION_STATES,
   MAX_BROWSER_PROFILE_FORMATS,
+  MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS,
   MAX_BROWSER_PROFILE_INTENTS,
   MAX_BROWSER_PROFILE_PROPERTIES_PER_FORMAT,
   MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES,
@@ -409,6 +427,7 @@ export {
   type BrowserProfileFormatPropertyValueType,
   type BrowserProfileIntentDescriptor,
   type BrowserProfileIntentInput,
+  type BrowserProfileInlineFormatSetDescriptor,
   type BrowserProfileSchemaDescriptor,
   type BrowserProfileStateContract,
   type BrowserProfileValueContract,

@@ -8,7 +8,6 @@ import {
 } from "./dom_point_mapping.js";
 import {
   nativeContainsNode,
-  nativeDocumentActiveElement,
   nativeDocumentCreateRange,
   nativeDocumentSelection,
   nativeElementLocalName,
@@ -28,6 +27,8 @@ import {
   nativeSelectionSetBaseAndExtent,
   nativeSelectionSupportsCollapseExtend,
   nativeSelectionSupportsSetBaseAndExtent,
+  nativeTreeRoot,
+  nativeTreeRootActiveElement,
 } from "./html_host.js";
 import {
   BaseRangeSelection,
@@ -483,8 +484,9 @@ export class BreditorDomSelectionBridge {
       return selectionFailure(preflight.code);
     }
     try {
-      const ownerDocument = requiredOwnerDocument(rendered.host);
-      const activeElement = nativeDocumentActiveElement(ownerDocument);
+      const activeElement = nativeTreeRootActiveElement(
+        nativeTreeRoot(rendered.host),
+      );
       if (activeElement === null) {
         return selectionSuccess(Object.freeze({ kind: "unavailable" }));
       }
@@ -542,9 +544,17 @@ function validateRenderedForSelection(rendered: RenderedProjection): RenderPrefl
   if (!isOwnedRenderedProjection(rendered) || !rendered.current) {
     return { ok: false, code: "selection.foreign_or_stale_render" };
   }
-  return rendered.validateCanonicalDom()
-    ? { ok: true }
-    : { ok: false, code: "selection.dom_drift" };
+  try {
+    const hostFacts = nativeHtmlHostFacts(rendered.host);
+    return hostFacts !== undefined &&
+      hostFacts.isConnected &&
+      nativeTreeRoot(hostFacts.element) === hostFacts.ownerDocument &&
+      rendered.validateCanonicalDom()
+      ? { ok: true }
+      : { ok: false, code: "selection.dom_drift" };
+  } catch {
+    return { ok: false, code: "selection.dom_drift" };
+  }
 }
 
 function selectionForRendered(rendered: RenderedProjection): Selection | null {

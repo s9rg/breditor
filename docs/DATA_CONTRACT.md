@@ -26,8 +26,8 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.6` source checkpoint retains the alpha.3 typed
-transport through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. Its
+The unpublished `0.3.0-alpha.7` source checkpoint retains the alpha.3 typed
+transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
 browser's V3 restore/autosave path preserve property values. The existing
@@ -43,9 +43,13 @@ preserve typed inline-format instances and lifts their built-in action paths.
 Alpha.6 uses that property-preserving root operation for multi-paragraph
 complete-map `SetInlineFormatAction` set/remove, including exact selection,
 state, history, and V3 replay behavior.
-Wasm ABI 4, Profile Bootstrap V2, schema fingerprints, Document V2, and all V3
-record format numbers remain unchanged. Local Log V3, arbitrary attribute/CSS
-mapping, rich paste, and native typed toolbar controls remain unsupported.
+Alpha.7 adds only a process-local canonical format/intent/state descriptor for
+each compiled typed setter and exposes it through ABI 5. Browser form metadata
+and draft input remain outside Rust. Profile Bootstrap V2, schema fingerprints,
+Document V2, and all V3 record format numbers and bytes remain unchanged. Local
+Log V3, arbitrary attribute/CSS mapping, rich paste, arbitrary toolbar widgets,
+and persisted or selection-hydrated form drafts remain unsupported. See
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -84,7 +88,9 @@ The implemented Rust slice owns:
   under one fresh opaque Rust-local generation;
 - immutable manifest-owned `InlineFormatSetSpecV1` bundles plus the
   registration-owned `SetInlineFormatAction` and exact
-  `breditor/set-inline-format-input@1` complete-map set/remove input;
+  `breditor/set-inline-format-input@1` complete-map set/remove input, with one
+  canonical process-local `(format kind, intent ID, action-state ID)`
+  descriptor triple per compiled set surface;
 - exact proof-derived document measurements cached on each `Document`;
 - snapshot-local points, document-aware point ordering, and directional range
   selections;
@@ -260,7 +266,7 @@ The following remain deliberately unimplemented:
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
 - typed element or block properties and identities, arbitrary structural schema
-  kinds, general property-driven rendering or native typed toolbar controls,
+  kinds, general property-driven rendering or arbitrary typed toolbar widgets,
   custom extension actions
   or inputs, callback planners, cross-extension toggle targets, shared toggle
   routes, and fallback toggle routing;
@@ -1943,6 +1949,14 @@ routed intent, or history-direction source. Collections and binary lookup APIs
 use canonical lexical identity order. The descriptor contains no executable
 handler or presentation callback.
 
+Alpha.7 extends that process-local view with one set-surface descriptor for
+each admitted `InlineFormatSetSpecV1`. The exact data is the format kind, typed
+intent ID, and routed presence-state ID, ordered lexically by format kind. It
+deliberately omits action and binding identity because browser presentation
+needs only the public semantic route and authoritative state correlation. This
+is ABI-5 observation data, not a bootstrap member, schema-fingerprint input, or
+durable record.
+
 `EditorEngine::execute_intent` checks the complete observation, uses only its
 owned profile router, routes and consumes one cached prepared action inside the
 synchronous call, and returns the authoritative successor observation. Its
@@ -1950,16 +1964,17 @@ committed, blocked, and unhandled receipts retain intent/binding/fallthrough
 provenance; blocked receipts also retain the disabled reason and evaluated
 indicator. No prepared route escapes and no action handler is rerun.
 
-Alpha.7 makes `breditor/format-strong` a built-in tracked no-input declaration
+`0.2.0-alpha.7` makes `breditor/format-strong` a built-in tracked no-input declaration
 with the priority-zero blocking `breditor/format-strong-binding` to
 `breditor/toggle-strong`; both base and extension profiles contain it and Bold
 state observes it as a routed source. The supported browser consumes that
 route synchronously but redacts binding/action/fallthrough provenance from its
 public result. Its immediate-only queue lease rejects composition, active
 delivery/read, and reentrant calls as busy rather than retaining stale command
-authority. Alpha.3 adds strict typed public intent JSON on the explicitly
-selected Bootstrap V2 path; typed toolbar controls, custom keymaps, and custom
-`beforeinput` rules remain absent.
+authority. `0.3.0-alpha.3` adds strict typed public intent JSON on the
+explicitly selected Bootstrap V2 path. `0.3.0-alpha.7` adds the separately
+specified browser-only closed URL-string/Boolean form; custom keymaps, custom
+`beforeinput` rules, arbitrary widgets, and a Rust UI protocol remain absent.
 
 `CheckpointedEditorEngine` seals its wire generation at construction. The
 legacy `try_new` path encodes Session Checkpoint V1 and therefore admits only
@@ -2054,7 +2069,8 @@ The general native router still requires one trusted host compositor to own
 shared intent declarations and allocate distinct priorities. Two independent
 native registrations cannot each package the same declaration, even when
 identical, and equal priorities reject the whole router. Alpha.4's sealed
-compiled-profile path is narrower: every manifest-owned toggle receives a
+compiled-profile path is narrower: every admitted manifest-owned toggle
+declaration receives a
 unique no-input intent and exactly one priority-0 blocking binding, so it has no
 shared declaration, priority negotiation, or fallback candidate. A future
 broader plugin path needs explicit ownership/coalescing plus dependency,
@@ -2176,7 +2192,7 @@ value and 1 MiB UTF-8 payload budget. Construction totals every fixed input
 before descriptor validation, so an over-limit error reports the complete
 catalog aggregate rather than the prefix that first crossed the limit.
 
-For each alpha.4 manifest-owned toggle, profile compilation adds one routed
+For each admitted alpha.4 manifest-owned toggle declaration, profile compilation adds one routed
 catalog entry under the declared `ActionStateId`. Its source is the declared
 no-input `IntentId`; the single priority-0 blocking binding preserves the
 generic toggle action's tracked inactive/active/mixed indicator even when the

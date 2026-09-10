@@ -15,6 +15,21 @@ async function openEditor(page: Page): Promise<void> {
     .toHaveAttribute("contenteditable", "true");
 }
 
+async function mountReferenceFormatting(
+  page: Page,
+  toolbarInShadow = false,
+): Promise<Readonly<{
+  probeId: string;
+  editorLabel: string;
+  text: string;
+}>> {
+  return page.evaluate(async (useShadow) => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("browser harness is unavailable");
+    return harness.mountReferenceFormatting(useShadow);
+  }, toolbarInShadow);
+}
+
 async function select(page: Page, anchor: number, focus: number): Promise<void> {
   await page.evaluate(
     ([anchorOffset, focusOffset]) =>
@@ -121,6 +136,12 @@ async function expectPublicExports(
 
 test.beforeEach(async ({ page }) => {
   await openEditor(page);
+});
+
+test.afterEach(async ({ page }) => {
+  await page.evaluate(() =>
+    window.__breditorHarness?.cleanupReferenceFormatting(),
+  );
 });
 
 test("Unicode insertion and scalar-safe backward deletion", async ({ page }) => {
@@ -548,6 +569,269 @@ test("toolbar keyboard navigation, names, focus, and pressed state are accessibl
   await expect(bold).toHaveAttribute("aria-pressed", "true");
   await expect(bold).toBeFocused();
   await expectVisibleOutline(bold);
+});
+
+test("the native Link form preserves selection, formatting, focus, and responsive accessibility", async ({
+  page,
+  browserName,
+}) => {
+  const mounted = await mountReferenceFormatting(page);
+  const rootSelector =
+    `[data-breditor-reference-formatting-probe="${mounted.probeId}"]`;
+  const root = page.locator(rootSelector);
+  const editor = root.getByRole("textbox", { name: mounted.editorLabel });
+  const toolbar = root.getByRole("toolbar", { name: "Editor controls" });
+  const bold = toolbar.getByRole("button", { name: "Bold", exact: true });
+  const highlight = toolbar.getByRole("button", {
+    name: "Highlight",
+    exact: true,
+  });
+  const link = toolbar.getByRole("button", { name: "Link", exact: true });
+  const undo = toolbar.getByRole("button", { name: "Undo", exact: true });
+  const redo = toolbar.getByRole("button", { name: "Redo", exact: true });
+  const panel = root.locator("form[data-breditor-toolbar-panel]");
+
+  await expect(editor).toHaveText(mounted.text);
+  await expect(root.locator("mark.breditor-reference-highlight")).toHaveText(
+    mounted.text,
+  );
+  await expect(root.locator("a.breditor-link")).toHaveCount(0);
+  await expect(toolbar.locator('button[tabindex="0"]')).toHaveCount(1);
+  await expect(bold).toHaveAttribute("tabindex", "0");
+  await expect(link).toHaveAttribute("tabindex", "-1");
+  await expect(link).toHaveAttribute(
+    "data-breditor-control-kind",
+    "inline-format-form",
+  );
+  await expect(link).toHaveAttribute("aria-expanded", "false");
+  await expect(panel).toBeHidden();
+  await expect(toolbar.locator("[data-breditor-toolbar-panel]")).toHaveCount(0);
+  expect(
+    await panel.evaluate((element) => ({
+      parentIsToolbarHost:
+        element.parentElement?.hasAttribute(
+          "data-breditor-reference-formatting-toolbar",
+        ) ?? false,
+      previousSiblingRole: element.previousElementSibling?.getAttribute("role"),
+    })),
+  ).toEqual({ parentIsToolbarHost: true, previousSiblingRole: "toolbar" });
+
+  const closedAxe = await new AxeBuilder({ page }).include(rootSelector).analyze();
+  expect(closedAxe.violations).toEqual([]);
+
+  // The mount helper leaves the editor selection live. Native reverse Tab and
+  // roving ArrowRight navigation reach the composite Link launcher.
+  await expect(editor).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(bold).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(highlight).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(link).toBeFocused();
+  await expect(link).toHaveAttribute("tabindex", "0");
+  await expect(bold).toHaveAttribute("tabindex", "-1");
+
+  await page.keyboard.press("Enter");
+  await expect(link).toHaveAttribute("aria-expanded", "true");
+  await expect(panel).toBeVisible();
+  const url = panel.getByLabel("Link URL", { exact: true });
+  const newWindow = panel.getByLabel("Open in new window", { exact: true });
+  const apply = panel.getByRole("button", { name: "Apply Link", exact: true });
+  const remove = panel.getByRole("button", { name: "Remove Link", exact: true });
+  await expect(url).toBeFocused();
+  await expect(url).toHaveAttribute("required", "");
+  await expect(url).toHaveAttribute("data-breditor-property", /.+/u);
+
+  const openAxe = await new AxeBuilder({ page }).include(rootSelector).analyze();
+  expect(openAxe.violations).toEqual([]);
+
+  const keyOutcomes = await url.evaluate((element) =>
+    ["ArrowLeft", "ArrowRight", "Home", "End"].map((key) => {
+      const event = new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      const dispatched = element.dispatchEvent(event);
+      return {
+        key,
+        defaultPrevented: event.defaultPrevented,
+        dispatched,
+        retainedFocus: document.activeElement === element,
+      };
+    }),
+  );
+  expect(keyOutcomes).toEqual(
+    ["ArrowLeft", "ArrowRight", "Home", "End"].map((key) => ({
+      key,
+      defaultPrevented: false,
+      dispatched: true,
+      retainedFocus: true,
+    })),
+  );
+
+  const href = "https://example.test/cross-browser?q=safe";
+  await url.fill(href);
+  for (const key of ["Home", "ArrowRight", "End"]) {
+    await page.keyboard.press(key);
+    await expect(url).toBeFocused();
+    await expect(url).toHaveValue(href);
+  }
+
+  // The browser's native sequential focus order owns the panel: URL,
+  // checkbox, then the first enabled form action. WebKit models Safari's
+  // default macOS preference, where Option+Tab includes every native control.
+  const panelTab = browserName === "webkit" ? "Alt+Tab" : "Tab";
+  await page.keyboard.press(panelTab);
+  await expect(newWindow).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(newWindow).toBeChecked();
+  await page.keyboard.press(panelTab);
+  await expect(apply).toBeFocused();
+  const pageUrl = page.url();
+  await url.focus();
+  await apply.click();
+  expect(page.url()).toBe(pageUrl);
+
+  const safeLink = root.locator("a.breditor-link");
+  await expect(safeLink).toHaveAttribute("href", href);
+  await expect(safeLink).toHaveAttribute("target", "_blank");
+  await expect(safeLink).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(
+    safeLink.locator("mark.breditor-reference-highlight"),
+  ).toHaveText(mounted.text);
+  await expect(panel.locator("[data-breditor-toolbar-form-feedback]")).toHaveText(
+    "Link applied.",
+  );
+  await expect(url).toBeFocused();
+
+  await expect(undo).toHaveAttribute("aria-disabled", "false");
+  await undo.click();
+  await expect(safeLink).toHaveCount(0);
+  await expect(url).toBeFocused();
+  await expect(root.locator("mark.breditor-reference-highlight")).toHaveText(
+    mounted.text,
+  );
+  await expect(redo).toHaveAttribute("aria-disabled", "false");
+  await redo.click();
+  await expect(safeLink).toHaveAttribute("href", href);
+  await expect(url).toBeFocused();
+  await expect(remove).toBeEnabled();
+  await url.focus();
+  await remove.click();
+  await expect(safeLink).toHaveCount(0);
+  await expect(root.locator("mark.breditor-reference-highlight")).toHaveText(
+    mounted.text,
+  );
+  await expect(url).toBeFocused();
+
+  await url.fill("https://draft.example.test/private");
+  await newWindow.check();
+  await url.focus();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(link).toHaveAttribute("aria-expanded", "false");
+  await expect(link).toBeFocused();
+  await expect(url).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
+
+  await page.keyboard.press("Enter");
+  await expect(panel).toBeVisible();
+  await expect(url).toBeFocused();
+  await expect(url).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
+
+  await page.setViewportSize({ width: 320, height: 800 });
+  const panelLayout = await panel.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      left: bounds.left,
+      right: bounds.right,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      viewportWidth: window.innerWidth,
+    };
+  });
+  expect(panelLayout.left).toBeGreaterThanOrEqual(0);
+  expect(panelLayout.right).toBeLessThanOrEqual(panelLayout.viewportWidth);
+  expect(panelLayout.scrollWidth).toBeLessThanOrEqual(panelLayout.clientWidth);
+
+  await page.keyboard.press("Escape");
+  await expect(link).toBeFocused();
+  const firstPanelId = await panel.getAttribute("id");
+  expect(firstPanelId).toMatch(/^breditor-toolbar-panel-[0-9]+$/u);
+  expect(await link.getAttribute("aria-controls")).toBe(firstPanelId);
+
+  const second = await mountReferenceFormatting(page);
+  const secondRoot = page.locator(
+    `[data-breditor-reference-formatting-probe="${second.probeId}"]`,
+  );
+  const secondLink = secondRoot.getByRole("button", {
+    name: "Link",
+    exact: true,
+  });
+  const secondPanel = secondRoot.locator("form[data-breditor-toolbar-panel]");
+  const secondPanelId = await secondPanel.getAttribute("id");
+  expect(secondPanelId).toMatch(/^breditor-toolbar-panel-[0-9]+$/u);
+  expect(secondPanelId).not.toBe(firstPanelId);
+  expect(await secondLink.getAttribute("aria-controls")).toBe(secondPanelId);
+
+  await page.evaluate((probeId) => {
+    window.__breditorHarness?.cleanupReferenceFormatting(probeId);
+  }, second.probeId);
+  await expect(secondRoot).toHaveCount(0);
+  await expect(root).toHaveCount(1);
+});
+
+test("the native Link toolbar works from an open ShadowRoot without browser URL admission", async ({
+  page,
+}) => {
+  const mounted = await mountReferenceFormatting(page, true);
+  const root = page.locator(
+    `[data-breditor-reference-formatting-probe="${mounted.probeId}"]`,
+  );
+  const editor = root.getByRole("textbox", { name: mounted.editorLabel });
+  const toolbar = root.getByRole("toolbar", { name: "Editor controls" });
+  const link = toolbar.getByRole("button", { name: "Link", exact: true });
+  await link.focus();
+  await page.keyboard.press("Enter");
+
+  const panel = root.locator("form[data-breditor-toolbar-panel]");
+  const url = panel.getByLabel("Link URL", { exact: true });
+  const apply = panel.getByRole("button", { name: "Apply Link", exact: true });
+  const remove = panel.getByRole("button", { name: "Remove Link", exact: true });
+  await expect(panel).toBeVisible();
+  await expect(url).toBeFocused();
+  expect(
+    await url.evaluate((element) => {
+      const rootNode = element.getRootNode();
+      return rootNode instanceof ShadowRoot && rootNode.activeElement === element;
+    }),
+  ).toBe(true);
+
+  await url.fill("not a url");
+  const pageUrl = page.url();
+  await apply.click();
+  expect(page.url()).toBe(pageUrl);
+  await expect(
+    panel.locator("[data-breditor-toolbar-form-feedback]"),
+  ).toHaveText("Link applied.");
+  await expect(url).toBeFocused();
+  const inertLink = editor.locator("a.breditor-link");
+  await expect(inertLink).toHaveCount(1);
+  await expect(inertLink).not.toHaveAttribute("href", /.+/u);
+  await expect(inertLink).toHaveText(mounted.text);
+
+  await remove.click();
+  await expect(editor.locator("a.breditor-link")).toHaveCount(0);
+  await url.fill("https://example.test/shadow-toolbar");
+  await page.keyboard.press("Enter");
+  await expect(editor.locator("a.breditor-link")).toHaveAttribute(
+    "href",
+    "https://example.test/shadow-toolbar",
+  );
+  await expect(editor).toHaveAttribute("contenteditable", "true");
+  await expect(url).toBeFocused();
 });
 
 test("the packaged reference Highlight profile survives the complete browser path", async ({

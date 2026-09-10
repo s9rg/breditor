@@ -8,6 +8,7 @@ import {
 } from "@breditor/browser";
 
 import { REFERENCE_FORMATTING_IDS } from "./formatting_ids.js";
+import { MAX_REFERENCE_LINK_HREF_UTF8 } from "./link_input.js";
 
 /**
  * Complete callback-free renderer for the combined Highlight + Link profile.
@@ -47,11 +48,11 @@ export const REFERENCE_FORMATTING_RENDER_MANIFEST: InlineFormatRenderManifest =
   });
 
 /**
- * Native-button toolbar for commands that need no caller-supplied values.
+ * Complete runtime-owned toolbar for the combined formatting profile.
  *
- * Link set/remove is intentionally driven by application UI through
- * `executeIntentJson` and the helpers from `link_input`; a static toolbar
- * declaration cannot safely capture a user-entered URL.
+ * The Link declaration is callback-free presentation data. The browser runtime
+ * owns its draft values and submits them through the descriptor-correlated
+ * typed intent; no URL or executable behavior is captured by this manifest.
  */
 export const REFERENCE_FORMATTING_TOOLBAR_MANIFEST: ToolbarManifest =
   createToolbarManifest({
@@ -78,6 +79,35 @@ export const REFERENCE_FORMATTING_TOOLBAR_MANIFEST: ToolbarManifest =
           kind: "intent",
           intentId: REFERENCE_FORMATTING_IDS.highlightIntentId,
         },
+      },
+      {
+        kind: "inlineFormatForm",
+        stateId: REFERENCE_FORMATTING_IDS.linkPresenceStateId,
+        label: "Link",
+        group: "inline",
+        formatKind: REFERENCE_FORMATTING_IDS.linkFormatKind,
+        intentId: REFERENCE_FORMATTING_IDS.linkIntentId,
+        fields: [
+          {
+            kind: "string",
+            propertyName: REFERENCE_FORMATTING_IDS.linkHrefProperty,
+            label: "Link URL",
+            presentation: "url",
+            autocomplete: "url",
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: MAX_REFERENCE_LINK_HREF_UTF8,
+          },
+          {
+            kind: "boolean",
+            propertyName:
+              REFERENCE_FORMATTING_IDS.linkOpenInNewWindowProperty,
+            label: "Open in new window",
+            defaultValue: false,
+          },
+        ],
+        applyLabel: "Apply Link",
+        removeLabel: "Remove Link",
+        closeLabel: "Close",
       },
       {
         kind: "button",

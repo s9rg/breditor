@@ -1,0 +1,880 @@
+import {
+  createToolbarInlineFormatFormRemoveInputJson,
+  createToolbarInlineFormatFormSetInputJson,
+} from "./toolbar_inline_format_form_input.js";
+import type {
+  ToolbarInlineFormatFormDeclaration,
+  ToolbarInlineFormatFormFieldDeclaration,
+} from "./toolbar_manifest.js";
+import {
+  nativeAddEventListener,
+  nativeAppendChild,
+  nativeAttributeNames,
+  nativeChildNodes,
+  nativeCreateHtmlElement,
+  nativeFocusHtmlElement,
+  nativeGetAttribute,
+  nativeHasAttribute,
+  nativeHtmlHostFacts,
+  nativeInputChecked,
+  nativeInputIndeterminate,
+  nativeInputValue,
+  nativeNodeType,
+  nativeNodeValue,
+  nativeParentElement,
+  nativeParentNode,
+  nativeRemoveAttribute,
+  nativeRemoveElement,
+  nativeRemoveEventListener,
+  nativeReplaceChildren,
+  nativeSetAttribute,
+  nativeSetInputChecked,
+  nativeSetInputIndeterminate,
+  nativeSetInputValue,
+  nativeTreeRoot,
+  nativeTreeRootActiveElement,
+  nativeTreeRootGetElementById,
+} from "./html_host.js";
+import {
+  preventDomEventDefault,
+  readDomEventBase,
+  readDomKeyboardEvent,
+  readDomMouseEvent,
+} from "./dom_event_intrinsics.js";
+
+const PREVENT_SCROLL_FOCUS_OPTIONS: FocusOptions = Object.freeze({
+  preventScroll: true,
+});
+const INLINE_FORMAT_UNCHANGED = "breditor/inline-format-unchanged";
+let nextPanelIdentity = 1;
+
+export interface ToolbarInlineFormatFormActionState {
+  readonly availability:
+    "enabled" | "disabled" | "blocked" | "unhandled" | "faulted";
+  readonly activation:
+    "stateless" | "inactive" | "active" | "mixed" | undefined;
+  readonly reasonCode: string | undefined;
+}
+
+export type ToolbarInlineFormatFormDispatch = (
+  operation: "set" | "remove",
+  inputJson: string,
+) => "completed" | "rejected" | "failed";
+
+interface StringFieldRecord {
+  readonly declaration: Extract<
+    ToolbarInlineFormatFormFieldDeclaration,
+    { readonly kind: "string" }
+  >;
+  readonly label: HTMLLabelElement;
+  readonly labelText: HTMLSpanElement;
+  readonly input: HTMLInputElement;
+  readonly onInput: (event: Event) => void;
+  readonly onChange: (event: Event) => void;
+}
+
+interface BooleanFieldRecord {
+  readonly declaration: Extract<
+    ToolbarInlineFormatFormFieldDeclaration,
+    { readonly kind: "boolean" }
+  >;
+  readonly label: HTMLLabelElement;
+  readonly labelText: HTMLSpanElement;
+  readonly input: HTMLInputElement;
+  readonly onInput: (event: Event) => void;
+  readonly onChange: (event: Event) => void;
+}
+
+type FieldRecord = StringFieldRecord | BooleanFieldRecord;
+
+/**
+ * Internal native form owned by one `inlineFormatForm` toolbar launcher.
+ *
+ * The class is deliberately presentation-only: it builds the existing typed
+ * input JSON and delegates the resulting semantic intent to the toolbar. It
+ * never inspects editor DOM, document state, or current format property values.
+ *
+ * @internal
+ */
+export class BreditorToolbarInlineFormatForm {
+  readonly #ownerDocument: Document;
+  readonly #treeRoot: Document | ShadowRoot;
+  readonly #host: HTMLElement;
+  readonly #launcher: HTMLButtonElement;
+  readonly #declaration: ToolbarInlineFormatFormDeclaration;
+  readonly #dispatch: ToolbarInlineFormatFormDispatch;
+  readonly #guard: (callback: () => void) => void;
+  readonly #beforeOpen: (form: BreditorToolbarInlineFormatForm) => void;
+  readonly #panel: HTMLFormElement;
+  readonly #panelId: string;
+  readonly #fields: FieldRecord[] = [];
+  readonly #actions: HTMLDivElement;
+  readonly #apply: HTMLButtonElement;
+  readonly #remove: HTMLButtonElement;
+  readonly #close: HTMLButtonElement;
+  readonly #selectionState: HTMLParagraphElement;
+  readonly #feedback: HTMLParagraphElement;
+  readonly #onSubmit: (event: SubmitEvent) => void;
+  readonly #onKeyDown: (event: KeyboardEvent) => void;
+  readonly #onRemove: (event: MouseEvent) => void;
+  readonly #onClose: (event: MouseEvent) => void;
+  readonly #onActionPointerDown: (event: PointerEvent) => void;
+  readonly #onActionMouseDown: (event: MouseEvent) => void;
+  readonly #onCompositionStart: (event: CompositionEvent) => void;
+  readonly #onCompositionEnd: (event: CompositionEvent) => void;
+  #formReady = false;
+  #removeReady = false;
+  #setInputJson: string | undefined;
+  #open = false;
+  #composing = false;
+  #disposed = false;
+  #selectionText: string;
+  #feedbackText = "";
+
+  constructor(
+    ownerDocument: Document,
+    host: HTMLElement,
+    launcher: HTMLButtonElement,
+    declaration: ToolbarInlineFormatFormDeclaration,
+    dispatch: ToolbarInlineFormatFormDispatch,
+    guard: (callback: () => void) => void,
+    beforeOpen: (form: BreditorToolbarInlineFormatForm) => void,
+  ) {
+    this.#ownerDocument = ownerDocument;
+    this.#treeRoot = nativeTreeRoot(host);
+    this.#host = host;
+    this.#launcher = launcher;
+    this.#declaration = declaration;
+    this.#dispatch = dispatch;
+    this.#guard = guard;
+    this.#beforeOpen = beforeOpen;
+    this.#selectionText = `${declaration.label} is unavailable.`;
+
+    const panel = nativeCreateHtmlElement(ownerDocument, "form");
+    const panelId = nextAvailablePanelId(this.#treeRoot);
+    nativeSetAttribute(panel, "id", panelId);
+    nativeSetAttribute(panel, "data-breditor-toolbar-panel", "");
+    nativeSetAttribute(panel, "aria-label", declaration.label);
+    nativeSetAttribute(panel, "novalidate", "");
+    nativeSetAttribute(panel, "hidden", "");
+    nativeSetAttribute(launcher, "aria-controls", panelId);
+    nativeSetAttribute(launcher, "aria-expanded", "false");
+    nativeSetAttribute(
+      launcher,
+      "data-breditor-control-kind",
+      "inline-format-form",
+    );
+    this.#panel = panel;
+    this.#panelId = panelId;
+
+    for (const field of declaration.fields) {
+      this.#fields.push(this.#installField(field));
+    }
+
+    const actions = nativeCreateHtmlElement(ownerDocument, "div");
+    nativeSetAttribute(actions, "data-breditor-toolbar-form-actions", "");
+    this.#actions = actions;
+    this.#apply = this.#actionButton("submit", "apply", declaration.applyLabel);
+    this.#remove = this.#actionButton(
+      "button",
+      "remove",
+      declaration.removeLabel,
+    );
+    this.#close = this.#actionButton("button", "close", declaration.closeLabel);
+    nativeAppendChild(actions, this.#apply);
+    nativeAppendChild(actions, this.#remove);
+    nativeAppendChild(actions, this.#close);
+    nativeAppendChild(panel, actions);
+
+    const selectionState = nativeCreateHtmlElement(ownerDocument, "p");
+    nativeSetAttribute(selectionState, "data-breditor-toolbar-form-state", "");
+    nativeReplaceChildren(selectionState, this.#selectionText);
+    this.#selectionState = selectionState;
+    nativeAppendChild(panel, selectionState);
+
+    const feedback = nativeCreateHtmlElement(ownerDocument, "p");
+    nativeSetAttribute(feedback, "data-breditor-toolbar-form-feedback", "");
+    nativeSetAttribute(feedback, "role", "status");
+    nativeSetAttribute(feedback, "aria-live", "polite");
+    nativeSetAttribute(feedback, "aria-atomic", "true");
+    this.#feedback = feedback;
+    nativeAppendChild(panel, feedback);
+
+    this.#onSubmit = (event) => this.#guard(() => this.#handleSubmit(event));
+    this.#onKeyDown = (event) => this.#guard(() => this.#handleKeyDown(event));
+    this.#onRemove = (event) => this.#guard(() => this.#handleRemove(event));
+    this.#onClose = (event) => this.#guard(() => this.#handleClose(event));
+    this.#onActionPointerDown = (event) =>
+      this.#guard(() => this.#handleActionPress(event, "pointerdown"));
+    this.#onActionMouseDown = (event) =>
+      this.#guard(() => this.#handleActionPress(event, "mousedown"));
+    this.#onCompositionStart = (event) =>
+      this.#guard(() => this.#handleComposition(event, true));
+    this.#onCompositionEnd = (event) =>
+      this.#guard(() => this.#handleComposition(event, false));
+    nativeAddEventListener(panel, "submit", this.#onSubmit);
+    nativeAddEventListener(panel, "keydown", this.#onKeyDown);
+    nativeAddEventListener(panel, "compositionstart", this.#onCompositionStart);
+    nativeAddEventListener(panel, "compositionend", this.#onCompositionEnd);
+    nativeAddEventListener(this.#remove, "click", this.#onRemove);
+    nativeAddEventListener(this.#close, "click", this.#onClose);
+    for (const action of [this.#apply, this.#remove, this.#close]) {
+      nativeAddEventListener(action, "pointerdown", this.#onActionPointerDown);
+      nativeAddEventListener(action, "mousedown", this.#onActionMouseDown);
+    }
+    nativeAppendChild(host, panel);
+    this.#refreshDraft();
+  }
+
+  get panel(): HTMLFormElement {
+    return this.#panel;
+  }
+
+  get isOpen(): boolean {
+    return this.#open;
+  }
+
+  get formReady(): boolean {
+    return this.#formReady;
+  }
+
+  get removeReady(): boolean {
+    return this.#removeReady;
+  }
+
+  /** Captures one exact currently focused control owned by this open form. @internal */
+  captureFocusedControl(): HTMLElement | undefined {
+    if (this.#disposed || !this.#open) return undefined;
+    this.#requireCanonicalDom();
+    const active = nativeTreeRootActiveElement(this.#treeRoot);
+    const facts = nativeHtmlHostFacts(active);
+    return facts?.ownerDocument === this.#ownerDocument &&
+      this.#ownsControl(facts.element)
+      ? facts.element
+      : undefined;
+  }
+
+  /** Restores a previously captured control when this form is still open. @internal */
+  restoreFocusedControl(control: HTMLElement): void {
+    if (this.#disposed || !this.#open) return;
+    this.#requireCanonicalDom();
+    if (!this.#ownsControl(control)) {
+      throw new TypeError("toolbar form focus target is invalid");
+    }
+    const target = nativeHasAttribute(control, "disabled")
+      ? this.#fields[0]?.input
+      : control;
+    if (target === undefined) {
+      throw new TypeError("toolbar form focus fallback is unavailable");
+    }
+    nativeFocusHtmlElement(target, PREVENT_SCROLL_FOCUS_OPTIONS);
+    if (nativeTreeRootActiveElement(this.#treeRoot) !== target) {
+      throw new TypeError("toolbar form focus could not be restored");
+    }
+  }
+
+  toggle(): void {
+    if (this.#disposed || !this.#formReady) return;
+    this.#requireCanonicalDom();
+    if (this.#open) {
+      this.close(true, true);
+      return;
+    }
+    this.#beforeOpen(this);
+    if (this.#disposed || !this.#formReady) return;
+    this.#open = true;
+    nativeRemoveAttribute(this.#panel, "hidden");
+    nativeSetAttribute(this.#launcher, "aria-expanded", "true");
+    this.#setFeedback("");
+    const first = this.#fields[0]?.input;
+    if (first !== undefined) {
+      nativeFocusHtmlElement(first, PREVENT_SCROLL_FOCUS_OPTIONS);
+      if (nativeTreeRootActiveElement(this.#treeRoot) !== first) {
+        throw new TypeError("toolbar form focus could not be established");
+      }
+    }
+  }
+
+  close(restoreLauncherFocus: boolean, clearDraft: boolean): void {
+    if (this.#disposed) return;
+    this.#open = false;
+    this.#composing = false;
+    nativeSetAttribute(this.#panel, "hidden", "");
+    nativeSetAttribute(this.#launcher, "aria-expanded", "false");
+    if (clearDraft) this.#clearDraft();
+    this.#setFeedback("");
+    if (restoreLauncherFocus) {
+      nativeFocusHtmlElement(this.#launcher, PREVENT_SCROLL_FOCUS_OPTIONS);
+      if (nativeTreeRootActiveElement(this.#treeRoot) !== this.#launcher) {
+        throw new TypeError("toolbar launcher focus could not be restored");
+      }
+    }
+  }
+
+  renderState(state: ToolbarInlineFormatFormActionState | undefined): void {
+    if (this.#disposed) return;
+    const focusedControl = this.captureFocusedControl();
+    const activation = state?.activation;
+    this.#formReady =
+      (state?.availability === "enabled" &&
+        (activation === "inactive" ||
+          activation === "active" ||
+          activation === "mixed")) ||
+      ((state?.availability === "disabled" ||
+        state?.availability === "blocked") &&
+        activation === "inactive" &&
+        state.reasonCode === INLINE_FORMAT_UNCHANGED);
+    this.#removeReady =
+      state?.availability === "enabled" &&
+      (activation === "active" || activation === "mixed");
+    nativeSetAttribute(
+      this.#launcher,
+      "data-breditor-activation",
+      activation === "inactive" ||
+        activation === "active" ||
+        activation === "mixed"
+        ? activation
+        : "unavailable",
+    );
+    if (activation === "active") {
+      this.#selectionText = `${this.#declaration.label} is active.`;
+    } else if (activation === "mixed") {
+      this.#selectionText = `${this.#declaration.label} is mixed.`;
+    } else if (activation === "inactive" && this.#formReady) {
+      this.#selectionText = `${this.#declaration.label} is not active.`;
+    } else {
+      this.#selectionText = `${this.#declaration.label} is unavailable.`;
+    }
+    nativeReplaceChildren(this.#selectionState, this.#selectionText);
+    this.#renderButtons();
+    if (
+      focusedControl !== undefined &&
+      nativeHasAttribute(focusedControl, "disabled")
+    ) {
+      this.restoreFocusedControl(focusedControl);
+    }
+  }
+
+  validateCanonicalDom(toolbarRoot: HTMLElement): boolean {
+    if (this.#disposed) return false;
+    try {
+      const panelFacts = nativeHtmlHostFacts(this.#panel);
+      const panelChildren = nativeChildNodes(this.#panel);
+      const expectedChildren = this.#fields.length + 3;
+      return (
+        panelFacts !== undefined &&
+        panelFacts.isConnected &&
+        panelFacts.ownerDocument === this.#ownerDocument &&
+        panelFacts.tagName === "FORM" &&
+        nativeParentElement(this.#panel) === this.#host &&
+        nativeParentElement(this.#launcher) === toolbarRoot &&
+        nativeTreeRoot(this.#panel) === this.#treeRoot &&
+        nativeTreeRoot(this.#launcher) === this.#treeRoot &&
+        nativeGetAttribute(this.#panel, "id") === this.#panelId &&
+        nativeTreeRootGetElementById(this.#treeRoot, this.#panelId) ===
+          this.#panel &&
+        nativeGetAttribute(this.#launcher, "aria-controls") === this.#panelId &&
+        nativeGetAttribute(this.#launcher, "aria-expanded") ===
+          (this.#open ? "true" : "false") &&
+        nativeGetAttribute(this.#launcher, "data-breditor-control-kind") ===
+          "inline-format-form" &&
+        nativeAttributeNames(this.#panel).length === (this.#open ? 4 : 5) &&
+        nativeHasAttribute(this.#panel, "data-breditor-toolbar-panel") &&
+        nativeGetAttribute(this.#panel, "data-breditor-toolbar-panel") === "" &&
+        nativeGetAttribute(this.#panel, "aria-label") ===
+          this.#declaration.label &&
+        nativeGetAttribute(this.#panel, "novalidate") === "" &&
+        nativeHasAttribute(this.#panel, "hidden") === !this.#open &&
+        panelChildren.length === expectedChildren &&
+        this.#fields.every(
+          (record, index) =>
+            panelChildren[index] === record.label && this.#validField(record),
+        ) &&
+        panelChildren[this.#fields.length] === this.#actions &&
+        panelChildren[this.#fields.length + 1] === this.#selectionState &&
+        panelChildren[this.#fields.length + 2] === this.#feedback &&
+        this.#validActions() &&
+        this.#validTextRegion(
+          this.#selectionState,
+          "data-breditor-toolbar-form-state",
+          this.#selectionText,
+          false,
+        ) &&
+        this.#validTextRegion(
+          this.#feedback,
+          "data-breditor-toolbar-form-feedback",
+          this.#feedbackText,
+          true,
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  dispose(): void {
+    if (this.#disposed) return;
+    bestEffort(() => this.#clearDraft());
+    this.#disposed = true;
+    for (const record of this.#fields) {
+      bestEffort(() =>
+        nativeRemoveEventListener(record.input, "input", record.onInput),
+      );
+      bestEffort(() =>
+        nativeRemoveEventListener(record.input, "change", record.onChange),
+      );
+    }
+    bestEffort(() =>
+      nativeRemoveEventListener(this.#panel, "submit", this.#onSubmit),
+    );
+    bestEffort(() =>
+      nativeRemoveEventListener(this.#panel, "keydown", this.#onKeyDown),
+    );
+    bestEffort(() =>
+      nativeRemoveEventListener(
+        this.#panel,
+        "compositionstart",
+        this.#onCompositionStart,
+      ),
+    );
+    bestEffort(() =>
+      nativeRemoveEventListener(
+        this.#panel,
+        "compositionend",
+        this.#onCompositionEnd,
+      ),
+    );
+    bestEffort(() =>
+      nativeRemoveEventListener(this.#remove, "click", this.#onRemove),
+    );
+    bestEffort(() =>
+      nativeRemoveEventListener(this.#close, "click", this.#onClose),
+    );
+    for (const action of [this.#apply, this.#remove, this.#close]) {
+      bestEffort(() =>
+        nativeRemoveEventListener(
+          action,
+          "pointerdown",
+          this.#onActionPointerDown,
+        ),
+      );
+      bestEffort(() =>
+        nativeRemoveEventListener(action, "mousedown", this.#onActionMouseDown),
+      );
+    }
+    bestEffort(() => nativeRemoveElement(this.#panel));
+  }
+
+  #installField(field: ToolbarInlineFormatFormFieldDeclaration): FieldRecord {
+    const label = nativeCreateHtmlElement(this.#ownerDocument, "label");
+    nativeSetAttribute(label, "data-breditor-toolbar-field", field.kind);
+    const labelText = nativeCreateHtmlElement(this.#ownerDocument, "span");
+    nativeReplaceChildren(labelText, field.label);
+    const input = nativeCreateHtmlElement(this.#ownerDocument, "input");
+    nativeSetAttribute(input, "name", field.propertyName);
+    nativeSetAttribute(input, "data-breditor-property", field.propertyName);
+    if (field.kind === "string") {
+      nativeSetAttribute(input, "type", "url");
+      nativeSetAttribute(input, "required", "");
+      nativeSetAttribute(input, "autocomplete", field.autocomplete);
+      if (field.placeholder !== undefined) {
+        nativeSetAttribute(input, "placeholder", field.placeholder);
+      }
+      nativeAppendChild(label, labelText);
+      nativeAppendChild(label, input);
+    } else {
+      nativeSetAttribute(input, "type", "checkbox");
+      nativeSetInputIndeterminate(input, false);
+      nativeAppendChild(label, input);
+      nativeAppendChild(label, labelText);
+    }
+    const onInput = (event: Event) =>
+      this.#guard(() => this.#handleDraftEvent(event, "input"));
+    const onChange = (event: Event) =>
+      this.#guard(() => this.#handleDraftEvent(event, "change"));
+    nativeAddEventListener(input, "input", onInput);
+    nativeAddEventListener(input, "change", onChange);
+    nativeAppendChild(this.#panel, label);
+    return {
+      declaration: field,
+      label,
+      labelText,
+      input,
+      onInput,
+      onChange,
+    } as FieldRecord;
+  }
+
+  #actionButton(
+    type: "submit" | "button",
+    action: "apply" | "remove" | "close",
+    label: string,
+  ): HTMLButtonElement {
+    const button = nativeCreateHtmlElement(this.#ownerDocument, "button");
+    nativeSetAttribute(button, "type", type);
+    nativeSetAttribute(button, "data-breditor-toolbar-form-action", action);
+    nativeSetAttribute(button, "aria-disabled", "false");
+    nativeReplaceChildren(button, label);
+    return button;
+  }
+
+  #handleDraftEvent(event: Event, expectedType: "input" | "change"): void {
+    const base = readDomEventBase(event);
+    if (
+      this.#disposed ||
+      base?.type !== expectedType ||
+      base.defaultPrevented ||
+      !this.#hasCanonicalDom()
+    ) {
+      throw new TypeError("toolbar form draft event is invalid");
+    }
+    this.#refreshDraft();
+    this.#setFeedback("");
+  }
+
+  #handleSubmit(event: SubmitEvent): void {
+    const base = readDomEventBase(event);
+    if (base?.type !== "submit" || base.defaultPrevented) {
+      throw new TypeError("toolbar form submission is invalid");
+    }
+    if (!preventDomEventDefault(event).ok) {
+      throw new TypeError("toolbar form submission could not be cancelled");
+    }
+    this.#requireCanonicalDom();
+    if (this.#disposed || this.#composing || !this.#open) return;
+    this.#refreshDraft();
+    const inputJson = this.#setInputJson;
+    if (!this.#formReady || inputJson === undefined) {
+      this.#setFeedback("Complete the required fields before applying.");
+      return;
+    }
+    this.#runDispatch("set", inputJson, `${this.#declaration.label} applied.`);
+  }
+
+  #handleActionPress(
+    event: PointerEvent | MouseEvent,
+    expectedType: "pointerdown" | "mousedown",
+  ): void {
+    const mouse = readDomMouseEvent(event);
+    if (
+      mouse?.base.type !== expectedType ||
+      mouse.button !== 0 ||
+      mouse.base.defaultPrevented
+    ) {
+      return;
+    }
+    this.#requireCanonicalDom();
+    if (!preventDomEventDefault(event).ok) {
+      throw new TypeError("toolbar form action focus could not be preserved");
+    }
+  }
+
+  #handleRemove(event: MouseEvent): void {
+    const mouse = readDomMouseEvent(event);
+    if (mouse?.base.type !== "click") {
+      throw new TypeError("toolbar form remove event is invalid");
+    }
+    if (mouse.base.defaultPrevented) return;
+    if (!preventDomEventDefault(event).ok) {
+      throw new TypeError("toolbar form remove event could not be cancelled");
+    }
+    this.#requireCanonicalDom();
+    if (this.#disposed || !this.#open || !this.#removeReady) return;
+    this.#runDispatch(
+      "remove",
+      createToolbarInlineFormatFormRemoveInputJson(),
+      `${this.#declaration.label} removed.`,
+    );
+  }
+
+  #handleClose(event: MouseEvent): void {
+    const mouse = readDomMouseEvent(event);
+    if (mouse?.base.type !== "click") {
+      throw new TypeError("toolbar form close event is invalid");
+    }
+    if (mouse.base.defaultPrevented) return;
+    if (!preventDomEventDefault(event).ok) {
+      throw new TypeError("toolbar form close event could not be cancelled");
+    }
+    this.#requireCanonicalDom();
+    this.close(true, true);
+  }
+
+  #handleKeyDown(event: KeyboardEvent): void {
+    const base = readDomEventBase(event);
+    const key = readDomKeyboardEvent(event);
+    if (
+      base?.type !== "keydown" ||
+      key === null ||
+      base.source !== key.source ||
+      base.defaultPrevented ||
+      this.#composing ||
+      key.isComposing ||
+      key.key !== "Escape" ||
+      key.altKey ||
+      key.ctrlKey ||
+      key.metaKey ||
+      key.shiftKey
+    ) {
+      return;
+    }
+    if (!preventDomEventDefault(event).ok) {
+      throw new TypeError("toolbar form Escape could not be cancelled");
+    }
+    this.#requireCanonicalDom();
+    this.close(true, true);
+  }
+
+  #handleComposition(event: CompositionEvent, active: boolean): void {
+    const base = readDomEventBase(event);
+    const expected = active ? "compositionstart" : "compositionend";
+    if (base?.type !== expected || base.defaultPrevented) {
+      throw new TypeError("toolbar form composition event is invalid");
+    }
+    this.#composing = active;
+    if (!active) this.#refreshDraft();
+  }
+
+  #runDispatch(
+    operation: "set" | "remove",
+    inputJson: string,
+    completedText: string,
+  ): void {
+    const restore = this.captureFocusedControl();
+    const status = this.#dispatch(operation, inputJson);
+    if (this.#disposed) return;
+    if (status === "failed") {
+      throw new TypeError("toolbar form dispatch failed");
+    }
+    if (status === "rejected") {
+      const outcome = operation === "set" ? "applied" : "removed";
+      this.#setFeedback(
+        `${this.#declaration.label} could not be ${outcome}. Check the fields and selection, then try again.`,
+      );
+    } else {
+      this.#clearDraft();
+      this.#setFeedback(completedText);
+    }
+    if (restore !== undefined) this.restoreFocusedControl(restore);
+  }
+
+  #refreshDraft(): void {
+    const values: Record<string, string | boolean> = Object.create(
+      null,
+    ) as Record<string, string | boolean>;
+    for (const record of this.#fields) {
+      values[record.declaration.propertyName] =
+        record.declaration.kind === "string"
+          ? nativeInputValue(record.input)
+          : nativeInputChecked(record.input);
+    }
+    try {
+      this.#setInputJson = createToolbarInlineFormatFormSetInputJson(
+        this.#declaration,
+        values,
+      );
+    } catch {
+      this.#setInputJson = undefined;
+    }
+    this.#renderButtons();
+  }
+
+  #renderButtons(): void {
+    const applyReady = this.#formReady && this.#setInputJson !== undefined;
+    setButtonDisabled(this.#apply, !applyReady);
+    setButtonDisabled(this.#remove, !this.#removeReady);
+  }
+
+  #clearDraft(): void {
+    for (const record of this.#fields) {
+      if (record.declaration.kind === "string") {
+        nativeSetInputValue(record.input, "");
+      } else {
+        nativeSetInputChecked(record.input, record.declaration.defaultValue);
+        nativeSetInputIndeterminate(record.input, false);
+      }
+    }
+    this.#refreshDraft();
+  }
+
+  #setFeedback(value: string): void {
+    this.#feedbackText = value;
+    if (value.length === 0) nativeReplaceChildren(this.#feedback);
+    else nativeReplaceChildren(this.#feedback, value);
+  }
+
+  #hasCanonicalDom(): boolean {
+    const root = nativeParentElement(this.#launcher);
+    return root !== null && this.validateCanonicalDom(root);
+  }
+
+  #requireCanonicalDom(): void {
+    if (!this.#hasCanonicalDom()) {
+      throw new TypeError("toolbar inline-format form DOM is invalid");
+    }
+  }
+
+  #validField(record: FieldRecord): boolean {
+    const labelFacts = nativeHtmlHostFacts(record.label);
+    const labelTextFacts = nativeHtmlHostFacts(record.labelText);
+    const inputFacts = nativeHtmlHostFacts(record.input);
+    const labelChildren = nativeChildNodes(record.label);
+    const stringField = record.declaration.kind === "string";
+    const expectedInputAttributes =
+      3 +
+      (stringField ? 2 : 0) +
+      (stringField && record.declaration.placeholder !== undefined ? 1 : 0);
+    return (
+      labelFacts?.tagName === "LABEL" &&
+      labelFacts.ownerDocument === this.#ownerDocument &&
+      labelTextFacts?.tagName === "SPAN" &&
+      labelTextFacts.ownerDocument === this.#ownerDocument &&
+      inputFacts?.tagName === "INPUT" &&
+      inputFacts.ownerDocument === this.#ownerDocument &&
+      nativeParentElement(record.label) === this.#panel &&
+      nativeParentElement(record.labelText) === record.label &&
+      nativeParentElement(record.input) === record.label &&
+      nativeAttributeNames(record.label).length === 1 &&
+      nativeAttributeNames(record.labelText).length === 0 &&
+      nativeGetAttribute(record.label, "data-breditor-toolbar-field") ===
+        record.declaration.kind &&
+      labelChildren.length === 2 &&
+      labelChildren[stringField ? 0 : 1] === record.labelText &&
+      labelChildren[stringField ? 1 : 0] === record.input &&
+      nativeAttributeNames(record.input).length === expectedInputAttributes &&
+      nativeGetAttribute(record.input, "name") ===
+        record.declaration.propertyName &&
+      nativeGetAttribute(record.input, "data-breditor-property") ===
+        record.declaration.propertyName &&
+      nativeGetAttribute(record.input, "type") ===
+        (stringField ? "url" : "checkbox") &&
+      (stringField
+        ? nativeGetAttribute(record.input, "required") === "" &&
+          nativeGetAttribute(record.input, "autocomplete") ===
+            record.declaration.autocomplete &&
+          (record.declaration.placeholder === undefined
+            ? !nativeHasAttribute(record.input, "placeholder")
+            : nativeGetAttribute(record.input, "placeholder") ===
+              record.declaration.placeholder)
+        : !nativeHasAttribute(record.input, "autocomplete") &&
+          !nativeHasAttribute(record.input, "required") &&
+          !nativeHasAttribute(record.input, "placeholder") &&
+          !nativeInputIndeterminate(record.input)) &&
+      isSingleTextElement(record.labelText, record.declaration.label)
+    );
+  }
+
+  #validActions(): boolean {
+    const children = nativeChildNodes(this.#actions);
+    return (
+      nativeHtmlHostFacts(this.#actions)?.tagName === "DIV" &&
+      nativeParentElement(this.#actions) === this.#panel &&
+      nativeAttributeNames(this.#actions).length === 1 &&
+      nativeHasAttribute(this.#actions, "data-breditor-toolbar-form-actions") &&
+      children.length === 3 &&
+      children[0] === this.#apply &&
+      children[1] === this.#remove &&
+      children[2] === this.#close &&
+      isActionButton(
+        this.#apply,
+        "submit",
+        "apply",
+        this.#declaration.applyLabel,
+      ) &&
+      isActionButton(
+        this.#remove,
+        "button",
+        "remove",
+        this.#declaration.removeLabel,
+      ) &&
+      isActionButton(
+        this.#close,
+        "button",
+        "close",
+        this.#declaration.closeLabel,
+      )
+    );
+  }
+
+  #ownsControl(control: HTMLElement): boolean {
+    return (
+      this.#fields.some((record) => record.input === control) ||
+      control === this.#apply ||
+      control === this.#remove ||
+      control === this.#close
+    );
+  }
+
+  #validTextRegion(
+    element: HTMLParagraphElement,
+    dataAttribute: string,
+    text: string,
+    live: boolean,
+  ): boolean {
+    return (
+      nativeHtmlHostFacts(element)?.tagName === "P" &&
+      nativeParentElement(element) === this.#panel &&
+      nativeAttributeNames(element).length === (live ? 4 : 1) &&
+      nativeHasAttribute(element, dataAttribute) &&
+      (!live ||
+        (nativeGetAttribute(element, "role") === "status" &&
+          nativeGetAttribute(element, "aria-live") === "polite" &&
+          nativeGetAttribute(element, "aria-atomic") === "true")) &&
+      isSingleTextElement(element, text)
+    );
+  }
+}
+
+function nextAvailablePanelId(treeRoot: Document | ShadowRoot): string {
+  for (let attempt = 0; attempt < 1_024; attempt += 1) {
+    if (nextPanelIdentity >= Number.MAX_SAFE_INTEGER) nextPanelIdentity = 1;
+    const id = `breditor-toolbar-panel-${nextPanelIdentity}`;
+    nextPanelIdentity += 1;
+    if (nativeTreeRootGetElementById(treeRoot, id) === null) return id;
+  }
+  throw new RangeError("toolbar panel identity capacity is exhausted");
+}
+
+function setButtonDisabled(button: HTMLButtonElement, disabled: boolean): void {
+  nativeSetAttribute(button, "aria-disabled", disabled ? "true" : "false");
+  if (disabled) nativeSetAttribute(button, "disabled", "");
+  else nativeRemoveAttribute(button, "disabled");
+}
+
+function isActionButton(
+  button: HTMLButtonElement,
+  type: "submit" | "button",
+  action: "apply" | "remove" | "close",
+  text: string,
+): boolean {
+  const disabled = nativeHasAttribute(button, "disabled");
+  return (
+    nativeHtmlHostFacts(button)?.tagName === "BUTTON" &&
+    nativeGetAttribute(button, "type") === type &&
+    nativeGetAttribute(button, "data-breditor-toolbar-form-action") ===
+      action &&
+    nativeGetAttribute(button, "aria-disabled") ===
+      (disabled ? "true" : "false") &&
+    nativeAttributeNames(button).length === (disabled ? 4 : 3) &&
+    isSingleTextElement(button, text)
+  );
+}
+
+function isSingleTextElement(element: HTMLElement, text: string): boolean {
+  const children = nativeChildNodes(element);
+  return (
+    children.length === (text.length === 0 ? 0 : 1) &&
+    (text.length === 0 ||
+      (nativeNodeType(children[0]!) === 3 &&
+        nativeNodeValue(children[0]!) === text &&
+        nativeParentNode(children[0]!) === element))
+  );
+}
+
+function bestEffort(callback: () => void): void {
+  try {
+    callback();
+  } catch {
+    // Logical ownership does not depend on damaged application DOM.
+  }
+}

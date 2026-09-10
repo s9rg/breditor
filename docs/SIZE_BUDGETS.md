@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.6` cross-paragraph typed-formatting checkpoint
+`0.3.0-alpha.7` native typed-toolbar checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -12,16 +12,16 @@ total.
 
 The current release ceilings are deliberately explicit:
 
-- all emitted `@breditor/browser` JavaScript: 950,000 bytes;
-- all emitted browser declarations: 245,000 bytes;
+- all emitted `@breditor/browser` JavaScript: 1,011,000 bytes;
+- all emitted browser declarations: 254,000 bytes;
 - all emitted `@breditor/reference-highlight` JavaScript: 28,000 bytes;
 - all emitted Highlight + Link reference declarations: 24,000 bytes;
 - generated Wasm binary: 1,600,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
-- packed `@breditor/browser` tarball: 235,000 bytes;
+- packed `@breditor/browser` tarball: 248,000 bytes;
 - packed `@breditor/reference-highlight` tarball: 20,000 bytes;
 - packed `@breditor/wasm` tarball: 520,000 bytes;
-- reference-application JavaScript: 800,000 raw and 210,000 gzip bytes; and
+- reference-application JavaScript: 822,000 raw and 216,000 gzip bytes; and
 - reference-application Wasm: 1,600,000 raw and 450,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
@@ -209,6 +209,31 @@ durable-format generation, or package file class. The clean reference consumer
 still initializes both the legacy Highlight profile and the combined typed
 Highlight + Link profile from local tarballs in Chromium.
 
+The `0.3.0-alpha.7` checkpoint recalibrates only artifacts that carry the new
+ABI-5 descriptor correlation and browser-owned native form runtime. Its final
+clean-build and isolated-package measurements are:
+
+- browser-package JavaScript: 996,053 / 1,011,000 bytes;
+- browser declarations: 249,799 / 254,000 bytes;
+- Highlight + Link reference JavaScript: 26,543 / 28,000 bytes;
+- Highlight + Link reference declarations: 21,792 / 24,000 bytes;
+- generated Wasm: 1,586,629 / 1,600,000 bytes;
+- generated Wasm JavaScript glue: 52,572 / 100,000 bytes;
+- reference-application JavaScript: 807,402 / 822,000 raw bytes and
+  211,828 / 216,000 level-9-gzip bytes;
+- reference-application Wasm: 1,586,629 / 1,600,000 raw bytes and
+  442,976 / 450,000 level-9-gzip bytes;
+- packed browser package: 242,668 / 248,000 bytes;
+- packed Highlight + Link reference package: 15,259 / 20,000 bytes; and
+- packed Wasm package: 513,256 / 520,000 bytes.
+
+The widened browser JavaScript/declaration and browser-tarball ceilings account
+for strict typed-form admission, canonical DOM/focus ownership, bounded JSON
+construction, and ABI-5 descriptor validation. The application ceilings move
+only enough to carry that framework-neutral runtime in the eager demo bundle.
+Reference-package, Wasm, glue, and Wasm-tarball ceilings remain unchanged; no
+file class, code-splitting exemption, or package-content escape was added.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -237,8 +262,8 @@ and common user-home pattern checks prevent host-specific workspace,
 Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
-It kept ABI 3 within the historical `0.2.0` ceilings and keeps ABI 4 within the
-current alpha.6 ceilings listed above.
+It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
+ceilings, and ABI 5 within the current alpha.7 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

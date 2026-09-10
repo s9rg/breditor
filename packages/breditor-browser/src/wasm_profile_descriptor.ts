@@ -15,6 +15,9 @@ export const MAX_BROWSER_PROFILE_INTENTS = 1_024;
 /** Maximum action-state descriptors admitted by the browser ABI boundary. */
 export const MAX_BROWSER_PROFILE_ACTION_STATES = 512;
 
+/** Maximum inline-format set descriptors admitted by the browser ABI boundary. */
+export const MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS = 255;
+
 /** Opaque process-local generation owner produced by the generated Wasm API. */
 export interface WasmProfileGenerationView {
   matches(other: WasmProfileGenerationView): boolean;
@@ -35,6 +38,7 @@ export interface WasmCompiledProfileDescriptorView
   readonly formatCount: number;
   readonly intentCount: number;
   readonly actionStateCount: number;
+  readonly inlineFormatSetCount: number;
   formatKind(index: number): string | undefined;
   formatRevision(index: number): number | undefined;
   formatPropertyCount(formatIndex: number): number | undefined;
@@ -78,6 +82,9 @@ export interface WasmCompiledProfileDescriptorView
   actionStateActivationContract(index: number): "stateless" | "tracked" | undefined;
   actionStateValueContractName(index: number): string | undefined;
   actionStateValueContractVersion(index: number): number | undefined;
+  inlineFormatSetFormatKind(index: number): string | undefined;
+  inlineFormatSetIntentId(index: number): string | undefined;
+  inlineFormatSetActionStateId(index: number): string | undefined;
   free(): void;
 }
 
@@ -156,12 +163,20 @@ export interface BrowserProfileActionStateDescriptor {
   readonly state: BrowserProfileStateContract;
 }
 
+/** One generated property-aware inline-format set surface. */
+export interface BrowserProfileInlineFormatSetDescriptor {
+  readonly formatKind: string;
+  readonly intentId: string;
+  readonly actionStateId: string;
+}
+
 /** Complete handle-free metadata copied from one compiled Rust profile. */
 export interface BrowserCompiledProfileDescriptor {
   readonly schema: BrowserProfileSchemaDescriptor;
   readonly formats: readonly BrowserProfileFormatDescriptor[];
   readonly intents: readonly BrowserProfileIntentDescriptor[];
   readonly actionStates: readonly BrowserProfileActionStateDescriptor[];
+  readonly inlineFormatSets: readonly BrowserProfileInlineFormatSetDescriptor[];
 }
 
 /** Payload-redacted compiled-profile descriptor boundary failure. */
@@ -181,6 +196,9 @@ const INVALID_DESCRIPTOR: BrowserProfileDescriptorError = Object.freeze({
   code: "profile_descriptor.invalid_wasm_view",
   message: "The Wasm compiled-profile descriptor is invalid.",
 });
+const INLINE_FORMAT_SET_INPUT_CONTRACT_NAME =
+  "breditor/set-inline-format-input";
+const INLINE_FORMAT_SET_INPUT_CONTRACT_VERSION = 1;
 const OWNED_DESCRIPTORS = new WeakSet<object>();
 const DESCRIPTOR_PROFILE_GENERATIONS =
   new WeakMap<object, WasmProfileGenerationView>();
@@ -218,6 +236,9 @@ interface DescriptorMethods {
   readonly actionStateActivationContract: WasmCompiledProfileDescriptorView["actionStateActivationContract"];
   readonly actionStateValueContractName: WasmCompiledProfileDescriptorView["actionStateValueContractName"];
   readonly actionStateValueContractVersion: WasmCompiledProfileDescriptorView["actionStateValueContractVersion"];
+  readonly inlineFormatSetFormatKind: WasmCompiledProfileDescriptorView["inlineFormatSetFormatKind"];
+  readonly inlineFormatSetIntentId: WasmCompiledProfileDescriptorView["inlineFormatSetIntentId"];
+  readonly inlineFormatSetActionStateId: WasmCompiledProfileDescriptorView["inlineFormatSetActionStateId"];
 }
 
 /**
@@ -357,13 +378,18 @@ function readDescriptor(
   const formatCount = readScalar(view, "formatCount");
   const intentCount = readScalar(view, "intentCount");
   const actionStateCount = readScalar(view, "actionStateCount");
+  const inlineFormatSetCount = readScalar(view, "inlineFormatSetCount");
   if (
     !isQualifiedName(schemaName) ||
     !isPositiveU32(schemaVersion) ||
     !isSchemaFingerprint(schemaFingerprint) ||
     !isBoundedCount(formatCount, MAX_BROWSER_PROFILE_FORMATS) ||
     !isBoundedCount(intentCount, MAX_BROWSER_PROFILE_INTENTS) ||
-    !isBoundedCount(actionStateCount, MAX_BROWSER_PROFILE_ACTION_STATES)
+    !isBoundedCount(actionStateCount, MAX_BROWSER_PROFILE_ACTION_STATES) ||
+    !isBoundedCount(
+      inlineFormatSetCount,
+      MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS,
+    )
   ) {
     return descriptorFailure();
   }
@@ -372,11 +398,24 @@ function readDescriptor(
   const intents = readIntents(view, methods, intentCount);
   if (formats === null || intents === null) return descriptorFailure();
   const actionStates = readActionStates(view, methods, actionStateCount, intents);
-  if (actionStates === null || !descriptorSentinelsAreAbsent(view, methods, {
-    formatCount,
-    intentCount,
-    actionStateCount,
-  })) {
+  if (actionStates === null) return descriptorFailure();
+  const inlineFormatSets = readInlineFormatSets(
+    view,
+    methods,
+    inlineFormatSetCount,
+    formats,
+    intents,
+    actionStates,
+  );
+  if (
+    inlineFormatSets === null ||
+    !descriptorSentinelsAreAbsent(view, methods, {
+      formatCount,
+      intentCount,
+      actionStateCount,
+      inlineFormatSetCount,
+    })
+  ) {
     return descriptorFailure();
   }
 
@@ -389,6 +428,7 @@ function readDescriptor(
     formats: Object.freeze(formats),
     intents: Object.freeze(intents),
     actionStates: Object.freeze(actionStates),
+    inlineFormatSets: Object.freeze(inlineFormatSets),
   });
   DESCRIPTOR_PROFILE_GENERATIONS.set(descriptor, generation);
   OWNED_DESCRIPTORS.add(descriptor);
@@ -642,6 +682,68 @@ function readActionStates(
   return output;
 }
 
+function readInlineFormatSets(
+  receiver: WasmCompiledProfileDescriptorView,
+  methods: DescriptorMethods,
+  count: number,
+  formats: readonly BrowserProfileFormatDescriptor[],
+  intents: readonly BrowserProfileIntentDescriptor[],
+  actionStates: readonly BrowserProfileActionStateDescriptor[],
+): BrowserProfileInlineFormatSetDescriptor[] | null {
+  const formatMap = new Map(formats.map((format) => [format.kind, format] as const));
+  const intentMap = new Map(intents.map((intent) => [intent.id, intent] as const));
+  const states = new Map(actionStates.map((state) => [state.id, state] as const));
+  const seenIntentIds = new Set<string>();
+  const seenActionStateIds = new Set<string>();
+  const output: BrowserProfileInlineFormatSetDescriptor[] = [];
+  let priorFormatKind = "";
+  for (let index = 0; index < count; index += 1) {
+    const formatKind = invoke(methods.inlineFormatSetFormatKind, receiver, index);
+    const intentId = invoke(methods.inlineFormatSetIntentId, receiver, index);
+    const actionStateId = invoke(
+      methods.inlineFormatSetActionStateId,
+      receiver,
+      index,
+    );
+    if (
+      !isQualifiedName(formatKind) ||
+      formatKind <= priorFormatKind ||
+      !isQualifiedName(intentId) ||
+      seenIntentIds.has(intentId) ||
+      !isQualifiedName(actionStateId) ||
+      seenActionStateIds.has(actionStateId) ||
+      !formatMap.has(formatKind)
+    ) {
+      return null;
+    }
+    const format = formatMap.get(formatKind);
+    const intent = intentMap.get(intentId);
+    const state = states.get(actionStateId);
+    if (
+      format === undefined ||
+      format.properties.length === 0 ||
+      intent === undefined ||
+      intent.input.kind !== "typed" ||
+      intent.input.contract.name !== INLINE_FORMAT_SET_INPUT_CONTRACT_NAME ||
+      intent.input.contract.version !== INLINE_FORMAT_SET_INPUT_CONTRACT_VERSION ||
+      intent.state.activation !== "tracked" ||
+      intent.state.value !== undefined ||
+      state === undefined ||
+      state.source.kind !== "routed" ||
+      state.source.intentId !== intentId ||
+      state.state.activation !== "tracked" ||
+      state.state.value !== undefined
+    ) {
+      return null;
+    }
+    priorFormatKind = formatKind;
+    seenIntentIds.add(intentId);
+    seenActionStateIds.add(actionStateId);
+    output.push(Object.freeze({ formatKind, intentId, actionStateId }));
+  }
+  return output;
+}
+
 function readInputContract(
   kind: unknown,
   name: unknown,
@@ -708,6 +810,7 @@ function descriptorSentinelsAreAbsent(
     formatCount: number;
     intentCount: number;
     actionStateCount: number;
+    inlineFormatSetCount: number;
   }>,
 ): boolean {
   if (
@@ -748,6 +851,9 @@ function descriptorSentinelsAreAbsent(
     [methods.actionStateActivationContract, counts.actionStateCount],
     [methods.actionStateValueContractName, counts.actionStateCount],
     [methods.actionStateValueContractVersion, counts.actionStateCount],
+    [methods.inlineFormatSetFormatKind, counts.inlineFormatSetCount],
+    [methods.inlineFormatSetIntentId, counts.inlineFormatSetCount],
+    [methods.inlineFormatSetActionStateId, counts.inlineFormatSetCount],
   ];
   return calls.every(([method, index]) => invoke(method, receiver, index) === undefined);
 }
@@ -782,6 +888,9 @@ function snapshotDescriptorMethods(
     "actionStateActivationContract",
     "actionStateValueContractName",
     "actionStateValueContractVersion",
+    "inlineFormatSetFormatKind",
+    "inlineFormatSetIntentId",
+    "inlineFormatSetActionStateId",
   ] as const;
   const output: Record<string, Function> = Object.create(null) as Record<string, Function>;
   for (const name of names) {
