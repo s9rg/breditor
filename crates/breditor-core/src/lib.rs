@@ -759,6 +759,29 @@
 //! state, transaction, history, and replay contracts. The distinct schema and
 //! admitted format set produce a distinct Document-V2 fingerprint; Profile
 //! Bootstrap V2, Wasm ABI 5, and Session/State/Commit V3 remain unchanged.
+//!
+//! The unpublished `0.3.0-alpha.10` source checkpoint adds
+//! [`action::builtins::ClearInlineFormatsAction`] as the eighth base action,
+//! together with a fixed stateless no-input intent, priority-zero blocking
+//! route, and observable state. At a collapsed caret it replaces a nonempty
+//! effective pending/context format set with an explicit empty
+//! [`document::FormatSet`] while preserving document and selection. This
+//! operation-free publication closes merge continuity and updates exact
+//! adjacent history boundaries without adding an undo entry or clearing redo.
+//!
+//! An extended range clears the complete format set on every selected scalar.
+//! It uses one guarded [`operation::TextSplice`] locally or one same-count
+//! [`operation::RootTextReplace`] across direct-root paragraphs, preserving
+//! text, empty middle paragraphs, direction, endpoint affinities, and complete
+//! properties on unselected edges. The result clears pending formats and is
+//! one exact undo unit; V3 replay uses the retained operations and state
+//! boundaries without rerunning the action. Full result limits are checked and
+//! diagnostics retain no removed format/property data. The fixed command has
+//! no allowlist, partial-property, or block-format mode. Four built-in controls
+//! raise the action-state catalog ceiling to 514 alongside 255 generated
+//! toggles and 255 generated setters. The AST, schema fingerprint, Profile
+//! Bootstrap V2, Wasm ABI 5, and all durable codec shapes and generations are
+//! unchanged.
 
 pub mod action;
 pub mod codec;

@@ -19,8 +19,9 @@ createRoot(root).render(
         <h1>Breditor</h1>
         <p className="hero-copy">
           A small, real browser editor built on a typed document tree and
-          semantic commands. This page runs a complete eight-control formatting
-          showcase through the Rust core, including Highlight and safe Link.
+          semantic commands. This page runs a complete nine-control formatting
+          showcase through the Rust core, including Highlight, safe Link, and
+          Clear formatting.
         </p>
       </header>
 
@@ -32,8 +33,9 @@ createRoot(root).render(
           </div>
           <p>
             Select some text, then combine Bold, Italic, Strikethrough, Code,
-            Highlight, or the Link form. Undo and Redo replay the same semantic
-            operations through the Rust-owned editor state.
+            Highlight, or the Link form—or clear the complete inline format set
+            in one step. Undo and Redo replay the same semantic operations
+            through the Rust-owned editor state.
           </p>
         </div>
 

@@ -336,8 +336,8 @@ fn setter_identities_do_not_change_the_document_schema() -> TestResult {
         profile_with_renamed_set.descriptor().inline_format_sets()
     );
     assert!(schema_only.descriptor().inline_format_sets().is_empty());
-    assert_eq!(schema_only.intent_router().intent_count(), 1);
-    assert_eq!(profile_with_set.intent_router().intent_count(), 2);
+    assert_eq!(schema_only.intent_router().intent_count(), 2);
+    assert_eq!(profile_with_set.intent_router().intent_count(), 3);
     Ok(())
 }
 
@@ -777,15 +777,15 @@ fn exact_profile_set_limit_compiles_and_aggregate_first_excess_precedes_schema()
     )?;
     assert_eq!(
         profile.action_registry().len(),
-        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 7
+        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 8
     );
     assert_eq!(
         profile.intent_router().intent_count(),
-        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 1
+        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 2
     );
     assert_eq!(
         profile.action_state_catalog().len(),
-        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 3
+        usize::try_from(MAX_PROFILE_INLINE_FORMAT_SETS)? + 4
     );
     assert_eq!(
         profile.descriptor().inline_format_sets().len(),

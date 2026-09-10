@@ -123,13 +123,16 @@ describe("translateBeforeInput", () => {
     },
   );
 
-  it("maps formatBold to the replaceable strong-format intent", () => {
-    const request = command(snapshot("formatBold"));
-    expect(request.source).toEqual({ kind: "beforeinput", detail: "formatBold" });
+  it.each([
+    ["formatBold", "breditor/format-strong"],
+    ["formatRemove", "breditor/clear-inline-formatting"],
+  ] as const)("maps %s to the replaceable %s intent", (inputType, intentId) => {
+    const request = command(snapshot(inputType));
+    expect(request.source).toEqual({ kind: "beforeinput", detail: inputType });
     expect(request.requirements.history).toBe("closeBefore");
     expect(request.command).toEqual({
       kind: "intent",
-      intentId: "breditor/format-strong",
+      intentId,
       input: { kind: "none" },
     });
   });

@@ -73,9 +73,9 @@ npm run test --workspace @breditor/example-react
 ```
 
 The repository-level Chromium gate exercises the rendered page through actual
-single- and cross-paragraph selection, all eight controls, exact wrapper
-nesting, per-command history, input, IndexedDB reload, accessibility, and a
-320-pixel responsive viewport:
+single- and cross-paragraph selection, all nine controls (including Clear
+formatting), exact wrapper nesting, per-command history, input, IndexedDB
+reload, accessibility, and a 320-pixel responsive viewport:
 
 ```sh
 npm run test:demo

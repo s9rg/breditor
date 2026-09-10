@@ -451,11 +451,13 @@ async function expectUniformShowcaseTree(
         text,
         chain: [...expectedChain],
         singleBranch: true,
-        link: {
-          href: REFERENCE_LINK_URL,
-          rel: "noopener noreferrer",
-          target: "_blank",
-        },
+        link: expectedChain.includes("a.breditor-link")
+          ? {
+              href: REFERENCE_LINK_URL,
+              rel: "noopener noreferrer",
+              target: "_blank",
+            }
+          : { href: null, rel: null, target: null },
       })),
     );
 }
@@ -631,7 +633,7 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   expect(containment.buttonRows).toBeGreaterThan(1);
 });
 
-test("the eight-control Showcase composes deterministic formats across paragraphs and persistence", async ({
+test("the nine-control Showcase composes and clears deterministic formats across paragraphs and persistence", async ({
   page,
 }) => {
   const { editor, status } = await openDemo(page);
@@ -641,6 +643,7 @@ test("the eight-control Showcase composes deterministic formats across paragraph
   const italic = page.getByRole("button", { name: "Italic" });
   const strikethrough = page.getByRole("button", { name: "Strikethrough" });
   const code = page.getByRole("button", { name: "Code" });
+  const clearFormatting = page.getByRole("button", { name: "Clear formatting" });
   const undo = page.getByRole("button", { name: "Undo" });
   const redo = page.getByRole("button", { name: "Redo" });
 
@@ -651,10 +654,11 @@ test("the eight-control Showcase composes deterministic formats across paragraph
     "Code",
     "Highlight",
     "Link",
+    "Clear formatting",
     "Undo",
     "Redo",
   ]);
-  await expect(topLevelControls).toHaveCount(8);
+  await expect(topLevelControls).toHaveCount(9);
   for (const control of [bold, italic, strikethrough, code]) {
     await expect(control).toBeVisible();
     await expect(control).toHaveAttribute("aria-pressed", "false");
@@ -759,6 +763,30 @@ test("the eight-control Showcase composes deterministic formats across paragraph
     ],
   );
   await expect(code).toHaveAttribute("aria-pressed", "true");
+
+  // Clear all base and extension formats across the backward block selection
+  // as one Rust transaction, then restore that exact tree with one undo.
+  await clearFormatting.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [],
+  );
+  await expect(clearFormatting).toHaveAttribute("aria-disabled", "true");
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+      "code",
+    ],
+  );
+  await expect(clearFormatting).toHaveAttribute("aria-disabled", "false");
 
   await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
 

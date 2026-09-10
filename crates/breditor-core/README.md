@@ -240,6 +240,31 @@ blocking route, tracked state, transaction, history, and replay path. The new
 schema selector and format set have their own Document-V2 fingerprint; Profile
 Bootstrap V2, ABI 5, and Session/State/Commit V3 remain unchanged.
 
+The unpublished `0.3.0-alpha.10` source checkpoint adds the stateless,
+no-input `ClearInlineFormatsAction` as the eighth base action. Its fixed
+`breditor/clear-inline-formatting` intent, priority-zero blocking binding, and
+`breditor/control-clear-inline-formatting` state are compiled into every base
+profile. At a collapsed caret, explicit pending formats take precedence over
+affinity-derived context; a nonempty effective set becomes an explicit empty
+`FormatSet` without changing the document or selection. This operation-free
+state publication closes merge continuity and updates exact adjacent history
+boundaries without creating a standalone undo entry or discarding redo.
+
+For an extended selection, the action removes the complete `FormatSet` from
+every selected text scalar. A local range emits one guarded `TextSplice`; a
+cross-paragraph range emits one same-count guarded `RootTextReplace`. Both
+preserve text, paragraph boundaries, selection direction and affinities, and
+the complete properties of unselected edge formats, clear pending formats, and
+record one exact undo unit. V3 checkpoints replay the stored operations and
+state boundaries without reevaluating the action. Result shape, text, node,
+operation, property-value, and property-string budgets are preflighted, and
+disabled/fault diagnostics retain no removed formats or property data. The
+command intentionally has no allowlist, format-owner filter, partial-property
+mode, or block-format behavior. The action-state ceiling is now 514: four
+built-in controls plus 255 generated toggles and 255 generated setters. No AST,
+operation, Profile Bootstrap V2, schema-fingerprint, Wasm ABI 5, or durable
+codec generation changes.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),
@@ -289,11 +314,12 @@ change notifications, guarded root-text range replacement with a closed
 same-type inverse, exact in-memory undo/redo requests, an immutable typed
 action registry, a frozen semantic intent router, an immutable compiled editor
 profile that owns the generated registry/router/catalog together with its
-extension set and schema under one Rust-local generation, and seven base actions:
+extension set and schema under one Rust-local generation, and eight base actions:
 inline and structural plain-text insertion, paragraph break, grapheme-aware
 backward and forward deletion, exact selection deletion, and strong-format
-toggle, plus the configurable Rust-owned `ToggleInlineFormatAction` for an
-explicitly registered property-free format and the registration-owned
+toggle, plus complete inline-format clearing, the configurable Rust-owned
+`ToggleInlineFormatAction` for an explicitly registered property-free format
+and the registration-owned
 `SetInlineFormatAction` for explicit typed set/remove input. Registry
 preparation is the authoritative integration path for semantic capability and
 execution: it preflights and caches an exact transaction result against one
@@ -319,6 +345,11 @@ while preserving every selected paragraph boundary for a cross-paragraph
 selection, including typed peer formats. The typed text-insertion action consumes that pending override,
 inherits deterministic context otherwise, replaces one exact direct-root text
 range, and offers adjacent edits to the `breditor/typing` history group.
+The clear-inline-formats action is stateless and removes every selected inline
+format kind rather than toggling one configured kind. At a caret it installs an
+explicit empty pending set when the effective pending/context set is nonempty;
+over an extended range it uses the same guarded local/root primitives and
+retains exact unselected typed properties for undo, redo, and V3 replay.
 Same-paragraph insertion stays on the property-aware local splice path, while
 cross-paragraph type-over uses the property-preserving guarded root-text
 replacement path.

@@ -1,15 +1,16 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.9` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.10` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
 preserving the ABI-3-era V1/V2 entry points. Alpha.7 added only canonical
 typed-set presentation-correlation getters. Alpha.8 carries exact uniform
 property maps through the already-existing action-state value getters and does
 not bump ABI 5 or change a bootstrap or durable wire generation. Alpha.9 adds
-only a separately declared Showcase profile: it introduces no Rust action,
-browser protocol, Wasm member, or durable record generation. Direct raw-handle
-use remains a narrow advanced integration surface.
+only a separately declared Showcase profile. Alpha.10 adds a built-in Clear
+Formatting route through existing descriptor, state, intent, operation, and
+checkpoint surfaces; it introduces no Wasm member or durable record generation.
+Direct raw-handle use remains a narrow advanced integration surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
 it is not a crates.io release because its `breditor-core` dependency has no
@@ -24,9 +25,9 @@ installs all three npm tarballs, resolves only package-root imports inside its
 own `node_modules`, initializes the real Wasm module, type-checks, bundles, and
 opens the reference profile in Chromium without workspace paths.
 
-After publication, `@breditor/browser@0.3.0-alpha.9` and
-`@breditor/wasm@0.3.0-alpha.9` must be installed as an exact-version pair. No
-alpha.9 package has been published at this checkpoint; repository development
+After publication, `@breditor/browser@0.3.0-alpha.10` and
+`@breditor/wasm@0.3.0-alpha.10` must be installed as an exact-version pair. No
+alpha.10 package has been published at this checkpoint; repository development
 uses the local workspace/tarball smoke path. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.
@@ -107,8 +108,20 @@ Bootstrap V2, ABI 5, Document V2, and Session/State/Commit V3 retain their
 existing record shapes. Existing Highlight and Formatting exports remain byte-
 exact.
 
+Alpha.10 likewise adds no Wasm member. Every compiled base-text profile now
+contains the no-input `breditor/clear-inline-formatting` intent, its action and
+blocking binding, and its stateless action-state source. They are visible and
+executable through ABI 5's existing counted descriptor, state, and intent
+methods. Same-paragraph clearing uses `TextSplice`; cross-paragraph clearing
+uses `RootTextReplace`; and a collapsed caret can make an operation-free
+pending-format state transition. Existing undo, redo, command result, and
+Session-V3 checkpoint surfaces carry those results without a new discriminant.
+The counted action-state boundary now admits 514 entries so all four built-in,
+255 generated toggle, and 255 generated setter states can coexist.
+
 This checkpoint deliberately does not define mutually exclusive inline
-formats, extension-owned keyboard shortcuts, clear-format behavior, block
+formats, extension-owned keyboard shortcuts, selective clear-format behavior,
+block
 code, headings or lists, rich-paste interpretation, or runtime plugin loading.
 Those are future profile/browser capabilities rather than omissions from the
 ABI-5 wire contract.
@@ -128,7 +141,7 @@ patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
 initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through
-alpha.9 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
+alpha.10 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported
 high-level compatibility promise.
@@ -503,13 +516,17 @@ complete engine/snapshot/history observation before consulting the cache. A
 stale call returns the same redacted stale-engine category as other guarded
 reads and leaves the prior cache observation installed.
 
-Every compiled profile catalog contains the three built-in,
+Every compiled profile catalog contains the four built-in,
 presentation-independent observable IDs in canonical lexical order:
 
 - `breditor/control-bold` routes the no-input `breditor/format-strong` intent
   through its priority-zero blocking binding to `breditor/toggle-strong`, so
   its enabled state and inactive/active/mixed indicator come from the same
   semantic route a later supported click repeats;
+- `breditor/control-clear-inline-formatting` routes the no-input
+  `breditor/clear-inline-formatting` intent through its priority-zero blocking
+  binding to `breditor/clear-inline-formats`; its stateless state reports only
+  whether the current selection contains inline formatting to clear;
 - `breditor/control-redo` preflights the current redo branch; and
 - `breditor/control-undo` preflights the current undo branch.
 

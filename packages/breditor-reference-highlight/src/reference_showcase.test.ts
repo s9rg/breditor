@@ -229,6 +229,7 @@ describe("reference showcase browser presentation", () => {
       "Code",
       "Highlight",
       "Link",
+      "Clear formatting",
       "Undo",
       "Redo",
     ]);
@@ -243,6 +244,7 @@ describe("reference showcase browser presentation", () => {
       REFERENCE_SHOWCASE_IDS.codeActionStateId,
       REFERENCE_SHOWCASE_IDS.highlightActionStateId,
       REFERENCE_SHOWCASE_IDS.linkPresenceStateId,
+      BASE_TOOLBAR_STATE_IDS.clearInlineFormatting,
       BASE_TOOLBAR_STATE_IDS.undo,
       BASE_TOOLBAR_STATE_IDS.redo,
     ]);
@@ -257,6 +259,7 @@ describe("reference showcase browser presentation", () => {
       REFERENCE_SHOWCASE_IDS.strikethroughIntentId,
       REFERENCE_SHOWCASE_IDS.codeIntentId,
       REFERENCE_SHOWCASE_IDS.highlightIntentId,
+      BASE_INTENT_IDS.clearInlineFormatting,
     ]);
     const showcaseLink = REFERENCE_SHOWCASE_TOOLBAR_MANIFEST.controls[5];
     const establishedLink = REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[2];

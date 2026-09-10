@@ -1,10 +1,10 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.9` source checkpoint adds an independent Showcase
-profile whose Italic, Strikethrough, and Inline Code features are generated
-from property-free extension declarations. Alpha.9 adds no editor protocol and
-retains alpha.8's exact Rust-owned property observation, form hydration, Wasm
-ABI 5, and typed-set presentation correlation surface. Explicit Bootstrap V2 still selects
+Status: the `0.3.0-alpha.10` source checkpoint adds Rust-owned Clear Formatting
+across the existing generic action, intent, state, Wasm, browser, history, and
+replay surfaces. It retains alpha.9's independent Showcase profile and
+alpha.8's exact property observation and form hydration. Wasm ABI 5 remains
+current. Explicit Bootstrap V2 still selects
 property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
@@ -557,6 +557,35 @@ record. Wasm ABI stays 5. The formats freely coexist; this checkpoint does not
 introduce exclusions, extension keyboard shortcuts, clear formatting, block
 code, headings, lists, rich paste, or runtime-loaded plugins.
 
+## Alpha.10 clear inline formatting
+
+Alpha.10 adds the eighth base action, `breditor/clear-inline-formats`, with a
+no-input semantic intent, blocking route, and stateless observable control.
+For an extended selection Rust rewrites only selected text to the empty
+`FormatSet`, using one `TextSplice` inside a paragraph or one same-count
+`RootTextReplace` across paragraphs. Unselected typed maps, empty middle
+paragraphs, spatial endpoint positions, direction, and affinities survive. The
+effective action forms one exact undo unit and replays from Session Checkpoint
+V3 without reevaluating JavaScript.
+
+At a collapsed formatted caret, Clear Formatting stores an explicitly empty
+pending set so future typing is plain. This is an operation-free editor-state
+change under the existing history-boundary rules: it closes merge continuity
+and preserves redo but does not create a synthetic undo entry. Already-plain
+ranges and structural-only ranges remain disabled.
+
+The browser maps `beforeinput` `formatRemove` and a stateless Showcase toolbar
+button to the same intent. ABI 5's existing generic methods carry the route and
+result. No bootstrap, fingerprint, document, operation, checkpoint, storage,
+projection, or renderer shape changes. The full state catalog/reader ceiling is
+514 so four built-ins, 255 toggles, and 255 setters compose; a toolbar manifest
+is still capped independently at 64 controls.
+
+Clear Formatting means every inline format, including complete typed property
+maps. It has no allowlist, denylist, extension ownership policy, or block-level
+meaning. Retained exact-undo history may still contain removed values, so the
+command is not a data-erasure boundary.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -580,6 +609,10 @@ semantic mutation protocol.
 Alpha.8 uses those existing getters plus ABI 5's existing action-state value
 transport. It adds no generated Wasm member, bootstrap field, fingerprint byte,
 document/checkpoint field, or semantic mutation protocol.
+
+Alpha.10 uses the same ABI 5 catalog, state-value, and no-input-intent methods
+for the built-in Clear Formatting route. It adds no generated Wasm member or
+semantic wire format.
 
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the

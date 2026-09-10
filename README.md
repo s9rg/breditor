@@ -14,9 +14,10 @@ history is in the [Changelog](CHANGELOG.md).
 ## Run the browser demo
 
 The React demo loads the packaged Showcase profile, its canonical Document V2
-sample, renderer, and eight-control native toolbar. Italic, Strikethrough, and
+sample, renderer, and nine-control native toolbar. Italic, Strikethrough, and
 Inline Code are ordinary manifest-generated extension toggles beside Bold,
-Highlight, Link, Undo, and Redo. The Link launcher opens a runtime-owned
+Highlight, Link, the core-owned Clear formatting command, Undo, and Redo. The
+Link launcher opens a runtime-owned
 nonmodal form beside the APG toolbar root.
 When the semantic selection has one uniform Link map, the pristine form opens
 with that exact stored single-line URL and Boolean value; mixed or absent Link
@@ -245,6 +246,22 @@ stacked formats are deterministic. Existing Highlight and Highlight+Link
 reference values remain unchanged, and the demo uses a new lineage and storage
 slot rather than consuming alpha.8 data. ABI 5 and every durable generation
 remain unchanged; packages are still not published.
+
+The `0.3.0-alpha.10` source checkpoint adds the Rust-owned
+`breditor/clear-inline-formats` action and routes the no-input
+`breditor/clear-inline-formatting` intent through the existing generic
+descriptor, state, Wasm, and browser command paths. An extended selection
+becomes plain with one `TextSplice` or `RootTextReplace` and one exact undo
+unit; a collapsed caret installs an explicitly empty pending `FormatSet` so
+future typing does not inherit adjacent formatting. The command clears the
+complete format set, including typed property maps, while preserving selected
+text, paragraph structure, selection direction, and endpoint affinities.
+`beforeinput` `formatRemove` and the Showcase's stateless Clear formatting
+button use that same intent. No new operation, bootstrap field, schema
+fingerprint input, durable record, renderer recipe, or Wasm method is added;
+ABI 5 remains current. The complete engine action-state catalog now admits 514
+entries, while one toolbar manifest remains independently limited to 64
+presented controls. Packages are still not published.
 
 The implementation includes:
 

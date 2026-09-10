@@ -4,6 +4,61 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.10 - 2026-09-10
+
+This unpublished source checkpoint adds one Rust-owned command for clearing
+all inline formatting. It uses the existing generic action, intent, state,
+Wasm, browser queue, toolbar, history, and replay architecture; it does not add
+a JavaScript mutation callback or adopt another editor's command protocol.
+
+### Clear inline formatting
+
+- Added the no-input `breditor/clear-inline-formats` action, semantic intent
+  `breditor/clear-inline-formatting`, priority-zero blocking binding, and
+  stateless `breditor/control-clear-inline-formatting` state source to every
+  compiled base-text profile.
+- A same-paragraph selection emits one property-aware `TextSplice`; a
+  cross-paragraph selection emits one same-count `RootTextReplace`. Both clear
+  the selected characters' complete `FormatSet`, preserve unselected typed
+  properties, paragraph structure, selection direction and affinity, and form
+  one exact undo unit.
+- At a collapsed caret, the command installs an explicitly empty pending format
+  set when contextual or pending formatting is effective. The operation-free
+  state change follows the existing history-boundary contract: it closes merge
+  continuity and preserves redo, but does not invent a standalone undo entry.
+- Added exact no-selected-text and already-plain disabled outcomes, result and
+  property-budget checking, payload-redacted diagnostics, exact undo/redo, V3
+  checkpoint restoration, and replay coverage. Removed property values may
+  remain in history and checkpoints for exact undo; this command is not secure
+  erasure.
+
+### Generic Wasm and browser delivery
+
+- Kept Wasm ABI 5 and used its existing descriptor, action-state, no-input
+  intent, command result, projection, and Session-V3 surfaces. A boundary test
+  executes, undoes, redoes, and restores the command without a feature-specific
+  JavaScript API.
+- Routed native `beforeinput` `formatRemove` to the semantic intent and added a
+  stateless Clear formatting button before Undo and Redo in the Showcase. The
+  Showcase now has nine controls and retains the same generic preserved-
+  selection command queue.
+- Raised the complete engine state-catalog/descriptor/observer/snapshot-reader
+  capacity from 512 to 514: four built-in states plus the already admitted 255
+  toggle and 255 typed-set states. The change is monotonic; the separate toolbar
+  manifest limit remains 64 presented controls.
+- Consolidated shared same- and cross-paragraph format-rewrite planning used by
+  toggle, typed set, and clear actions. The action-specific failure vocabulary
+  and exact mutation semantics remain distinct.
+
+### Compatibility
+
+Profile Bootstrap V2, content-language fingerprints, Document V2,
+Operation/Editor State/Transaction Request/Commit/Session Checkpoint V3,
+storage wrappers, renderer recipes, and Wasm ABI 5 are unchanged. The base
+schema fingerprint remains stable because command-catalog membership is not
+content-language identity. Official prerelease packages still require an exact
+version match, and no alpha.10 package is published by this checkpoint.
+
 ## 0.3.0-alpha.9 - 2026-09-10
 
 This unpublished source checkpoint adds a separate Showcase reference profile

@@ -1,5 +1,7 @@
 //! Core-owned semantic actions for Breditor's sealed base-text schemas.
 
+mod clear_inline_formats;
+mod clear_inline_formatting;
 mod delete_backward;
 mod delete_forward;
 mod delete_selection;
@@ -15,6 +17,16 @@ mod support;
 mod toggle_inline_format;
 mod toggle_strong;
 
+pub use clear_inline_formats::{
+    CLEAR_INLINE_FORMATS_ACTION_NAME, ClearInlineFormatsAction, clear_inline_formats_action_id,
+};
+pub use clear_inline_formatting::{
+    CLEAR_INLINE_FORMATTING_BINDING_NAME, CLEAR_INLINE_FORMATTING_BINDING_PRIORITY,
+    CLEAR_INLINE_FORMATTING_INTENT_NAME, CLEAR_INLINE_FORMATTING_STATE_NAME,
+    clear_inline_formatting_binding_id, clear_inline_formatting_intent_binding,
+    clear_inline_formatting_intent_declaration, clear_inline_formatting_intent_id,
+    clear_inline_formatting_state_id,
+};
 pub use delete_backward::{DeleteBackwardAction, delete_backward_action_id};
 pub use delete_forward::{DeleteForwardAction, delete_forward_action_id};
 pub use delete_selection::{DeleteSelectionAction, delete_selection_action_id};
@@ -68,6 +80,7 @@ use crate::action::{
 #[must_use]
 pub fn base_action_registrations() -> Vec<ActionRegistration> {
     vec![
+        ActionRegistration::new(clear_inline_formats_action_id(), ClearInlineFormatsAction),
         ActionRegistration::new(delete_backward_action_id(), DeleteBackwardAction),
         ActionRegistration::new(delete_forward_action_id(), DeleteForwardAction),
         ActionRegistration::new(delete_selection_action_id(), DeleteSelectionAction),
@@ -104,7 +117,7 @@ pub fn base_action_registry() -> Result<ActionRegistry, ActionRegistryError> {
 /// browser event, shortcut, or presentation policy.
 #[must_use]
 pub fn base_intent_declarations() -> Vec<IntentDeclaration> {
-    vec![format_strong_intent_declaration()]
+    vec![clear_inline_formatting_intent_declaration(), format_strong_intent_declaration()]
 }
 
 /// Returns every built-in semantic intent binding without freezing a router.
@@ -114,5 +127,5 @@ pub fn base_intent_declarations() -> Vec<IntentDeclaration> {
 /// identity and state-contract mismatches fail closed.
 #[must_use]
 pub fn base_intent_bindings() -> Vec<IntentBinding> {
-    vec![format_strong_intent_binding()]
+    vec![clear_inline_formatting_intent_binding(), format_strong_intent_binding()]
 }

@@ -37,7 +37,7 @@ const budgets = Object.freeze([
   fileBudget(
     "generated Wasm binary",
     "packages/breditor-wasm/dist/breditor_wasm_bg.wasm",
-    1_600_000,
+    1_610_000,
   ),
   fileBudget(
     "generated Wasm JavaScript glue",
@@ -60,13 +60,13 @@ const budgets = Object.freeze([
     "reference application Wasm",
     "examples/react/dist/assets",
     (name) => name.startsWith("breditor_wasm_bg-") && name.endsWith(".wasm"),
-    1_600_000,
+    1_610_000,
   ),
   matchedGzipBudget(
     "reference application Wasm (gzip)",
     "examples/react/dist/assets",
     (name) => name.startsWith("breditor_wasm_bg-") && name.endsWith(".wasm"),
-    450_000,
+    452_000,
   ),
 ]);
 

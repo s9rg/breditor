@@ -280,6 +280,7 @@ export function preserveSelectionSync(): EditorSelectionSync {
 
 /** Fixed base action IDs used by browser input translation. */
 export const BASE_ACTION_IDS = Object.freeze({
+  clearInlineFormats: "breditor/clear-inline-formats",
   deleteBackward: "breditor/delete-backward",
   deleteForward: "breditor/delete-forward",
   deleteSelection: "breditor/delete-selection",
@@ -291,6 +292,7 @@ export const BASE_ACTION_IDS = Object.freeze({
 
 /** Fixed built-in semantic intent IDs used by supported browser controls. */
 export const BASE_INTENT_IDS = Object.freeze({
+  clearInlineFormatting: "breditor/clear-inline-formatting",
   formatStrong: "breditor/format-strong",
 } as const);
 

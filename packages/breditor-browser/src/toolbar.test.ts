@@ -432,6 +432,24 @@ describe("BreditorToolbar", () => {
     toolbar.dispose();
   });
 
+  it("accepts the complete 514-entry engine snapshot while presenting a toolbar subset", () => {
+    const host = mountHost();
+    const store = new TestStateStore(baseEntries());
+    const toolbar = new BreditorToolbar(host, DEFAULT_TOOLBAR_MANIFEST, store, {
+      dispatch: completedDispatch,
+    });
+    const filler = Array.from(
+      { length: MAX_TOOLBAR_STATE_ENTRIES - baseEntries().length },
+      (_, index) =>
+        state(`example/capacity-${index}`, "enabled", "stateless"),
+    );
+
+    store.publish([...baseEntries(), ...filler]);
+
+    expect(disabledValues(host)).toEqual(["false", "false", "true"]);
+    toolbar.dispose();
+  });
+
   it("disables stale last-good state and re-enables only after freshness returns", () => {
     const host = mountHost();
     const store = new TestStateStore(baseEntries());

@@ -9,8 +9,8 @@ use breditor_core::{
         ActionActivationContract, ActionExecutionError, ActionId, ActionInvocation,
         ActionPreparation, ActionRegistry, ActionStateDomains, PreparedAction,
         builtins::{
-            base_action_registry, delete_backward_action_id, delete_forward_action_id,
-            delete_selection_action_id, insert_paragraph_break_action_id,
+            base_action_registry, clear_inline_formats_action_id, delete_backward_action_id,
+            delete_forward_action_id, delete_selection_action_id, insert_paragraph_break_action_id,
             insert_plain_text_action_id, insert_plain_text_input_contract, insert_text_action_id,
             insert_text_input_contract, toggle_strong_action_id,
         },
@@ -194,6 +194,7 @@ fn assert_disabled(
 #[test]
 fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -> TestResult {
     let registry = base_action_registry()?;
+    let clear_id = clear_inline_formats_action_id();
     let delete_backward_id = delete_backward_action_id();
     let delete_forward_id = delete_forward_action_id();
     let delete_selection_id = delete_selection_action_id();
@@ -201,6 +202,7 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
     let insert_plain_text_id = insert_plain_text_action_id();
     let insert_text_id = insert_text_action_id();
     let strong_id = toggle_strong_action_id();
+    assert_eq!(clear_id.as_str(), "breditor/clear-inline-formats");
     assert_eq!(delete_backward_id.as_str(), "breditor/delete-backward");
     assert_eq!(delete_forward_id.as_str(), "breditor/delete-forward");
     assert_eq!(delete_selection_id.as_str(), "breditor/delete-selection");
@@ -208,23 +210,25 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
     assert_eq!(insert_plain_text_id.as_str(), "breditor/insert-plain-text");
     assert_eq!(insert_text_id.as_str(), "breditor/insert-text");
     assert_eq!(strong_id.as_str(), "breditor/toggle-strong");
-    assert_eq!(registry.len(), 7);
+    assert_eq!(registry.len(), 8);
     let descriptors = registry.descriptors().collect::<Vec<_>>();
-    assert_eq!(descriptors[0].id(), &delete_backward_id);
-    assert_eq!(descriptors[1].id(), &delete_forward_id);
-    assert_eq!(descriptors[2].id(), &delete_selection_id);
-    assert_eq!(descriptors[3].id(), &enter_id);
-    assert_eq!(descriptors[4].id(), &insert_plain_text_id);
-    assert_eq!(descriptors[5].id(), &insert_text_id);
-    assert_eq!(descriptors[6].id(), &strong_id);
+    assert_eq!(descriptors[0].id(), &clear_id);
+    assert_eq!(descriptors[1].id(), &delete_backward_id);
+    assert_eq!(descriptors[2].id(), &delete_forward_id);
+    assert_eq!(descriptors[3].id(), &delete_selection_id);
+    assert_eq!(descriptors[4].id(), &enter_id);
+    assert_eq!(descriptors[5].id(), &insert_plain_text_id);
+    assert_eq!(descriptors[6].id(), &insert_text_id);
+    assert_eq!(descriptors[7].id(), &strong_id);
     assert_eq!(descriptors[0].input_contract(), None);
     assert_eq!(descriptors[1].input_contract(), None);
     assert_eq!(descriptors[2].input_contract(), None);
     assert_eq!(descriptors[3].input_contract(), None);
-    assert_eq!(descriptors[4].input_contract(), Some(&insert_plain_text_input_contract()));
-    assert_eq!(descriptors[5].input_contract(), Some(&insert_text_input_contract()));
-    assert_eq!(descriptors[6].input_contract(), None);
-    let insert_effects = descriptors[5].state_spec().effects();
+    assert_eq!(descriptors[4].input_contract(), None);
+    assert_eq!(descriptors[5].input_contract(), Some(&insert_plain_text_input_contract()));
+    assert_eq!(descriptors[6].input_contract(), Some(&insert_text_input_contract()));
+    assert_eq!(descriptors[7].input_contract(), None);
+    let insert_effects = descriptors[6].state_spec().effects();
     assert_eq!(
         insert_effects.reads(),
         ActionStateDomains::DOCUMENT
@@ -242,11 +246,16 @@ fn builtin_registry_uses_semantic_ids_lexical_order_and_one_preparation_path() -
             | ActionStateDomains::SNAPSHOT
     );
     assert_eq!(
-        descriptors[6].state_spec().contract().activation_contract(),
+        descriptors[0].state_spec().contract().activation_contract(),
+        ActionActivationContract::Stateless
+    );
+    assert_eq!(descriptors[0].state_spec().contract().value_contract(), None);
+    assert_eq!(
+        descriptors[7].state_spec().contract().activation_contract(),
         ActionActivationContract::Tracked
     );
-    assert_eq!(descriptors[6].state_spec().contract().value_contract(), None);
-    let strong_effects = descriptors[6].state_spec().effects();
+    assert_eq!(descriptors[7].state_spec().contract().value_contract(), None);
+    let strong_effects = descriptors[7].state_spec().effects();
     assert_eq!(
         strong_effects.reads(),
         ActionStateDomains::DOCUMENT

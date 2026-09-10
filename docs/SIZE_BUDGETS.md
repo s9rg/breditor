@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.9` additive Showcase checkpoint
+`0.3.0-alpha.10` clear-inline-formatting checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -16,13 +16,13 @@ The current release ceilings are deliberately explicit:
 - all emitted browser declarations: 254,000 bytes;
 - all emitted `@breditor/reference-highlight` JavaScript: 45,000 bytes;
 - all emitted reference-package declarations: 39,000 bytes;
-- generated Wasm binary: 1,600,000 bytes;
+- generated Wasm binary: 1,610,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 248,000 bytes;
 - packed `@breditor/reference-highlight` tarball: 20,000 bytes;
 - packed `@breditor/wasm` tarball: 520,000 bytes;
 - reference-application JavaScript: 822,000 raw and 216,000 gzip bytes; and
-- reference-application Wasm: 1,600,000 raw and 450,000 gzip bytes.
+- reference-application Wasm: 1,610,000 raw and 452,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
 825,000 browser-package bytes and from 700,000 to 725,000 reference-application
@@ -286,6 +286,25 @@ glue, and every tarball ceiling remain unchanged. The narrow packed-reference
 headroom is intentional and makes another reference feature require a fresh
 artifact review.
 
+The `0.3.0-alpha.10` checkpoint recalibrates only the raw Wasm and level-9-gzip
+Wasm ceilings for the reviewed clear-inline-formatting core and browser path.
+Its clean-build measurements are:
+
+- generated Wasm: 1,607,767 / 1,610,000 bytes; and
+- reference-application Wasm: 1,607,767 / 1,610,000 raw bytes and
+  450,614 / 452,000 level-9-gzip bytes;
+- packed browser package: 246,959 / 248,000 bytes;
+- packed reference Showcase package: 19,763 / 20,000 bytes; and
+- packed Wasm package: 521,224 / 522,000 bytes.
+
+The generated and reference-application raw Wasm ceilings move from 1,600,000
+to 1,610,000 bytes, and the reference-application gzip ceiling moves from
+450,000 to 452,000 bytes. The Wasm tarball ceiling moves narrowly from 520,000
+to 522,000 bytes after the reproducible clean package measured 521,224 bytes;
+the remaining 776 bytes are reviewable headroom rather than a package-content
+escape. Every JavaScript, declaration, glue, browser-tarball, and
+reference-tarball ceiling remains unchanged.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -315,7 +334,7 @@ Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
-ceilings, and ABI 5 within the current alpha.9 ceilings listed above.
+ceilings, and ABI 5 within the current alpha.10 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

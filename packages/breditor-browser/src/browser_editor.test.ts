@@ -2387,6 +2387,11 @@ describe("BreditorBrowserEditor", () => {
         entries: [
           { id: STATE_ID, availability: "enabled", activation: "active" },
           {
+            id: "breditor/control-clear-inline-formatting",
+            availability: "disabled",
+            activation: "stateless",
+          },
+          {
             id: "breditor/control-redo",
             availability: "disabled",
             activation: "stateless",
@@ -4666,7 +4671,12 @@ function actionStatesResult(
 ): WasmActionStatesResultView {
   let taken = false;
   const canonicalIds: readonly string[] = includeHistory
-    ? [STATE_ID, "breditor/control-redo", "breditor/control-undo"]
+    ? [
+        STATE_ID,
+        "breditor/control-clear-inline-formatting",
+        "breditor/control-redo",
+        "breditor/control-undo",
+      ]
     : [STATE_ID];
   const ids: readonly string[] =
     catalogViolation === "missing"
@@ -4706,10 +4716,12 @@ function actionStatesResult(
             ? undefined
             : "breditor/not-enabled"
           : index === 1
-            ? "breditor/nothing-to-redo"
+            ? "breditor/inline-format-unchanged"
             : index === 2
-              ? "breditor/nothing-to-undo"
-              : "breditor/not-enabled",
+              ? "breditor/nothing-to-redo"
+              : index === 3
+                ? "breditor/nothing-to-undo"
+                : "breditor/not-enabled",
     entryValueStatus: (index) =>
       index >= entryCount
         ? undefined
@@ -5048,8 +5060,8 @@ function baseDescriptor(
     schemaVersion: 1,
     schemaFingerprint: BASE_SCHEMA_FINGERPRINT,
     formatCount: 1,
-    intentCount: 1,
-    actionStateCount: 3,
+    intentCount: 2,
+    actionStateCount: 4,
     inlineFormatSetCount: 0,
     matchesProfileGeneration: (candidate) => candidate === generation,
     formatKind: (index) => (index === 0 ? "breditor/strong" : undefined),
@@ -5062,33 +5074,42 @@ function baseDescriptor(
     formatPropertyIntegerMaximum: () => undefined,
     formatPropertyStringMinimumUtf8Bytes: () => undefined,
     formatPropertyStringMaximumUtf8Bytes: () => undefined,
-    intentId: (index) => (index === 0 ? INTENT_ID : undefined),
-    intentInputKind: (index) => (index === 0 ? "none" : undefined),
+    intentId: (index) =>
+      ["breditor/clear-inline-formatting", INTENT_ID][index],
+    intentInputKind: (index) =>
+      index === 0 || index === 1 ? "none" : undefined,
     intentInputContractName: () => undefined,
     intentInputContractVersion: () => undefined,
-    intentActivationContract: (index) => (index === 0 ? "tracked" : undefined),
+    intentActivationContract: (index) =>
+      index === 0 ? "stateless" : index === 1 ? "tracked" : undefined,
     intentValueContractName: () => undefined,
     intentValueContractVersion: () => undefined,
     actionStateId: (index) =>
       [
         "breditor/control-bold",
+        "breditor/control-clear-inline-formatting",
         "breditor/control-redo",
         "breditor/control-undo",
       ][index],
     actionStateSourceKind: (index) =>
-      index === 0
+      index === 0 || index === 1
         ? "routed"
-        : index === 1 || index === 2
+        : index === 2 || index === 3
           ? "history"
           : undefined,
     actionStateSourceActionId: () => undefined,
-    actionStateSourceIntentId: (index) => (index === 0 ? INTENT_ID : undefined),
+    actionStateSourceIntentId: (index) =>
+      index === 0
+        ? INTENT_ID
+        : index === 1
+          ? "breditor/clear-inline-formatting"
+          : undefined,
     actionStateHistoryDirection: (index) =>
-      index === 1 ? "redo" : index === 2 ? "undo" : undefined,
+      index === 2 ? "redo" : index === 3 ? "undo" : undefined,
     actionStateActivationContract: (index) =>
       index === 0
         ? "tracked"
-        : index === 1 || index === 2
+        : index === 1 || index === 2 || index === 3
           ? "stateless"
           : undefined,
     actionStateValueContractName: () => undefined,

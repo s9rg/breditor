@@ -218,11 +218,12 @@ try {
     "Code",
     "Highlight",
     "Link",
+    "Clear formatting",
     "Undo",
     "Redo",
   ];
   assert.equal(outcome.showcaseContentEditable, "true");
-  assert.equal(outcome.showcaseToolbarButtons, 8);
+  assert.equal(outcome.showcaseToolbarButtons, 9);
   assert.deepEqual(outcome.showcaseToolbarLabels, expectedShowcaseToolbar);
   assert.deepEqual(
     outcome.showcase?.manifestToolbarOrder,
@@ -381,6 +382,18 @@ try {
     "s",
   ]);
   assert.deepEqual(outcome.showcase?.redoDom.chain, completeShowcaseChain);
+  assert.deepEqual(outcome.showcase?.clearUndoDom.chain, completeShowcaseChain);
+  assert.equal(
+    outcome.showcase?.clearedPlainText.value,
+    "Breditor showcase",
+  );
+  const clearedShowcaseDocument = JSON.parse(
+    outcome.showcase?.clearedDocumentJson.value ?? "null",
+  );
+  assert.deepEqual(
+    clearedShowcaseDocument.root.children[0].children[0].formats,
+    [],
+  );
   assert.deepEqual(outcome.showcaseCurrentDom, {
     attributes: ["class", "href", "rel", "target"],
     className: "breditor-link",
@@ -498,7 +511,7 @@ try {
 }
 
 console.log(
-  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, and eight-control Showcase profiles in Chromium.",
+  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, and nine-control Showcase profiles, including Clear formatting and one-unit Undo, in Chromium.",
 );
 
 async function serve(rawUrl, response) {

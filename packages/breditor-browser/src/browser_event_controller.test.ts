@@ -114,6 +114,36 @@ describe("BreditorBrowserEventController", () => {
     });
   });
 
+  it("routes native formatRemove through the clear-inline-formatting intent", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const event = inputEvent("beforeinput", "formatRemove", null, []);
+
+    const disposition = dispatch(fixture.host, event, (observed) =>
+      controller.handleBeforeInput(
+        observed as InputEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+
+    expect(disposition.kind).toBe("handled");
+    expect(event.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]?.source).toEqual({
+      kind: "beforeinput",
+      detail: "formatRemove",
+    });
+    expect(delivered[0]?.requirements.history).toBe("closeBefore");
+    expect(delivered[0]?.command).toEqual({
+      kind: "intent",
+      intentId: "breditor/clear-inline-formatting",
+      input: { kind: "none" },
+    });
+  });
+
   it("executes a keyboard command once across keydown, beforeinput, and input", () => {
     const fixture = createFixture();
     installCollapsedDomSelection(fixture.host, 2);

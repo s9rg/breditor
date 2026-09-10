@@ -4,26 +4,27 @@ use crate::{
         ActionEvaluation, ActionFault, ActionPlan, ActionStateContract, ActionStateDomains,
         ActionStateIndicator, ActionStateSpec, ActionStateValue,
     },
-    document::{Format, FormatSet, TextFragment, TextFragmentError, TextRun},
+    document::{Format, FormatSet, TextFragment, TextRun},
     identity::QualifiedName,
     operation::{Operation, RootTextReplace, TextRange, TextSplice},
-    selection::{RangeOrder, RangeSelection, Selection},
     state::EditorState,
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
 };
 
 use super::{
-    super::text_position::{TextRangeSelection, point_at_fragment_offset},
+    super::text_position::TextRangeSelection,
     SetInlineFormatInput,
     inline_format_properties_state::{
         InlineFormatPropertiesScan, inline_format_properties_state_contract,
         properties_state_for_formats,
     },
     support::{
-        CrossParagraphTextSource, CrossParagraphTextSourceError, base_shape_fits,
-        base_total_text_fits, capture_cross_paragraph_text_source, disabled, fault,
+        CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
+        capture_cross_paragraph_text_source, concat_format_rewrite_result,
+        cross_format_rewrite_result_fragments, disabled, fault, format_rewrite_source_range,
         format_set_property_fits, fragment_range_parts, property_fragment_delta_fits,
-        property_result_fits, require_operation_budget, require_text_splice_range,
+        property_result_fits, rebuild_cross_format_rewrite_selection,
+        rebuild_format_rewrite_selection, require_operation_budget, require_text_splice_range,
         strict_relocation, text_splice_paragraph_fragment,
     },
 };
@@ -160,7 +161,10 @@ fn evaluate_collapsed(
     desired: Option<&Format>,
 ) -> Result<ActionEvaluation, ActionFault> {
     let source = text_splice_paragraph_fragment(state, range.start().paragraph_path())?;
-    let focus_affinity = source_range(state)?.focus().affinity();
+    let focus_affinity =
+        format_rewrite_source_range(state, "breditor/set-inline-format-selection-fault")?
+            .focus()
+            .affinity();
     let formats = super::support::effective_typing_formats(
         state,
         &source,
@@ -227,7 +231,13 @@ fn evaluate_extended(
     if replacement == selected {
         return Ok(evaluation(disabled("breditor/inline-format-unchanged"), indicator));
     }
-    let Some(result) = concat_result(&prefix, &replacement, &suffix)? else {
+    let Some(result) = concat_format_rewrite_result(
+        &prefix,
+        &replacement,
+        &suffix,
+        "breditor/set-inline-format-result-fold-fault",
+    )?
+    else {
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     if !base_shape_fits(state, 1, source.len(), &[&result])
@@ -247,7 +257,13 @@ fn evaluate_extended(
             .map_err(|_| fault("breditor/set-inline-format-range-fault"))?;
     let splice = TextSplice::try_new(splice_range, selected, replacement)
         .map_err(|_| fault("breditor/set-inline-format-splice-fault"))?;
-    let result_selection = rebuild_selection(state, range, &result)?;
+    let result_selection = rebuild_format_rewrite_selection(
+        state,
+        range,
+        &result,
+        "breditor/set-inline-format-selection-order-fault",
+        "breditor/set-inline-format-selection-fault",
+    )?;
     let plan = ActionPlan::new(
         vec![Operation::from(splice)],
         strict_relocation(),
@@ -308,7 +324,13 @@ fn evaluate_cross_paragraph(
         return Ok(evaluation(disabled("breditor/inline-format-unchanged"), indicator));
     }
 
-    let Some(results) = cross_result_fragments(&source, &replacements)? else {
+    let Some(results) = cross_format_rewrite_result_fragments(
+        &source,
+        &replacements,
+        "breditor/set-inline-format-cross-result-fault",
+        "breditor/set-inline-format-result-fold-fault",
+    )?
+    else {
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     let Some(result_text_bytes) =
@@ -330,7 +352,13 @@ fn evaluate_cross_paragraph(
         return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     }
 
-    let result_selection = rebuild_cross_selection(state, range, &results)?;
+    let result_selection = rebuild_cross_format_rewrite_selection(
+        state,
+        range,
+        &results,
+        "breditor/set-inline-format-selection-order-fault",
+        "breditor/set-inline-format-selection-fault",
+    )?;
     let (operation_range, guards) = source.into_range_and_guards();
     let operation = RootTextReplace::try_new(operation_range, guards, replacements)
         .map_err(|_| fault("breditor/set-inline-format-root-replace-fault"))?;
@@ -456,7 +484,10 @@ fn state_value_for_range(
     }
     if range.is_collapsed() {
         let source = text_splice_paragraph_fragment(state, range.start().paragraph_path())?;
-        let focus_affinity = source_range(state)?.focus().affinity();
+        let focus_affinity =
+            format_rewrite_source_range(state, "breditor/set-inline-format-selection-fault")?
+                .focus()
+                .affinity();
         let formats = super::support::effective_typing_formats(
             state,
             &source,
@@ -593,147 +624,6 @@ fn replace_format(
     FormatSet::try_from_formats(replaced)
         .map(Some)
         .map_err(|_| fault("breditor/set-inline-format-format-set-fault"))
-}
-
-fn concat_result(
-    prefix: &TextFragment,
-    replacement: &TextFragment,
-    suffix: &TextFragment,
-) -> Result<Option<TextFragment>, ActionFault> {
-    let with_replacement = match prefix.try_concat(replacement) {
-        Ok(result) => result,
-        Err(error) if fragment_error_is_capacity(&error) => return Ok(None),
-        Err(_) => return Err(fault("breditor/set-inline-format-result-fold-fault")),
-    };
-    match with_replacement.try_concat(suffix) {
-        Ok(result) => Ok(Some(result)),
-        Err(error) if fragment_error_is_capacity(&error) => Ok(None),
-        Err(_) => Err(fault("breditor/set-inline-format-result-fold-fault")),
-    }
-}
-
-fn cross_result_fragments(
-    source: &CrossParagraphTextSource,
-    replacements: &[TextFragment],
-) -> Result<Option<Vec<TextFragment>>, ActionFault> {
-    if replacements.len() != source.guards().len() || replacements.len() < 2 {
-        return Err(fault("breditor/set-inline-format-cross-result-fault"));
-    }
-    let last_index = replacements
-        .len()
-        .checked_sub(1)
-        .ok_or_else(|| fault("breditor/set-inline-format-cross-result-fault"))?;
-    let mut results = Vec::with_capacity(replacements.len());
-    for (index, replacement) in replacements.iter().enumerate() {
-        let folded = if index == 0 {
-            source.prefix().try_concat(replacement)
-        } else if index == last_index {
-            replacement.try_concat(source.suffix())
-        } else {
-            results.push(replacement.clone());
-            continue;
-        };
-        match folded {
-            Ok(result) => results.push(result),
-            Err(error) if fragment_error_is_capacity(&error) => return Ok(None),
-            Err(_) => return Err(fault("breditor/set-inline-format-result-fold-fault")),
-        }
-    }
-    Ok(Some(results))
-}
-
-const fn fragment_error_is_capacity(error: &TextFragmentError) -> bool {
-    matches!(
-        error,
-        TextFragmentError::TextOffset(_)
-            | TextFragmentError::TextByteLengthOverflow
-            | TextFragmentError::TextRun(_)
-    )
-}
-
-fn rebuild_selection(
-    state: &EditorState,
-    range: &TextRangeSelection,
-    result: &TextFragment,
-) -> Result<Selection, ActionFault> {
-    let source = source_range(state)?;
-    let (anchor_offset, focus_offset) = match range.order() {
-        RangeOrder::Collapsed => {
-            return Err(fault("breditor/set-inline-format-selection-order-fault"));
-        }
-        RangeOrder::Forward => (range.start().offset(), range.end().offset()),
-        RangeOrder::Backward => (range.end().offset(), range.start().offset()),
-    };
-    let anchor = point_at_fragment_offset(
-        range.start().paragraph_path(),
-        result,
-        anchor_offset,
-        source.anchor().affinity(),
-    )
-    .map_err(|_| fault("breditor/set-inline-format-selection-fault"))?;
-    let focus = point_at_fragment_offset(
-        range.start().paragraph_path(),
-        result,
-        focus_offset,
-        source.focus().affinity(),
-    )
-    .map_err(|_| fault("breditor/set-inline-format-selection-fault"))?;
-    Ok(RangeSelection::new(anchor, focus).into())
-}
-
-fn rebuild_cross_selection(
-    state: &EditorState,
-    range: &TextRangeSelection,
-    results: &[TextFragment],
-) -> Result<Selection, ActionFault> {
-    let source = source_range(state)?;
-    let first =
-        results.first().ok_or_else(|| fault("breditor/set-inline-format-selection-fault"))?;
-    let last = results.last().ok_or_else(|| fault("breditor/set-inline-format-selection-fault"))?;
-    let (anchor_path, anchor_fragment, anchor_offset, focus_path, focus_fragment, focus_offset) =
-        match range.order() {
-            RangeOrder::Collapsed => {
-                return Err(fault("breditor/set-inline-format-selection-order-fault"));
-            }
-            RangeOrder::Forward => (
-                range.start().paragraph_path(),
-                first,
-                range.start().offset(),
-                range.end().paragraph_path(),
-                last,
-                range.end().offset(),
-            ),
-            RangeOrder::Backward => (
-                range.end().paragraph_path(),
-                last,
-                range.end().offset(),
-                range.start().paragraph_path(),
-                first,
-                range.start().offset(),
-            ),
-        };
-    let anchor = point_at_fragment_offset(
-        anchor_path,
-        anchor_fragment,
-        anchor_offset,
-        source.anchor().affinity(),
-    )
-    .map_err(|_| fault("breditor/set-inline-format-selection-fault"))?;
-    let focus = point_at_fragment_offset(
-        focus_path,
-        focus_fragment,
-        focus_offset,
-        source.focus().affinity(),
-    )
-    .map_err(|_| fault("breditor/set-inline-format-selection-fault"))?;
-    Ok(RangeSelection::new(anchor, focus).into())
-}
-
-fn source_range(state: &EditorState) -> Result<&RangeSelection, ActionFault> {
-    let Some(Selection::Range(range)) = state.selection() else {
-        return Err(fault("breditor/set-inline-format-selection-fault"));
-    };
-    Ok(range)
 }
 
 #[cfg(test)]

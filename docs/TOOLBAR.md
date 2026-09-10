@@ -5,8 +5,9 @@ Status: supported by the public `0.1.0` runtime and carried unchanged into the
 consumer/cross-browser release; `0.3.0-alpha.7` adds the closed callback-free
 typed inline-format form, and `0.3.0-alpha.8` adds exact property-state
 hydration. `0.3.0-alpha.9` proves additive eight-control manifest composition,
-as defined in
-[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md)
+and `0.3.0-alpha.10` adds the Rust-owned aggregate Clear formatting route and
+nine-control Showcase, as defined in
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -44,17 +45,23 @@ registry used for execution:
 - `breditor/control-bold` observes the tracked, no-input
   `breditor/format-strong` intent, whose priority-zero blocking
   `breditor/format-strong-binding` selects `breditor/toggle-strong`;
+- `breditor/control-clear-inline-formatting` observes the stateless, no-input
+  `breditor/clear-inline-formatting` intent, whose priority-zero blocking
+  `breditor/clear-inline-formatting-binding` selects
+  `breditor/clear-inline-formats`;
 - `breditor/control-undo` observes history undo; and
 - `breditor/control-redo` observes history redo.
 
 Catalog entries are returned in lexical state-ID order. A manifest chooses its
 own visible order, so presentation order is not a semantic or wire contract.
-Bold uses tracked activation (`inactive`, `active`, or `mixed`). Undo and redo
-are stateless and derive availability from authoritative replay preflight.
+Bold uses tracked activation (`inactive`, `active`, or `mixed`). Clear
+formatting, Undo, and Redo are stateless. Clear formatting derives availability
+from the current selection and effective inline formats; history controls
+derive it from authoritative replay preflight.
 
 The generalized boundary also retains resolved typed action-state values,
 disabled or blocked reason codes, and explicit `unhandled` and `faulted`
-states. The three base controls do not require a value payload.
+states. The four base states do not require a value payload.
 
 ## Wasm ownership boundary
 
@@ -297,6 +304,19 @@ extension shortcuts, overflow menus, or runtime manifest replacement. The
 Showcase is evidence that the fixed declaration grammar composes; it is not a
 general toolbar-widget or plugin API.
 
+Alpha.10 adds no control kind or dispatch rule. The Showcase appends one
+ordinary stateless **Clear formatting** button after Link and before Undo/Redo,
+for the exact order Bold, Italic, Strikethrough, Code, Highlight, Link, Clear
+formatting, Undo, Redo. The button uses the base routed state and no-input
+intent above. Native `beforeinput` type `formatRemove` uses that same semantic
+intent. Over a nonempty same- or cross-paragraph text range, Rust removes every
+inline format and typed property as one undoable transaction; at a collapsed
+selection it clears the effective pending/context format set without adding a
+standalone undo entry. Structural-only and already-plain selections remain
+disabled. This supersedes only Alpha.9's aggregate-clear limitation; it does
+not add per-format clearing, exclusion groups, callbacks, or a new Wasm ABI or
+durable generation.
+
 ## Accessible DOM behavior
 
 `BreditorToolbar` treats its constructor element as a mount. It accepts only an
@@ -376,11 +396,14 @@ toolbar.
 
 ## Explicit limits
 
-- The default catalog contains Bold, Undo, and Redo. Compiled profiles can add
+- The default toolbar contains Bold, Undo, and Redo. The base catalog also
+  contains Clear formatting. Compiled profiles can add
   property-free format toggle intents/states as native buttons; Alpha.7 adds
   the closed typed-form launcher and sibling form, and Alpha.8 adds its exact
   property-value hydration.
-- One browser action-state snapshot admits at most 512 entries. One uniform
+- One browser action-state snapshot admits at most 514 entries, while one
+  presentation manifest admits at most 64 controls. A toolbar can expose a
+  catalog subset; these are deliberately different ceilings. One uniform
   value admits at most 524,288 encoded JSON bytes; one complete snapshot admits
   at most 8,388,608 such encoded bytes, 65,536 decoded values, and 1,048,576
   retained UTF-8 bytes across decoded strings and object keys.

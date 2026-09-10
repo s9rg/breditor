@@ -47,8 +47,8 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
   readonly schemaVersion: number = 1;
   readonly schemaFingerprint: string = BASE_SCHEMA_FINGERPRINT;
   readonly formatCount: number = 1;
-  readonly intentCount: number = 1;
-  readonly actionStateCount: number = 3;
+  readonly intentCount: number = 2;
+  readonly actionStateCount: number = 4;
   readonly inlineFormatSetCount: number = 0;
   freeCalls = 0;
 
@@ -102,15 +102,18 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
   ): number | undefined { return undefined; }
 
   intentId(index: number): string | undefined {
-    return index === 0 ? "breditor/format-strong" : undefined;
+    return [
+      "breditor/clear-inline-formatting",
+      "breditor/format-strong",
+    ][index];
   }
   intentInputKind(index: number): "none" | undefined {
-    return index === 0 ? "none" : undefined;
+    return index === 0 || index === 1 ? "none" : undefined;
   }
   intentInputContractName(): undefined { return undefined; }
   intentInputContractVersion(): undefined { return undefined; }
-  intentActivationContract(index: number): "tracked" | undefined {
-    return index === 0 ? "tracked" : undefined;
+  intentActivationContract(index: number): "stateless" | "tracked" | undefined {
+    return index === 0 ? "stateless" : index === 1 ? "tracked" : undefined;
   }
   intentValueContractName(): undefined { return undefined; }
   intentValueContractVersion(): undefined { return undefined; }
@@ -118,27 +121,40 @@ class FakeDescriptor implements WasmCompiledProfileDescriptorView {
   actionStateId(index: number): string | undefined {
     return [
       "breditor/control-bold",
+      "breditor/control-clear-inline-formatting",
       "breditor/control-redo",
       "breditor/control-undo",
     ][index];
   }
 
   actionStateSourceKind(index: number): "routed" | "history" | undefined {
-    return index === 0 ? "routed" : index === 1 || index === 2 ? "history" : undefined;
+    return index === 0 || index === 1
+      ? "routed"
+      : index === 2 || index === 3
+        ? "history"
+        : undefined;
   }
 
   actionStateSourceActionId(): undefined { return undefined; }
 
   actionStateSourceIntentId(index: number): string | undefined {
-    return index === 0 ? "breditor/format-strong" : undefined;
+    return index === 0
+      ? "breditor/format-strong"
+      : index === 1
+        ? "breditor/clear-inline-formatting"
+        : undefined;
   }
 
   actionStateHistoryDirection(index: number): "undo" | "redo" | undefined {
-    return index === 1 ? "redo" : index === 2 ? "undo" : undefined;
+    return index === 2 ? "redo" : index === 3 ? "undo" : undefined;
   }
 
   actionStateActivationContract(index: number): "stateless" | "tracked" | undefined {
-    return index === 0 ? "tracked" : index === 1 || index === 2 ? "stateless" : undefined;
+    return index === 0
+      ? "tracked"
+      : index === 1 || index === 2 || index === 3
+        ? "stateless"
+        : undefined;
   }
 
   actionStateValueContractName(): undefined { return undefined; }
@@ -157,8 +173,8 @@ class FakeSemanticDescriptor extends FakeDescriptor {
   override readonly schemaVersion = 3;
   override readonly schemaFingerprint = `sha256:${"6".repeat(64)}`;
   override readonly formatCount = 2;
-  override readonly intentCount = 2;
-  override readonly actionStateCount = 4;
+  override readonly intentCount = 3;
+  override readonly actionStateCount = 5;
 
   override formatKind(index: number): string | undefined {
     return ["breditor/strong", "example/highlight"][index];
@@ -170,22 +186,30 @@ class FakeSemanticDescriptor extends FakeDescriptor {
 
   override intentId(index: number): string | undefined {
     return [
+      "breditor/clear-inline-formatting",
       "breditor/format-strong",
       "example/toggle-highlight-intent",
     ][index];
   }
 
   override intentInputKind(index: number): "none" | undefined {
-    return index === 0 || index === 1 ? "none" : undefined;
+    return index === 0 || index === 1 || index === 2 ? "none" : undefined;
   }
 
-  override intentActivationContract(index: number): "tracked" | undefined {
-    return index === 0 || index === 1 ? "tracked" : undefined;
+  override intentActivationContract(
+    index: number,
+  ): "stateless" | "tracked" | undefined {
+    return index === 0
+      ? "stateless"
+      : index === 1 || index === 2
+        ? "tracked"
+        : undefined;
   }
 
   override actionStateId(index: number): string | undefined {
     return [
       "breditor/control-bold",
+      "breditor/control-clear-inline-formatting",
       "breditor/control-redo",
       "breditor/control-undo",
       "example/highlight-control",
@@ -195,9 +219,9 @@ class FakeSemanticDescriptor extends FakeDescriptor {
   override actionStateSourceKind(
     index: number,
   ): "routed" | "history" | undefined {
-    return index === 0 || index === 3
+    return index === 0 || index === 1 || index === 4
       ? "routed"
-      : index === 1 || index === 2
+      : index === 2 || index === 3
         ? "history"
         : undefined;
   }
@@ -205,17 +229,19 @@ class FakeSemanticDescriptor extends FakeDescriptor {
   override actionStateSourceIntentId(index: number): string | undefined {
     return index === 0
       ? "breditor/format-strong"
-      : index === 3
-        ? "example/toggle-highlight-intent"
-        : undefined;
+      : index === 1
+        ? "breditor/clear-inline-formatting"
+        : index === 4
+          ? "example/toggle-highlight-intent"
+          : undefined;
   }
 
   override actionStateActivationContract(
     index: number,
   ): "stateless" | "tracked" | undefined {
-    return index === 0 || index === 3
+    return index === 0 || index === 4
       ? "tracked"
-      : index === 1 || index === 2
+      : index === 1 || index === 2 || index === 3
         ? "stateless"
         : undefined;
   }
@@ -716,11 +742,18 @@ describe("Wasm engine bootstrap", () => {
     expect(isOwnedBrowserWasmEngineBootstrapResult(result)).toBe(true);
     expect(Object.isFrozen(result)).toBe(true);
     if (!result.ok) throw new Error("bootstrap failed");
-    expect(result.profileDescriptor.intents).toEqual([{
-      id: "breditor/format-strong",
-      input: { kind: "none" },
-      state: { activation: "tracked", value: undefined },
-    }]);
+    expect(result.profileDescriptor.intents).toEqual([
+      {
+        id: "breditor/clear-inline-formatting",
+        input: { kind: "none" },
+        state: { activation: "stateless", value: undefined },
+      },
+      {
+        id: "breditor/format-strong",
+        input: { kind: "none" },
+        state: { activation: "tracked", value: undefined },
+      },
+    ]);
     expect(result.profileDescriptor.actionStates[0]).toEqual({
       id: "breditor/control-bold",
       source: { kind: "routed", intentId: "breditor/format-strong" },
@@ -812,6 +845,7 @@ describe("Wasm engine bootstrap", () => {
       fingerprint: `sha256:${"6".repeat(64)}`,
     });
     expect(result.profileDescriptor.intents.map(({ id }) => id)).toEqual([
+      "breditor/clear-inline-formatting",
       "breditor/format-strong",
       "example/toggle-highlight-intent",
     ]);
@@ -819,7 +853,7 @@ describe("Wasm engine bootstrap", () => {
       kind: "routed",
       intentId: "breditor/format-strong",
     });
-    expect(result.profileDescriptor.actionStates[3]?.source).toEqual({
+    expect(result.profileDescriptor.actionStates[4]?.source).toEqual({
       kind: "routed",
       intentId: "example/toggle-highlight-intent",
     });

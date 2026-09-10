@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.9` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.10` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -59,6 +59,14 @@ the existing generic action/intent/state path. The new schema selector and
 format set produce a distinct Document-V2 fingerprint, but introduce no new
 AST node, operation, action input, descriptor field, bootstrap field, replay
 rule, or durable generation. Session, Editor State, and Commit remain V3.
+Alpha.10 adds the eighth base action, `breditor/clear-inline-formats`, and its
+fixed no-input intent, blocking route, and stateless action-state entry. It
+clears complete inline `FormatSet` values through the existing guarded
+`TextSplice` and `RootTextReplace` variants, or installs an explicit empty
+pending set at a formatted caret. Existing operation and V3 checkpoint recipes
+therefore preserve exact undo/redo without a new record discriminant. Profile
+Bootstrap V2, schema fingerprints, Document V2, Wasm ABI 5, and all durable
+format generations remain unchanged.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -255,9 +263,10 @@ The implemented Rust slice owns:
 - one-call action observation contracts plus a frozen, bounded direct/routed/
   history action-state catalog, immutable exact-source batches, and a
   synchronous single-observation cache with bounded local deltas;
-- seven semantic base actions: exact inline and structural plain-text
+- eight semantic base actions: exact inline and structural plain-text
   insertion, paragraph break, grapheme-aware backward and forward deletion,
-  exact selection deletion, and strong formatting, plus an explicitly
+  exact selection deletion, strong formatting, and complete inline-format
+  clearing, plus an explicitly
   registerable `ToggleInlineFormatAction` configured for one admitted
   property-free format kind and automatically instantiated by a compiled
   profile for each valid manifest-owned toggle bundle; and
@@ -1187,7 +1196,7 @@ precheck as a reservation.
 
 The first action ABI has exactly two input shapes: no input and string input.
 For a string action, Rust looks up and installs the descriptor's exact input
-contract; JavaScript cannot choose its name or version. This covers all seven
+contract; JavaScript cannot choose its name or version. This covers all eight
 base actions and intentionally does not define generic action-value JSON or a
 third-party Wasm plugin ABI. Undo, redo, merge-group close, and history clear
 remain separate guarded methods. DOM selection reporting is deferred to the
@@ -1792,7 +1801,51 @@ preflights the one-operation budget and the complete format, leaf/aggregate
 text, tree, property-value, and property-string result limits. An exact set or
 absent remove is `breditor/inline-format-unchanged` and publishes no operation.
 
-Five base actions take no input. Inline and plain-text insertion each accept an
+`ClearInlineFormatsAction` is the unconfigured all-format counterpart, not a
+loop over registered toggle commands. It has the fixed action identity
+`breditor/clear-inline-formats`, no input, and a stateless indicator. Every
+compiled base profile declares the no-input
+`breditor/clear-inline-formatting` intent, routes it through
+`breditor/clear-inline-formatting-binding` at priority zero with disabled
+behavior set to block, and observes it through
+`breditor/control-clear-inline-formatting`. The four built-in states are Bold,
+Clear Formatting, Redo, and Undo in canonical identity order.
+
+At a collapsed range, the action reads the same effective typing context as
+the toggle and setter actions: an explicit pending set wins, including an
+explicit empty set, and otherwise the focus affinity chooses adjacent context.
+A nonempty effective set becomes `Some(FormatSet::default())`; document and
+selection remain exact. The state-only commit requests `HistoryIntent::Record`
+but, under the existing operation-backed history law, adds no standalone undo
+entry. It closes an open merge group, updates adjacent before/after snapshots,
+and preserves redo. An already empty effective set is disabled as
+`breditor/inline-format-unchanged` and publishes nothing.
+
+An extended range replaces the complete format set of every selected scalar
+with the canonical empty set. Unselected prefixes and suffixes retain their
+complete typed instances and property maps. Same-paragraph clearing is one
+guarded `TextSplice`; cross-paragraph clearing is one same-count guarded
+`RootTextReplace`, preserving empty middle paragraphs. Both paths preserve
+text, spatial UTF-16 endpoints, direction, and endpoint affinities, while run
+paths and local offsets may canonicalize when adjacent plain text merges.
+Pending formats become `None` and the complete command is one independent undo
+unit. A structural-only range is `breditor/no-selected-text`; a nonempty but
+already plain selection is `breditor/inline-format-unchanged`. Both reasons
+precede the extended-range operation-budget check.
+
+Clearing introduces no format or property value, but splitting a retained
+typed boundary run can duplicate its property owner and joining newly plain
+runs can exceed the per-leaf text ceiling. Planning therefore proves the one-
+operation budget and complete leaf, aggregate-text, child, node, property-
+value, and property-string result before publication. Forward and inverse
+operations retain exact source properties for undo, redo, and Session
+Checkpoint V3 replay; replay never invokes the clear action. Failure and Debug
+surfaces redact removed format identities and property data. The action has no
+allowlist, denylist, ownership filter, partial-property operation, or authority
+over element kinds, block properties, entity identities, or annotations stored
+outside inline formats.
+
+Six base actions take no input. Inline and plain-text insertion each accept an
 independently versioned typed input:
 
 Both version-1 string ceilings equal the generic `ActionValue` text envelope.
@@ -2044,7 +2097,7 @@ and replay conforming alpha.6 checkpoints containing cross-paragraph set/remove
 history. This forward compatibility is specific to the unchanged operation
 contract; it does not make arbitrary prerelease downgrade generally safe.
 
-All seven base actions support point aliases and non-BMP scalar boundaries; the
+All eight base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
 survives. Empty paragraphs and formatted seams have explicit behavior.
 Collapsed directional deletion is grapheme-based and Rust-authoritative;
@@ -2224,7 +2277,9 @@ Labels, icons, localization, ARIA data, grouping, layout, and shortcut syntax
 remain a separate presentation manifest keyed by `ActionStateId`. Catalogs are
 canonical in lexical state-ID order, reject duplicate IDs and unknown or
 mismatched fixed invocations, allow duplicate sources intentionally, and cap
-themselves at 512 entries. Fixed invocation inputs additionally share a 65,536
+themselves at 514 entries: four built-in controls plus the independent maxima
+of 255 generated toggle controls and 255 generated setter controls. Fixed
+invocation inputs additionally share a 65,536
 value and 1 MiB UTF-8 payload budget. Construction totals every fixed input
 before descriptor validation, so an over-limit error reports the complete
 catalog aggregate rather than the prefix that first crossed the limit.
@@ -2579,7 +2634,7 @@ profile document, but:
   temporary executable preparation;
 - cache refresh compares complete immutable state and history values before an
   exact hit. Source-group discovery is quadratic in catalog entry count during
-  cache construction, bounded by 512 entries; refresh retains normalized clones
+  cache construction, bounded by 514 entries; refresh retains normalized clones
   only for duplicate leaders with followers. The cache owns one current
   observation, while caller-held shared observations may legitimately extend
   prior batch lifetimes;
@@ -2631,6 +2686,13 @@ profile document, but:
   selected endpoint fragments transiently for cross actions that do not consume
   them. Boundary splits can add at most one run to each endpoint paragraph,
   while canonicalized seams can merge large equal-format text;
+- clear-inline-formats performs the same selection/source scan and guarded
+  result construction without enumerating format kinds. Each nonempty selected
+  paragraph fragment is copied into canonical plain text. A typed format split
+  at either range edge can duplicate retained property owners, and newly equal
+  plain seams can merge into a larger immutable string, so property and per-
+  leaf text limits remain observable even though the selected replacement owns
+  no formats;
 - insertion plans and applies in time proportional to the affected paragraph's
   runs plus copied seam text for a local splice. Cross-paragraph type-over also
   scans and guards every selected paragraph, and retained history keeps those

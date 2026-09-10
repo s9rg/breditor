@@ -5,6 +5,7 @@ import {
   consumeWasmCompiledProfileDescriptor,
   consumeWasmCompiledProfileDescriptorWithCleanup,
   isOwnedBrowserCompiledProfileDescriptor,
+  MAX_BROWSER_PROFILE_ACTION_STATES,
   MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS,
   wasmProfileGenerationIsLive,
   wasmViewMatchesProfileGeneration,
@@ -187,6 +188,50 @@ class Descriptor implements WasmCompiledProfileDescriptorView {
   }
 }
 
+class MaximumActionStateDescriptor extends Descriptor {
+  override readonly actionStateCount = MAX_BROWSER_PROFILE_ACTION_STATES;
+
+  override actionStateId(index: number): string | undefined {
+    return index < this.actionStateCount
+      ? `example/control-${String(index).padStart(3, "0")}`
+      : undefined;
+  }
+
+  override actionStateSourceKind(
+    index: number,
+  ): "history" | undefined {
+    return index < this.actionStateCount ? "history" : undefined;
+  }
+
+  override actionStateSourceActionId(_index: number): undefined {
+    return undefined;
+  }
+
+  override actionStateSourceIntentId(_index: number): undefined {
+    return undefined;
+  }
+
+  override actionStateHistoryDirection(
+    index: number,
+  ): "undo" | undefined {
+    return index < this.actionStateCount ? "undo" : undefined;
+  }
+
+  override actionStateActivationContract(
+    index: number,
+  ): "stateless" | undefined {
+    return index < this.actionStateCount ? "stateless" : undefined;
+  }
+
+  override actionStateValueContractName(_index: number): undefined {
+    return undefined;
+  }
+
+  override actionStateValueContractVersion(_index: number): undefined {
+    return undefined;
+  }
+}
+
 class TwoSetDescriptor extends Descriptor {
   override readonly actionStateCount = 4;
   override readonly inlineFormatSetCount = 2;
@@ -329,6 +374,33 @@ class TwoSetDescriptor extends Descriptor {
 }
 
 describe("compiled Wasm profile descriptor boundary", () => {
+  it("admits the exact action-state capacity", () => {
+    expect(MAX_BROWSER_PROFILE_ACTION_STATES).toBe(514);
+    const generation = new Generation();
+    const view = new MaximumActionStateDescriptor(generation);
+
+    const result = consumeWasmCompiledProfileDescriptor(generation, view);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("maximum descriptor fixture was rejected");
+    expect(result.descriptor.actionStates).toHaveLength(514);
+    expect(view.freeCalls).toBe(1);
+  });
+
+  it("rejects the first excess action state before indexed reads", () => {
+    const generation = new Generation();
+    const view = new Descriptor(generation);
+    Object.defineProperty(view, "actionStateCount", {
+      value: MAX_BROWSER_PROFILE_ACTION_STATES + 1,
+    });
+    const actionStateId = vi.fn(view.actionStateId.bind(view));
+    Object.defineProperty(view, "actionStateId", { value: actionStateId });
+
+    expect(consumeWasmCompiledProfileDescriptor(generation, view).ok).toBe(false);
+    expect(actionStateId).not.toHaveBeenCalled();
+    expect(view.freeCalls).toBe(1);
+  });
+
   it("copies the complete contract into deeply frozen handle-free metadata", () => {
     const generation = new Generation();
     const view = new Descriptor(generation);

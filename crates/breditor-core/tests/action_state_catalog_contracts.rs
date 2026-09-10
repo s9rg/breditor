@@ -36,6 +36,7 @@ use breditor_core::{
         TextRange, TextSplice,
     },
     position::{NodePath, TextOffset},
+    profile::{MAX_PROFILE_INLINE_FORMAT_SETS, MAX_PROFILE_INLINE_FORMAT_TOGGLES},
     session::EditorSession,
     state::{EditorContext, EditorState, LineageId},
     transaction::{
@@ -914,6 +915,10 @@ fn history_availability_is_authoritative_and_prior_batches_stay_immutable() -> T
 
 #[test]
 fn entry_count_limits_are_fixed_and_the_exact_boundary_is_accepted() -> TestResult {
+    assert_eq!(
+        MAX_ACTION_STATE_ENTRIES,
+        4 + MAX_PROFILE_INLINE_FORMAT_TOGGLES + MAX_PROFILE_INLINE_FORMAT_SETS
+    );
     let maximum = usize::try_from(MAX_ACTION_STATE_ENTRIES)?;
     let registrations = (0..maximum)
         .map(|index| {

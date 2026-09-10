@@ -1,10 +1,11 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.9` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.10` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
-pristine hydration, and adds the multi-extension Showcase profile described below
+pristine hydration and the multi-extension Showcase profile, and adds the
+core-owned Clear Formatting route described below.
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -501,18 +502,40 @@ priority rules beyond deterministic renderer nesting. Alpha.9 does not add
 extension keyboard shortcuts, clear-format, block code, headings, lists, rich
 HTML paste, runtime extension loading, or extension callbacks.
 
+## `0.3.0-alpha.10` clear inline formatting
+
+Alpha.10 adds one base-profile action, no-input intent, priority-zero blocking
+binding, and stateless action-state source for clearing the complete inline
+`FormatSet`. A same-paragraph range uses one `TextSplice`; a cross-paragraph
+range uses one `RootTextReplace`; a formatted collapsed caret installs an
+explicitly empty pending set without a content operation. Rust preserves exact
+text, paragraph structure, unselected typed properties, selection direction,
+endpoint affinities, undo/redo, and Session-V3 replay.
+
+The command is delivered through existing ABI-5 descriptor, action-state, and
+intent methods. Browser `formatRemove` and the Showcase button use that same
+semantic route. The complete engine state catalog now admits 514 entries; the
+toolbar manifest still admits at most 64 presented controls. This is a
+monotonic reader-limit increase, not a durable schema or wire change.
+
+Profile Bootstrap V2, schema fingerprints, Document V2, every V3 record, and
+Wasm ABI 5 remain unchanged. Clear Formatting is deliberately all-inline: it
+has no allowlist, ownership filter, or block-format meaning. Exact undo means
+removed property values can remain in retained history/checkpoints, so this is
+not a secure-erasure primitive.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.9 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.10 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.9 source configuration is tested as an exactly matching browser,
+The alpha.10 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -528,8 +551,8 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, alpha.7, alpha.8, and
-alpha.9:
+form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7 through
+alpha.10:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

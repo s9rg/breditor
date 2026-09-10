@@ -338,40 +338,47 @@ assert.equal(profileDescriptor.formatRevision(0), 1);
 assert.equal(profileDescriptor.formatKind(1), "example/highlight");
 assert.equal(profileDescriptor.formatRevision(1), 7);
 assert.equal(profileDescriptor.formatKind(2), undefined);
-assert.equal(profileDescriptor.intentCount, 2);
-assert.equal(profileDescriptor.intentId(0), "breditor/format-strong");
+assert.equal(profileDescriptor.intentCount, 3);
+assert.equal(profileDescriptor.intentId(0), "breditor/clear-inline-formatting");
 assert.equal(profileDescriptor.intentInputKind(0), "none");
 assert.equal(profileDescriptor.intentInputContractName(0), undefined);
 assert.equal(profileDescriptor.intentInputContractVersion(0), undefined);
-assert.equal(profileDescriptor.intentActivationContract(0), "tracked");
+assert.equal(profileDescriptor.intentActivationContract(0), "stateless");
 assert.equal(profileDescriptor.intentValueContractName(0), undefined);
 assert.equal(profileDescriptor.intentValueContractVersion(0), undefined);
-assert.equal(profileDescriptor.intentId(1), "example/toggle-highlight-intent");
+assert.equal(profileDescriptor.intentId(1), "breditor/format-strong");
 assert.equal(profileDescriptor.intentInputKind(1), "none");
 assert.equal(profileDescriptor.intentInputContractName(1), undefined);
 assert.equal(profileDescriptor.intentInputContractVersion(1), undefined);
 assert.equal(profileDescriptor.intentActivationContract(1), "tracked");
 assert.equal(profileDescriptor.intentValueContractName(1), undefined);
 assert.equal(profileDescriptor.intentValueContractVersion(1), undefined);
-assert.equal(profileDescriptor.intentId(2), undefined);
-assert.equal(profileDescriptor.intentInputKind(2), undefined);
+assert.equal(profileDescriptor.intentId(2), "example/toggle-highlight-intent");
+assert.equal(profileDescriptor.intentInputKind(2), "none");
 assert.equal(profileDescriptor.intentInputContractName(2), undefined);
 assert.equal(profileDescriptor.intentInputContractVersion(2), undefined);
-assert.equal(profileDescriptor.intentActivationContract(2), undefined);
+assert.equal(profileDescriptor.intentActivationContract(2), "tracked");
 assert.equal(profileDescriptor.intentValueContractName(2), undefined);
 assert.equal(profileDescriptor.intentValueContractVersion(2), undefined);
-assert.equal(profileDescriptor.actionStateCount, 4);
-assert.equal(profileDescriptor.actionStateId(3), "example/highlight-control");
-assert.equal(profileDescriptor.actionStateSourceKind(3), "routed");
-assert.equal(profileDescriptor.actionStateSourceActionId(3), undefined);
+assert.equal(profileDescriptor.intentId(3), undefined);
+assert.equal(profileDescriptor.intentInputKind(3), undefined);
+assert.equal(profileDescriptor.intentInputContractName(3), undefined);
+assert.equal(profileDescriptor.intentInputContractVersion(3), undefined);
+assert.equal(profileDescriptor.intentActivationContract(3), undefined);
+assert.equal(profileDescriptor.intentValueContractName(3), undefined);
+assert.equal(profileDescriptor.intentValueContractVersion(3), undefined);
+assert.equal(profileDescriptor.actionStateCount, 5);
+assert.equal(profileDescriptor.actionStateId(4), "example/highlight-control");
+assert.equal(profileDescriptor.actionStateSourceKind(4), "routed");
+assert.equal(profileDescriptor.actionStateSourceActionId(4), undefined);
 assert.equal(
-  profileDescriptor.actionStateSourceIntentId(3),
+  profileDescriptor.actionStateSourceIntentId(4),
   "example/toggle-highlight-intent",
 );
-assert.equal(profileDescriptor.actionStateHistoryDirection(3), undefined);
-assert.equal(profileDescriptor.actionStateActivationContract(3), "tracked");
-assert.equal(profileDescriptor.actionStateValueContractName(3), undefined);
-assert.equal(profileDescriptor.actionStateValueContractVersion(3), undefined);
+assert.equal(profileDescriptor.actionStateHistoryDirection(4), undefined);
+assert.equal(profileDescriptor.actionStateActivationContract(4), "tracked");
+assert.equal(profileDescriptor.actionStateValueContractName(4), undefined);
+assert.equal(profileDescriptor.actionStateValueContractVersion(4), undefined);
 
 const independentProfileResult =
   api.BreditorCompiledProfile.fromBootstrapJson(PROFILE_BOOTSTRAP_JSON);
@@ -467,8 +474,8 @@ assert.ok(profileStatesResult.matchesProfileGeneration(profileGeneration));
 const profileStates = profileStatesResult.takeSnapshot();
 profileStatesResult.free();
 assert.ok(profileStates.matchesProfileGeneration(profileGeneration));
-assert.equal(profileStates.entryCount, 4);
-assert.equal(profileStates.entryId(3), "example/highlight-control");
+assert.equal(profileStates.entryCount, 5);
+assert.equal(profileStates.entryId(4), "example/highlight-control");
 profileStates.free();
 
 const unchangedProfileCommand =
@@ -599,7 +606,7 @@ const committedProfileStatesResult =
   selectedProfileEngine.actionStates(committedIntentObservation);
 const committedProfileStates = committedProfileStatesResult.takeSnapshot();
 committedProfileStatesResult.free();
-assert.equal(committedProfileStates.entryActivation(3), "active");
+assert.equal(committedProfileStates.entryActivation(4), "active");
 assert.ok(committedProfileStates.matchesProfileGeneration(profileGeneration));
 committedProfileStates.free();
 
@@ -674,6 +681,8 @@ typedProfileResult.free();
 const typedGeneration = typedProfile.generation();
 const typedDescriptorView = typedProfile.descriptor();
 assert.equal(typedDescriptorView.formatKind(1), "example/link");
+assert.equal(typedDescriptorView.intentCount, 3);
+assert.equal(typedDescriptorView.actionStateCount, 5);
 assert.equal(typedDescriptorView.inlineFormatSetCount, 1);
 assert.equal(typedDescriptorView.inlineFormatSetFormatKind(0), "example/link");
 assert.equal(
@@ -684,23 +693,23 @@ assert.equal(
   typedDescriptorView.inlineFormatSetActionStateId(0),
   "example/link-presence",
 );
-assert.equal(typedDescriptorView.intentId(1), "example/set-link-intent");
+assert.equal(typedDescriptorView.intentId(2), "example/set-link-intent");
 assert.equal(
-  typedDescriptorView.intentInputContractName(1),
+  typedDescriptorView.intentInputContractName(2),
   "breditor/set-inline-format-input",
 );
-assert.equal(typedDescriptorView.intentInputContractVersion(1), 1);
+assert.equal(typedDescriptorView.intentInputContractVersion(2), 1);
 assert.equal(
-  typedDescriptorView.intentValueContractName(1),
+  typedDescriptorView.intentValueContractName(2),
   "breditor/set-inline-format-input",
 );
-assert.equal(typedDescriptorView.intentValueContractVersion(1), 1);
-assert.equal(typedDescriptorView.actionStateId(3), "example/link-presence");
+assert.equal(typedDescriptorView.intentValueContractVersion(2), 1);
+assert.equal(typedDescriptorView.actionStateId(4), "example/link-presence");
 assert.equal(
-  typedDescriptorView.actionStateValueContractName(3),
+  typedDescriptorView.actionStateValueContractName(4),
   "breditor/set-inline-format-input",
 );
-assert.equal(typedDescriptorView.actionStateValueContractVersion(3), 1);
+assert.equal(typedDescriptorView.actionStateValueContractVersion(4), 1);
 assert.equal(typedDescriptorView.inlineFormatSetFormatKind(1), undefined);
 assert.equal(typedDescriptorView.inlineFormatSetIntentId(1), undefined);
 assert.equal(typedDescriptorView.inlineFormatSetActionStateId(1), undefined);
@@ -1434,7 +1443,7 @@ assert.equal(fullActionStates.takeSnapshot(), undefined);
 fullActionStates.free();
 assert.equal(fullActionStateSnapshot.snapshotLineage, "web-glue-projection-update");
 assert.equal(fullActionStateSnapshot.snapshotRevision, "0");
-assert.equal(fullActionStateSnapshot.entryCount, 3);
+assert.equal(fullActionStateSnapshot.entryCount, 4);
 assert.equal(fullActionStateSnapshot.entryId(0), "breditor/control-bold");
 assert.equal(fullActionStateSnapshot.entryStatus(0), "enabled");
 assert.equal(fullActionStateSnapshot.entryActivation(0), "inactive");
@@ -1445,14 +1454,23 @@ assert.equal(fullActionStateSnapshot.entryValueContractVersion(0), undefined);
 const absentActionValue = fullActionStateSnapshot.entryUniformValueJson(0);
 assert.equal(absentActionValue.status, "absent");
 absentActionValue.free();
-assert.equal(fullActionStateSnapshot.entryId(1), "breditor/control-redo");
-assert.equal(fullActionStateSnapshot.entryStatus(1), "disabled");
-assert.equal(fullActionStateSnapshot.entryReasonCode(1), "breditor/nothing-to-redo");
-assert.equal(fullActionStateSnapshot.entryId(2), "breditor/control-undo");
-assert.equal(fullActionStateSnapshot.entryReasonCode(2), "breditor/nothing-to-undo");
-assert.equal(fullActionStateSnapshot.entryId(3), undefined);
-assert.equal(fullActionStateSnapshot.entryStatus(3), undefined);
-assert.equal(fullActionStateSnapshot.changedCount, 3);
+assert.equal(
+  fullActionStateSnapshot.entryId(1),
+  "breditor/control-clear-inline-formatting",
+);
+assert.equal(fullActionStateSnapshot.entryStatus(1), "blocked");
+assert.equal(fullActionStateSnapshot.entryActivation(1), "stateless");
+assert.equal(
+  fullActionStateSnapshot.entryReasonCode(1),
+  "breditor/inline-format-unchanged",
+);
+assert.equal(fullActionStateSnapshot.entryId(2), "breditor/control-redo");
+assert.equal(fullActionStateSnapshot.entryReasonCode(2), "breditor/nothing-to-redo");
+assert.equal(fullActionStateSnapshot.entryId(3), "breditor/control-undo");
+assert.equal(fullActionStateSnapshot.entryReasonCode(3), "breditor/nothing-to-undo");
+assert.equal(fullActionStateSnapshot.entryId(4), undefined);
+assert.equal(fullActionStateSnapshot.entryStatus(4), undefined);
+assert.equal(fullActionStateSnapshot.changedCount, 4);
 for (let index = 0; index < fullActionStateSnapshot.entryCount; index += 1) {
   assert.equal(
     fullActionStateSnapshot.changedId(index),
@@ -1466,7 +1484,7 @@ const unchangedActionStates = actionStateEngine.actionStates(actionStateInitial)
 assert.equal(unchangedActionStates.status, "unchanged");
 const unchangedActionStateSnapshot = unchangedActionStates.takeSnapshot();
 unchangedActionStates.free();
-assert.equal(unchangedActionStateSnapshot.entryCount, 3);
+assert.equal(unchangedActionStateSnapshot.entryCount, 4);
 assert.equal(unchangedActionStateSnapshot.changedCount, 0);
 unchangedActionStateSnapshot.free();
 
@@ -1491,8 +1509,12 @@ const deltaActionStateSnapshot = deltaActionStates.takeSnapshot();
 deltaActionStates.free();
 assert.equal(deltaActionStateSnapshot.snapshotRevision, "1");
 assert.equal(deltaActionStateSnapshot.entryActivation(0), "active");
-assert.equal(deltaActionStateSnapshot.changedCount, 1);
+assert.equal(deltaActionStateSnapshot.changedCount, 2);
 assert.equal(deltaActionStateSnapshot.changedId(0), "breditor/control-bold");
+assert.equal(
+  deltaActionStateSnapshot.changedId(1),
+  "breditor/control-clear-inline-formatting",
+);
 deltaActionStateSnapshot.free();
 actionStateInitial.free();
 actionStateSuccessor.free();

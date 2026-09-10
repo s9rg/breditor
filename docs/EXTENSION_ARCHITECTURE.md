@@ -3,14 +3,16 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.9` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.10` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
 typed form correlated through an ABI-5 process-local set-surface triple and now
 hydrates pristine fields from exact Rust-owned complete-map state. Alpha.9
 then composes five extension-owned controls in one additive Showcase profile
-using only those existing generic contracts. It
+using only those existing generic contracts. Alpha.10 adds one core-owned
+stateless Clear Formatting command over complete inline `FormatSet` values,
+without making its semantics extension-configurable. It
 does not introduce a generic attribute protocol, arbitrary toolbar widget, or
 extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
 normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
@@ -527,6 +529,16 @@ Every compiled base profile now includes the tracked no-input
 high-level `executeIntent()` therefore share one frozen semantic meaning
 without exposing the selected action as public API.
 
+Alpha.10 adds a second fixed semantic route rather than an extension callback:
+the stateless no-input `breditor/clear-inline-formatting` intent uses the
+priority-zero blocking `breditor/clear-inline-formatting-binding` route to
+`breditor/clear-inline-formats`, and
+`breditor/control-clear-inline-formatting` observes that route. The command
+removes every inline format from selected text or installs an explicit empty
+pending set at a formatted caret. Toolbar placement and `formatRemove` event
+mapping remain browser policy; Rust owns applicability, operations, history,
+and replay.
+
 Action, intent, route, and contribution ownership collisions fail. Intent
 fallback order is part of the compiled semantic profile; toolbar placement is
 presentation-only. A toolbar activation always re-enters the guarded intent
@@ -583,6 +595,9 @@ Resolved entries must satisfy the declared tracked/stateless activation and
 either report unsupported when no value contract exists or repeat the exact
 value-contract name and version. Drift rejects the refresh before the last-good
 store can mutate; it is not a dynamic catalog update protocol.
+The catalog ceiling is 514 entries, admitting the four built-in controls plus
+the independent compiler maxima of 255 generated toggle controls and 255
+generated setter controls.
 
 Format sets are semantic unordered sets stored in qualified-identity order.
 DOM wrapper nesting is a separate explicit deterministic render order. It uses
@@ -878,6 +893,48 @@ keyboard shortcuts, clear-format, block code, headings, lists, rich paste,
 runtime installation, callbacks, a new operation, a Wasm member, or a durable
 codec. ABI 5, Bootstrap V2, Document V2, and Session/State/Commit V3 remain the
 same contracts.
+
+## `0.3.0-alpha.10` core-owned Clear Formatting
+
+Alpha.10 adds `ClearInlineFormatsAction` as the eighth base action and keeps it
+separate from every extension-specific toggle or setter. The complete fixed
+identity bundle is action `breditor/clear-inline-formats`, semantic intent
+`breditor/clear-inline-formatting`, priority-zero blocking binding
+`breditor/clear-inline-formatting-binding`, and stateless state
+`breditor/control-clear-inline-formatting`. An extension may omit its browser
+presentation but cannot redefine these reserved identities or configure what
+the command clears.
+
+At a collapsed caret, explicit pending formats win over affinity-derived text
+context. A nonempty effective set becomes an explicit empty `FormatSet`; the
+document and selection remain exact. This operation-free publication follows
+the existing history-boundary law: it creates no standalone undo entry,
+preserves redo, closes merge continuity, and updates the adjacent stored state
+snapshots. An empty effective set is an unchanged disabled result.
+
+For an extended selection, every selected scalar receives the canonical empty
+format set. Unselected edges retain complete property-bearing format instances.
+A local range emits one guarded `TextSplice`, while a cross-paragraph range
+emits one same-count guarded `RootTextReplace` and retains empty middle
+paragraphs. Direction, endpoint affinities, spatial UTF-16 positions, and text
+remain semantic invariants even when run paths canonicalize. The action clears
+pending formats and records one exact undo unit; V3 checkpoint restore, undo,
+and redo use the stored operation/state recipe without reevaluating it.
+
+The planner checks operation, leaf, tree, aggregate-text, property-value, and
+property-string limits before publication. This remains necessary because a
+new plain seam can exceed one text-leaf ceiling and splitting an unselected
+typed edge can duplicate its property owner. Disabled reasons and faults carry
+no selected text, format identities, property names, values, or URLs. Clear
+Formatting has no allowlist, denylist, extension-ownership filter, partial-
+property mode, or authority over block structure, element properties, entity
+identity, or non-format annotations.
+
+The new route expands only process-local action, intent, binding, and state
+catalogs. It reuses the existing AST, selection, transaction, operation,
+history, and replay contracts. The schema fingerprint, Profile Bootstrap V2,
+Wasm ABI 5, Document V2, and Operation/Editor State/Transaction/Commit/Session
+Checkpoint V3 shapes and generation numbers are unchanged.
 
 ## Deferred beyond 0.2.0
 

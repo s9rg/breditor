@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.9
+npm install @breditor/wasm@0.3.0-alpha.10
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.9
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.10
 browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
@@ -46,7 +46,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `5` for this unpublished alpha.9 source checkpoint.
+with ABI generation `5` for this unpublished alpha.10 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -155,9 +155,17 @@ data: there is no new Rust action, browser protocol, Wasm method, or durable
 record. Profile Bootstrap V2, fingerprint-bearing Document V2, and
 Session/State/Commit V3 keep their prior shapes.
 
-Alpha.9 does not yet provide format exclusions, extension keyboard shortcuts,
-clear-format, block code, headings or lists, rich paste, or runtime plugin
-loading. Those remain explicit future capabilities rather than ABI changes.
+`0.3.0-alpha.10` retains ABI 5 and adds no generated Wasm member. The built-in
+Clear Formatting route appears through the existing descriptor and action-
+state catalogs and executes through the existing no-input intent method. Its
+same-paragraph `TextSplice`, cross-paragraph `RootTextReplace`, state-only
+collapsed-caret transition, exact undo/redo, and Session-V3 replay are all
+Rust-owned. The full catalog reader now admits 514 state entries; one toolbar
+manifest remains capped at 64 controls.
+
+Alpha.10 does not yet provide format exclusions, extension keyboard shortcuts,
+block code, headings or lists, rich paste, or runtime plugin loading. Those
+remain explicit future capabilities rather than ABI changes.
 
 ## Reproducible build
 

@@ -1,4 +1,6 @@
 import {
+  BASE_INTENT_IDS,
+  BASE_TOOLBAR_STATE_IDS,
   createInlineFormatRenderManifest,
   createToolbarManifest,
   type InlineFormatRenderManifest,
@@ -103,6 +105,17 @@ export const REFERENCE_SHOWCASE_TOOLBAR_MANIFEST: ToolbarManifest =
       },
       REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[1],
       REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[2],
+      {
+        kind: "button",
+        stateId: BASE_TOOLBAR_STATE_IDS.clearInlineFormatting,
+        label: "Clear formatting",
+        activation: "stateless",
+        group: "inline",
+        command: {
+          kind: "intent",
+          intentId: BASE_INTENT_IDS.clearInlineFormatting,
+        },
+      },
       REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[3],
       REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[4],
     ],

@@ -31,7 +31,7 @@ import {
 export const BREDITOR_WASM_ABI_VERSION = "5" as const;
 
 /** Exact official Wasm package version paired with this browser build. */
-export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.9" as const;
+export const BREDITOR_BROWSER_PACKAGE_VERSION = "0.3.0-alpha.10" as const;
 
 /** Maximum history capacity admitted by the default Wasm checkpoint policy. */
 export const MAX_WASM_BOOTSTRAP_HISTORY_CAPACITY = 100;
@@ -1690,12 +1690,16 @@ function isExactBuiltInBaseDescriptor(
     formats[0]?.kind === "breditor/strong" &&
     formats[0]?.revision === 1 &&
     formats[0]?.properties.length === 0 &&
-    intents.length === 1 &&
-    intents[0]?.id === "breditor/format-strong" &&
+    intents.length === 2 &&
+    intents[0]?.id === "breditor/clear-inline-formatting" &&
     intents[0]?.input.kind === "none" &&
-    intents[0]?.state.activation === "tracked" &&
+    intents[0]?.state.activation === "stateless" &&
     intents[0]?.state.value === undefined &&
-    actionStates.length === 3 &&
+    intents[1]?.id === "breditor/format-strong" &&
+    intents[1]?.input.kind === "none" &&
+    intents[1]?.state.activation === "tracked" &&
+    intents[1]?.state.value === undefined &&
+    actionStates.length === 4 &&
     inlineFormatSets.length === 0 &&
     actionStateMatches(
       actionStates[0],
@@ -1706,13 +1710,20 @@ function isExactBuiltInBaseDescriptor(
     ) &&
     actionStateMatches(
       actionStates[1],
+      "breditor/control-clear-inline-formatting",
+      "routed",
+      "breditor/clear-inline-formatting",
+      "stateless",
+    ) &&
+    actionStateMatches(
+      actionStates[2],
       "breditor/control-redo",
       "history",
       "redo",
       "stateless",
     ) &&
     actionStateMatches(
-      actionStates[2],
+      actionStates[3],
       "breditor/control-undo",
       "history",
       "undo",

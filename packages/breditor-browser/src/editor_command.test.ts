@@ -4,6 +4,7 @@ import { BaseDocumentProjection } from "./projection.js";
 import { BreditorDomRenderer } from "./dom_renderer.js";
 import { BaseRangeSelection } from "./selection.js";
 import {
+  BASE_ACTION_IDS,
   BASE_INTENT_IDS,
   MAX_BROWSER_COMMAND_JSON_UTF16,
   MAX_BROWSER_COMMAND_TEXT_UTF16,
@@ -66,6 +67,17 @@ function delivery() {
 }
 
 describe("editor command contract", () => {
+  it("exports the frozen base clear-formatting identities", () => {
+    expect(BASE_ACTION_IDS.clearInlineFormats).toBe(
+      "breditor/clear-inline-formats",
+    );
+    expect(BASE_INTENT_IDS.clearInlineFormatting).toBe(
+      "breditor/clear-inline-formatting",
+    );
+    expect(Object.isFrozen(BASE_ACTION_IDS)).toBe(true);
+    expect(Object.isFrozen(BASE_INTENT_IDS)).toBe(true);
+  });
+
   it("admits exact bounded Unicode and rejects non-exact JS strings", () => {
     expect(browserCommandTextIsAdmissible("x".repeat(MAX_BROWSER_COMMAND_TEXT_UTF16))).toBe(true);
     expect(browserCommandTextIsAdmissible("x".repeat(MAX_BROWSER_COMMAND_TEXT_UTF16 + 1))).toBe(false);

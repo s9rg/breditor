@@ -117,6 +117,16 @@ function translateSafeBeforeInput(
           "closeBefore",
         ),
       );
+    case "formatRemove":
+      return command(
+        noInputIntentRequest(
+          delivery,
+          selection,
+          source(snapshot.inputType),
+          BASE_INTENT_IDS.clearInlineFormatting,
+          "closeBefore",
+        ),
+      );
     case "historyUndo":
       return command(
         historyRequest(delivery, selection, source(snapshot.inputType), "undo"),

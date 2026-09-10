@@ -9,7 +9,8 @@ use breditor_core::{
         ActionActivation, ActionId, ActionInput, ActionInvocation, ActionStateCache, ActionStateId,
         ActionValue,
         builtins::{
-            FORMAT_STRONG_INTENT_NAME, format_strong_intent_id, insert_text_action_id,
+            CLEAR_INLINE_FORMATTING_INTENT_NAME, FORMAT_STRONG_INTENT_NAME,
+            clear_inline_formatting_intent_id, format_strong_intent_id, insert_text_action_id,
             insert_text_input_contract, toggle_strong_action_id,
         },
         routing::{BindingId, IntentExecutionOutcome, IntentId, IntentInvocation},
@@ -199,19 +200,23 @@ fn descriptor_is_owned_canonical_and_complete() -> TestResult {
     assert!(descriptor.inline_format(&name("example/missing")?).is_none());
 
     let intents = descriptor.intents();
-    assert_eq!(intents.len(), 2);
-    assert_eq!(intents[0].id().as_str(), FORMAT_STRONG_INTENT_NAME);
-    assert_eq!(intents[1].id().as_str(), INTENT);
-    for intent in intents {
+    assert_eq!(intents.len(), 3);
+    assert_eq!(intents[0].id().as_str(), CLEAR_INLINE_FORMATTING_INTENT_NAME);
+    assert_eq!(intents[1].id().as_str(), FORMAT_STRONG_INTENT_NAME);
+    assert_eq!(intents[2].id().as_str(), INTENT);
+    assert!(!intents[0].state_contract().supports_activation());
+    for intent in &intents[1..] {
         assert!(intent.input_contract().is_none());
         assert!(intent.state_contract().supports_activation());
     }
+    assert!(intents[0].input_contract().is_none());
 
     let states = descriptor.action_states();
     assert_eq!(
         states.iter().map(|state| state.id().as_str()).collect::<Vec<_>>(),
         vec![
             "breditor/control-bold",
+            "breditor/control-clear-inline-formatting",
             "breditor/control-redo",
             "breditor/control-undo",
             ACTION_STATE,
@@ -224,19 +229,24 @@ fn descriptor_is_owned_canonical_and_complete() -> TestResult {
     ));
     assert!(matches!(
         states[1].source(),
-        CompiledProfileActionStateSource::History(ReplayDirection::Redo)
+        CompiledProfileActionStateSource::Routed(intent)
+            if intent == &clear_inline_formatting_intent_id()
     ));
     assert!(matches!(
         states[2].source(),
-        CompiledProfileActionStateSource::History(ReplayDirection::Undo)
+        CompiledProfileActionStateSource::History(ReplayDirection::Redo)
     ));
     assert!(matches!(
         states[3].source(),
+        CompiledProfileActionStateSource::History(ReplayDirection::Undo)
+    ));
+    assert!(matches!(
+        states[4].source(),
         CompiledProfileActionStateSource::Routed(intent) if intent.as_str() == INTENT
     ));
-    assert!(states[3].contract().supports_activation());
-    assert_eq!(descriptor.intent(&IntentId::try_new(INTENT)?), Some(&intents[1]),);
-    assert_eq!(descriptor.action_state(&ActionStateId::try_new(ACTION_STATE)?), Some(&states[3]),);
+    assert!(states[4].contract().supports_activation());
+    assert_eq!(descriptor.intent(&IntentId::try_new(INTENT)?), Some(&intents[2]),);
+    assert_eq!(descriptor.action_state(&ActionStateId::try_new(ACTION_STATE)?), Some(&states[4]),);
     Ok(())
 }
 
@@ -711,8 +721,9 @@ fn trusted_base_profile_can_use_fingerprint_bearing_session_checkpoint_v2() -> T
             .collect::<Vec<_>>(),
         vec![("breditor/strong", 1)],
     );
-    assert_eq!(profile.descriptor().intents().len(), 1);
-    assert_eq!(profile.descriptor().intents()[0].id(), &format_strong_intent_id());
+    assert_eq!(profile.descriptor().intents().len(), 2);
+    assert_eq!(profile.descriptor().intents()[0].id(), &clear_inline_formatting_intent_id(),);
+    assert_eq!(profile.descriptor().intents()[1].id(), &format_strong_intent_id());
     assert!(matches!(
         profile.descriptor().action_states()[0].source(),
         CompiledProfileActionStateSource::Routed(intent)

@@ -14,6 +14,17 @@ import {
 } from "./toolbar_manifest.js";
 
 describe("toolbar manifest", () => {
+  it("publishes clear formatting as an optional base action-state identity", () => {
+    expect(BASE_TOOLBAR_STATE_IDS.clearInlineFormatting).toBe(
+      "breditor/control-clear-inline-formatting",
+    );
+    expect(DEFAULT_TOOLBAR_MANIFEST.controls.map(({ label }) => label)).toEqual([
+      "Bold",
+      "Undo",
+      "Redo",
+    ]);
+  });
+
   it("defines the frozen Bold, Undo, and Redo base presentation", () => {
     expect(DEFAULT_TOOLBAR_MANIFEST).toEqual({
       label: "Editor controls",

@@ -11,7 +11,7 @@ import {
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
 
 /** Maximum entries admitted by the browser action-state boundary. */
-export const MAX_BROWSER_ACTION_STATE_ENTRIES = 512;
+export const MAX_BROWSER_ACTION_STATE_ENTRIES = 514;
 
 /** Maximum UTF-8 bytes admitted for one encoded uniform action-state value. */
 export const MAX_BROWSER_ACTION_STATE_VALUE_JSON_BYTES = 524_288;

@@ -1,9 +1,9 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.9 source checkpoint retains
-the combined Highlight + Link Chromium gates and adds exact uniform-property
-hydration plus an additive Showcase composition proof described below
+accessibility gate passed; the unpublished alpha.10 source checkpoint retains
+exact uniform-property hydration and the additive Showcase composition proof,
+then adds the Rust-owned Clear formatting route described below.
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -88,6 +88,16 @@ peer preservation, persistence reload, responsive containment, and axe. The
 new assertions reuse the existing generic toggle and projection protocols;
 they do not claim extension shortcuts, block code, rich paste, mobile support,
 screen-reader conformance, or runtime plugin loading.
+
+Alpha.10 keeps that support boundary and adds the ninth **Clear formatting**
+button immediately before Undo and Redo. The browser and React demo gates
+select fully formatted text, clear base Strong plus every extension format and
+typed Link property through one Rust-owned command, verify the plain canonical
+DOM, and restore the exact wrapper/property tree with one Undo. The demo covers
+a backward cross-paragraph selection and persistence after restoration. These
+assertions also cover the stateless enabled/disabled presentation and native
+`formatRemove` routing; they do not broaden the desktop, mobile, IME,
+screen-reader, or WCAG-conformance claim.
 
 Run the gate after generating the three public packages:
 

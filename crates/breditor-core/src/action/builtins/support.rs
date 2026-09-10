@@ -1,10 +1,10 @@
 use crate::{
     action::{ActionDecision, ActionFault, DisabledReason},
-    document::{FormatSet, TextFragment, TextRun},
+    document::{FormatSet, TextFragment, TextFragmentError, TextRun},
     identity::QualifiedName,
     operation::{ParagraphSplit, RootTextBoundary, RootTextRange, SelectionRelocationPolicy},
     position::{Affinity, NodePath, Point, TextOffset},
-    selection::{RangeSelection, Selection},
+    selection::{RangeOrder, RangeSelection, Selection},
     state::EditorState,
 };
 
@@ -311,6 +311,161 @@ pub(super) fn fragment_range_parts(
         )
         .map_err(|error| fault_with_error("breditor/fragment-split-fault", &error))?;
     Ok((prefix, selected, suffix))
+}
+
+/// Canonically folds a paragraph-local inline-format replacement into its
+/// retained prefix and suffix.
+///
+/// Capacity failures are expected inability and return `None`; any other
+/// fragment invariant failure uses the caller's payload-free fault identity.
+pub(super) fn concat_format_rewrite_result(
+    prefix: &TextFragment,
+    replacement: &TextFragment,
+    suffix: &TextFragment,
+    fold_fault_code: &'static str,
+) -> Result<Option<TextFragment>, ActionFault> {
+    let with_replacement = match prefix.try_concat(replacement) {
+        Ok(result) => result,
+        Err(error) if fragment_error_is_capacity(&error) => return Ok(None),
+        Err(_) => return Err(fault(fold_fault_code)),
+    };
+    match with_replacement.try_concat(suffix) {
+        Ok(result) => Ok(Some(result)),
+        Err(error) if fragment_error_is_capacity(&error) => Ok(None),
+        Err(_) => Err(fault(fold_fault_code)),
+    }
+}
+
+/// Derives every complete paragraph result for a same-count cross-paragraph
+/// inline-format replacement.
+pub(super) fn cross_format_rewrite_result_fragments(
+    source: &CrossParagraphTextSource,
+    replacements: &[TextFragment],
+    cross_result_fault_code: &'static str,
+    fold_fault_code: &'static str,
+) -> Result<Option<Vec<TextFragment>>, ActionFault> {
+    if replacements.len() != source.guards().len() || replacements.len() < 2 {
+        return Err(fault(cross_result_fault_code));
+    }
+    let last_index =
+        replacements.len().checked_sub(1).ok_or_else(|| fault(cross_result_fault_code))?;
+    let mut results = Vec::with_capacity(replacements.len());
+    for (index, replacement) in replacements.iter().enumerate() {
+        let folded = if index == 0 {
+            source.prefix().try_concat(replacement)
+        } else if index == last_index {
+            replacement.try_concat(source.suffix())
+        } else {
+            results.push(replacement.clone());
+            continue;
+        };
+        match folded {
+            Ok(result) => results.push(result),
+            Err(error) if fragment_error_is_capacity(&error) => return Ok(None),
+            Err(_) => return Err(fault(fold_fault_code)),
+        }
+    }
+    Ok(Some(results))
+}
+
+/// Rebuilds one same-paragraph extended range after canonical run folding.
+pub(super) fn rebuild_format_rewrite_selection(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    result: &TextFragment,
+    selection_order_fault_code: &'static str,
+    selection_fault_code: &'static str,
+) -> Result<Selection, ActionFault> {
+    let source = format_rewrite_source_range(state, selection_fault_code)?;
+    let (anchor_offset, focus_offset) = match range.order() {
+        RangeOrder::Collapsed => return Err(fault(selection_order_fault_code)),
+        RangeOrder::Forward => (range.start().offset(), range.end().offset()),
+        RangeOrder::Backward => (range.end().offset(), range.start().offset()),
+    };
+    let anchor = point_at_fragment_offset(
+        range.start().paragraph_path(),
+        result,
+        anchor_offset,
+        source.anchor().affinity(),
+    )
+    .map_err(|_| fault(selection_fault_code))?;
+    let focus = point_at_fragment_offset(
+        range.start().paragraph_path(),
+        result,
+        focus_offset,
+        source.focus().affinity(),
+    )
+    .map_err(|_| fault(selection_fault_code))?;
+    Ok(RangeSelection::new(anchor, focus).into())
+}
+
+/// Rebuilds one cross-paragraph extended range after canonical run folding.
+pub(super) fn rebuild_cross_format_rewrite_selection(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    results: &[TextFragment],
+    selection_order_fault_code: &'static str,
+    selection_fault_code: &'static str,
+) -> Result<Selection, ActionFault> {
+    let source = format_rewrite_source_range(state, selection_fault_code)?;
+    let first = results.first().ok_or_else(|| fault(selection_fault_code))?;
+    let last = results.last().ok_or_else(|| fault(selection_fault_code))?;
+    let (anchor_path, anchor_fragment, anchor_offset, focus_path, focus_fragment, focus_offset) =
+        match range.order() {
+            RangeOrder::Collapsed => return Err(fault(selection_order_fault_code)),
+            RangeOrder::Forward => (
+                range.start().paragraph_path(),
+                first,
+                range.start().offset(),
+                range.end().paragraph_path(),
+                last,
+                range.end().offset(),
+            ),
+            RangeOrder::Backward => (
+                range.end().paragraph_path(),
+                last,
+                range.end().offset(),
+                range.start().paragraph_path(),
+                first,
+                range.start().offset(),
+            ),
+        };
+    let anchor = point_at_fragment_offset(
+        anchor_path,
+        anchor_fragment,
+        anchor_offset,
+        source.anchor().affinity(),
+    )
+    .map_err(|_| fault(selection_fault_code))?;
+    let focus = point_at_fragment_offset(
+        focus_path,
+        focus_fragment,
+        focus_offset,
+        source.focus().affinity(),
+    )
+    .map_err(|_| fault(selection_fault_code))?;
+    Ok(RangeSelection::new(anchor, focus).into())
+}
+
+/// Returns the exact published range whose affinities a format rewrite must
+/// preserve after normalization.
+pub(super) fn format_rewrite_source_range<'state>(
+    state: &'state EditorState,
+    selection_fault_code: &'static str,
+) -> Result<&'state RangeSelection, ActionFault> {
+    let Some(Selection::Range(range)) = state.selection() else {
+        return Err(fault(selection_fault_code));
+    };
+    Ok(range)
+}
+
+const fn fragment_error_is_capacity(error: &TextFragmentError) -> bool {
+    matches!(
+        error,
+        TextFragmentError::TextOffset(_)
+            | TextFragmentError::TextByteLengthOverflow
+            | TextFragmentError::TextRun(_)
+    )
 }
 
 pub(super) fn effective_typing_formats(

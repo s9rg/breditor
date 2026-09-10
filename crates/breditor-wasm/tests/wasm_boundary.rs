@@ -41,6 +41,16 @@ const TEXT_DOCUMENT_JSON: &str = r#"{
       "properties":{},"children":[{"kind":"text","text":"a","formats":[]}]}]}
 }"#;
 
+const STRONG_TEXT_DOCUMENT_JSON: &str = r#"{
+  "format":"breditor/document","formatVersion":1,
+  "schema":{"name":"breditor/base","version":1},
+  "root":{"kind":"element","type":"breditor/document","entityId":null,"properties":{},
+    "children":[{"kind":"element","type":"breditor/paragraph","entityId":null,
+      "properties":{},"children":[{"kind":"text","text":"a","formats":[
+        {"type":"breditor/strong","properties":{}}
+      ]}]}]}
+}"#;
+
 const PROFILE_BOOTSTRAP_JSON: &str = r#"{
   "format":"breditor/profile-bootstrap","formatVersion":1,
   "schema":{"name":"example/editor","version":1},
@@ -59,6 +69,7 @@ const PROFILE_BOOTSTRAP_JSON: &str = r#"{
 }"#;
 
 const PROFILE_INTENT: &str = "example/toggle-highlight-intent";
+const BASE_CLEAR_INLINE_FORMATTING_INTENT: &str = "breditor/clear-inline-formatting";
 const BASE_FORMAT_STRONG_INTENT: &str = "breditor/format-strong";
 
 const PROJECTION_DOCUMENT_JSON: &str = r#"{
@@ -186,24 +197,31 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     assert_eq!(descriptor.inline_format_set_intent_id(0), None);
     assert_eq!(descriptor.inline_format_set_action_state_id(0), None);
 
-    assert_eq!(descriptor.intent_count(), 2);
-    assert_eq!(descriptor.intent_id(0).as_deref(), Some(BASE_FORMAT_STRONG_INTENT));
+    assert_eq!(descriptor.intent_count(), 3);
+    assert_eq!(descriptor.intent_id(0).as_deref(), Some(BASE_CLEAR_INLINE_FORMATTING_INTENT),);
     assert_eq!(descriptor.intent_input_kind(0).as_deref(), Some("none"));
     assert_eq!(descriptor.intent_input_contract_name(0), None);
     assert_eq!(descriptor.intent_input_contract_version(0), None);
-    assert_eq!(descriptor.intent_activation_contract(0).as_deref(), Some("tracked"));
+    assert_eq!(descriptor.intent_activation_contract(0).as_deref(), Some("stateless"));
     assert_eq!(descriptor.intent_value_contract_name(0), None);
     assert_eq!(descriptor.intent_value_contract_version(0), None);
-    assert_eq!(descriptor.intent_id(1).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.intent_id(1).as_deref(), Some(BASE_FORMAT_STRONG_INTENT));
     assert_eq!(descriptor.intent_input_kind(1).as_deref(), Some("none"));
     assert_eq!(descriptor.intent_input_contract_name(1), None);
     assert_eq!(descriptor.intent_input_contract_version(1), None);
     assert_eq!(descriptor.intent_activation_contract(1).as_deref(), Some("tracked"));
     assert_eq!(descriptor.intent_value_contract_name(1), None);
     assert_eq!(descriptor.intent_value_contract_version(1), None);
-    assert_eq!(descriptor.intent_id(2), None);
+    assert_eq!(descriptor.intent_id(2).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.intent_input_kind(2).as_deref(), Some("none"));
+    assert_eq!(descriptor.intent_input_contract_name(2), None);
+    assert_eq!(descriptor.intent_input_contract_version(2), None);
+    assert_eq!(descriptor.intent_activation_contract(2).as_deref(), Some("tracked"));
+    assert_eq!(descriptor.intent_value_contract_name(2), None);
+    assert_eq!(descriptor.intent_value_contract_version(2), None);
+    assert_eq!(descriptor.intent_id(3), None);
 
-    assert_eq!(descriptor.action_state_count(), 4);
+    assert_eq!(descriptor.action_state_count(), 5);
     assert_eq!(descriptor.action_state_id(0).as_deref(), Some("breditor/control-bold"));
     assert_eq!(descriptor.action_state_source_kind(0).as_deref(), Some("routed"));
     assert_eq!(descriptor.action_state_source_action_id(0), None);
@@ -213,15 +231,27 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     );
     assert_eq!(descriptor.action_state_history_direction(0), None);
     assert_eq!(descriptor.action_state_activation_contract(0).as_deref(), Some("tracked"));
-    assert_eq!(descriptor.action_state_id(3).as_deref(), Some("example/highlight-control"));
-    assert_eq!(descriptor.action_state_source_kind(3).as_deref(), Some("routed"));
-    assert_eq!(descriptor.action_state_source_action_id(3), None);
-    assert_eq!(descriptor.action_state_source_intent_id(3).as_deref(), Some(PROFILE_INTENT));
-    assert_eq!(descriptor.action_state_history_direction(3), None);
-    assert_eq!(descriptor.action_state_activation_contract(3).as_deref(), Some("tracked"));
-    assert_eq!(descriptor.action_state_value_contract_name(3), None);
-    assert_eq!(descriptor.action_state_value_contract_version(3), None);
-    assert_eq!(descriptor.action_state_source_kind(4), None);
+    assert_eq!(
+        descriptor.action_state_id(1).as_deref(),
+        Some("breditor/control-clear-inline-formatting"),
+    );
+    assert_eq!(descriptor.action_state_source_kind(1).as_deref(), Some("routed"));
+    assert_eq!(descriptor.action_state_source_action_id(1), None);
+    assert_eq!(
+        descriptor.action_state_source_intent_id(1).as_deref(),
+        Some(BASE_CLEAR_INLINE_FORMATTING_INTENT),
+    );
+    assert_eq!(descriptor.action_state_history_direction(1), None);
+    assert_eq!(descriptor.action_state_activation_contract(1).as_deref(), Some("stateless"));
+    assert_eq!(descriptor.action_state_id(4).as_deref(), Some("example/highlight-control"));
+    assert_eq!(descriptor.action_state_source_kind(4).as_deref(), Some("routed"));
+    assert_eq!(descriptor.action_state_source_action_id(4), None);
+    assert_eq!(descriptor.action_state_source_intent_id(4).as_deref(), Some(PROFILE_INTENT));
+    assert_eq!(descriptor.action_state_history_direction(4), None);
+    assert_eq!(descriptor.action_state_activation_contract(4).as_deref(), Some("tracked"));
+    assert_eq!(descriptor.action_state_value_contract_name(4), None);
+    assert_eq!(descriptor.action_state_value_contract_version(4), None);
+    assert_eq!(descriptor.action_state_source_kind(5), None);
 
     let v2_document = profile_document_v2(&descriptor, "abc");
     let mut rejected =
@@ -269,8 +299,8 @@ fn compiled_profiles_are_owned_complete_correlated_and_v2_only() -> TestResult {
     assert!(states_result.matches_profile_generation(&generation));
     let states = require_action_state_snapshot(&mut states_result)?;
     assert!(states.matches_profile_generation(&generation));
-    assert_eq!(states.entry_count(), 4);
-    assert_eq!(states.entry_id(3).as_deref(), Some("example/highlight-control"));
+    assert_eq!(states.entry_count(), 5);
+    assert_eq!(states.entry_id(4).as_deref(), Some("example/highlight-control"));
 
     let unchanged = engine.clear_selection(&observation);
     assert_eq!(unchanged.status(), "unchanged");
@@ -397,9 +427,9 @@ fn profile_intents_publish_v2_with_owned_provenance_and_successor_state() -> Tes
     let mut states_result = engine.action_states(&successor);
     let states = require_action_state_snapshot(&mut states_result)?;
     assert!(states.matches_profile_generation(&generation));
-    assert_eq!(states.entry_id(3).as_deref(), Some("example/highlight-control"));
-    assert_eq!(states.entry_status(3).as_deref(), Some("enabled"));
-    assert_eq!(states.entry_activation(3).as_deref(), Some("active"));
+    assert_eq!(states.entry_id(4).as_deref(), Some("example/highlight-control"));
+    assert_eq!(states.entry_status(4).as_deref(), Some("enabled"));
+    assert_eq!(states.entry_activation(4).as_deref(), Some("active"));
 
     let checkpoint_after = require_string(engine.session_checkpoint_json())?;
     assert_eq!(serde_json::from_str::<Value>(&checkpoint_after)?["formatVersion"], 2);
@@ -471,11 +501,12 @@ fn action_states_are_complete_non_json_canonical_and_lifecycle_guarded() -> Test
 
     assert_eq!(snapshot.snapshot_lineage(), "wasm-action-states");
     assert_eq!(snapshot.snapshot_revision(), "0");
-    assert_eq!(snapshot.entry_count(), 3);
+    assert_eq!(snapshot.entry_count(), 4);
     assert_eq!(snapshot.entry_id(0).as_deref(), Some("breditor/control-bold"));
-    assert_eq!(snapshot.entry_id(1).as_deref(), Some("breditor/control-redo"));
-    assert_eq!(snapshot.entry_id(2).as_deref(), Some("breditor/control-undo"));
-    assert_eq!(snapshot.entry_id(3), None);
+    assert_eq!(snapshot.entry_id(1).as_deref(), Some("breditor/control-clear-inline-formatting"),);
+    assert_eq!(snapshot.entry_id(2).as_deref(), Some("breditor/control-redo"));
+    assert_eq!(snapshot.entry_id(3).as_deref(), Some("breditor/control-undo"));
+    assert_eq!(snapshot.entry_id(4), None);
 
     assert_eq!(snapshot.entry_status(0).as_deref(), Some("enabled"));
     assert_eq!(snapshot.entry_activation(0).as_deref(), Some("inactive"));
@@ -485,28 +516,32 @@ fn action_states_are_complete_non_json_canonical_and_lifecycle_guarded() -> Test
     assert_eq!(snapshot.entry_value_contract_version(0), None);
     assert_eq!(snapshot.entry_uniform_value_json(0).status(), "absent");
 
-    for index in [1, 2] {
+    assert_eq!(snapshot.entry_status(1).as_deref(), Some("blocked"));
+    assert_eq!(snapshot.entry_activation(1).as_deref(), Some("stateless"));
+    assert_eq!(snapshot.entry_value_status(1).as_deref(), Some("unsupported"));
+    for index in [2, 3] {
         assert_eq!(snapshot.entry_status(index).as_deref(), Some("disabled"));
         assert_eq!(snapshot.entry_activation(index).as_deref(), Some("stateless"));
         assert_eq!(snapshot.entry_value_status(index).as_deref(), Some("unsupported"));
     }
-    assert_eq!(snapshot.entry_reason_code(1).as_deref(), Some("breditor/nothing-to-redo"));
-    assert_eq!(snapshot.entry_reason_code(2).as_deref(), Some("breditor/nothing-to-undo"));
-    assert_eq!(snapshot.entry_status(3), None);
-    assert_eq!(snapshot.entry_activation(3), None);
-    assert_eq!(snapshot.entry_value_status(3), None);
-    assert_eq!(snapshot.entry_uniform_value_json(3).status(), "absent");
+    assert_eq!(snapshot.entry_reason_code(1).as_deref(), Some("breditor/inline-format-unchanged"),);
+    assert_eq!(snapshot.entry_reason_code(2).as_deref(), Some("breditor/nothing-to-redo"));
+    assert_eq!(snapshot.entry_reason_code(3).as_deref(), Some("breditor/nothing-to-undo"));
+    assert_eq!(snapshot.entry_status(4), None);
+    assert_eq!(snapshot.entry_activation(4), None);
+    assert_eq!(snapshot.entry_value_status(4), None);
+    assert_eq!(snapshot.entry_uniform_value_json(4).status(), "absent");
 
     assert_eq!(snapshot.changed_count(), snapshot.entry_count());
     for index in 0..snapshot.entry_count() {
         assert_eq!(snapshot.changed_id(index), snapshot.entry_id(index));
     }
-    assert_eq!(snapshot.changed_id(3), None);
+    assert_eq!(snapshot.changed_id(4), None);
 
     let mut unchanged = engine.action_states(&initial);
     assert_eq!(unchanged.status(), "unchanged");
     let unchanged_snapshot = require_action_state_snapshot(&mut unchanged)?;
-    assert_eq!(unchanged_snapshot.entry_count(), 3);
+    assert_eq!(unchanged_snapshot.entry_count(), 4);
     assert_eq!(unchanged_snapshot.changed_count(), 0);
     assert_eq!(unchanged_snapshot.changed_id(0), None);
     Ok(())
@@ -539,7 +574,10 @@ fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> Test
     assert_eq!(delta_snapshot.snapshot_revision(), "1");
     assert_eq!(delta_snapshot.entry_activation(0).as_deref(), Some("active"));
     assert_eq!(delta_snapshot.entry_status(2).as_deref(), Some("disabled"));
-    assert_eq!(changed_ids(&delta_snapshot), ["breditor/control-bold".to_owned()]);
+    assert_eq!(
+        changed_ids(&delta_snapshot),
+        ["breditor/control-bold".to_owned(), "breditor/control-clear-inline-formatting".to_owned(),]
+    );
 
     let inserted = engine.execute_string_action(&after_toggle, "breditor/insert-text", "x", false);
     assert_eq!(inserted.status(), "committed");
@@ -547,7 +585,7 @@ fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> Test
     let mut history_delta = engine.action_states(&after_insert);
     assert_eq!(history_delta.status(), "delta");
     let history_snapshot = require_action_state_snapshot(&mut history_delta)?;
-    assert_eq!(history_snapshot.entry_status(2).as_deref(), Some("enabled"));
+    assert_eq!(history_snapshot.entry_status(3).as_deref(), Some("enabled"));
     assert_eq!(changed_ids(&history_snapshot), ["breditor/control-undo".to_owned()]);
 
     let undone = engine.undo(&after_insert, false);
@@ -557,8 +595,8 @@ fn action_state_refresh_is_guarded_and_deltas_follow_state_and_history() -> Test
     assert_eq!(replay_delta.status(), "delta");
     let replay_snapshot = require_action_state_snapshot(&mut replay_delta)?;
     assert_eq!(replay_snapshot.entry_activation(0).as_deref(), Some("active"));
-    assert_eq!(replay_snapshot.entry_status(1).as_deref(), Some("enabled"));
-    assert_eq!(replay_snapshot.entry_status(2).as_deref(), Some("disabled"));
+    assert_eq!(replay_snapshot.entry_status(2).as_deref(), Some("enabled"));
+    assert_eq!(replay_snapshot.entry_status(3).as_deref(), Some("disabled"));
     assert_eq!(
         changed_ids(&replay_snapshot),
         ["breditor/control-redo".to_owned(), "breditor/control-undo".to_owned(),]
@@ -1209,6 +1247,99 @@ fn disabled_and_unchanged_outcomes_carry_current_observations() -> TestResult {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg_attr(not(target_arch = "wasm32"), test)]
+fn clear_inline_formatting_intent_commits_and_replays_through_the_generic_boundary() -> TestResult {
+    let checkpoint = strong_range_checkpoint("wasm-clear-inline-formatting")?;
+    let mut result = BreditorEngine::from_session_checkpoint_json(&checkpoint);
+    let mut engine = require_engine(&mut result)?;
+    let initial = engine.observation();
+
+    let mut before_states = engine.action_states(&initial);
+    let before_states = require_action_state_snapshot(&mut before_states)?;
+    assert_eq!(before_states.entry_status(1).as_deref(), Some("enabled"));
+    assert_eq!(before_states.entry_activation(1).as_deref(), Some("stateless"));
+
+    let cleared =
+        engine.execute_no_input_intent(&initial, BASE_CLEAR_INLINE_FORMATTING_INTENT, true);
+    assert_eq!(cleared.status(), "committed");
+    assert_eq!(cleared.intent_id().as_deref(), Some(BASE_CLEAR_INLINE_FORMATTING_INTENT));
+    assert_eq!(cleared.action_id().as_deref(), Some("breditor/clear-inline-formats"));
+    assert_eq!(cleared.binding_id().as_deref(), Some("breditor/clear-inline-formatting-binding"));
+    let commit: Value = serde_json::from_str(
+        &cleared
+            .commit_json()
+            .value()
+            .ok_or_else(|| test_error("clear intent omitted its commit JSON"))?,
+    )?;
+    assert_eq!(commit["forwardOperations"][0]["kind"], "textSplice");
+    assert_eq!(commit["metadata"]["action"], "breditor/clear-inline-formats");
+    let after_clear = cleared
+        .observation()
+        .ok_or_else(|| test_error("clear intent omitted its successor observation"))?;
+    assert_eq!(after_clear.undo_depth(), 1);
+    let document: Value =
+        serde_json::from_str(&require_string(engine.document_json(&after_clear))?)?;
+    assert_eq!(document["root"]["children"][0]["children"][0]["formats"], serde_json::json!([]));
+
+    let checkpoint_after_clear = require_string(engine.session_checkpoint_json())?;
+    let mut restored_result = BreditorEngine::from_session_checkpoint_json(&checkpoint_after_clear);
+    let mut restored = require_engine(&mut restored_result)?;
+    assert_eq!(require_string(restored.session_checkpoint_json())?, checkpoint_after_clear,);
+    let restored_clear = restored.observation();
+    assert_eq!(restored_clear.undo_depth(), 1);
+    let restored_document: Value =
+        serde_json::from_str(&require_string(restored.document_json(&restored_clear))?)?;
+    assert_eq!(
+        restored_document["root"]["children"][0]["children"][0]["formats"],
+        serde_json::json!([]),
+    );
+    let restored_undo = restored.undo(&restored_clear, true);
+    assert_eq!(restored_undo.status(), "committed");
+    let restored_after_undo = require_observation(&restored_undo)?;
+    let restored_document: Value =
+        serde_json::from_str(&require_string(restored.document_json(&restored_after_undo))?)?;
+    assert_eq!(
+        restored_document["root"]["children"][0]["children"][0]["formats"][0]["type"],
+        "breditor/strong",
+    );
+    let restored_redo = restored.redo(&restored_after_undo, true);
+    assert_eq!(restored_redo.status(), "committed");
+    let restored_after_redo = require_observation(&restored_redo)?;
+    let restored_document: Value =
+        serde_json::from_str(&require_string(restored.document_json(&restored_after_redo))?)?;
+    assert_eq!(
+        restored_document["root"]["children"][0]["children"][0]["formats"],
+        serde_json::json!([]),
+    );
+
+    let mut after_states = engine.action_states(&after_clear);
+    let after_states = require_action_state_snapshot(&mut after_states)?;
+    assert_eq!(after_states.entry_status(1).as_deref(), Some("blocked"));
+    assert_eq!(
+        after_states.entry_reason_code(1).as_deref(),
+        Some("breditor/inline-format-unchanged"),
+    );
+
+    let undone = engine.undo(&after_clear, true);
+    assert_eq!(undone.status(), "committed");
+    let after_undo = require_observation(&undone)?;
+    let document: Value =
+        serde_json::from_str(&require_string(engine.document_json(&after_undo))?)?;
+    assert_eq!(
+        document["root"]["children"][0]["children"][0]["formats"][0]["type"],
+        "breditor/strong",
+    );
+
+    let redone = engine.redo(&after_undo, true);
+    assert_eq!(redone.status(), "committed");
+    let after_redo = require_observation(&redone)?;
+    let document: Value =
+        serde_json::from_str(&require_string(engine.document_json(&after_redo))?)?;
+    assert_eq!(document["root"]["children"][0]["children"][0]["formats"], serde_json::json!([]));
+    Ok(())
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
 fn string_action_commit_replay_and_stale_guards_are_preserved() -> TestResult {
     const PRIVATE_INPUT: &str = "private-wasm-action";
     let checkpoint = selected_checkpoint("wasm-action")?;
@@ -1337,7 +1468,7 @@ fn history_only_publication_rotates_the_hidden_guard_at_the_same_revision() -> T
     assert_eq!(before_close.undo_depth(), 1);
     let mut state_before_close = engine.action_states(&before_close);
     assert_eq!(state_before_close.status(), "full");
-    assert_eq!(require_action_state_snapshot(&mut state_before_close)?.entry_count(), 3);
+    assert_eq!(require_action_state_snapshot(&mut state_before_close)?.entry_count(), 4);
 
     let closed = engine.close_history_group(&before_close);
     assert_eq!(closed.status(), "committed");
@@ -1553,6 +1684,32 @@ fn selected_checkpoint(lineage: &str) -> TestResult<String> {
         affinity: Affinity::After,
     };
     let selection: Selection = RangeSelection::new(point.clone(), point).into();
+    let state = EditorState::try_new(
+        &context,
+        LineageId::try_new(lineage)?,
+        document,
+        Some(selection),
+        None,
+    )?;
+    Ok(SessionCheckpointJsonCodec::new(context).encode(&EditorSession::new(state))?)
+}
+
+fn strong_range_checkpoint(lineage: &str) -> TestResult<String> {
+    let context = EditorContext::default();
+    let document = DocumentJsonCodec::new(context.schema().clone())
+        .with_limits(context.limits().clone())
+        .decode(STRONG_TEXT_DOCUMENT_JSON)?;
+    let anchor = Point::Text {
+        text_path: NodePath::try_from_indices(vec![0, 0])?,
+        utf16_offset: 0,
+        affinity: Affinity::Before,
+    };
+    let focus = Point::Text {
+        text_path: NodePath::try_from_indices(vec![0, 0])?,
+        utf16_offset: 1,
+        affinity: Affinity::After,
+    };
+    let selection: Selection = RangeSelection::new(anchor, focus).into();
     let state = EditorState::try_new(
         &context,
         LineageId::try_new(lineage)?,

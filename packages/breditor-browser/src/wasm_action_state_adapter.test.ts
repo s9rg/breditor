@@ -919,6 +919,7 @@ describe("Wasm action-state adapter", () => {
   });
 
   it("bounds entry counts before invoking indexed getters", () => {
+    expect(MAX_BROWSER_ACTION_STATE_ENTRIES).toBe(514);
     const snapshot = new FakeSnapshot([], []);
     Object.defineProperty(snapshot, "entryCount", {
       value: MAX_BROWSER_ACTION_STATE_ENTRIES + 1,
@@ -934,6 +935,26 @@ describe("Wasm action-state adapter", () => {
     ).toBe(false);
     expect(indexedCalls).toBe(0);
     expect(snapshot.values).toHaveLength(0);
+    expect(snapshot.freeCalls).toBe(1);
+  });
+
+  it("admits the exact action-state entry capacity", () => {
+    const entries = Array.from(
+      { length: MAX_BROWSER_ACTION_STATE_ENTRIES },
+      (_, index) => statelessEntry(
+        `breditor/control-${String(index).padStart(3, "0")}`,
+      ),
+    );
+    const snapshot = new FakeSnapshot(entries, entries.map((entry) => entry.id));
+
+    const result = consumeWasmActionStates(
+      EXPECTED,
+      new FakeResult("full", snapshot),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("maximum action-state fixture was rejected");
+    expect(result.snapshot.entries).toHaveLength(514);
     expect(snapshot.freeCalls).toBe(1);
   });
 

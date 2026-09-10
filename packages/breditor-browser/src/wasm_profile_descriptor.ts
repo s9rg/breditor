@@ -13,7 +13,7 @@ export const MAX_BROWSER_PROFILE_PROPERTY_STRING_BYTES = 65_536;
 export const MAX_BROWSER_PROFILE_INTENTS = 1_024;
 
 /** Maximum action-state descriptors admitted by the browser ABI boundary. */
-export const MAX_BROWSER_PROFILE_ACTION_STATES = 512;
+export const MAX_BROWSER_PROFILE_ACTION_STATES = 514;
 
 /** Maximum inline-format set descriptors admitted by the browser ABI boundary. */
 export const MAX_BROWSER_PROFILE_INLINE_FORMAT_SETS = 255;

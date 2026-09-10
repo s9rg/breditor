@@ -37,8 +37,13 @@ impl CompiledEditorProfile {
     /// input contract. Its observable state uses a fixed remove query, so it
     /// answers whether the configured format is present; commands supply their
     /// own dynamic set/remove input. All generated routes are priority-zero and
-    /// blocking. The complete base action set, built-in strong-format intent
-    /// route, and Bold, Undo, and Redo state entries are retained.
+    /// blocking. The complete eight-action base set, built-in strong-format and
+    /// clear-inline-formatting intent routes, and Bold, Clear Formatting, Undo,
+    /// and Redo state entries are retained. Clear Formatting is stateless and
+    /// removes complete format sets; it is not generated or configured by an
+    /// extension manifest. The catalog ceiling of 514 reserves room for these
+    /// four built-in controls plus 255 generated toggles and 255 generated
+    /// setters.
     ///
     /// # Errors
     ///
@@ -59,7 +64,12 @@ impl CompiledEditorProfile {
     /// the reserved `breditor/base` schema and core-owned identities. Every
     /// call creates a fresh process-local profile generation. The result also
     /// contains the tracked no-input `breditor/format-strong` intent and its
-    /// priority-zero blocking route to `breditor/toggle-strong`.
+    /// priority-zero blocking route to `breditor/toggle-strong`, plus the
+    /// stateless no-input `breditor/clear-inline-formatting` intent and its
+    /// priority-zero blocking route to `breditor/clear-inline-formats`. The
+    /// latter clears a complete selected `FormatSet`, or establishes an
+    /// explicit empty pending set at a formatted caret, through existing
+    /// transaction, history, and replay contracts.
     ///
     /// # Errors
     ///

@@ -3,14 +3,16 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.9` source checkpoint retains alpha.4's one closed
+unpublished `0.3.0-alpha.10` source checkpoint retains alpha.4's one closed
 property-driven Link presentation and carries it through typed structural
 paragraph edits described below. Alpha.8 current-property transport preserves
 the exact stored string and does not alter this renderer contract. Its native
 single-line form refuses CR/LF-bearing state instead of normalizing it; only
 `safeLinkV1` parses or normalizes a URL and grants navigation attributes.
 Alpha.9 adds an additive, property-free Showcase wrapper-order proof without a
-new DOM recipe kind.
+new DOM recipe kind. Alpha.10 removes wrappers only by changing the Rust AST
+through Clear Formatting and projecting the authoritative successor; it adds
+no in-place DOM mutation or recipe kind.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an

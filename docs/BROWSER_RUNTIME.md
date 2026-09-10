@@ -2,10 +2,11 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.9` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.10` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
-current-property hydration and an additive eight-control Showcase profile
+current-property hydration, aggregate clear-inline-formatting, and an additive
+nine-control Showcase profile
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -124,7 +125,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.9 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.10 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -196,14 +197,26 @@ involved. The toolbar order is Bold, Italic, Strikethrough, Code, Highlight,
 Link, Undo, Redo, and total outer-to-inner wrapper order is Link, Strong,
 Emphasis, Highlight, Strikethrough, Code.
 
+Alpha.10 leaves that profile, wrapper order, Wasm ABI, and durable generations
+unchanged. The base catalog adds action `breditor/clear-inline-formats`, intent
+`breditor/clear-inline-formatting`, priority-zero blocking binding
+`breditor/clear-inline-formatting-binding`, and stateless routed state
+`breditor/control-clear-inline-formatting`. Native `formatRemove` and the
+Showcase's **Clear formatting** button both enter the semantic intent path. A
+nonempty same- or cross-paragraph text selection loses every inline format and
+typed property in one undoable transaction; a collapsed selection clears the
+effective pending/context format set without a standalone history entry. The
+Showcase order is now Bold, Italic, Strikethrough, Code, Highlight, Link, Clear
+formatting, Undo, Redo. The default toolbar remains Bold, Undo, Redo.
+
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.9` packages:
+exactly matching `0.3.0-alpha.10` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.9 \
-  @breditor/wasm@0.3.0-alpha.9 \
-  @breditor/reference-highlight@0.3.0-alpha.9
+npm install @breditor/browser@0.3.0-alpha.10 \
+  @breditor/wasm@0.3.0-alpha.10 \
+  @breditor/reference-highlight@0.3.0-alpha.10
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -313,6 +326,10 @@ Alpha.8 additionally validates property-aware set values against the compiled
 format: inactive requires unset; uniform requires active and one exact complete
 canonical set map; value mixed allows either active with differing maps or
 mixed with partial presence. Any other pair fails the complete refresh.
+One compiled descriptor and complete browser action-state snapshot admit at
+most 514 entries. One toolbar manifest admits at most 64 controls and may
+present any validated subset; the semantic and presentation ceilings are
+deliberately distinct.
 `subscribe(listener)` is compatible with external-store
 adapters, retains at most 64 distinct listeners, coalesces ordinary updates on
 a microtask, deduplicates repeat registration of the same function for
@@ -430,6 +447,10 @@ translation table. It falls through only on the exact closed dispositions
 above. Generation-bound one-use receipts suppress the matching keydown or
 clipboard `beforeinput` echo, and `input` is a postcondition rather than a
 second command.
+The ordinary controller maps native `formatBold` to
+`breditor/format-strong` and native `formatRemove` to
+`breditor/clear-inline-formatting`; generation-bound keyboard echo receipts
+recognize only those exact correlated input types and commands.
 
 Cancelable owned mutations are canceled before queue admission. If cancellation
 cannot be proved, canonical repair is deferred until the browser has had a
@@ -776,10 +797,12 @@ the exact complete map; unset and mixed use defaults. Dirty input wins over
 later observations and survives rejection; completion or explicit close/reset
 discards it before authoritative hydration.
 
-The default profile publishes the routed `breditor/format-strong` Bold state
-plus Undo and Redo. A compiled extension toggle may contribute another tracked
-no-input intent and routed state; a manifest can expose it as the same native
-button kind but cannot register behavior by itself.
+The default profile publishes the routed `breditor/format-strong` Bold state,
+the stateless routed `breditor/clear-inline-formatting` state, plus Undo and
+Redo. The default toolbar intentionally omits Clear formatting. A compiled
+extension toggle may contribute another tracked no-input intent and routed
+state; a manifest can expose it as the same native button kind but cannot
+register behavior by itself.
 
 Adding real behavior therefore proceeds from the core outward:
 
@@ -917,6 +940,13 @@ add exclusions, extension shortcuts, clear-format, block code, headings,
 lists, rich paste, or runtime plugins. Neither matrix establishes broad mobile,
 operating-system IME, or
 assistive-technology support.
+
+Alpha.10 adds the ninth Showcase control and exercises Rust-owned clear
+formatting across its base and extension formats, including typed Link
+properties, cross-paragraph selection, one-step undo, and persistence. It does
+not add per-format aggregate policy, exclusions, extension shortcuts, block
+code, headings, lists, rich paste, runtime plugins, or a broader browser or
+assistive-technology support claim.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

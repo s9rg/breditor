@@ -52,7 +52,7 @@ import {
 } from "./toolbar_inline_format_form.js";
 
 /** Maximum entries inspected from one browser action-state snapshot. */
-export const MAX_TOOLBAR_STATE_ENTRIES = 512;
+export const MAX_TOOLBAR_STATE_ENTRIES = 514;
 
 /** Maximum distinct lifecycle listeners retained by one mounted toolbar. */
 export const MAX_TOOLBAR_LIFECYCLE_SUBSCRIBERS = 64;

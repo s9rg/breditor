@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.9` Showcase source
+`0.2.0` extension surface, and the `0.3.0-alpha.10` Showcase source
 checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
@@ -111,6 +111,20 @@ fixes outer-to-inner nesting as Link, Strong, Emphasis, Highlight,
 Strikethrough, Code. This is a multi-extension composition proof, not runtime
 plugin loading or a general widget API.
 
+The unpublished `0.3.0-alpha.10` source package retains Wasm ABI 5 and every
+durable format generation. It adds the Rust-owned no-input action
+`breditor/clear-inline-formats`, semantic intent
+`breditor/clear-inline-formatting`, priority-zero blocking binding
+`breditor/clear-inline-formatting-binding`, and stateless routed state
+`breditor/control-clear-inline-formatting`. Native `beforeinput` type
+`formatRemove` and the Showcase's new **Clear formatting** button both use that
+intent. A nonempty selected range clears every inline format, including typed
+Link properties, across one or more paragraphs as one undoable transaction; a
+collapsed selection clears the effective pending/context format set without a
+standalone history entry. The default Bold/Undo/Redo manifest stays unchanged,
+while the Showcase now has nine controls with Clear formatting immediately
+before Undo and Redo.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -124,7 +138,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.9 @breditor/wasm@0.3.0-alpha.9
+npm install @breditor/browser@0.3.0-alpha.10 @breditor/wasm@0.3.0-alpha.10
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -224,8 +238,9 @@ The keyboard policy is explicit and platform-independent.
 derived from `keydown`. `primaryModifier` chooses `control` or `meta` for
 shortcuts, and `shortcuts` enables or disables Breditor's shortcut translation.
 When shortcuts are enabled, primary-modifier+B and native `beforeinput`
-`formatBold` both invoke `breditor/format-strong`; neither hard-codes the
-concrete strong action at the supported browser boundary.
+`formatBold` both invoke `breditor/format-strong`. Native `formatRemove`
+invokes `breditor/clear-inline-formatting`. None of these supported browser
+routes hard-codes a concrete action.
 
 The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
 `header`, `main`, `nav`, or `section` in the owner Document's light DOM.
@@ -491,7 +506,8 @@ rejected before cancellation and cannot consume keyboard or clipboard receipts.
 
 The recognized non-composition set covers text and multiline text insertion,
 paragraph insertion, backward/forward/selection deletion, strong formatting
-through `breditor/format-strong`, undo, and redo. Unknown edit intents are
+through `breditor/format-strong`, clearing every inline format through
+`breditor/clear-inline-formatting`, undo, and redo. Unknown edit intents are
 blocked instead of approximated.
 Keyboard input never supplies text; an explicit host policy selects
 `beforeinput`-primary behavior or the narrow Backspace/Delete/Enter fallback.
@@ -643,7 +659,10 @@ closed. `BreditorActionStateStore` publishes only
 validated complete snapshots, keeps the last good value on failure, and offers
 synchronous ordered subscriptions suitable for a command-queue observer. Each
 store compares complete snapshots locally; the engine-global full/delta/cache-hit
-relation is never mistaken for an individual consumer's baseline.
+relation is never mistaken for an individual consumer's baseline. The complete
+engine/descriptor snapshot admits at most 514 entries. This semantic catalog
+ceiling is distinct from the 64-control presentation-manifest ceiling; a
+toolbar may expose only a subset of the catalog.
 
 For a descriptor-declared typed setter, Alpha.8 also requires the exact
 `breditor/set-inline-format-input@1` output contract and validates the complete
@@ -689,7 +708,7 @@ persisted, replayed, or undoable. The exact surface and
 threat model are in
 [`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
-A custom manifest does not register behavior. In the supported Alpha.9 editor,
+A custom manifest does not register behavior. In the supported Alpha.10 editor,
 startup accepts an intent button only when its state ID names a descriptor
 entry routed from the same declared no-input intent, its tracked/stateless
 activation matches, and neither contract exposes a value. History buttons must
@@ -781,10 +800,13 @@ backpressure; terminal adapter loss pauses autosave. See
 
 ## Current limitations
 
-- The default toolbar contains Bold, Undo, and Redo. A compiled semantic
-  profile can contribute additional property-free format toggle intents and a
-  custom manifest can omit, reorder, relabel, group, or expose them as the same
-  native-button control kind. The closed native `inlineFormatForm` supports
+- The default toolbar contains Bold, Undo, and Redo. The base descriptor also
+  publishes the stateless `breditor/control-clear-inline-formatting` state; a
+  custom manifest can expose it through the matching no-input intent. A
+  compiled semantic profile can contribute additional property-free format
+  toggle intents, and a custom manifest can omit, reorder, relabel, group, or
+  expose them as the same native-button control kind. The closed native
+  `inlineFormatForm` supports
   required URL-presented strings and required Booleans for exact complete-map
   set/remove only. There are no optional/integer fields, partial patches,
   arbitrary widgets, menus/selects, extension keymaps or `beforeinput` rules,

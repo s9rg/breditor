@@ -134,6 +134,9 @@ interface ReferencePackageSmoke {
     toggledDom: ShowcaseDomObservation;
     undoDom: ShowcaseDomObservation;
     redoDom: ShowcaseDomObservation;
+    clearedDocumentJson: BreditorBrowserContentExport<"documentJson">;
+    clearedPlainText: BreditorBrowserContentExport<"plainText">;
+    clearUndoDom: ShowcaseDomObservation;
   }>;
   readonly fixturesFrozen: boolean;
   dispose(): Readonly<{
@@ -361,6 +364,24 @@ async function start(): Promise<void> {
       "showcase Redo did not restore the last style toggle",
     );
     const redoDom = readShowcaseDom(showcaseHost);
+    requireToolbarButton(showcaseToolbarHost, "Clear formatting").click();
+    await waitFor(() => {
+      const paragraph = showcaseHost.querySelector(":scope > p");
+      return paragraph?.children.length === 0 &&
+        paragraph.textContent === SHOWCASE_TEXT;
+    }, "showcase Clear formatting did not produce plain text");
+    const clearedDocumentJson =
+      showcaseOpened.editor.exportContent("documentJson");
+    const clearedPlainText = showcaseOpened.editor.exportContent("plainText");
+    if (!clearedDocumentJson.ok || !clearedPlainText.ok) {
+      throw new Error("showcase cleared content export failed");
+    }
+    requireToolbarButton(showcaseToolbarHost, "Undo").click();
+    await waitFor(
+      () => showcaseHost.querySelector("code") !== null,
+      "showcase Undo did not restore formatting cleared in one unit",
+    );
+    const clearUndoDom = readShowcaseDom(showcaseHost);
     const showcaseDocumentJson =
       showcaseOpened.editor.exportContent("documentJson");
     const showcasePlainText = showcaseOpened.editor.exportContent("plainText");
@@ -445,6 +466,9 @@ async function start(): Promise<void> {
         toggledDom,
         undoDom,
         redoDom,
+        clearedDocumentJson,
+        clearedPlainText,
+        clearUndoDom,
       }),
       fixturesFrozen: exportedFixturesAndHelpersAreFrozen(),
       dispose: () => {

@@ -40,6 +40,7 @@ export const MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8 = 65_536;
 /** Fixed observable identities used by the base toolbar/action-state catalog. */
 export const BASE_TOOLBAR_STATE_IDS = Object.freeze({
   bold: "breditor/control-bold",
+  clearInlineFormatting: "breditor/control-clear-inline-formatting",
   undo: "breditor/control-undo",
   redo: "breditor/control-redo",
 } as const);

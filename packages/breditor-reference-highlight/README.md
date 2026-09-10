@@ -4,8 +4,9 @@
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format. The `0.3.0-alpha.9` `REFERENCE_SHOWCASE_*` surface keeps
-both and adds three ordinary property-free text styles.
+`example/link` format. The `0.3.0-alpha.10` `REFERENCE_SHOWCASE_*` surface keeps
+both, adds three ordinary property-free text styles, and presents the base
+clear-inline-formatting route.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -44,6 +45,14 @@ Showcase profile adds Emphasis, Strikethrough, and Code through the existing
 generic toggle declaration; no new Rust action implementation, operation kind,
 browser protocol, Wasm method, or durable record generation is added.
 
+Alpha.10 changes no reference schema, extension bootstrap, renderer recipe,
+fixture, fingerprint, or durable record generation. Its Showcase toolbar adds
+the base stateless **Clear formatting** control immediately before Undo and
+Redo. The control names `breditor/control-clear-inline-formatting` and invokes
+the no-input `breditor/clear-inline-formatting` intent; Rust selects
+`breditor/clear-inline-formats` through
+`breditor/clear-inline-formatting-binding`.
+
 ## Use
 
 This repository does not publish packages automatically. After a maintainer
@@ -52,9 +61,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.9 \
-  @breditor/wasm@0.3.0-alpha.9 \
-  @breditor/reference-highlight@0.3.0-alpha.9
+npm install @breditor/browser@0.3.0-alpha.10 \
+  @breditor/wasm@0.3.0-alpha.10 \
+  @breditor/reference-highlight@0.3.0-alpha.10
 ```
 
 ```ts
@@ -193,7 +202,8 @@ Use `REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON`,
 `REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON` with the same Bootstrap-V2 open
 shape shown above. The sample starts with Highlight and a safe Link so Italic,
 Strikethrough, and Code visibly begin inactive. The toolbar has exactly Bold,
-Italic, Strikethrough, Code, Highlight, Link, Undo, and Redo in that order.
+Italic, Strikethrough, Code, Highlight, Link, Clear formatting, Undo, and Redo
+in that order.
 
 `createReferenceShowcaseDocumentJson(text, options)` accepts independent
 `bold`, `italic`, `strikethrough`, `code`, and `highlighted` flags plus the
@@ -251,7 +261,9 @@ action, intent, binding, and state names are available through
 
 This package demonstrates several immutable property-free formats and one
 closed typed Link format. The styles coexist independently; there are no
-exclusion groups or aggregate clear-format command. It does not provide
+exclusion groups or per-format aggregate policies. The base Clear formatting
+command removes every inline format together and cannot preserve a chosen
+subset. It does not provide
 dynamic installation, arbitrary nodes
 or attributes, colors, custom JavaScript/Rust callbacks, arbitrary typed toolbar
 forms, extension keymaps, block code, headings, lists, `beforeinput` rules,

@@ -939,7 +939,7 @@ test("the native Link toolbar works from an open ShadowRoot without browser URL 
   await expect(url).toBeFocused();
 });
 
-test("the packaged Showcase composes five extension controls through generic state and history", async ({
+test("the packaged Showcase composes extensions and Rust-owned clear formatting through generic state and history", async ({
   page,
 }) => {
   const mounted = await mountReferenceShowcase(page);
@@ -959,6 +959,10 @@ test("the packaged Showcase composes five extension controls through generic sta
     name: "Highlight",
     exact: true,
   });
+  const clearFormatting = toolbar.getByRole("button", {
+    name: "Clear formatting",
+    exact: true,
+  });
   const undo = toolbar.getByRole("button", { name: "Undo", exact: true });
   const redo = toolbar.getByRole("button", { name: "Redo", exact: true });
 
@@ -969,6 +973,7 @@ test("the packaged Showcase composes five extension controls through generic sta
     "Code",
     "Highlight",
     "Link",
+    "Clear formatting",
     "Undo",
     "Redo",
   ]);
@@ -1014,6 +1019,39 @@ test("the packaged Showcase composes five extension controls through generic sta
     await expect(control).toHaveAttribute("aria-pressed", "true");
   }
   await expect(completeChain).toHaveText(mounted.text);
+
+  // Native formatRemove is prevented, commits through the same semantic route,
+  // and is one Rust-owned history event.
+  const nativeClear = await editor.evaluate((host) => {
+    const InputEventConstructor = host.ownerDocument.defaultView?.InputEvent;
+    if (InputEventConstructor === undefined) {
+      throw new Error("InputEvent is unavailable");
+    }
+    const event = new InputEventConstructor("beforeinput", {
+      bubbles: true,
+      cancelable: true,
+      data: null,
+      inputType: "formatRemove",
+    });
+    const dispatched = host.dispatchEvent(event);
+    return { defaultPrevented: event.defaultPrevented, dispatched };
+  });
+  expect(nativeClear).toEqual({ defaultPrevented: true, dispatched: false });
+  await expect(editor.locator("p")).toHaveText(mounted.text);
+  await expect(editor.locator("a, strong, em, mark, s, code")).toHaveCount(0);
+  await expect(clearFormatting).toHaveAttribute("aria-disabled", "true");
+  await undo.click();
+  await expect(completeChain).toHaveText(mounted.text);
+
+  // The toolbar uses the same semantic clear: every base and extension format
+  // disappears, and one undo restores the complete property-aware chain.
+  await clearFormatting.click();
+  await expect(editor.locator("p")).toHaveText(mounted.text);
+  await expect(editor.locator("a, strong, em, mark, s, code")).toHaveCount(0);
+  await expect(clearFormatting).toHaveAttribute("aria-disabled", "true");
+  await undo.click();
+  await expect(completeChain).toHaveText(mounted.text);
+  await expect(clearFormatting).toHaveAttribute("aria-disabled", "false");
 
   // A partial toggle derives mixed state when the full document is selected.
   await selectTextInEditor(editor, 0, "Breditor".length);

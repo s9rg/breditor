@@ -7,7 +7,8 @@ use crate::{
         MAX_ACTION_VALUE_COUNT, MAX_ACTION_VALUE_DEPTH, MAX_ACTION_VALUE_TEXT_BYTES,
         builtins::{
             SetInlineFormatAction, ToggleInlineFormatAction, base_action_registrations,
-            base_intent_bindings, base_intent_declarations, format_strong_intent_id,
+            base_intent_bindings, base_intent_declarations, clear_inline_formatting_intent_id,
+            clear_inline_formatting_state_id, format_strong_intent_id,
             set_inline_format_input_contract,
         },
         routing::{
@@ -519,6 +520,12 @@ fn base_action_state_registrations() -> Vec<ActionStateRegistration> {
             ActionStateSource::routed(IntentInvocation::without_input(format_strong_intent_id())),
         ),
         ActionStateRegistration::new(
+            clear_inline_formatting_state_id(),
+            ActionStateSource::routed(IntentInvocation::without_input(
+                clear_inline_formatting_intent_id(),
+            )),
+        ),
+        ActionStateRegistration::new(
             ActionStateId::from_qualified_name(QualifiedName::from_known_static(
                 "breditor/control-undo",
             )),
@@ -550,8 +557,12 @@ mod tests {
             ActionActivationContract, ActionId, ActionStateDescriptor, ActionStateId,
             ActionStateSource,
             builtins::{
+                CLEAR_INLINE_FORMATTING_BINDING_NAME, CLEAR_INLINE_FORMATTING_BINDING_PRIORITY,
+                CLEAR_INLINE_FORMATTING_INTENT_NAME, CLEAR_INLINE_FORMATTING_STATE_NAME,
                 FORMAT_STRONG_BINDING_NAME, FORMAT_STRONG_BINDING_PRIORITY,
-                FORMAT_STRONG_INTENT_NAME, format_strong_binding_id, toggle_strong_action_id,
+                FORMAT_STRONG_INTENT_NAME, clear_inline_formats_action_id,
+                clear_inline_formatting_binding_id, clear_inline_formatting_intent_id,
+                format_strong_binding_id, toggle_strong_action_id,
             },
             routing::{BindingId, DisabledRouting, IntentId},
         },
@@ -643,16 +654,37 @@ mod tests {
     }
 
     #[test]
-    fn empty_extension_profile_includes_the_complete_builtin_strong_route() -> TestResult {
+    fn empty_extension_profile_includes_the_complete_builtin_routes() -> TestResult {
         let profile = CompiledEditorProfile::try_compile_base_text_profile(
             schema_id("example/empty-profile")?,
             extension_set(Vec::new())?,
         )?;
 
         assert_eq!(profile.action_registry().len(), base_action_registrations().len());
-        assert_eq!(profile.intent_router().intent_count(), 1);
-        assert_eq!(profile.intent_router().binding_count(), 1);
-        assert_eq!(profile.action_state_catalog().len(), 3);
+        assert_eq!(profile.intent_router().intent_count(), 2);
+        assert_eq!(profile.intent_router().binding_count(), 2);
+        assert_eq!(profile.action_state_catalog().len(), 4);
+
+        let clear_intent = clear_inline_formatting_intent_id();
+        let clear_declaration = profile
+            .intent_router()
+            .declaration(&clear_intent)
+            .ok_or_else(|| test_error("built-in clear-inline-formatting intent is missing"))?;
+        assert_eq!(clear_declaration.id().as_str(), CLEAR_INLINE_FORMATTING_INTENT_NAME);
+        assert!(clear_declaration.input_contract().is_none());
+        assert_eq!(
+            clear_declaration.state_spec().contract().activation_contract(),
+            ActionActivationContract::Stateless,
+        );
+        let clear_binding = profile
+            .intent_router()
+            .binding(&clear_inline_formatting_binding_id())
+            .ok_or_else(|| test_error("built-in clear-inline-formatting binding is missing"))?;
+        assert_eq!(clear_binding.id().as_str(), CLEAR_INLINE_FORMATTING_BINDING_NAME);
+        assert_eq!(clear_binding.intent_id(), &clear_intent);
+        assert_eq!(clear_binding.action_id(), &clear_inline_formats_action_id());
+        assert_eq!(clear_binding.priority(), CLEAR_INLINE_FORMATTING_BINDING_PRIORITY);
+        assert_eq!(clear_binding.disabled_routing(), DisabledRouting::Block);
 
         let strong_intent = format_strong_intent_id();
         let declaration = profile
@@ -676,12 +708,18 @@ mod tests {
         assert_eq!(binding.disabled_routing(), DisabledRouting::Block);
 
         let bold = ActionStateId::try_new("breditor/control-bold")?;
+        let clear = ActionStateId::try_new(CLEAR_INLINE_FORMATTING_STATE_NAME)?;
         let undo = ActionStateId::try_new("breditor/control-undo")?;
         let redo = ActionStateId::try_new("breditor/control-redo")?;
         assert!(matches!(
             profile.action_state_catalog().descriptor(&bold).map(ActionStateDescriptor::source),
             Some(ActionStateSource::Routed(invocation))
                 if invocation.id() == &strong_intent
+        ));
+        assert!(matches!(
+            profile.action_state_catalog().descriptor(&clear).map(ActionStateDescriptor::source),
+            Some(ActionStateSource::Routed(invocation))
+                if invocation.id() == &clear_intent
         ));
         assert!(matches!(
             profile.action_state_catalog().descriptor(&undo).map(ActionStateDescriptor::source),
@@ -751,9 +789,9 @@ mod tests {
                 .map(ActionStateDescriptor::source),
             Some(ActionStateSource::Routed(invocation)) if invocation.id() == &intent_id
         ));
-        assert_eq!(profile.action_state_catalog().len(), 4);
-        assert_eq!(profile.intent_router().intent_count(), 2);
-        assert_eq!(profile.intent_router().binding_count(), 2);
+        assert_eq!(profile.action_state_catalog().len(), 5);
+        assert_eq!(profile.intent_router().intent_count(), 3);
+        assert_eq!(profile.intent_router().binding_count(), 3);
         Ok(())
     }
 
@@ -788,9 +826,9 @@ mod tests {
         )?;
 
         assert!(profile.schema().is_property_free_inline_format(&format_kind));
-        assert_eq!(profile.intent_router().intent_count(), 1);
-        assert_eq!(profile.intent_router().binding_count(), 1);
-        assert_eq!(profile.action_state_catalog().len(), 3);
+        assert_eq!(profile.intent_router().intent_count(), 2);
+        assert_eq!(profile.intent_router().binding_count(), 2);
+        assert_eq!(profile.action_state_catalog().len(), 4);
         assert_eq!(profile.action_registry().len(), base_action_registrations().len());
         Ok(())
     }
@@ -818,15 +856,15 @@ mod tests {
 
         assert_eq!(
             profile.intent_router().intent_count(),
-            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 1
+            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 2
         );
         assert_eq!(
             profile.intent_router().binding_count(),
-            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 1
+            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 2
         );
         assert_eq!(
             profile.action_state_catalog().len(),
-            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 3
+            usize::try_from(MAX_PROFILE_INLINE_FORMAT_TOGGLES)? + 4
         );
         Ok(())
     }

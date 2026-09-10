@@ -187,10 +187,10 @@ fn compiled_profile_routes_observes_commits_and_replays_one_toggle() -> TestResu
     let binding_id = BindingId::try_new(BINDING)?;
     let action_state_id = ActionStateId::try_new(ACTION_STATE)?;
 
-    assert_eq!(profile.action_registry().len(), 8);
-    assert_eq!(profile.intent_router().intent_count(), 2);
-    assert_eq!(profile.intent_router().binding_count(), 2);
-    assert_eq!(profile.action_state_catalog().len(), 4);
+    assert_eq!(profile.action_registry().len(), 9);
+    assert_eq!(profile.intent_router().intent_count(), 3);
+    assert_eq!(profile.intent_router().binding_count(), 3);
+    assert_eq!(profile.action_state_catalog().len(), 5);
     let action = profile
         .action_registry()
         .descriptor(&action_id)
@@ -291,8 +291,8 @@ fn semantic_toggle_identity_changes_do_not_change_schema_fingerprint() -> TestRe
     assert_eq!(first.schema().fingerprint(), second.schema().fingerprint());
     assert_eq!(first.schema(), without_toggle.schema());
     assert_eq!(first.schema().fingerprint(), without_toggle.schema().fingerprint());
-    assert_eq!(without_toggle.intent_router().intent_count(), 1);
-    assert_eq!(without_toggle.intent_router().binding_count(), 1);
+    assert_eq!(without_toggle.intent_router().intent_count(), 2);
+    assert_eq!(without_toggle.intent_router().binding_count(), 2);
     assert_ne!(first.generation(), second.generation());
     assert_eq!(first.generation(), first.clone().generation());
     let generation = first.generation();
