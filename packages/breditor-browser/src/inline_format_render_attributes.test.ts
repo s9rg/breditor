@@ -9,10 +9,14 @@ import {
   INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM,
   INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM,
   INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME,
+  INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE,
+  MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ASCII,
+  MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES,
   MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES,
   createInlineFormatRenderAttributePolicy,
   inlineFormatRenderAttributePolicyMatchesFormatDescriptor,
   inlineFormatRenderAttributesAreCanonicalForPolicy,
+  inlineFormatRenderAttributesAreCanonicalSafeIntegerTokenV1,
   inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
   inlineFormatRenderAttributesAreCanonicalSafeTextColorV1,
   resolveInlineFormatRenderAttributes,
@@ -27,6 +31,22 @@ const POLICY = createInlineFormatRenderAttributePolicy({
 const TEXT_COLOR_POLICY = createInlineFormatRenderAttributePolicy({
   kind: "safeTextColorV1",
 });
+
+const INTEGER_TOKEN_POLICY = (() => {
+  const policy = createInlineFormatRenderAttributePolicy({
+    kind: "safeIntegerTokenV1",
+    propertyName: "example/size",
+    tokens: [
+      { value: 1, token: "small" },
+      { value: 2, token: "medium" },
+      { value: 3, token: "large" },
+    ],
+  });
+  if (policy.kind !== "safeIntegerTokenV1") {
+    throw new Error("integer-token policy construction returned the wrong kind");
+  }
+  return policy;
+})();
 
 describe("inline-format render attributes", () => {
   it("copies and freezes only the exact safe-link policy", () => {
@@ -573,6 +593,251 @@ describe("inline-format render attributes", () => {
     ).toBe(false);
     expect(reads).toBe(0);
   });
+
+  it("snapshots an exact bounded contiguous safe integer-token policy", () => {
+    const source = {
+      kind: "safeIntegerTokenV1" as const,
+      propertyName: "example/size",
+      tokens: [
+        { value: -2, token: "size_xs" },
+        { value: -1, token: "size-sm" },
+        { value: 0, token: "size-md" },
+      ],
+    };
+    const policy = createInlineFormatRenderAttributePolicy(source);
+    source.propertyName = "example/changed";
+    source.tokens[0]!.token = "changed";
+    source.tokens.push({ value: 1, token: "size-lg" });
+
+    expect(policy).toEqual({
+      kind: "safeIntegerTokenV1",
+      propertyName: "example/size",
+      tokens: [
+        { value: -2, token: "size_xs" },
+        { value: -1, token: "size-sm" },
+        { value: 0, token: "size-md" },
+      ],
+    });
+    expect(MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES).toBe(32);
+    expect(MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ASCII).toBe(64);
+    expect(INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE).toBe(
+      "data-breditor-integer-token",
+    );
+    expect(Object.isFrozen(policy)).toBe(true);
+    if (policy.kind !== "safeIntegerTokenV1") {
+      throw new Error("integer-token policy fixture failed");
+    }
+    expect(Object.isFrozen(policy.tokens)).toBe(true);
+    for (const entry of policy.tokens) expect(Object.isFrozen(entry)).toBe(true);
+  });
+
+  it("rejects malformed, sparse, widened, and hostile integer-token declarations", () => {
+    const declaration = (tokens: unknown, extra: object = {}): unknown => ({
+      kind: "safeIntegerTokenV1",
+      propertyName: "example/size",
+      tokens,
+      ...extra,
+    });
+    const tooMany = Array.from(
+      { length: MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES + 1 },
+      (_, index) => ({ value: index, token: `size-${index}` }),
+    );
+    const sparse = new Array(2);
+    sparse[0] = { value: 1, token: "one" };
+    const widened = [{ value: 1, token: "one" }];
+    Object.defineProperty(widened, "hidden", { value: true });
+    for (const invalid of [
+      declaration([]),
+      declaration(tooMany),
+      declaration(sparse),
+      declaration(widened),
+      declaration([{ value: -0, token: "zero" }]),
+      declaration([{ value: 1.5, token: "fraction" }]),
+      declaration([{ value: Number.MAX_SAFE_INTEGER + 1, token: "unsafe" }]),
+      declaration([{ value: 1, token: "one" }, { value: 3, token: "three" }]),
+      declaration([{ value: 2, token: "two" }, { value: 1, token: "one" }]),
+      declaration([{ value: 1, token: "same" }, { value: 2, token: "same" }]),
+      declaration([{ value: 1, token: "Upper" }]),
+      declaration([{ value: 1, token: "1-first" }]),
+      declaration([{ value: 1, token: "bad.token" }]),
+      declaration([{ value: 1, token: `a${"x".repeat(64)}` }]),
+      declaration([{ value: 1, token: "one", css: "font-size:999px" }]),
+      declaration([{ value: 1, token: "one" }], { css: "font-size:999px" }),
+      {
+        kind: "safeIntegerTokenV1",
+        propertyName: "not-qualified",
+        tokens: [{ value: 1, token: "one" }],
+      },
+    ]) {
+      expect(() => createInlineFormatRenderAttributePolicy(invalid)).toThrow();
+    }
+
+    let reads = 0;
+    const accessor = { value: 1 } as Record<string, unknown>;
+    Object.defineProperty(accessor, "token", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return "one";
+      },
+    });
+    expect(() =>
+      createInlineFormatRenderAttributePolicy(declaration([accessor]))
+    ).toThrow(/own data properties/u);
+    expect(reads).toBe(0);
+
+    const privateMessage = "private-integer-token-trap";
+    const hostileTokens = new Proxy([{ value: 1, token: "one" }], {
+      ownKeys() {
+        throw new Error(privateMessage);
+      },
+    });
+    let failure: unknown;
+    try {
+      createInlineFormatRenderAttributePolicy(declaration(hostileTokens));
+    } catch (error: unknown) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(TypeError);
+    expect(String(failure)).not.toContain(privateMessage);
+  });
+
+  it("matches only the exhaustive one-property integer descriptor", () => {
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        INTEGER_TOKEN_POLICY,
+        integerTokenDescriptor(),
+      ),
+    ).toBe(true);
+    // The generic policy is structurally reusable across schema-owned format
+    // revisions; the render recipe and compiled profile bind the format kind.
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        INTEGER_TOKEN_POLICY,
+        integerTokenDescriptor({ revision: 2 }),
+      ),
+    ).toBe(true);
+
+    for (const descriptor of [
+      integerTokenDescriptor({ kind: 42 }),
+      integerTokenDescriptor({ kind: "invalid" }),
+      integerTokenDescriptor({ revision: "1" }),
+      integerTokenDescriptor({ revision: 0 }),
+      integerTokenDescriptor({ revision: -0 }),
+      integerTokenDescriptor({ revision: 1.5 }),
+      integerTokenDescriptor({ revision: 0x1_0000_0000 }),
+      integerTokenDescriptor({ propertyName: "example/other" }),
+      integerTokenDescriptor({ presence: "optional" }),
+      integerTokenDescriptor({ valueKind: "boolean" }),
+      integerTokenDescriptor({ minimum: null }),
+      integerTokenDescriptor({ maximum: null }),
+      integerTokenDescriptor({ minimum: 0 }),
+      integerTokenDescriptor({ minimum: 2 }),
+      integerTokenDescriptor({ maximum: 2 }),
+      integerTokenDescriptor({ maximum: 4 }),
+      integerTokenDescriptor({ extraProperty: true }),
+    ]) {
+      expect(
+        inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+          INTEGER_TOKEN_POLICY,
+          descriptor,
+        ),
+      ).toBe(false);
+    }
+
+    const widened = {
+      ...integerTokenDescriptor(),
+      rendererHint: "integer-token",
+    } as BrowserProfileFormatDescriptor;
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        INTEGER_TOKEN_POLICY,
+        widened,
+      ),
+    ).toBe(false);
+
+    const hostile = new Proxy(integerTokenDescriptor(), {
+      ownKeys() {
+        throw new Error("private-descriptor-trap");
+      },
+    });
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        INTEGER_TOKEN_POLICY,
+        hostile,
+      ),
+    ).toBe(false);
+  });
+
+  it("resolves and inversely admits only declared inert integer tokens", () => {
+    const attributes = resolveInlineFormatRenderAttributes(
+      INTEGER_TOKEN_POLICY,
+      [projectedProperty("example/size", 2)],
+    );
+    expect(attributes).toEqual([{
+      name: "data-breditor-integer-token",
+      value: "medium",
+    }]);
+    expect(Object.isFrozen(attributes)).toBe(true);
+    expect(Object.isFrozen(attributes[0])).toBe(true);
+    expect(
+      inlineFormatRenderAttributesAreCanonicalSafeIntegerTokenV1(
+        INTEGER_TOKEN_POLICY,
+        attributes,
+      ),
+    ).toBe(true);
+    expect(
+      inlineFormatRenderAttributesAreCanonicalForPolicy(
+        INTEGER_TOKEN_POLICY,
+        attributes,
+      ),
+    ).toBe(true);
+
+    for (const properties of [
+      [],
+      [projectedProperty("example/other", 2)],
+      [projectedProperty("example/size", 0)],
+      [projectedProperty("example/size", 4)],
+      [projectedProperty("example/size", -0)],
+      [projectedProperty("example/size", 2.5)],
+      [projectedProperty("example/size", "2")],
+      [projectedProperty("example/size", 2), projectedProperty("example/size", 2)],
+      [projectedProperty("example/size", 2), projectedProperty("example/other", 1)],
+    ]) {
+      expect(
+        resolveInlineFormatRenderAttributes(
+          INTEGER_TOKEN_POLICY,
+          properties as readonly InlineFormatPropertyProjection[],
+        ),
+      ).toEqual([]);
+    }
+
+    for (const invalid of [
+      [],
+      [{ name: "data-breditor-integer-token", value: "unknown" }],
+      [{ name: "data-breditor-integer-token", value: "Medium" }],
+      [{ name: "class", value: "medium" }],
+      [{ name: "style", value: "font-size:medium" }],
+      [{ name: "data-breditor-integer-token", value: "medium", extra: true }],
+      [
+        { name: "data-breditor-integer-token", value: "medium" },
+        { name: "title", value: "extra" },
+      ],
+    ]) {
+      expect(
+        inlineFormatRenderAttributesAreCanonicalSafeIntegerTokenV1(
+          INTEGER_TOKEN_POLICY,
+          invalid,
+        ),
+      ).toBe(false);
+      expect(
+        inlineFormatRenderAttributesAreCanonicalForPolicy(
+          INTEGER_TOKEN_POLICY,
+          invalid,
+        ),
+      ).toBe(false);
+    }
+  });
 });
 
 interface DescriptorOverrides {
@@ -663,6 +928,52 @@ function textColorDescriptor(
   return {
     kind: overrides.kind ?? "example/text-color",
     revision: overrides.revision ?? 1,
+    properties,
+  };
+}
+
+interface IntegerTokenDescriptorOverrides {
+  readonly kind?: unknown;
+  readonly revision?: unknown;
+  readonly propertyName?: string;
+  readonly presence?: "required" | "optional";
+  readonly valueKind?: "integer" | "boolean";
+  readonly minimum?: number | null;
+  readonly maximum?: number | null;
+  readonly extraProperty?: boolean;
+}
+
+function integerTokenDescriptor(
+  overrides: IntegerTokenDescriptorOverrides = {},
+): BrowserProfileFormatDescriptor {
+  const valueType = overrides.valueKind === "boolean"
+    ? { kind: "boolean" as const }
+    : {
+      kind: "integer" as const,
+      minimum: overrides.minimum === undefined ? 1 : overrides.minimum,
+      maximum: overrides.maximum === undefined ? 3 : overrides.maximum,
+    };
+  const properties: BrowserProfileFormatDescriptor["properties"][number][] = [
+    {
+      name: overrides.propertyName ?? "example/size",
+      presence: overrides.presence ?? "required",
+      valueType,
+    },
+  ];
+  if (overrides.extraProperty === true) {
+    properties.push({
+      name: "example/extra",
+      presence: "optional",
+      valueType: { kind: "boolean" },
+    });
+  }
+  return {
+    kind: overrides.kind === undefined
+      ? "example/text-size"
+      : overrides.kind as string,
+    revision: overrides.revision === undefined
+      ? 1
+      : overrides.revision as number,
     properties,
   };
 }

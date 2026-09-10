@@ -19,6 +19,7 @@ import {
   nativeInputChecked,
   nativeInputIndeterminate,
   nativeInputValue,
+  nativeOptionValue,
   nativeNodeType,
   nativeNodeValue,
   nativeParentElement,
@@ -27,10 +28,12 @@ import {
   nativeRemoveElement,
   nativeRemoveEventListener,
   nativeReplaceChildren,
+  nativeSelectValue,
   nativeSetAttribute,
   nativeSetInputChecked,
   nativeSetInputIndeterminate,
   nativeSetInputValue,
+  nativeSetSelectValue,
   nativeTreeRoot,
   nativeTreeRootActiveElement,
   nativeTreeRootGetElementById,
@@ -49,6 +52,10 @@ import {
   decodeToolbarInlineFormatRgb24Color,
   encodeToolbarInlineFormatRgb24Color,
 } from "./toolbar_inline_format_rgb24.js";
+import {
+  decodeToolbarInlineFormatIntegerSelectValue,
+  encodeToolbarInlineFormatIntegerSelectValue,
+} from "./toolbar_inline_format_integer_select.js";
 
 const PREVENT_SCROLL_FOCUS_OPTIONS: FocusOptions = Object.freeze({
   preventScroll: true,
@@ -94,10 +101,10 @@ interface BooleanFieldRecord {
   readonly onChange: (event: Event) => void;
 }
 
-interface IntegerFieldRecord {
+interface Rgb24IntegerFieldRecord {
   readonly declaration: Extract<
     ToolbarInlineFormatFormFieldDeclaration,
-    { readonly kind: "integer" }
+    { readonly kind: "integer"; readonly presentation: "rgb24" }
   >;
   readonly label: HTMLLabelElement;
   readonly labelText: HTMLSpanElement;
@@ -106,7 +113,23 @@ interface IntegerFieldRecord {
   readonly onChange: (event: Event) => void;
 }
 
-type FieldRecord = StringFieldRecord | BooleanFieldRecord | IntegerFieldRecord;
+interface SelectIntegerFieldRecord {
+  readonly declaration: Extract<
+    ToolbarInlineFormatFormFieldDeclaration,
+    { readonly kind: "integer"; readonly presentation: "select" }
+  >;
+  readonly label: HTMLLabelElement;
+  readonly labelText: HTMLSpanElement;
+  readonly input: HTMLSelectElement;
+  readonly onInput: (event: Event) => void;
+  readonly onChange: (event: Event) => void;
+}
+
+type FieldRecord =
+  | StringFieldRecord
+  | BooleanFieldRecord
+  | Rgb24IntegerFieldRecord
+  | SelectIntegerFieldRecord;
 
 /**
  * Internal native form owned by one `inlineFormatForm` toolbar launcher.
@@ -355,9 +378,7 @@ export class BreditorToolbarInlineFormatForm {
       (activation === "active" && stateSeed?.status === "uniform") ||
       (activation === "active" && stateSeed?.status === "mixed") ||
       (activation === "mixed" && stateSeed?.status === "mixed");
-    const presentedActivation = valueMatchesActivation
-      ? activation
-      : undefined;
+    const presentedActivation = valueMatchesActivation ? activation : undefined;
     this.#stateSeed = valueMatchesActivation ? stateSeed : undefined;
     this.#formReady =
       valueMatchesActivation &&
@@ -365,10 +386,10 @@ export class BreditorToolbarInlineFormatForm {
         (activation === "inactive" ||
           activation === "active" ||
           activation === "mixed")) ||
-      ((state?.availability === "disabled" ||
-        state?.availability === "blocked") &&
-        activation === "inactive" &&
-        state.reasonCode === INLINE_FORMAT_UNCHANGED));
+        ((state?.availability === "disabled" ||
+          state?.availability === "blocked") &&
+          activation === "inactive" &&
+          state.reasonCode === INLINE_FORMAT_UNCHANGED));
     this.#removeReady =
       valueMatchesActivation &&
       state?.availability === "enabled" &&
@@ -384,9 +405,10 @@ export class BreditorToolbarInlineFormatForm {
         : "unavailable",
     );
     if (presentedActivation === "active") {
-      this.#selectionText = stateSeed?.status === "mixed"
-        ? `${this.#declaration.label} is active with mixed values.`
-        : `${this.#declaration.label} is active.`;
+      this.#selectionText =
+        stateSeed?.status === "mixed"
+          ? `${this.#declaration.label} is active with mixed values.`
+          : `${this.#declaration.label} is active.`;
     } else if (presentedActivation === "mixed") {
       this.#selectionText = `${this.#declaration.label} is mixed.`;
     } else if (presentedActivation === "inactive" && this.#formReady) {
@@ -519,10 +541,11 @@ export class BreditorToolbarInlineFormatForm {
     nativeSetAttribute(label, "data-breditor-toolbar-field", field.kind);
     const labelText = nativeCreateHtmlElement(this.#ownerDocument, "span");
     nativeReplaceChildren(labelText, field.label);
-    const input = nativeCreateHtmlElement(this.#ownerDocument, "input");
-    nativeSetAttribute(input, "name", field.propertyName);
-    nativeSetAttribute(input, "data-breditor-property", field.propertyName);
+    let input: HTMLInputElement | HTMLSelectElement;
     if (field.kind === "string") {
+      input = nativeCreateHtmlElement(this.#ownerDocument, "input");
+      nativeSetAttribute(input, "name", field.propertyName);
+      nativeSetAttribute(input, "data-breditor-property", field.propertyName);
       // `type=url` trims surrounding ASCII whitespace in current engines.
       // Keep the scalar surface as text and provide only the mobile-keyboard
       // hint so a form-admissible stored value round-trips byte-for-byte.
@@ -536,11 +559,17 @@ export class BreditorToolbarInlineFormatForm {
       nativeAppendChild(label, labelText);
       nativeAppendChild(label, input);
     } else if (field.kind === "boolean") {
+      input = nativeCreateHtmlElement(this.#ownerDocument, "input");
+      nativeSetAttribute(input, "name", field.propertyName);
+      nativeSetAttribute(input, "data-breditor-property", field.propertyName);
       nativeSetAttribute(input, "type", "checkbox");
       nativeSetInputIndeterminate(input, false);
       nativeAppendChild(label, input);
       nativeAppendChild(label, labelText);
-    } else {
+    } else if (field.presentation === "rgb24") {
+      input = nativeCreateHtmlElement(this.#ownerDocument, "input");
+      nativeSetAttribute(input, "name", field.propertyName);
+      nativeSetAttribute(input, "data-breditor-property", field.propertyName);
       nativeSetAttribute(input, "type", "color");
       const defaultColor = encodeToolbarInlineFormatRgb24Color(
         field.defaultValue,
@@ -549,6 +578,35 @@ export class BreditorToolbarInlineFormatForm {
         throw new TypeError("toolbar RGB24 default is invalid");
       }
       nativeSetInputValue(input, defaultColor);
+      nativeAppendChild(label, labelText);
+      nativeAppendChild(label, input);
+    } else {
+      input = nativeCreateHtmlElement(this.#ownerDocument, "select");
+      nativeSetAttribute(input, "name", field.propertyName);
+      nativeSetAttribute(input, "data-breditor-property", field.propertyName);
+      for (const declaredOption of field.options) {
+        const option = nativeCreateHtmlElement(this.#ownerDocument, "option");
+        const encoded = encodeToolbarInlineFormatIntegerSelectValue(
+          declaredOption.value,
+          field.minimum,
+          field.maximum,
+        );
+        if (encoded === null) {
+          throw new TypeError("toolbar integer select option is invalid");
+        }
+        nativeSetAttribute(option, "value", encoded);
+        nativeReplaceChildren(option, declaredOption.label);
+        nativeAppendChild(input, option);
+      }
+      const defaultValue = encodeToolbarInlineFormatIntegerSelectValue(
+        field.defaultValue,
+        field.minimum,
+        field.maximum,
+      );
+      if (defaultValue === null) {
+        throw new TypeError("toolbar integer select default is invalid");
+      }
+      nativeSetSelectValue(input, defaultValue);
       nativeAppendChild(label, labelText);
       nativeAppendChild(label, input);
     }
@@ -736,13 +794,20 @@ export class BreditorToolbarInlineFormatForm {
     >;
     for (const record of this.#fields) {
       const declaration = record.declaration;
-      values[declaration.propertyName] = declaration.kind === "string"
-        ? nativeInputValue(record.input)
-        : declaration.kind === "boolean"
-          ? nativeInputChecked(record.input)
-          : decodeToolbarInlineFormatRgb24Color(
-              nativeInputValue(record.input),
-            );
+      values[declaration.propertyName] =
+        declaration.kind === "string"
+          ? nativeInputValue(record.input as HTMLInputElement)
+          : declaration.kind === "boolean"
+            ? nativeInputChecked(record.input as HTMLInputElement)
+            : declaration.presentation === "rgb24"
+              ? decodeToolbarInlineFormatRgb24Color(
+                  nativeInputValue(record.input as HTMLInputElement),
+                )
+              : decodeToolbarInlineFormatIntegerSelectValue(
+                  nativeSelectValue(record.input as HTMLSelectElement),
+                  declaration.minimum,
+                  declaration.maximum,
+                );
     }
     try {
       this.#setInputJson = createToolbarInlineFormatFormSetInputJson(
@@ -765,18 +830,31 @@ export class BreditorToolbarInlineFormatForm {
     this.#dirty = false;
     for (const record of this.#fields) {
       if (record.declaration.kind === "string") {
-        nativeSetInputValue(record.input, "");
+        nativeSetInputValue(record.input as HTMLInputElement, "");
       } else if (record.declaration.kind === "boolean") {
-        nativeSetInputChecked(record.input, record.declaration.defaultValue);
-        nativeSetInputIndeterminate(record.input, false);
-      } else {
+        nativeSetInputChecked(
+          record.input as HTMLInputElement,
+          record.declaration.defaultValue,
+        );
+        nativeSetInputIndeterminate(record.input as HTMLInputElement, false);
+      } else if (record.declaration.presentation === "rgb24") {
         const defaultColor = encodeToolbarInlineFormatRgb24Color(
           record.declaration.defaultValue,
         );
         if (defaultColor === null) {
           throw new TypeError("toolbar RGB24 default is invalid");
         }
-        nativeSetInputValue(record.input, defaultColor);
+        nativeSetInputValue(record.input as HTMLInputElement, defaultColor);
+      } else {
+        const defaultValue = encodeToolbarInlineFormatIntegerSelectValue(
+          record.declaration.defaultValue,
+          record.declaration.minimum,
+          record.declaration.maximum,
+        );
+        if (defaultValue === null) {
+          throw new TypeError("toolbar integer select default is invalid");
+        }
+        nativeSetSelectValue(record.input as HTMLSelectElement, defaultValue);
       }
     }
     this.#refreshDraft();
@@ -793,23 +871,33 @@ export class BreditorToolbarInlineFormatForm {
       const value = values.get(record.declaration.propertyName);
       if (record.declaration.kind === "string") {
         nativeSetInputValue(
-          record.input,
+          record.input as HTMLInputElement,
           typeof value === "string" ? value : "",
         );
       } else if (record.declaration.kind === "boolean") {
         nativeSetInputChecked(
-          record.input,
+          record.input as HTMLInputElement,
           typeof value === "boolean" ? value : record.declaration.defaultValue,
         );
-        nativeSetInputIndeterminate(record.input, false);
-      } else {
+        nativeSetInputIndeterminate(record.input as HTMLInputElement, false);
+      } else if (record.declaration.presentation === "rgb24") {
         const color = encodeToolbarInlineFormatRgb24Color(
           typeof value === "number" ? value : record.declaration.defaultValue,
         );
         if (color === null) {
           throw new TypeError("toolbar RGB24 state is invalid");
         }
-        nativeSetInputValue(record.input, color);
+        nativeSetInputValue(record.input as HTMLInputElement, color);
+      } else {
+        const selected = encodeToolbarInlineFormatIntegerSelectValue(
+          typeof value === "number" ? value : record.declaration.defaultValue,
+          record.declaration.minimum,
+          record.declaration.maximum,
+        );
+        if (selected === null) {
+          throw new TypeError("toolbar integer select state is invalid");
+        }
+        nativeSetSelectValue(record.input as HTMLSelectElement, selected);
       }
     }
     this.#refreshDraft();
@@ -840,16 +928,12 @@ export class BreditorToolbarInlineFormatForm {
     const stringField = record.declaration.kind === "string";
     const booleanField = record.declaration.kind === "boolean";
     const scalarField = !booleanField;
-    const expectedInputAttributes =
-      3 +
-      (stringField ? 3 : 0) +
-      (stringField && record.declaration.placeholder !== undefined ? 1 : 0);
-    return (
+    if (!(
       labelFacts?.tagName === "LABEL" &&
       labelFacts.ownerDocument === this.#ownerDocument &&
       labelTextFacts?.tagName === "SPAN" &&
       labelTextFacts.ownerDocument === this.#ownerDocument &&
-      inputFacts?.tagName === "INPUT" &&
+      inputFacts !== undefined &&
       inputFacts.ownerDocument === this.#ownerDocument &&
       nativeParentElement(record.label) === this.#panel &&
       nativeParentElement(record.labelText) === record.label &&
@@ -861,32 +945,83 @@ export class BreditorToolbarInlineFormatForm {
       labelChildren.length === 2 &&
       labelChildren[scalarField ? 0 : 1] === record.labelText &&
       labelChildren[scalarField ? 1 : 0] === record.input &&
-      nativeAttributeNames(record.input).length === expectedInputAttributes &&
       nativeGetAttribute(record.input, "name") ===
         record.declaration.propertyName &&
       nativeGetAttribute(record.input, "data-breditor-property") ===
         record.declaration.propertyName &&
-      nativeGetAttribute(record.input, "type") ===
+      isSingleTextElement(record.labelText, record.declaration.label)
+    )) {
+      return false;
+    }
+
+    if (
+      record.declaration.kind === "integer" &&
+      record.declaration.presentation === "select"
+    ) {
+      const selectRecord = record as SelectIntegerFieldRecord;
+      const options = nativeChildNodes(selectRecord.input);
+      return (
+        inputFacts.tagName === "SELECT" &&
+        nativeAttributeNames(selectRecord.input).length === 2 &&
+        options.length === selectRecord.declaration.options.length &&
+        selectRecord.declaration.options.every((option, index) => {
+          const node = options[index];
+          if (node === undefined) return false;
+          const facts = nativeHtmlHostFacts(node);
+          const encoded = encodeToolbarInlineFormatIntegerSelectValue(
+            option.value,
+            selectRecord.declaration.minimum,
+            selectRecord.declaration.maximum,
+          );
+          return (
+            facts?.tagName === "OPTION" &&
+            facts.ownerDocument === this.#ownerDocument &&
+            nativeParentElement(facts.element) === selectRecord.input &&
+            nativeAttributeNames(facts.element).length === 1 &&
+            encoded !== null &&
+            nativeGetAttribute(facts.element, "value") === encoded &&
+            nativeOptionValue(facts.element as HTMLOptionElement) === encoded &&
+            isSingleTextElement(facts.element, option.label)
+          );
+        }) &&
+        decodeToolbarInlineFormatIntegerSelectValue(
+          nativeSelectValue(selectRecord.input),
+          selectRecord.declaration.minimum,
+          selectRecord.declaration.maximum,
+        ) !== null
+      );
+    }
+
+    const inputRecord = record as
+      StringFieldRecord | BooleanFieldRecord | Rgb24IntegerFieldRecord;
+    const expectedInputAttributes =
+      3 +
+      (stringField ? 3 : 0) +
+      (stringField && record.declaration.placeholder !== undefined ? 1 : 0);
+    return (
+      inputFacts.tagName === "INPUT" &&
+      nativeAttributeNames(inputRecord.input).length ===
+        expectedInputAttributes &&
+      nativeGetAttribute(inputRecord.input, "type") ===
         (stringField ? "text" : booleanField ? "checkbox" : "color") &&
       (stringField
-        ? nativeGetAttribute(record.input, "inputmode") === "url" &&
-          nativeGetAttribute(record.input, "required") === "" &&
-          nativeGetAttribute(record.input, "autocomplete") ===
+        ? nativeGetAttribute(inputRecord.input, "inputmode") === "url" &&
+          nativeGetAttribute(inputRecord.input, "required") === "" &&
+          nativeGetAttribute(inputRecord.input, "autocomplete") ===
             record.declaration.autocomplete &&
           (record.declaration.placeholder === undefined
-            ? !nativeHasAttribute(record.input, "placeholder")
-            : nativeGetAttribute(record.input, "placeholder") ===
+            ? !nativeHasAttribute(inputRecord.input, "placeholder")
+            : nativeGetAttribute(inputRecord.input, "placeholder") ===
               record.declaration.placeholder)
-        : !nativeHasAttribute(record.input, "inputmode") &&
-          !nativeHasAttribute(record.input, "autocomplete") &&
-          !nativeHasAttribute(record.input, "required") &&
-          !nativeHasAttribute(record.input, "placeholder") &&
+        : !nativeHasAttribute(inputRecord.input, "inputmode") &&
+          !nativeHasAttribute(inputRecord.input, "autocomplete") &&
+          !nativeHasAttribute(inputRecord.input, "required") &&
+          !nativeHasAttribute(inputRecord.input, "placeholder") &&
           (booleanField
-            ? !nativeInputIndeterminate(record.input)
+            ? !nativeInputIndeterminate(inputRecord.input)
             : decodeToolbarInlineFormatRgb24Color(
-                nativeInputValue(record.input),
-              ) !== null)) &&
-      isSingleTextElement(record.labelText, record.declaration.label)
+                nativeInputValue(inputRecord.input),
+              ) !== null))
     );
   }
 

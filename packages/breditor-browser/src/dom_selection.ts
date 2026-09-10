@@ -313,10 +313,11 @@ export class BreditorDomSelectionBridge {
       const priorResult = captureDomSelection(domSelection);
       const prior = priorResult.ok ? priorResult.value : undefined;
       // WebKit can transiently report anchor/focus offsets which disagree with
-      // getRangeAt(0) after an editor-owned subtree replacement. If both raw
-      // endpoints still map into the new canonical projection, it is safe to
-      // overwrite that unrestorable editor-owned state. Outside/cross-host or
-      // unmappable inconsistencies continue to fail before DOM mutation.
+      // getRangeAt(0) after an editor-owned subtree replacement. If either
+      // complete endpoint representation still maps into the new canonical
+      // projection, it is safe to overwrite that unrestorable editor-owned
+      // state. Outside/cross-host or wholly unmappable inconsistencies continue
+      // to fail before DOM mutation.
       if (
         !priorResult.ok &&
         (selection === null ||
@@ -636,31 +637,52 @@ function incoherentSelectionIsOwnedByRenderedProjection(
   snapshot: DomSelectionRangeSnapshot,
 ): boolean {
   try {
-    return (
-      domPointMapsInsideRendered(
-        rendered,
-        snapshot.anchorNode,
-        snapshot.anchorOffset,
-      ) &&
-      domPointMapsInsideRendered(
-        rendered,
-        snapshot.focusNode,
-        snapshot.focusOffset,
-      ) &&
-      domPointMapsInsideRendered(
-        rendered,
-        snapshot.startNode,
-        snapshot.startOffset,
-      ) &&
-      domPointMapsInsideRendered(
-        rendered,
-        snapshot.endNode,
-        snapshot.endOffset,
-      )
+    const anchorInside = domPointMapsInsideRendered(
+      rendered,
+      snapshot.anchorNode,
+      snapshot.anchorOffset,
+    );
+    const focusInside = domPointMapsInsideRendered(
+      rendered,
+      snapshot.focusNode,
+      snapshot.focusOffset,
+    );
+    const startInside = domPointMapsInsideRendered(
+      rendered,
+      snapshot.startNode,
+      snapshot.startOffset,
+    );
+    const endInside = domPointMapsInsideRendered(
+      rendered,
+      snapshot.endNode,
+      snapshot.endOffset,
+    );
+    return incoherentSelectionHasOwnedEndpointWitness(
+      anchorInside,
+      focusInside,
+      startInside,
+      endInside,
     );
   } catch {
     return false;
   }
+}
+
+/**
+ * Requires one complete representation of an incoherent native selection to
+ * remain inside the current canonical projection. Mixed endpoint pairs are not
+ * ownership proof. @internal
+ */
+export function incoherentSelectionHasOwnedEndpointWitness(
+  anchorInside: boolean,
+  focusInside: boolean,
+  startInside: boolean,
+  endInside: boolean,
+): boolean {
+  return (
+    (anchorInside === true && focusInside === true) ||
+    (startInside === true && endInside === true)
+  );
 }
 
 function domPointMapsInsideRendered(

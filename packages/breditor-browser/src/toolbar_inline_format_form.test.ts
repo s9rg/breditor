@@ -11,6 +11,7 @@ import { createToolbarManifest } from "./toolbar_manifest.js";
 
 const FORM_STATE_ID = "example/link-presence";
 const COLOR_STATE_ID = "example/color-presence";
+const SIZE_STATE_ID = "example/text-size-presence";
 
 beforeEach(() => {
   document.body.replaceChildren();
@@ -55,31 +56,33 @@ describe("BreditorToolbar inline-format forms", () => {
     color.dispatchEvent(new Event("input", { bubbles: true }));
     formAction(host, "apply").click();
 
-    expect(invocations).toEqual([{
-      stateId: COLOR_STATE_ID,
-      selection: "preserve",
-      command: {
-        kind: "intentJson",
-        intentId: "example/set-text-color-intent",
-        inputJson:
-          '{"operation":"set","properties":[{"name":"example/rgb24","value":10}]}',
+    expect(invocations).toEqual([
+      {
+        stateId: COLOR_STATE_ID,
+        selection: "preserve",
+        command: {
+          kind: "intentJson",
+          intentId: "example/set-text-color-intent",
+          inputJson:
+            '{"operation":"set","properties":[{"name":"example/rgb24","value":10}]}',
+        },
       },
-    }]);
+    ]);
     expect(toolbar.validateCanonicalDom()).toBe(true);
     toolbar.dispose();
   });
 
   it("fails closed on malformed RGB24 state and color-input DOM drift", () => {
     const host = mountHost();
-    const store = new TestStateStore([
-      uniformColorState("#12abef"),
-    ]);
+    const store = new TestStateStore([uniformColorState("#12abef")]);
     const dispatch = vi.fn(() => toolbarCommandDispatchResult("completed"));
     const toolbar = new BreditorToolbar(host, colorManifest(), store, {
       dispatch,
     });
 
-    expect(colorLauncherButton(host).getAttribute("aria-disabled")).toBe("true");
+    expect(colorLauncherButton(host).getAttribute("aria-disabled")).toBe(
+      "true",
+    );
     store.publish([inactiveColorState()]);
     colorLauncherButton(host).click();
     const color = colorInput(host);
@@ -88,6 +91,117 @@ describe("BreditorToolbar inline-format forms", () => {
     color.dispatchEvent(new Event("input", { bubbles: true }));
     expect(toolbar.state).toBe("faulted");
     expect(dispatch).not.toHaveBeenCalled();
+    toolbar.dispose();
+  });
+
+  it("renders an exhaustive integer presentation as a labeled native select", () => {
+    const host = mountHost();
+    const toolbar = new BreditorToolbar(
+      host,
+      sizeManifest(),
+      new TestStateStore([inactiveSizeState()]),
+      { dispatch: () => toolbarCommandDispatchResult("completed") },
+    );
+
+    const select = sizeSelect(host);
+    expect(select.tagName).toBe("SELECT");
+    expect(select.value).toBe("1");
+    expect(
+      Array.from(select.options, ({ value, text }) => ({ value, text })),
+    ).toEqual([
+      { value: "0", text: "Small" },
+      { value: "1", text: "Large" },
+      { value: "2", text: "Huge" },
+    ]);
+    expect(select.parentElement?.tagName).toBe("LABEL");
+    expect(select.parentElement?.textContent).toContain("Text size");
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+
+    sizeLauncherButton(host).click();
+    const arrow = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "ArrowDown",
+    });
+    select.dispatchEvent(arrow);
+    expect(arrow.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(select);
+    toolbar.dispose();
+  });
+
+  it("hydrates and dispatches exact integer-select values", () => {
+    const host = mountHost();
+    const store = new TestStateStore([uniformSizeState(2)]);
+    const invocations: ToolbarCommandInvocation[] = [];
+    const toolbar = new BreditorToolbar(host, sizeManifest(), store, {
+      dispatch(invocation) {
+        invocations.push(invocation);
+        return toolbarCommandDispatchResult("completed");
+      },
+    });
+    sizeLauncherButton(host).click();
+    const select = sizeSelect(host);
+    expect(select.value).toBe("2");
+
+    select.value = "0";
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    formAction(host, "apply").click();
+
+    expect(invocations).toEqual([
+      {
+        stateId: SIZE_STATE_ID,
+        selection: "preserve",
+        command: {
+          kind: "intentJson",
+          intentId: "example/set-text-size-intent",
+          inputJson:
+            '{"operation":"set","properties":[{"name":"example/text-size-step","value":0}]}',
+        },
+      },
+    ]);
+    // Completion refreshes from the still-authoritative state store rather
+    // than presenting the submitted draft as committed state.
+    expect(select.value).toBe("2");
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+    toolbar.dispose();
+  });
+
+  it("reads native select state and faults on option topology drift", () => {
+    const host = mountHost();
+    const dispatch = vi.fn(() => toolbarCommandDispatchResult("completed"));
+    const toolbar = new BreditorToolbar(
+      host,
+      sizeManifest(),
+      new TestStateStore([inactiveSizeState()]),
+      { dispatch },
+    );
+    sizeLauncherButton(host).click();
+    const select = sizeSelect(host);
+    select.value = "2";
+    Object.defineProperty(select, "value", {
+      configurable: true,
+      get() {
+        throw new Error("own select value shadow must not run");
+      },
+    });
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(toolbar.state).toBe("live");
+
+    Object.defineProperty(select.options[0]!, "value", {
+      configurable: true,
+      get() {
+        throw new Error("own option value shadow must not run");
+      },
+    });
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+
+    select.options[0]?.setAttribute("disabled", "");
+    expect(toolbar.validateCanonicalDom()).toBe(false);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(toolbar.state).toBe("faulted");
+    expect(dispatch).not.toHaveBeenCalled();
+
+    Reflect.deleteProperty(select, "value");
     toolbar.dispose();
   });
 
@@ -148,7 +262,9 @@ describe("BreditorToolbar inline-format forms", () => {
     const toolbar = new BreditorToolbar(
       host,
       linkManifest(),
-      new TestStateStore([uniformLinkState("https://one.example\r\nnext", false)]),
+      new TestStateStore([
+        uniformLinkState("https://one.example\r\nnext", false),
+      ]),
       { dispatch: () => toolbarCommandDispatchResult("completed") },
     );
 
@@ -306,7 +422,7 @@ describe("BreditorToolbar inline-format forms", () => {
     expect(arrow.defaultPrevented).toBe(false);
     expect(document.activeElement).toBe(url);
 
-    url.value = "https://example.com/docs?q=\"breditor\"";
+    url.value = 'https://example.com/docs?q="breditor"';
     target.checked = true;
     url.dispatchEvent(new Event("input", { bubbles: true }));
     target.dispatchEvent(new Event("change", { bubbles: true }));
@@ -351,9 +467,7 @@ describe("BreditorToolbar inline-format forms", () => {
     launcherButton(host).click();
     expect(remove.disabled).toBe(true);
 
-    store.publish([
-      state(FORM_STATE_ID, "enabled", "mixed", undefined),
-    ]);
+    store.publish([state(FORM_STATE_ID, "enabled", "mixed", undefined)]);
     expect(remove.disabled).toBe(false);
     remove.click();
     expect(invocations[0]).toMatchObject({
@@ -724,7 +838,10 @@ describe("BreditorToolbar inline-format forms", () => {
     const host = mountHost();
     const manifest = createToolbarManifest({
       label: "Editor controls",
-      controls: [formDeclaration("first", "First link"), formDeclaration("second", "Second link")],
+      controls: [
+        formDeclaration("first", "First link"),
+        formDeclaration("second", "Second link"),
+      ],
     });
     const toolbar = new BreditorToolbar(
       host,
@@ -746,10 +863,14 @@ describe("BreditorToolbar inline-format forms", () => {
       { dispatch: () => toolbarCommandDispatchResult("completed") },
     );
     const launchers = Array.from(
-      host.querySelectorAll<HTMLButtonElement>("button[data-breditor-state-id]"),
+      host.querySelectorAll<HTMLButtonElement>(
+        "button[data-breditor-state-id]",
+      ),
     );
     const panels = Array.from(
-      host.querySelectorAll<HTMLFormElement>("form[data-breditor-toolbar-panel]"),
+      host.querySelectorAll<HTMLFormElement>(
+        "form[data-breditor-toolbar-panel]",
+      ),
     );
     expect(new Set(panels.map((panel) => panel.id)).size).toBe(2);
     expect(panels.every((panel) => !collisionIds.has(panel.id))).toBe(true);
@@ -907,6 +1028,41 @@ function colorManifest(defaultValue = 0) {
   });
 }
 
+function sizeManifest(defaultValue = 1) {
+  return createToolbarManifest({
+    label: "Editor controls",
+    controls: [
+      {
+        kind: "inlineFormatForm",
+        stateId: SIZE_STATE_ID,
+        label: "Text size",
+        group: "inline",
+        formatKind: "example/text-size",
+        intentId: "example/set-text-size-intent",
+        fields: [
+          {
+            kind: "integer",
+            propertyName: "example/text-size-step",
+            label: "Text size",
+            presentation: "select",
+            minimum: 0,
+            maximum: 2,
+            defaultValue,
+            options: [
+              { value: 0, label: "Small" },
+              { value: 1, label: "Large" },
+              { value: 2, label: "Huge" },
+            ],
+          },
+        ],
+        applyLabel: "Apply size",
+        removeLabel: "Reset size",
+        closeLabel: "Close size controls",
+      },
+    ],
+  });
+}
+
 class TestStateStore {
   #snapshot: ToolbarActionStateSnapshot;
   #status: "fresh" | "stale" = "fresh";
@@ -1000,6 +1156,29 @@ function uniformColorState(rgb24: unknown): ToolbarActionStateEntry {
   });
 }
 
+function inactiveSizeState(): ToolbarActionStateEntry {
+  return state(
+    SIZE_STATE_ID,
+    "disabled",
+    "inactive",
+    "breditor/inline-format-unchanged",
+  );
+}
+
+function uniformSizeState(step: unknown): ToolbarActionStateEntry {
+  return state(SIZE_STATE_ID, "enabled", "active", undefined, {
+    status: "uniform",
+    contract: {
+      name: "breditor/set-inline-format-input",
+      version: 1,
+    },
+    value: {
+      operation: "set",
+      properties: [{ name: "example/text-size-step", value: step }],
+    },
+  });
+}
+
 function state(
   id: string,
   availability: ToolbarActionStateEntry["availability"],
@@ -1069,6 +1248,14 @@ function colorLauncherButton(host: HTMLElement): HTMLButtonElement {
   return value;
 }
 
+function sizeLauncherButton(host: HTMLElement): HTMLButtonElement {
+  const value = host.querySelector<HTMLButtonElement>(
+    `button[data-breditor-state-id="${SIZE_STATE_ID}"]`,
+  );
+  if (value === null) throw new Error("missing Text size launcher");
+  return value;
+}
+
 function linkPanel(host: HTMLElement): HTMLFormElement {
   const value = host.querySelector<HTMLFormElement>(
     "form[data-breditor-toolbar-panel]",
@@ -1098,6 +1285,14 @@ function colorInput(host: HTMLElement): HTMLInputElement {
     'input[name="example/rgb24"]',
   );
   if (value === null) throw new Error("missing Text color input");
+  return value;
+}
+
+function sizeSelect(host: HTMLElement): HTMLSelectElement {
+  const value = host.querySelector<HTMLSelectElement>(
+    'select[name="example/text-size-step"]',
+  );
+  if (value === null) throw new Error("missing Text size select");
   return value;
 }
 

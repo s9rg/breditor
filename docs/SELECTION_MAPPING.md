@@ -120,7 +120,11 @@ replacement. Every non-identical endpoint pair uses `setBaseAndExtent` when it
 is available. A verified `Range` fallback is allowed for forward or collapsed
 selections when it is unavailable. If the platform cannot preserve a backward
 selection exactly, the write fails closed instead of silently turning it
-forward.
+forward. When WebKit transiently exposes an incoherent pre-write snapshot after
+an owned subtree replacement, Breditor permits the non-null authoritative write
+only if either the complete anchor/focus pair or the complete Range start/end
+pair maps inside the current canonical projection. A mixed pair, one endpoint,
+cross-host evidence, or an explicit null write is insufficient.
 
 ### DOM to AST
 

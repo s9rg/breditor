@@ -1,14 +1,16 @@
 # Breditor React reference
 
-This example runs the complete `@breditor/reference-highlight` Color Showcase
+This example runs the complete `@breditor/reference-highlight` Size Showcase
 profile through the public browser API: the canonical Document V2 sample,
 Bootstrap V2 semantic profile, render manifest, and toolbar manifest. The
 runtime-owned toolbar exposes Bold, Italic, Strikethrough, Code, Highlight,
-Text color, Link, Clear formatting, Undo, and Redo. Sibling runtime-owned color
-and Link forms are launched by their toolbar controls. The color form presents
-one required RGB24 integer through native `<input type="color">`; the Link form
+Text size, Text color, Link, Clear formatting, Undo, and Redo. Sibling
+runtime-owned size, color, and Link forms are launched by their toolbar
+controls. The size form presents the exhaustive Small/Large/Huge integer
+presets through native `<select>`; the color form presents one required RGB24
+integer through native `<input type="color">`; the Link form
 uses a required URL string and Boolean new-window choice. Select some text,
-apply or remove a color or link, toggle a format,
+apply or reset a size, apply or remove a color or link, toggle a format,
 use the declared primary-modifier formatting/history shortcuts, and watch the
 truthful autosave status.
 
@@ -30,6 +32,10 @@ remain visible as inert text-bearing anchors.
 The closed `safeTextColorV1` policy derives only lowercase, zero-padded
 `style="color:#rrggbb"` from the stored integer. The document never stores CSS
 text, and paste still discards source color formatting.
+The closed `safeIntegerTokenV1` policy maps the complete `0..=2` text-size
+domain to the inert `small`, `large`, or `huge`
+`data-breditor-integer-token` value. Host CSS supplies the visual ratios;
+source size formatting is likewise discarded on paste.
 At the alpha.6 source checkpoint, the then-React-owned form could apply or
 remove the complete Link instance across selected text in multiple paragraphs.
 Rust preserves
@@ -49,7 +55,11 @@ primary+Y, and primary+Shift+Z and advertises them on matching buttons through
 reference presentation. Alpha.12 moves the demo to the distinct
 `example/color-showcase-editor@1` profile, new lineage, and new persistence
 slot. Text color is the seventh renderer recipe and tenth toolbar control; it
-has no shortcut. There are still no exclusion rules, arbitrary callback
+has no shortcut. Alpha.13 moves the demo again to the distinct
+`example/size-showcase-editor@1` profile, lineage, and persistence slot. Text
+size is the eighth renderer recipe and eleventh toolbar control, also with no
+shortcut. The full outer-to-inner chain is Link, Strong, Emphasis, Highlight,
+Strikethrough, Code, Text Size, Text Color. There are still no exclusion rules, arbitrary callback
 keymaps, key sequences, extension-defined `beforeinput` rules, block code,
 headings/lists, rich paste, or runtime plugins.
 Startup failures expose only stable, payload-redacted error codes and can be
@@ -87,8 +97,10 @@ rejected and hung flushes, truthful persistence status, and exact disposal:
 npm run test --workspace @breditor/example-react
 ```
 
-The repository-level Chromium gate exercises the rendered page through actual
-single- and cross-paragraph selection, all ten controls (including Text color
+The repository-level Chromium, Firefox, and WebKit gate exercises the rendered
+page through actual
+single- and cross-paragraph selection, all eleven controls (including Text size,
+Text color,
 and Clear formatting), the package-owned shortcuts and exact
 `aria-keyshortcuts`, exact
 wrapper nesting, per-command history, input, IndexedDB reload, accessibility,

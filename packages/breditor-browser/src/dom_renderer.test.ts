@@ -280,6 +280,83 @@ describe("BreditorDomRenderer", () => {
     });
   });
 
+  it("renders, drift-checks, and composition-checks safe integer tokens", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [
+      SAFE_INTEGER_TOKEN_FORMAT,
+    ]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{
+          formatKind: "example/text-size",
+          element: "span",
+          classes: ["typographic-size"],
+          attributes: {
+            kind: "safeIntegerTokenV1",
+            propertyName: "example/size",
+            tokens: [
+              { value: 1, token: "small" },
+              { value: 2, token: "medium" },
+              { value: 3, token: "large" },
+            ],
+          },
+        }],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "safe-integer-token-dom-tests", revision: "0" },
+      paragraphs: [{ runs: [{
+        text: "sized",
+        formatDetails: [{
+          kind: "example/text-size",
+          properties: [{ name: "example/size", value: 2 }],
+        }],
+      }] }],
+    }, generation, descriptor));
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+
+    expect(host.innerHTML).toBe(
+      '<p><span class="typographic-size" data-breditor-integer-token="medium">sized</span></p>',
+    );
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    const span = host.querySelector("span");
+    const selection = valueOf(BaseRangeSelection.create(profiled, {
+      kind: "range",
+      anchor: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 1,
+        affinity: "after",
+      },
+      focus: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 4,
+        affinity: "before",
+      },
+    }));
+    expect(renderer.beginCompositionDomLease(rendered)).not.toBeNull();
+    span?.replaceChildren(document.createTextNode("sXd"));
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: true,
+      value: { originalText: "ize", text: "X" },
+    });
+
+    span?.setAttribute("data-breditor-integer-token", "unknown");
+    expect(rendered.validateCanonicalDom()).toBe(false);
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.invalid_structure" },
+    });
+  });
+
   it("admits only canonical safe links during a native-composition lease", () => {
     const generation = profileGeneration();
     const descriptor = ownedProfileDescriptor(generation, [SAFE_LINK_FORMAT]);
@@ -1834,6 +1911,22 @@ const SAFE_TEXT_COLOR_FORMAT: Exclude<ProfileFormatFixture, string> =
           kind: "integer" as const,
           minimum: 0,
           maximum: 0xff_ffff,
+        }),
+      }),
+    ]),
+  });
+
+const SAFE_INTEGER_TOKEN_FORMAT: Exclude<ProfileFormatFixture, string> =
+  Object.freeze({
+    kind: "example/text-size",
+    properties: Object.freeze([
+      Object.freeze({
+        name: "example/size",
+        presence: "required" as const,
+        valueType: Object.freeze({
+          kind: "integer" as const,
+          minimum: 1,
+          maximum: 3,
         }),
       }),
     ]),

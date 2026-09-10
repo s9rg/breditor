@@ -7,6 +7,7 @@ import {
   MAX_TOOLBAR_GROUP_UTF16,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_LABEL_UTF16,
   TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
@@ -20,11 +21,9 @@ describe("toolbar manifest", () => {
     expect(BASE_TOOLBAR_STATE_IDS.clearInlineFormatting).toBe(
       "breditor/control-clear-inline-formatting",
     );
-    expect(DEFAULT_TOOLBAR_MANIFEST.controls.map(({ label }) => label)).toEqual([
-      "Bold",
-      "Undo",
-      "Redo",
-    ]);
+    expect(DEFAULT_TOOLBAR_MANIFEST.controls.map(({ label }) => label)).toEqual(
+      ["Bold", "Undo", "Redo"],
+    );
   });
 
   it("defines the frozen Bold, Undo, and Redo base presentation", () => {
@@ -92,7 +91,11 @@ describe("toolbar manifest", () => {
           command: {
             kind: "action",
             actionId: "example/insert-snippet",
-            input: { kind: "string", value: "hello", callback: () => undefined },
+            input: {
+              kind: "string",
+              value: "hello",
+              callback: () => undefined,
+            },
             history: "closeBefore",
             execute: () => undefined,
           },
@@ -145,7 +148,9 @@ describe("toolbar manifest", () => {
     const command = control.command;
     expect(command.kind).toBe("action");
     expect("execute" in command).toBe(false);
-    expect(command.kind === "action" && "callback" in command.input).toBe(false);
+    expect(command.kind === "action" && "callback" in command.input).toBe(
+      false,
+    );
     expect(undeclaredReads).toBe(0);
   });
 
@@ -213,7 +218,10 @@ describe("toolbar manifest", () => {
       executable: { run: () => undefined },
     });
 
-    const manifest = createToolbarManifest({ label: "Links", controls: [source] });
+    const manifest = createToolbarManifest({
+      label: "Links",
+      controls: [source],
+    });
     source["label"] = "Changed";
     source.fields[0]!["label"] = "Changed";
 
@@ -274,8 +282,9 @@ describe("toolbar manifest", () => {
         return "Apply";
       },
     });
-    expect(() => createToolbarManifest({ label: "Tools", controls: [form] }))
-      .toThrow(/own data property/u);
+    expect(() =>
+      createToolbarManifest({ label: "Tools", controls: [form] }),
+    ).toThrow(/own data property/u);
 
     const field = urlField("example/href");
     Object.defineProperty(field, "minimumUtf8Bytes", {
@@ -285,10 +294,12 @@ describe("toolbar manifest", () => {
         return 1;
       },
     });
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/link-presence", [field])],
-    })).toThrow(/own data property/u);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/link-presence", [field])],
+      }),
+    ).toThrow(/own data property/u);
 
     const colorField = rgb24Field("example/rgb24", 0);
     Object.defineProperty(colorField, "defaultValue", {
@@ -298,10 +309,12 @@ describe("toolbar manifest", () => {
         return 0;
       },
     });
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/color-presence", [colorField])],
-    })).toThrow(/own data property/u);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/color-presence", [colorField])],
+      }),
+    ).toThrow(/own data property/u);
 
     const fields = [urlField("example/href")];
     Object.defineProperty(fields, "0", {
@@ -311,74 +324,102 @@ describe("toolbar manifest", () => {
         return urlField("example/href");
       },
     });
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/link-presence", fields)],
-    })).toThrow(/own data property/u);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/link-presence", fields)],
+      }),
+    ).toThrow(/own data property/u);
     expect(reads).toBe(0);
   });
 
   it("requires unique state and property identities across the closed union", () => {
     const form = inlineFormatForm("example/control-shared");
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [
-        historyControl("example/control-shared", "History", "undo"),
-        form,
-      ],
-    })).toThrow(/state identity is duplicated/u);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [
+          historyControl("example/control-shared", "History", "undo"),
+          form,
+        ],
+      }),
+    ).toThrow(/state identity is duplicated/u);
 
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/link-presence", [
-        urlField("example/href"),
-        urlField("example/href"),
-      ])],
-    })).toThrow(/property identity is duplicated/u);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [
+          inlineFormatForm("example/link-presence", [
+            urlField("example/href"),
+            urlField("example/href"),
+          ]),
+        ],
+      }),
+    ).toThrow(/property identity is duplicated/u);
   });
 
-  it("enforces field bounds and requires a URL or RGB24 value presentation", () => {
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/link-presence", [])],
-    })).toThrow(RangeError);
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm(
-        "example/link-presence",
-        Array.from(
-          { length: MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS + 1 },
-          (_, index) => index === 0
-            ? urlField("example/href")
-            : booleanField(`example/flag-${index}`),
-        ),
-      )],
-    })).toThrow(RangeError);
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/link-presence", [
-        booleanField("example/open-in-new-window"),
-      ])],
-    })).toThrow(/requires a URL or RGB24 value field/u);
-    expect(createToolbarManifest({
-      label: "Tools",
-      controls: [inlineFormatForm("example/color-presence", [
-        rgb24Field("example/rgb24", 0),
-      ])],
-    }).controls[0]).toMatchObject({ fields: [{ kind: "integer" }] });
+  it("enforces field bounds and requires a value-presenting field", () => {
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/link-presence", [])],
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [
+          inlineFormatForm(
+            "example/link-presence",
+            Array.from(
+              { length: MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS + 1 },
+              (_, index) =>
+                index === 0
+                  ? urlField("example/href")
+                  : booleanField(`example/flag-${index}`),
+            ),
+          ),
+        ],
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [
+          inlineFormatForm("example/link-presence", [
+            booleanField("example/open-in-new-window"),
+          ]),
+        ],
+      }),
+    ).toThrow(/requires a URL, RGB24, or integer select value field/u);
+    expect(
+      createToolbarManifest({
+        label: "Tools",
+        controls: [
+          inlineFormatForm("example/color-presence", [
+            rgb24Field("example/rgb24", 0),
+          ]),
+        ],
+      }).controls[0],
+    ).toMatchObject({ fields: [{ kind: "integer" }] });
 
     const fieldCountPerForm =
       Math.floor(MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL / 3) + 1;
-    expect(() => createToolbarManifest({
-      label: "Tools",
-      controls: [0, 1, 2].map((formIndex) => inlineFormatForm(
-        `example/link-presence-${formIndex}`,
-        Array.from({ length: fieldCountPerForm }, (_, fieldIndex) =>
-          fieldIndex === 0
-            ? urlField(`example/href-${formIndex}`)
-            : booleanField(`example/flag-${formIndex}-${fieldIndex}`)),
-      )),
-    })).toThrow(/aggregate bound/u);
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [0, 1, 2].map((formIndex) =>
+          inlineFormatForm(
+            `example/link-presence-${formIndex}`,
+            Array.from({ length: fieldCountPerForm }, (_, fieldIndex) =>
+              fieldIndex === 0
+                ? urlField(`example/href-${formIndex}`)
+                : booleanField(`example/flag-${formIndex}-${fieldIndex}`),
+            ),
+          ),
+        ),
+      }),
+    ).toThrow(/aggregate bound/u);
   });
 
   it("enforces URL metadata, exact integer bounds, false Boolean defaults, and labels", () => {
@@ -395,16 +436,22 @@ describe("toolbar manifest", () => {
       { ...booleanField("example/open-in-new-window"), defaultValue: true },
     ];
     for (const field of invalidFields) {
-      expect(() => createToolbarManifest({
-        label: "Tools",
-        controls: [inlineFormatForm("example/link-presence", [field])],
-      })).toThrow();
+      expect(() =>
+        createToolbarManifest({
+          label: "Tools",
+          controls: [inlineFormatForm("example/link-presence", [field])],
+        }),
+      ).toThrow();
     }
     for (const field of ["applyLabel", "removeLabel", "closeLabel"] as const) {
-      expect(() => createToolbarManifest({
-        label: "Tools",
-        controls: [{ ...inlineFormatForm("example/link-presence"), [field]: "" }],
-      })).toThrow(/action label/u);
+      expect(() =>
+        createToolbarManifest({
+          label: "Tools",
+          controls: [
+            { ...inlineFormatForm("example/link-presence"), [field]: "" },
+          ],
+        }),
+      ).toThrow(/action label/u);
     }
   });
 
@@ -417,19 +464,19 @@ describe("toolbar manifest", () => {
     };
     const manifest = createToolbarManifest({
       label: "Tools",
-      controls: [inlineFormatForm("example/color-presence", [
-        sourceField,
-      ])],
+      controls: [inlineFormatForm("example/color-presence", [sourceField])],
     });
     expect(manifest.controls[0]).toMatchObject({
-      fields: [{
-        kind: "integer",
-        propertyName: "example/rgb24",
-        presentation: "rgb24",
-        minimum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
-        maximum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
-        defaultValue: 0x12abef,
-      }],
+      fields: [
+        {
+          kind: "integer",
+          propertyName: "example/rgb24",
+          presentation: "rgb24",
+          minimum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
+          maximum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+          defaultValue: 0x12abef,
+        },
+      ],
     });
     const control = manifest.controls[0];
     if (control?.kind !== "inlineFormatForm") throw new Error("missing form");
@@ -449,11 +496,121 @@ describe("toolbar manifest", () => {
       { ...rgb24Field("example/rgb24", 0), defaultValue: "0" },
     ];
     for (const field of invalidFields) {
-      expect(() => createToolbarManifest({
-        label: "Tools",
-        controls: [inlineFormatForm("example/color-presence", [field])],
-      })).toThrow();
+      expect(() =>
+        createToolbarManifest({
+          label: "Tools",
+          controls: [inlineFormatForm("example/color-presence", [field])],
+        }),
+      ).toThrow();
     }
+  });
+
+  it("deeply snapshots one exhaustive bounded integer select", () => {
+    const source = integerSelectField("example/text-size-step", 1);
+    source["onChange"] = () => undefined;
+    const sourceOptions = source["options"] as Array<Record<string, unknown>>;
+    sourceOptions[0]!["metadata"] = { private: true };
+    const manifest = createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/text-size-presence", [source])],
+    });
+    sourceOptions[1]!["label"] = "Changed";
+
+    const control = manifest.controls[0];
+    if (control?.kind !== "inlineFormatForm") throw new Error("missing form");
+    expect(control.fields[0]).toEqual({
+      kind: "integer",
+      propertyName: "example/text-size-step",
+      label: "Text size",
+      presentation: "select",
+      minimum: 0,
+      maximum: 2,
+      defaultValue: 1,
+      options: [
+        { value: 0, label: "Small" },
+        { value: 1, label: "Large" },
+        { value: 2, label: "Huge" },
+      ],
+    });
+    const field = control.fields[0];
+    if (field?.kind !== "integer" || field.presentation !== "select") {
+      throw new Error("missing integer select");
+    }
+    expect(Object.isFrozen(field)).toBe(true);
+    expect(Object.isFrozen(field.options)).toBe(true);
+    expect(field.options.every(Object.isFrozen)).toBe(true);
+    expect("onChange" in field).toBe(false);
+    expect("metadata" in field.options[0]!).toBe(false);
+  });
+
+  it("rejects malformed integer select bounds, defaults, and option sets", () => {
+    const valid = integerSelectField("example/text-size-step", 1);
+    const options = valid["options"] as readonly Record<string, unknown>[];
+    const invalidFields: unknown[] = [
+      { ...valid, minimum: -0 },
+      { ...valid, maximum: -0 },
+      { ...valid, defaultValue: -0 },
+      { ...valid, defaultValue: 3 },
+      { ...valid, defaultValue: 1.5 },
+      { ...valid, options: [] },
+      { ...valid, options: options.slice(0, 2) },
+      { ...valid, maximum: 1 },
+      { ...valid, options: [options[1], options[0], options[2]] },
+      { ...valid, options: [options[0], options[0], options[2]] },
+      { ...valid, options: [options[0], options[2]] },
+      { ...valid, options: [{ value: 0, label: "" }] },
+      { ...valid, options: [{ value: 0, label: "bad\nlabel" }] },
+      {
+        ...valid,
+        maximum: MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS,
+        options: Array.from(
+          {
+            length: MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS + 1,
+          },
+          (_, value) => ({ value, label: `Option ${value}` }),
+        ),
+      },
+    ];
+    for (const field of invalidFields) {
+      expect(() =>
+        createToolbarManifest({
+          label: "Tools",
+          controls: [inlineFormatForm("example/text-size-presence", [field])],
+        }),
+      ).toThrow();
+    }
+  });
+
+  it("rejects sparse and retained-accessor integer select options safely", () => {
+    const sparse = new Array(1);
+    const field = integerSelectField("example/text-size-step", 1);
+    field["minimum"] = 0;
+    field["maximum"] = 0;
+    field["defaultValue"] = 0;
+    field["options"] = sparse;
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/text-size-presence", [field])],
+      }),
+    ).toThrow(/own data property/u);
+
+    let reads = 0;
+    const option = { value: 0 };
+    Object.defineProperty(option, "label", {
+      get: () => {
+        reads += 1;
+        return "Private";
+      },
+    });
+    field["options"] = [option];
+    expect(() =>
+      createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/text-size-presence", [field])],
+      }),
+    ).toThrow(/own data property/u);
+    expect(reads).toBe(0);
   });
 
   it("rejects retained-field accessors without executing them", () => {
@@ -581,7 +738,10 @@ describe("toolbar manifest", () => {
       activation: "stateless",
       command: { kind: "history", operation: "undo" },
     });
-    const owned = createToolbarManifest({ label: "Tools", controls: [control] });
+    const owned = createToolbarManifest({
+      label: "Tools",
+      controls: [control],
+    });
     expect("group" in owned.controls[0]!).toBe(false);
     expect(reads).toBe(0);
   });
@@ -608,7 +768,10 @@ describe("toolbar manifest", () => {
     expect(reads).toBe(0);
 
     const inheritedElement = new Array(1);
-    const inheritedIndex = Object.create(Array.prototype) as Record<string, unknown>;
+    const inheritedIndex = Object.create(Array.prototype) as Record<
+      string,
+      unknown
+    >;
     Object.defineProperty(inheritedIndex, "0", {
       configurable: true,
       get: () => {
@@ -637,7 +800,8 @@ describe("toolbar manifest", () => {
       },
     });
     expect(
-      createToolbarManifest({ label: "Tools", controls: noOrdinaryReads }).controls,
+      createToolbarManifest({ label: "Tools", controls: noOrdinaryReads })
+        .controls,
     ).toHaveLength(1);
     expect(ordinaryReads).toBe(0);
 
@@ -659,14 +823,18 @@ describe("toolbar manifest", () => {
     expect(() =>
       createToolbarManifest({ label: "Tools", controls: [control, control] }),
     ).toThrow(/duplicated/u);
-    expect(() => createToolbarManifest({ label: "Tools", controls: [] })).toThrow(
-      RangeError,
-    );
+    expect(() =>
+      createToolbarManifest({ label: "Tools", controls: [] }),
+    ).toThrow(RangeError);
     expect(() =>
       createToolbarManifest({
         label: "Tools",
         controls: Array.from({ length: MAX_TOOLBAR_CONTROLS + 1 }, (_, index) =>
-          historyControl(`example/control-${index}`, `Control ${index}`, "undo"),
+          historyControl(
+            `example/control-${index}`,
+            `Control ${index}`,
+            "undo",
+          ),
         ),
       }),
     ).toThrow(RangeError);
@@ -679,7 +847,12 @@ describe("toolbar manifest", () => {
       controls: [valid],
     });
     expect(() => createToolbarManifest(arrayManifest)).toThrow(TypeError);
-    for (const label of ["", "   ", "bad\nlabel", "x".repeat(MAX_TOOLBAR_LABEL_UTF16 + 1)]) {
+    for (const label of [
+      "",
+      "   ",
+      "bad\nlabel",
+      "x".repeat(MAX_TOOLBAR_LABEL_UTF16 + 1),
+    ]) {
       expect(() => createToolbarManifest({ label, controls: [valid] })).toThrow(
         TypeError,
       );
@@ -699,7 +872,9 @@ describe("toolbar manifest", () => {
     expect(() =>
       createToolbarManifest({
         label: "Tools",
-        controls: [historyControl("example/control-history", "History", "clear")],
+        controls: [
+          historyControl("example/control-history", "History", "clear"),
+        ],
       }),
     ).toThrow(TypeError);
     for (const intentId of [
@@ -770,13 +945,26 @@ describe("toolbar manifest", () => {
         controls: DEFAULT_TOOLBAR_MANIFEST.controls,
       }),
     ).toBe(false);
-    expect(isOwnedToolbarManifest(new Proxy({}, { get: () => { throw new Error(); } }))).toBe(
-      false,
-    );
+    expect(
+      isOwnedToolbarManifest(
+        new Proxy(
+          {},
+          {
+            get: () => {
+              throw new Error();
+            },
+          },
+        ),
+      ),
+    ).toBe(false);
   });
 });
 
-function historyControl(stateId: string, label: string, operation: unknown): unknown {
+function historyControl(
+  stateId: string,
+  label: string,
+  operation: unknown,
+): unknown {
   return {
     kind: "button",
     stateId,
@@ -839,5 +1027,25 @@ function rgb24Field(
     minimum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
     maximum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
     defaultValue,
+  };
+}
+
+function integerSelectField(
+  propertyName: string,
+  defaultValue: unknown,
+): Record<string, unknown> {
+  return {
+    kind: "integer",
+    propertyName,
+    label: "Text size",
+    presentation: "select",
+    minimum: 0,
+    maximum: 2,
+    defaultValue,
+    options: [
+      { value: 0, label: "Small" },
+      { value: 1, label: "Large" },
+      { value: 2, label: "Huge" },
+    ],
   };
 }

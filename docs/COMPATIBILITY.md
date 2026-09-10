@@ -1,12 +1,13 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.12` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.13` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the
 core-owned Clear Formatting route plus descriptor-compiled declarative
-shortcuts and one closed RGB24 text-color presentation described below.
+shortcuts and the closed RGB24 text-color presentation, then adds one
+exhaustive integer-token/native-select Text Size presentation described below.
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -600,18 +601,49 @@ contrast guarantee, or rich-paste preservation. CSP, forced-colors, user
 styles, and native picker variability remain host/browser concerns. See
 [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
+## `0.3.0-alpha.13` exhaustive Text Size presets
+
+Alpha.13 adds another new reference content profile,
+`example/size-showcase-editor@1`, with compiler-emitted fingerprint
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+It retains every Color Showcase declaration and adds
+`example/text-size-extension@1`, typed format `example/text-size@1`, and sole
+required integer property `example/text-size-step` in `0..=2`. Generated
+action, intent, binding, and state IDs are `example/set-text-size`,
+`example/set-text-size-intent`, `example/set-text-size-binding`, and
+`example/text-size-presence`.
+
+The semantic behavior again uses the existing generic typed-set, state,
+selection, operation, history, replay, Wasm, and Session-V3 paths. The browser
+adds `safeIntegerTokenV1`, whose dense contiguous table must exhaust the exact
+required integer domain and can emit only one fixed
+`data-breditor-integer-token` attribute. Its matching toolbar field is one
+native single-select with the exhaustive Small (`0`), Large (`1`), and Huge
+(`2`) options; Normal is format removal. The complete profile exposes eight
+formats, nine intents, eleven action states, three typed-set surfaces, eight
+render recipes, and eleven toolbar controls. Wrapper order is Link, Strong,
+Emphasis, Highlight, Strikethrough, Code, Text Size, Text Color.
+
+Alpha.13 does not reinterpret an earlier fingerprint or durable record. It
+changes no Rust production contract, Profile Bootstrap V2, fingerprint
+algorithm, Document V2, V3 record, storage envelope, generated Wasm member, or
+ABI 5 meaning. It does not add arbitrary numeric input, sparse enums, custom
+selects, CSS lengths, callbacks, or rich-paste preservation. Host CSS owns the
+visible ratios, and Text Size has no shortcut. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.12 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.13 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.12 source configuration is tested as an exactly matching browser,
+The alpha.13 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -628,7 +660,7 @@ an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
 form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7 through
-alpha.12:
+alpha.13:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -735,6 +767,15 @@ copy/paste policy, undo/redo, and Session-V3 reload. Hostile descriptors,
 values, manifests, and noncanonical CSS spelling fail closed. These checks do
 not guarantee native picker UX, contrast, CSP visibility, forced-colors
 behavior, mobile, or assistive-technology conformance.
+
+The alpha.13 gates additionally exercise the separate Size Showcase profile,
+its exact integer descriptor and fingerprint, exhaustive token renderer,
+native select hydration and dispatch, eleven-control toolbar, eight-wrapper
+order, shared DOM/composition/clipboard inverse admission, one-step undo/redo,
+and Session-V3 reload. Hostile descriptors, option/token graphs, values,
+manifests, and noncanonical DOM fail closed. These checks do not guarantee
+screen-reader announcements, custom-select UX, identical host typography,
+mobile behavior, or assistive-technology conformance.
 
 ## Dependency boundary
 

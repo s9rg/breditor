@@ -1,11 +1,11 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.12 source checkpoint retains
+accessibility gate passed; the unpublished alpha.13 source checkpoint retains
 exact uniform-property hydration, the additive Showcase composition proof, and
 the Rust-owned Clear formatting route, then adds descriptor-compiled declarative
-shortcuts with truthful toolbar `aria-keyshortcuts`, then adds the closed RGB24
-Color Showcase described below.
+shortcuts with truthful toolbar `aria-keyshortcuts` and the closed RGB24 Color
+Showcase, then adds the exhaustive native Text Size select described below.
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -47,7 +47,8 @@ executes typed Link set/remove/set commands, checks canonical safe-Link
 attributes and wrapper nesting, and disposes both editors without workspace
 imports.
 
-The separate `npm run test:demo` Chromium gate covers the complete React page:
+The separate `npm run test:demo` gate covers the complete React page in
+Chromium, Firefox, and WebKit:
 its canonical Highlight + Link sample, runtime-owned native URL and new-window
 controls, typed Link set/remove, canonical anchor attributes, Bold/Highlight
 coexistence, undo/redo, ordinary keyboard editing, dirty-to-idle Session-V3
@@ -139,6 +140,31 @@ announcement, high-contrast result, or WCAG contrast. CSP `style-src-attr`,
 forced-colors modes, user styles, and browser preferences can suppress or
 override the visible author color. Text color has no shortcut, and paste does
 not preserve the source RGB24 value. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
+Alpha.13 moves the React demo and dedicated profile scenario to
+`example/size-showcase-editor@1`. The React demo gate now runs in Chromium,
+Firefox, and WebKit and exercises the exact native
+Small/Large/Huge select, uniform-state hydration, Apply and Reset, the fixed
+`data-breditor-integer-token` projection, all eleven controls, and the complete
+eight-wrapper chain with Text Size outside Text Color. It also covers one-step
+Undo/Redo, Clear formatting, semantic copy, formatting-losing HTML-only paste,
+and the distinct Session-V3 persistence slot. Unit gates cover dense exhaustive
+option/token admission, descriptor correlation, hostile shapes, canonical DOM,
+composition, and clipboard inverse admission.
+
+The WebKit run additionally exercises post-render selection restoration after
+formatting, paragraph joins, and history traversal. WebKit may transiently make
+anchor/focus disagree with `getRangeAt(0)` after Breditor replaces an owned
+subtree. Breditor overwrites that incoherent state only when either complete
+endpoint pair independently maps inside the current canonical projection; it
+does not accept mixed-pair, one-sided, cross-host, or null-selection evidence.
+
+This proves the closed native single-select and token contract in the tested
+desktop engines. It is not a screen-reader announcement, custom-select,
+arbitrary-number, exact cross-device typography, mobile, or WCAG-conformance
+claim. Arrow-key interaction remains native browser behavior, visual ratios
+remain host CSS, Text Size has no shortcut, and paste discards the source step.
+See [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 Run the gate after generating the three public packages:
 

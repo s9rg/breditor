@@ -4,6 +4,82 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.13 - 2026-09-10
+
+This unpublished source checkpoint proves that Breditor's generic
+property-aware architecture can drive a second, structurally different UI
+feature without adding a feature-specific Rust action, operation, history
+record, or replay protocol. Rust remains authoritative for the semantic
+integer, selection, mutation, undo/redo, and persistence; the browser owns a
+closed exhaustive selector and inert renderer token.
+
+### Closed Text Size semantic profile
+
+- Added the separate `example/size-showcase-editor@1` reference profile and
+  Rust-compiled fingerprint
+  `sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+  It reuses the four Color Showcase extensions and appends
+  `example/text-size-extension@1`.
+- Declared `example/text-size@1` with the sole required integer property
+  `example/text-size-step`, exhaustively bounded to `0..=2`. Values mean Small,
+  Large, and Huge; Normal is absence of the format rather than a fourth stored
+  value.
+- Generated action `example/set-text-size`, intent
+  `example/set-text-size-intent`, binding `example/set-text-size-binding`, and
+  state `example/text-size-presence` through the existing typed-set compiler.
+  The compiled profile has eight formats, nine intents, eleven action states,
+  and three typed-set surfaces.
+- Added frozen typed-input and fingerprint-bound Document V2 fixtures. The
+  generic Rust path is exhaustively tested for all three values, invalid scalar
+  rejection, same- and cross-paragraph mutation, exact selection restoration,
+  Commit/Session V3 replay, and undo/redo.
+
+### Exhaustive renderer, native select, and demo
+
+- Added reusable callback-free `safeIntegerTokenV1`. A policy must declare one
+  dense table of 1 through 32 contiguous safe integers, each mapped to a unique
+  bounded lowercase ASCII token, and must exactly exhaust one required bounded
+  integer property in the compiled descriptor. It emits only the fixed
+  `data-breditor-integer-token` attribute on a one-class `<span>` recipe.
+- Composition reconciliation, DOM drift checks, semantic copy, and clipboard
+  admission share the same inverse token predicate. Missing or extra semantic
+  properties, undeclared tokens, extra attributes, accessors, proxies, unsafe
+  integers, and widened descriptors fail closed.
+- Added an exhaustive integer `presentation: "select"` toolbar field. It
+  renders a native `<select>` with exact option topology and canonical decimal
+  values; declared options must cover the complete bounded integer range and
+  the default must be one admitted option. Native focus and arrow-key behavior
+  remain intact, while Apply/Reset use the existing preserved-selection queue
+  and typed set/remove JSON.
+- Expanded the reference toolbar to eleven controls and the renderer to eight
+  recipes. The fixed outer-to-inner peer order is Link, Strong, Emphasis,
+  Highlight, Strikethrough, Code, Text Size, then Text Color. Text Size adds no
+  keyboard shortcut.
+- Switched the React demo to lineage
+  `breditor-react-reference-size-showcase` and persistence slot
+  `breditor.react-reference-size-showcase.v1`. Browser coverage proves all
+  presets, exact token/CSS mapping, state hydration, reset, undo/redo,
+  persistence including restored redo, and composition with every peer format.
+- Promoted the complete React demo gate to Chromium, Firefox, and WebKit. The
+  selection bridge now tolerates WebKit's transient disagreement between
+  anchor/focus and `getRangeAt(0)` after an owned subtree replacement only when
+  one complete endpoint pair still maps inside the canonical projection; mixed,
+  one-sided, cross-host, and null-selection cases remain fail-closed. The demo
+  also surfaces the runtime's stable payload-redacted fault reason.
+
+### Compatibility and limits
+
+This checkpoint changes no Rust production contract, Profile Bootstrap V2
+shape, schema-fingerprint algorithm, Document V2 or V3 durable record
+generation, IndexedDB envelope, or Wasm method; ABI 5 remains current. Text
+Size is a three-value reference preset scale, not arbitrary CSS, a sparse enum,
+a general number input, a custom widget protocol, or a font-metric guarantee.
+Copy can emit the exact canonical wrapper, while paste still deliberately
+flattens source formatting to plain text. A collapsed pending-format change has
+no standalone undo entry under the existing history law. The exact decision is
+in [`docs/TEXT_SIZE_PRESETS.md`](docs/TEXT_SIZE_PRESETS.md). Alpha.13 packages
+remain unpublished; registry install examples apply only after publication.
+
 ## 0.3.0-alpha.12 - 2026-09-10
 
 This unpublished source checkpoint proves one closed RGB24 text-color feature

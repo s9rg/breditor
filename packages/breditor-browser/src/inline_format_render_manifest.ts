@@ -182,9 +182,15 @@ export function createInlineFormatRenderManifest(
           );
         }
       } else if (attributes !== undefined) {
-        throw new TypeError(
-          "inline-format render attributes require a closed compatible recipe",
-        );
+        if (
+          attributes.kind !== "safeIntegerTokenV1" ||
+          element !== "span" ||
+          classes.length !== 1
+        ) {
+          throw new TypeError(
+            "inline-format render attributes require a closed compatible recipe",
+          );
+        }
       }
     }
     const before = readOptionalCanonicalStringSet(

@@ -17,6 +17,7 @@ import {
   type WasmProfileGenerationView,
 } from "./advanced.js";
 import { mapDomPointToBaseSelectionPoint } from "./dom_point_mapping.js";
+import { incoherentSelectionHasOwnedEndpointWitness } from "./dom_selection.js";
 import { createProfiledDocumentProjection } from "./projection.js";
 
 type Run = Readonly<{ text: string; strong: boolean }>;
@@ -83,6 +84,25 @@ beforeEach(() => {
 });
 
 describe("BreditorDomSelectionBridge", () => {
+  it("requires one complete ownership witness for an incoherent native selection", () => {
+    for (let mask = 0; mask < 16; mask += 1) {
+      const anchorInside = (mask & 0b0001) !== 0;
+      const focusInside = (mask & 0b0010) !== 0;
+      const startInside = (mask & 0b0100) !== 0;
+      const endInside = (mask & 0b1000) !== 0;
+      expect(
+        incoherentSelectionHasOwnedEndpointWitness(
+          anchorInside,
+          focusInside,
+          startInside,
+          endInside,
+        ),
+      ).toBe(
+        (anchorInside && focusInside) || (startInside && endInside),
+      );
+    }
+  });
+
   it("writes and reads exact forward anchor/focus while preserving affinity sidecars", () => {
     const host = document.createElement("div");
     document.body.append(host);

@@ -4,8 +4,9 @@ Status: supported by the public `0.1.0` runtime for the closed base schema,
 extended by the supported `0.2.0` compiled-profile browser path, and extended
 again by the unpublished `0.3.0-alpha.4` exact `safeLinkV1` policy and
 `0.3.0-alpha.5` typed target-context insertion path. Alpha.6 and alpha.7 retain
-those rules unchanged; alpha.12 adds the exact `safeTextColorV1` copy and HTML
-admission shape without changing formatting-losing paste; direct controller
+those rules unchanged; alpha.12 adds the exact `safeTextColorV1` shape and
+alpha.13 adds the exhaustive `safeIntegerTokenV1` copy/admission shape without
+changing formatting-losing paste; direct controller
 construction remains an advanced
 integration surface
 
@@ -104,6 +105,12 @@ escaped, including carriage return as `&#13;`. Alpha.12 adds only the exact
 `<span class="breditor-text-color" style="color:#rrggbb">` shape under
 `safeTextColorV1`, where six hexadecimal digits are lowercase and zero-padded.
 The style is derived from one validated RGB24 integer; no source CSS is copied.
+Alpha.13 adds the exact
+`<span class="breditor-text-size" data-breditor-integer-token="…">` shape
+under `safeIntegerTokenV1`. The ellipsis is exactly one policy-declared bounded
+lowercase token (Small/Large/Huge use `small`, `large`, or `huge`) selected by
+an exhaustive required-integer mapping; no document or clipboard value chooses
+an attribute name, class, or CSS text.
 Scalars which strict HTML tokenization reports as controls or
 noncharacters are not representable in the paired HTML form: U+0000,
 U+0001–U+0008, U+000B, U+000E–U+001F, U+007F–U+009F, U+FDD0–U+FDEF, and each
@@ -154,13 +161,15 @@ repaired fragment must fit this closed allowlist:
   run; a `safeLinkV1` anchor must additionally have exactly the inert,
   canonical href-only, or canonical href/rel/target attribute shape, and a
   `safeTextColorV1` span must have exactly the sole canonical lowercase RGB24
-  style attribute;
+  style attribute, and a `safeIntegerTokenV1` span must have exactly the sole
+  fixed `data-breditor-integer-token` attribute with one declared token;
 - an empty paragraph with no children or one sole attribute-free `<br>`; and
 - optionally, exact `StartFragment` and `EndFragment` comments surrounding all
   paragraphs.
 
 Surviving attributes beyond one exact recipe class or the complete
-`safeLinkV1`/`safeTextColorV1` output, noncanonical styles, foreign or
+`safeLinkV1`/`safeTextColorV1`/`safeIntegerTokenV1` output, noncanonical styles
+or integer tokens, foreign or
 non-policy shapes, scripts, images,
 lists, tables, headings, unknown elements, foreign namespaces,
 noncanonical wrapper nesting, extra comments, and adjacent runs with the same
@@ -190,6 +199,11 @@ context, not preservation of any source wrapper or property.
 That rule includes RGB24. Canonical Breditor color markup can be admitted as
 HTML evidence but its source color is discarded; inserted text may retain or
 inherit a destination color only through the ordinary target-context rule.
+
+It also includes Text Size. Canonical Breditor integer-token markup may be
+admitted as HTML evidence, but paste discards its source step. Inserted text
+may retain or inherit only the destination's existing size through the same
+target-context rule.
 
 Alpha.6 cross-paragraph typed set/remove does not change this clipboard rule.
 An application may format the resulting multi-paragraph semantic selection in
@@ -257,6 +271,11 @@ Alpha.12 does not turn clipboard HTML into a CSS interchange format. It accepts
 no alternate color syntax, arbitrary style declaration, alpha, background,
 gradient, theme token, or source-color preservation. See
 [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
+Alpha.13 likewise does not make clipboard HTML an integer-enum interchange
+format. Only the exact compiled exhaustive token shape is admitted, and the
+source step is still flattened away. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 The low-level controller accepts the TypeScript adapter surface structurally.
 Application code must not forge, proxy, or mutate that wiring and must route all

@@ -284,6 +284,18 @@ and retained-value limits are therefore the existing generic Rust behavior.
 The closed `safeTextColorV1` renderer and native RGB24 field are browser
 presentation only. See the [text-color contract](../../docs/TEXT_COLOR.md).
 
+The unpublished `0.3.0-alpha.13` source checkpoint likewise changes no Rust
+production contract. Its Size Showcase declares `example/text-size@1` through
+the same `InlineFormatSetSpecV1`, with one required integer
+`example/text-size-step` bounded to `0..=2`. The generic compiled setter,
+unset/uniform/mixed state, collapsed pending formatting, same- and
+cross-paragraph mutation, exact undo/redo, and Session-V3 replay retain their
+existing Rust behavior. The browser-only `safeIntegerTokenV1` renderer maps
+the exhaustive values to inert presentation tokens, and the toolbar presents
+them through one closed native integer select. Profile Bootstrap V2, Document
+V2, every V3 durable shape, and Wasm ABI 5 remain unchanged. See the
+[text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

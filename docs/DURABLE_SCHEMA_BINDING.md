@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.12` checkpoint. Wasm ABI 5 and the browser explicitly select
+`0.3.0-alpha.13` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -25,6 +25,14 @@ using the existing bounded integer-property contract. Its semantic RGB24 value
 enters Document V2 and the existing V3 operation/history records; the derived
 CSS style and native picker state do not. No durable record generation or
 envelope changes.
+
+Alpha.13 adds the separately fingerprinted Size Showcase content language,
+`example/size-showcase-editor@1`, with fingerprint
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+Its semantic `example/text-size-step` integer enters Document V2 and the same
+V3 operation/history records. The `small`/`large`/`huge` browser tokens, native
+select labels, default presentation, and host CSS ratios do not enter the
+fingerprint or any durable record. No durable generation or envelope changes.
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.

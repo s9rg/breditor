@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.12` Color Showcase source
+`0.2.0` extension surface, and the `0.3.0-alpha.13` Size Showcase source
 checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
@@ -151,6 +151,21 @@ Color set/remove still travels through the generic queue, Rust action,
 undo/redo, replay, and Session-V3 persistence paths. Alpha.12 adds no Rust or
 Wasm method and retains ABI 5.
 
+The unpublished `0.3.0-alpha.13` source package adds the separately closed
+`safeIntegerTokenV1` presentation and native integer select. A matching format
+has exactly one required bounded integer property, while an exhaustive dense
+token table maps every admitted value to the sole fixed
+`data-breditor-integer-token` attribute on a one-class `span`. The closed
+`presentation: "select"` toolbar field likewise requires a dense, contiguous,
+exhaustive option table and renders one native single-select. The Size
+Showcase uses values 0 through 2 for Small, Large, and Huge, with Normal
+represented by format removal. Its eleven controls and eight renderer recipes
+compose Text Size outside Text Color. Typed execution, state, selection,
+history, replay, persistence, and clipboard-flattening semantics remain the
+existing generic paths; Rust production code, generated Wasm members, durable
+generations, and ABI 5 are unchanged. See the normative
+[text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -164,7 +179,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.12 @breditor/wasm@0.3.0-alpha.12
+npm install @breditor/browser@0.3.0-alpha.13 @breditor/wasm@0.3.0-alpha.13
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -230,7 +245,8 @@ Bootstrap V2, Document V2, and Session Checkpoint V3. Omitting the semantic
 profile retains exact-base V1. No form sniffs or falls back to another
 generation. Rendering must cover every admitted format; current recipes contain
 only a safe element, checked classes, explicit ordering edges, and optionally
-the exact `safeLinkV1` or `safeTextColorV1` policy described below.
+the exact `safeLinkV1`, `safeTextColorV1`, or `safeIntegerTokenV1` policy
+described below.
 
 The supported `0.2.0` configuration passes the initialized, exactly
 version-matched official module namespace as shown above. The root option does
@@ -491,6 +507,16 @@ lowercase, zero-padded `style="color:#rrggbb"` attribute. Extra properties,
 values outside RGB24, alternate CSS spelling, additional declarations, and
 caller-provided style text fail closed.
 
+`safeIntegerTokenV1` is the separately closed reusable integer presentation.
+It is admitted only on a `span` with exactly one static class and a format with
+exactly one required bounded integer property. Its 1 through 32 dense own-data
+entries must use safe, strictly increasing, contiguous, unique values that
+exhaust the property's minimum and maximum, with unique bounded lowercase
+ASCII tokens. A valid value produces only the fixed
+`data-breditor-integer-token="token"` attribute. The property name and tokens
+are inert configuration; the document cannot supply an attribute name, class,
+CSS text, or callback.
+
 Raw spelling must contain a nonempty authority immediately after exactly
 `http://` or `https://`. The raw authority is restricted to visible ASCII and
 may contain neither percent escapes, backslashes, nor `@`; internationalized
@@ -661,7 +687,9 @@ wrappers in canonical nesting, or uses one sole empty `<br>` placeholder, while
 every other paragraph and all outside text must still match the projection.
 Known Link wrappers admit only the inert, canonical href-only, or canonical
 href/rel/target shape; unchanged Link wrappers must match their projected
-attributes exactly. Unknown tags, classes, attributes, wrapper order, or
+attributes exactly. Text Color and integer-token wrappers likewise admit only
+their exact policy-derived attribute, and unchanged wrappers must match the
+projection. Unknown tags, classes, attributes, wrapper order, or
 branching fail closed. Transient dynamic attribute values share a 1 MiB
 aggregate UTF-8 work budget charged before URL parsing. Temporary wrappers are
 stripped to replacement text and never become AST state or reconstructed
@@ -683,12 +711,13 @@ and their exact optional event echoes. It reserves the queue built from the
 exact adapter executor before reading an event, clipboard capability, or DOM
 selection. Copy slices the semantic projection, never DOM markup. Cut writes
 both `text/plain` and escaped HTML using the compiled recipe wrappers and exact
-`safeLinkV1`/`safeTextColorV1` attributes, confirms native cancellation, and
+`safeLinkV1`/`safeTextColorV1`/`safeIntegerTokenV1` attributes, confirms native cancellation, and
 only then submits
 one selection deletion. Unsafe Link values copy as inert anchors. Paste gives
 advertised plain text precedence; HTML is considered only when plain is absent,
 then must exactly match the active recipe allowlist, including one of the three
-canonical Link attribute shapes and the sole canonical RGB24 style shape. It
+canonical Link attribute shapes, the sole canonical RGB24 style shape, and an
+integer token from the compiled exhaustive table. It
 is always flattened for one atomic
 plain-text insertion, so source formatting and properties never enter the AST;
 the existing target pending/context-format rules still apply.
@@ -793,9 +822,10 @@ manifest contract is documented in `docs/TOOLBAR.md` in the repository.
 An `inlineFormatForm` launcher is one of those APG-toolbar buttons. Its
 interactive nonmodal form is a sibling of the toolbar root so field Arrow keys
 retain native behavior. Fields are limited to required URL-presented bounded
-strings, required Booleans, and the exact required RGB24 integer presentation;
-they must exactly cover one profile format. Every form requires at least one
-URL string or RGB24 field; Boolean-only forms are rejected.
+strings, required Booleans, the exact required RGB24 integer presentation, and
+the exact exhaustive integer-select presentation; they must exactly cover one
+profile format. Every form requires at least one URL string, RGB24 field, or
+integer select; Boolean-only forms are rejected.
 Apply/Remove use the existing typed-intent queue and complete-map contract;
 pristine fields hydrate from exact uniform state, while mixed has no fieldwise
 merge value. Dirty drafts survive refresh and rejected dispatch; completion or
@@ -846,6 +876,17 @@ uses native `<input type="color">`, maps integers to lowercase zero-padded
 building typed-set JSON. This is one closed presentation, not a general number
 input or widget protocol. Native picker UI and keyboard behavior vary by user
 agent and operating system.
+
+Alpha.13 admits the separate integer `presentation: "select"` only with 1
+through 32 dense own-data options. Their safe-integer values are strictly
+increasing, unique, contiguous, and exhaustive across the declared inclusive
+minimum and maximum; labels use the existing toolbar-label bounds and the
+default names one option. The runtime creates one native single-select and
+uses only canonical decimal option values. There are no placeholders, disabled
+options, optgroups, custom values, callbacks, or application-supplied DOM
+nodes. Native Arrow-key behavior stays inside the select; Escape retains the
+existing form-close behavior. See
+[`TEXT_SIZE_PRESETS.md`](../../docs/TEXT_SIZE_PRESETS.md).
 
 An inline-format form is admitted only when its format/intent/state triple
 matches an ABI-5 set-surface descriptor and its field types and UTF-8 bounds
@@ -937,10 +978,11 @@ backpressure; terminal adapter loss pauses autosave. See
   toggle intents, and a custom manifest can omit, reorder, relabel, group, or
   expose them as the same native-button control kind. The closed native
   `inlineFormatForm` supports
-  required URL-presented strings, required Booleans, and one exact RGB24
-  integer presentation for complete-map set/remove only. There are no optional
-  or general integer fields, partial patches,
-  arbitrary widgets, menus/selects, callback keymaps or extension-defined
+  required URL-presented strings, required Booleans, one exact RGB24 integer
+  presentation, and one exact exhaustive integer-select presentation for
+  complete-map set/remove only. There are no optional or general free-form
+  integer fields, partial patches,
+  arbitrary widgets, menus, custom selects, callback keymaps or extension-defined
   `beforeinput` rules, dynamic
   manifest replacement, JavaScript action/catalog registration, or packaged
   React wrapper.
@@ -964,12 +1006,16 @@ backpressure; terminal adapter loss pauses autosave. See
   or rich paste.
 - Extensions may add closed typed scalar properties to inline formats in the
   sealed paragraph/text AST. Rendering and copy HTML derive attributes only
-  through the exact `safeLinkV1` and `safeTextColorV1` contracts; there is no
+  through the exact `safeLinkV1`, `safeTextColorV1`, and
+  `safeIntegerTokenV1` contracts; there is no
   arbitrary attribute, URL-policy, or CSS extension mechanism. Text color is
   opaque sRGB24 with no alpha, theme token, background/gradient, contrast
   guarantee, or rich-paste preservation. CSP and forced-colors policy may
   suppress or override its inline style. Rust performs scalar validation, not
-  URL semantic validation. Arbitrary nodes, entities, nested blocks, callbacks,
+  URL semantic validation. Integer-token rendering is exhaustive over one
+  bounded required property and emits only the fixed data attribute; it is not
+  arbitrary class, attribute, or CSS generation. Arbitrary nodes, entities,
+  nested blocks, callbacks,
   and extension-owned DOM renderers remain absent.
 - Structural typed edits and cross-paragraph `SetInlineFormatAction` support
   only the sealed direct-root paragraph/text grammar. Set replaces a complete

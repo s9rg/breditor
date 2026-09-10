@@ -582,7 +582,8 @@ function wrapperAttributesMatchRecipe(
     const attribute = node.attrs[index];
     if (
       attribute === undefined ||
-      (attribute.name !== "href" &&
+      (attribute.name !== "data-breditor-integer-token" &&
+        attribute.name !== "href" &&
         attribute.name !== "rel" &&
         attribute.name !== "style" &&
         attribute.name !== "target") ||

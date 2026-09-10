@@ -83,19 +83,23 @@ function buttonMatchesDescriptor(
 
   const command = control.command;
   if (command.kind === "history") {
-    return control.activation === "stateless" &&
+    return (
+      control.activation === "stateless" &&
       state.source.kind === "history" &&
-      state.source.direction === command.operation;
+      state.source.direction === command.operation
+    );
   }
   if (command.kind !== "intent" || state.source.kind !== "routed") {
     return false;
   }
   const intent = intents.get(command.intentId);
-  return state.source.intentId === command.intentId &&
+  return (
+    state.source.intentId === command.intentId &&
     intent !== undefined &&
     intent.input.kind === "none" &&
     intent.state.activation === control.activation &&
-    intent.state.value === undefined;
+    intent.state.value === undefined
+  );
 }
 
 function inlineFormatFormMatchesDescriptor(
@@ -122,7 +126,8 @@ function inlineFormatFormMatchesDescriptor(
     intent === undefined ||
     intent.input.kind !== "typed" ||
     intent.input.contract.name !== SET_INLINE_FORMAT_INPUT_CONTRACT_NAME ||
-    intent.input.contract.version !== SET_INLINE_FORMAT_INPUT_CONTRACT_VERSION ||
+    intent.input.contract.version !==
+      SET_INLINE_FORMAT_INPUT_CONTRACT_VERSION ||
     intent.state.activation !== "tracked" ||
     intent.state.value?.name !== SET_INLINE_FORMAT_STATE_CONTRACT_NAME ||
     intent.state.value.version !== SET_INLINE_FORMAT_STATE_CONTRACT_VERSION ||
@@ -135,21 +140,28 @@ function inlineFormatFormMatchesDescriptor(
     return false;
   }
 
-  const fields = new Map(control.fields.map((field) => [field.propertyName, field]));
+  const fields = new Map(
+    control.fields.map((field) => [field.propertyName, field]),
+  );
   if (fields.size !== control.fields.length) return false;
   return format.properties.every((property) => {
     if (property.presence !== "required") return false;
     const field = fields.get(property.name);
-    if (field === undefined || field.kind !== property.valueType.kind) return false;
+    if (field === undefined || field.kind !== property.valueType.kind)
+      return false;
     if (field.kind === "boolean") return field.defaultValue === false;
     if (field.kind === "integer") {
-      return property.valueType.kind === "integer" &&
-        field.presentation === "rgb24" &&
+      return (
+        property.valueType.kind === "integer" &&
+        (field.presentation === "rgb24" || field.presentation === "select") &&
         field.minimum === property.valueType.minimum &&
-        field.maximum === property.valueType.maximum;
+        field.maximum === property.valueType.maximum
+      );
     }
-    return property.valueType.kind === "string" &&
+    return (
+      property.valueType.kind === "string" &&
       field.minimumUtf8Bytes === property.valueType.minimumUtf8Bytes &&
-      field.maximumUtf8Bytes === property.valueType.maximumUtf8Bytes;
+      field.maximumUtf8Bytes === property.valueType.maximumUtf8Bytes
+    );
   });
 }

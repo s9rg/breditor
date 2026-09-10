@@ -799,6 +799,17 @@
 //! input and canonical CSS projection stay in the browser layer. The new
 //! content language has its own Document-V2 fingerprint, while Profile
 //! Bootstrap V2, durable record generations, and Wasm ABI 5 remain unchanged.
+//!
+//! The unpublished `0.3.0-alpha.13` source checkpoint also changes no Rust
+//! production contract. Its separate Size Showcase uses the existing required
+//! integer property, generic typed setter, exact property-state observation,
+//! property-preserving operations, history, and Session-V3 replay for
+//! `example/text-size-step` in `0..=2`. The exhaustive
+//! `safeIntegerTokenV1` renderer and native integer select are browser
+//! presentation only. The profile has its own Document-V2 fingerprint;
+//! Profile Bootstrap V2, all durable record generations, and Wasm ABI 5 remain
+//! unchanged. The exact presentation decision is documented in
+//! [`TEXT_SIZE_PRESETS.md`](https://github.com/s9rg/breditor/blob/main/docs/TEXT_SIZE_PRESETS.md).
 
 pub mod action;
 pub mod codec;

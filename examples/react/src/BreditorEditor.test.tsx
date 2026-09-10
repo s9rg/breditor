@@ -7,10 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   initializeWasm: vi.fn(() => Promise.resolve()),
   openEditor: vi.fn(),
-  profileBootstrapJson: '{"profile":"reference-color-showcase"}',
+  profileBootstrapJson: '{"profile":"reference-size-showcase"}',
   renderManifest: Object.freeze({ recipes: Object.freeze([]) }),
   keyboardShortcutManifest: Object.freeze({ shortcuts: Object.freeze([]) }),
-  sampleDocumentJson: '{"document":"reference-color-showcase-v2"}',
+  sampleDocumentJson: '{"document":"reference-size-showcase-v2"}',
+  lineageId: "breditor-react-reference-size-showcase",
   toolbarManifest: Object.freeze({
     label: "Showcase toolbar",
     controls: Object.freeze([]),
@@ -27,12 +28,13 @@ vi.mock("@breditor/browser", () => ({
 }));
 
 vi.mock("@breditor/reference-highlight", () => ({
-  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
-  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST:
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST:
     mocks.keyboardShortcutManifest,
-  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST: mocks.renderManifest,
-  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON: mocks.sampleDocumentJson,
-  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST: mocks.toolbarManifest,
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID: mocks.lineageId,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST: mocks.renderManifest,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON: mocks.sampleDocumentJson,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST: mocks.toolbarManifest,
 }));
 
 import { BreditorEditor, type BreditorEditorHandle } from "./BreditorEditor.js";
@@ -168,7 +170,7 @@ afterEach(async () => {
 });
 
 describe("BreditorEditor lifecycle", () => {
-  it("passes the complete Color Showcase contract into empty runtime-owned mounts", async () => {
+  it("passes the complete Text Size Showcase contract into empty runtime-owned mounts", async () => {
     const editor = fakeEditor();
     let mountsWereEmpty = false;
     let showcaseToolbarManifestWasPassed = false;
@@ -199,7 +201,7 @@ describe("BreditorEditor lifecycle", () => {
       expect.objectContaining({
         label: "Reference Showcase demo",
         initialDocument: {
-          lineageId: "breditor-react-reference-color-showcase",
+          lineageId: mocks.lineageId,
           documentJson: mocks.sampleDocumentJson,
           historyCapacity: 100,
         },
@@ -218,7 +220,7 @@ describe("BreditorEditor lifecycle", () => {
         persistence: expect.objectContaining({
           scope: {
             kind: "slot",
-            name: "breditor.react-reference-color-showcase.v1",
+            name: "breditor.react-reference-size-showcase.v1",
           },
         }),
       }),
@@ -534,6 +536,32 @@ describe("BreditorEditor lifecycle", () => {
       expect(status(mounted.container)).not.toMatch(/^Saved state:/u);
     },
   );
+
+  it("reports the stable payload-redacted runtime fault reason", async () => {
+    const editor = fakeEditor();
+    editor.getSnapshot.mockReturnValue(
+      Object.freeze({
+        status: Object.freeze({
+          phase: "faulted",
+          reason: "reconciliationFailed",
+        }),
+        document: Object.freeze({ documentJson: '{"test":"document"}' }),
+        actionState: Object.freeze({
+          status: "fresh",
+          lastError: undefined,
+        }),
+        persistence: Object.freeze({ phase: "disabled", dirty: false }),
+      }),
+    );
+    mocks.openEditor.mockResolvedValue(successful(editor));
+
+    const mounted = await render(view("Fault status"));
+    await settle();
+
+    expect(status(mounted.container)).toBe(
+      "Editor state: faulted (reconciliationFailed).",
+    );
+  });
 
   it("offers one bounded persistence retry while autosave is paused", async () => {
     const retry = deferred<unknown>();

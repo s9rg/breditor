@@ -5,13 +5,18 @@ import {
   type ToolbarInlineFormatFormDeclaration,
 } from "./toolbar_manifest.js";
 import { isToolbarInlineFormatRgb24Integer } from "./toolbar_inline_format_rgb24.js";
+import {
+  isToolbarInlineFormatIntegerSelectValue,
+  snapshotToolbarInlineFormatIntegerSelect,
+} from "./toolbar_inline_format_integer_select.js";
 
 /** Action-state value contract understood by the property-aware form. */
 export const TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_NAME =
   "breditor/set-inline-format-input" as const;
 
 /** Independently versioned output contract consumed by the form hydrator. */
-export const TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_VERSION = 1 as const;
+export const TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_VERSION =
+  1 as const;
 
 export type ToolbarInlineFormatFormHydratedField = Readonly<{
   name: string;
@@ -44,6 +49,7 @@ type SafeField =
   | Readonly<{ kind: "boolean"; propertyName: string }>
   | Readonly<{
       kind: "integer";
+      presentation: "rgb24" | "select";
       propertyName: string;
       minimum: number;
       maximum: number;
@@ -113,7 +119,15 @@ export function decodeToolbarInlineFormatFormStateValue(
       if (field.kind === "boolean") {
         if (typeof propertyValue !== "boolean") return null;
       } else if (field.kind === "integer") {
-        if (!isToolbarInlineFormatRgb24Integer(propertyValue)) return null;
+        const valid =
+          field.presentation === "rgb24"
+            ? isToolbarInlineFormatRgb24Integer(propertyValue)
+            : isToolbarInlineFormatIntegerSelectValue(
+                propertyValue,
+                field.minimum,
+                field.maximum,
+              );
+        if (!valid) return null;
       } else {
         if (typeof propertyValue !== "string") return null;
         // Single-line HTML inputs must strip CR/LF from their value. Reject
@@ -132,7 +146,12 @@ export function decodeToolbarInlineFormatFormStateValue(
           return null;
         }
       }
-      hydrated.push(Object.freeze({ name, value: propertyValue }));
+      hydrated.push(
+        Object.freeze({
+          name,
+          value: propertyValue as string | boolean | number,
+        }),
+      );
     }
     return Object.freeze({ status, fields: Object.freeze(hydrated) });
   } catch {
@@ -151,6 +170,24 @@ function snapshotFields(form: ToolbarInlineFormatFormDeclaration): SafeField[] {
         }),
       );
     } else if (field.kind === "integer") {
+      if (field.presentation === "select") {
+        const selection = snapshotToolbarInlineFormatIntegerSelect(
+          field.minimum,
+          field.maximum,
+          field.defaultValue,
+          field.options,
+        );
+        result.push(
+          Object.freeze({
+            kind: field.kind,
+            presentation: field.presentation,
+            propertyName: field.propertyName,
+            minimum: selection.minimum,
+            maximum: selection.maximum,
+          }),
+        );
+        continue;
+      }
       if (
         field.presentation !== "rgb24" ||
         field.minimum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM ||
@@ -162,6 +199,7 @@ function snapshotFields(form: ToolbarInlineFormatFormDeclaration): SafeField[] {
       result.push(
         Object.freeze({
           kind: field.kind,
+          presentation: field.presentation,
           propertyName: field.propertyName,
           minimum: field.minimum,
           maximum: field.maximum,
@@ -200,7 +238,8 @@ function exactRecord(
     typeof value !== "object" ||
     value === null ||
     arrayIsArray(value) ||
-    (getPrototypeOf(value) !== OBJECT_PROTOTYPE && getPrototypeOf(value) !== null)
+    (getPrototypeOf(value) !== OBJECT_PROTOTYPE &&
+      getPrototypeOf(value) !== null)
   ) {
     throw new TypeError("invalid record");
   }

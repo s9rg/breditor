@@ -13,6 +13,7 @@ import {
 const HREF = "example/href";
 const NEW_WINDOW = "example/open-in-new-window";
 const RGB24 = "example/rgb24";
+const TEXT_SIZE_STEP = "example/text-size-step";
 
 function linkForm(
   minimumUtf8Bytes = 1,
@@ -91,6 +92,44 @@ function colorForm(): ToolbarInlineFormatFormDeclaration {
   return control;
 }
 
+function textSizeForm(): ToolbarInlineFormatFormDeclaration {
+  const control = createToolbarManifest({
+    label: "Editor controls",
+    controls: [
+      {
+        kind: "inlineFormatForm",
+        stateId: "example/text-size-presence",
+        label: "Text size",
+        formatKind: "example/text-size",
+        intentId: "example/set-text-size-intent",
+        fields: [
+          {
+            kind: "integer",
+            propertyName: TEXT_SIZE_STEP,
+            label: "Text size",
+            presentation: "select",
+            minimum: 0,
+            maximum: 2,
+            defaultValue: 1,
+            options: [
+              { value: 0, label: "Small" },
+              { value: 1, label: "Large" },
+              { value: 2, label: "Huge" },
+            ],
+          },
+        ],
+        applyLabel: "Apply size",
+        removeLabel: "Reset size",
+        closeLabel: "Close size controls",
+      },
+    ],
+  }).controls[0];
+  if (control?.kind !== "inlineFormatForm") {
+    throw new Error("Text size form fixture was not admitted");
+  }
+  return control;
+}
+
 describe("toolbar inline-format form input", () => {
   it("sorts properties lexically independent of declaration and record order", () => {
     expect(
@@ -137,6 +176,85 @@ describe("toolbar inline-format form input", () => {
         [RGB24]: 0x12abef,
       }),
     ).toThrow(TypeError);
+  });
+
+  it("serializes bounded integer-select values and rejects every invalid scalar", () => {
+    for (const value of [0, 1, 2]) {
+      expect(
+        createToolbarInlineFormatFormSetInputJson(textSizeForm(), {
+          [TEXT_SIZE_STEP]: value,
+        }),
+      ).toBe(
+        `{"operation":"set","properties":[{"name":"example/text-size-step","value":${value}}]}`,
+      );
+    }
+    for (const value of [-0, 1.5, "1", null]) {
+      expect(() =>
+        createToolbarInlineFormatFormSetInputJson(textSizeForm(), {
+          [TEXT_SIZE_STEP]: value,
+        }),
+      ).toThrow(TypeError);
+    }
+    for (const value of [-1, 3]) {
+      expect(() =>
+        createToolbarInlineFormatFormSetInputJson(textSizeForm(), {
+          [TEXT_SIZE_STEP]: value,
+        }),
+      ).toThrow(RangeError);
+    }
+  });
+
+  it("defensively rejects forged integer-select option contracts", () => {
+    const form = textSizeForm();
+    const sourceField = form.fields[0];
+    if (
+      sourceField?.kind !== "integer" ||
+      sourceField.presentation !== "select"
+    ) {
+      throw new Error("missing integer select fixture");
+    }
+    for (const options of [
+      sourceField.options.slice(0, 2),
+      [sourceField.options[1], sourceField.options[0], sourceField.options[2]],
+      new Array(3),
+    ]) {
+      const forged = {
+        ...form,
+        fields: [{ ...sourceField, options }],
+      } as ToolbarInlineFormatFormDeclaration;
+      expect(() =>
+        createToolbarInlineFormatFormSetInputJson(forged, {
+          [TEXT_SIZE_STEP]: 1,
+        }),
+      ).toThrow(TypeError);
+    }
+
+    let reads = 0;
+    const option = { value: 0 };
+    Object.defineProperty(option, "label", {
+      get: () => {
+        reads += 1;
+        return "Private";
+      },
+    });
+    const forged = {
+      ...form,
+      fields: [
+        {
+          ...sourceField,
+          minimum: 0,
+          maximum: 0,
+          defaultValue: 0,
+          options: [option],
+        },
+      ],
+    } as unknown as ToolbarInlineFormatFormDeclaration;
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(forged, {
+        [TEXT_SIZE_STEP]: 0,
+      }),
+    ).toThrow(TypeError);
+    expect(reads).toBe(0);
   });
 
   it("returns one fixed canonical remove input", () => {
@@ -253,10 +371,9 @@ describe("toolbar inline-format form input", () => {
       }),
     ).toThrow(TypeError);
 
-    const inherited = Object.create({ [HREF]: "https://example.test" }) as Record<
-      string,
-      unknown
-    >;
+    const inherited = Object.create({
+      [HREF]: "https://example.test",
+    }) as Record<string, unknown>;
     inherited[NEW_WINDOW] = false;
     expect(() =>
       createToolbarInlineFormatFormSetInputJson(form, inherited),
@@ -334,8 +451,8 @@ describe("toolbar inline-format form input", () => {
     const values = Object.create(null) as Record<string, unknown>;
     values[HREF] = "https://example.test/null-prototype";
     values[NEW_WINDOW] = false;
-    expect(createToolbarInlineFormatFormSetInputJson(linkForm(), values)).toContain(
-      "https://example.test/null-prototype",
-    );
+    expect(
+      createToolbarInlineFormatFormSetInputJson(linkForm(), values),
+    ).toContain("https://example.test/null-prototype");
   });
 });

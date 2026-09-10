@@ -1,9 +1,10 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.12` source checkpoint adds a separate Color Showcase
-whose closed RGB24 text color uses the existing generic typed-set semantics,
-then adds exact browser renderer and native-field presentation. It retains
-alpha.11's declarative shortcut manifest unchanged; color has no shortcut.
+Status: the `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
+whose exhaustive Text Size presets use the existing generic integer typed-set
+semantics, then adds the exact `safeIntegerTokenV1` renderer and native-select
+presentation. It retains alpha.12's Color Showcase and alpha.11's declarative
+shortcut manifest unchanged; typed Text Size and Text Color have no shortcut.
 Wasm ABI 5 remains current. Explicit Bootstrap V2 still selects
 property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
@@ -30,6 +31,9 @@ Alpha.10 adds core-owned all-inline Clear Formatting. Alpha.11 makes the
 extension shortcut presentation explicit without adding semantic or durable
 authority. Alpha.12 proves a required integer property end to end without
 opening arbitrary CSS or a general widget protocol.
+Alpha.13 proves that an exhaustive integer domain can drive a reusable inert
+token renderer and native select without adding feature-specific Rust
+semantics, sparse enums, arbitrary attributes, or custom widgets.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -683,6 +687,48 @@ settings may suppress or override presentation. Native picker UX varies by
 browser and operating system. The exact contract and pending-caret undo nuance
 are in [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
+## Alpha.13 exhaustive Text Size presets
+
+Alpha.13 creates the distinct `example/size-showcase-editor@1` profile with
+compiler-emitted fingerprint
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+Its fifth extension declares `example/text-size@1` and exactly one required
+integer `example/text-size-step` property bounded to `0..=2`. The generated
+surface is action `example/set-text-size`, typed intent
+`example/set-text-size-intent`, binding `example/set-text-size-binding`, and
+tracked state `example/text-size-presence`.
+
+The semantic values are Small (`0`), Large (`1`), and Huge (`2`). They exhaust
+the domain; Normal is absence of the format. Generic
+`SetInlineFormatAction` continues to own collapsed pending state, same-
+paragraph `TextSplice`, cross-paragraph `RootTextReplace`, exact selection,
+one-step undo/redo, and Session-V3 replay. Document V2 stores only the integer.
+
+The browser adds `safeIntegerTokenV1`. Its 1 through 32 value/token entries
+must be dense, safe-integer, strictly increasing, contiguous, unique, and
+exhaustive across the property's explicit bounds. It is legal only on a
+one-class `span` and emits only the fixed
+`data-breditor-integer-token` attribute. The matching toolbar field uses one
+native `<select>` with a correspondingly exhaustive option table and exact
+default. No callback, arbitrary attribute, CSS value, option provider, or DOM
+node crosses either manifest.
+
+The reference profile has eight formats, nine intents, eleven action states,
+three typed setters, eight render recipes, and eleven toolbar controls. Toolbar
+order is Bold, Italic, Strikethrough, Code, Highlight, Text size, Text color,
+Link, Clear formatting, Undo, Redo. Renderer order is Link, Strong, Emphasis,
+Highlight, Strikethrough, Code, Text Size, Text Color. Text Size has no
+shortcut. Its demo uses distinct lineage
+`breditor-react-reference-size-showcase` and slot
+`breditor.react-reference-size-showcase.v1`.
+
+This checkpoint changes no Rust production contract, Profile Bootstrap V2,
+fingerprint algorithm, durable format generation, IndexedDB envelope, or Wasm
+method; ABI 5 remains current. Host CSS owns the visual size ratios, and paste
+still discards the source step. This is not sparse enum support, an arbitrary
+number input, semantic CSS lengths, a custom select, or a typography system.
+See [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -719,13 +765,20 @@ Alpha.12 likewise reuses the existing descriptor and typed-set Wasm surface.
 Only browser/reference presentation code and the new profile data are added;
 ABI 5 and semantic/durable shapes remain unchanged.
 
+Alpha.13 again reuses those same integer descriptor, typed-set, state,
+projection, and durable surfaces. Only browser/reference presentation code and
+the Size Showcase data are added; ABI 5 and semantic/durable shapes remain
+unchanged.
+
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
-closed `safeLinkV1` and `safeTextColorV1` policies derive attributes from
+closed `safeLinkV1`, `safeTextColorV1`, and exhaustive
+`safeIntegerTokenV1` policies derive attributes from
 properties. Safe copy emits those exact attributes and paste remains plain
 text. The supported toolbar accepts the closed required URL-string/Boolean
-Link form and exact RGB24 integer field, but no optional or general integer
-field, partial patch, menu, select, or arbitrary widget.
+Link form, exact RGB24 field, and exhaustive native integer select, but no
+optional or general free-form integer field, partial patch, menu, custom
+select, or arbitrary widget.
 Existing no-input toggle buttons continue to work for property-free formats.
 
 Typed scalar validation is not sanitization. A valid Link string is not
@@ -752,9 +805,10 @@ undefined.
 - No V3 local-log/storage family exists.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
-  support only `safeLinkV1` and `safeTextColorV1`; paste never reconstructs
+  support only `safeLinkV1`, `safeTextColorV1`, and
+  `safeIntegerTokenV1`; paste never reconstructs
   properties, and the native toolbar supports only the closed required
-  URL-string/Boolean and exact RGB24 forms.
+  URL-string/Boolean, exact RGB24, and exhaustive integer-select forms.
 - The additive reference Link proves one exact contract while preserving the
   property-free Highlight-only profile. It is not a general Link schema,
   renderer, URL validator, or arbitrary toolbar-control registration protocol.
@@ -766,6 +820,10 @@ undefined.
   CSS, an alpha/background/gradient system, a theme palette, a contrast
   checker, or a rich-paste format transfer. Inline-style CSP and forced-colors
   behavior remain host/browser policy, and native picker UX varies.
+- The Size Showcase proves one exhaustive required integer preset domain. It
+  is not sparse enums, free-form numbers, arbitrary data attributes or CSS,
+  custom selects, a typography system, or source-format-preserving paste. Host
+  CSS owns visual ratios and native select UX varies.
 - Declarative shortcuts cannot carry typed values, invoke direct actions, open
   toolbar forms, use Alt/punctuation/function keys, override Select All or
   clipboard families, define conditional priority handlers, or change while an
@@ -786,7 +844,8 @@ undefined.
 
 Future browser work may add another separately closed property presentation or
 field vocabulary, but must not silently widen `safeLinkV1` or
-`safeTextColorV1`, accept arbitrary attributes/CSS, preserve source formatting
+`safeTextColorV1` or `safeIntegerTokenV1`, accept arbitrary attributes/CSS,
+preserve source formatting
 on paste, or bypass the intent router.
 
 A later durable checkpoint must version the local-log graph around Session

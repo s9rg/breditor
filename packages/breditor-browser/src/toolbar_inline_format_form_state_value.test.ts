@@ -73,6 +73,42 @@ if (colorForm.kind !== "inlineFormatForm") {
   throw new Error("color fixture is invalid");
 }
 
+const textSizeForm = createToolbarManifest({
+  label: "Editor controls",
+  controls: [
+    {
+      kind: "inlineFormatForm",
+      stateId: "example/text-size-presence",
+      label: "Text size",
+      formatKind: "example/text-size",
+      intentId: "example/set-text-size-intent",
+      fields: [
+        {
+          kind: "integer",
+          propertyName: "example/text-size-step",
+          label: "Text size",
+          presentation: "select",
+          minimum: 0,
+          maximum: 2,
+          defaultValue: 1,
+          options: [
+            { value: 0, label: "Small" },
+            { value: 1, label: "Large" },
+            { value: 2, label: "Huge" },
+          ],
+        },
+      ],
+      applyLabel: "Apply",
+      removeLabel: "Reset",
+      closeLabel: "Close",
+    },
+  ],
+}).controls[0]!;
+
+if (textSizeForm.kind !== "inlineFormatForm") {
+  throw new Error("text size fixture is invalid");
+}
+
 const contract = () => ({
   name: TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_NAME,
   version: TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_VERSION,
@@ -141,6 +177,64 @@ describe("decodeToolbarInlineFormatFormStateValue", () => {
         decodeToolbarInlineFormatFormStateValue(colorForm, value(rgb24)),
       ).toBeNull();
     }
+  });
+
+  it("copies every integer-select value and rejects values outside its domain", () => {
+    const value = (step: unknown) => ({
+      status: "uniform",
+      contract: contract(),
+      value: {
+        operation: "set",
+        properties: [{ name: "example/text-size-step", value: step }],
+      },
+    });
+    for (const step of [0, 1, 2]) {
+      expect(
+        decodeToolbarInlineFormatFormStateValue(textSizeForm, value(step)),
+      ).toEqual({
+        status: "uniform",
+        fields: [{ name: "example/text-size-step", value: step }],
+      });
+    }
+    for (const step of [-0, -1, 3, 1.5, "1", null]) {
+      expect(
+        decodeToolbarInlineFormatFormStateValue(textSizeForm, value(step)),
+      ).toBeNull();
+    }
+  });
+
+  it("defensively rejects forged integer-select declaration shapes", () => {
+    const field = textSizeForm.fields[0];
+    if (field?.kind !== "integer" || field.presentation !== "select") {
+      throw new Error("missing integer select fixture");
+    }
+    const value = {
+      status: "uniform",
+      contract: contract(),
+      value: {
+        operation: "set",
+        properties: [{ name: "example/text-size-step", value: 1 }],
+      },
+    };
+    const forged = {
+      ...textSizeForm,
+      fields: [{ ...field, options: field.options.slice(0, 2) }],
+    } as typeof textSizeForm;
+    expect(decodeToolbarInlineFormatFormStateValue(forged, value)).toBeNull();
+
+    let reads = 0;
+    const hostileOptions = new Proxy(field.options, {
+      getOwnPropertyDescriptor() {
+        reads += 1;
+        throw new Error("private option descriptor");
+      },
+    });
+    const hostile = {
+      ...textSizeForm,
+      fields: [{ ...field, options: hostileOptions }],
+    } as typeof textSizeForm;
+    expect(decodeToolbarInlineFormatFormStateValue(hostile, value)).toBeNull();
+    expect(reads).toBeGreaterThan(0);
   });
 
   it("rejects wrong contracts, unsupported states, and extra fields", () => {

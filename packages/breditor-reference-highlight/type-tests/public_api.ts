@@ -36,6 +36,23 @@ import {
   REFERENCE_SHOWCASE_RENDER_MANIFEST,
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
   REFERENCE_TEXT_COLOR_REMOVE_INPUT_JSON,
+  MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8,
+  MAX_REFERENCE_TEXT_SIZE_STEP,
+  MIN_REFERENCE_TEXT_SIZE_STEP,
+  REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_IDS,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
+  REFERENCE_TEXT_SIZE_REMOVE_INPUT_JSON,
   createReferenceColorShowcaseDocument,
   createReferenceColorShowcaseDocumentJson,
   createReferenceFormattingDocument,
@@ -52,6 +69,12 @@ import {
   createReferenceTextColorRemoveInputJson,
   createReferenceTextColorSetInput,
   createReferenceTextColorSetInputJson,
+  createReferenceSizeShowcaseDocument,
+  createReferenceSizeShowcaseDocumentJson,
+  createReferenceTextSizeRemoveInput,
+  createReferenceTextSizeRemoveInputJson,
+  createReferenceTextSizeSetInput,
+  createReferenceTextSizeSetInputJson,
   type ReferenceColorShowcaseDocumentOptions,
   type ReferenceColorShowcaseDocumentV2,
   type ReferenceColorShowcaseFormatV2,
@@ -72,6 +95,18 @@ import {
   type ReferenceShowcaseProfileBootstrap,
   type ReferenceTextColorRemoveInput,
   type ReferenceTextColorSetInput,
+  type ReferenceSizeShowcaseDocumentOptions,
+  type ReferenceSizeShowcaseDocumentV2,
+  type ReferenceSizeShowcaseFormatV2,
+  type ReferenceSizeShowcaseParagraphV2,
+  type ReferenceSizeShowcaseProfileBootstrap,
+  type ReferenceSizeShowcaseTextSizeExtensionBootstrap,
+  type ReferenceSizeShowcaseTextSizeFormatV2,
+  type ReferenceSizeShowcaseTextSizePropertiesV2,
+  type ReferenceSizeShowcaseTextV2,
+  type ReferenceTextSizeRemoveInput,
+  type ReferenceTextSizeSetInput,
+  type ReferenceTextSizeStep,
 } from "../src/index.js";
 
 const formatKind: "example/highlight" = REFERENCE_HIGHLIGHT_IDS.formatKind;
@@ -285,6 +320,116 @@ void sharedTextColorRemoveInputJson;
 void colorShowcaseBootstrap;
 void colorShowcaseTextColorExtension;
 
+const sizeShowcaseMaximumTextBytes: 1_048_576 =
+  MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8;
+const sizeShowcaseMinimumStep: 0 = MIN_REFERENCE_TEXT_SIZE_STEP;
+const sizeShowcaseMaximumStep: 2 = MAX_REFERENCE_TEXT_SIZE_STEP;
+const sizeShowcaseDefaultStep: 1 =
+  REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP;
+const sizeShowcaseStep: ReferenceTextSizeStep = 2;
+const sizeShowcaseSchemaName: "example/size-showcase-editor" =
+  REFERENCE_SIZE_SHOWCASE_IDS.schemaName;
+const sizeShowcaseFormatKind: "example/text-size" =
+  REFERENCE_SIZE_SHOWCASE_IDS.textSizeFormatKind;
+const sizeShowcasePropertyName: "example/text-size-step" =
+  REFERENCE_SIZE_SHOWCASE_IDS.textSizeStepProperty;
+const sizeShowcaseIntentId: "example/set-text-size-intent" =
+  REFERENCE_SIZE_SHOWCASE_IDS.textSizeIntentId;
+const sizeShowcaseLineage: "breditor-react-reference-size-showcase" =
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID;
+const sizeShowcaseBootstrapJson: string =
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON;
+const sizeShowcaseBootstrap: ReferenceSizeShowcaseProfileBootstrap =
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP;
+const sizeShowcaseFingerprint: string =
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT;
+const sizeShowcaseRenderManifest: InlineFormatRenderManifest =
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST;
+const sizeShowcaseToolbarManifest: ToolbarManifest =
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST;
+const sizeShowcaseKeyboardShortcuts: KeyboardShortcutManifest =
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST;
+const sizeShowcaseOptions: ReferenceSizeShowcaseDocumentOptions = {
+  bold: true,
+  italic: true,
+  strikethrough: true,
+  code: true,
+  highlighted: true,
+  link: { href: "https://example.test", openInNewWindow: false },
+  textColor: 0x12_34_56,
+  textSize: sizeShowcaseStep,
+};
+const sizeShowcaseDocument: ReferenceSizeShowcaseDocumentV2 =
+  createReferenceSizeShowcaseDocument("text", sizeShowcaseOptions);
+const sizeShowcaseEmptyDocument: ReferenceSizeShowcaseDocumentV2 =
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT;
+const sizeShowcaseSampleDocument: ReferenceSizeShowcaseDocumentV2 =
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT;
+const sizeShowcaseEmptyDocumentJson: string =
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON;
+const sizeShowcaseSampleDocumentJson: string =
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON;
+const generatedSizeShowcaseDocumentJson: string =
+  createReferenceSizeShowcaseDocumentJson("text", sizeShowcaseOptions);
+const sizeShowcaseParagraph: ReferenceSizeShowcaseParagraphV2 =
+  sizeShowcaseDocument.root.children[0];
+const sizeShowcaseText: ReferenceSizeShowcaseTextV2 | undefined =
+  sizeShowcaseParagraph.children[0];
+const sizeShowcaseTextSizeProperties: ReferenceSizeShowcaseTextSizePropertiesV2 =
+  { "example/text-size-step": 2 };
+const sizeShowcaseTextSizeFormat: ReferenceSizeShowcaseTextSizeFormatV2 = {
+  type: "example/text-size",
+  properties: sizeShowcaseTextSizeProperties,
+};
+const sizeShowcaseFormat: ReferenceSizeShowcaseFormatV2 =
+  sizeShowcaseTextSizeFormat;
+const textSizeSetInput: ReferenceTextSizeSetInput =
+  createReferenceTextSizeSetInput(2);
+const textSizeSetInputJson: string = createReferenceTextSizeSetInputJson(2);
+const textSizeRemoveInput: ReferenceTextSizeRemoveInput =
+  createReferenceTextSizeRemoveInput();
+const textSizeRemoveInputJson: string =
+  createReferenceTextSizeRemoveInputJson();
+const sharedTextSizeRemoveInputJson: string =
+  REFERENCE_TEXT_SIZE_REMOVE_INPUT_JSON;
+const sizeShowcaseTextSizeExtension: ReferenceSizeShowcaseTextSizeExtensionBootstrap =
+  sizeShowcaseBootstrap.extensions[4];
+
+void sizeShowcaseMaximumTextBytes;
+void sizeShowcaseMinimumStep;
+void sizeShowcaseMaximumStep;
+void sizeShowcaseDefaultStep;
+void sizeShowcaseStep;
+void sizeShowcaseSchemaName;
+void sizeShowcaseFormatKind;
+void sizeShowcasePropertyName;
+void sizeShowcaseIntentId;
+void sizeShowcaseLineage;
+void sizeShowcaseBootstrapJson;
+void sizeShowcaseFingerprint;
+void sizeShowcaseRenderManifest;
+void sizeShowcaseToolbarManifest;
+void sizeShowcaseKeyboardShortcuts;
+void sizeShowcaseOptions;
+void sizeShowcaseDocument;
+void sizeShowcaseEmptyDocument;
+void sizeShowcaseSampleDocument;
+void sizeShowcaseEmptyDocumentJson;
+void sizeShowcaseSampleDocumentJson;
+void generatedSizeShowcaseDocumentJson;
+void sizeShowcaseParagraph;
+void sizeShowcaseText;
+void sizeShowcaseTextSizeProperties;
+void sizeShowcaseTextSizeFormat;
+void sizeShowcaseFormat;
+void textSizeSetInput;
+void textSizeSetInputJson;
+void textSizeRemoveInput;
+void textSizeRemoveInputJson;
+void sharedTextSizeRemoveInputJson;
+void sizeShowcaseBootstrap;
+void sizeShowcaseTextSizeExtension;
+
 // @ts-expect-error the helper deliberately supports only whole-run plain/highlighted fixtures
 createReferenceHighlightDocument("text", "strong");
 
@@ -309,11 +454,26 @@ createReferenceColorShowcaseDocument("text", { backgroundColor: 0x12_34_56 });
 // @ts-expect-error typed text-color set input accepts an RGB24 number, not CSS
 createReferenceTextColorSetInput("#123456");
 
+// @ts-expect-error Text Size Showcase values are semantic integer steps, not labels
+createReferenceTextSizeSetInput("large");
+
+// @ts-expect-error Text Size Showcase options admit only the closed 0..2 scale
+createReferenceSizeShowcaseDocument("text", { textSize: 3 });
+
+// @ts-expect-error Text Size Showcase options remain closed to declared formats
+createReferenceSizeShowcaseDocument("text", { fontSize: 2 });
+
 const wrongColorProperties: ReferenceColorShowcaseTextColorPropertiesV2 = {
   // @ts-expect-error the stored text-color property has one exact semantic name
   rgb24: 0x12_34_56,
 };
 void wrongColorProperties;
+
+const wrongSizeProperties: ReferenceSizeShowcaseTextSizePropertiesV2 = {
+  // @ts-expect-error the stored text-size property has one exact semantic name
+  textSizeStep: 2,
+};
+void wrongSizeProperties;
 
 // @ts-expect-error shortcut declarations use physical KeyboardEvent.code values
 const showcaseLogicalKeyChord: PrimaryKeyChord = { key: "b", shift: false };

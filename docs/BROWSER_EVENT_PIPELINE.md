@@ -4,8 +4,8 @@ Status: supported inside the public `0.1.0` runtime for the closed base schema,
 retained by the supported `0.2.0` compiled-profile and intent path, and
 strengthened in `0.3.0-alpha.3` by Rust-atomic close-before command execution;
 the `0.3.0-alpha.6` typed multi-paragraph setter uses the same event protocol;
-the alpha.12 RGB24 typed setter uses that existing programmatic/toolbar route
-and adds no native input translation;
+the alpha.12 RGB24 and alpha.13 Text Size typed setters use that existing
+programmatic/toolbar route and add no native editable-host input translation;
 direct event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
@@ -146,6 +146,13 @@ preserved-selection queue; no `beforeinput` color type, DOM mutation, shortcut,
 or CSS payload is introduced. A collapsed application changes pending typing
 formats under the existing operation-free history-boundary law, while a range
 application produces the existing generic undoable operation.
+
+Alpha.13 has the same boundary. Its native `<select>` belongs to the sibling
+toolbar form, retains native focus and Arrow-key behavior, and submits Apply or
+Reset through the same preserved-selection queue. It introduces no
+`beforeinput` size type, editable-host DOM mutation, typed-value shortcut, CSS
+payload, or Text Size-specific semantic command. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 ## Selection and target ranges
 

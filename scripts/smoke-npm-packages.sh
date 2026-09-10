@@ -84,9 +84,9 @@ printf 'smoke-npm-packages: packing explicitly verified artifacts with lifecycle
     --pack-destination "${tarball_directory}" >/dev/null
 )
 
-readonly browser_tarball="${tarball_directory}/breditor-browser-0.3.0-alpha.12.tgz"
-readonly reference_tarball="${tarball_directory}/breditor-reference-highlight-0.3.0-alpha.12.tgz"
-readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.3.0-alpha.12.tgz"
+readonly browser_tarball="${tarball_directory}/breditor-browser-0.3.0-alpha.13.tgz"
+readonly reference_tarball="${tarball_directory}/breditor-reference-highlight-0.3.0-alpha.13.tgz"
+readonly wasm_tarball="${tarball_directory}/breditor-wasm-0.3.0-alpha.13.tgz"
 [[ -f "${browser_tarball}" ]] || fail "missing @breditor/browser tarball"
 [[ -f "${reference_tarball}" ]] || fail "missing @breditor/reference-highlight tarball"
 [[ -f "${wasm_tarball}" ]] || fail "missing @breditor/wasm tarball"
@@ -106,8 +106,8 @@ assert_archive_size() {
 }
 
 assert_archive_size "@breditor/browser" "${browser_tarball}" 270000
-assert_archive_size "@breditor/reference-highlight" "${reference_tarball}" 28000
-assert_archive_size "@breditor/wasm" "${wasm_tarball}" 522000
+assert_archive_size "@breditor/reference-highlight" "${reference_tarball}" 35000
+assert_archive_size "@breditor/wasm" "${wasm_tarball}" 525000
 
 for archive in "${browser_tarball}" "${reference_tarball}" "${wasm_tarball}"; do
   tar -tzf "${archive}" package/LICENSE-MIT >/dev/null ||
@@ -220,4 +220,4 @@ printf 'smoke-npm-packages: installing into a clean supported-root reference con
     "${reference_consumer_directory}/bundle"
 )
 
-printf 'smoke-npm-packages: isolated and clean-reference import, typecheck, bundle, and real-browser initialization passed.\n'
+printf 'smoke-npm-packages: isolated and clean-reference import, typecheck, bundle, real-browser initialization, and Text Size profile proof passed.\n'

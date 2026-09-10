@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.12` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.13` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
 preserving the ABI-3-era V1/V2 entry points. Alpha.7 added only canonical
@@ -15,6 +15,9 @@ introduces no Wasm member, descriptor field, or durable record generation.
 Alpha.12 applies the existing integer descriptor, typed-intent, state,
 projection, and Session-V3 surfaces to RGB24; its renderer and native picker are
 browser/reference code and add no Wasm member or ABI meaning.
+Alpha.13 applies those same generic integer surfaces to the exhaustive Text
+Size preset domain; `safeIntegerTokenV1` and the native select are likewise
+browser/reference-only and add no Wasm member or ABI meaning.
 Direct raw-handle use remains a narrow advanced integration surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
@@ -24,15 +27,15 @@ distribution source. Its reviewed `wasm-bindgen` output is now the publishable
 packaged and continues to consume structural generated views without an
 import-time dependency on their concrete classes. The separately packaged,
 callback-free `@breditor/reference-highlight` proof now also exports the
-additive `example/color-showcase-editor@1` profile while retaining its established
-Highlight and Formatting exports byte-exact. A clean temporary consumer
+additive `example/size-showcase-editor@1` profile while retaining every earlier
+Highlight, Formatting, Showcase, and Color Showcase export byte-exact. A clean temporary consumer
 installs all three npm tarballs, resolves only package-root imports inside its
 own `node_modules`, initializes the real Wasm module, type-checks, bundles, and
 opens the reference profile in Chromium without workspace paths.
 
-After publication, `@breditor/browser@0.3.0-alpha.12` and
-`@breditor/wasm@0.3.0-alpha.12` must be installed as an exact-version pair. No
-alpha.12 package has been published at this checkpoint; repository development
+After publication, `@breditor/browser@0.3.0-alpha.13` and
+`@breditor/wasm@0.3.0-alpha.13` must be installed as an exact-version pair. No
+alpha.13 package has been published at this checkpoint; repository development
 uses the local workspace/tarball smoke path. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.

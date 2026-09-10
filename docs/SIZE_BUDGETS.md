@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.12` closed-RGB24-text-color checkpoint
+`0.3.0-alpha.13` exhaustive-Text-Size-preset checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -12,16 +12,16 @@ total.
 
 The current release ceilings are deliberately explicit:
 
-- all emitted `@breditor/browser` JavaScript: 1,060,000 bytes;
-- all emitted browser declarations: 264,000 bytes;
-- all emitted `@breditor/reference-highlight` JavaScript: 65,000 bytes;
-- all emitted reference-package declarations: 55,000 bytes;
+- all emitted `@breditor/browser` JavaScript: 1,085,000 bytes;
+- all emitted browser declarations: 276,000 bytes;
+- all emitted `@breditor/reference-highlight` JavaScript: 82,000 bytes;
+- all emitted reference-package declarations: 72,000 bytes;
 - generated Wasm binary: 1,610,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 270,000 bytes;
-- packed `@breditor/reference-highlight` tarball: 28,000 bytes;
-- packed `@breditor/wasm` tarball: 522,000 bytes;
-- reference-application JavaScript: 850,000 raw and 225,000 gzip bytes; and
+- packed `@breditor/reference-highlight` tarball: 35,000 bytes;
+- packed `@breditor/wasm` tarball: 525,000 bytes;
+- reference-application JavaScript: 865,000 raw and 225,000 gzip bytes; and
 - reference-application Wasm: 1,610,000 raw and 452,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
@@ -364,6 +364,37 @@ Wasm tarball, and browser-declaration ceilings remain unchanged; no Rust or
 Wasm executable feature, file-class exemption, code-splitting escape, or
 arbitrary CSS surface was added.
 
+The `0.3.0-alpha.13` checkpoint recalibrates only the artifacts that carry the
+reviewed exhaustive integer-token renderer, native integer-select form, frozen
+Size Showcase profile/fixtures, and eleven-control/eight-recipe demo. Its
+clean-build actual / ceiling measurements are:
+
+- browser-package JavaScript: 1,076,764 / 1,085,000 bytes;
+- browser declarations: 270,320 / 276,000 bytes;
+- reference Size Showcase JavaScript: 77,808 / 82,000 bytes;
+- reference Size Showcase declarations: 67,167 / 72,000 bytes;
+- generated Wasm: 1,607,767 / 1,610,000 bytes;
+- generated Wasm JavaScript glue: 52,572 / 100,000 bytes;
+- reference-application JavaScript: 857,056 / 865,000 raw bytes and
+  223,236 / 225,000 level-9-gzip bytes;
+- reference-application Wasm: 1,607,767 / 1,610,000 raw bytes and
+  450,656 / 452,000 level-9-gzip bytes;
+- packed browser package: 264,496 / 270,000 bytes;
+- packed reference Size Showcase package: 32,042 / 35,000 bytes; and
+- packed Wasm package: 521,662 / 525,000 bytes.
+
+Browser JavaScript/declaration ceilings move for the closed renderer-policy,
+DOM inverse-admission, form-validation, and native-select modules. Reference
+JavaScript/declaration and tarball ceilings move for the additive profile,
+documents, typed input helpers, and presentation manifests. The eager demo raw
+JavaScript ceiling moves only enough to carry those reviewed features. The
+browser tarball ceiling remains unchanged; its existing headroom covers the
+expanded documentation. Raw/gzip Wasm and glue ceilings remain unchanged
+because alpha.13 adds no Rust production or generated Wasm feature. The Wasm
+tarball ceiling moves narrowly for release metadata/documentation headroom,
+not executable growth. No file-class exemption, code-splitting escape,
+arbitrary attribute/CSS mapping, custom select, or callback registry was added.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -393,7 +424,7 @@ Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
-ceilings, and ABI 5 within the current alpha.12 ceilings listed above.
+ceilings, and ABI 5 within the current alpha.13 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

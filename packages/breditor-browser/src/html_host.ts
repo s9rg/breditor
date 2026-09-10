@@ -57,6 +57,15 @@ interface HtmlInputElementIntrinsics {
   readonly setIndeterminate: NativeSetter;
 }
 
+interface HtmlSelectElementIntrinsics {
+  readonly value: NativeGetter;
+  readonly setValue: NativeSetter;
+}
+
+interface HtmlOptionElementIntrinsics {
+  readonly value: NativeGetter;
+}
+
 interface DocumentIntrinsics {
   readonly activeElement: NativeGetter;
   readonly defaultView: NativeGetter;
@@ -105,6 +114,12 @@ let capturedDomIntrinsics: DomIntrinsics | undefined;
 let capturedHtmlElementFocusIntrinsics: HtmlElementFocusIntrinsics | undefined;
 let capturedHtmlInputElementIntrinsics:
   | HtmlInputElementIntrinsics
+  | undefined;
+let capturedHtmlSelectElementIntrinsics:
+  | HtmlSelectElementIntrinsics
+  | undefined;
+let capturedHtmlOptionElementIntrinsics:
+  | HtmlOptionElementIntrinsics
   | undefined;
 let capturedDocumentIntrinsics: DocumentIntrinsics | undefined;
 let capturedDocumentFragmentIntrinsics:
@@ -528,6 +543,40 @@ export function nativeSetInputValue(
   value: string,
 ): void {
   Reflect.apply(inputElementIntrinsics(input).setValue, input, [value]);
+}
+
+/** Reads a real select's string value through its realm's native accessor. */
+export function nativeSelectValue(select: HTMLSelectElement): string {
+  const value = Reflect.apply(
+    selectElementIntrinsics(select).value,
+    select,
+    [],
+  ) as unknown;
+  if (typeof value !== "string") {
+    throw new TypeError("DOM select value is invalid");
+  }
+  return value;
+}
+
+/** Writes a real select's string value through its realm's native accessor. */
+export function nativeSetSelectValue(
+  select: HTMLSelectElement,
+  value: string,
+): void {
+  Reflect.apply(selectElementIntrinsics(select).setValue, select, [value]);
+}
+
+/** Reads a real option's string value through its realm's native accessor. */
+export function nativeOptionValue(option: HTMLOptionElement): string {
+  const value = Reflect.apply(
+    optionElementIntrinsics(option).value,
+    option,
+    [],
+  ) as unknown;
+  if (typeof value !== "string") {
+    throw new TypeError("DOM option value is invalid");
+  }
+  return value;
 }
 
 /** Reads a real input's Boolean checked state through its native accessor. */
@@ -1074,6 +1123,49 @@ function inputElementIntrinsics(
   Reflect.apply(intrinsics.value, input, []);
   Reflect.apply(intrinsics.checked, input, []);
   Reflect.apply(intrinsics.indeterminate, input, []);
+  return intrinsics;
+}
+
+function selectElementIntrinsics(
+  select: HTMLSelectElement,
+): HtmlSelectElementIntrinsics {
+  let intrinsics = capturedHtmlSelectElementIntrinsics;
+  if (intrinsics === undefined) {
+    const prototype =
+      typeof HTMLSelectElement === "function"
+        ? HTMLSelectElement.prototype
+        : undefined;
+    const value = getter(prototype, "value");
+    const setValue = setter(prototype, "value");
+    if (value === undefined || setValue === undefined) {
+      throw new TypeError("DOM select is invalid");
+    }
+    intrinsics = Object.freeze({ value, setValue });
+    capturedHtmlSelectElementIntrinsics = intrinsics;
+  }
+  // Run the platform brand check every time and ignore own/prototype shadows.
+  Reflect.apply(intrinsics.value, select, []);
+  return intrinsics;
+}
+
+function optionElementIntrinsics(
+  option: HTMLOptionElement,
+): HtmlOptionElementIntrinsics {
+  let intrinsics = capturedHtmlOptionElementIntrinsics;
+  if (intrinsics === undefined) {
+    const prototype =
+      typeof HTMLOptionElement === "function"
+        ? HTMLOptionElement.prototype
+        : undefined;
+    const value = getter(prototype, "value");
+    if (value === undefined) {
+      throw new TypeError("DOM option is invalid");
+    }
+    intrinsics = Object.freeze({ value });
+    capturedHtmlOptionElementIntrinsics = intrinsics;
+  }
+  // Run the platform brand check every time and ignore own/prototype shadows.
+  Reflect.apply(intrinsics.value, option, []);
   return intrinsics;
 }
 

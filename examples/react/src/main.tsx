@@ -20,9 +20,9 @@ createRoot(root).render(
         <h1>Breditor</h1>
         <p className="hero-copy">
           A small, real browser editor built on a typed document tree and
-          semantic commands. This page runs a complete ten-control formatting
+          semantic commands. This page runs a complete eleven-control formatting
           showcase through the Rust core, including Highlight, safe Link,
-          RGB24 text color, and Clear formatting.
+          bounded Text size, RGB24 text color, and Clear formatting.
         </p>
       </header>
 
@@ -34,9 +34,9 @@ createRoot(root).render(
           </div>
           <p>
             Select some text, then combine Bold, Italic, Strikethrough, Code,
-            Highlight, Text color, or the Link form—or clear the complete
-            inline format set in one step. Undo and Redo replay the same
-            semantic operations through the Rust-owned editor state.
+            Highlight, Text size, Text color, or the Link form—or clear the
+            complete inline format set in one step. Undo and Redo replay the
+            same semantic operations through the Rust-owned editor state.
           </p>
         </div>
 
@@ -48,8 +48,8 @@ createRoot(root).render(
         <aside className="demo-hints" aria-label="Demo tips">
           <p>
             <span className="hint-number">01</span>
-            Select a range, choose a text color, or enter an HTTPS URL and
-            apply a safe Link.
+            Select a range, choose a size preset and text color, or enter an
+            HTTPS URL and apply a safe Link.
           </p>
           <p>
             <span className="hint-number">02</span>
@@ -68,8 +68,8 @@ createRoot(root).render(
 
       <footer className="architecture-note">
         React owns the frame and empty mounts. Breditor owns the declarative
-        toolbar, typed Link and RGB24 forms, and editable DOM. The canonical
-        document AST and history live behind the WebAssembly boundary.
+        toolbar, typed Link, Text Size, and RGB24 forms, and editable DOM. The
+        canonical document AST and history live behind the WebAssembly boundary.
       </footer>
     </main>
   </StrictMode>,

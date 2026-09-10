@@ -18,15 +18,16 @@ import {
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
 import {
-  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
-  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
-  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
-  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
-  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
-const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-color-showcase.v1";
+const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-size-showcase.v1";
 
 let wasmInitialization: Promise<unknown> | undefined;
 
@@ -352,17 +353,17 @@ export const BreditorEditor = forwardRef<
           label,
           wasm: breditorWasm,
           initialDocument: {
-            lineageId: "breditor-react-reference-color-showcase",
-            documentJson: REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+            lineageId: REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+            documentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
             historyCapacity: 100,
           },
           semanticProfile: {
-            bootstrapJson: REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+            bootstrapJson: REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
             formatVersion: 2,
           },
-          rendering: REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+          rendering: REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
           keyboardShortcuts:
-            REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+            REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
           keyboard: {
             editing: "beforeinputPrimary",
             primaryModifier,
@@ -370,7 +371,7 @@ export const BreditorEditor = forwardRef<
           },
           toolbar: {
             host: toolbarHost,
-            manifest: REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
+            manifest: REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
           },
           persistence: {
             indexedDB: window.indexedDB,
@@ -493,7 +494,9 @@ export const BreditorEditor = forwardRef<
           ? persistenceRetryFailed && pausedPersistence !== undefined
             ? "Autosave remains paused; the retry did not complete."
             : persistenceMessage(snapshot.persistence)
-          : `Editor state: ${snapshot.status.phase}`;
+          : snapshot.status.phase === "faulted"
+            ? `Editor state: faulted (${snapshot.status.reason}).`
+            : `Editor state: ${snapshot.status.phase}`;
 
   return (
     <section

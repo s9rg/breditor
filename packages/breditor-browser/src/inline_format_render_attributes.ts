@@ -20,6 +20,20 @@ export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM = 0;
 export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM = 0xff_ffff;
 export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS = "breditor-text-color";
 
+/** Maximum entries retained by one safe integer-token policy. */
+export const MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES = 32;
+
+/**
+ * Maximum lowercase-ASCII characters in one emitted integer token.
+ *
+ * This deliberately matches the static render-manifest class-token ceiling.
+ */
+export const MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ASCII = 64;
+
+/** The sole DOM attribute emitted by `safeIntegerTokenV1`. */
+export const INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE =
+  "data-breditor-integer-token";
+
 /** Closed attribute policy for one schema-declared link format. */
 export interface InlineFormatRenderSafeLinkV1Policy {
   readonly kind: "safeLinkV1";
@@ -32,19 +46,45 @@ export interface InlineFormatRenderSafeTextColorV1Policy {
   readonly kind: "safeTextColorV1";
 }
 
+/** One integer-to-inert-token entry in a closed renderer policy. */
+export interface InlineFormatRenderSafeIntegerTokenV1Entry {
+  readonly value: number;
+  readonly token: string;
+}
+
+/** Closed, exhaustive rendering policy for one bounded integer property. */
+export interface InlineFormatRenderSafeIntegerTokenV1Policy {
+  readonly kind: "safeIntegerTokenV1";
+  readonly propertyName: string;
+  readonly tokens: readonly InlineFormatRenderSafeIntegerTokenV1Entry[];
+}
+
 /** Closed browser-owned attribute policies admitted by render recipes. */
 export type InlineFormatRenderAttributePolicy =
   | InlineFormatRenderSafeLinkV1Policy
-  | InlineFormatRenderSafeTextColorV1Policy;
+  | InlineFormatRenderSafeTextColorV1Policy
+  | InlineFormatRenderSafeIntegerTokenV1Policy;
+
+/** Prevalidated fields retained only for detached, frozen policies we create. */
+const SAFE_INTEGER_TOKEN_POLICY_FIELDS = new WeakMap<
+  object,
+  SafeIntegerTokenPolicyFields
+>();
 
 /** One canonical browser-derived DOM attribute emitted by a closed policy. */
 export interface InlineFormatRenderAttribute {
-  readonly name: "href" | "rel" | "style" | "target";
+  readonly name:
+    | "data-breditor-integer-token"
+    | "href"
+    | "rel"
+    | "style"
+    | "target";
   readonly value: string;
 }
 
 const EMPTY_ATTRIBUTES: readonly InlineFormatRenderAttribute[] = Object.freeze([]);
 const QUALIFIED_NAME = /^[a-z][a-z0-9._-]*\/[a-z][a-z0-9._-]*$/u;
+const INTEGER_TOKEN = /^[a-z][a-z0-9_-]*$/u;
 const MAX_QUALIFIED_NAME_ASCII = 128;
 const ARRAY_IS_ARRAY = Array.isArray;
 const OWN_KEYS = Reflect.ownKeys;
@@ -91,6 +131,26 @@ export function createInlineFormatRenderAttributePolicy(
     }
     return Object.freeze({ kind: policyKind });
   }
+  if (policyKind === "safeIntegerTokenV1") {
+    const record = readExactDataRecord(
+      value,
+      ["kind", "propertyName", "tokens"],
+      "inline-format render attribute policy",
+    );
+    const propertyName = record["propertyName"];
+    if (!isQualifiedName(propertyName)) {
+      throw new TypeError(
+        "inline-format render attribute policy property name is invalid",
+      );
+    }
+    const tokens = snapshotSafeIntegerTokenEntries(record["tokens"]);
+    const policy = Object.freeze({ kind: policyKind, propertyName, tokens });
+    SAFE_INTEGER_TOKEN_POLICY_FIELDS.set(
+      policy,
+      Object.freeze({ propertyName, tokens }),
+    );
+    return policy;
+  }
   const record = readExactDataRecord(
     value,
     ["kind", "hrefProperty", "openInNewWindowProperty"],
@@ -134,6 +194,10 @@ export function inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
   try {
     if (isExactSafeTextColorV1Policy(policy)) {
       return formatMatchesSafeTextColorV1(format);
+    }
+    const integerToken = safeIntegerTokenPolicyFields(policy);
+    if (integerToken !== null) {
+      return formatMatchesSafeIntegerTokenV1(format, integerToken);
     }
     const fields = safeLinkPolicyFields(policy);
     if (fields === null) return false;
@@ -204,6 +268,31 @@ export function resolveInlineFormatRenderAttributes(
         ? EMPTY_ATTRIBUTES
         : Object.freeze([
           Object.freeze({ name: "style" as const, value: style }),
+        ]);
+    }
+    const integerToken = safeIntegerTokenPolicyFields(policy);
+    if (integerToken !== null) {
+      const propertyCount = exactDenseArrayLength(
+        properties,
+        MAX_BROWSER_PROFILE_PROPERTIES_PER_FORMAT,
+      );
+      if (propertyCount !== 1) return EMPTY_ATTRIBUTES;
+      const property = ownArrayValue(properties, 0);
+      if (
+        !hasExactOwnDataKeys(property, ["name", "value"]) ||
+        ownDataValue(property, "name") !== integerToken.propertyName
+      ) {
+        return EMPTY_ATTRIBUTES;
+      }
+      const value = ownDataValue(property, "value");
+      const token = safeIntegerTokenForValue(integerToken, value);
+      return token === null
+        ? EMPTY_ATTRIBUTES
+        : Object.freeze([
+          Object.freeze({
+            name: INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE,
+            value: token,
+          }),
         ]);
     }
     const fields = safeLinkPolicyFields(policy);
@@ -300,6 +389,22 @@ export function inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(
   }
 }
 
+/** Checks the sole policy-declared token attribute. @internal */
+export function inlineFormatRenderAttributesAreCanonicalSafeIntegerTokenV1(
+  policy: InlineFormatRenderSafeIntegerTokenV1Policy,
+  value: unknown,
+): value is readonly InlineFormatRenderAttribute[] {
+  try {
+    const fields = safeIntegerTokenPolicyFields(policy);
+    if (fields === null || exactDenseArrayLength(value, 1) !== 1) return false;
+    const attribute = readExactRenderAttribute(ownArrayValue(value, 0));
+    return attribute?.name === INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE &&
+      fields.tokens.some(({ token }) => token === attribute.value);
+  } catch {
+    return false;
+  }
+}
+
 /** Dispatches inverse attribute admission through one exact closed policy. @internal */
 export function inlineFormatRenderAttributesAreCanonicalForPolicy(
   policy: InlineFormatRenderAttributePolicy,
@@ -308,6 +413,12 @@ export function inlineFormatRenderAttributesAreCanonicalForPolicy(
   try {
     if (isExactSafeTextColorV1Policy(policy)) {
       return inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(value);
+    }
+    if (ownDataValue(policy, "kind") === "safeIntegerTokenV1") {
+      return inlineFormatRenderAttributesAreCanonicalSafeIntegerTokenV1(
+        policy as InlineFormatRenderSafeIntegerTokenV1Policy,
+        value,
+      );
     }
     return safeLinkPolicyFields(policy) !== null &&
       inlineFormatRenderAttributesAreCanonicalSafeLinkV1(value);
@@ -319,6 +430,11 @@ export function inlineFormatRenderAttributesAreCanonicalForPolicy(
 interface SafeLinkPolicyFields {
   readonly hrefProperty: string;
   readonly openInNewWindowProperty: string;
+}
+
+interface SafeIntegerTokenPolicyFields {
+  readonly propertyName: string;
+  readonly tokens: readonly InlineFormatRenderSafeIntegerTokenV1Entry[];
 }
 
 const ABSENT_OR_DUPLICATE = Symbol("absent or duplicate property");
@@ -344,6 +460,101 @@ function isExactSafeTextColorV1Policy(
 ): policy is InlineFormatRenderSafeTextColorV1Policy {
   return hasExactOwnDataKeys(policy, ["kind"]) &&
     ownDataValue(policy, "kind") === "safeTextColorV1";
+}
+
+function safeIntegerTokenPolicyFields(
+  policy: InlineFormatRenderAttributePolicy,
+): SafeIntegerTokenPolicyFields | null {
+  if (typeof policy === "object" && policy !== null) {
+    const cached = SAFE_INTEGER_TOKEN_POLICY_FIELDS.get(policy);
+    if (cached !== undefined) return cached;
+  }
+  if (
+    !hasExactOwnDataKeys(policy, ["kind", "propertyName", "tokens"]) ||
+    ownDataValue(policy, "kind") !== "safeIntegerTokenV1"
+  ) {
+    return null;
+  }
+  const propertyName = ownDataValue(policy, "propertyName");
+  const tokens = ownDataValue(policy, "tokens");
+  if (!isQualifiedName(propertyName)) return null;
+  const length = exactDenseArrayLength(
+    tokens,
+    MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES,
+  );
+  if (length === null || length === 0) return null;
+  let previousValue: number | null = null;
+  const seenTokens = new Set<string>();
+  const entries: InlineFormatRenderSafeIntegerTokenV1Entry[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const entry = ownArrayValue(tokens, index);
+    if (!hasExactOwnDataKeys(entry, ["value", "token"])) return null;
+    const value = ownDataValue(entry, "value");
+    const token = ownDataValue(entry, "token");
+    if (
+      !isSafeInteger(value) ||
+      !isIntegerToken(token) ||
+      seenTokens.has(token) ||
+      (previousValue !== null && value !== previousValue + 1)
+    ) {
+      return null;
+    }
+    seenTokens.add(token);
+    previousValue = value;
+    entries.push({ value, token });
+  }
+  return { propertyName, tokens: entries };
+}
+
+function formatMatchesSafeIntegerTokenV1(
+  format: BrowserProfileFormatDescriptor,
+  policy: SafeIntegerTokenPolicyFields,
+): boolean {
+  if (!hasExactOwnDataKeys(format, ["kind", "revision", "properties"])) {
+    return false;
+  }
+  const kind = ownDataValue(format, "kind");
+  const revision = ownDataValue(format, "revision");
+  if (
+    !isQualifiedName(kind) ||
+    typeof revision !== "number" ||
+    !NUMBER_IS_SAFE_INTEGER(revision) ||
+    OBJECT_IS(revision, -0) ||
+    revision < 1 ||
+    revision > 0xffff_ffff
+  ) {
+    return false;
+  }
+  const properties = ownDataValue(format, "properties");
+  if (exactDenseArrayLength(properties, 1) !== 1) return false;
+  const property = ownArrayValue(properties, 0);
+  if (
+    !hasExactOwnDataKeys(property, ["name", "presence", "valueType"]) ||
+    ownDataValue(property, "name") !== policy.propertyName ||
+    ownDataValue(property, "presence") !== "required"
+  ) {
+    return false;
+  }
+  const valueType = ownDataValue(property, "valueType");
+  const first = policy.tokens[0];
+  const last = policy.tokens[policy.tokens.length - 1];
+  return first !== undefined &&
+    last !== undefined &&
+    hasExactOwnDataKeys(valueType, ["kind", "minimum", "maximum"]) &&
+    ownDataValue(valueType, "kind") === "integer" &&
+    ownDataValue(valueType, "minimum") === first.value &&
+    ownDataValue(valueType, "maximum") === last.value;
+}
+
+function safeIntegerTokenForValue(
+  policy: SafeIntegerTokenPolicyFields,
+  value: unknown,
+): string | null {
+  if (!isSafeInteger(value)) return null;
+  for (const entry of policy.tokens) {
+    if (entry.value === value) return entry.token;
+  }
+  return null;
 }
 
 function formatMatchesSafeTextColorV1(
@@ -428,7 +639,8 @@ function readExactRenderAttribute(
   }
   const name = ownDataValue(value, "name");
   const attributeValue = ownDataValue(value, "value");
-  return (name === "href" || name === "rel" || name === "style" ||
+  return (name === INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE ||
+      name === "href" || name === "rel" || name === "style" ||
       name === "target") &&
       typeof attributeValue === "string"
     ? { name, value: attributeValue }
@@ -740,6 +952,107 @@ function isQualifiedName(value: unknown): value is string {
   return typeof value === "string" &&
     value.length <= MAX_QUALIFIED_NAME_ASCII &&
     QUALIFIED_NAME.test(value);
+}
+
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === "number" &&
+    NUMBER_IS_SAFE_INTEGER(value) &&
+    !OBJECT_IS(value, -0);
+}
+
+function isIntegerToken(value: unknown): value is string {
+  return typeof value === "string" &&
+    value.length <= MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ASCII &&
+    INTEGER_TOKEN.test(value);
+}
+
+function snapshotSafeIntegerTokenEntries(
+  value: unknown,
+): readonly InlineFormatRenderSafeIntegerTokenV1Entry[] {
+  let isArray = false;
+  try {
+    isArray = ARRAY_IS_ARRAY(value);
+  } catch {
+    throw new TypeError("inline-format render integer tokens must be an array");
+  }
+  if (!isArray) {
+    throw new TypeError("inline-format render integer tokens must be an array");
+  }
+  const source = value as unknown[];
+  const lengthDescriptor = ownPropertyDescriptor(
+    source,
+    "length",
+    "inline-format render integer tokens",
+  );
+  if (
+    lengthDescriptor === undefined ||
+    !("value" in lengthDescriptor) ||
+    !isSafeInteger(lengthDescriptor.value) ||
+    lengthDescriptor.value < 1 ||
+    lengthDescriptor.value > MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES
+  ) {
+    throw new RangeError(
+      "inline-format render integer tokens violate their fixed bound",
+    );
+  }
+  const length = lengthDescriptor.value;
+  const keys = ownKeys(source, "inline-format render integer tokens");
+  if (keys.length !== length + 1 || !keys.includes("length")) {
+    throw new TypeError(
+      "inline-format render integer tokens must be a dense exact array",
+    );
+  }
+
+  let previousValue: number | null = null;
+  const seenTokens = new Set<string>();
+  const tokens: InlineFormatRenderSafeIntegerTokenV1Entry[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const key = String(index);
+    if (!keys.includes(key)) {
+      throw new TypeError(
+        "inline-format render integer tokens must be a dense exact array",
+      );
+    }
+    const entryDescriptor = ownPropertyDescriptor(
+      source,
+      key,
+      "inline-format render integer tokens",
+    );
+    if (entryDescriptor === undefined || !("value" in entryDescriptor)) {
+      throw new TypeError(
+        "inline-format render integer token entries must be own data properties",
+      );
+    }
+    const entry = readExactDataRecord(
+      entryDescriptor.value,
+      ["value", "token"],
+      "inline-format render integer token entry",
+    );
+    const integerValue = entry["value"];
+    const token = entry["token"];
+    if (!isSafeInteger(integerValue)) {
+      throw new TypeError(
+        "inline-format render integer token value is invalid",
+      );
+    }
+    if (!isIntegerToken(token)) {
+      throw new TypeError(
+        "inline-format render integer token is invalid",
+      );
+    }
+    if (
+      (previousValue !== null && integerValue !== previousValue + 1) ||
+      seenTokens.has(token)
+    ) {
+      throw new TypeError(
+        "inline-format render integer tokens must be contiguous and unique",
+      );
+    }
+    previousValue = integerValue;
+    seenTokens.add(token);
+    tokens.push(Object.freeze({ value: integerValue, token }));
+  }
+  return Object.freeze(tokens);
 }
 
 function readExactDataRecord(

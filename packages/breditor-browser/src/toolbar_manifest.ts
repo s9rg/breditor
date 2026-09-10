@@ -4,6 +4,16 @@ import {
   browserCommandTextIsAdmissible,
 } from "./editor_command.js";
 import { isToolbarInlineFormatRgb24Integer } from "./toolbar_inline_format_rgb24.js";
+import {
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS,
+  snapshotToolbarInlineFormatIntegerSelect,
+} from "./toolbar_inline_format_integer_select.js";
+
+export {
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_LABEL_UTF16,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_LABEL_UTF8,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS,
+} from "./toolbar_inline_format_integer_select.js";
 
 /** Minimum controls admitted by one presentation manifest. */
 export const MIN_TOOLBAR_CONTROLS = 1;
@@ -111,11 +121,30 @@ export interface ToolbarInlineFormatFormIntegerFieldDeclaration {
   readonly defaultValue: number;
 }
 
+/** One labeled value in an exhaustive bounded integer select. */
+export interface ToolbarInlineFormatFormIntegerSelectOptionDeclaration {
+  readonly value: number;
+  readonly label: string;
+}
+
+/** Required bounded integer property presented by one native select. */
+export interface ToolbarInlineFormatFormIntegerSelectFieldDeclaration {
+  readonly kind: "integer";
+  readonly propertyName: string;
+  readonly label: string;
+  readonly presentation: "select";
+  readonly minimum: number;
+  readonly maximum: number;
+  readonly defaultValue: number;
+  readonly options: readonly ToolbarInlineFormatFormIntegerSelectOptionDeclaration[];
+}
+
 /** Closed field vocabulary supported by the inline-format form. */
 export type ToolbarInlineFormatFormFieldDeclaration =
   | ToolbarInlineFormatFormStringFieldDeclaration
   | ToolbarInlineFormatFormBooleanFieldDeclaration
-  | ToolbarInlineFormatFormIntegerFieldDeclaration;
+  | ToolbarInlineFormatFormIntegerFieldDeclaration
+  | ToolbarInlineFormatFormIntegerSelectFieldDeclaration;
 
 /** Callback-free, runtime-rendered form for one property-aware inline format. */
 export interface ToolbarInlineFormatFormDeclaration {
@@ -136,8 +165,7 @@ export interface ToolbarInlineFormatFormDeclaration {
 
 /** One closed runtime-rendered toolbar control declaration. */
 export type ToolbarControlDeclaration =
-  | ToolbarButtonDeclaration
-  | ToolbarInlineFormatFormDeclaration;
+  ToolbarButtonDeclaration | ToolbarInlineFormatFormDeclaration;
 
 /** Immutable, bounded toolbar presentation data with no executable members. */
 export interface ToolbarManifest {
@@ -250,8 +278,7 @@ export function createToolbarManifest(value: unknown): ToolbarManifest {
       );
       inlineFormatFormFieldCount += safeForm.fields.length;
       if (
-        inlineFormatFormFieldCount >
-        MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL
+        inlineFormatFormFieldCount > MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL
       ) {
         throw new RangeError(
           "toolbar inline-format form field count is outside its fixed aggregate bound",
@@ -336,10 +363,14 @@ function snapshotInlineFormatForm(
     "toolbar inline-format form close label",
   );
   if (!validQualifiedName(formatKind)) {
-    throw new TypeError("toolbar inline-format form format identity is invalid");
+    throw new TypeError(
+      "toolbar inline-format form format identity is invalid",
+    );
   }
   if (!validQualifiedName(intentId)) {
-    throw new TypeError("toolbar inline-format form intent identity is invalid");
+    throw new TypeError(
+      "toolbar inline-format form intent identity is invalid",
+    );
   }
   if (
     !validLabel(applyLabel) ||
@@ -395,7 +426,7 @@ function snapshotInlineFormatForm(
   }
   if (!hasValuePresentation) {
     throw new TypeError(
-      "toolbar inline-format form requires a URL or RGB24 value field",
+      "toolbar inline-format form requires a URL, RGB24, or integer select value field",
     );
   }
 
@@ -433,7 +464,9 @@ function snapshotInlineFormatFormField(
     "toolbar inline-format form field label",
   );
   if (!validQualifiedName(propertyName)) {
-    throw new TypeError("toolbar inline-format form property identity is invalid");
+    throw new TypeError(
+      "toolbar inline-format form property identity is invalid",
+    );
   }
   if (!validLabel(label)) {
     throw new TypeError("toolbar inline-format form field label is invalid");
@@ -446,7 +479,9 @@ function snapshotInlineFormatFormField(
       "toolbar inline-format form Boolean default",
     );
     if (defaultValue !== false) {
-      throw new TypeError("toolbar inline-format form Boolean default is invalid");
+      throw new TypeError(
+        "toolbar inline-format form Boolean default is invalid",
+      );
     }
     return Object.freeze({ kind, propertyName, label, defaultValue });
   }
@@ -471,6 +506,28 @@ function snapshotInlineFormatFormField(
       "defaultValue",
       "toolbar inline-format form integer default",
     );
+    if (presentation === "select") {
+      const selection = snapshotToolbarInlineFormatIntegerSelect(
+        minimum,
+        maximum,
+        defaultValue,
+        requiredOwnDataProperty(
+          field,
+          "options",
+          "toolbar inline-format form integer select options",
+        ),
+      );
+      return Object.freeze({
+        kind,
+        propertyName,
+        label,
+        presentation,
+        minimum: selection.minimum,
+        maximum: selection.maximum,
+        defaultValue: selection.defaultValue,
+        options: selection.options,
+      });
+    }
     if (presentation !== "rgb24") {
       throw new TypeError(
         "toolbar inline-format form integer presentation is invalid",
@@ -528,10 +585,14 @@ function snapshotInlineFormatFormField(
     "toolbar inline-format form string placeholder",
   );
   if (presentation !== "url") {
-    throw new TypeError("toolbar inline-format form string presentation is invalid");
+    throw new TypeError(
+      "toolbar inline-format form string presentation is invalid",
+    );
   }
   if (autocomplete !== "url" && autocomplete !== "off") {
-    throw new TypeError("toolbar inline-format form string autocomplete is invalid");
+    throw new TypeError(
+      "toolbar inline-format form string autocomplete is invalid",
+    );
   }
   if (
     typeof minimumUtf8Bytes !== "number" ||
@@ -547,7 +608,9 @@ function snapshotInlineFormatFormField(
     );
   }
   if (placeholder !== undefined && !validLabel(placeholder)) {
-    throw new TypeError("toolbar inline-format form string placeholder is invalid");
+    throw new TypeError(
+      "toolbar inline-format form string placeholder is invalid",
+    );
   }
   return Object.freeze({
     kind,
@@ -562,9 +625,13 @@ function snapshotInlineFormatFormField(
 }
 
 /** Returns whether a value is a manifest produced by this module. */
-export function isOwnedToolbarManifest(value: unknown): value is ToolbarManifest {
+export function isOwnedToolbarManifest(
+  value: unknown,
+): value is ToolbarManifest {
   try {
-    return typeof value === "object" && value !== null && OWNED_MANIFESTS.has(value);
+    return (
+      typeof value === "object" && value !== null && OWNED_MANIFESTS.has(value)
+    );
   } catch {
     return false;
   }
@@ -655,7 +722,8 @@ function snapshotCommand(value: unknown): ToolbarCommandDeclaration {
     "kind",
     "toolbar action input kind",
   );
-  let input: Readonly<{ kind: "none" }> | Readonly<{ kind: "string"; value: string }>;
+  let input:
+    Readonly<{ kind: "none" }> | Readonly<{ kind: "string"; value: string }>;
   if (inputKind === "none") {
     input = Object.freeze({ kind: "none" });
   } else if (inputKind === "string") {

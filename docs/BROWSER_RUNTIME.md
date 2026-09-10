@@ -2,12 +2,13 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.12` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.13` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
-ten-control Color Showcase profile with descriptor-compiled declarative
-shortcuts and closed RGB24 text-color presentation
+eleven-control Size Showcase profile with descriptor-compiled declarative
+shortcuts, closed RGB24 text-color presentation, and exhaustive Text Size
+integer-token/select presentation
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -128,7 +129,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.12 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.13 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -234,14 +235,26 @@ required integer/`rgb24` `inlineFormatForm` field rendered as native
 color has no shortcut. No Rust or Wasm method changes and ABI 5 remains
 current.
 
+Alpha.13 adds the separate `example/size-showcase-editor@1` source profile with
+fingerprint
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+Its required `example/text-size-step` integer in `0..=2` uses those same
+generic typed-set, state, operation, history, replay, and Session-V3 paths. The
+browser adds `safeIntegerTokenV1`, whose exhaustive dense mapping emits only
+the fixed `data-breditor-integer-token` attribute, plus the exact native
+integer-select field. The demo uses another distinct lineage and persistence
+slot. Text Size has no shortcut. Rust production code, Wasm members, durable
+generations, and ABI 5 remain unchanged. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
+
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.12` packages:
+exactly matching `0.3.0-alpha.13` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.12 \
-  @breditor/wasm@0.3.0-alpha.12 \
-  @breditor/reference-highlight@0.3.0-alpha.12
+npm install @breditor/browser@0.3.0-alpha.13 \
+  @breditor/wasm@0.3.0-alpha.13 \
+  @breditor/reference-highlight@0.3.0-alpha.13
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -863,10 +876,12 @@ exact boundary is in
 An `inlineFormatForm` must correlate its `formatKind`, `intentId`, and
 `stateId` with one ABI-5 set-surface descriptor and exactly cover that format's
 required properties. The closed field vocabulary is a URL-presented string
-with exact profile bounds, a Boolean whose default is `false`, and one exact
+with exact profile bounds, a Boolean whose default is `false`, one exact
 required integer with `presentation: "rgb24"` and fixed
-`0..=16_777_215` bounds. At least one URL string or RGB24 value-presenting
-field is required; a Boolean-only form is rejected. Values are
+`0..=16_777_215` bounds, and one exact required integer with
+`presentation: "select"` plus a dense exhaustive bounded option table. At
+least one URL string, RGB24 field, or integer select is required; a
+Boolean-only form is rejected. Values are
 copied from an exact plain property-name-keyed record; Apply serializes a
 complete lexically ordered property map and Remove serializes only
 `{"operation":"remove"}`. The runtime never treats URL presentation as URL
@@ -891,14 +906,16 @@ Adding real behavior therefore proceeds from the core outward:
    `inlineFormatForm` whose format/intent/state triple and exact field set match
    the descriptor and profile.
 3. Supply a complete render recipe for the admitted format. Property-free
-   formats use an inert wrapper; the only property-aware choices are the exact
-   browser-owned `safeLinkV1` and `safeTextColorV1` policies.
+   formats use an inert wrapper; the property-aware choices are the exact
+   browser-owned `safeLinkV1`, `safeTextColorV1`, and exhaustive
+   `safeIntegerTokenV1` policies.
 4. Supply the toolbar, rendering, and optional shortcut manifests at editor
    startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
-There is no optional or general integer form field, partial property patch,
-arbitrary widget, callback or sequence keymap, extension-defined `beforeinput` rule,
+There is no optional or general free-form integer field, partial property
+patch, arbitrary widget or custom select, callback or sequence keymap,
+extension-defined `beforeinput` rule,
 runtime JavaScript action
 registration, arbitrary callback command, dynamic manifest replacement, plugin
 unload, custom node renderer, or
@@ -906,7 +923,9 @@ stable third-party Wasm plugin ABI in the supported surface. Direct concrete
 action toolbar declarations remain an advanced policy bypass. The alpha.4
 `safeLinkV1` recipe can derive only its closed canonical Link attribute set
 from one exact two-property contract. `safeTextColorV1` derives only
-`style="color:#rrggbb"` from its exact RGB24 contract. Arbitrary attributes,
+`style="color:#rrggbb"` from its exact RGB24 contract.
+`safeIntegerTokenV1` derives one fixed data attribute from an exhaustive
+bounded required-integer/token table. Arbitrary attributes,
 CSS input or other style properties, schemes, callbacks, raw HTML, and
 user-selected `rel` or target values remain unsupported.
 
@@ -1047,6 +1066,14 @@ operating systems. Safe copy can carry the exact canonical style, but paste
 still strips its source value. Applying color at a collapsed caret changes
 pending typing state without a standalone undo entry. Text color has no
 shortcut. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
+Alpha.13 adds one exact exhaustive integer-select control and policy-derived
+Text Size token. The Size Showcase has eight renderer recipes and eleven
+toolbar controls; its outer-to-inner wrapper order is Link, Strong, Emphasis,
+Highlight, Strikethrough, Code, Text Size, Text Color. This is not arbitrary
+CSS, a free-form number input, sparse enum, custom select, callback widget, or
+source-format-preserving paste. Host CSS owns the visual ratios, and Text Size
+has no shortcut. See [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

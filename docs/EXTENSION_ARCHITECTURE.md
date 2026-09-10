@@ -3,7 +3,7 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.12` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.13` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
@@ -17,11 +17,15 @@ browser-owned declarative shortcut manifest compiled through existing
 action-state descriptors, and projects that same checked table as toolbar
 `aria-keyshortcuts`. Alpha.12 adds a second closed property presentation:
 opaque RGB24 text color through the existing typed-set semantics, one exact
-browser-owned renderer policy, and one exact native integer field. It
+browser-owned renderer policy, and one exact native integer field. Alpha.13
+adds the reusable but exhaustive `safeIntegerTokenV1` renderer and one native
+integer-select field; the Size Showcase uses them for three semantic Text Size
+presets. It
 does not introduce a generic attribute protocol, arbitrary toolbar widget, or
 extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
-normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md) and
-[`TEXT_COLOR.md`](TEXT_COLOR.md).
+normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md),
+[`TEXT_COLOR.md`](TEXT_COLOR.md), and
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` ships. It complements
@@ -596,7 +600,8 @@ semantic implementation or an executable extension lifecycle.
 The editing DOM is a disposable projection of Rust-owned AST and selection.
 For the `0.2.0` subset, browser render contributions are bounded declarative
 recipes over a fixed safe element vocabulary. Alpha.4 adds one closed
-attribute policy, `safeLinkV1`; neither surface admits DOM callbacks, framework
+attribute policy, `safeLinkV1`; the later exact `safeTextColorV1` and
+`safeIntegerTokenV1` policies remain equally callback-free. None admits framework
 components, arbitrary element constructors, or HTML strings.
 
 At browser startup, the combined built-in and extension presentation set must
@@ -1061,6 +1066,44 @@ and native picker UX varies. A collapsed pending-color edit has no standalone
 undo entry under the existing generic set-action history law. The normative
 details are in [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
+## `0.3.0-alpha.13` exhaustive integer-token and select presentation
+
+Alpha.13 exercises the same integer/property/setter architecture without a
+feature-specific Rust action. Its new `example/size-showcase-editor@1` profile
+retains every Color Showcase declaration and adds
+`example/text-size-extension@1`, `example/text-size@1`, and exactly one
+required `example/text-size-step` integer in `0..=2`. The generic compiler
+produces `example/set-text-size`, `example/set-text-size-intent`,
+`example/set-text-size-binding`, and `example/text-size-presence`. The
+compiler-emitted durable fingerprint is
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+
+`safeIntegerTokenV1` is reusable only within a closed shape. Its dense 1
+through 32 entry own-data table must use safe, strictly increasing, contiguous,
+unique integer values that exhaust the format property's explicit minimum and
+maximum. Its unique lowercase ASCII tokens can produce only the fixed
+`data-breditor-integer-token` attribute on a `span` with exactly one static
+class. It does not accept callbacks, document-owned attributes, CSS text, or a
+partial mapping. DOM drift, composition, semantic copy, and clipboard
+admission share the same inverse policy.
+
+The matching integer `presentation: "select"` field also requires a dense,
+ordered, contiguous, exhaustive option table and a default naming one option.
+The browser builds one native single-select; no placeholder, disabled option,
+optgroup, custom value, or application DOM node is admitted. Apply/Reset,
+uniform hydration, mixed state, selection preservation, queue admission,
+history, and replay reuse the existing typed-form and Rust-owned contracts.
+Text Size adds no shortcut.
+
+The Size Showcase uses Small (`0`), Large (`1`, default), and Huge (`2`), with
+Normal represented by removing the format. It exposes eight formats, nine
+intents, eleven action states, three typed setters, eight renderer recipes, and
+eleven toolbar controls. Its renderer order is Link, Strong, Emphasis,
+Highlight, Strikethrough, Code, Text Size, Text Color. Rust production code,
+Profile Bootstrap V2, Document V2, V3 durable generations, generated Wasm
+members, and ABI 5 remain unchanged. The normative
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md) freezes this slice.
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:
@@ -1068,10 +1111,11 @@ The following are explicitly deferred:
 - a public stable wire codec for extension manifests, unless separately frozen
   after the initial Rust value model proves itself;
 - arbitrary block, inline, leaf, atom, embed, table, or nested editable nodes;
-- property-bearing presentation beyond the exact `safeLinkV1` and
-  `safeTextColorV1` policies, including general DOM attributes, CSS policies,
-  and renderer callbacks; toolbar fields beyond the closed required
-  URL-string/Boolean and exact RGB24 forms;
+- property-bearing presentation beyond the exact `safeLinkV1`,
+  `safeTextColorV1`, and exhaustive `safeIntegerTokenV1` policies, including
+  general DOM attributes, CSS policies, and renderer callbacks; toolbar fields
+  beyond the closed required URL-string/Boolean, exact RGB24, and exhaustive
+  integer-select forms;
 - format exclusions, groups, inclusivity rules, multiple instances, and
   arbitrary normalization;
 - optional peer dependencies, capability selection, extension-version ranges,
@@ -1089,8 +1133,8 @@ The following are explicitly deferred:
   negotiation;
 - package discovery, downloading, registry policy, or permission UI;
 - arbitrary callback or sequence keymaps, typed-input shortcuts,
-  extension-defined `beforeinput` rules, menus, selects, optional or general
-  integer fields, partial property patches, and arbitrary custom toolbar
+  extension-defined `beforeinput` rules, menus, custom/dynamic selects,
+  optional or general free-form integer fields, partial property patches, and arbitrary custom toolbar
   controls;
 - sandboxing browser presentation code supplied by the host;
 - generic HTML fidelity, arbitrary executable portable converters, and a
@@ -1144,8 +1188,9 @@ These are product constraints, not implementation details to conceal:
   different contracts. `0.2.0` makes no generic HTML compatibility promise.
 - Copy can serialize admitted formatting, but paste transports no source
   formatting; inserted text may still inherit target pending/context formats.
-- The extension toolbar surface is an intent-based toggle button; extension
-  keymaps, input rules, menus, selects, and arbitrary controls are not included.
+- The extension toolbar surface includes intent-based toggle buttons and the
+  closed typed forms above; extension keymaps, input rules, menus, custom
+  selects, and arbitrary controls are not included.
 - Collaboration and cross-client extension negotiation are not included.
 - Resource limits can reject a very large manifest set, document, plan, or
   checkpoint even when the abstract content would otherwise be meaningful.
@@ -1229,6 +1274,11 @@ all-inline clearing; alpha.11 settles state-addressed physical shortcut data.
 exact native color field over the existing integer/set-surface path. It does
 not settle general CSS, theming, arbitrary integer widgets, rich paste, a new
 Wasm ABI, or a durable-format generation.
+
+`0.3.0-alpha.13` settles the exhaustive `safeIntegerTokenV1` renderer and
+native integer-select form over that same generic path. It does not settle
+arbitrary attributes, CSS values, sparse enums, custom selects, general number
+inputs, rich paste, a new Wasm ABI, or a durable-format generation.
 
 The following choice remains for a later release and may be settled without
 weakening the decisions above:

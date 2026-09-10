@@ -231,6 +231,17 @@ h1 {
   cursor: pointer;
 }
 
+.toolbar-mount
+  [data-breditor-toolbar-field="integer"]
+  > select[data-breditor-property] {
+  width: auto;
+  min-width: 7rem;
+  padding: 0.42rem 0.58rem;
+  color: #173126;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
 .toolbar-mount [data-breditor-property]:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -318,6 +329,21 @@ h1 {
   color: #204d39;
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 0.9em;
+}
+
+.editor-mount
+  .breditor-text-size[data-breditor-integer-token="small"] {
+  font-size: 0.875em;
+}
+
+.editor-mount
+  .breditor-text-size[data-breditor-integer-token="large"] {
+  font-size: 1.25em;
+}
+
+.editor-mount
+  .breditor-text-size[data-breditor-integer-token="huge"] {
+  font-size: 1.5em;
 }
 
 .editor-footer {

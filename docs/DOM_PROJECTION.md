@@ -3,7 +3,7 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.12` source checkpoint retains alpha.4's closed
+unpublished `0.3.0-alpha.13` source checkpoint retains alpha.4's closed
 property-driven Link presentation and carries it through typed structural
 paragraph edits described below. Alpha.8 current-property transport preserves
 the exact stored string and does not alter this renderer contract. Its native
@@ -17,6 +17,9 @@ Alpha.11 derives toolbar shortcut metadata and keyboard behavior from a
 browser-only compiled table; it adds no document wrapper or projection recipe.
 Alpha.12 adds the second closed property-driven recipe, `safeTextColorV1`,
 without admitting document-owned CSS or a general attribute protocol.
+Alpha.13 adds the reusable but still closed `safeIntegerTokenV1` recipe: one
+exhaustive bounded integer table can derive only the fixed
+`data-breditor-integer-token` attribute on a one-class `span`.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -56,7 +59,8 @@ fingerprint and bind the projection to one checked browser presentation. They
 do not add arbitrary blocks, element properties, entities, or DOM callbacks.
 Alpha.4 permits property-derived attributes only through the closed
 browser-owned `safeLinkV1` recipe. Alpha.12 adds the separately exact
-`safeTextColorV1` recipe; neither is a generic attribute mapping.
+`safeTextColorV1` recipe, and alpha.13 adds the exhaustive
+`safeIntegerTokenV1` recipe; none is a generic attribute mapping.
 
 ## Safe DOM vocabulary
 
@@ -109,6 +113,16 @@ one required integer `example/rgb24` property bounded to
 CSS text crosses from the AST or manifest. Missing, duplicated, additional,
 wrong-kind, or out-of-range values produce no dynamic attribute; noncanonical
 style spelling or any additional attribute fails canonical-DOM checks.
+
+Alpha.13's `safeIntegerTokenV1` wrapper is a `span` with exactly one static
+class and one declared required integer property. Its 1 through 32 own-data
+entries must be safe-integer, strictly increasing, contiguous, unique, and
+exhaustive from the property's explicit minimum through maximum; token strings
+are unique bounded lowercase ASCII identifiers. A valid value emits only
+`data-breditor-integer-token="token"`. Missing, duplicated, additional,
+wrong-kind, or unlisted values emit no dynamic attribute. Any extra attribute,
+undeclared token, widened property contract, accessor, or malformed table
+fails closed. The attribute name, class, and CSS are never document values.
 
 Only the host, paragraph elements, and text nodes are exact AST-backed DOM
 nodes. Presentation wrappers and `<br>` placeholders deliberately have no
@@ -213,10 +227,19 @@ the semantic `FormatSet`'s lexical order. DOM rendering, drift validation,
 composition evidence, and semantic copy all use the same exact derived style.
 The profile and document store the RGB24 integer, not wrapper nesting or CSS.
 
+Alpha.13's Size Showcase inserts Text Size immediately outside Text Color. Its
+complete outer-to-inner order is Link, Strong, Emphasis, Highlight,
+Strikethrough, Code, Text Size, Text Color. The size `span` carries exactly the
+policy-derived `small`, `large`, or `huge` token; host CSS owns the visual
+ratio. The same inverse policy drives DOM drift checks, composition evidence,
+semantic copy, and clipboard admission. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
+
 ## Known limits
 
 - The renderer supports the base-text grammar, fixed property-free recipes,
-  and the exact `safeLinkV1` and `safeTextColorV1` property policies.
+  and the exact `safeLinkV1`, `safeTextColorV1`, and
+  `safeIntegerTokenV1` property policies.
   Arbitrary property-to-attribute or CSS mappings, blocks, structural nesting,
   element properties, entity IDs, callbacks, and application-defined DOM
   renderers are not accepted.
@@ -259,6 +282,14 @@ reconstructs the source RGB24 property. CSP `style-src-attr`, forced-colors
 mode, user styles, or browser settings can suppress or override the visible
 color without changing the semantic projection. Breditor provides no contrast
 guarantee. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
+Known Text Size wrappers are admitted only with the sole fixed
+`data-breditor-integer-token` attribute and one token from the compiled
+exhaustive table. Safe copy may emit it; HTML paste may recognize it but still
+flattens it to plain text and never reconstructs the source integer. Missing
+consumer CSS can make the token visually inert, and differing host ratios do
+not alter the semantic projection. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 The package-level API and development commands are documented in
 `packages/breditor-browser/README.md`.

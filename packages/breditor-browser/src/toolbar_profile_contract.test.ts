@@ -39,21 +39,30 @@ function descriptor(): BrowserCompiledProfileDescriptor {
     formatPropertyIntegerMaximum: () => undefined,
     formatPropertyStringMinimumUtf8Bytes: () => undefined,
     formatPropertyStringMaximumUtf8Bytes: () => undefined,
-    intentId: (index) => index === 0 ? "example/format-strong" : undefined,
-    intentInputKind: (index) => index === 0 ? "none" : undefined,
+    intentId: (index) => (index === 0 ? "example/format-strong" : undefined),
+    intentInputKind: (index) => (index === 0 ? "none" : undefined),
     intentInputContractName: () => undefined,
     intentInputContractVersion: () => undefined,
-    intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    intentActivationContract: (index) => (index === 0 ? "tracked" : undefined),
     intentValueContractName: () => undefined,
     intentValueContractVersion: () => undefined,
     actionStateId: (index) => stateIds[index],
     actionStateSourceKind: (index) =>
-      index === 0 ? "routed" : stateIds[index] === undefined ? undefined : "history",
+      index === 0
+        ? "routed"
+        : stateIds[index] === undefined
+          ? undefined
+          : "history",
     actionStateSourceActionId: () => undefined,
-    actionStateSourceIntentId: (index) => index === 0 ? "example/format-strong" : undefined,
+    actionStateSourceIntentId: (index) =>
+      index === 0 ? "example/format-strong" : undefined,
     actionStateHistoryDirection: (index) => stateDirections[index],
     actionStateActivationContract: (index) =>
-      index === 0 ? "tracked" : stateIds[index] === undefined ? undefined : "stateless",
+      index === 0
+        ? "tracked"
+        : stateIds[index] === undefined
+          ? undefined
+          : "stateless",
     actionStateValueContractName: () => undefined,
     actionStateValueContractVersion: () => undefined,
     inlineFormatSetFormatKind: () => undefined,
@@ -110,9 +119,10 @@ function inlineFormatFormDescriptor(
     intentCount: 1,
     actionStateCount: 1,
     inlineFormatSetCount: includeSet ? 1 : 0,
-    formatKind: (index) => index === 0 ? "example/link" : undefined,
-    formatRevision: (index) => index === 0 ? 1 : undefined,
-    formatPropertyCount: (index) => index === 0 ? properties.length : undefined,
+    formatKind: (index) => (index === 0 ? "example/link" : undefined),
+    formatRevision: (index) => (index === 0 ? 1 : undefined),
+    formatPropertyCount: (index) =>
+      index === 0 ? properties.length : undefined,
     formatPropertyName: (formatIndex, propertyIndex) =>
       formatIndex === 0 ? properties[propertyIndex]?.name : undefined,
     formatPropertyPresence: (formatIndex, propertyIndex) =>
@@ -120,44 +130,41 @@ function inlineFormatFormDescriptor(
     formatPropertyValueType: (formatIndex, propertyIndex) =>
       formatIndex === 0 ? properties[propertyIndex]?.valueType.kind : undefined,
     formatPropertyIntegerMinimum: (formatIndex, propertyIndex) => {
-      const valueType = formatIndex === 0
-        ? properties[propertyIndex]?.valueType
-        : undefined;
+      const valueType =
+        formatIndex === 0 ? properties[propertyIndex]?.valueType : undefined;
       return valueType?.kind === "integer" ? valueType.minimum : undefined;
     },
     formatPropertyIntegerMaximum: (formatIndex, propertyIndex) => {
-      const valueType = formatIndex === 0
-        ? properties[propertyIndex]?.valueType
-        : undefined;
+      const valueType =
+        formatIndex === 0 ? properties[propertyIndex]?.valueType : undefined;
       return valueType?.kind === "integer" ? valueType.maximum : undefined;
     },
     formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) => {
-      const valueType = formatIndex === 0
-        ? properties[propertyIndex]?.valueType
-        : undefined;
+      const valueType =
+        formatIndex === 0 ? properties[propertyIndex]?.valueType : undefined;
       return valueType?.kind === "string"
         ? valueType.minimumUtf8Bytes
         : undefined;
     },
     formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) => {
-      const valueType = formatIndex === 0
-        ? properties[propertyIndex]?.valueType
-        : undefined;
+      const valueType =
+        formatIndex === 0 ? properties[propertyIndex]?.valueType : undefined;
       return valueType?.kind === "string"
         ? valueType.maximumUtf8Bytes
         : undefined;
     },
-    intentId: (index) => index === 0 ? "example/set-link-intent" : undefined,
-    intentInputKind: (index) => index === 0 ? "typed" : undefined,
+    intentId: (index) => (index === 0 ? "example/set-link-intent" : undefined),
+    intentInputKind: (index) => (index === 0 ? "typed" : undefined),
     intentInputContractName: (index) =>
       index === 0 ? "breditor/set-inline-format-input" : undefined,
-    intentInputContractVersion: (index) => index === 0 ? 1 : undefined,
-    intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    intentInputContractVersion: (index) => (index === 0 ? 1 : undefined),
+    intentActivationContract: (index) => (index === 0 ? "tracked" : undefined),
     intentValueContractName: (index) =>
       index === 0 ? "breditor/set-inline-format-input" : undefined,
-    intentValueContractVersion: (index) => index === 0 ? 1 : undefined,
-    actionStateId: (index) => index === 0 ? "example/link-presence" : undefined,
-    actionStateSourceKind: (index) => index === 0 ? "routed" : undefined,
+    intentValueContractVersion: (index) => (index === 0 ? 1 : undefined),
+    actionStateId: (index) =>
+      index === 0 ? "example/link-presence" : undefined,
+    actionStateSourceKind: (index) => (index === 0 ? "routed" : undefined),
     actionStateSourceActionId: () => undefined,
     actionStateSourceIntentId: (index) =>
       index === 0 ? "example/set-link-intent" : undefined,
@@ -166,7 +173,7 @@ function inlineFormatFormDescriptor(
       index === 0 ? "tracked" : undefined,
     actionStateValueContractName: (index) =>
       index === 0 ? "breditor/set-inline-format-input" : undefined,
-    actionStateValueContractVersion: (index) => index === 0 ? 1 : undefined,
+    actionStateValueContractVersion: (index) => (index === 0 ? 1 : undefined),
     inlineFormatSetFormatKind: (index) =>
       includeSet && index === 0 ? "example/link" : undefined,
     inlineFormatSetIntentId: (index) =>
@@ -177,7 +184,8 @@ function inlineFormatFormDescriptor(
     free(): void {},
   };
   const consumed = consumeWasmCompiledProfileDescriptor(generation, view);
-  if (!consumed.ok) throw new Error("inline-format form descriptor fixture failed");
+  if (!consumed.ok)
+    throw new Error("inline-format form descriptor fixture failed");
   return consumed.descriptor;
 }
 
@@ -245,22 +253,39 @@ function inlineFormatFormManifest(
 
 describe("toolbarManifestMatchesProfileDescriptor", () => {
   it("accepts exact no-input routed intents and exact history controls", () => {
-    expect(toolbarManifestMatchesProfileDescriptor(manifest(), descriptor())).toBe(true);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(manifest(), descriptor()),
+    ).toBe(true);
   });
 
   it("rejects foreign values and missing or cross-wired profile entries", () => {
     const profile = descriptor();
     expect(toolbarManifestMatchesProfileDescriptor({}, profile)).toBe(false);
     expect(toolbarManifestMatchesProfileDescriptor(manifest(), {})).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(manifest({
-      stateId: "example/missing",
-    }), profile)).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(manifest({
-      command: { kind: "intent", intentId: "example/missing" },
-    }), profile)).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(manifest({
-      activation: "stateless",
-    }), profile)).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        manifest({
+          stateId: "example/missing",
+        }),
+        profile,
+      ),
+    ).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        manifest({
+          command: { kind: "intent", intentId: "example/missing" },
+        }),
+        profile,
+      ),
+    ).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        manifest({
+          activation: "stateless",
+        }),
+        profile,
+      ),
+    ).toBe(false);
   });
 
   it("keeps direct concrete actions on the advanced-only toolbar path", () => {
@@ -272,14 +297,18 @@ describe("toolbarManifestMatchesProfileDescriptor", () => {
         history: "closeBefore",
       },
     });
-    expect(toolbarManifestMatchesProfileDescriptor(direct, descriptor())).toBe(false);
+    expect(toolbarManifestMatchesProfileDescriptor(direct, descriptor())).toBe(
+      false,
+    );
   });
 
   it("accepts an exact property-aware inline-format set surface", () => {
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(),
-      inlineFormatFormDescriptor(),
-    )).toBe(true);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(),
+        inlineFormatFormDescriptor(),
+      ),
+    ).toBe(true);
   });
 
   it("admits RGB24 only through its explicit exact integer presentation", () => {
@@ -292,97 +321,179 @@ describe("toolbarManifestMatchesProfileDescriptor", () => {
       maximum: 16_777_215,
       defaultValue: 0,
     } as const;
-    const exactProperties: readonly FormProfileProperty[] = [{
-      name: "example/rgb24",
-      presence: "required",
-      valueType: { kind: "integer", minimum: 0, maximum: 16_777_215 },
-    }];
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest([field]),
-      inlineFormatFormDescriptor(exactProperties),
-    )).toBe(true);
+    const exactProperties: readonly FormProfileProperty[] = [
+      {
+        name: "example/rgb24",
+        presence: "required",
+        valueType: { kind: "integer", minimum: 0, maximum: 16_777_215 },
+      },
+    ];
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest([field]),
+        inlineFormatFormDescriptor(exactProperties),
+      ),
+    ).toBe(true);
 
     for (const [minimum, maximum] of [
       [1, 16_777_215],
       [0, 16_777_214],
       [0, 16_777_216],
     ] as const) {
-      expect(toolbarManifestMatchesProfileDescriptor(
+      expect(
+        toolbarManifestMatchesProfileDescriptor(
+          inlineFormatFormManifest([field]),
+          inlineFormatFormDescriptor([
+            {
+              name: "example/rgb24",
+              presence: "required",
+              valueType: { kind: "integer", minimum, maximum },
+            },
+          ]),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  it("admits an exhaustive integer select only against its exact required bounds", () => {
+    const field = {
+      kind: "integer",
+      propertyName: "example/text-size-step",
+      label: "Text size",
+      presentation: "select",
+      minimum: 0,
+      maximum: 2,
+      defaultValue: 1,
+      options: [
+        { value: 0, label: "Small" },
+        { value: 1, label: "Large" },
+        { value: 2, label: "Huge" },
+      ],
+    } as const;
+    const exactProperties: readonly FormProfileProperty[] = [
+      {
+        name: "example/text-size-step",
+        presence: "required",
+        valueType: { kind: "integer", minimum: 0, maximum: 2 },
+      },
+    ];
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
         inlineFormatFormManifest([field]),
-        inlineFormatFormDescriptor([{
-          name: "example/rgb24",
-          presence: "required",
-          valueType: { kind: "integer", minimum, maximum },
-        }]),
-      )).toBe(false);
+        inlineFormatFormDescriptor(exactProperties),
+      ),
+    ).toBe(true);
+
+    for (const property of [
+      {
+        ...exactProperties[0]!,
+        presence: "optional" as const,
+      },
+      {
+        ...exactProperties[0]!,
+        valueType: { kind: "integer" as const, minimum: -1, maximum: 2 },
+      },
+      {
+        ...exactProperties[0]!,
+        valueType: { kind: "integer" as const, minimum: 0, maximum: 3 },
+      },
+      {
+        ...exactProperties[0]!,
+        valueType: {
+          kind: "string" as const,
+          minimumUtf8Bytes: 1,
+          maximumUtf8Bytes: 1,
+        },
+      },
+    ]) {
+      expect(
+        toolbarManifestMatchesProfileDescriptor(
+          inlineFormatFormManifest([field]),
+          inlineFormatFormDescriptor([property]),
+        ),
+      ).toBe(false);
     }
   });
 
   it("requires the same format, typed intent, routed state, and generated set surface", () => {
     const profile = inlineFormatFormDescriptor();
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(undefined, { formatKind: "example/missing" }),
-      profile,
-    )).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(undefined, { intentId: "example/missing" }),
-      profile,
-    )).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(undefined, { stateId: "example/missing" }),
-      profile,
-    )).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(),
-      inlineFormatFormDescriptor(FORM_PROPERTIES, false),
-    )).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(undefined, { formatKind: "example/missing" }),
+        profile,
+      ),
+    ).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(undefined, { intentId: "example/missing" }),
+        profile,
+      ),
+    ).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(undefined, { stateId: "example/missing" }),
+        profile,
+      ),
+    ).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(),
+        inlineFormatFormDescriptor(FORM_PROPERTIES, false),
+      ),
+    ).toBe(false);
   });
 
   it("requires exact complete required string/Boolean property coverage", () => {
     const profile = inlineFormatFormDescriptor();
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest([
-        {
-          kind: "string",
-          propertyName: "example/href",
-          label: "Address",
-          presentation: "url",
-          autocomplete: "url",
-          minimumUtf8Bytes: 1,
-          maximumUtf8Bytes: 2_047,
-        },
-        {
-          kind: "boolean",
-          propertyName: "example/open-in-new-window",
-          label: "Open in new window",
-          defaultValue: false,
-        },
-      ]),
-      profile,
-    )).toBe(false);
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest([
-        {
-          kind: "string",
-          propertyName: "example/href",
-          label: "Address",
-          presentation: "url",
-          autocomplete: "url",
-          minimumUtf8Bytes: 1,
-          maximumUtf8Bytes: 2_048,
-        },
-      ]),
-      profile,
-    )).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest([
+          {
+            kind: "string",
+            propertyName: "example/href",
+            label: "Address",
+            presentation: "url",
+            autocomplete: "url",
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: 2_047,
+          },
+          {
+            kind: "boolean",
+            propertyName: "example/open-in-new-window",
+            label: "Open in new window",
+            defaultValue: false,
+          },
+        ]),
+        profile,
+      ),
+    ).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest([
+          {
+            kind: "string",
+            propertyName: "example/href",
+            label: "Address",
+            presentation: "url",
+            autocomplete: "url",
+            minimumUtf8Bytes: 1,
+            maximumUtf8Bytes: 2_048,
+          },
+        ]),
+        profile,
+      ),
+    ).toBe(false);
 
     const optionalProperties: readonly FormProfileProperty[] = [
       FORM_PROPERTIES[0]!,
       { ...FORM_PROPERTIES[1]!, presence: "optional" },
     ];
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(),
-      inlineFormatFormDescriptor(optionalProperties),
-    )).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(),
+        inlineFormatFormDescriptor(optionalProperties),
+      ),
+    ).toBe(false);
 
     const integerProperties: readonly FormProfileProperty[] = [
       FORM_PROPERTIES[0]!,
@@ -392,9 +503,11 @@ describe("toolbarManifestMatchesProfileDescriptor", () => {
         valueType: { kind: "integer", minimum: 0, maximum: 1 },
       },
     ];
-    expect(toolbarManifestMatchesProfileDescriptor(
-      inlineFormatFormManifest(),
-      inlineFormatFormDescriptor(integerProperties),
-    )).toBe(false);
+    expect(
+      toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest(),
+        inlineFormatFormDescriptor(integerProperties),
+      ),
+    ).toBe(false);
   });
 });

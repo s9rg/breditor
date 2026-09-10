@@ -9,6 +9,10 @@ import {
   type ToolbarInlineFormatFormDeclaration,
 } from "./toolbar_manifest.js";
 import { isToolbarInlineFormatRgb24Integer } from "./toolbar_inline_format_rgb24.js";
+import {
+  isToolbarInlineFormatIntegerSelectValue,
+  snapshotToolbarInlineFormatIntegerSelect,
+} from "./toolbar_inline_format_integer_select.js";
 
 /** Values captured from one typed inline-format form, keyed by property name. */
 export type ToolbarInlineFormatFormValues = Readonly<Record<string, unknown>>;
@@ -40,6 +44,7 @@ type SafeField =
   | Readonly<{ kind: "boolean"; propertyName: string }>
   | Readonly<{
       kind: "integer";
+      presentation: "rgb24" | "select";
       propertyName: string;
       minimum: number;
       maximum: number;
@@ -95,7 +100,15 @@ function createSetInputJson(
     }
 
     if (field.kind === "integer") {
-      if (!isToolbarInlineFormatRgb24Integer(value)) {
+      const valid =
+        field.presentation === "rgb24"
+          ? isToolbarInlineFormatRgb24Integer(value)
+          : isToolbarInlineFormatIntegerSelectValue(
+              value,
+              field.minimum,
+              field.maximum,
+            );
+      if (!valid) {
         if (
           typeof value === "number" &&
           numberIsSafeInteger(value) &&
@@ -105,9 +118,7 @@ function createSetInputJson(
         }
         invalid();
       }
-      properties.push(
-        `{"name":${quote(field.propertyName)},"value":${value}}`,
-      );
+      properties.push(`{"name":${quote(field.propertyName)},"value":${value}}`);
       continue;
     }
 
@@ -170,6 +181,24 @@ function snapshotFields(form: unknown): SafeField[] {
       const minimum = ownDataProperty(rawField, "minimum");
       const maximum = ownDataProperty(rawField, "maximum");
       const defaultValue = ownDataProperty(rawField, "defaultValue");
+      if (presentation === "select") {
+        const selection = snapshotToolbarInlineFormatIntegerSelect(
+          minimum,
+          maximum,
+          defaultValue,
+          ownDataProperty(rawField, "options"),
+        );
+        fields.push(
+          Object.freeze({
+            kind,
+            presentation,
+            propertyName,
+            minimum: selection.minimum,
+            maximum: selection.maximum,
+          }),
+        );
+        continue;
+      }
       if (
         presentation !== "rgb24" ||
         minimum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM ||
@@ -178,10 +207,21 @@ function snapshotFields(form: unknown): SafeField[] {
       ) {
         invalid();
       }
-      fields.push(Object.freeze({ kind, propertyName, minimum, maximum }));
+      fields.push(
+        Object.freeze({
+          kind,
+          presentation,
+          propertyName,
+          minimum,
+          maximum,
+        }),
+      );
       continue;
     }
-    if (kind !== "string" || ownDataProperty(rawField, "presentation") !== "url") {
+    if (
+      kind !== "string" ||
+      ownDataProperty(rawField, "presentation") !== "url"
+    ) {
       invalid();
     }
     const minimumUtf8Bytes = ownDataProperty(rawField, "minimumUtf8Bytes");

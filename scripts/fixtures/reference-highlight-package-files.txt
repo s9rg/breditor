@@ -38,6 +38,16 @@ package/dist/showcase_presentation.d.ts
 package/dist/showcase_presentation.js
 package/dist/showcase_profile.d.ts
 package/dist/showcase_profile.js
+package/dist/size_showcase_documents.d.ts
+package/dist/size_showcase_documents.js
+package/dist/size_showcase_ids.d.ts
+package/dist/size_showcase_ids.js
+package/dist/size_showcase_presentation.d.ts
+package/dist/size_showcase_presentation.js
+package/dist/size_showcase_profile.d.ts
+package/dist/size_showcase_profile.js
 package/dist/text_color_input.d.ts
 package/dist/text_color_input.js
+package/dist/text_size_input.d.ts
+package/dist/text_size_input.js
 package/package.json

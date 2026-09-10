@@ -1,13 +1,21 @@
 import {
+  INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE,
   INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND,
   INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM,
+  MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ASCII,
+  MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES,
   MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_LABEL_UTF16,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_LABEL_UTF8,
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS,
   createInlineFormatRenderManifest,
   createKeyboardShortcutManifest,
   type InlineFormatRenderAttribute,
   type InlineFormatRenderAttributePolicy,
   type InlineFormatRenderManifest,
   type InlineFormatRenderRecipe,
+  type InlineFormatRenderSafeIntegerTokenV1Entry,
+  type InlineFormatRenderSafeIntegerTokenV1Policy,
   type InlineFormatRenderSafeLinkV1Policy,
   type InlineFormatRenderSafeTextColorV1Policy,
   type KeyboardShortcutManifest,
@@ -15,6 +23,8 @@ import {
   TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
   TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
   type ToolbarInlineFormatFormIntegerFieldDeclaration,
+  type ToolbarInlineFormatFormIntegerSelectFieldDeclaration,
+  type ToolbarInlineFormatFormIntegerSelectOptionDeclaration,
 } from "@breditor/browser";
 
 const safeLink: InlineFormatRenderSafeLinkV1Policy = {
@@ -27,6 +37,17 @@ const safeTextColor: InlineFormatRenderSafeTextColorV1Policy = {
   kind: "safeTextColorV1",
 };
 const textColorPolicy: InlineFormatRenderAttributePolicy = safeTextColor;
+const integerTokenEntry: InlineFormatRenderSafeIntegerTokenV1Entry = {
+  value: 1,
+  token: "large",
+};
+const integerTokenPolicy: InlineFormatRenderSafeIntegerTokenV1Policy = {
+  kind: "safeIntegerTokenV1",
+  propertyName: "example/text-size-step",
+  tokens: [integerTokenEntry],
+};
+const attributePolicyWithIntegerToken: InlineFormatRenderAttributePolicy =
+  integerTokenPolicy;
 const recipe: InlineFormatRenderRecipe = {
   formatKind: "example/link",
   element: "a",
@@ -49,6 +70,13 @@ const style: InlineFormatRenderAttribute = {
   name: "style",
   value: "color:#00a1ff",
 };
+const integerTokenAttribute: InlineFormatRenderAttribute = {
+  name: INLINE_FORMAT_SAFE_INTEGER_TOKEN_V1_ATTRIBUTE,
+  value: "large",
+};
+const integerTokenEntriesMaximum: 32 =
+  MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ENTRIES;
+const integerTokenAsciiMaximum: 64 = MAX_INLINE_FORMAT_SAFE_INTEGER_TOKEN_ASCII;
 
 void manifest;
 void href;
@@ -57,6 +85,10 @@ void textColorPolicy;
 void textColorKind;
 void rgb24Maximum;
 void style;
+void attributePolicyWithIntegerToken;
+void integerTokenAttribute;
+void integerTokenEntriesMaximum;
+void integerTokenAsciiMaximum;
 
 const keyboardShortcuts: KeyboardShortcutManifest =
   createKeyboardShortcutManifest({
@@ -100,6 +132,35 @@ const narrowedRgb24Field: ToolbarInlineFormatFormIntegerFieldDeclaration = {
   minimum: 1,
 };
 void narrowedRgb24Field;
+
+const textSizeOption: ToolbarInlineFormatFormIntegerSelectOptionDeclaration = {
+  value: 1,
+  label: "Large",
+};
+const textSizeField: ToolbarInlineFormatFormIntegerSelectFieldDeclaration = {
+  kind: "integer",
+  propertyName: "example/text-size-step",
+  label: "Text size",
+  presentation: "select",
+  minimum: 0,
+  maximum: 2,
+  defaultValue: 1,
+  options: [
+    { value: 0, label: "Small" },
+    textSizeOption,
+    { value: 2, label: "Huge" },
+  ],
+};
+const textSizeOptionMaximum: 32 =
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_OPTIONS;
+const textSizeLabelUtf16Maximum: 128 =
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_LABEL_UTF16;
+const textSizeLabelUtf8Maximum: 512 =
+  MAX_TOOLBAR_INLINE_FORMAT_FORM_INTEGER_SELECT_LABEL_UTF8;
+void textSizeField;
+void textSizeOptionMaximum;
+void textSizeLabelUtf16Maximum;
+void textSizeLabelUtf8Maximum;
 
 // @ts-expect-error safeLinkV1 accepts only the closed href/new-window property pair
 const unsupportedPolicy: InlineFormatRenderAttributePolicy = { kind: "attributesV2" };

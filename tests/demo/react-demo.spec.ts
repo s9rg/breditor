@@ -192,6 +192,10 @@ async function pastePlainText(editor: Locator, text: string): Promise<void> {
       composed: true,
       clipboardData: transfer,
     });
+    const eventTransfer = paste.clipboardData ?? transfer;
+    if (eventTransfer !== transfer) {
+      eventTransfer.setData("text/plain", plainText);
+    }
     host.dispatchEvent(paste);
 
     // Browsers emit these after a cancelled paste. The editor consumes them as
@@ -214,9 +218,10 @@ async function pastePlainText(editor: Locator, text: string): Promise<void> {
       );
     }
 
+    const observed = paste.clipboardData ?? eventTransfer;
     return {
       defaultPrevented: paste.defaultPrevented,
-      plainText: (paste.clipboardData ?? transfer).getData("text/plain"),
+      plainText: observed.getData("text/plain"),
     };
   }, text);
 
@@ -265,6 +270,10 @@ async function pasteHtmlOnly(
       composed: true,
       clipboardData: transfer,
     });
+    const eventTransfer = paste.clipboardData ?? transfer;
+    if (eventTransfer !== transfer) {
+      eventTransfer.setData("text/html", sourceHtml);
+    }
     host.dispatchEvent(paste);
 
     if (paste.defaultPrevented) {
@@ -285,7 +294,7 @@ async function pasteHtmlOnly(
       );
     }
 
-    const observed = paste.clipboardData ?? transfer;
+    const observed = paste.clipboardData ?? eventTransfer;
     return {
       defaultPrevented: paste.defaultPrevented,
       plainText: observed.getData("text/plain"),
@@ -480,6 +489,7 @@ async function expectUniformShowcaseTree(
   expectedText: readonly string[],
   expectedChain: readonly string[],
   expectedTextColorStyle: string | null = null,
+  expectedTextSizeToken: string | null = null,
 ): Promise<void> {
   await expect
     .poll(() =>
@@ -511,11 +521,14 @@ async function expectUniformShowcaseTree(
           const textColor = paragraph.querySelector(
             "span.breditor-text-color",
           );
+          const textSize = paragraph.querySelector("span.breditor-text-size");
           return {
             text: paragraph.textContent ?? "",
             chain,
             singleBranch,
             textColorStyle: textColor?.getAttribute("style") ?? null,
+            textSizeToken:
+              textSize?.getAttribute("data-breditor-integer-token") ?? null,
             link: {
               href: link?.getAttribute("href") ?? null,
               rel: link?.getAttribute("rel") ?? null,
@@ -531,6 +544,7 @@ async function expectUniformShowcaseTree(
         chain: [...expectedChain],
         singleBranch: true,
         textColorStyle: expectedTextColorStyle,
+        textSizeToken: expectedTextSizeToken,
         link: expectedChain.includes("a.breditor-link")
           ? {
               href: REFERENCE_LINK_URL,
@@ -752,7 +766,7 @@ test("the React Showcase advertises and routes profile-declared shortcuts", asyn
   await expect(editor.locator("em")).toHaveText(SAMPLE_TEXT);
 });
 
-test("the ten-control Color Showcase composes and clears deterministic formats across paragraphs and persistence", async ({
+test("the eleven-control Text Size Showcase composes and clears deterministic formats across paragraphs and persistence", async ({
   page,
 }) => {
   const { editor, status } = await openDemo(page);
@@ -762,6 +776,14 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
   const italic = page.getByRole("button", { name: "Italic" });
   const strikethrough = page.getByRole("button", { name: "Strikethrough" });
   const code = page.getByRole("button", { name: "Code" });
+  const textSize = page.getByRole("button", {
+    name: "Text size",
+    exact: true,
+  });
+  const sizeSelect = page.locator(
+    'select[name="example/text-size-step"]',
+  );
+  const applySize = page.getByRole("button", { name: "Apply size" });
   const textColor = page.getByRole("button", {
     name: "Text color",
     exact: true,
@@ -780,11 +802,12 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
     "mark.breditor-reference-highlight",
     "s",
     "code",
+    "span.breditor-text-size",
     "span.breditor-text-color",
   ] as const;
   const copiedHtml = [
-    '<p><a class="breditor-link" href="https://example.test/reference" rel="noopener noreferrer" target="_blank"><strong><em><mark class="breditor-reference-highlight"><s><code><span class="breditor-text-color" style="color:#123456">Breditor</span></code></s></mark></em></strong></a></p>',
-    '<p><a class="breditor-link" href="https://example.test/reference" rel="noopener noreferrer" target="_blank"><strong><em><mark class="breditor-reference-highlight"><s><code><span class="breditor-text-color" style="color:#123456"> showcase</span></code></s></mark></em></strong></a></p>',
+    '<p><a class="breditor-link" href="https://example.test/reference" rel="noopener noreferrer" target="_blank"><strong><em><mark class="breditor-reference-highlight"><s><code><span class="breditor-text-size" data-breditor-integer-token="huge"><span class="breditor-text-color" style="color:#123456">Breditor</span></span></code></s></mark></em></strong></a></p>',
+    '<p><a class="breditor-link" href="https://example.test/reference" rel="noopener noreferrer" target="_blank"><strong><em><mark class="breditor-reference-highlight"><s><code><span class="breditor-text-size" data-breditor-integer-token="huge"><span class="breditor-text-color" style="color:#123456"> showcase</span></span></code></s></mark></em></strong></a></p>',
   ].join("");
 
   await expect(topLevelControls).toHaveText([
@@ -793,13 +816,14 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
     "Strikethrough",
     "Code",
     "Highlight",
+    "Text size",
     "Text color",
     "Link",
     "Clear formatting",
     "Undo",
     "Redo",
   ]);
-  await expect(topLevelControls).toHaveCount(10);
+  await expect(topLevelControls).toHaveCount(11);
   for (const control of [bold, italic, strikethrough, code]) {
     await expect(control).toBeVisible();
     await expect(control).toHaveAttribute("aria-pressed", "false");
@@ -826,6 +850,10 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
   await italic.click();
   await strikethrough.click();
   await code.click();
+  await textSize.click();
+  await expect(sizeSelect).toHaveValue("1");
+  await sizeSelect.selectOption("2");
+  await applySize.click();
   await textColor.click();
   await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
   await colorInput.fill(SELECTED_TEXT_COLOR);
@@ -835,6 +863,7 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
     [FIRST_WORD, SECOND_PARAGRAPH],
     completeChain,
     SELECTED_TEXT_COLOR_STYLE,
+    "huge",
   );
   for (const control of [bold, italic, strikethrough, code]) {
     await expect(control).toHaveAttribute("aria-pressed", "true");
@@ -844,6 +873,12 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
     "active",
   );
   await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
+  await textSize.click();
+  await expect(textSize).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await expect(sizeSelect).toHaveValue("2");
 
   // Each undo removes exactly the latest semantic format and each redo restores
   // it in the same canonical position without disturbing Highlight or Link.
@@ -858,13 +893,34 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
       "mark.breditor-reference-highlight",
       "s",
       "code",
+      "span.breditor-text-size",
     ],
+    null,
+    "huge",
   );
   await expect(textColor).toHaveAttribute(
     "data-breditor-activation",
     "inactive",
   );
   await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+      "code",
+    ],
+  );
+  await expect(textSize).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+  await expect(sizeSelect).toHaveValue("1");
   await undo.click();
   await expectUniformShowcaseTree(
     editor,
@@ -929,17 +985,40 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
   await expectUniformShowcaseTree(
     editor,
     [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+      "code",
+      "span.breditor-text-size",
+    ],
+    null,
+    "huge",
+  );
+  await expect(textSize).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await expect(sizeSelect).toHaveValue("2");
+  await redo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
     completeChain,
     SELECTED_TEXT_COLOR_STYLE,
+    "huge",
   );
   await expect(textColor).toHaveAttribute(
     "data-breditor-activation",
     "active",
   );
+  await textColor.click();
   await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
 
   // Re-establish the native selection after form focus, then prove copy emits
-  // the exact canonical, safe seven-wrapper HTML rather than serializing DOM.
+  // the exact canonical, safe eight-wrapper HTML rather than serializing DOM.
   await selectParagraphRange(
     editor,
     1,
@@ -960,7 +1039,7 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
   );
   expect(pastedHtml).not.toBe(copied.html);
 
-  // Clear includes the property-bearing color in one Rust transaction. Pasting
+  // Clear includes the property-bearing size and color in one Rust transaction. Pasting
   // an HTML-only copy with altered text back over that cleared range deliberately
   // imports its text and paragraph break, never any source format or CSS. The
   // text change keeps Paste independently undoable instead of being a no-op.
@@ -991,7 +1070,7 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
   );
 
   // Undo the plain-text paste, then undo Clear itself. The complete semantic
-  // tree and canonical RGB24 style must return in two exact history steps.
+  // tree, size token, and canonical RGB24 style return in two history steps.
   await undo.click();
   await expectUniformShowcaseTree(
     editor,
@@ -1004,6 +1083,7 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
     [FIRST_WORD, SECOND_PARAGRAPH],
     completeChain,
     SELECTED_TEXT_COLOR_STYLE,
+    "huge",
   );
   await expect(clearFormatting).toHaveAttribute("aria-disabled", "false");
 
@@ -1016,6 +1096,7 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
     [FIRST_WORD, SECOND_PARAGRAPH],
     completeChain,
     SELECTED_TEXT_COLOR_STYLE,
+    "huge",
   );
   await expect(page.getByRole("button", { name: "Italic" })).toHaveAttribute(
     "aria-pressed",
@@ -1028,6 +1109,175 @@ test("the ten-control Color Showcase composes and clears deterministic formats a
   await expect(
     page.getByRole("checkbox", { name: "Open in new window" }),
   ).toBeChecked();
+  await page.getByRole("button", { name: "Text size", exact: true }).click();
+  await expect(
+    page.locator('select[name="example/text-size-step"]'),
+  ).toHaveValue("2");
+});
+
+test("Text size maps a native preset select through Rust-owned history and persistence", async ({
+  page,
+}) => {
+  const { editor, status } = await openDemo(page);
+  const textSize = page.getByRole("button", {
+    name: "Text size",
+    exact: true,
+  });
+  const sizeSelect = page.locator(
+    'select[name="example/text-size-step"]',
+  );
+  const applySize = page.getByRole("button", { name: "Apply size" });
+  const resetSize = page.getByRole("button", { name: "Reset size" });
+  const undo = page.getByRole("button", { name: "Undo" });
+  const redo = page.getByRole("button", { name: "Redo" });
+  const sizedText = editor.locator("span.breditor-text-size");
+
+  await expect(sizedText).toHaveCount(0);
+  await selectEditorText(editor, TARGET_START, SAMPLE_TEXT.length);
+  await expect(textSize).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+
+  await textSize.click();
+  await expect(textSize).toHaveAttribute("aria-expanded", "true");
+  await expect(sizeSelect).toBeVisible();
+  await expect(sizeSelect).toHaveRole("combobox");
+  await expect(sizeSelect).toHaveValue("1");
+  expect(
+    await sizeSelect.locator("option").evaluateAll((options) =>
+      options.map((option) => ({
+        value: (option as HTMLOptionElement).value,
+        label: option.textContent,
+      })),
+    ),
+  ).toEqual([
+    { value: "0", label: "Small" },
+    { value: "1", label: "Large" },
+    { value: "2", label: "Huge" },
+  ]);
+  await expect(
+    page.getByText("Text size is not active.", { exact: true }),
+  ).toBeVisible();
+  await expect(applySize).toBeEnabled();
+  await expect(resetSize).toBeDisabled();
+
+  // Applying the default is still an explicit semantic operation; Normal is
+  // represented only by removing the format, never by a synthetic option.
+  await applySize.click();
+  await expect(sizedText).toHaveText(TARGET_TEXT);
+  await expect(sizedText).toHaveAttribute(
+    "data-breditor-integer-token",
+    "large",
+  );
+  await expect(textSize).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await expect(sizeSelect).toHaveValue("1");
+  await expect(
+    page.getByText("Text size is active.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Text size applied.", { exact: true }),
+  ).toBeVisible();
+  await expect(resetSize).toBeEnabled();
+  expect(
+    await sizedText.evaluate((element) => {
+      const parent = element.parentElement;
+      if (parent === null) throw new Error("text-size parent is missing");
+      return (
+        Number.parseFloat(getComputedStyle(element).fontSize) /
+        Number.parseFloat(getComputedStyle(parent).fontSize)
+      );
+    }),
+  ).toBeCloseTo(1.25, 2);
+
+  await sizeSelect.selectOption("2");
+  await applySize.click();
+  await expect(sizedText).toHaveAttribute(
+    "data-breditor-integer-token",
+    "huge",
+  );
+  await expect(sizeSelect).toHaveValue("2");
+  expect(
+    await sizedText.evaluate((element) => {
+      const parent = element.parentElement;
+      if (parent === null) throw new Error("text-size parent is missing");
+      return (
+        Number.parseFloat(getComputedStyle(element).fontSize) /
+        Number.parseFloat(getComputedStyle(parent).fontSize)
+      );
+    }),
+  ).toBeCloseTo(1.5, 2);
+
+  // The exact integer value, rather than only the wrapper's presence, is part
+  // of Rust-owned undo and redo state and rehydrates the still-open select.
+  await undo.click();
+  await expect(sizedText).toHaveAttribute(
+    "data-breditor-integer-token",
+    "large",
+  );
+  await expect(sizeSelect).toHaveValue("1");
+  await redo.click();
+  await expect(sizedText).toHaveAttribute(
+    "data-breditor-integer-token",
+    "huge",
+  );
+  await expect(sizeSelect).toHaveValue("2");
+
+  await resetSize.click();
+  await expect(sizedText).toHaveCount(0);
+  await expect(textSize).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+  await expect(sizeSelect).toHaveValue("1");
+  await expect(
+    page.getByText("Text size removed.", { exact: true }),
+  ).toBeVisible();
+
+  // Persist Huge with Reset available as redo, proving the typed property and
+  // both history branches survive the checkpoint boundary.
+  await undo.click();
+  await expect(status).not.toHaveText("All changes saved.");
+  await expect(sizedText).toHaveAttribute(
+    "data-breditor-integer-token",
+    "huge",
+  );
+  await expect(sizeSelect).toHaveValue("2");
+  await expect(redo).toHaveAttribute("aria-disabled", "false");
+  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+
+  await page.reload();
+  const restored = await openDemo(page);
+  const restoredSize = restored.editor.locator("span.breditor-text-size");
+  const restoredTextSize = page.getByRole("button", {
+    name: "Text size",
+    exact: true,
+  });
+  const restoredRedo = page.getByRole("button", { name: "Redo" });
+
+  await expect(restoredSize).toHaveText(TARGET_TEXT);
+  await expect(restoredSize).toHaveAttribute(
+    "data-breditor-integer-token",
+    "huge",
+  );
+  await expect(restoredTextSize).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await restoredTextSize.click();
+  await expect(sizeSelect).toHaveValue("2");
+  await expect(restoredRedo).toHaveAttribute("aria-disabled", "false");
+
+  await restoredRedo.click();
+  await expect(restoredSize).toHaveCount(0);
+  await expect(restoredTextSize).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+  await expect(sizeSelect).toHaveValue("1");
 });
 
 test("Text color applies an exact RGB24 value through Rust-owned history and persistence", async ({

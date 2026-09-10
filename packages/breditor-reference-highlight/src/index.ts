@@ -174,3 +174,58 @@ export {
   REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
   REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
 } from "./color_showcase_presentation.js";
+
+/** Closed integer-size identities and primitive bounds for Text Size Showcase. */
+export {
+  MAX_REFERENCE_TEXT_SIZE_STEP,
+  MIN_REFERENCE_TEXT_SIZE_STEP,
+  REFERENCE_SIZE_SHOWCASE_IDS,
+  type ReferenceTextSizeStep,
+} from "./size_showcase_ids.js";
+
+/** Profile Bootstrap V2 and provisional schema identity for Text Size Showcase. */
+export {
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT,
+  type ReferenceSizeShowcaseProfileBootstrap,
+  type ReferenceSizeShowcaseTextSizeExtensionBootstrap,
+} from "./size_showcase_profile.js";
+
+/** Canonical typed inputs for generated text-size set/remove surfaces. */
+export {
+  REFERENCE_TEXT_SIZE_REMOVE_INPUT_JSON,
+  createReferenceTextSizeRemoveInput,
+  createReferenceTextSizeRemoveInputJson,
+  createReferenceTextSizeSetInput,
+  createReferenceTextSizeSetInputJson,
+  type ReferenceTextSizeRemoveInput,
+  type ReferenceTextSizeSetInput,
+} from "./text_size_input.js";
+
+/** Frozen Document V2 fixtures and helpers for Text Size Showcase. */
+export {
+  MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  createReferenceSizeShowcaseDocument,
+  createReferenceSizeShowcaseDocumentJson,
+  type ReferenceSizeShowcaseDocumentOptions,
+  type ReferenceSizeShowcaseDocumentV2,
+  type ReferenceSizeShowcaseFormatV2,
+  type ReferenceSizeShowcaseParagraphV2,
+  type ReferenceSizeShowcaseTextSizeFormatV2,
+  type ReferenceSizeShowcaseTextSizePropertiesV2,
+  type ReferenceSizeShowcaseTextV2,
+} from "./size_showcase_documents.js";
+
+/** Complete closed browser presentation for Text Size Showcase. */
+export {
+  REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
+} from "./size_showcase_presentation.js";

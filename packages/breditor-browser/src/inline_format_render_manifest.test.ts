@@ -190,6 +190,74 @@ describe("inline-format render manifest", () => {
     }
   });
 
+  it("admits safe integer tokens only on a span with one generic static class", () => {
+    const source = {
+      recipes: [{
+        formatKind: "example/text-size",
+        element: "span",
+        classes: ["custom-size"],
+        attributes: {
+          kind: "safeIntegerTokenV1",
+          propertyName: "example/size",
+          tokens: [
+            { value: 1, token: "small" },
+            { value: 2, token: "large" },
+          ],
+        },
+      }],
+    };
+    const manifest = createInlineFormatRenderManifest(source);
+    source.recipes[0]!.attributes.tokens[0]!.token = "changed";
+
+    expect(manifest).toEqual({
+      recipes: [{
+        formatKind: "example/text-size",
+        element: "span",
+        classes: ["custom-size"],
+        before: [],
+        after: [],
+        attributes: {
+          kind: "safeIntegerTokenV1",
+          propertyName: "example/size",
+          tokens: [
+            { value: 1, token: "small" },
+            { value: 2, token: "large" },
+          ],
+        },
+      }],
+    });
+
+    const attributes = {
+      kind: "safeIntegerTokenV1",
+      propertyName: "example/size",
+      tokens: [{ value: 1, token: "small" }],
+    };
+    for (const recipe of [
+      {
+        formatKind: "example/text-size",
+        element: "em",
+        classes: ["custom-size"],
+        attributes,
+      },
+      {
+        formatKind: "example/text-size",
+        element: "span",
+        classes: [],
+        attributes,
+      },
+      {
+        formatKind: "example/text-size",
+        element: "span",
+        classes: ["custom-size", "extra"],
+        attributes,
+      },
+    ]) {
+      expect(() =>
+        createInlineFormatRenderManifest({ recipes: [recipe] })
+      ).toThrow(/compatible recipe/u);
+    }
+  });
+
   it("admits only the closed safe inline element vocabulary", () => {
     for (const element of INLINE_FORMAT_RENDER_ELEMENTS) {
       expect(() =>

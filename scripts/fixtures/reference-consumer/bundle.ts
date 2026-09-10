@@ -5,6 +5,7 @@ import {
   type BreditorBrowserIntentResult,
 } from "@breditor/browser";
 import {
+  MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8,
   MAX_REFERENCE_SHOWCASE_DOCUMENT_TEXT_UTF8,
   REFERENCE_COLOR_SHOWCASE_IDS,
   REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
@@ -33,6 +34,16 @@ import {
   REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
   REFERENCE_SHOWCASE_SCHEMA_FINGERPRINT,
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_IDS,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
   createReferenceFormattingDocument,
   createReferenceFormattingDocumentJson,
   createReferenceHighlightDocumentJson,
@@ -42,6 +53,10 @@ import {
   createReferenceLinkSetInputJson,
   createReferenceShowcaseDocument,
   createReferenceShowcaseDocumentJson,
+  createReferenceSizeShowcaseDocument,
+  createReferenceSizeShowcaseDocumentJson,
+  createReferenceTextSizeRemoveInput,
+  createReferenceTextSizeSetInput,
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
@@ -60,6 +75,7 @@ const LINK_SOURCE_HREF =
 const LINK_CANONICAL_HREF =
   "https://example.test/reference/path?source=tarball#proof";
 const SHOWCASE_TEXT = "Breditor showcase";
+const SIZE_SHOWCASE_TEXT = "Breditor showcase";
 
 interface ToolbarButtonObservation {
   readonly label: string;
@@ -81,6 +97,23 @@ interface LinkDomObservation {
   readonly rel: string | null;
   readonly target: string | null;
   readonly text: string | null;
+}
+
+interface SizeSelectObservation {
+  readonly name: string | null;
+  readonly value: string;
+  readonly options: readonly Readonly<{
+    value: string;
+    label: string | null;
+  }>[];
+}
+
+interface SizeDomObservation {
+  readonly chain: readonly string[];
+  readonly text: string | null;
+  readonly attributes: readonly string[];
+  readonly className: string | null;
+  readonly token: string | null;
 }
 
 interface ReferencePackageSmoke {
@@ -152,17 +185,53 @@ interface ReferencePackageSmoke {
     clearedPlainText: BreditorBrowserContentExport<"plainText">;
     clearUndoDom: ShowcaseDomObservation;
   }>;
+  readonly sizeShowcase: Readonly<{
+    initialDocumentJson: string;
+    emptyDocumentJson: string;
+    generatedDocumentJson: string;
+    typedSetInput: ReturnType<typeof createReferenceTextSizeSetInput>;
+    typedRemoveInput: ReturnType<typeof createReferenceTextSizeRemoveInput>;
+    maximumDocumentTextUtf8: number;
+    text: string;
+    documentJson: BreditorBrowserContentExport<"documentJson">;
+    plainText: BreditorBrowserContentExport<"plainText">;
+    snapshot: BreditorBrowserEditorSnapshot;
+    profile: Readonly<{
+      bootstrapFormatVersion: number;
+      schemaName: string;
+      schemaVersion: number;
+      schemaFingerprint: string;
+      formatCount: number;
+      intentCount: number;
+      actionStateCount: number;
+      inlineFormatSetCount: number;
+      textSizeFormatKind: string;
+      textSizeIntentId: string;
+    }>;
+    renderManifestKinds: readonly string[];
+    manifestToolbarOrder: readonly string[];
+    observedToolbarOrder: readonly string[];
+    defaultSizeStep: number;
+    initialSelect: SizeSelectObservation;
+    appliedSelect: SizeSelectObservation;
+    launcherActivation: string | null;
+    feedback: string | null;
+    dom: SizeDomObservation;
+  }>;
   readonly fixturesFrozen: boolean;
   dispose(): Readonly<{
     status: string;
     formattingStatus: string;
     showcaseStatus: string;
+    sizeShowcaseStatus: string;
     editorChildren: number;
     toolbarChildren: number;
     formattingEditorChildren: number;
     formattingToolbarChildren: number;
     showcaseEditorChildren: number;
     showcaseToolbarChildren: number;
+    sizeShowcaseEditorChildren: number;
+    sizeShowcaseToolbarChildren: number;
   }>;
 }
 
@@ -184,13 +253,19 @@ async function start(): Promise<void> {
   const formattingToolbarHost = document.getElementById("formatting-toolbar");
   const showcaseHost = document.getElementById("showcase-editor");
   const showcaseToolbarHost = document.getElementById("showcase-toolbar");
+  const sizeShowcaseHost = document.getElementById("size-showcase-editor");
+  const sizeShowcaseToolbarHost = document.getElementById(
+    "size-showcase-toolbar",
+  );
   if (
     !(host instanceof HTMLElement) ||
     !(toolbarHost instanceof HTMLElement) ||
     !(formattingHost instanceof HTMLElement) ||
     !(formattingToolbarHost instanceof HTMLElement) ||
     !(showcaseHost instanceof HTMLElement) ||
-    !(showcaseToolbarHost instanceof HTMLElement)
+    !(showcaseToolbarHost instanceof HTMLElement) ||
+    !(sizeShowcaseHost instanceof HTMLElement) ||
+    !(sizeShowcaseToolbarHost instanceof HTMLElement)
   ) {
     throw new Error("reference package hosts are missing");
   }
@@ -236,6 +311,51 @@ async function start(): Promise<void> {
   ) {
     throw new Error(
       "Color Showcase compiler fingerprint did not match its package contract",
+    );
+  }
+  const sizeProfileResult =
+    breditorWasm.BreditorCompiledProfile.fromBootstrapJsonV2(
+      REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+    );
+  if (sizeProfileResult.status !== "profile") {
+    const error = sizeProfileResult.error;
+    const code = error?.code ?? "profile.invalid";
+    const message =
+      error?.message ?? "Text Size Showcase profile compilation failed";
+    error?.free();
+    sizeProfileResult.free();
+    throw new Error(`${code}: ${message}`);
+  }
+  const sizeCompiledProfile = sizeProfileResult.takeProfile();
+  if (sizeCompiledProfile === undefined) {
+    sizeProfileResult.free();
+    throw new Error("Text Size Showcase compiled profile was unavailable");
+  }
+  const sizeDescriptor = sizeCompiledProfile.descriptor();
+  const sizeProfile = Object.freeze({
+    bootstrapFormatVersion: REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP.formatVersion,
+    schemaName: sizeDescriptor.schemaName,
+    schemaVersion: sizeDescriptor.schemaVersion,
+    schemaFingerprint: sizeDescriptor.schemaFingerprint,
+    formatCount: sizeDescriptor.formatCount,
+    intentCount: sizeDescriptor.intentCount,
+    actionStateCount: sizeDescriptor.actionStateCount,
+    inlineFormatSetCount: sizeDescriptor.inlineFormatSetCount,
+    textSizeFormatKind: REFERENCE_SIZE_SHOWCASE_IDS.textSizeFormatKind,
+    textSizeIntentId: REFERENCE_SIZE_SHOWCASE_IDS.textSizeIntentId,
+  });
+  sizeDescriptor.free();
+  sizeCompiledProfile.free();
+  sizeProfileResult.free();
+  if (
+    sizeProfile.schemaFingerprint !== REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT ||
+    sizeProfile.formatCount !== 8 ||
+    sizeProfile.intentCount !== 9 ||
+    sizeProfile.actionStateCount !== 11 ||
+    sizeProfile.inlineFormatSetCount !== 3
+  ) {
+    throw new Error(
+      "Text Size Showcase compiler descriptor did not match its package contract",
     );
   }
   const legacyOpened = await openBreditorBrowserEditor({
@@ -326,6 +446,40 @@ async function start(): Promise<void> {
     legacyOpened.editor.dispose();
     throw new Error(
       `${showcaseOpened.error.code}: ${showcaseOpened.error.message}`,
+    );
+  }
+
+  const sizeShowcaseOpened = await openBreditorBrowserEditor({
+    host: sizeShowcaseHost,
+    label: "Tarball reference Text Size Showcase editor",
+    wasm: breditorWasm,
+    initialDocument: {
+      lineageId: "tarball-reference-size-showcase",
+      documentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+      historyCapacity: 10,
+    },
+    semanticProfile: {
+      formatVersion: 2,
+      bootstrapJson: REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+    },
+    rendering: REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+    keyboardShortcuts: REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+    toolbar: {
+      host: sizeShowcaseToolbarHost,
+      manifest: REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
+    },
+    keyboard: {
+      editing: "beforeinputPrimary",
+      primaryModifier: "control",
+      shortcuts: "enabled",
+    },
+  });
+  if (!sizeShowcaseOpened.ok) {
+    showcaseOpened.editor.dispose();
+    formattingOpened.editor.dispose();
+    legacyOpened.editor.dispose();
+    throw new Error(
+      `${sizeShowcaseOpened.error.code}: ${sizeShowcaseOpened.error.message}`,
     );
   }
 
@@ -446,6 +600,46 @@ async function start(): Promise<void> {
       throw new Error("showcase reference package content export failed");
     }
 
+    await selectHighlightedText(
+      sizeShowcaseOpened.editor,
+      sizeShowcaseHost,
+      sizeShowcaseToolbarHost,
+    );
+    const observedSizeToolbarOrder = directToolbarButtons(
+      sizeShowcaseToolbarHost,
+    ).map((button) => button.textContent ?? "");
+    const sizeLauncher = requireToolbarButton(
+      sizeShowcaseToolbarHost,
+      "Text size",
+    );
+    if (sizeLauncher.getAttribute("data-breditor-activation") !== "inactive") {
+      throw new Error("Text Size launcher did not start inactive");
+    }
+    sizeLauncher.click();
+    const sizeSelect = requireSizeSelect(sizeShowcaseToolbarHost);
+    const initialSizeSelect = readSizeSelect(sizeSelect);
+    if (initialSizeSelect.value !== "1") {
+      throw new Error("Text Size select did not expose Large as its default");
+    }
+    sizeSelect.value = "2";
+    sizeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    requireToolbarFormAction(sizeShowcaseToolbarHost, "apply").click();
+    await waitFor(
+      () =>
+        sizeShowcaseHost
+          .querySelector("span.breditor-text-size")
+          ?.getAttribute("data-breditor-integer-token") === "huge",
+      "Text Size form did not render its Huge semantic token",
+    );
+    const appliedSizeSelect = readSizeSelect(sizeSelect);
+    const sizeDom = readSizeDom(sizeShowcaseHost);
+    const sizeDocumentJson =
+      sizeShowcaseOpened.editor.exportContent("documentJson");
+    const sizePlainText = sizeShowcaseOpened.editor.exportContent("plainText");
+    if (!sizeDocumentJson.ok || !sizePlainText.ok) {
+      throw new Error("Text Size Showcase content export failed");
+    }
+
     // Leave the original Highlight editor selected so the pre-existing live
     // toolbar proof remains observable after adding the combined profile.
     await selectHighlightedText(legacyOpened.editor, host, toolbarHost);
@@ -528,21 +722,64 @@ async function start(): Promise<void> {
         clearedPlainText,
         clearUndoDom,
       }),
+      sizeShowcase: Object.freeze({
+        initialDocumentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+        emptyDocumentJson: REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+        generatedDocumentJson: createReferenceSizeShowcaseDocumentJson(
+          "Package-root Text Size helper",
+          { textSize: 0, textColor: 0x12_34_56 },
+        ),
+        typedSetInput: createReferenceTextSizeSetInput(2),
+        typedRemoveInput: createReferenceTextSizeRemoveInput(),
+        maximumDocumentTextUtf8:
+          MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8,
+        text: SIZE_SHOWCASE_TEXT,
+        documentJson: sizeDocumentJson,
+        plainText: sizePlainText,
+        snapshot: sizeShowcaseOpened.editor.getSnapshot(),
+        profile: sizeProfile,
+        renderManifestKinds: Object.freeze(
+          REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST.recipes.map(
+            (recipe) => recipe.formatKind,
+          ),
+        ),
+        manifestToolbarOrder: Object.freeze(
+          REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST.controls.map(
+            (control) => control.label,
+          ),
+        ),
+        observedToolbarOrder: Object.freeze(observedSizeToolbarOrder),
+        defaultSizeStep: REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP,
+        initialSelect: initialSizeSelect,
+        appliedSelect: appliedSizeSelect,
+        launcherActivation: sizeLauncher.getAttribute(
+          "data-breditor-activation",
+        ),
+        feedback: sizeShowcaseToolbarHost.querySelector(
+          "[data-breditor-toolbar-form-feedback]",
+        )?.textContent ?? null,
+        dom: sizeDom,
+      }),
       fixturesFrozen: exportedFixturesAndHelpersAreFrozen(),
       dispose: () => {
         legacyOpened.editor.dispose();
         formattingOpened.editor.dispose();
         showcaseOpened.editor.dispose();
+        sizeShowcaseOpened.editor.dispose();
         return Object.freeze({
           status: legacyOpened.editor.getStatus().phase,
           formattingStatus: formattingOpened.editor.getStatus().phase,
           showcaseStatus: showcaseOpened.editor.getStatus().phase,
+          sizeShowcaseStatus: sizeShowcaseOpened.editor.getStatus().phase,
           editorChildren: host.childNodes.length,
           toolbarChildren: toolbarHost.childNodes.length,
           formattingEditorChildren: formattingHost.childNodes.length,
           formattingToolbarChildren: formattingToolbarHost.childNodes.length,
           showcaseEditorChildren: showcaseHost.childNodes.length,
           showcaseToolbarChildren: showcaseToolbarHost.childNodes.length,
+          sizeShowcaseEditorChildren: sizeShowcaseHost.childNodes.length,
+          sizeShowcaseToolbarChildren:
+            sizeShowcaseToolbarHost.childNodes.length,
         });
       },
     });
@@ -554,6 +791,7 @@ async function start(): Promise<void> {
     });
     document.documentElement.dataset["breditorReferencePackageReady"] = "true";
   } catch (error) {
+    sizeShowcaseOpened.editor.dispose();
     showcaseOpened.editor.dispose();
     formattingOpened.editor.dispose();
     legacyOpened.editor.dispose();
@@ -640,6 +878,46 @@ function requireToolbarButton(
   return button;
 }
 
+function requireSizeSelect(host: HTMLElement): HTMLSelectElement {
+  const select = host.querySelector(
+    'select[name="example/text-size-step"]',
+  );
+  if (!(select instanceof HTMLSelectElement)) {
+    throw new Error("reference package Text Size select is unavailable");
+  }
+  return select;
+}
+
+function requireToolbarFormAction(
+  host: HTMLElement,
+  action: "apply" | "remove" | "close",
+): HTMLButtonElement {
+  const button = host.querySelector(
+    `button[data-breditor-toolbar-form-action="${action}"]`,
+  );
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error(
+      `reference package ${action} toolbar form action is unavailable`,
+    );
+  }
+  return button;
+}
+
+function readSizeSelect(select: HTMLSelectElement): SizeSelectObservation {
+  return Object.freeze({
+    name: select.getAttribute("name"),
+    value: select.value,
+    options: Object.freeze(
+      [...select.options].map((option) =>
+        Object.freeze({
+          value: option.value,
+          label: option.textContent,
+        }),
+      ),
+    ),
+  });
+}
+
 function readToolbarButtons(
   host: HTMLElement,
   labels: readonly string[],
@@ -692,6 +970,44 @@ function readShowcaseDom(host: HTMLElement): ShowcaseDomObservation {
   });
 }
 
+function readSizeDom(host: HTMLElement): SizeDomObservation {
+  const paragraph = host.querySelector(":scope > p");
+  const size = host.querySelector("span.breditor-text-size");
+  if (!(paragraph instanceof HTMLParagraphElement)) {
+    throw new Error("Text Size Showcase paragraph is unavailable");
+  }
+  if (!(size instanceof HTMLSpanElement)) {
+    throw new Error("Text Size Showcase wrapper is unavailable");
+  }
+  const chain: string[] = [];
+  let current: Element | null = paragraph.firstElementChild;
+  while (current !== null) {
+    chain.push(current.localName);
+    const child = current.firstElementChild;
+    if (
+      child === null &&
+      (current.childNodes.length !== 1 ||
+        current.firstChild?.nodeType !== Node.TEXT_NODE)
+    ) {
+      throw new Error("Text Size Showcase leaf is not one exact text node");
+    }
+    if (
+      child !== null &&
+      (current.children.length !== 1 || current.childNodes.length !== 1)
+    ) {
+      throw new Error("Text Size Showcase wrapper chain branched unexpectedly");
+    }
+    current = child;
+  }
+  return Object.freeze({
+    chain: Object.freeze(chain),
+    text: paragraph.textContent,
+    attributes: Object.freeze([...size.getAttributeNames()].sort()),
+    className: size.getAttribute("class"),
+    token: size.getAttribute("data-breditor-integer-token"),
+  });
+}
+
 function exportedFixturesAndHelpersAreFrozen(): boolean {
   return [
     REFERENCE_FORMATTING_IDS,
@@ -721,6 +1037,18 @@ function exportedFixturesAndHelpersAreFrozen(): boolean {
       highlighted: true,
       link: { href: "https://example.test/fixture", openInNewWindow: true },
     }),
+    REFERENCE_SIZE_SHOWCASE_IDS,
+    REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+    REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+    REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+    REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
+    createReferenceSizeShowcaseDocument("fixture", {
+      highlighted: true,
+      textColor: 0x12_34_56,
+      textSize: 2,
+    }),
+    createReferenceTextSizeSetInput(0),
+    createReferenceTextSizeRemoveInput(),
   ].every((value) => isDeeplyFrozen(value, new Set<object>()));
 }
 

@@ -208,6 +208,11 @@ prerelease packages still require exact version pairing. Alpha.12 packages are
 unpublished; registry installation examples apply only after a maintainer
 publishes them.
 
+Alpha.13 leaves this Color Showcase contract and fingerprint byte-identical.
+Its separate Size Showcase keeps Text Color innermost while adding Text Size
+immediately outside it; neither policy widens the other. Alpha.13 packages are
+also unpublished. See [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
+
 ## Deliberate limitations
 
 - The semantic value is opaque 8-bit-per-channel sRGB only. There is no alpha,

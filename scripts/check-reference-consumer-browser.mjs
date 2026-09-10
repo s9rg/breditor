@@ -118,6 +118,29 @@ try {
           leafText: leaf?.textContent,
         };
       })(),
+      sizeShowcase: smoke?.sizeShowcase,
+      sizeShowcaseContentEditable: document
+        .getElementById("size-showcase-editor")
+        ?.getAttribute("contenteditable"),
+      sizeShowcaseToolbarButtons: document.querySelectorAll(
+        "#size-showcase-toolbar > [data-breditor-toolbar-root] > button",
+      ).length,
+      sizeShowcaseToolbarLabels: [
+        ...document.querySelectorAll(
+          "#size-showcase-toolbar > [data-breditor-toolbar-root] > button",
+        ),
+      ].map((button) => button.textContent),
+      sizeShowcaseCurrentDom: (() => {
+        const size = document.querySelector(
+          "#size-showcase-editor span.breditor-text-size",
+        );
+        return {
+          attributes: size ? [...size.getAttributeNames()].sort() : [],
+          className: size?.getAttribute("class"),
+          token: size?.getAttribute("data-breditor-integer-token"),
+          text: size?.textContent,
+        };
+      })(),
     };
   });
 
@@ -438,6 +461,149 @@ try {
     { type: "example/strikethrough", properties: {} },
   ]);
 
+  const expectedSizeToolbar = [
+    "Bold",
+    "Italic",
+    "Strikethrough",
+    "Code",
+    "Highlight",
+    "Text size",
+    "Text color",
+    "Link",
+    "Clear formatting",
+    "Undo",
+    "Redo",
+  ];
+  assert.equal(outcome.sizeShowcaseContentEditable, "true");
+  assert.equal(outcome.sizeShowcaseToolbarButtons, 11);
+  assert.deepEqual(outcome.sizeShowcaseToolbarLabels, expectedSizeToolbar);
+  assert.deepEqual(
+    outcome.sizeShowcase?.manifestToolbarOrder,
+    expectedSizeToolbar,
+  );
+  assert.deepEqual(
+    outcome.sizeShowcase?.observedToolbarOrder,
+    expectedSizeToolbar,
+  );
+  assert.equal(outcome.sizeShowcase?.text, "Breditor showcase");
+  assert.equal(outcome.sizeShowcase?.maximumDocumentTextUtf8, 1_048_576);
+  assert.equal(outcome.sizeShowcase?.defaultSizeStep, 1);
+  assert.deepEqual(outcome.sizeShowcase?.profile, {
+    bootstrapFormatVersion: 2,
+    schemaName: "example/size-showcase-editor",
+    schemaVersion: 1,
+    schemaFingerprint:
+      "sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5",
+    formatCount: 8,
+    intentCount: 9,
+    actionStateCount: 11,
+    inlineFormatSetCount: 3,
+    textSizeFormatKind: "example/text-size",
+    textSizeIntentId: "example/set-text-size-intent",
+  });
+  assert.deepEqual(outcome.sizeShowcase?.renderManifestKinds, [
+    "breditor/strong",
+    "example/code",
+    "example/emphasis",
+    "example/highlight",
+    "example/link",
+    "example/strikethrough",
+    "example/text-color",
+    "example/text-size",
+  ]);
+  const expectedSizeOptions = [
+    { value: "0", label: "Small" },
+    { value: "1", label: "Large" },
+    { value: "2", label: "Huge" },
+  ];
+  assert.deepEqual(outcome.sizeShowcase?.initialSelect, {
+    name: "example/text-size-step",
+    value: "1",
+    options: expectedSizeOptions,
+  });
+  assert.deepEqual(outcome.sizeShowcase?.appliedSelect, {
+    name: "example/text-size-step",
+    value: "2",
+    options: expectedSizeOptions,
+  });
+  assert.equal(outcome.sizeShowcase?.launcherActivation, "active");
+  assert.equal(outcome.sizeShowcase?.feedback, "Text size applied.");
+  assert.deepEqual(outcome.sizeShowcase?.typedSetInput, {
+    operation: "set",
+    properties: [{ name: "example/text-size-step", value: 2 }],
+  });
+  assert.deepEqual(outcome.sizeShowcase?.typedRemoveInput, {
+    operation: "remove",
+  });
+  assert.deepEqual(outcome.sizeShowcase?.dom, {
+    chain: ["a", "mark", "span"],
+    text: "Breditor showcase",
+    attributes: ["class", "data-breditor-integer-token"],
+    className: "breditor-text-size",
+    token: "huge",
+  });
+  assert.deepEqual(outcome.sizeShowcaseCurrentDom, {
+    attributes: ["class", "data-breditor-integer-token"],
+    className: "breditor-text-size",
+    token: "huge",
+    text: "Breditor showcase",
+  });
+  assert.equal(outcome.sizeShowcase?.plainText.value, "Breditor showcase");
+  assert.deepEqual(outcome.sizeShowcase?.snapshot.status, { phase: "live" });
+  const sizeDocument = JSON.parse(
+    outcome.sizeShowcase?.documentJson.value ?? "null",
+  );
+  assert.equal(
+    sizeDocument.schemaFingerprint,
+    outcome.sizeShowcase?.profile.schemaFingerprint,
+  );
+  assert.deepEqual(sizeDocument.root.children[0].children[0].formats, [
+    { type: "example/highlight", properties: {} },
+    {
+      type: "example/link",
+      properties: {
+        "example/href": "https://example.test/reference",
+        "example/open-in-new-window": true,
+      },
+    },
+    {
+      type: "example/text-size",
+      properties: { "example/text-size-step": 2 },
+    },
+  ]);
+  const initialSizeDocument = JSON.parse(
+    outcome.sizeShowcase?.initialDocumentJson ?? "null",
+  );
+  assert.equal(
+    initialSizeDocument.schemaFingerprint,
+    outcome.sizeShowcase?.profile.schemaFingerprint,
+  );
+  assert.equal(
+    JSON.parse(outcome.sizeShowcase?.emptyDocumentJson ?? "null").root
+      .children[0].children.length,
+    0,
+  );
+  const generatedSizeDocument = JSON.parse(
+    outcome.sizeShowcase?.generatedDocumentJson ?? "null",
+  );
+  assert.equal(
+    generatedSizeDocument.root.children[0].children[0].text,
+    "Package-root Text Size helper",
+  );
+  assert.deepEqual(
+    generatedSizeDocument.root.children[0].children[0].formats,
+    [
+      {
+        type: "example/text-color",
+        properties: { "example/rgb24": 1_193_046 },
+      },
+      {
+        type: "example/text-size",
+        properties: { "example/text-size-step": 0 },
+      },
+    ],
+  );
+
   const nativeForm = await page.evaluate(() => {
     const toolbar = document.getElementById("formatting-toolbar");
     const editor = document.getElementById("formatting-editor");
@@ -501,12 +667,15 @@ try {
     status: "disposed",
     formattingStatus: "disposed",
     showcaseStatus: "disposed",
+    sizeShowcaseStatus: "disposed",
     editorChildren: 0,
     toolbarChildren: 0,
     formattingEditorChildren: 0,
     formattingToolbarChildren: 0,
     showcaseEditorChildren: 0,
     showcaseToolbarChildren: 0,
+    sizeShowcaseEditorChildren: 0,
+    sizeShowcaseToolbarChildren: 0,
   };
   assert.deepEqual(disposed.first, expectedDisposal);
   assert.deepEqual(disposed.second, expectedDisposal);
@@ -523,7 +692,7 @@ try {
 }
 
 console.log(
-  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, and nine-control Showcase editors, then compiled the closed RGB24 Color Showcase profile, in Chromium.",
+  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, nine-control Showcase, and eleven-control Text Size Showcase editors, then compiled the closed RGB24 and integer-size profiles, in Chromium.",
 );
 
 async function serve(rawUrl, response) {

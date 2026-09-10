@@ -484,6 +484,7 @@ function recipeElementIsAdmittedCompositionTarget(
   for (let index = offset; index < names.length; index += 1) {
     const name = names[index];
     if (
+      name !== "data-breditor-integer-token" &&
       name !== "href" &&
       name !== "rel" &&
       name !== "style" &&

@@ -11,7 +11,9 @@ declarative shortcut manifest onto toolbar `aria-keyshortcuts`, as defined in
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md) and
 [`KEYBOARD_SHORTCUTS.md`](KEYBOARD_SHORTCUTS.md), and
 `0.3.0-alpha.12` adds one exact native RGB24 field and ten-control Color
-Showcase as defined in [`TEXT_COLOR.md`](TEXT_COLOR.md).
+Showcase as defined in [`TEXT_COLOR.md`](TEXT_COLOR.md), and
+`0.3.0-alpha.13` adds one exhaustive native integer select and eleven-control
+Size Showcase as defined in [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -209,8 +211,10 @@ toolbar admits at most 64 fields. One Alpha.7 field is a required
 the other Alpha.7 field shape is a required Boolean with `defaultValue: false`.
 Alpha.12 adds one exact required integer shape with presentation
 `"rgb24"`, fixed bounds `0..=16_777_215`, and an in-range non-negative-zero
-default. Every form must contain at least one value-presenting URL string or
-RGB24 integer field; a Boolean-only form is rejected.
+default. Alpha.13 adds one required integer `presentation: "select"` shape
+with 1 through 32 dense exhaustive options across its declared bounds. Every
+form must contain at least one value-presenting URL string, RGB24 field, or
+integer select; a Boolean-only form is rejected.
 Property names are unique inside the form. The declaration carries no value,
 callback, URL policy, DOM node, or executable object.
 
@@ -243,7 +247,9 @@ bounds. Its intent input and state output both name the exact serialized
 independently. Optional properties, integer fields, omitted or extra keys, and
 partial patches are rejected. Alpha.12's sole exception to the integer
 rejection is the exact RGB24 field with bounds equal to its required profile
-integer property; arbitrary integer fields remain rejected.
+integer property. Alpha.13 adds the separately exact exhaustive integer-select
+field with bounds equal to its required profile property. Arbitrary free-form
+integer fields remain rejected.
 
 Custom validated manifests can omit, reorder, relabel, group, or expose
 additional compiled property-free format toggle intents as native buttons. A
@@ -355,6 +361,25 @@ shortcut; the shortcut contract cannot carry a value or open the native form.
 Native color-picker UI and keyboard affordances vary across browsers and
 operating systems. The browser neither guarantees contrast nor bypasses CSP or
 forced-colors policy. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
+Alpha.13 adds one closed required integer-select field for the Size Showcase's
+`example/text-size@1` format. Its required property
+`example/text-size-step` has bounds `0..=2`; the manifest's option values must
+be safe, strictly increasing, contiguous, unique, and exhaustive across those
+bounds, and its default must name one option. The reference labels are Small,
+Large, and Huge, with Large (`1`) as the presentation default. Normal is Reset,
+which removes the format rather than storing another value.
+
+The runtime creates one native `<select>` with exact option topology and
+canonical decimal values. Native focus and Arrow-key interaction remain with
+the control; Escape uses the existing form-close path. Apply, Reset, hydration,
+dirty-draft, selection-preservation, queue, feedback, and focus semantics stay
+on the generic typed-form path. No placeholder, disabled option, optgroup,
+custom value, callback, or application DOM node is accepted.
+
+The Size Showcase order is Bold, Italic, Strikethrough, Code, Highlight, Text
+size, Text color, Link, Clear formatting, Undo, Redo. Text Size has no shortcut.
+See [`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 ## Shortcut presentation
 
@@ -519,14 +544,14 @@ toolbar.
   not dynamically register Rust actions or catalog entries from JavaScript.
 - The public editor can execute descriptor-declared typed intent JSON. The
   typed form remains limited to required URL-string and Boolean fields plus the
-  exact Alpha.12 RGB24 integer field. Alpha.8
+  exact Alpha.12 RGB24 field and Alpha.13 exhaustive integer select. Alpha.8
   hydrates only a uniform complete map; mixed state has no fieldwise value.
   A stored string containing CR or LF cannot be represented exactly by the
   native single-line control, so the complete form, including Remove, becomes
   unavailable; programmatic removal remains available.
-  There is no persisted draft, optional or general integer field, partial
+  There is no persisted draft, optional or general free-form integer field, partial
   patch, or arbitrary widget.
-  There are no menus/selects, callback or multi-key keymaps, extension-defined
+  There are no menus or custom/dynamic selects, callback or multi-key keymaps, extension-defined
   `beforeinput` rules, dynamic manifest replacement, or asynchronous
   toolbar dispatch.
 - The declarative shortcut surface is limited to primary-modifier physical
@@ -540,6 +565,9 @@ toolbar.
 - RGB24 presentation is opaque sRGB only. It has no alpha, background,
   gradient, theme-token, palette, arbitrary CSS, or contrast policy; native
   picker UX and visible forced-colors/CSP behavior remain host/browser work.
+- Integer-select presentation requires an exhaustive contiguous domain of at
+  most 32 values. It has no sparse enum, placeholder, disabled option, optgroup,
+  custom renderer, dynamic provider, or semantic CSS-length meaning.
 - A generated setter is compile-rejected unless every schema-valid complete
   map fits one action value. Compilation also proves that the canonical set of
   generated setters collectively fits the Rust state-batch value-count and

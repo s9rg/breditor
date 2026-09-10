@@ -1,6 +1,6 @@
 # `@breditor/reference-highlight`
 
-`@breditor/reference-highlight` packages four complete callback-free reference
+`@breditor/reference-highlight` packages five complete callback-free reference
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
@@ -11,10 +11,15 @@ manifest for its no-input controls.
 The `0.3.0-alpha.12` `REFERENCE_COLOR_SHOWCASE_*` surface keeps those values
 and adds one closed RGB24 text-color extension, renderer, native toolbar field,
 typed input helpers, and distinct fingerprint-bound documents.
+The `0.3.0-alpha.13` `REFERENCE_SIZE_SHOWCASE_*` surface keeps all earlier
+values and adds one exhaustive three-step text-size extension, inert token
+renderer, native integer select, typed input helpers, and another distinct
+fingerprint-bound document family.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
-toolbar manifests, and canonical Link and RGB24 set/remove input helpers. It does not
+toolbar manifests, and canonical Link, RGB24, and Text Size set/remove input
+helpers. It does not
 register JavaScript behavior, mutate the AST, or adopt a ProseMirror, Lexical,
 Tiptap, or CKEditor protocol.
 
@@ -73,6 +78,14 @@ presents the value through native `<input type="color">`. It adds no Rust
 action, Wasm method, operation, or durable format generation; ABI 5 remains
 current.
 
+Alpha.13 again preserves every earlier profile and fingerprint. The new Size
+Showcase declares required integer `example/text-size-step` in `0..=2` on
+`example/text-size@1`. It uses the same Rust-generated setter and state, the
+browser's exhaustive `safeIntegerTokenV1` renderer, and one native `<select>`
+whose Small, Large, and Huge options cover the complete semantic domain.
+Normal is format removal. It adds no Rust production contract, generated Wasm
+member, operation, or durable format generation; ABI 5 remains current.
+
 ## Use
 
 This repository does not publish packages automatically. After a maintainer
@@ -81,9 +94,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.12 \
-  @breditor/wasm@0.3.0-alpha.12 \
-  @breditor/reference-highlight@0.3.0-alpha.12
+npm install @breditor/browser@0.3.0-alpha.13 \
+  @breditor/wasm@0.3.0-alpha.13 \
+  @breditor/reference-highlight@0.3.0-alpha.13
 ```
 
 ```ts
@@ -314,6 +327,41 @@ The Color Showcase reuses the earlier shortcut manifest by identity. Text
 color has no shortcut because its typed intent requires an explicit value.
 See the normative [text-color contract](../../docs/TEXT_COLOR.md).
 
+## Size Showcase
+
+Use the parallel `REFERENCE_SIZE_SHOWCASE_*` exports for the closed Text Size
+preset slice. Its open shape is identical to the Color Showcase example above,
+but uses `REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON`,
+`REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON`,
+`REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST`,
+`REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST`, and
+`REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST`. Use a distinct lineage
+such as `breditor-react-reference-size-showcase` and a distinct persistence
+slot such as `breditor.react-reference-size-showcase.v1`; a Size Showcase
+editor never reinterprets a Color Showcase checkpoint.
+
+The toolbar inserts Text size immediately before Text color, yielding eleven
+controls. The native select contains exactly Small (`0`), Large (`1`, the
+default), and Huge (`2`). Apply submits the existing complete-map typed-set
+input and Reset removes the format. Normal text is absence of Text Size rather
+than a fourth stored value. A pristine form hydrates an exact uniform step;
+unset or mixed state displays the declared default without claiming semantic
+uniformity, and dirty drafts remain ephemeral browser state.
+
+`createReferenceSizeShowcaseDocumentJson(text, options)` accepts every Color
+Showcase option plus `textSize: 0 | 1 | 2`. The canonical semantic format set
+remains lexically ordered. The renderer's independent outer-to-inner chain is
+Link, Strong, Emphasis, Highlight, Strikethrough, Code, Text Size, Text Color.
+The Text Size wrapper is exactly a one-class `span` with one derived
+`data-breditor-integer-token="small|large|huge"` attribute; it never receives
+CSS text from the document.
+
+Programmatic callers can use `createReferenceTextSizeSetInputJson(step)` and
+`createReferenceTextSizeRemoveInputJson()` with
+`REFERENCE_SIZE_SHOWCASE_IDS.textSizeIntentId`. Text Size adds no shortcut
+because the shortcut protocol executes no-input work only. See the normative
+[text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
+
 ## Contract
 
 The frozen identities are available through `REFERENCE_HIGHLIGHT_IDS`. The
@@ -377,10 +425,29 @@ The Color Showcase has four extension declarations, seven total formats
 including built-in Strong, seven render recipes, ten action-state entries, and
 ten toolbar controls.
 
+The Size Showcase uses schema `example/size-showcase-editor@1`, retains every
+Color Showcase declaration, and adds:
+
+- extension `example/text-size-extension@1`;
+- typed format `example/text-size@1`;
+- sole required integer property `example/text-size-step` with inclusive
+  bounds `0..=2`;
+- generated action `example/set-text-size`;
+- typed intent `example/set-text-size-intent`;
+- binding `example/set-text-size-binding`; and
+- presence state `example/text-size-presence`.
+
+That exact content language compiles to
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`.
+The Size Showcase has five extension declarations, eight total formats
+including built-in Strong, eight render recipes, nine intents, eleven
+action-state entries, three typed-set surfaces, and eleven toolbar controls.
+
 ## Deliberate limitations
 
 This package demonstrates several immutable property-free formats, one closed
-typed Link format, and one closed RGB24 text-color format. The styles coexist
+typed Link format, one closed RGB24 text-color format, and one closed
+exhaustive Text Size integer format. The styles coexist
 independently; there are no
 exclusion groups or per-format aggregate policies. The base Clear formatting
 command removes every inline format together and cannot preserve a chosen
@@ -390,8 +457,9 @@ or attributes, arbitrary CSS, custom JavaScript/Rust callbacks, arbitrary typed 
 forms, callback keymaps, key sequences, typed-input shortcuts, block code,
 headings, lists, extension-defined `beforeinput` rules,
 converters, rich paste, or a native/Wasm plugin ABI. The Link form uses the
-browser's closed string/Boolean field vocabulary, and the color form uses only
-the exact RGB24 integer field. The Link href contract validates scalar shape and size; URL safety
+browser's closed string/Boolean field vocabulary, the color form uses only the
+exact RGB24 integer field, and the size form uses only a dense exhaustive
+native integer select. The Link href contract validates scalar shape and size; URL safety
 remains a separate browser-owned presentation policy. Reconstruct the editor
 with a newly compiled profile when semantic extensions change.
 
@@ -402,6 +470,13 @@ and browser settings may suppress or override the visible color. Native color
 picker UI and keyboard access vary by browser and operating system. A
 collapsed pending-color change creates no standalone undo entry under the
 existing typed-set history law.
+
+Text Size is not arbitrary CSS, a numeric input, a sparse enum, or a custom
+widget. Its three renderer tokens require host CSS for visible sizing, and
+presentation ratios do not enter the semantic fingerprint. There are no
+optgroups, disabled or dynamic options, font families, absolute lengths,
+responsive scales, or source-size preservation on paste. A collapsed pending-
+size change follows the same no-standalone-undo-entry law.
 
 The Showcase shortcut value is browser presentation, not part of any Rust
 extension manifest. It is fixed for an editor lifetime, addresses only existing

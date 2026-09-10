@@ -1,7 +1,8 @@
 # Typed toolbar controls
 
 Status: normative `0.3.0-alpha.8` architecture and compatibility decision,
-extended by `0.3.0-alpha.12` with one exact RGB24 integer presentation
+extended by `0.3.0-alpha.12` with one exact RGB24 integer presentation and by
+`0.3.0-alpha.13` with one exhaustive native integer-select presentation
 
 Alpha.7 added one deliberately closed native typed-control protocol for
 property-aware inline-format set/remove intents. Alpha.8 adds exact Rust-owned
@@ -97,8 +98,8 @@ durable payload.
   `removeLabel`, and `closeLabel`;
 - one through 32 fields, with at most 64 form fields across one toolbar
   manifest; and
-- at least one value-presenting URL string or RGB24 integer field. A
-  Boolean-only form is rejected.
+- at least one value-presenting URL string, RGB24 integer field, or exhaustive
+  integer-select field. A Boolean-only form is rejected.
 
 The Alpha.8 field vocabulary is:
 
@@ -113,6 +114,15 @@ Alpha.12 adds exactly one more shape: a required integer field with
 non-negative-zero default. It is presented as native `<input type="color">`
 and is not a general integer field.
 
+Alpha.13 adds a second required integer shape with
+`presentation: "select"`, explicit safe-integer minimum/maximum/default, and
+1 through 32 dense own-data options. Option values must be safe integers other
+than negative zero, strictly increasing, contiguous, unique, and exhaustive
+from minimum through maximum. Labels use the existing bounded toolbar-label
+contract and the default must name one option. The runtime creates one native
+single-select; placeholders, disabled options, optgroups, editable/custom
+values, callbacks, and application DOM nodes are rejected.
+
 String minimums are positive, maximums are at most 65,536 UTF-8 bytes, and
 every field name is unique within its form. Startup requires the fields to
 cover the target format's complete property contract exactly: every property
@@ -124,6 +134,14 @@ For RGB24, hydration encodes the semantic integer as lowercase zero-padded
 `#rrggbb`, and input construction accepts only that canonical seven-scalar
 native-control value before converting it back to the integer. The exact
 Color Showcase contract is in [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
+For an integer select, hydration selects the canonical decimal option for an
+exact uniform value; unset or mixed uses the declared default without claiming
+uniform state. Input construction accepts only one option value from the
+closed table and converts that canonical decimal spelling back to its integer.
+Native Arrow-key behavior stays within the select, while Escape retains the
+existing form-close behavior. The exact Size Showcase contract is in
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 
 The reference Link declaration uses:
 
@@ -192,6 +210,14 @@ the entire form, including UI Remove, unavailable and the input builder rejects
 either scalar rather than normalizing it. Programmatic typed-intent removal
 remains available. Boolean fields must retain `indeterminate=false`; the runtime
 resets that non-reflected state and faults on drift.
+
+An integer-select field creates one native `<select>` and one native `<option>`
+for every admitted entry, in exact declared order. Values use canonical decimal
+integer strings only; selected state must correspond to exactly one option.
+The browser's native single-select focus and Arrow-key semantics remain intact,
+and the form's existing Escape rule is the only added key handling. Canonical-
+DOM validation rejects inserted, removed, reordered, relabelled, disabled, or
+otherwise drifted options rather than reading them as application data.
 
 The toolbar mount may live in a Document or an open or closed ShadowRoot. ID
 and focus proof are scoped to its exact tree root. The separate editor mount is
@@ -325,6 +351,9 @@ realm/process and message protocol; Alpha.8 does not provide one.
 - Alpha.8 keeps Wasm ABI 5. Browser, Wasm, and reference packages must still be
   installed as an exact matching prerelease set; matching ABI alone is not a
   package-version compatibility claim.
+- Alpha.13 adds only browser/reference presentation types and the separate
+  Size Showcase data. Rust production contracts, generated Wasm members,
+  Profile Bootstrap V2, Document V2, V3 records, and ABI 5 remain unchanged.
 - Existing button-only toolbar manifests retain their runtime meaning.
   TypeScript consumers that exhaustively assumed every
   `ToolbarControlDeclaration` was a button must narrow on `kind` before reading
@@ -343,9 +372,9 @@ The current typed-form protocol still does not add:
 
 - fieldwise mixed-state reporting or merging; property observation compares
   complete maps and `mixed` carries no editable value;
-- optional fields, general integer fields, enums, colors beyond the exact
-  RGB24 presentation, selects, comboboxes, menus, arbitrary widgets, or host
-  callbacks;
+- optional fields, general free-form integer fields, sparse enums, colors
+  beyond the exact RGB24 presentation, custom/dynamic selects, comboboxes,
+  menus, arbitrary widgets, or host callbacks;
 - partial property patches, property deletion, coercion, normalization,
   cross-field rules, or async validation;
 - arbitrary URL schemes or navigation authority in the form layer;
@@ -371,7 +400,8 @@ general action-state system; an admitted generated-setter profile cannot fail
 its state refresh merely because its declared worst-case maps fill the catalog.
 
 The protocol intentionally proves only required URL-presented bounded strings,
-required Booleans, and the exact RGB24 integer presentation for complete-map
-inline-format set/remove intents. Any wider field language, fieldwise mixed
+required Booleans, the exact RGB24 integer presentation, and one exhaustive
+bounded native integer-select presentation for complete-map inline-format
+set/remove intents. Any wider field language, fieldwise mixed
 representation, or draft persistence requires a separately reviewed,
 versioned compatibility decision.

@@ -13,13 +13,13 @@ history is in the [Changelog](CHANGELOG.md).
 
 ## Run the browser demo
 
-The React demo loads the packaged Color Showcase profile, its canonical
-Document V2 sample, renderer, and ten-control native toolbar. Italic,
+The React demo loads the packaged Text Size Showcase profile, its canonical
+Document V2 sample, renderer, and eleven-control native toolbar. Italic,
 Strikethrough, and
 Inline Code are ordinary manifest-generated extension toggles beside Bold,
-Highlight, RGB24 Text color, Link, the core-owned Clear formatting command,
-Undo, and Redo. The Text color and Link launchers open runtime-owned nonmodal
-forms beside the APG toolbar root.
+Highlight, Text size, RGB24 Text color, Link, the core-owned Clear formatting
+command, Undo, and Redo. Text size, Text color, and Link launchers open
+runtime-owned nonmodal forms beside the APG toolbar root.
 The Showcase also supplies a callback-free shortcut manifest for Bold, Italic,
 Strikethrough, Code, Highlight, Undo, and Redo, including both Redo aliases.
 Each chord uses the demo's
@@ -34,6 +34,9 @@ input to normalize it.
 The color form uses a native picker but stores one opaque integer in Rust; the
 closed renderer alone derives lowercase `style="color:#rrggbb"` and never
 accepts arbitrary CSS. Text color deliberately has no shortcut.
+The size form uses a native exhaustive select for the semantic integer steps
+Small, Large, and Huge. Its renderer emits only a closed inert token; Normal is
+represented by removing the format. Text size deliberately has no shortcut.
 The demo also exercises local autosave and the explicit startup and persistence
 recovery paths.
 
@@ -45,10 +48,11 @@ npm run demo
 
 `npm run demo` builds the workspace first, then starts Vite for the React
 example. The Wasm build requires the `wasm32-unknown-unknown` Rust target and a
-matching `wasm-bindgen` CLI. `npm run test:demo` runs the end-to-end Chromium
-demo gate for formatting, undo/redo, autosave reload, accessibility, the narrow
-responsive layout, declarative shortcuts, and safe Link preservation through
-paragraph split/join, multiline paste, and restored redo history.
+matching `wasm-bindgen` CLI. `npm run test:demo` runs the end-to-end Chromium,
+Firefox, and WebKit demo gate for formatting, undo/redo, autosave reload,
+accessibility, the narrow responsive layout, declarative shortcuts, and safe
+Link preservation through paragraph split/join, multiline paste, restored redo
+history, RGB24 color, and the exhaustive Text size selector.
 
 Version `0.2.0` retains the audited RC.1 immutable compiled editor profile
 through the guarded Rust engine, Wasm ABI 3, and the browser projection
@@ -317,6 +321,26 @@ algorithm, durable generation, or Wasm method changes; ABI 5 remains current.
 See the [text-color decision](docs/TEXT_COLOR.md). Packages are still not
 published.
 
+The `0.3.0-alpha.13` source checkpoint proves a second property-aware browser
+presentation without adding feature-specific Rust mutation code. Its separate
+`example/size-showcase-editor@1` profile adds `example/text-size@1` with the
+required integer `example/text-size-step` bounded to `0..=2`; Rust compiles the
+profile to fingerprint
+`sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5`
+and exposes the existing generic set/remove, state, selection, undo/redo, and
+Session-V3 replay behavior.
+
+The reusable callback-free `safeIntegerTokenV1` renderer maps an exhaustive
+bounded integer table to the sole fixed
+`data-breditor-integer-token` attribute. The matching toolbar declaration
+renders a native `<select>` whose options must exactly cover the semantic
+integer domain. The reference profile supplies Small, Large, and Huge, keeps
+Text Color innermost in the eight-wrapper order, and expands the demo to eleven
+controls. Normal is format absence, not another stored value. No Rust
+production contract, durable generation, fingerprint algorithm, or Wasm method
+changes; ABI 5 remains current. See the
+[Text Size decision](docs/TEXT_SIZE_PRESETS.md). Packages remain unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -327,8 +351,8 @@ The implementation includes:
   inline formats to the same document/paragraph/text grammar, with optional
   closed typed scalar-property contracts that alpha.3 carries as data through
   the explicitly selected Wasm/browser profile path and that the browser can
-  map only through the closed `safeLinkV1` and `safeTextColorV1` presentation
-  policies;
+  map only through the closed `safeLinkV1`, `safeTextColorV1`, and exhaustive
+  `safeIntegerTokenV1` presentation policies;
 - separate Rust-only fingerprint-bearing V2 codecs for document, operation,
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,

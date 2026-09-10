@@ -328,6 +328,84 @@ describe("parseClipboardHtmlToPlainText", () => {
     }
   });
 
+  it("serializes and parses only declared safe integer tokens", () => {
+    const { generation, descriptor, presentation } = presentationFor(
+      [SAFE_INTEGER_TOKEN_FORMAT],
+      [{
+        formatKind: "example/text-size",
+        element: "span",
+        classes: ["typographic-size"],
+        attributes: {
+          kind: "safeIntegerTokenV1",
+          propertyName: "example/size",
+          tokens: [
+            { value: 1, token: "small" },
+            { value: 2, token: "medium" },
+            { value: 3, token: "large" },
+          ],
+        },
+      }],
+    );
+    const projected = createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "clipboard-integer-token", revision: "0" },
+      paragraphs: [{
+        runs: [{
+          text: "large text",
+          formatDetails: [{
+            kind: "example/text-size",
+            properties: [{ name: "example/size", value: 3 }],
+          }],
+        }],
+      }],
+    }, generation, descriptor);
+    if (!projected.ok) throw new Error("integer-token projection fixture failed");
+    expect(bindProjectionPresentation(projected.value, presentation)).toBe(true);
+    const selected = BaseRangeSelection.create(projected.value, {
+      kind: "range",
+      anchor: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 0,
+        affinity: "after",
+      },
+      focus: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 1,
+        affinity: "before",
+      },
+    });
+    if (!selected.ok) throw new Error("integer-token selection fixture failed");
+
+    const serialized = serializeClipboardSelection(
+      selected.value,
+      presentation,
+    );
+    if (!serialized.ok) throw new Error("integer-token serialization failed");
+    expect(serialized.value).toEqual({
+      plainText: "large text",
+      html:
+        '<p><span class="typographic-size" data-breditor-integer-token="large">large text</span></p>',
+    });
+    expect(
+      parseClipboardHtmlToPlainText(serialized.value.html, presentation),
+    ).toEqual({ ok: true, value: "large text" });
+
+    for (const html of [
+      '<p><span class="typographic-size">x</span></p>',
+      '<p><span class="typographic-size" data-breditor-integer-token="unknown">x</span></p>',
+      '<p><span class="typographic-size" data-breditor-integer-token="Large">x</span></p>',
+      '<p><span class="typographic-size" style="font-size:999px">x</span></p>',
+      '<p><span class="typographic-size" data-breditor-integer-token="large" title="extra">x</span></p>',
+    ]) {
+      expect(parseClipboardHtmlToPlainText(html, presentation)).toMatchObject({
+        ok: false,
+        error: { code: "clipboard.html.unsupported_structure" },
+      });
+    }
+  });
+
   it.each([
     '<p><span class="missing">x</span></p>',
     '<p><span class="highlight extra">x</span></p>',
@@ -790,6 +868,22 @@ const SAFE_TEXT_COLOR_FORMAT: Exclude<ProfileFormatFixture, string> =
           kind: "integer" as const,
           minimum: 0,
           maximum: 0xff_ffff,
+        }),
+      }),
+    ]),
+  });
+
+const SAFE_INTEGER_TOKEN_FORMAT: Exclude<ProfileFormatFixture, string> =
+  Object.freeze({
+    kind: "example/text-size",
+    properties: Object.freeze([
+      Object.freeze({
+        name: "example/size",
+        presence: "required" as const,
+        valueType: Object.freeze({
+          kind: "integer" as const,
+          minimum: 1,
+          maximum: 3,
         }),
       }),
     ]),

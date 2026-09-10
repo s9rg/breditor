@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.12` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.13` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -76,6 +76,12 @@ existing required integer contract and generated `InlineFormatSetSpecV1` to
 RGB24. Its `safeTextColorV1` CSS derivation and native picker are browser-only;
 the AST, operations, history, and checkpoints contain only the semantic
 integer. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
+Alpha.13 also adds no Rust data type. The Size Showcase applies that same
+required-integer and generic setter contract to
+`example/text-size-step` in `0..=2`. The AST, operations, history, and
+checkpoints contain only the semantic integer; exhaustive
+`safeIntegerTokenV1` rendering and the native select remain browser-only. See
+[`TEXT_SIZE_PRESETS.md`](TEXT_SIZE_PRESETS.md).
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -5436,6 +5442,15 @@ to `0..=16_777_215`, and the exact
 `<span class="breditor-text-color">` recipe. The browser derives exactly
 lowercase zero-padded `style="color:#rrggbb"`; no CSS text is semantic input.
 
+Alpha.13 additionally admits `safeIntegerTokenV1` for a generic format with
+exactly one required integer property. Its 1 through 32 value/token entries
+must be dense own data, strictly increasing, contiguous, unique, and exhaustive
+from the property's explicit minimum through maximum. It is legal only on a
+`span` with exactly one static class and derives only the fixed
+`data-breditor-integer-token` attribute. The Size Showcase maps `0`, `1`, and
+`2` to `small`, `large`, and `huge`; no DOM attribute name, class, CSS text, or
+visual ratio is semantic input.
+
 Before parsing, the raw spelling must place a nonempty authority immediately
 after exactly `http://` or `https://`. The authority is restricted to visible
 ASCII and may contain neither percent escapes, backslashes, nor a raw `@`;
@@ -5579,7 +5594,11 @@ stale `getRangeAt(0)` after an owned DOM replacement. Other programmatic writes
 use `setBaseAndExtent` when available and verify the installed semantic
 endpoints. A verified Range fallback is allowed for forward/collapsed
 selections only. A backward write fails before mutation when direction cannot
-be preserved. DOM has no affinity field, so new DOM input uses the frozen
+be preserved. Before a non-null authoritative write, a transiently incoherent
+WebKit snapshot may be overwritten only when either its complete anchor/focus
+pair or its complete Range start/end pair maps inside the current canonical
+projection. Mixed pairs, one-sided evidence, and explicit null writes still
+fail closed. DOM has no affinity field, so new DOM input uses the frozen
 boundary-derived rule: start and empty boundaries are `after`, a non-empty end
 boundary is `before`, and an interior boundary is `after`.
 
@@ -5739,6 +5758,9 @@ unprofiled path emits only attribute-free `<strong>`.
 Alpha.12 emits only the exact `safeTextColorV1` lowercase RGB24 style. HTML
 paste may admit that exact shape but still discards the source color when it
 flattens the tree to plain text.
+Alpha.13 likewise emits only an exact `safeIntegerTokenV1` data token. HTML
+paste may admit that token from the compiled exhaustive table but still
+discards the source integer while flattening to plain text.
 Cut first clears the clipboard, writes `text/plain`, then writes `text/html`,
 and confirms native cancellation. Only after all four steps succeed can one
 `breditor/delete-selection` action with a `closeBefore` history boundary run.

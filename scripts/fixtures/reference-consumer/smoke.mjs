@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,8 +12,11 @@ import {
   MAX_REFERENCE_COLOR_SHOWCASE_DOCUMENT_TEXT_UTF8,
   MAX_REFERENCE_FORMATTING_DOCUMENT_TEXT_UTF8,
   MAX_REFERENCE_LINK_HREF_UTF8,
+  MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8,
   MAX_REFERENCE_TEXT_COLOR_RGB24,
+  MAX_REFERENCE_TEXT_SIZE_STEP,
   MIN_REFERENCE_TEXT_COLOR_RGB24,
+  MIN_REFERENCE_TEXT_SIZE_STEP,
   REFERENCE_COLOR_SHOWCASE_DEFAULT_RGB24,
   REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT,
   REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT_JSON,
@@ -42,7 +45,21 @@ import {
   REFERENCE_HIGHLIGHT_SCHEMA_FINGERPRINT,
   REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
   REFERENCE_LINK_REMOVE_INPUT_JSON,
+  REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_IDS,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
   REFERENCE_TEXT_COLOR_REMOVE_INPUT_JSON,
+  REFERENCE_TEXT_SIZE_REMOVE_INPUT_JSON,
   createReferenceColorShowcaseDocument,
   createReferenceColorShowcaseDocumentJson,
   createReferenceFormattingDocument,
@@ -52,21 +69,29 @@ import {
   createReferenceLinkRemoveInputJson,
   createReferenceLinkSetInput,
   createReferenceLinkSetInputJson,
+  createReferenceSizeShowcaseDocument,
+  createReferenceSizeShowcaseDocumentJson,
   createReferenceTextColorRemoveInput,
   createReferenceTextColorRemoveInputJson,
   createReferenceTextColorSetInput,
   createReferenceTextColorSetInputJson,
+  createReferenceTextSizeRemoveInput,
+  createReferenceTextSizeRemoveInputJson,
+  createReferenceTextSizeSetInput,
+  createReferenceTextSizeSetInputJson,
 } from "@breditor/reference-highlight";
 import initializeWasm, {
+  BreditorCompiledProfile,
   breditorVersion,
   breditorWasmAbiVersion,
+  initSync,
 } from "@breditor/wasm";
 
 assert.equal(typeof openBreditorBrowserEditor, "function");
 assert.equal(typeof initializeWasm, "function");
 assert.equal(typeof breditorWasmAbiVersion, "function");
 assert.equal(typeof breditorVersion, "function");
-assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.12");
+assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.13");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatKind, "example/highlight");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatRevision, 7);
 assert.equal(
@@ -293,11 +318,213 @@ for (const fixture of [
   assertDeeplyFrozen(fixture);
 }
 
+assert.equal(MAX_REFERENCE_SIZE_SHOWCASE_DOCUMENT_TEXT_UTF8, 1_048_576);
+assert.equal(MIN_REFERENCE_TEXT_SIZE_STEP, 0);
+assert.equal(MAX_REFERENCE_TEXT_SIZE_STEP, 2);
+assert.equal(REFERENCE_SIZE_SHOWCASE_DEFAULT_TEXT_SIZE_STEP, 1);
+assert.equal(
+  REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+  "breditor-react-reference-size-showcase",
+);
+assert.equal(REFERENCE_SIZE_SHOWCASE_IDS.schemaName, "example/size-showcase-editor");
+assert.equal(REFERENCE_SIZE_SHOWCASE_IDS.textSizeFormatKind, "example/text-size");
+assert.equal(
+  REFERENCE_SIZE_SHOWCASE_IDS.textSizeStepProperty,
+  "example/text-size-step",
+);
+assert.equal(REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP.formatVersion, 2);
+assert.deepEqual(
+  JSON.parse(REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON),
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+);
+assert.equal(
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT,
+  "sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5",
+);
+assert.deepEqual(
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST.recipes.map(
+    (recipe) => recipe.formatKind,
+  ),
+  [
+    "breditor/strong",
+    "example/code",
+    "example/emphasis",
+    "example/highlight",
+    "example/link",
+    "example/strikethrough",
+    "example/text-color",
+    "example/text-size",
+  ],
+);
+assert.deepEqual(
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST.recipes.find(
+    (recipe) => recipe.formatKind === "example/text-size",
+  ),
+  {
+    formatKind: "example/text-size",
+    element: "span",
+    classes: ["breditor-text-size"],
+    before: ["example/text-color"],
+    after: [],
+    attributes: {
+      kind: "safeIntegerTokenV1",
+      propertyName: "example/text-size-step",
+      tokens: [
+        { value: 0, token: "small" },
+        { value: 1, token: "large" },
+        { value: 2, token: "huge" },
+      ],
+    },
+  },
+);
+assert.deepEqual(
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST.controls.map(
+    (control) => control.label,
+  ),
+  [
+    "Bold",
+    "Italic",
+    "Strikethrough",
+    "Code",
+    "Highlight",
+    "Text size",
+    "Text color",
+    "Link",
+    "Clear formatting",
+    "Undo",
+    "Redo",
+  ],
+);
+assert.deepEqual(REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST.controls[5], {
+  kind: "inlineFormatForm",
+  stateId: "example/text-size-presence",
+  label: "Text size",
+  group: "inline",
+  formatKind: "example/text-size",
+  intentId: "example/set-text-size-intent",
+  fields: [
+    {
+      kind: "integer",
+      propertyName: "example/text-size-step",
+      label: "Text size",
+      presentation: "select",
+      minimum: 0,
+      maximum: 2,
+      defaultValue: 1,
+      options: [
+        { value: 0, label: "Small" },
+        { value: 1, label: "Large" },
+        { value: 2, label: "Huge" },
+      ],
+    },
+  ],
+  applyLabel: "Apply size",
+  removeLabel: "Reset size",
+  closeLabel: "Close",
+});
+assert.equal(
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST.shortcuts.some(
+    (shortcut) => shortcut.stateId === REFERENCE_SIZE_SHOWCASE_IDS.textSizeStateId,
+  ),
+  false,
+);
+const textSizeSetInput = createReferenceTextSizeSetInput(2);
+assert.deepEqual(textSizeSetInput, {
+  operation: "set",
+  properties: [{ name: "example/text-size-step", value: 2 }],
+});
+assert.equal(
+  createReferenceTextSizeSetInputJson(0),
+  '{"operation":"set","properties":[{"name":"example/text-size-step","value":0}]}',
+);
+assert.deepEqual(createReferenceTextSizeRemoveInput(), { operation: "remove" });
+assert.equal(
+  createReferenceTextSizeRemoveInputJson(),
+  REFERENCE_TEXT_SIZE_REMOVE_INPUT_JSON,
+);
+const generatedSizeDocument = createReferenceSizeShowcaseDocument(
+  "package size proof",
+  { textSize: 2, textColor: 0x00_ff_80 },
+);
+assert.equal(
+  generatedSizeDocument.schemaFingerprint,
+  REFERENCE_SIZE_SHOWCASE_SCHEMA_FINGERPRINT,
+);
+assert.equal(
+  JSON.parse(
+    createReferenceSizeShowcaseDocumentJson("package size proof", {
+      textSize: 0,
+    }),
+  ).root.children[0].children[0].formats.at(-1).properties[
+    "example/text-size-step"
+  ],
+  0,
+);
+assert.equal(
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  JSON.stringify(REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT),
+);
+assert.equal(
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  JSON.stringify(REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT),
+);
+for (const fixture of [
+  REFERENCE_SIZE_SHOWCASE_IDS,
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SIZE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_SIZE_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT,
+  generatedSizeDocument,
+  textSizeSetInput,
+  createReferenceTextSizeRemoveInput(),
+]) {
+  assertDeeplyFrozen(fixture);
+}
+
 const consumerDirectory = dirname(fileURLToPath(import.meta.url));
 const modulesPrefix = `${realpathSync(join(consumerDirectory, "node_modules"))}${sep}`;
 const browserEntry = resolveInsideConsumer("@breditor/browser");
 resolveInsideConsumer("@breditor/wasm");
+const wasmUrl = import.meta.resolve("@breditor/wasm/wasm");
+resolveInsideConsumer("@breditor/wasm/wasm");
 const referenceEntry = resolveInsideConsumer("@breditor/reference-highlight");
+
+initSync({ module: readFileSync(fileURLToPath(wasmUrl)) });
+assert.equal(breditorWasmAbiVersion(), "5");
+assert.equal(breditorVersion(), "0.3.0-alpha.13");
+const sizeProfileResult = BreditorCompiledProfile.fromBootstrapJsonV2(
+  REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+);
+assert.equal(sizeProfileResult.status, "profile");
+const sizeCompiledProfile = sizeProfileResult.takeProfile();
+assert.notEqual(sizeCompiledProfile, undefined);
+const sizeDescriptor = sizeCompiledProfile.descriptor();
+assert.deepEqual(
+  {
+    schemaName: sizeDescriptor.schemaName,
+    schemaVersion: sizeDescriptor.schemaVersion,
+    schemaFingerprint: sizeDescriptor.schemaFingerprint,
+    formatCount: sizeDescriptor.formatCount,
+    intentCount: sizeDescriptor.intentCount,
+    actionStateCount: sizeDescriptor.actionStateCount,
+    inlineFormatSetCount: sizeDescriptor.inlineFormatSetCount,
+  },
+  {
+    schemaName: "example/size-showcase-editor",
+    schemaVersion: 1,
+    schemaFingerprint:
+      "sha256:ec554b29919bd84ec013ea2af4d0248e1a3fabdcb1514bb642035871a49189d5",
+    formatCount: 8,
+    intentCount: 9,
+    actionStateCount: 11,
+    inlineFormatSetCount: 3,
+  },
+);
+sizeDescriptor.free();
+sizeCompiledProfile.free();
+sizeProfileResult.free();
 
 const referenceRequire = createRequire(referenceEntry);
 const referenceBrowserEntry = realpathSync(
