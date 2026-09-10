@@ -12,7 +12,7 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-breditor-core = { path = "../breditor-core", version = "=0.3.0-alpha.8" }
+breditor-core = { path = "../breditor-core", version = "=0.3.0-alpha.9" }
 serde.workspace = true
 serde_json.workspace = true
 wasm-bindgen.workspace = true

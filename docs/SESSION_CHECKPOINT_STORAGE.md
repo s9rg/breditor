@@ -3,7 +3,7 @@
 Status: supported by the optional public `0.1.0` autosave path; the exact
 `"current"` V1 record remains the stable `0.1.x` profile. Version `0.2.0`
 retains the explicit profile-bound V2 outer record and scoped slots without
-changing the legacy bytes. The unpublished `0.3.0-alpha.8` Bootstrap-V2 path
+changing the legacy bytes. The unpublished `0.3.0-alpha.9` Bootstrap-V2 path
 stores Session Checkpoint V3 in that unchanged outer-V2 record. Direct store/
 autosave assembly remains an advanced integration surface.
 
@@ -25,6 +25,10 @@ Alpha.8's current inline-format action-state value and browser form draft do
 not enter this store. Only a committed semantic format map reaches Document V2
 inside Session Checkpoint V3. Unset/uniform/mixed observation, form-open state,
 focus, draft fields, and feedback are neither saved nor restored.
+
+Alpha.9 adds no storage field or record version. Its Showcase uses a distinct
+application lineage and slot, and persists the ordinary fingerprint-bound
+Document V2 plus Session Checkpoint V3 for its own schema.
 
 The Rust checkpoint remains authoritative for document, selection, pending
 formats, undo, redo, and history merge behavior. JavaScript owns IndexedDB

@@ -3,12 +3,14 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.8` source checkpoint retains alpha.4's one closed
+unpublished `0.3.0-alpha.9` source checkpoint retains alpha.4's one closed
 property-driven Link presentation and carries it through typed structural
 paragraph edits described below. Alpha.8 current-property transport preserves
 the exact stored string and does not alter this renderer contract. Its native
 single-line form refuses CR/LF-bearing state instead of normalizing it; only
 `safeLinkV1` parses or normalizes a URL and grants navigation attributes.
+Alpha.9 adds an additive, property-free Showcase wrapper-order proof without a
+new DOM recipe kind.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -176,6 +178,15 @@ the renderer derives every DOM attribute anew from the semantic projection.
 Selection direction and affinities come from Rust's rebuilt semantic range,
 not retained DOM nodes. The action introduces no projection discriminant,
 persistent node identity, or property-to-attribute rule.
+
+Alpha.9's Showcase manifest uses only existing `element` recipes plus the
+existing closed `safeLinkV1` recipe. Its complete order graph resolves one
+deterministic outer-to-inner chain: `<a><strong><em><mark><s><code>` for text
+carrying all six formats. Each wrapper remains presentation-only; the AST text
+leaf owns a canonical set of format instances, not nested formatting nodes.
+Toggling, undo, redo, replay, or reload regenerates the wrapper chain from that
+semantic set. The chosen HTML tags do not introduce block code, nesting
+semantics, format exclusion, or rich-paste import.
 
 ## Known limits
 

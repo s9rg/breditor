@@ -1,9 +1,10 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.8` source checkpoint adds exact Rust-owned current-
-property observation and pristine Link-form hydration over alpha.7's callback-
-free native typed control. Alpha.8 retains Wasm ABI 5 and the existing typed-
-set presentation correlation surface. Explicit Bootstrap V2 still selects
+Status: the `0.3.0-alpha.9` source checkpoint adds an independent Showcase
+profile whose Italic, Strikethrough, and Inline Code features are generated
+from property-free extension declarations. Alpha.9 adds no editor protocol and
+retains alpha.8's exact Rust-owned property observation, form hydration, Wasm
+ABI 5, and typed-set presentation correlation surface. Explicit Bootstrap V2 still selects
 property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
@@ -23,6 +24,8 @@ semantics for the existing registration-owned typed setter. Alpha.7 adds one
 closed browser input/presentation contract without making UI durable or
 executable in Rust. Alpha.8 lets that control observe a complete uniform map
 without turning observation or drafts into history, replay, or persisted state.
+Alpha.9 proves that the same generic compiler and browser presentation can add
+several visible features without format-specific mutation code.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -523,6 +526,37 @@ action-state batch value-count and text-byte budgets, rejecting the first
 canonical declaration that would cross a bound. Runtime limits remain defense
 in depth, not an unresolved generated-setter overflow case.
 
+## Alpha.9 additive Showcase profile
+
+Alpha.9 adds a third, independent reference profile rather than changing the
+existing Highlight-only or Highlight + Link values. The
+`example/showcase-editor@1` schema reuses those two extension manifests and
+adds `example/text-styles-extension@1`. That manifest owns property-free
+Emphasis, Strikethrough, and Code formats plus one opt-in toggle declaration
+for each. Rust profile compilation therefore generates their action, semantic
+intent, priority-zero blocking route, and tracked action-state source exactly
+as it already does for Highlight.
+
+The browser declaration is equally data-only. Its toolbar orders Bold, Italic,
+Strikethrough, Code, Highlight, Link, Undo, and Redo. Its render graph fixes one
+total outer-to-inner order: Link, Strong, Emphasis, Highlight,
+Strikethrough, Code. The wrappers are from the already closed element
+vocabulary; only Link uses properties or `safeLinkV1`. No extension callback,
+action table, dynamic import, Wasm shim, or renderer function is added.
+
+The React example moves to a new Showcase lineage and IndexedDB slot. This is a
+separate durable schema fingerprint, so alpha.8 data remains in its prior slot
+instead of being treated as Showcase content. The initial sample retains its
+Highlight + safe Link values and leaves the new toggles inactive. Browser and
+consumer gates then stack the formats, observe active and mixed state, cross a
+paragraph boundary, undo/redo, and restore a checkpoint through the ordinary
+generic paths.
+
+Alpha.9 changes neither Profile Bootstrap V2 nor Document V2 or any V3 durable
+record. Wasm ABI stays 5. The formats freely coexist; this checkpoint does not
+introduce exclusions, extension keyboard shortcuts, clear formatting, block
+code, headings, lists, rich paste, or runtime-loaded plugins.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -583,6 +617,9 @@ CSS grammar and other property presentations remain undefined.
 - The additive reference Link proves one exact contract while preserving the
   property-free Highlight-only profile. It is not a general Link schema,
   renderer, URL validator, or arbitrary toolbar-control registration protocol.
+- The additive Showcase proves three more property-free controls through the
+  generic path. Their fixed presentation is not an exclusion system, shortcut
+  declaration language, block model, or dynamic plugin loader.
 - Form drafts hydrate only from a fresh, single-line-representable uniform
   state. CR/LF-bearing URL state leaves the form and its UI Remove action
   unavailable, while programmatic removal remains possible. Drafts are not

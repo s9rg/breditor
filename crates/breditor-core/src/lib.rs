@@ -752,6 +752,13 @@
 //! state. The first browser field remains deliberately narrower than Rust's
 //! scalar language: it is a single-line URL presentation, so CR/LF-bearing
 //! strings make that form unavailable instead of being normalized.
+//!
+//! The unpublished `0.3.0-alpha.9` source checkpoint adds no Rust primitive.
+//! Its additive Showcase profile compiles three more property-free inline
+//! format toggle declarations through the existing generic action, intent,
+//! state, transaction, history, and replay contracts. The distinct schema and
+//! admitted format set produce a distinct Document-V2 fingerprint; Profile
+//! Bootstrap V2, Wasm ABI 5, and Session/State/Commit V3 remain unchanged.
 
 pub mod action;
 pub mod codec;

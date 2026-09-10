@@ -19,8 +19,8 @@ createRoot(root).render(
         <h1>Breditor</h1>
         <p className="hero-copy">
           A small, real browser editor built on a typed document tree and
-          semantic commands. This page runs reference Highlight and safe Link
-          formatting end to end.
+          semantic commands. This page runs a complete eight-control formatting
+          showcase through the Rust core, including Highlight and safe Link.
         </p>
       </header>
 
@@ -31,14 +31,14 @@ createRoot(root).render(
             <h2 id="demo-heading">Format, undo, and keep writing.</h2>
           </div>
           <p>
-            Select some text, then use Bold, Highlight, or the Link form. Undo
-            and Redo replay the same semantic operations through the Rust-owned
-            editor state.
+            Select some text, then combine Bold, Italic, Strikethrough, Code,
+            Highlight, or the Link form. Undo and Redo replay the same semantic
+            operations through the Rust-owned editor state.
           </p>
         </div>
 
         <BreditorEditor
-          label="Breditor formatting reference document"
+          label="Breditor showcase document"
           primaryModifier={primaryModifier}
         />
 
@@ -49,8 +49,8 @@ createRoot(root).render(
           </p>
           <p>
             <span className="hint-number">02</span>
-            Press <kbd>{primaryModifier === "meta" ? "⌘" : "Ctrl"}</kbd> +{" "}
-            <kbd>B</kbd> for bold.
+            Stack Italic, Strikethrough, and Code on one range; their projected
+            DOM order stays deterministic.
           </p>
           <p>
             <span className="hint-number">03</span>

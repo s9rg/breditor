@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.8
+npm install @breditor/wasm@0.3.0-alpha.9
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,8 +25,8 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, alpha.7, and alpha.8 browser
-bootstrap is
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.9
+browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, before passing the initialized namespace to the exactly matching
@@ -46,7 +46,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `5` for this unpublished alpha.8 source checkpoint.
+with ABI generation `5` for this unpublished alpha.9 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -140,6 +140,24 @@ under the independently typed output contract whose serialized pair is
 map set input; no new Wasm method or durable format is needed. Compiler
 admission proves both each setter's action-value bound and the generated
 setter catalog's collective state-batch value-count/text-byte bounds.
+
+`0.3.0-alpha.9` also retains ABI 5. The additive
+`example/showcase-editor@1` profile is declared in
+`@breditor/reference-highlight`. It reuses the existing Highlight and Link
+extensions and adds property-free Emphasis, Strikethrough, and Code toggles
+through `example/text-styles-extension@1`; the expanded semantic declaration
+has its own schema identity and fingerprint. Existing Highlight and Formatting
+exports remain byte-exact. The reference toolbar order is Bold, Italic,
+Strikethrough, Code, Highlight, Link, Undo, Redo, and its outer-to-inner wrapper
+order is Link, Strong, Emphasis, Highlight, Strikethrough, Code. The `<em>`,
+`<s>`, and `<code>` elements and those presentation orderings are browser-owned
+data: there is no new Rust action, browser protocol, Wasm method, or durable
+record. Profile Bootstrap V2, fingerprint-bearing Document V2, and
+Session/State/Commit V3 keep their prior shapes.
+
+Alpha.9 does not yet provide format exclusions, extension keyboard shortcuts,
+clear-format, block code, headings or lists, rich paste, or runtime plugin
+loading. Those remain explicit future capabilities rather than ABI changes.
 
 ## Reproducible build
 

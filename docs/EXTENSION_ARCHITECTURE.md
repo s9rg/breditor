@@ -3,12 +3,14 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.8` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.9` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
 typed form correlated through an ABI-5 process-local set-surface triple and now
-hydrates pristine fields from exact Rust-owned complete-map state. It
+hydrates pristine fields from exact Rust-owned complete-map state. Alpha.9
+then composes five extension-owned controls in one additive Showcase profile
+using only those existing generic contracts. It
 does not introduce a generic attribute protocol, arbitrary toolbar widget, or
 extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
 normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
@@ -851,6 +853,31 @@ Compiler admission proves that each setter's worst-case complete map fits one
 `ActionValue` and that all generated setters collectively fit Rust's action-
 state batch value-count and text-byte budgets. It rejects the first canonical
 declaration crossing either aggregate bound.
+
+## `0.3.0-alpha.9` additive Showcase composition
+
+Alpha.9 adds no semantic primitive. The package-owned
+`example/showcase-editor@1` profile compiles the unchanged Highlight and Link
+extensions together with `example/text-styles-extension@1`. That third
+extension declares three property-free formats—Emphasis, Strikethrough, and
+Code—and one existing generic toggle surface for each. Rust still resolves and
+owns their action, no-input intent, blocking route, state, transaction,
+history, and replay behavior from immutable Profile Bootstrap V2 data.
+
+The browser contribution is likewise composition rather than new authority.
+One complete callback-free render manifest fixes total outer-to-inner nesting
+as Link, Strong, Emphasis, Highlight, Strikethrough, then Code. One toolbar
+manifest orders Bold, Italic, Strikethrough, Code, Highlight, Link, Undo, and
+Redo. Existing Highlight and Formatting exports remain unchanged; Showcase
+exports use a new schema selector, fingerprint, fixtures, and manifests.
+
+This demonstrates that several independently named features can coexist on the
+same AST text without per-feature browser mutation code. It does not add
+exclusions, style precedence semantics beyond deterministic nesting, extension
+keyboard shortcuts, clear-format, block code, headings, lists, rich paste,
+runtime installation, callbacks, a new operation, a Wasm member, or a durable
+codec. ABI 5, Bootstrap V2, Document V2, and Session/State/Commit V3 remain the
+same contracts.
 
 ## Deferred beyond 0.2.0
 

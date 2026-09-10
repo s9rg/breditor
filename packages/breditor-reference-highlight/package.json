@@ -1,13 +1,14 @@
 {
   "name": "@breditor/reference-highlight",
-  "version": "0.3.0-alpha.8",
-  "description": "Callback-free reference Highlight and typed Link profiles for Breditor",
+  "version": "0.3.0-alpha.9",
+  "description": "Callback-free Highlight, Link, and text-style reference profiles for Breditor",
   "keywords": [
     "rich-text-editor",
     "breditor",
     "extension",
     "highlight",
-    "link"
+    "link",
+    "rich-text-formatting"
   ],
   "author": "Breditor contributors",
   "license": "MIT OR Apache-2.0",
@@ -33,7 +34,7 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@breditor/browser": "0.3.0-alpha.8"
+    "@breditor/browser": "0.3.0-alpha.9"
   },
   "scripts": {
     "clean": "node scripts/clean.mjs",

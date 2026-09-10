@@ -4,7 +4,8 @@ Status: supported by the public `0.1.0` runtime and carried unchanged into the
 `0.2.0` descriptor-validated intent toolbar and reference-package
 consumer/cross-browser release; `0.3.0-alpha.7` adds the closed callback-free
 typed inline-format form, and `0.3.0-alpha.8` adds exact property-state
-hydration, as defined in
+hydration. `0.3.0-alpha.9` proves additive eight-control manifest composition,
+as defined in
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md)
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
@@ -281,6 +282,21 @@ value. Close, Escape, another form opening, and disposal clear presentation
 state; a later open seeds from fresh state again. These drafts are not action
 state, history, replay, or persistence data.
 
+Alpha.9 adds no toolbar control kind or dispatch rule. Its Showcase profile
+uses ordinary no-input toggle buttons for Bold, Italic, Strikethrough, Code,
+and Highlight; the existing typed Link form; and the existing Undo and Redo
+history controls, in that order. The three new style buttons are admitted from
+their compiled property-free toggle declarations and execute through the same
+queue, intent router, Rust action state, transaction, and history boundary as
+Bold and Highlight. No switch statement or feature-specific command callback
+is added to the toolbar.
+
+The styles are independent and may all be active or mixed over one selection.
+The toolbar does not implement mutual exclusion, a clear-format aggregate,
+extension shortcuts, overflow menus, or runtime manifest replacement. The
+Showcase is evidence that the fixed declaration grammar composes; it is not a
+general toolbar-widget or plugin API.
+
 ## Accessible DOM behavior
 
 `BreditorToolbar` treats its constructor element as a mount. It accepts only an
@@ -385,6 +401,9 @@ toolbar.
 - The public editor can execute descriptor-declared typed intent JSON. The
   typed form remains limited to required URL-string and Boolean fields. Alpha.8
   hydrates only a uniform complete map; mixed state has no fieldwise value.
+  A stored string containing CR or LF cannot be represented exactly by the
+  native single-line control, so the complete form, including Remove, becomes
+  unavailable; programmatic removal remains available.
   There is no persisted draft, optional/integer field, partial patch, or
   arbitrary widget.
   There are no menus/selects, extension

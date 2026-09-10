@@ -1,10 +1,11 @@
 # `@breditor/reference-highlight`
 
-`@breditor/reference-highlight` packages two complete callback-free reference
+`@breditor/reference-highlight` packages three complete callback-free reference
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format for the `0.3.0-alpha.8` path.
+`example/link` format. The `0.3.0-alpha.9` `REFERENCE_SHOWCASE_*` surface keeps
+both and adds three ordinary property-free text styles.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -38,6 +39,10 @@ state. Form-admissible URL text remains exact inert scalar data until the
 separate `safeLinkV1` renderer decides navigation presentation. The native
 single-line field preserves surrounding whitespace but rejects CR/LF rather
 than silently accepting browser normalization.
+Alpha.9 preserves every Highlight and Formatting export byte-for-byte. Its
+Showcase profile adds Emphasis, Strikethrough, and Code through the existing
+generic toggle declaration; no new Rust action implementation, operation kind,
+browser protocol, Wasm method, or durable record generation is added.
 
 ## Use
 
@@ -47,9 +52,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.8 \
-  @breditor/wasm@0.3.0-alpha.8 \
-  @breditor/reference-highlight@0.3.0-alpha.8
+npm install @breditor/browser@0.3.0-alpha.9 \
+  @breditor/wasm@0.3.0-alpha.9 \
+  @breditor/reference-highlight@0.3.0-alpha.9
 ```
 
 ```ts
@@ -180,6 +185,23 @@ single-run examples. Set `highlighted: true` and/or provide
 identities in lexical order, validates the declared UTF-8 bounds, and deeply
 freezes its object form.
 
+## Showcase
+
+Use `REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON`,
+`REFERENCE_SHOWCASE_RENDER_MANIFEST`,
+`REFERENCE_SHOWCASE_TOOLBAR_MANIFEST`, and
+`REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON` with the same Bootstrap-V2 open
+shape shown above. The sample starts with Highlight and a safe Link so Italic,
+Strikethrough, and Code visibly begin inactive. The toolbar has exactly Bold,
+Italic, Strikethrough, Code, Highlight, Link, Undo, and Redo in that order.
+
+`createReferenceShowcaseDocumentJson(text, options)` accepts independent
+`bold`, `italic`, `strikethrough`, `code`, and `highlighted` flags plus the
+existing Link option. When all formats overlap, the renderer's fixed
+outer-to-inner chain is Link, Strong, Emphasis, Highlight, Strikethrough, Code
+(`<a><strong><em><mark><s><code>`). The AST still stores one canonical format
+set on its text leaf; wrapper nesting is browser presentation only.
+
 ## Contract
 
 The frozen identities are available through `REFERENCE_HIGHLIGHT_IDS`. The
@@ -217,13 +239,24 @@ That exact combined content language compiles to
 Action, intent, binding, state, toolbar, and rendering declarations do not enter
 the durable schema fingerprint.
 
+The additive Showcase uses schema `example/showcase-editor@1`, retains those
+Highlight and Link identities, and adds extension
+`example/text-styles-extension@1` with property-free formats
+`example/emphasis@1`, `example/strikethrough@1`, and `example/code@1`. Their
+action, intent, binding, and state names are available through
+`REFERENCE_SHOWCASE_IDS`. The exact Showcase fingerprint is
+`sha256:2a90a5fea97e6f4c3b9c535a78b76e9daf50afd95df3e3119392bfc19fd5ec63`.
+
 ## Deliberate limitations
 
-This package demonstrates one immutable property-free format and one closed
-typed Link format. It does not provide dynamic installation, arbitrary nodes
+This package demonstrates several immutable property-free formats and one
+closed typed Link format. The styles coexist independently; there are no
+exclusion groups or aggregate clear-format command. It does not provide
+dynamic installation, arbitrary nodes
 or attributes, colors, custom JavaScript/Rust callbacks, arbitrary typed toolbar
-forms, keymaps, `beforeinput` rules, converters, rich paste, or a native/Wasm
-plugin ABI. The one Link form uses the browser's closed string/Boolean field
+forms, extension keymaps, block code, headings, lists, `beforeinput` rules,
+converters, rich paste, or a native/Wasm plugin ABI. The one Link form uses the
+browser's closed string/Boolean field
 vocabulary. The Link href contract validates scalar shape and size; URL safety
 remains a separate browser-owned presentation policy. Reconstruct the editor
 with a newly compiled profile when semantic extensions change.

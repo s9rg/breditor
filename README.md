@@ -13,9 +13,11 @@ history is in the [Changelog](CHANGELOG.md).
 
 ## Run the browser demo
 
-The React demo loads the packaged reference Highlight + Link profile, its
-canonical Document V2 sample, renderer, and five-control native toolbar. Its
-Link launcher opens a runtime-owned nonmodal form beside the APG toolbar root.
+The React demo loads the packaged Showcase profile, its canonical Document V2
+sample, renderer, and eight-control native toolbar. Italic, Strikethrough, and
+Inline Code are ordinary manifest-generated extension toggles beside Bold,
+Highlight, Link, Undo, and Redo. The Link launcher opens a runtime-owned
+nonmodal form beside the APG toolbar root.
 When the semantic selection has one uniform Link map, the pristine form opens
 with that exact stored single-line URL and Boolean value; mixed or absent Link
 state uses the declared defaults without inventing a merge. A stored URL
@@ -232,6 +234,17 @@ history, replay, document, checkpoint, or IndexedDB record. The compiler proves
 both per-set action-value representability and the generated setter catalog's
 aggregate worst-case state-batch bounds. Alpha.8 adds no Wasm method and retains
 ABI 5. The packages remain unpublished.
+
+The `0.3.0-alpha.9` source checkpoint adds no new editor protocol. Instead, its
+separate `example/showcase-editor@1` reference profile proves extension breadth:
+one inert text-styles manifest produces Italic, Strikethrough, and Inline Code
+actions, intents, tracked state, toolbar controls, replay, and persistence
+through the existing generic Rust/Wasm/browser path. Rendering has one total
+outer-to-inner order—Link, Strong, Emphasis, Highlight, Strikethrough, Code—so
+stacked formats are deterministic. Existing Highlight and Highlight+Link
+reference values remain unchanged, and the demo uses a new lineage and storage
+slot rather than consuming alpha.8 data. ABI 5 and every durable generation
+remain unchanged; packages are still not published.
 
 The implementation includes:
 

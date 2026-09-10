@@ -22,4 +22,12 @@ package/dist/presentation.d.ts
 package/dist/presentation.js
 package/dist/profile.d.ts
 package/dist/profile.js
+package/dist/showcase_documents.d.ts
+package/dist/showcase_documents.js
+package/dist/showcase_ids.d.ts
+package/dist/showcase_ids.js
+package/dist/showcase_presentation.d.ts
+package/dist/showcase_presentation.js
+package/dist/showcase_profile.d.ts
+package/dist/showcase_profile.js
 package/package.json

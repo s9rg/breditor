@@ -1,6 +1,7 @@
 # Typed toolbar controls
 
-Status: normative `0.3.0-alpha.8` architecture and compatibility decision
+Status: normative `0.3.0-alpha.8` architecture and compatibility decision,
+retained unchanged by the `0.3.0-alpha.9` Showcase checkpoint
 
 Alpha.7 added one deliberately closed native typed-control protocol for
 property-aware inline-format set/remove intents. Alpha.8 adds exact Rust-owned

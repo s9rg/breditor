@@ -5,6 +5,7 @@ import {
   type BreditorBrowserIntentResult,
 } from "@breditor/browser";
 import {
+  MAX_REFERENCE_SHOWCASE_DOCUMENT_TEXT_UTF8,
   REFERENCE_FORMATTING_EMPTY_DOCUMENT,
   REFERENCE_FORMATTING_IDS,
   REFERENCE_FORMATTING_PROFILE_BOOTSTRAP,
@@ -18,6 +19,16 @@ import {
   REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
   REFERENCE_HIGHLIGHT_SCHEMA_FINGERPRINT,
   REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+  REFERENCE_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_SHOWCASE_IDS,
+  REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_SHOWCASE_SCHEMA_FINGERPRINT,
+  REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
   createReferenceFormattingDocument,
   createReferenceFormattingDocumentJson,
   createReferenceHighlightDocumentJson,
@@ -25,6 +36,8 @@ import {
   createReferenceLinkRemoveInputJson,
   createReferenceLinkSetInput,
   createReferenceLinkSetInputJson,
+  createReferenceShowcaseDocument,
+  createReferenceShowcaseDocumentJson,
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
@@ -42,6 +55,20 @@ const LINK_SOURCE_HREF =
   "HTTPS://Example.TEST:443/reference/path?source=tarball#proof";
 const LINK_CANONICAL_HREF =
   "https://example.test/reference/path?source=tarball#proof";
+const SHOWCASE_TEXT = "Breditor showcase";
+
+interface ToolbarButtonObservation {
+  readonly label: string;
+  readonly stateId: string | null;
+  readonly disabled: string | null;
+  readonly pressed: string | null;
+}
+
+interface ShowcaseDomObservation {
+  readonly chain: readonly string[];
+  readonly text: string | null;
+  readonly anchor: LinkDomObservation;
+}
 
 interface LinkDomObservation {
   readonly attributes: readonly string[];
@@ -80,14 +107,45 @@ interface ReferencePackageSmoke {
     sourceHref: string;
     canonicalHref: string;
   }>;
+  readonly showcase: Readonly<{
+    initialDocumentJson: string;
+    emptyDocumentJson: string;
+    generatedDocumentJson: string;
+    maximumDocumentTextUtf8: number;
+    text: string;
+    documentJson: BreditorBrowserContentExport<"documentJson">;
+    plainText: BreditorBrowserContentExport<"plainText">;
+    snapshot: BreditorBrowserEditorSnapshot;
+    profile: Readonly<{
+      bootstrapFormatVersion: number;
+      schemaName: string;
+      schemaVersion: number;
+      schemaFingerprint: string;
+      emphasisIntentId: string;
+      strikethroughIntentId: string;
+      codeIntentId: string;
+    }>;
+    renderManifestKinds: readonly string[];
+    manifestToolbarOrder: readonly string[];
+    observedToolbarOrder: readonly string[];
+    initialButtons: readonly ToolbarButtonObservation[];
+    toggledButtons: readonly ToolbarButtonObservation[];
+    initialDom: ShowcaseDomObservation;
+    toggledDom: ShowcaseDomObservation;
+    undoDom: ShowcaseDomObservation;
+    redoDom: ShowcaseDomObservation;
+  }>;
   readonly fixturesFrozen: boolean;
   dispose(): Readonly<{
     status: string;
     formattingStatus: string;
+    showcaseStatus: string;
     editorChildren: number;
     toolbarChildren: number;
     formattingEditorChildren: number;
     formattingToolbarChildren: number;
+    showcaseEditorChildren: number;
+    showcaseToolbarChildren: number;
   }>;
 }
 
@@ -107,11 +165,15 @@ async function start(): Promise<void> {
   const toolbarHost = document.getElementById("toolbar");
   const formattingHost = document.getElementById("formatting-editor");
   const formattingToolbarHost = document.getElementById("formatting-toolbar");
+  const showcaseHost = document.getElementById("showcase-editor");
+  const showcaseToolbarHost = document.getElementById("showcase-toolbar");
   if (
     !(host instanceof HTMLElement) ||
     !(toolbarHost instanceof HTMLElement) ||
     !(formattingHost instanceof HTMLElement) ||
-    !(formattingToolbarHost instanceof HTMLElement)
+    !(formattingToolbarHost instanceof HTMLElement) ||
+    !(showcaseHost instanceof HTMLElement) ||
+    !(showcaseToolbarHost instanceof HTMLElement)
   ) {
     throw new Error("reference package hosts are missing");
   }
@@ -175,6 +237,38 @@ async function start(): Promise<void> {
     );
   }
 
+  const showcaseOpened = await openBreditorBrowserEditor({
+    host: showcaseHost,
+    label: "Tarball reference Showcase editor",
+    wasm: breditorWasm,
+    initialDocument: {
+      lineageId: "tarball-reference-showcase",
+      documentJson: REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+      historyCapacity: 10,
+    },
+    semanticProfile: {
+      formatVersion: 2,
+      bootstrapJson: REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+    },
+    rendering: REFERENCE_SHOWCASE_RENDER_MANIFEST,
+    toolbar: {
+      host: showcaseToolbarHost,
+      manifest: REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+    },
+    keyboard: {
+      editing: "beforeinputPrimary",
+      primaryModifier: "control",
+      shortcuts: "enabled",
+    },
+  });
+  if (!showcaseOpened.ok) {
+    formattingOpened.editor.dispose();
+    legacyOpened.editor.dispose();
+    throw new Error(
+      `${showcaseOpened.error.code}: ${showcaseOpened.error.message}`,
+    );
+  }
+
   try {
     await selectHighlightedText(
       formattingOpened.editor,
@@ -208,6 +302,70 @@ async function start(): Promise<void> {
     const formattingPlainText = formattingOpened.editor.exportContent("plainText");
     if (!formattingDocumentJson.ok || !formattingPlainText.ok) {
       throw new Error("combined reference package content export failed");
+    }
+
+    await selectHighlightedText(
+      showcaseOpened.editor,
+      showcaseHost,
+      showcaseToolbarHost,
+    );
+    const observedToolbarOrder = directToolbarButtons(showcaseToolbarHost).map(
+      (button) => button.textContent ?? "",
+    );
+    const initialButtons = readToolbarButtons(showcaseToolbarHost, [
+      "Bold",
+      "Italic",
+      "Strikethrough",
+      "Code",
+      "Highlight",
+    ]);
+    const initialDom = readShowcaseDom(showcaseHost);
+    if (initialDom.text !== SHOWCASE_TEXT) {
+      throw new Error("showcase sample text did not render exactly");
+    }
+
+    for (const label of ["Bold", "Italic", "Strikethrough", "Code"] as const) {
+      const button = requireToolbarButton(showcaseToolbarHost, label);
+      if (
+        button.getAttribute("aria-disabled") !== "false" ||
+        button.getAttribute("aria-pressed") !== "false"
+      ) {
+        throw new Error(
+          `showcase ${label} did not start as an available inactive toggle`,
+        );
+      }
+      button.click();
+      await waitFor(
+        () => button.getAttribute("aria-pressed") === "true",
+        `showcase ${label} did not become active`,
+      );
+    }
+    const toggledButtons = readToolbarButtons(showcaseToolbarHost, [
+      "Bold",
+      "Italic",
+      "Strikethrough",
+      "Code",
+      "Highlight",
+    ]);
+    const toggledDom = readShowcaseDom(showcaseHost);
+
+    requireToolbarButton(showcaseToolbarHost, "Undo").click();
+    await waitFor(
+      () => showcaseHost.querySelector("code") === null,
+      "showcase Undo did not remove the last style toggle",
+    );
+    const undoDom = readShowcaseDom(showcaseHost);
+    requireToolbarButton(showcaseToolbarHost, "Redo").click();
+    await waitFor(
+      () => showcaseHost.querySelector("code") !== null,
+      "showcase Redo did not restore the last style toggle",
+    );
+    const redoDom = readShowcaseDom(showcaseHost);
+    const showcaseDocumentJson =
+      showcaseOpened.editor.exportContent("documentJson");
+    const showcasePlainText = showcaseOpened.editor.exportContent("plainText");
+    if (!showcaseDocumentJson.ok || !showcasePlainText.ok) {
+      throw new Error("showcase reference package content export failed");
     }
 
     // Leave the original Highlight editor selected so the pre-existing live
@@ -247,17 +405,62 @@ async function start(): Promise<void> {
         sourceHref: LINK_SOURCE_HREF,
         canonicalHref: LINK_CANONICAL_HREF,
       }),
+      showcase: Object.freeze({
+        initialDocumentJson: REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+        emptyDocumentJson: REFERENCE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+        generatedDocumentJson: createReferenceShowcaseDocumentJson(
+          "Package-root Showcase helper",
+          { italic: true },
+        ),
+        maximumDocumentTextUtf8: MAX_REFERENCE_SHOWCASE_DOCUMENT_TEXT_UTF8,
+        text: SHOWCASE_TEXT,
+        documentJson: showcaseDocumentJson,
+        plainText: showcasePlainText,
+        snapshot: showcaseOpened.editor.getSnapshot(),
+        profile: Object.freeze({
+          bootstrapFormatVersion:
+            REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP.formatVersion,
+          schemaName: REFERENCE_SHOWCASE_IDS.schemaName,
+          schemaVersion: REFERENCE_SHOWCASE_IDS.schemaVersion,
+          schemaFingerprint: REFERENCE_SHOWCASE_SCHEMA_FINGERPRINT,
+          emphasisIntentId: REFERENCE_SHOWCASE_IDS.emphasisIntentId,
+          strikethroughIntentId:
+            REFERENCE_SHOWCASE_IDS.strikethroughIntentId,
+          codeIntentId: REFERENCE_SHOWCASE_IDS.codeIntentId,
+        }),
+        renderManifestKinds: Object.freeze(
+          REFERENCE_SHOWCASE_RENDER_MANIFEST.recipes.map(
+            (recipe) => recipe.formatKind,
+          ),
+        ),
+        manifestToolbarOrder: Object.freeze(
+          REFERENCE_SHOWCASE_TOOLBAR_MANIFEST.controls.map(
+            (control) => control.label,
+          ),
+        ),
+        observedToolbarOrder: Object.freeze(observedToolbarOrder),
+        initialButtons,
+        toggledButtons,
+        initialDom,
+        toggledDom,
+        undoDom,
+        redoDom,
+      }),
       fixturesFrozen: exportedFixturesAndHelpersAreFrozen(),
       dispose: () => {
         legacyOpened.editor.dispose();
         formattingOpened.editor.dispose();
+        showcaseOpened.editor.dispose();
         return Object.freeze({
           status: legacyOpened.editor.getStatus().phase,
           formattingStatus: formattingOpened.editor.getStatus().phase,
+          showcaseStatus: showcaseOpened.editor.getStatus().phase,
           editorChildren: host.childNodes.length,
           toolbarChildren: toolbarHost.childNodes.length,
           formattingEditorChildren: formattingHost.childNodes.length,
           formattingToolbarChildren: formattingToolbarHost.childNodes.length,
+          showcaseEditorChildren: showcaseHost.childNodes.length,
+          showcaseToolbarChildren: showcaseToolbarHost.childNodes.length,
         });
       },
     });
@@ -269,6 +472,7 @@ async function start(): Promise<void> {
     });
     document.documentElement.dataset["breditorReferencePackageReady"] = "true";
   } catch (error) {
+    showcaseOpened.editor.dispose();
     formattingOpened.editor.dispose();
     legacyOpened.editor.dispose();
     throw error;
@@ -330,6 +534,82 @@ function readLinkDom(host: HTMLElement): LinkDomObservation {
   });
 }
 
+function directToolbarButtons(host: HTMLElement): readonly HTMLButtonElement[] {
+  const root = host.querySelector(":scope > [data-breditor-toolbar-root]");
+  if (!(root instanceof HTMLElement)) {
+    throw new Error("reference package toolbar root is unavailable");
+  }
+  const buttons = [...root.children].filter(
+    (child): child is HTMLButtonElement => child instanceof HTMLButtonElement,
+  );
+  return Object.freeze(buttons);
+}
+
+function requireToolbarButton(
+  host: HTMLElement,
+  label: string,
+): HTMLButtonElement {
+  const button = directToolbarButtons(host).find(
+    (candidate) => candidate.textContent === label,
+  );
+  if (button === undefined) {
+    throw new Error(`reference package ${label} toolbar button is unavailable`);
+  }
+  return button;
+}
+
+function readToolbarButtons(
+  host: HTMLElement,
+  labels: readonly string[],
+): readonly ToolbarButtonObservation[] {
+  return Object.freeze(
+    labels.map((label) => {
+      const button = requireToolbarButton(host, label);
+      return Object.freeze({
+        label,
+        stateId: button.getAttribute("data-breditor-state-id"),
+        disabled: button.getAttribute("aria-disabled"),
+        pressed: button.getAttribute("aria-pressed"),
+      });
+    }),
+  );
+}
+
+function readShowcaseDom(host: HTMLElement): ShowcaseDomObservation {
+  const paragraph = host.querySelector(":scope > p");
+  if (!(paragraph instanceof HTMLParagraphElement)) {
+    throw new Error("showcase paragraph is unavailable");
+  }
+  if (paragraph.children.length !== 1 || paragraph.childNodes.length !== 1) {
+    throw new Error("showcase paragraph is not one exact wrapper branch");
+  }
+  const chain: string[] = [];
+  let current: Element | null = paragraph.firstElementChild;
+  while (current !== null) {
+    chain.push(current.localName);
+    const child = current.firstElementChild;
+    if (child === null) {
+      if (
+        current.childNodes.length !== 1 ||
+        current.firstChild?.nodeType !== Node.TEXT_NODE
+      ) {
+        throw new Error("showcase wrapper leaf is not one exact text node");
+      }
+    } else if (
+      current.children.length !== 1 ||
+      current.childNodes.length !== 1
+    ) {
+      throw new Error("showcase wrapper chain branched unexpectedly");
+    }
+    current = child;
+  }
+  return Object.freeze({
+    chain: Object.freeze(chain),
+    text: paragraph.textContent,
+    anchor: readLinkDom(host),
+  });
+}
+
 function exportedFixturesAndHelpersAreFrozen(): boolean {
   return [
     REFERENCE_FORMATTING_IDS,
@@ -344,6 +624,20 @@ function exportedFixturesAndHelpersAreFrozen(): boolean {
     }),
     createReferenceLinkSetInput("https://example.test/fixture", true),
     createReferenceLinkRemoveInput(),
+    REFERENCE_SHOWCASE_IDS,
+    REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP,
+    REFERENCE_SHOWCASE_RENDER_MANIFEST,
+    REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+    REFERENCE_SHOWCASE_EMPTY_DOCUMENT,
+    REFERENCE_SHOWCASE_SAMPLE_DOCUMENT,
+    createReferenceShowcaseDocument("fixture", {
+      bold: true,
+      italic: true,
+      strikethrough: true,
+      code: true,
+      highlighted: true,
+      link: { href: "https://example.test/fixture", openInNewWindow: true },
+    }),
   ].every((value) => isDeeplyFrozen(value, new Set<object>()));
 }
 

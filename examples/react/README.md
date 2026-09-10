@@ -1,10 +1,11 @@
 # Breditor React reference
 
-This example runs the complete `@breditor/reference-highlight` formatting
+This example runs the complete `@breditor/reference-highlight` Showcase
 profile through the public browser API: the canonical Document V2 sample,
 Bootstrap V2 semantic profile, render manifest, and toolbar manifest. The
-runtime-owned toolbar exposes Bold, Highlight, Undo, and Redo. A sibling
-runtime-owned Link form is launched by the fifth toolbar control and
+runtime-owned toolbar exposes Bold, Italic, Strikethrough, Code, Highlight,
+Link, Undo, and Redo. A sibling runtime-owned Link form is launched by its
+toolbar control and
 demonstrates typed extension input with a required URL string and Boolean
 new-window choice. Select some text, apply or remove a link, toggle a format,
 use the platform primary-modifier+B shortcut, and watch the truthful autosave
@@ -20,9 +21,9 @@ surface, and the runtime submits its complete-map input through the shared
 typed intent queue. Rust's preserved semantic selection remains authoritative
 while keyboard focus is in the URL or checkbox control. Rejected and blocked
 results are reported without echoing the URL or exposing internal routing.
-The current action-state projection reports Link availability and presence, not
-the selected Link's property values, so the form is an explicit replacement
-input rather than a property inspector. The browser-owned `safeLinkV1` renderer
+The current action-state projection reports exact unset, uniform, or whole-map
+mixed Link state. A pristine form hydrates a uniform complete map; dirty input
+remains an explicit replacement draft. The browser-owned `safeLinkV1` renderer
 activates only absolute, credential-free HTTP(S) URLs; other persisted values
 remain visible as inert text-bearing anchors.
 At the alpha.6 source checkpoint, the then-React-owned form could apply or
@@ -31,7 +32,11 @@ Rust preserves
 Highlight peers, empty middle paragraphs, unselected edge text, directional
 selection, and one exact undo/redo unit. Alpha.7 moves that typed input into the
 runtime-owned form without giving the presentation layer operation-planning
-authority.
+authority. Alpha.8 adds exact pristine hydration. Alpha.9 composes three new
+property-free styles through the existing generic toggle path; when all six
+formats overlap, the deterministic wrapper chain is
+`<a><strong><em><mark><s><code>`. There are no extension shortcuts, exclusion
+rules, block code, headings/lists, rich paste, or runtime plugins yet.
 Startup failures expose only stable, payload-redacted error codes and can be
 retried in place. A paused autosave exposes the same safe diagnostics and the
 public persistence retry operation.
@@ -68,7 +73,8 @@ npm run test --workspace @breditor/example-react
 ```
 
 The repository-level Chromium gate exercises the rendered page through actual
-selection, toolbar, history, input, IndexedDB reload, accessibility, and a
+single- and cross-paragraph selection, all eight controls, exact wrapper
+nesting, per-command history, input, IndexedDB reload, accessibility, and a
 320-pixel responsive viewport:
 
 ```sh

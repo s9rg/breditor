@@ -6,6 +6,10 @@ import {
   REFERENCE_HIGHLIGHT_PROFILE_BOOTSTRAP_JSON,
   REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
   REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+  REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
   createReferenceFormattingDocumentJson,
   createReferenceHighlightDocumentJson,
 } from "@breditor/reference-highlight";
@@ -178,6 +182,17 @@ interface ReferenceFormattingProbe {
   readonly editor: BreditorBrowserEditor;
 }
 
+interface ReferenceShowcaseMountResult {
+  readonly probeId: string;
+  readonly editorLabel: string;
+  readonly text: string;
+}
+
+interface ReferenceShowcaseProbe {
+  readonly root: HTMLDivElement;
+  readonly editor: BreditorBrowserEditor;
+}
+
 interface BreditorBrowserHarness {
   readonly phase: "ready";
   text(): string;
@@ -218,6 +233,8 @@ interface BreditorBrowserHarness {
     toolbarInShadow?: boolean,
   ): Promise<ReferenceFormattingMountResult>;
   cleanupReferenceFormatting(probeId?: string): void;
+  mountReferenceShowcase(): Promise<ReferenceShowcaseMountResult>;
+  cleanupReferenceShowcase(probeId?: string): void;
   dispose(): void;
 }
 
@@ -238,6 +255,8 @@ const toolbarHost = requiredElement("toolbar");
 const status = requiredElement("status");
 const referenceFormattingProbes = new Map<string, ReferenceFormattingProbe>();
 let nextReferenceFormattingProbeId = 1;
+const referenceShowcaseProbes = new Map<string, ReferenceShowcaseProbe>();
+let nextReferenceShowcaseProbeId = 1;
 
 void start().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : "unknown startup failure";
@@ -320,8 +339,12 @@ async function start(): Promise<void> {
       mountReferenceFormatting(toolbarInShadow),
     cleanupReferenceFormatting: (probeId?: string) =>
       cleanupReferenceFormatting(probeId),
+    mountReferenceShowcase: () => mountReferenceShowcase(),
+    cleanupReferenceShowcase: (probeId?: string) =>
+      cleanupReferenceShowcase(probeId),
     dispose: () => {
       cleanupReferenceFormatting();
+      cleanupReferenceShowcase();
       releaseStatus();
       editor.dispose();
       status.textContent = "Editor disposed.";
@@ -329,6 +352,101 @@ async function start(): Promise<void> {
   };
   window.__breditorHarness = Object.freeze(harness);
   document.documentElement.dataset["breditorReady"] = "true";
+}
+
+async function mountReferenceShowcase(): Promise<ReferenceShowcaseMountResult> {
+  const sequence = nextReferenceShowcaseProbeId;
+  nextReferenceShowcaseProbeId += 1;
+  const probeId = `reference-showcase-${sequence}`;
+  const editorLabel = `Reference Showcase editor ${sequence}`;
+  const text = "Breditor showcase";
+  const root = document.createElement("div");
+  const toolbar = document.createElement("div");
+  const host = document.createElement("div");
+  root.setAttribute("data-breditor-reference-showcase-probe", probeId);
+  toolbar.setAttribute("data-breditor-reference-showcase-toolbar", "");
+  host.setAttribute("data-breditor-reference-showcase-editor", "");
+  root.append(toolbar, host);
+  requiredElement("fixture").append(root);
+
+  let editor: BreditorBrowserEditor | undefined;
+  try {
+    const opened = await openBreditorBrowserEditor({
+      host,
+      label: editorLabel,
+      wasm: breditorWasm,
+      initialDocument: {
+        lineageId: `browser-${probeId}`,
+        documentJson: REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+        historyCapacity: 20,
+      },
+      semanticProfile: {
+        bootstrapJson: REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+        formatVersion: 2,
+      },
+      rendering: REFERENCE_SHOWCASE_RENDER_MANIFEST,
+      keyboard: {
+        editing: "beforeinputPrimary",
+        primaryModifier: "control",
+        shortcuts: "enabled",
+      },
+      toolbar: {
+        host: toolbar,
+        manifest: REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+      },
+    });
+    if (!opened.ok) {
+      throw new Error(`reference Showcase open failed: ${opened.error.code}`);
+    }
+    editor = opened.editor;
+    await selectAllTextInHost(host);
+    const italic = requiredToolbarButton(toolbar, "Italic");
+    await waitForProbe(
+      () => italic.getAttribute("aria-disabled") === "false",
+      "reference Showcase selection did not enable its style controls",
+    );
+    referenceShowcaseProbes.set(probeId, { root, editor });
+    return Object.freeze({ probeId, editorLabel, text });
+  } catch (error) {
+    try {
+      editor?.dispose();
+    } catch {
+      // Opening failures must not retain their temporary editor owner.
+    }
+    try {
+      root.remove();
+    } catch {
+      // Opening failures must not retain their temporary DOM owner.
+    }
+    throw error;
+  }
+}
+
+function cleanupReferenceShowcase(probeId?: string): void {
+  const probeIds =
+    probeId === undefined ? [...referenceShowcaseProbes.keys()] : [probeId];
+  for (const id of probeIds) {
+    const probe = referenceShowcaseProbes.get(id);
+    if (probe === undefined) continue;
+    referenceShowcaseProbes.delete(id);
+    try {
+      probe.editor.dispose();
+    } catch {
+      // Test cleanup must still detach its DOM after an unexpected fault.
+    }
+    try {
+      probe.root.remove();
+    } catch {
+      // A damaged probe root cannot retain the editor through this registry.
+    }
+  }
+  if (referenceShowcaseProbes.size === 0) {
+    try {
+      window.getSelection()?.removeAllRanges();
+    } catch {
+      // Selection cleanup is best effort after all Showcase probes retire.
+    }
+  }
 }
 
 async function mountReferenceFormatting(

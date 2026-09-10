@@ -78,3 +78,45 @@ export {
   type ReferenceLinkRemoveInput,
   type ReferenceLinkSetInput,
 } from "./link_input.js";
+
+/** Additive semantic identities for the complete reference showcase. */
+export { REFERENCE_SHOWCASE_IDS } from "./showcase_ids.js";
+
+/** Profile Bootstrap V2 and durable schema identity for the showcase. */
+export {
+  REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SHOWCASE_SCHEMA_FINGERPRINT,
+  type ReferenceShowcaseProfileBootstrap,
+  type ReferenceShowcaseTextStylesExtensionBootstrap,
+  type ReferenceShowcaseToggleBootstrap,
+} from "./showcase_profile.js";
+
+/** Complete deterministic browser presentation for the showcase. */
+export {
+  REFERENCE_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+} from "./showcase_presentation.js";
+
+/** Fingerprint-bound showcase Document V2 fixtures and helper. */
+export {
+  MAX_REFERENCE_SHOWCASE_DOCUMENT_TEXT_UTF8,
+  REFERENCE_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  createReferenceShowcaseDocument,
+  createReferenceShowcaseDocumentJson,
+  type ReferenceShowcaseCodeFormatV2,
+  type ReferenceShowcaseDocumentOptions,
+  type ReferenceShowcaseDocumentV2,
+  type ReferenceShowcaseEmphasisFormatV2,
+  type ReferenceShowcaseFormatV2,
+  type ReferenceShowcaseHighlightFormatV2,
+  type ReferenceShowcaseLinkFormatV2,
+  type ReferenceShowcaseLinkPropertiesV2,
+  type ReferenceShowcaseParagraphV2,
+  type ReferenceShowcaseStrikethroughFormatV2,
+  type ReferenceShowcaseStrongFormatV2,
+  type ReferenceShowcaseTextV2,
+} from "./showcase_documents.js";

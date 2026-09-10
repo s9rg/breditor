@@ -2,10 +2,10 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.8` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.9` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
-current-property hydration
+current-property hydration and an additive eight-control Showcase profile
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -124,7 +124,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.8 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.9 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -181,16 +181,29 @@ declaration defaults. Refreshes preserve a dirty draft, rejected dispatch keeps
 it, and completed dispatch discards it and hydrates from authoritative post-
 command state. Close/reopen also resets from fresh state. Hydrated URL values
 remain exact inert strings; only `safeLinkV1` may parse or normalize one for
-navigation. Alpha.8 adds no Wasm method and retains ABI 5.
+navigation. A stored URL value containing CR or LF cannot be represented
+exactly in the native single-line field, so the complete form, including
+Remove, is unavailable for that observation; programmatic removal remains
+available. Alpha.8 adds no Wasm method and retains ABI 5.
+
+Alpha.9 adds a Showcase source configuration under
+`example/showcase-editor@1`. It combines the unchanged Highlight and Link
+extensions with independent Emphasis, Strikethrough, and Code property-free
+toggle declarations. Its complete renderer and toolbar manifests exercise the
+same generic profile, intent, state, queue, DOM projection, history, replay,
+and persistence paths; no new browser command, callback, or Wasm method is
+involved. The toolbar order is Bold, Italic, Strikethrough, Code, Highlight,
+Link, Undo, Redo, and total outer-to-inner wrapper order is Link, Strong,
+Emphasis, Highlight, Strikethrough, Code.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.8` packages:
+exactly matching `0.3.0-alpha.9` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.8 \
-  @breditor/wasm@0.3.0-alpha.8 \
-  @breditor/reference-highlight@0.3.0-alpha.8
+npm install @breditor/browser@0.3.0-alpha.9 \
+  @breditor/wasm@0.3.0-alpha.9 \
+  @breditor/reference-highlight@0.3.0-alpha.9
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -892,13 +905,16 @@ configuration, not sandboxed code.
 
 The reference package is trusted same-realm JavaScript that supplies frozen
 configuration and presentation values, not sandboxed code, a package-signature
-proof, or a dynamic Rust/Wasm plugin. Its original Alpha.8
+proof, or a dynamic Rust/Wasm plugin. Its original Highlight
 Chromium/Firefox/WebKit matrix proves the property-free Highlight intent/state/
 toolbar, mixed-format nesting, history, export/copy, plain paste, persistence
 reload, restored history, and teardown paths. Alpha.4 adds the combined
 Highlight + Link profile, and alpha.5 adds its structural-edit/history demo
 gate. Alpha.6 extends that gate through multi-paragraph Link set/remove and
-generated mixed presence. Neither matrix establishes broad mobile,
+generated mixed presence. Alpha.9 adds the Showcase composition proof with
+three additional property-free styles and eight controls. It still does not
+add exclusions, extension shortcuts, clear-format, block code, headings,
+lists, rich paste, or runtime plugins. Neither matrix establishes broad mobile,
 operating-system IME, or
 assistive-technology support.
 

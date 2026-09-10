@@ -30,6 +30,61 @@ async function mountReferenceFormatting(
   }, toolbarInShadow);
 }
 
+async function mountReferenceShowcase(
+  page: Page,
+): Promise<Readonly<{
+  probeId: string;
+  editorLabel: string;
+  text: string;
+}>> {
+  return page.evaluate(async () => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("browser harness is unavailable");
+    return harness.mountReferenceShowcase();
+  });
+}
+
+async function selectTextInEditor(
+  editor: ReturnType<Page["locator"]>,
+  anchorOffset: number,
+  focusOffset: number,
+): Promise<void> {
+  await editor.evaluate(
+    (host, offsets) => {
+      const selection = host.ownerDocument.getSelection();
+      if (selection === null) throw new Error("browser selection is unavailable");
+      const textNodes: Text[] = [];
+      const walker = host.ownerDocument.createTreeWalker(
+        host,
+        NodeFilter.SHOW_TEXT,
+      );
+      for (
+        let node = walker.nextNode();
+        node !== null;
+        node = walker.nextNode()
+      ) {
+        textNodes.push(node as Text);
+      }
+      const locate = (absoluteOffset: number): readonly [Text, number] => {
+        let consumed = 0;
+        for (const textNode of textNodes) {
+          if (absoluteOffset <= consumed + textNode.data.length) {
+            return [textNode, absoluteOffset - consumed] as const;
+          }
+          consumed += textNode.data.length;
+        }
+        throw new Error("selection offset exceeds editor text");
+      };
+      const [anchorNode, anchor] = locate(offsets.anchorOffset);
+      const [focusNode, focus] = locate(offsets.focusOffset);
+      (host as HTMLElement).focus();
+      selection.setBaseAndExtent(anchorNode, anchor, focusNode, focus);
+      host.ownerDocument.dispatchEvent(new Event("selectionchange"));
+    },
+    { anchorOffset, focusOffset },
+  );
+}
+
 async function select(page: Page, anchor: number, focus: number): Promise<void> {
   await page.evaluate(
     ([anchorOffset, focusOffset]) =>
@@ -139,9 +194,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterEach(async ({ page }) => {
-  await page.evaluate(() =>
-    window.__breditorHarness?.cleanupReferenceFormatting(),
-  );
+  await page.evaluate(() => {
+    window.__breditorHarness?.cleanupReferenceFormatting();
+    window.__breditorHarness?.cleanupReferenceShowcase();
+  });
 });
 
 test("Unicode insertion and scalar-safe backward deletion", async ({ page }) => {
@@ -881,6 +937,96 @@ test("the native Link toolbar works from an open ShadowRoot without browser URL 
   );
   await expect(editor).toHaveAttribute("contenteditable", "true");
   await expect(url).toBeFocused();
+});
+
+test("the packaged Showcase composes five extension controls through generic state and history", async ({
+  page,
+}) => {
+  const mounted = await mountReferenceShowcase(page);
+  const rootSelector =
+    `[data-breditor-reference-showcase-probe="${mounted.probeId}"]`;
+  const root = page.locator(rootSelector);
+  const editor = root.getByRole("textbox", { name: mounted.editorLabel });
+  const toolbar = root.getByRole("toolbar", { name: "Editor controls" });
+  const bold = toolbar.getByRole("button", { name: "Bold", exact: true });
+  const italic = toolbar.getByRole("button", { name: "Italic", exact: true });
+  const strikethrough = toolbar.getByRole("button", {
+    name: "Strikethrough",
+    exact: true,
+  });
+  const code = toolbar.getByRole("button", { name: "Code", exact: true });
+  const highlight = toolbar.getByRole("button", {
+    name: "Highlight",
+    exact: true,
+  });
+  const undo = toolbar.getByRole("button", { name: "Undo", exact: true });
+  const redo = toolbar.getByRole("button", { name: "Redo", exact: true });
+
+  expect(await toolbar.getByRole("button").allTextContents()).toEqual([
+    "Bold",
+    "Italic",
+    "Strikethrough",
+    "Code",
+    "Highlight",
+    "Link",
+    "Undo",
+    "Redo",
+  ]);
+  await expect(editor).toHaveText(mounted.text);
+  const initialLink = editor.locator("a.breditor-link");
+  await expect(initialLink).toHaveAttribute(
+    "href",
+    "https://example.test/reference",
+  );
+  await expect(initialLink).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(initialLink).toHaveAttribute("target", "_blank");
+  await expect(
+    initialLink.locator("mark.breditor-reference-highlight"),
+  ).toHaveText(mounted.text);
+  await expect(highlight).toHaveAttribute("aria-pressed", "true");
+  for (const control of [bold, italic, strikethrough, code]) {
+    await expect(control).toHaveAttribute("aria-pressed", "false");
+    await expect(control).toHaveAttribute("aria-disabled", "false");
+    await control.click();
+    await expect(control).toHaveAttribute("aria-pressed", "true");
+  }
+
+  const completeChain = editor.locator(
+    "a.breditor-link > strong > em > mark.breditor-reference-highlight > s > code",
+  );
+  await expect(completeChain).toHaveText(mounted.text);
+
+  // Each generic toggle is one Rust-owned history event, in click order.
+  await undo.click();
+  await expect(editor.locator("code")).toHaveCount(0);
+  await undo.click();
+  await expect(editor.locator("s")).toHaveCount(0);
+  await undo.click();
+  await expect(editor.locator("em")).toHaveCount(0);
+  await undo.click();
+  await expect(editor.locator("strong")).toHaveCount(0);
+  await expect(
+    editor.locator("a.breditor-link > mark.breditor-reference-highlight"),
+  ).toHaveText(mounted.text);
+
+  for (const control of [bold, italic, strikethrough, code]) {
+    await redo.click();
+    await expect(control).toHaveAttribute("aria-pressed", "true");
+  }
+  await expect(completeChain).toHaveText(mounted.text);
+
+  // A partial toggle derives mixed state when the full document is selected.
+  await selectTextInEditor(editor, 0, "Breditor".length);
+  await code.click();
+  await expect(editor.locator("code")).toHaveText(" showcase");
+  await selectTextInEditor(editor, 0, mounted.text.length);
+  await expect(code).toHaveAttribute("aria-pressed", "mixed");
+  await undo.click();
+  await expect(code).toHaveAttribute("aria-pressed", "true");
+  await expect(completeChain).toHaveText(mounted.text);
+
+  const axe = await new AxeBuilder({ page }).include(rootSelector).analyze();
+  expect(axe.violations).toEqual([]);
 });
 
 test("the packaged reference Highlight profile survives the complete browser path", async ({

@@ -1,8 +1,12 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const EDITOR_LABEL = "Breditor formatting reference document";
-const SAMPLE_TEXT = "Highlighted link";
+const EDITOR_LABEL = "Breditor showcase document";
+const SAMPLE_TEXT = "Breditor showcase";
+const TARGET_TEXT = "showcase";
+const TARGET_START = SAMPLE_TEXT.indexOf(TARGET_TEXT);
+const FIRST_WORD = "Breditor";
+const SECOND_PARAGRAPH = " showcase";
 const APPENDED_TEXT = " demo-ready";
 const REFERENCE_LINK_URL = "https://example.test/reference";
 const CROSS_PARAGRAPH_LINK_INPUT =
@@ -391,6 +395,71 @@ async function expectHighlightedLinkLayout(
     );
 }
 
+/**
+ * Proves the canonical renderer emits one deterministic wrapper path for each
+ * uniformly formatted paragraph. Attribute order and browser serialization
+ * are intentionally ignored; element order, classes, safe Link attributes,
+ * text, and the single-branch topology are exact.
+ */
+async function expectUniformShowcaseTree(
+  editor: Locator,
+  expectedText: readonly string[],
+  expectedChain: readonly string[],
+): Promise<void> {
+  await expect
+    .poll(() =>
+      editor.locator(":scope > p").evaluateAll((paragraphs) =>
+        paragraphs.map((paragraph) => {
+          const chain: string[] = [];
+          let singleBranch = true;
+          let current: Element = paragraph;
+          while (current.firstElementChild !== null) {
+            if (
+              current.children.length !== 1 ||
+              current.childNodes.length !== 1
+            ) {
+              singleBranch = false;
+            }
+            current = current.firstElementChild;
+            const classes = Array.from(current.classList).sort();
+            chain.push(
+              `${current.localName}${classes.map((name) => `.${name}`).join("")}`,
+            );
+          }
+          if (
+            current.childNodes.length !== 1 ||
+            current.firstChild?.nodeType !== Node.TEXT_NODE
+          ) {
+            singleBranch = false;
+          }
+          const link = paragraph.querySelector(":scope > a.breditor-link");
+          return {
+            text: paragraph.textContent ?? "",
+            chain,
+            singleBranch,
+            link: {
+              href: link?.getAttribute("href") ?? null,
+              rel: link?.getAttribute("rel") ?? null,
+              target: link?.getAttribute("target") ?? null,
+            },
+          };
+        }),
+      ),
+    )
+    .toEqual(
+      expectedText.map((text) => ({
+        text,
+        chain: [...expectedChain],
+        singleBranch: true,
+        link: {
+          href: REFERENCE_LINK_URL,
+          rel: "noopener noreferrer",
+          target: "_blank",
+        },
+      })),
+    );
+}
+
 test("the React demo edits, formats, replays, persists, and remains accessible", async ({
   page,
 }) => {
@@ -479,10 +548,10 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   );
   await expect(newWindow).not.toBeChecked();
 
-  await selectEditorText(editor, 12, 16);
+  await selectEditorText(editor, TARGET_START, SAMPLE_TEXT.length);
   await expect(bold).toHaveAttribute("aria-pressed", "false");
   await bold.click();
-  await expect(editor.locator("strong")).toHaveText("link");
+  await expect(editor.locator("strong")).toHaveText(TARGET_TEXT);
   await expect(bold).toHaveAttribute("aria-pressed", "true");
 
   await undo.click();
@@ -492,7 +561,7 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   );
 
   await redo.click();
-  await expect(editor.locator("strong")).toHaveText("link");
+  await expect(editor.locator("strong")).toHaveText(TARGET_TEXT);
 
   await selectEditorText(editor, SAMPLE_TEXT.length, SAMPLE_TEXT.length);
   await page.keyboard.type(APPENDED_TEXT, { delay: 25 });
@@ -507,11 +576,11 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   const restored = await openDemo(page);
   await expect(restored.editor).toHaveText(SAMPLE_TEXT + APPENDED_TEXT);
   await expect(restored.editor.locator("strong")).toHaveText(
-    "link" + APPENDED_TEXT,
+    TARGET_TEXT + APPENDED_TEXT,
   );
   await expect(
     restored.editor.locator("mark.breditor-reference-highlight"),
-  ).toHaveText(["Highlighted ", "link" + APPENDED_TEXT]);
+  ).toHaveText([`${FIRST_WORD} `, TARGET_TEXT + APPENDED_TEXT]);
   const restoredLinks = restored.editor.locator("a.breditor-link");
   await expect(restoredLinks).toHaveCount(2);
   expect(
@@ -562,6 +631,164 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   expect(containment.buttonRows).toBeGreaterThan(1);
 });
 
+test("the eight-control Showcase composes deterministic formats across paragraphs and persistence", async ({
+  page,
+}) => {
+  const { editor, status } = await openDemo(page);
+  const toolbar = page.getByRole("toolbar", { name: "Editor controls" });
+  const topLevelControls = toolbar.locator(":scope > button");
+  const bold = page.getByRole("button", { name: "Bold" });
+  const italic = page.getByRole("button", { name: "Italic" });
+  const strikethrough = page.getByRole("button", { name: "Strikethrough" });
+  const code = page.getByRole("button", { name: "Code" });
+  const undo = page.getByRole("button", { name: "Undo" });
+  const redo = page.getByRole("button", { name: "Redo" });
+
+  await expect(topLevelControls).toHaveText([
+    "Bold",
+    "Italic",
+    "Strikethrough",
+    "Code",
+    "Highlight",
+    "Link",
+    "Undo",
+    "Redo",
+  ]);
+  await expect(topLevelControls).toHaveCount(8);
+  for (const control of [bold, italic, strikethrough, code]) {
+    await expect(control).toBeVisible();
+    await expect(control).toHaveAttribute("aria-pressed", "false");
+  }
+
+  // Split the initially highlighted safe Link, then apply every property-free
+  // Showcase format through one real backward DOM selection spanning blocks.
+  await selectEditorText(editor, FIRST_WORD.length, FIRST_WORD.length);
+  await page.keyboard.press("Enter");
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    ["a.breditor-link", "mark.breditor-reference-highlight"],
+  );
+  await selectParagraphRange(
+    editor,
+    1,
+    SECOND_PARAGRAPH.length,
+    0,
+    0,
+  );
+
+  await bold.click();
+  await italic.click();
+  await strikethrough.click();
+  await code.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+      "code",
+    ],
+  );
+  for (const control of [bold, italic, strikethrough, code]) {
+    await expect(control).toHaveAttribute("aria-pressed", "true");
+  }
+
+  // Each undo removes exactly the latest semantic format and each redo restores
+  // it in the same canonical position without disturbing Highlight or Link.
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+    ],
+  );
+  await expect(code).toHaveAttribute("aria-pressed", "false");
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+    ],
+  );
+  await expect(strikethrough).toHaveAttribute("aria-pressed", "false");
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    ["a.breditor-link", "strong", "mark.breditor-reference-highlight"],
+  );
+  await expect(italic).toHaveAttribute("aria-pressed", "false");
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    ["a.breditor-link", "mark.breditor-reference-highlight"],
+  );
+  await expect(bold).toHaveAttribute("aria-pressed", "false");
+
+  await redo.click();
+  await expect(bold).toHaveAttribute("aria-pressed", "true");
+  await redo.click();
+  await expect(italic).toHaveAttribute("aria-pressed", "true");
+  await redo.click();
+  await expect(strikethrough).toHaveAttribute("aria-pressed", "true");
+  await redo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+      "code",
+    ],
+  );
+  await expect(code).toHaveAttribute("aria-pressed", "true");
+
+  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+
+  await page.reload();
+  const restored = await openDemo(page);
+  await expectUniformShowcaseTree(
+    restored.editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    [
+      "a.breditor-link",
+      "strong",
+      "em",
+      "mark.breditor-reference-highlight",
+      "s",
+      "code",
+    ],
+  );
+  await expect(page.getByRole("button", { name: "Italic" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: "Link" }).click();
+  await expect(page.getByRole("textbox", { name: "Link URL" })).toHaveValue(
+    REFERENCE_LINK_URL,
+  );
+  await expect(
+    page.getByRole("checkbox", { name: "Open in new window" }),
+  ).toBeChecked();
+});
+
 test("safe Link survives structural editing and persisted undo/redo history", async ({
   page,
 }) => {
@@ -573,26 +800,26 @@ test("safe Link survives structural editing and persisted undo/redo history", as
 
   // Split the existing Link in the middle. Both resulting paragraphs retain
   // its typed properties rather than degrading to an untyped format id.
-  await selectEditorText(editor, 11, 11);
+  await selectEditorText(editor, FIRST_WORD.length, FIRST_WORD.length);
   await page.keyboard.press("Enter");
-  await expectSafelyLinkedParagraphs(editor, ["Highlighted", " link"]);
+  await expectSafelyLinkedParagraphs(editor, [FIRST_WORD, SECOND_PARAGRAPH]);
 
   // Insert multiple paragraphs inside the second linked run. Plain text is
   // deliberately used so inherited formatting comes from the destination.
   await selectParagraphText(editor, 1, 1, 1);
   await pastePlainText(editor, "first\nsecond");
   await expectSafelyLinkedParagraphs(editor, [
-    "Highlighted",
+    FIRST_WORD,
     " first",
-    "secondlink",
+    `second${TARGET_TEXT}`,
   ]);
 
   // Joining at a block boundary must preserve both sides' safe Link values.
   await selectParagraphText(editor, 2, 0, 0);
   await page.keyboard.press("Backspace");
   await expectSafelyLinkedParagraphs(editor, [
-    "Highlighted",
-    " firstsecondlink",
+    FIRST_WORD,
+    ` firstsecond${TARGET_TEXT}`,
   ]);
 
   // Leave the cursor before the join so autosave has both an undo and a redo
@@ -603,9 +830,9 @@ test("safe Link survives structural editing and persisted undo/redo history", as
   // short autosave window; otherwise a slow CI worker can already be idle.
   await expect(status).not.toHaveText("All changes saved.");
   await expectSafelyLinkedParagraphs(editor, [
-    "Highlighted",
+    FIRST_WORD,
     " first",
-    "secondlink",
+    `second${TARGET_TEXT}`,
   ]);
   await expect(undo).toHaveAttribute("aria-disabled", "false");
   await expect(redo).toHaveAttribute("aria-disabled", "false");
@@ -617,17 +844,17 @@ test("safe Link survives structural editing and persisted undo/redo history", as
   const restoredUndo = page.getByRole("button", { name: "Undo" });
   const restoredRedo = page.getByRole("button", { name: "Redo" });
   await expectSafelyLinkedParagraphs(restored.editor, [
-    "Highlighted",
+    FIRST_WORD,
     " first",
-    "secondlink",
+    `second${TARGET_TEXT}`,
   ]);
   await expect(restoredUndo).toHaveAttribute("aria-disabled", "false");
   await expect(restoredRedo).toHaveAttribute("aria-disabled", "false");
 
   await restoredRedo.click();
   await expectSafelyLinkedParagraphs(restored.editor, [
-    "Highlighted",
-    " firstsecondlink",
+    FIRST_WORD,
+    ` firstsecond${TARGET_TEXT}`,
   ]);
   await expect(restoredUndo).toHaveAttribute("aria-disabled", "false");
   await expect(restoredRedo).toHaveAttribute("aria-disabled", "true");
@@ -644,38 +871,38 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
   const newWindow = page.getByRole("checkbox", { name: "Open in new window" });
   const applyLink = page.getByRole("button", { name: "Apply Link" });
   const removeLink = page.getByRole("button", { name: "Remove Link" });
-  const paragraphs = ["Highlighted", " link"] as const;
+  const paragraphs = [FIRST_WORD, SECOND_PARAGRAPH] as const;
   const linkedLayout = [
     {
       text: paragraphs[0],
       links: [
-        { text: "Hi", href: REFERENCE_LINK_URL },
-        { text: "ghlighted", href: CROSS_PARAGRAPH_LINK_URL },
+        { text: "Br", href: REFERENCE_LINK_URL },
+        { text: "editor", href: CROSS_PARAGRAPH_LINK_URL },
       ],
     },
     {
       text: paragraphs[1],
       links: [
-        { text: " lin", href: CROSS_PARAGRAPH_LINK_URL },
-        { text: "k", href: REFERENCE_LINK_URL },
+        { text: " sho", href: CROSS_PARAGRAPH_LINK_URL },
+        { text: "wcase", href: REFERENCE_LINK_URL },
       ],
     },
   ] as const;
   const removedLayout = [
     {
       text: paragraphs[0],
-      links: [{ text: "Hi", href: REFERENCE_LINK_URL }],
+      links: [{ text: "Br", href: REFERENCE_LINK_URL }],
     },
     {
       text: paragraphs[1],
-      links: [{ text: "k", href: REFERENCE_LINK_URL }],
+      links: [{ text: "wcase", href: REFERENCE_LINK_URL }],
     },
   ] as const;
 
   // Start from the property-preserving split proven above, then address a
   // backward partial range across both Rust-owned paragraphs. The outer
   // Link runs are deliberately left unselected as an end-to-end edge guard.
-  await selectEditorText(editor, 11, 11);
+  await selectEditorText(editor, FIRST_WORD.length, FIRST_WORD.length);
   await page.keyboard.press("Enter");
   await expectSafelyLinkedParagraphs(editor, paragraphs);
   await selectParagraphRange(editor, 1, 4, 0, 2);
@@ -748,7 +975,7 @@ test("ordinary keyboard typing continues after a trailing space at a formatted b
   const undo = page.getByRole("button", { name: "Undo" });
   const redo = page.getByRole("button", { name: "Redo" });
 
-  await selectEditorText(editor, 12, 16);
+  await selectEditorText(editor, TARGET_START, SAMPLE_TEXT.length);
   await bold.click();
   await undo.click();
   await redo.click();
@@ -757,5 +984,5 @@ test("ordinary keyboard typing continues after a trailing space at a formatted b
   await page.keyboard.type(" xy", { delay: 25 });
 
   await expect(editor).toHaveText(SAMPLE_TEXT + " xy");
-  await expect(editor.locator("strong")).toHaveText("link xy");
+  await expect(editor.locator("strong")).toHaveText(`${TARGET_TEXT} xy`);
 });

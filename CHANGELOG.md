@@ -4,6 +4,51 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.9 - 2026-09-10
+
+This unpublished source checkpoint adds a separate Showcase reference profile
+that turns three inert property-free extension declarations into visible
+Italic, Strikethrough, and Inline Code features. It changes no Rust action,
+operation, codec, browser protocol, or Wasm method; the point is to prove that
+the generic architecture can gain useful controls without special-case editor
+code.
+
+### Additive Showcase profile
+
+- Added the `example/showcase-editor@1` profile. It reuses the unchanged
+  Highlight and typed Link extensions and adds one
+  `example/text-styles-extension@1` owning Emphasis, Strikethrough, and Code
+  format kinds with distinct action, intent, binding, and tracked state IDs.
+- Profile compilation generates all three `ToggleInlineFormatAction` routes and
+  state sources from the manifest. The reference package does not supply
+  callbacks, mutation handlers, Wasm shims, or browser action tables.
+- Added a complete deterministic render order: Link, Strong, Emphasis,
+  Highlight, Strikethrough, then Code. The fixed safe wrappers are `<a>`,
+  `<strong>`, `<em>`, `<mark>`, `<s>`, and `<code>`; Link remains the only
+  property-driven renderer and still uses `safeLinkV1`.
+- Added an eight-control toolbar in the order Bold, Italic, Strikethrough,
+  Code, Highlight, Link, Undo, Redo. The new buttons use the existing APG
+  roving-focus, active/mixed observation, preserved-selection queue, and exact
+  undo/redo path.
+
+### Demo and compatibility proof
+
+- Switched the React demo to the Showcase profile and a new lineage and
+  IndexedDB slot, leaving alpha.8 demo data untouched. The initial document
+  retains the Highlight + safe Link example while the new styles begin
+  inactive for immediate experimentation.
+- Added reference fixtures and browser/package-consumer coverage for exact
+  wrapper nesting, active/mixed state, cross-paragraph formatting, Link and
+  Highlight preservation, undo/redo, checkpoint reload, responsive layout,
+  and accessibility.
+- Existing `REFERENCE_HIGHLIGHT_*` and `REFERENCE_FORMATTING_*` values remain
+  unchanged. Alpha.9 stays on Profile Bootstrap V2, Document V2, Session/
+  State/Commit/Checkpoint V3, and Wasm ABI 5. Exact prerelease package matching
+  remains required, and no alpha.9 package is published by this checkpoint.
+- The Showcase formats deliberately coexist: there are no exclusion rules,
+  extension keyboard shortcuts, clear-format command, block code, headings,
+  lists, rich paste, or runtime plugin loading in this checkpoint.
+
 ## 0.3.0-alpha.8 - 2026-09-10
 
 This unpublished source checkpoint adds exact Rust-owned current-property

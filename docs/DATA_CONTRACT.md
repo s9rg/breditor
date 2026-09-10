@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.8` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.9` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -52,6 +52,13 @@ and persisted form drafts remain unsupported. Alpha.8 gives that generated state
 the exact complete property-map observation used to hydrate pristine browser
 fields. The observation remains process-local and ephemeral. See
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+Alpha.9 adds only an additive reference Showcase configuration. Its Emphasis,
+Strikethrough, and Code features are ordinary property-free
+`InlineFormatSpecV1` plus `InlineFormatToggleSpecV1` declarations compiled into
+the existing generic action/intent/state path. The new schema selector and
+format set produce a distinct Document-V2 fingerprint, but introduce no new
+AST node, operation, action input, descriptor field, bootstrap field, replay
+rule, or durable generation. Session, Editor State, and Commit remain V3.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -2270,6 +2277,14 @@ catalog's declared worst-case uniform values fit the batch value-count and
 text-byte limits above. That guarantee is specific to the compiler-generated
 setter catalog; runtime accounting still protects arbitrary native action-state
 registrations and any other dynamic detail.
+
+Alpha.9's Showcase adds three property-free catalog entries under these same
+limits. Their state values remain `unsupported`; their tracked activation is
+derived from format presence. Applying several styles records one ordinary
+transaction per user command and therefore one linear undo step per command.
+The AST stores a canonical set of formats on text leaves. Deterministic DOM
+wrapper nesting is presentation metadata and is not serialized into the AST or
+history.
 
 `ActionStateCatalog::derive` remains the eager reference path introduced in
 version `0.0.8`: every descriptor evaluates independently, including duplicate

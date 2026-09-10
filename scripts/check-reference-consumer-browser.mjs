@@ -89,6 +89,34 @@ try {
           )?.textContent,
         };
       })(),
+      showcase: smoke?.showcase,
+      showcaseContentEditable: document
+        .getElementById("showcase-editor")
+        ?.getAttribute("contenteditable"),
+      showcaseToolbarButtons: document.querySelectorAll(
+        "#showcase-toolbar > [data-breditor-toolbar-root] > button",
+      ).length,
+      showcaseToolbarLabels: [
+        ...document.querySelectorAll(
+          "#showcase-toolbar > [data-breditor-toolbar-root] > button",
+        ),
+      ].map((button) => button.textContent),
+      showcaseCurrentDom: (() => {
+        const anchor = document.querySelector(
+          "#showcase-editor > p > a.breditor-link",
+        );
+        const leaf = document.querySelector(
+          "#showcase-editor > p > a.breditor-link > strong > em > mark.breditor-reference-highlight > s > code",
+        );
+        return {
+          attributes: anchor ? [...anchor.getAttributeNames()].sort() : [],
+          className: anchor?.getAttribute("class"),
+          href: anchor?.getAttribute("href"),
+          rel: anchor?.getAttribute("rel"),
+          target: anchor?.getAttribute("target"),
+          leafText: leaf?.textContent,
+        };
+      })(),
     };
   });
 
@@ -183,6 +211,208 @@ try {
     },
   ]);
 
+  const expectedShowcaseToolbar = [
+    "Bold",
+    "Italic",
+    "Strikethrough",
+    "Code",
+    "Highlight",
+    "Link",
+    "Undo",
+    "Redo",
+  ];
+  assert.equal(outcome.showcaseContentEditable, "true");
+  assert.equal(outcome.showcaseToolbarButtons, 8);
+  assert.deepEqual(outcome.showcaseToolbarLabels, expectedShowcaseToolbar);
+  assert.deepEqual(
+    outcome.showcase?.manifestToolbarOrder,
+    expectedShowcaseToolbar,
+  );
+  assert.deepEqual(
+    outcome.showcase?.observedToolbarOrder,
+    expectedShowcaseToolbar,
+  );
+  assert.equal(outcome.showcase?.text, "Breditor showcase");
+  assert.equal(outcome.showcase?.maximumDocumentTextUtf8, 1_048_576);
+  assert.equal(outcome.showcase?.profile.bootstrapFormatVersion, 2);
+  assert.equal(outcome.showcase?.profile.schemaName, "example/showcase-editor");
+  assert.equal(outcome.showcase?.profile.schemaVersion, 1);
+  assert.equal(
+    outcome.showcase?.profile.schemaFingerprint,
+    "sha256:2a90a5fea97e6f4c3b9c535a78b76e9daf50afd95df3e3119392bfc19fd5ec63",
+  );
+  assert.equal(
+    outcome.showcase?.profile.emphasisIntentId,
+    "example/toggle-emphasis-intent",
+  );
+  assert.equal(
+    outcome.showcase?.profile.strikethroughIntentId,
+    "example/toggle-strikethrough-intent",
+  );
+  assert.equal(
+    outcome.showcase?.profile.codeIntentId,
+    "example/toggle-code-intent",
+  );
+  assert.deepEqual(outcome.showcase?.renderManifestKinds, [
+    "breditor/strong",
+    "example/code",
+    "example/emphasis",
+    "example/highlight",
+    "example/link",
+    "example/strikethrough",
+  ]);
+
+  const initialShowcaseDocument = JSON.parse(
+    outcome.showcase?.initialDocumentJson ?? "null",
+  );
+  assert.equal(
+    initialShowcaseDocument.schemaFingerprint,
+    outcome.showcase?.profile.schemaFingerprint,
+  );
+  assert.deepEqual(
+    initialShowcaseDocument.root.children[0].children[0].formats,
+    [
+      { type: "example/highlight", properties: {} },
+      {
+        type: "example/link",
+        properties: {
+          "example/href": "https://example.test/reference",
+          "example/open-in-new-window": true,
+        },
+      },
+    ],
+  );
+  const emptyShowcaseDocument = JSON.parse(
+    outcome.showcase?.emptyDocumentJson ?? "null",
+  );
+  assert.equal(
+    emptyShowcaseDocument.schemaFingerprint,
+    outcome.showcase?.profile.schemaFingerprint,
+  );
+  assert.deepEqual(
+    emptyShowcaseDocument.root.children[0].children,
+    [],
+  );
+  const generatedShowcaseDocument = JSON.parse(
+    outcome.showcase?.generatedDocumentJson ?? "null",
+  );
+  assert.equal(
+    generatedShowcaseDocument.root.children[0].children[0].text,
+    "Package-root Showcase helper",
+  );
+  assert.deepEqual(
+    generatedShowcaseDocument.root.children[0].children[0].formats,
+    [{ type: "example/emphasis", properties: {} }],
+  );
+  assert.deepEqual(outcome.showcase?.initialButtons, [
+    {
+      label: "Bold",
+      stateId: "breditor/control-bold",
+      disabled: "false",
+      pressed: "false",
+    },
+    {
+      label: "Italic",
+      stateId: "example/emphasis-control",
+      disabled: "false",
+      pressed: "false",
+    },
+    {
+      label: "Strikethrough",
+      stateId: "example/strikethrough-control",
+      disabled: "false",
+      pressed: "false",
+    },
+    {
+      label: "Code",
+      stateId: "example/code-control",
+      disabled: "false",
+      pressed: "false",
+    },
+    {
+      label: "Highlight",
+      stateId: "example/highlight-control",
+      disabled: "false",
+      pressed: "true",
+    },
+  ]);
+  assert.deepEqual(
+    outcome.showcase?.toggledButtons.map((button) => ({
+      label: button.label,
+      disabled: button.disabled,
+      pressed: button.pressed,
+    })),
+    ["Bold", "Italic", "Strikethrough", "Code", "Highlight"].map(
+      (label) => ({ label, disabled: "false", pressed: "true" }),
+    ),
+  );
+  assert.deepEqual(outcome.showcase?.initialDom.chain, ["a", "mark"]);
+  assert.deepEqual(outcome.showcase?.initialDom.anchor.attributes, [
+    "class",
+    "href",
+    "rel",
+    "target",
+  ]);
+  assert.equal(
+    outcome.showcase?.initialDom.anchor.className,
+    "breditor-link",
+  );
+  assert.equal(
+    outcome.showcase?.initialDom.anchor.href,
+    "https://example.test/reference",
+  );
+  assert.equal(outcome.showcase?.initialDom.anchor.rel, "noopener noreferrer");
+  assert.equal(outcome.showcase?.initialDom.anchor.target, "_blank");
+  assert.equal(outcome.showcase?.initialDom.text, "Breditor showcase");
+  const completeShowcaseChain = [
+    "a",
+    "strong",
+    "em",
+    "mark",
+    "s",
+    "code",
+  ];
+  assert.deepEqual(outcome.showcase?.toggledDom.chain, completeShowcaseChain);
+  assert.deepEqual(outcome.showcase?.undoDom.chain, [
+    "a",
+    "strong",
+    "em",
+    "mark",
+    "s",
+  ]);
+  assert.deepEqual(outcome.showcase?.redoDom.chain, completeShowcaseChain);
+  assert.deepEqual(outcome.showcaseCurrentDom, {
+    attributes: ["class", "href", "rel", "target"],
+    className: "breditor-link",
+    href: "https://example.test/reference",
+    rel: "noopener noreferrer",
+    target: "_blank",
+    leafText: "Breditor showcase",
+  });
+  assert.equal(outcome.showcase?.plainText.value, "Breditor showcase");
+  assert.deepEqual(outcome.showcase?.snapshot.status, { phase: "live" });
+  const showcaseDocument = JSON.parse(
+    outcome.showcase?.documentJson.value ?? "null",
+  );
+  assert.equal(
+    showcaseDocument.schemaFingerprint,
+    outcome.showcase?.profile.schemaFingerprint,
+  );
+  assert.deepEqual(showcaseDocument.root.children[0].children[0].formats, [
+    { type: "breditor/strong", properties: {} },
+    { type: "example/code", properties: {} },
+    { type: "example/emphasis", properties: {} },
+    { type: "example/highlight", properties: {} },
+    {
+      type: "example/link",
+      properties: {
+        "example/href": "https://example.test/reference",
+        "example/open-in-new-window": true,
+      },
+    },
+    { type: "example/strikethrough", properties: {} },
+  ]);
+
   const nativeForm = await page.evaluate(() => {
     const toolbar = document.getElementById("formatting-toolbar");
     const editor = document.getElementById("formatting-editor");
@@ -245,10 +475,13 @@ try {
   const expectedDisposal = {
     status: "disposed",
     formattingStatus: "disposed",
+    showcaseStatus: "disposed",
     editorChildren: 0,
     toolbarChildren: 0,
     formattingEditorChildren: 0,
     formattingToolbarChildren: 0,
+    showcaseEditorChildren: 0,
+    showcaseToolbarChildren: 0,
   };
   assert.deepEqual(disposed.first, expectedDisposal);
   assert.deepEqual(disposed.second, expectedDisposal);
@@ -265,7 +498,7 @@ try {
 }
 
 console.log(
-  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight and combined typed-Link profiles and submitted the native Link form in Chromium.",
+  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, and eight-control Showcase profiles in Chromium.",
 );
 
 async function serve(rawUrl, response) {

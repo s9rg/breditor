@@ -1,10 +1,10 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.8` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.9` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
-uses process-local ABI 5, and adds exact current-property observation and
-pristine hydration to the closed browser typed-form declaration described below
+uses process-local ABI 5, retains exact current-property observation and
+pristine hydration, and adds the multi-extension Showcase profile described below
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -461,9 +461,12 @@ This is exact whole-map comparison, not a fieldwise merge protocol.
 The browser admits only the descriptor-correlated contract and exact canonical
 map. It hydrates pristine fields from uniform state, uses defaults for unset or
 mixed, preserves dirty drafts across refresh and rejection, and discards them
-on completion or close before hydrating again from authoritative state. URL
-strings round-trip exactly and inertly; only `safeLinkV1` owns parsing,
-normalization, and navigation policy.
+on completion or close before hydrating again from authoritative state. Rust
+and Wasm preserve URL strings exactly and inertly. The browser form does so for
+CR/LF-free single-line strings; a current value containing CR or LF makes the
+whole form, including its Remove command, unavailable because native text
+controls cannot round-trip it exactly. Programmatic removal remains possible.
+Only `safeLinkV1` owns parsing, normalization, and navigation policy.
 
 This process-local observation is not serialized, undoable, replayed, or
 persisted, and form drafts remain equally ephemeral. Profile compilation proves
@@ -474,18 +477,42 @@ declaration that crosses a bound is rejected. Alpha.8 adds no Wasm member or
 durable field, so ABI 5, Bootstrap V2, fingerprints, Document V2, and Session/
 State/Commit V3 remain unchanged.
 
+## `0.3.0-alpha.9` additive Showcase profile
+
+Alpha.9 adds a second, additive package-root reference profile under schema
+`example/showcase-editor@1`. It composes the existing Highlight and Link
+extensions without changing their identities or existing exported values, then
+adds `example/text-styles-extension@1` with independent property-free Emphasis,
+Strikethrough, and Code formats. The three new features use the already
+compiled generic toggle action, no-input intent, route, state observation,
+renderer recipe, and button declaration paths. They add no Rust action kind,
+browser command protocol, Wasm member, bootstrap field, or durable record.
+
+The Showcase renderer has complete coverage and fixes total outer-to-inner
+format nesting as Link, Strong, Emphasis, Highlight, Strikethrough, then Code.
+Its manifest-owned toolbar order is Bold, Italic, Strikethrough, Code,
+Highlight, Link, Undo, and Redo. This proves that one compiled profile can
+compose several declarative extensions and controls; it is not a runtime plugin
+or callback protocol. The schema has its own fingerprint, while Document V2,
+Session/State/Commit V3, Profile Bootstrap V2, and Wasm ABI 5 remain unchanged.
+
+The new styles coexist independently: there are no mutual exclusions or
+priority rules beyond deterministic renderer nesting. Alpha.9 does not add
+extension keyboard shortcuts, clear-format, block code, headings, lists, rich
+HTML paste, runtime extension loading, or extension callbacks.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 and alpha.8 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.9 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.8 source configuration is tested as an exactly matching browser,
+The alpha.9 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -501,7 +528,8 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, alpha.7, and alpha.8:
+form remains supported throughout `0.1.x`, `0.2.x`, alpha.7, alpha.8, and
+alpha.9:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

@@ -21,18 +21,18 @@ const budgets = Object.freeze([
     maximum: 254_000,
   }),
   Object.freeze({
-    label: "Highlight + Link reference emitted JavaScript",
+    label: "reference Showcase emitted JavaScript",
     actual: sumFiles("packages/breditor-reference-highlight/dist", (name) =>
       name.endsWith(".js"),
     ),
-    maximum: 28_000,
+    maximum: 45_000,
   }),
   Object.freeze({
-    label: "Highlight + Link reference declarations",
+    label: "reference Showcase declarations",
     actual: sumFiles("packages/breditor-reference-highlight/dist", (name) =>
       name.endsWith(".d.ts"),
     ),
-    maximum: 24_000,
+    maximum: 39_000,
   }),
   fileBudget(
     "generated Wasm binary",

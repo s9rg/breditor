@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.8` exact typed-toolbar hydration checkpoint
+`0.3.0-alpha.9` additive Showcase checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -14,8 +14,8 @@ The current release ceilings are deliberately explicit:
 
 - all emitted `@breditor/browser` JavaScript: 1,011,000 bytes;
 - all emitted browser declarations: 254,000 bytes;
-- all emitted `@breditor/reference-highlight` JavaScript: 28,000 bytes;
-- all emitted Highlight + Link reference declarations: 24,000 bytes;
+- all emitted `@breditor/reference-highlight` JavaScript: 45,000 bytes;
+- all emitted reference-package declarations: 39,000 bytes;
 - generated Wasm binary: 1,600,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
 - packed `@breditor/browser` tarball: 248,000 bytes;
@@ -260,6 +260,32 @@ class, or size-budget increase. The narrow remaining Wasm, browser, and packed
 package headroom is intentional evidence that the next executable feature must
 include an explicit size review rather than silently widening a ceiling.
 
+The `0.3.0-alpha.9` checkpoint recalibrates only the emitted reference-package
+JavaScript and declaration ceilings. The package now carries the additive
+Showcase bootstrap, identities, Document-V2 helpers, six-format renderer, and
+eight-control toolbar while preserving its Highlight and Formatting surfaces.
+Its clean-build measurements are:
+
+- browser-package JavaScript: 1,009,591 / 1,011,000 bytes;
+- browser declarations: 251,131 / 254,000 bytes;
+- reference Showcase JavaScript: 42,368 / 45,000 bytes;
+- reference Showcase declarations: 35,149 / 39,000 bytes;
+- generated Wasm: 1,598,400 / 1,600,000 bytes;
+- generated Wasm JavaScript glue: 52,572 / 100,000 bytes;
+- reference-application JavaScript: 819,688 / 822,000 raw bytes and
+  214,255 / 216,000 level-9-gzip bytes;
+- reference-application Wasm: 1,598,400 / 1,600,000 raw bytes and
+  447,831 / 450,000 level-9-gzip bytes;
+- packed browser package: 246,370 / 248,000 bytes;
+- packed reference Showcase package: 19,537 / 20,000 bytes; and
+- packed Wasm package: 518,294 / 520,000 bytes.
+
+The reference growth is declarative profile, fixture, and presentation code,
+not a new editor runtime or copied browser module. Browser, application, Wasm,
+glue, and every tarball ceiling remain unchanged. The narrow packed-reference
+headroom is intentional and makes another reference feature require a fresh
+artifact review.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -289,7 +315,7 @@ Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
-ceilings, and ABI 5 within the current alpha.8 ceilings listed above.
+ceilings, and ABI 5 within the current alpha.9 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

@@ -1,9 +1,9 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.8 source checkpoint retains
+accessibility gate passed; the unpublished alpha.9 source checkpoint retains
 the combined Highlight + Link Chromium gates and adds exact uniform-property
-hydration to the closed native typed form proof described below
+hydration plus an additive Showcase composition proof described below
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -79,6 +79,15 @@ pristine URL/Boolean fields, unset and whole-map mixed use defaults, refresh
 preserves dirty input, rejection retains it, and completed dispatch plus close/
 reopen hydrate again from authoritative state. The accessibility scope remains
 unchanged; this behavior adds no broader assistive-technology claim.
+
+Alpha.9 adds the package-owned Showcase profile to the real browser and React
+demo gates. They assert all eight controls in declared order, independent
+Italic/Strikethrough/Code state, deterministic six-format wrapper nesting,
+multi-paragraph selection, one-command undo/redo steps, safe Link and Highlight
+peer preservation, persistence reload, responsive containment, and axe. The
+new assertions reuse the existing generic toggle and projection protocols;
+they do not claim extension shortcuts, block code, rich paste, mobile support,
+screen-reader conformance, or runtime plugin loading.
 
 Run the gate after generating the three public packages:
 

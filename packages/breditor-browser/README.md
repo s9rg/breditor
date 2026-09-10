@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.8` typed-toolbar source
+`0.2.0` extension surface, and the `0.3.0-alpha.9` Showcase source
 checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
@@ -102,6 +102,15 @@ state makes this single-line form unavailable, and CR/LF-bearing form input is
 rejected. `safeLinkV1` separately decides navigation presentation. No
 observation or draft enters history, replay, or persistence.
 
+The unpublished `0.3.0-alpha.9` source package changes no browser protocol or
+Wasm ABI. The additive reference Showcase composes Bold, three new ordinary
+property-free toggles (Italic, Strikethrough, Code), Highlight, the existing
+typed Link form, Undo, and Redo from one immutable toolbar manifest. Its
+complete renderer uses only the existing element and `safeLinkV1` recipes and
+fixes outer-to-inner nesting as Link, Strong, Emphasis, Highlight,
+Strikethrough, Code. This is a multi-extension composition proof, not runtime
+plugin loading or a general widget API.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -115,7 +124,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.8 @breditor/wasm@0.3.0-alpha.8
+npm install @breditor/browser@0.3.0-alpha.9 @breditor/wasm@0.3.0-alpha.9
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -680,7 +689,7 @@ persisted, replayed, or undoable. The exact surface and
 threat model are in
 [`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
-A custom manifest does not register behavior. In the supported Alpha.8 editor,
+A custom manifest does not register behavior. In the supported Alpha.9 editor,
 startup accepts an intent button only when its state ID names a descriptor
 entry routed from the same declared no-input intent, its tracked/stateless
 activation matches, and neither contract exposes a value. History buttons must

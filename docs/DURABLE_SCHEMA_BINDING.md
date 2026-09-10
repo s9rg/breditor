@@ -1,9 +1,14 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.8` checkpoint. Wasm ABI 5 and the browser explicitly select
+`0.3.0-alpha.9` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
+
+Alpha.9's additive Showcase has a new schema selector and fingerprint because
+it admits three additional formats. It still uses Document V2 and Session/
+State/Commit V3; toolbar order and DOM wrapper order do not enter the durable
+fingerprint or record graph.
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.

@@ -232,6 +232,14 @@ that crosses a bound. The observation is ephemeral and changes no operation,
 history, replay, document, checkpoint, fingerprint, bootstrap, or Wasm ABI;
 alpha.8 retains ABI 5.
 
+The unpublished `0.3.0-alpha.9` source checkpoint changes no Rust contract. Its
+additive Showcase profile combines the existing Highlight and typed Link
+extensions with property-free Emphasis, Strikethrough, and Code declarations.
+All three compile into the existing generic toggle action, no-input intent,
+blocking route, tracked state, transaction, history, and replay path. The new
+schema selector and format set have their own Document-V2 fingerprint; Profile
+Bootstrap V2, ABI 5, and Session/State/Commit V3 remain unchanged.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),
