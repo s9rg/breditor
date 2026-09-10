@@ -12,6 +12,8 @@ fingerprint and changes no fingerprint bytes. Alpha.5's separate private
 paragraph-structure capability and property-preserving structural execution do
 not change the declared content language, compiler-contract bytes, or either
 locked fingerprint vector.
+Alpha.11's browser-only keyboard shortcut declarations target existing
+action-state descriptors and likewise do not enter fingerprint bytes.
 Immutable compiled semantic profiles keep action/intent/state
 and browser-presentation declarations outside this digest; their separate
 runtime generation crosses the engine/Wasm/browser boundary without being

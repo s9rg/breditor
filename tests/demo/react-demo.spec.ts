@@ -633,6 +633,45 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   expect(containment.buttonRows).toBeGreaterThan(1);
 });
 
+test("the React Showcase advertises and routes profile-declared shortcuts", async ({
+  page,
+}) => {
+  const { editor } = await openDemo(page);
+  const italic = page.getByRole("button", { name: "Italic" });
+  const undo = page.getByRole("button", { name: "Undo" });
+  const redo = page.getByRole("button", { name: "Redo" });
+  const advertised = await italic.getAttribute("aria-keyshortcuts");
+  const primary = advertised?.startsWith("Meta+") === true ? "Meta" : "Control";
+
+  await expect(
+    page.getByRole("complementary", { name: "Demo tips" }),
+  ).toContainText(
+    "Browser- or OS-reserved combinations may stay with browser chrome.",
+  );
+  await expect(italic).toHaveAttribute(
+    "aria-keyshortcuts",
+    `${primary}+I`,
+  );
+  await expect(undo).toHaveAttribute("aria-keyshortcuts", `${primary}+Z`);
+  await expect(redo).toHaveAttribute(
+    "aria-keyshortcuts",
+    `${primary}+Y ${primary}+Shift+Z`,
+  );
+
+  await selectEditorText(editor, 0, SAMPLE_TEXT.length);
+  await page.keyboard.press(`${primary}+i`);
+  await expect(italic).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("em")).toHaveText(SAMPLE_TEXT);
+
+  await page.keyboard.press(`${primary}+z`);
+  await expect(italic).toHaveAttribute("aria-pressed", "false");
+  await expect(editor.locator("em")).toHaveCount(0);
+
+  await page.keyboard.press(`${primary}+Shift+z`);
+  await expect(italic).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("em")).toHaveText(SAMPLE_TEXT);
+});
+
 test("the nine-control Showcase composes and clears deterministic formats across paragraphs and persistence", async ({
   page,
 }) => {

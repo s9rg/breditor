@@ -1,11 +1,12 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.10` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.11` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the
-core-owned Clear Formatting route described below.
+core-owned Clear Formatting route plus descriptor-compiled declarative
+shortcuts described below.
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -524,27 +525,72 @@ has no allowlist, ownership filter, or block-format meaning. Exact undo means
 removed property values can remain in retained history/checkpoints, so this is
 not a secure-erasure primitive.
 
+## `0.3.0-alpha.11` declarative keyboard shortcuts
+
+Alpha.11 adds the root-exported `createKeyboardShortcutManifest`, its copied and
+deeply frozen data types and limits, `DEFAULT_KEYBOARD_SHORTCUT_MANIFEST`, and
+the optional high-level `keyboardShortcuts` startup option. This is a browser
+presentation contract: it is not added to the Rust extension manifest, Profile
+Bootstrap V2, compiled descriptor ABI, schema fingerprint, or any durable
+record.
+
+One manifest contains at most 43 unique qualified state IDs, at most four chords
+per state, and at most 44 unique chords total. A chord is exactly one physical
+`KeyA` through `KeyZ` code with a Boolean Shift value; the host's existing keyboard policy
+selects `control` or `meta`. A/C/V/X are reserved with or without Shift. The
+core primary+B, primary+Y, primary+Z, and primary+Shift+Z chords can be omitted
+but cannot be rebound to a different state. The complete manifest fails on
+duplicate state/chord identities, malformed or extra data, accessors, sparse
+arrays, or limit overflow.
+
+At startup, each declared state must resolve through the owned compiled-profile
+descriptor to either an exact routed no-input intent with the same observable
+state contract or a stateless/value-free Undo/Redo direction. Unknown or direct
+states, typed intents, mismatched routed-state contracts, and nonstateless or
+valued history states fail before editor listeners or toolbar DOM become live.
+Omitting the option filters the default
+Bold/Undo/Redo declarations to states compatible with the selected profile;
+an explicit manifest is exact and receives no implicit merge.
+
+The one compiled table drives both native keyboard lookup and
+`aria-keyshortcuts` on matching generated toolbar controls. A disabled shortcut
+policy emits no ARIA metadata. Intent auto-repeat is suppressed and uses a
+`closeBefore` history boundary; history repeat is supported. Alt/AltGraph, a
+secondary primary modifier, punctuation, function keys, sequences, callbacks,
+typed-input launchers, and runtime replacement are outside the contract.
+Matching uses only exact physical `KeyboardEvent.code` values; generated
+`KeyboardEvent.key` text does not select a binding. Codes follow US physical-key
+positions, so devices without conforming exact codes may not invoke shortcuts,
+and browser/operating-system reservation conflicts remain possible.
+
+The reference package adds
+`REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST` without changing its schema or
+fingerprint. It binds Bold, Italic, Strikethrough, Code, Highlight, Undo, and
+Redo; Link and Clear formatting remain unbound. This presentation addition
+changes no Rust action, intent, operation, transaction, selection, history,
+replay, Wasm ABI 5 member, or persistence format.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.10 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.11 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.10 source configuration is tested as an exactly matching browser,
+The alpha.11 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
 reference package declares
-the exact browser version as a peer dependency. Its render and toolbar
-manifests are branded by the `@breditor/browser` module instance that created
-them, so a duplicate, nested, or mismatched browser copy is not a compatible
-replacement. The clean consumer gate proves one peer instance and imports only
-the three package roots.
+the exact browser version as a peer dependency. Its render, toolbar, and
+shortcut manifests are branded by the `@breditor/browser` module instance that
+created them, so a duplicate, nested, or mismatched browser copy is not a
+compatible replacement. The clean consumer gate proves one peer instance and
+imports only the three package roots.
 
 The minimal supported browser bootstrap surface of `@breditor/wasm` is the
 package-root default asynchronous initializer called once with no argument in
@@ -552,7 +598,7 @@ an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
 form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7 through
-alpha.10:
+alpha.11:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -639,6 +685,18 @@ operation/format/text/tree/property limits, directional selection rebuilding,
 linear undo/redo branching, V3 restoration at both history cursors, and the
 generated all/partial/absent presence state. The existing browser typed-intent
 and demo route exercises the behavior without a new ABI or control protocol.
+
+The alpha.11 browser gates additionally exercise the package-owned Showcase
+shortcut manifest in Chromium, Firefox, and WebKit. They correlate exact
+`aria-keyshortcuts` with the active Control policy and execute Bold, Italic,
+Strikethrough, Code, Highlight, Undo, and both Redo aliases through genuine
+Playwright keyboard events. Unit and owner tests cover manifest bounds and
+canonicalization, descriptor mismatch, modifier/repeat policy, exact physical-
+code matching independent of generated `key` text, disabled-policy ARIA
+omission, forged-value rejection, and ARIA drift detection at guarded toolbar
+interactions and explicit canonical-DOM validation. No mutation observer faults
+or repairs that drift immediately. This remains desktop-browser evidence, not a
+mobile, arbitrary-layout, OS-IME, screen-reader, or WCAG claim.
 
 ## Dependency boundary
 

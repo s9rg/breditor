@@ -268,12 +268,37 @@ export {
   type ToolbarInlineFormatFormValues,
 } from "./toolbar_inline_format_form_input.js";
 export {
+  DEFAULT_KEYBOARD_SHORTCUT_MANIFEST,
+  MAX_KEYBOARD_SHORTCUT_CHORDS_PER_DECLARATION,
+  MAX_KEYBOARD_SHORTCUT_CHORDS_TOTAL,
+  MAX_KEYBOARD_SHORTCUT_DECLARATIONS,
+  MAX_KEYBOARD_SHORTCUT_STATE_ID_ASCII,
+  createKeyboardShortcutManifest,
+  isOwnedKeyboardShortcutManifest,
+  type KeyboardShortcutDeclaration,
+  type KeyboardShortcutManifest,
+  type PrimaryKeyChord,
+} from "./keyboard_shortcut_manifest.js";
+export {
+  DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+  compileCompatibleDefaultKeyboardShortcuts,
+  compileKeyboardShortcutManifest,
+  compiledKeyboardShortcutBindingFor,
+  compiledKeyboardShortcutBindingsForState,
+  isOwnedBrowserCompiledKeyboardShortcuts,
+  keyboardShortcutCodeIdentity,
+  type BrowserCompiledKeyboardShortcutBinding,
+  type BrowserCompiledKeyboardShortcuts,
+  type BrowserCompiledKeyboardShortcutTarget,
+} from "./keyboard_shortcut_profile_contract.js";
+export {
   BreditorToolbar,
   MAX_TOOLBAR_LIFECYCLE_SUBSCRIBERS,
   MAX_TOOLBAR_STATE_ENTRIES,
   toolbarCommandDispatchResult,
   toolbarCommandRequest,
   type BreditorToolbarState,
+  type BreditorToolbarPresentationOptions,
   type BreditorToolbarSubscriber,
   type ToolbarActionStateEntry,
   type ToolbarActionStateSnapshot,

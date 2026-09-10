@@ -939,6 +939,84 @@ test("the native Link toolbar works from an open ShadowRoot without browser URL 
   await expect(url).toBeFocused();
 });
 
+test("the packaged Showcase routes declared shortcuts through semantic intents and history", async ({
+  page,
+}) => {
+  const mounted = await mountReferenceShowcase(page);
+  const root = page.locator(
+    `[data-breditor-reference-showcase-probe="${mounted.probeId}"]`,
+  );
+  const editor = root.getByRole("textbox", { name: mounted.editorLabel });
+  const toolbar = root.getByRole("toolbar", { name: "Editor controls" });
+  const bold = toolbar.getByRole("button", { name: "Bold", exact: true });
+  const italic = toolbar.getByRole("button", { name: "Italic", exact: true });
+  const strikethrough = toolbar.getByRole("button", {
+    name: "Strikethrough",
+    exact: true,
+  });
+  const code = toolbar.getByRole("button", { name: "Code", exact: true });
+  const highlight = toolbar.getByRole("button", {
+    name: "Highlight",
+    exact: true,
+  });
+  const undo = toolbar.getByRole("button", { name: "Undo", exact: true });
+  const redo = toolbar.getByRole("button", { name: "Redo", exact: true });
+
+  await expect(bold).toHaveAttribute("aria-keyshortcuts", "Control+B");
+  await expect(italic).toHaveAttribute("aria-keyshortcuts", "Control+I");
+  await expect(strikethrough).toHaveAttribute(
+    "aria-keyshortcuts",
+    "Control+Shift+S",
+  );
+  await expect(code).toHaveAttribute("aria-keyshortcuts", "Control+E");
+  await expect(highlight).toHaveAttribute(
+    "aria-keyshortcuts",
+    "Control+Shift+H",
+  );
+  await expect(undo).toHaveAttribute("aria-keyshortcuts", "Control+Z");
+  await expect(redo).toHaveAttribute(
+    "aria-keyshortcuts",
+    "Control+Y Control+Shift+Z",
+  );
+
+  await selectTextInEditor(editor, 0, mounted.text.length);
+  await page.keyboard.press("Control+i");
+  await expect(italic).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("em")).toHaveText(mounted.text);
+
+  await page.keyboard.press("Control+z");
+  await expect(italic).toHaveAttribute("aria-pressed", "false");
+  await expect(editor.locator("em")).toHaveCount(0);
+
+  await page.keyboard.press("Control+Shift+z");
+  await expect(italic).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("em")).toHaveText(mounted.text);
+
+  await page.keyboard.press("Control+b");
+  await expect(bold).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("strong")).toHaveText(mounted.text);
+
+  await page.keyboard.press("Control+Shift+s");
+  await expect(strikethrough).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("s")).toHaveText(mounted.text);
+
+  await page.keyboard.press("Control+e");
+  await expect(code).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("code")).toHaveText(mounted.text);
+
+  await page.keyboard.press("Control+Shift+h");
+  await expect(highlight).toHaveAttribute("aria-pressed", "false");
+  await expect(editor.locator("mark")).toHaveCount(0);
+
+  await page.keyboard.press("Control+z");
+  await expect(highlight).toHaveAttribute("aria-pressed", "true");
+  await expect(editor.locator("mark")).toHaveText(mounted.text);
+
+  await page.keyboard.press("Control+y");
+  await expect(highlight).toHaveAttribute("aria-pressed", "false");
+  await expect(editor.locator("mark")).toHaveCount(0);
+});
+
 test("the packaged Showcase composes extensions and Rust-owned clear formatting through generic state and history", async ({
   page,
 }) => {

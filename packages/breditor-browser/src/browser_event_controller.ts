@@ -29,6 +29,12 @@ import {
   type KeyboardTranslationPolicy,
 } from "./keyboard.js";
 import {
+  DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+  isOwnedBrowserCompiledKeyboardShortcuts,
+  keyboardShortcutCodeIdentity,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
+import {
   isOwnedRenderedProjection,
   type RenderedProjection,
 } from "./dom_renderer.js";
@@ -51,9 +57,11 @@ interface KeyboardReceipt {
   readonly fingerprint: string;
   readonly inputTypes: readonly string[];
   readonly phase: "beforeinput" | "input";
+  /** Stable identity shared by phase promotion and its one task-bound expiry. */
+  readonly expiryToken: object;
   /** Token consumed by the keydown command which created this receipt. */
   readonly delivery: EditorDeliveryToken;
-  /** Bound after beforeinput; a direct keydown-to-input echo omits this. */
+  /** Bound only after a correlated beforeinput; direct input echoes are rejected. */
   readonly rendered?: RenderedProjection;
   readonly rendererGeneration?: bigint;
 }
@@ -86,13 +94,21 @@ type EventAdmission<TResult> =
 /** Framework-neutral options for one native-event translator. */
 export interface BrowserEventControllerOptions {
   readonly keyboard: KeyboardTranslationPolicy;
+  /** Descriptor-compiled semantic shortcuts; base bindings are the default. */
+  readonly keyboardShortcuts?: BrowserCompiledKeyboardShortcuts;
   /** Exact bridge shared with the observation/render-owning command adapter. */
   readonly selectionBridge: BreditorDomSelectionBridge;
   /** Opaque live-token authority exposed by that same command adapter. */
   readonly deliveryAuthority: EditorDeliveryAuthority;
   /** v0.0.54 supplies the authoritative composition phase. */
   readonly compositionActive?: () => boolean;
+  /** End-of-task scheduler used only to expire native echo correlation. */
+  readonly scheduleTask?: (callback: () => void) => void;
 }
+
+const defaultScheduleTask = (callback: () => void): void => {
+  globalThis.setTimeout(callback, 0);
+};
 
 /**
  * Controlled browser-event translator over one shared serial command queue.
@@ -105,9 +121,11 @@ export interface BrowserEventControllerOptions {
 export class BreditorBrowserEventController<TResult> {
   readonly #queue: BreditorCommandQueue<TResult>;
   readonly #keyboard: KeyboardTranslationPolicy;
+  readonly #keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
   readonly #compositionActive: () => boolean;
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #deliveryAuthority: EditorDeliveryAuthority;
+  readonly #scheduleTask: (callback: () => void) => void;
   #keyboardReceipt: KeyboardReceipt | undefined;
 
   constructor(
@@ -129,9 +147,11 @@ export class BreditorBrowserEventController<TResult> {
     }
     this.#queue = queue;
     this.#keyboard = snapshot.keyboard;
+    this.#keyboardShortcuts = snapshot.keyboardShortcuts;
     this.#selectionBridge = snapshot.selectionBridge;
     this.#deliveryAuthority = snapshot.deliveryAuthority;
     this.#compositionActive = snapshot.compositionActive;
+    this.#scheduleTask = snapshot.scheduleTask;
   }
 
   /** Handles one native `beforeinput`; every owned cancelable mutation is canceled. */
@@ -280,6 +300,7 @@ export class BreditorBrowserEventController<TResult> {
       compositionActive,
       delivery,
       noSelectionSync(),
+      this.#keyboardShortcuts,
     );
     if (translation.kind === "composition") {
       return Object.freeze({
@@ -307,6 +328,7 @@ export class BreditorBrowserEventController<TResult> {
       compositionActive,
       delivery,
       capturedSelection,
+      this.#keyboardShortcuts,
     );
     if (translation.kind !== "command") {
       return this.#cancelBlocked(event, admitted.base, "invalidEvent");
@@ -318,15 +340,20 @@ export class BreditorBrowserEventController<TResult> {
     }
     const submission = this.#submit(translation.request);
     if (submission.status === "completed" || submission.status === "queued") {
-      const inputTypes = keyboardEchoInputTypes(translation.request);
+      const inputTypes = keyboardEchoInputTypes(
+        translation.request,
+        snapshot,
+        this.#keyboard.primaryModifier,
+      );
       if (inputTypes.length > 0) {
-        this.#keyboardReceipt = Object.freeze({
+        this.#publishKeyboardReceipt(Object.freeze({
           kind: "keyboard",
           fingerprint: commandFingerprint(translation.request),
           inputTypes,
           phase: "beforeinput",
+          expiryToken: Object.freeze({}),
           delivery: translation.request.delivery,
-        });
+        }));
       }
     }
     return submissionDisposition(submission);
@@ -643,6 +670,46 @@ export class BreditorBrowserEventController<TResult> {
   #clearReceipts(): void {
     this.#keyboardReceipt = undefined;
   }
+
+  #publishKeyboardReceipt(receipt: KeyboardReceipt): void {
+    this.#keyboardReceipt = receipt;
+    let scheduling = true;
+    let invoked = false;
+    let synchronous = false;
+    try {
+      const returned: unknown = this.#scheduleTask(() => {
+        if (invoked) return;
+        invoked = true;
+        if (scheduling) {
+          synchronous = true;
+          return;
+        }
+        if (this.#keyboardReceipt?.expiryToken === receipt.expiryToken) {
+          this.#keyboardReceipt = undefined;
+        }
+      });
+      if (containAsyncRejection(returned)) {
+        scheduling = false;
+        if (this.#keyboardReceipt?.expiryToken === receipt.expiryToken) {
+          this.#keyboardReceipt = undefined;
+        }
+        return;
+      }
+    } catch {
+      scheduling = false;
+      if (this.#keyboardReceipt?.expiryToken === receipt.expiryToken) {
+        this.#keyboardReceipt = undefined;
+      }
+      return;
+    }
+    scheduling = false;
+    if (
+      synchronous &&
+      this.#keyboardReceipt?.expiryToken === receipt.expiryToken
+    ) {
+      this.#keyboardReceipt = undefined;
+    }
+  }
 }
 
 function validateTargetRangeForTranslation(
@@ -889,18 +956,39 @@ function isClipboardInputType(inputType: string): boolean {
   );
 }
 
-function keyboardEchoInputTypes(request: EditorCommandRequest): readonly string[] {
+function keyboardEchoInputTypes(
+  request: EditorCommandRequest,
+  keyboard: KeyboardSnapshot,
+  primaryModifier: "control" | "meta",
+): readonly string[] {
   const command = request.command;
+  const code = keyboardShortcutCodeIdentity(keyboard.code);
   if (command.kind === "history") {
-    return Object.freeze([
-      command.operation === "undo" ? "historyUndo" : "historyRedo",
-    ]);
+    if (
+      command.operation === "undo" &&
+      code === "KeyZ" &&
+      !keyboard.shiftKey
+    ) {
+      return Object.freeze(["historyUndo"]);
+    }
+    if (
+      command.operation === "redo" &&
+      ((primaryModifier === "control" &&
+        code === "KeyY" &&
+        !keyboard.shiftKey) ||
+        (code === "KeyZ" && keyboard.shiftKey))
+    ) {
+      return Object.freeze(["historyRedo"]);
+    }
+    return Object.freeze([]);
   }
   if (command.kind === "control") {
     return Object.freeze([]);
   }
   if (command.kind === "intent") {
-    return command.intentId === "breditor/format-strong"
+    return command.intentId === "breditor/format-strong" &&
+      code === "KeyB" &&
+      !keyboard.shiftKey
       ? Object.freeze(["formatBold"])
       : Object.freeze([]);
   }
@@ -909,13 +997,21 @@ function keyboardEchoInputTypes(request: EditorCommandRequest): readonly string[
   }
   switch (command.actionId) {
     case "breditor/toggle-strong":
-      return Object.freeze(["formatBold"]);
+      return code === "KeyB" && !keyboard.shiftKey
+        ? Object.freeze(["formatBold"])
+        : Object.freeze([]);
     case "breditor/delete-backward":
-      return Object.freeze(["deleteContentBackward"]);
+      return keyboard.key === "Backspace"
+        ? Object.freeze(["deleteContentBackward"])
+        : Object.freeze([]);
     case "breditor/delete-forward":
-      return Object.freeze(["deleteContentForward"]);
+      return keyboard.key === "Delete"
+        ? Object.freeze(["deleteContentForward"])
+        : Object.freeze([]);
     case "breditor/insert-paragraph-break":
-      return Object.freeze(["insertParagraph"]);
+      return keyboard.key === "Enter" && !keyboard.shiftKey
+        ? Object.freeze(["insertParagraph"])
+        : Object.freeze([]);
     default:
       return Object.freeze([]);
   }
@@ -944,35 +1040,44 @@ function snapshotControllerOptions(
   value: unknown,
 ): Readonly<{
   keyboard: KeyboardTranslationPolicy;
+  keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
   selectionBridge: BreditorDomSelectionBridge;
   deliveryAuthority: EditorDeliveryAuthority;
   compositionActive: () => boolean;
+  scheduleTask: (callback: () => void) => void;
 }> | null {
   const options = readDataRecordWithOptional(
     value,
     ["keyboard", "selectionBridge", "deliveryAuthority"],
-    ["compositionActive"],
+    ["compositionActive", "keyboardShortcuts", "scheduleTask"],
   );
   if (options === null) {
     return null;
   }
   const keyboard = snapshotKeyboardPolicy(options["keyboard"]);
+  const keyboardShortcuts =
+    options["keyboardShortcuts"] ?? DEFAULT_COMPILED_KEYBOARD_SHORTCUTS;
   const selectionBridge = options["selectionBridge"];
   const deliveryAuthority = options["deliveryAuthority"];
   const compositionActive = options["compositionActive"] ?? (() => false);
+  const scheduleTask = options["scheduleTask"] ?? defaultScheduleTask;
   if (
     keyboard === null ||
+    !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts) ||
     !(selectionBridge instanceof BreditorDomSelectionBridge) ||
     !isEditorDeliveryAuthority(deliveryAuthority) ||
-    typeof compositionActive !== "function"
+    typeof compositionActive !== "function" ||
+    typeof scheduleTask !== "function"
   ) {
     return null;
   }
   return Object.freeze({
     keyboard,
+    keyboardShortcuts,
     selectionBridge,
     deliveryAuthority: deliveryAuthority as EditorDeliveryAuthority,
     compositionActive: compositionActive as () => boolean,
+    scheduleTask: scheduleTask as (callback: () => void) => void,
   });
 }
 
@@ -1103,4 +1208,24 @@ function admissionFailure<TResult>(
   disposition: BrowserEventDisposition<TResult>,
 ): EventAdmission<TResult> {
   return Object.freeze({ ok: false, owned, preserveReceipts, disposition });
+}
+
+function containAsyncRejection(value: unknown): boolean {
+  if (
+    (typeof value !== "object" || value === null) &&
+    typeof value !== "function"
+  ) {
+    return false;
+  }
+  try {
+    const then = (value as Readonly<{ then?: unknown }>).then;
+    if (typeof then === "function") {
+      void Promise.resolve(value).catch(() => {});
+      return true;
+    }
+    return false;
+  } catch {
+    // A hostile thenable is an invalid scheduler result and is contained.
+    return true;
+  }
 }

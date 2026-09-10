@@ -5,9 +5,11 @@ Status: supported by the public `0.1.0` runtime and carried unchanged into the
 consumer/cross-browser release; `0.3.0-alpha.7` adds the closed callback-free
 typed inline-format form, and `0.3.0-alpha.8` adds exact property-state
 hydration. `0.3.0-alpha.9` proves additive eight-control manifest composition,
-and `0.3.0-alpha.10` adds the Rust-owned aggregate Clear formatting route and
-nine-control Showcase, as defined in
-[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+`0.3.0-alpha.10` adds the Rust-owned aggregate Clear formatting route and
+nine-control Showcase, and `0.3.0-alpha.11` projects a separately compiled
+declarative shortcut manifest onto toolbar `aria-keyshortcuts`, as defined in
+[`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md) and
+[`KEYBOARD_SHORTCUTS.md`](KEYBOARD_SHORTCUTS.md).
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -36,6 +38,10 @@ later click.
 6. The APG toolbar uses only native command or launcher buttons. A typed
    launcher's nonmodal form is a sibling, not a descendant of `role="toolbar"`.
    CSS, icons, localization, and framework wrappers remain optional layers.
+7. Shortcut declarations are separate from toolbar layout. Both address the
+   same Rust-owned state identity; one descriptor compilation derives the
+   executable target and one compiled table drives `keydown` plus truthful ARIA
+   metadata. Neither manifest can become command authority.
 
 ## Base state catalog
 
@@ -208,9 +214,10 @@ presentation/state IDs outside this manifest.
 
 Every retained field must be an own data property, and `controls` must be a
 bounded dense array of own data elements. Accessors and inherited fields are
-never read. Undeclared properties are dropped. In particular, v0.1.0 does not
-admit `aria-keyshortcuts`: shortcut metadata will be added only with a runtime
-that registers and tests the advertised shortcut behavior.
+never read. Undeclared properties are dropped. The historical v0.1.0 toolbar
+manifest did not admit shortcut metadata. Alpha.11 keeps that schema unchanged
+and adds a separate manifest whose descriptor-compiled behavior is shared with
+the toolbar before `aria-keyshortcuts` is emitted.
 
 The default manifest is Bold, Undo, Redo, with Bold naming
 `breditor/format-strong`. Alpha.7 high-level startup checks every control
@@ -317,6 +324,57 @@ disabled. This supersedes only Alpha.9's aggregate-clear limitation; it does
 not add per-format clearing, exclusion groups, callbacks, or a new Wasm ABI or
 durable generation.
 
+## Shortcut presentation
+
+Alpha.11 adds a browser-owned `KeyboardShortcutManifest`; it does not add a
+field to `ToolbarManifest` or the Rust extension profile. One declaration names
+an existing qualified action-state ID and one through four chords. Each chord
+is exactly one physical `KeyA` through `KeyZ` code plus the configured primary modifier and
+an exact Boolean Shift state. `createKeyboardShortcutManifest` copies,
+canonicalizes, deeply freezes, and brands the data.
+
+The complete manifest admits at most 43 state declarations and 44 unique
+chords. State IDs are at most 128 ASCII characters in the existing qualified
+grammar. A/C/V/X are unavailable with either Shift value so Select All and
+clipboard ownership remain native. Primary+B, primary+Y, primary+Z, and
+primary+Shift+Z may be omitted but can target only their exact built-in Bold,
+Redo, Undo, and Redo states. Duplicate state IDs, duplicate chords, accessors,
+extra fields, sparse arrays, malformed/non-letter codes, and limit overflow reject
+the entire value. Registration order never chooses a winner.
+
+High-level startup compiles each state against the same owned profile descriptor
+used for toolbar admission. The state must be an exact stateless/value-free
+Undo or Redo source, or a routed no-input intent whose action-state contract
+equals the intent contract. Unknown states, direct actions, typed intents,
+mismatched routed-state contracts, and nonstateless or valued history states
+reject startup before native listeners or toolbar DOM become live. Omitting
+`keyboardShortcuts` compiles only the compatible
+subset of the default Bold/Undo/Redo manifest; supplying an explicit manifest
+is exact and receives no implicit bindings.
+
+When `keyboard.shortcuts` is `"enabled"`, every generated control whose state
+has compiled bindings receives one canonical `aria-keyshortcuts` value. Tokens
+use `Control` or `Meta` from `keyboard.primaryModifier`, optional `Shift`, and
+the uppercase letter; aliases are separated by spaces. Unbound controls and a
+disabled shortcut policy omit the attribute. The toolbar integrity check treats
+that attribute as owned DOM. ARIA remains descriptive evidence: the matching
+native `keydown` is looked up in the same compiled table and enters the guarded
+semantic intent/history path. No mutation observer repairs or faults attribute
+drift immediately; a guarded toolbar interaction or explicit canonical-DOM
+validation detects it, and keyboard execution never consults the attribute.
+
+The Showcase advertises primary+B, primary+I, primary+Shift+S, primary+E,
+primary+Shift+H, primary+Z, primary+Y, and primary+Shift+Z. Typed Link has no
+shortcut because a chord cannot carry its required property map or open a
+general widget. Clear formatting is unbound in that reference manifest but can
+be assigned a non-reserved letter by another descriptor-matched presentation.
+Intent auto-repeat is suppressed and requests `closeBefore`; Undo/Redo repeat is
+admitted. Alt, AltGraph, the secondary primary modifier, dead/process/
+composition keys, punctuation, function keys, sequences, callbacks, runtime
+replacement, and extension-defined `beforeinput` rules remain outside this
+surface. It changes no Rust action, Wasm ABI 5 member, durable schema or
+fingerprint, history/replay law, or persisted record.
+
 ## Accessible DOM behavior
 
 `BreditorToolbar` treats its constructor element as a mount. It accepts only an
@@ -367,6 +425,12 @@ disables dispatch with `aria-disabled="true"`. Tracked activation maps to
 `aria-pressed="false"`, `"true"`, or `"mixed"`; stateless controls omit
 `aria-pressed`. The toolbar rechecks the latest store snapshot immediately
 before dispatch, but the queue and Rust remain authoritative.
+
+`aria-keyshortcuts` does not imply current availability: an unavailable command
+retains its declared shortcut metadata while `aria-disabled="true"` prevents
+toolbar dispatch and Rust re-evaluates any keyboard request. When shortcut
+translation itself is disabled, the attribute is omitted rather than
+advertising an inactive chord.
 
 Dispatch must return an outcome minted by `toolbarCommandDispatchResult`:
 `completed` means the requested target command completed synchronously,
@@ -429,9 +493,13 @@ toolbar.
   unavailable; programmatic removal remains available.
   There is no persisted draft, optional/integer field, partial patch, or
   arbitrary widget.
-  There are no menus/selects, extension
-  keymaps or `beforeinput` rules, dynamic manifest replacement, or asynchronous
+  There are no menus/selects, callback or multi-key keymaps, extension-defined
+  `beforeinput` rules, dynamic manifest replacement, or asynchronous
   toolbar dispatch.
+- The declarative shortcut surface is limited to primary-modifier physical
+  `KeyA` through `KeyZ` codes with optional Shift, state-derived no-input intents, and exact
+  Undo/Redo. It cannot carry typed values, execute direct actions, open forms,
+  override Select All/clipboard, use Alt, or change while the editor is live.
 - URL presentation checks only string shape and UTF-8 bounds. `safeLinkV1`
   independently owns parsing, normalization, scheme, and navigation safety.
   Hydration preserves the exact inert stored string. Same-realm JavaScript is

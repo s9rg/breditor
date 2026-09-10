@@ -3,7 +3,7 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.10` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.11` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
@@ -12,7 +12,10 @@ hydrates pristine fields from exact Rust-owned complete-map state. Alpha.9
 then composes five extension-owned controls in one additive Showcase profile
 using only those existing generic contracts. Alpha.10 adds one core-owned
 stateless Clear Formatting command over complete inline `FormatSet` values,
-without making its semantics extension-configurable. It
+without making its semantics extension-configurable. Alpha.11 adds a separate
+browser-owned declarative shortcut manifest compiled through existing
+action-state descriptors, and projects that same checked table as toolbar
+`aria-keyshortcuts`. It
 does not introduce a generic attribute protocol, arbitrary toolbar widget, or
 extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
 normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
@@ -66,6 +69,7 @@ The relevant lessons are:
   See [extension introduction](https://lexical.dev/docs/extensions/intro),
   [defining extensions](https://lexical.dev/docs/extensions/defining-extensions),
   [commands](https://lexical.dev/docs/concepts/commands),
+  [compiled keyboard shortcut source](https://github.com/facebook/lexical/blob/main/packages/lexical/src/LexicalKeyboardShortcuts.ts),
   [transforms](https://lexical.dev/docs/concepts/transforms),
   [nodes](https://lexical.dev/docs/concepts/nodes), and
   [serialization](https://lexical.dev/docs/serialization/).
@@ -73,7 +77,10 @@ The relevant lessons are:
   participates in several namespaces, one priority can affect unrelated
   registries, and duplicate extension names currently warn rather than fail.
   Breditor deliberately uses typed identities, separate order graphs, and
-  fail-closed ownership. See the [Extension API](https://tiptap.dev/docs/editor/extensions/custom-extensions/create-new/extension),
+  fail-closed ownership. Its extension shortcut facade is useful ergonomics,
+  while Breditor keeps shortcut data separate from semantic extension loading
+  and executable callbacks. See the [Extension API](https://tiptap.dev/docs/editor/extensions/custom-extensions/create-new/extension),
+  [keyboard shortcut guide](https://tiptap.dev/docs/editor/core-concepts/keyboard-shortcuts),
   [extension resolver](https://github.com/ueberdosis/tiptap/blob/main/packages/core/src/helpers/resolveExtensions.ts),
   [priority sorter](https://github.com/ueberdosis/tiptap/blob/main/packages/core/src/helpers/sortExtensions.ts),
   and [extension manager](https://github.com/ueberdosis/tiptap/blob/main/packages/core/src/ExtensionManager.ts).
@@ -107,7 +114,7 @@ Rust semantic layer
                     | immutable snapshots, intents, outcomes
                     v
 browser presentation layer
-  editing projection + render-recipe registry + toolbar + input/clipboard policy
+  editing projection + render recipes + toolbar/shortcut data + input/clipboard policy
 ```
 
 Only the middle layer owns canonical meaning. The host supplies inputs but does
@@ -553,6 +560,17 @@ durable schema fingerprint and Rust process-local profile generation. They
 cannot change input contracts, effect declarations, selection policy, history
 intent, or persisted operation meaning.
 
+Alpha.11 makes the shortcut part concrete without moving it into the semantic
+manifest. `createKeyboardShortcutManifest` accepts only bounded state-addressed
+primary-modifier physical-letter-code chords. Browser startup resolves each
+state through the same
+owned compiled-profile descriptor used by toolbar admission and derives either
+a matching routed no-input intent or exact Undo/Redo direction. The declaration
+does not repeat an action or intent ID and cannot inject a handler. One compiled
+lookup table drives both `keydown` and the matching generated control's
+`aria-keyshortcuts`, so display metadata and executable routing cannot drift by
+registration order.
+
 The browser's existing direct action dispatch remains an explicitly advanced
 policy bypass. The supported expandable toolbar path uses semantic intents so a
 host can choose routes while compiling a new profile without coupling UI layout
@@ -588,6 +606,14 @@ construction fails. The browser records a presentation identity only after
 these checks. Labels and recipes can change across reconstruction, and CSS can
 change live, but the checked contribution set is immutable for that browser
 editor instance.
+
+Shortcut coverage is independently optional. An omitted shortcut option keeps
+only the compatible subset of the default Bold/Undo/Redo presentation. An
+explicit owned manifest is exact: each state must compile, every chord must be
+globally unique, and no implicit defaults are merged. A mismatch rejects
+startup before native listeners or toolbar DOM become live. Changing shortcut
+data requires reconstructing the editor, but does not require recompiling Rust
+or changing the semantic profile fingerprint.
 
 The descriptor also fixes the complete action-state catalog for that instance.
 Every consumed snapshot must repeat its exact count and ordered lexical IDs.
@@ -936,6 +962,59 @@ history, and replay contracts. The schema fingerprint, Profile Bootstrap V2,
 Wasm ABI 5, Document V2, and Operation/Editor State/Transaction/Commit/Session
 Checkpoint V3 shapes and generation numbers are unchanged.
 
+## `0.3.0-alpha.11` browser-owned extension shortcuts
+
+Alpha.11 adds no semantic primitive. The root browser API accepts a separately
+owned `KeyboardShortcutManifest` with at most 43 unique state declarations,
+four aliases per state, and 44 unique chords total. A chord is exactly the
+host-selected primary modifier, an optional exact Shift requirement, and one
+physical `KeyA` through `KeyZ` code. A/C/V/X are reserved for native Select All/clipboard
+families. The built-in primary+B, primary+Y, primary+Z, and primary+Shift+Z
+chords may be omitted but cannot be rebound to another state. Duplicate state
+or chord ownership fails the whole manifest; canonical ordering, not package
+load order, defines the frozen result.
+
+The state identity is the join point between semantic and presentation layers.
+At startup the browser compiles it through the owned profile descriptor. Only a
+routed no-input intent whose state contract matches exactly, or a stateless and
+value-free Undo/Redo source, is executable. Unknown, direct-action, typed-input,
+mismatched routed-state contracts, and nonstateless or valued history states
+fail before the editor becomes live. A shortcut package therefore contributes
+data referring to already compiled semantics; it
+cannot add an action, choose a binding, send an operation plan, or run during
+history/replay.
+
+Intent chords enter the ordinary queue with selection preservation and a
+`closeBefore` boundary; repeat is suppressed. History repeat is allowed and
+uses the existing Undo/Redo request. Exact primary/secondary/Alt/Shift state is
+checked, with AltGraph and composition/dead/process keys left out of shortcut
+routing. Matching uses only exact physical `KeyboardEvent.code`; generated
+`KeyboardEvent.key` text does not select or reject a binding. Codes identify US
+physical-key positions. Devices without conforming exact codes may not invoke
+shortcuts, and browser/OS reservations may conflict. Only conventional native
+chord/input-type pairs arm an
+echo receipt, and a receipt with no matching `beforeinput` expires at the end of
+the current task rather than surviving as authority over a later event.
+
+The same compiler-owned lookup supplies toolbar `aria-keyshortcuts`, rendered
+with `Control` or `Meta`, optional `Shift`, and the uppercase letter. Multiple
+aliases are space-separated. Unbound controls and disabled shortcut policy omit
+the attribute. ARIA does not grant execution capability; current availability
+and action preparation remain Rust-owned. No mutation observer immediately
+faults or repairs attribute drift; the next guarded toolbar interaction or an
+explicit canonical-DOM validation detects it, while keyboard execution keeps
+using the immutable compiled table.
+
+The reference Showcase manifests bind Bold, Italic, Strikethrough, Code,
+Highlight, Undo, and Redo, with primary+Y and primary+Shift+Z as the two Redo
+aliases. The three-engine gate executes all five format bindings, Undo, and both
+Redo aliases. Typed Link and Clear Formatting are deliberately unbound there.
+Callback keymaps, typed-input shortcuts, key sequences, Alt or punctuation
+chords, priorities, conditional handlers, runtime replacement, and extension-
+defined `beforeinput` rules remain absent. Profile Bootstrap V2, compiled
+descriptor ABI, schema fingerprint, Rust/Wasm ABI 5, Document V2, and every
+Operation/State/Transaction/Commit/Checkpoint V3 shape remain unchanged.
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:
@@ -962,7 +1041,8 @@ The following are explicitly deferred:
 - collaboration, CRDT/OT rebasing, selective undo, remote cursors, and profile
   negotiation;
 - package discovery, downloading, registry policy, or permission UI;
-- extension keymaps, `beforeinput` rules, menus, selects, optional or integer
+- arbitrary callback or sequence keymaps, typed-input shortcuts,
+  extension-defined `beforeinput` rules, menus, selects, optional or integer
   fields, partial property patches, and arbitrary custom toolbar controls;
 - sandboxing browser presentation code supplied by the host;
 - generic HTML fidelity, arbitrary executable portable converters, and a

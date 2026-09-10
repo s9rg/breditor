@@ -152,6 +152,18 @@ describe("translateKeyDown", () => {
     },
   );
 
+  it("uses physical codes for browser-reserved clipboard and selection chords", () => {
+    expect(
+      translate(keyboard("q", { code: "KeyC", ctrlKey: true })),
+    ).toEqual({ kind: "native", reason: "clipboardOwns" });
+    expect(
+      translate(keyboard("ш", { code: "KeyV", ctrlKey: true })),
+    ).toEqual({ kind: "native", reason: "clipboardOwns" });
+    expect(
+      translate(keyboard("Unidentified", { code: "KeyA", ctrlKey: true })),
+    ).toEqual({ kind: "native", reason: "selectionOrPageCommand" });
+  });
+
   it("leaves select-all native and blocks unsupported editing shortcuts", () => {
     expect(translate(keyboard("a", { ctrlKey: true }))).toEqual({
       kind: "native",
@@ -165,6 +177,40 @@ describe("translateKeyDown", () => {
       kind: "blocked",
       reason: "unsupportedEditingShortcut",
     });
+  });
+
+  it.each(["b", "q", "ш", "é", "😀", "Unidentified"])(
+    "routes physical KeyB independently of logical key %j",
+    (key) => {
+      expect(
+        command(
+          keyboard(key, { code: "KeyB", ctrlKey: true }),
+          BEFOREINPUT_POLICY,
+        ).command,
+      ).toEqual({
+        kind: "intent",
+        intentId: "breditor/format-strong",
+        input: { kind: "none" },
+      });
+    },
+  );
+
+  it.each(["", "Keyb", "KeyBB", "Digit2", "Unidentified"])(
+    "does not execute a shortcut for invalid or missing physical code %j",
+    (code) => {
+      const result = translate(keyboard("b", { code, ctrlKey: true }));
+      expect(result.kind).not.toBe("command");
+      expect(result).toEqual({
+        kind: "blocked",
+        reason: "unsupportedEditingShortcut",
+      });
+    },
+  );
+
+  it("does not let a matching logical key override a different valid physical code", () => {
+    expect(
+      translate(keyboard("b", { code: "KeyQ", ctrlKey: true })),
+    ).toEqual({ kind: "blocked", reason: "unsupportedEditingShortcut" });
   });
 
   it("maps enabled bold and history shortcuts with exact history boundaries", () => {
@@ -190,6 +236,25 @@ describe("translateKeyDown", () => {
     expect(command(keyboard("y", { ctrlKey: true }), BEFOREINPUT_POLICY).command).toEqual({
       kind: "history",
       operation: "redo",
+    });
+  });
+
+  it("retains native key-repeat for history while intent shortcuts remain one-shot", () => {
+    expect(
+      command(
+        keyboard("z", { ctrlKey: true, repeat: true }),
+        BEFOREINPUT_POLICY,
+      ).command,
+    ).toEqual({ kind: "history", operation: "undo" });
+    expect(
+      command(
+        keyboard("z", { ctrlKey: true, shiftKey: true, repeat: true }),
+        BEFOREINPUT_POLICY,
+      ).command,
+    ).toEqual({ kind: "history", operation: "redo" });
+    expect(translate(keyboard("b", { ctrlKey: true, repeat: true }))).toEqual({
+      kind: "blocked",
+      reason: "repeatSuppressed",
     });
   });
 
@@ -223,13 +288,6 @@ describe("translateKeyDown", () => {
     ).toEqual({ kind: "blocked", reason: "unsupportedEditingShortcut" });
     },
   );
-
-  it("suppresses repeating bold commands", () => {
-    expect(translate(keyboard("b", { ctrlKey: true, repeat: true }))).toEqual({
-      kind: "blocked",
-      reason: "repeatSuppressed",
-    });
-  });
 
   it.each([
     ["Backspace", "breditor/delete-backward", "preserve"],

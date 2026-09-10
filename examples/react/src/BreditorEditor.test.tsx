@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   openEditor: vi.fn(),
   profileBootstrapJson: '{"profile":"reference-showcase"}',
   renderManifest: Object.freeze({ recipes: Object.freeze([]) }),
+  keyboardShortcutManifest: Object.freeze({ shortcuts: Object.freeze([]) }),
   sampleDocumentJson: '{"document":"reference-showcase-v2"}',
   toolbarManifest: Object.freeze({
     label: "Showcase toolbar",
@@ -27,6 +28,8 @@ vi.mock("@breditor/browser", () => ({
 
 vi.mock("@breditor/reference-highlight", () => ({
   REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST:
+    mocks.keyboardShortcutManifest,
   REFERENCE_SHOWCASE_RENDER_MANIFEST: mocks.renderManifest,
   REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON: mocks.sampleDocumentJson,
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST: mocks.toolbarManifest,
@@ -205,6 +208,7 @@ describe("BreditorEditor lifecycle", () => {
           formatVersion: 2,
         },
         rendering: mocks.renderManifest,
+        keyboardShortcuts: mocks.keyboardShortcutManifest,
         keyboard: {
           editing: "beforeinputPrimary",
           primaryModifier: "meta",

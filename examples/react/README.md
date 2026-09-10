@@ -4,12 +4,12 @@ This example runs the complete `@breditor/reference-highlight` Showcase
 profile through the public browser API: the canonical Document V2 sample,
 Bootstrap V2 semantic profile, render manifest, and toolbar manifest. The
 runtime-owned toolbar exposes Bold, Italic, Strikethrough, Code, Highlight,
-Link, Undo, and Redo. A sibling runtime-owned Link form is launched by its
-toolbar control and
+Link, Clear formatting, Undo, and Redo. A sibling runtime-owned Link form is
+launched by its toolbar control and
 demonstrates typed extension input with a required URL string and Boolean
 new-window choice. Select some text, apply or remove a link, toggle a format,
-use the platform primary-modifier+B shortcut, and watch the truthful autosave
-status.
+use the declared primary-modifier formatting/history shortcuts, and watch the
+truthful autosave status.
 
 It also demonstrates the intended React ownership boundary. React renders two
 permanently empty mount elements; `BreditorBrowserEditor` owns all toolbar,
@@ -35,8 +35,16 @@ runtime-owned form without giving the presentation layer operation-planning
 authority. Alpha.8 adds exact pristine hydration. Alpha.9 composes three new
 property-free styles through the existing generic toggle path; when all six
 formats overlap, the deterministic wrapper chain is
-`<a><strong><em><mark><s><code>`. There are no extension shortcuts, exclusion
-rules, block code, headings/lists, rich paste, or runtime plugins yet.
+`<a><strong><em><mark><s><code>`. Alpha.10 adds aggregate Clear formatting;
+alpha.11 passes
+`REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST` through the public
+`keyboardShortcuts` option. The shared compiled table routes primary+B,
+primary+I, primary+Shift+S, primary+E, primary+Shift+H, primary+Z,
+primary+Y, and primary+Shift+Z and advertises them on matching buttons through
+`aria-keyshortcuts`. Typed Link and Clear formatting remain unbound in this
+reference presentation. There are still no exclusion rules, arbitrary callback
+keymaps, key sequences, extension-defined `beforeinput` rules, block code,
+headings/lists, rich paste, or runtime plugins.
 Startup failures expose only stable, payload-redacted error codes and can be
 retried in place. A paused autosave exposes the same safe diagnostics and the
 public persistence retry operation.
@@ -74,11 +82,20 @@ npm run test --workspace @breditor/example-react
 
 The repository-level Chromium gate exercises the rendered page through actual
 single- and cross-paragraph selection, all nine controls (including Clear
-formatting), exact wrapper nesting, per-command history, input, IndexedDB
-reload, accessibility, and a 320-pixel responsive viewport:
+formatting), the package-owned shortcuts and exact `aria-keyshortcuts`, exact
+wrapper nesting, per-command history, input, IndexedDB reload, accessibility,
+and a 320-pixel responsive viewport:
 
 ```sh
 npm run test:demo
+```
+
+The separate Chromium, Firefox, and WebKit public-runtime gate executes Bold,
+Italic, Strikethrough, Code, Highlight, Undo, and both Redo aliases through
+genuine primary-modifier keyboard events:
+
+```sh
+npm run test:browser
 ```
 
 The example intentionally does not wrap the runtime in an `@breditor/react`

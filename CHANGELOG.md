@@ -4,6 +4,88 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.11 - 2026-09-10
+
+This unpublished source checkpoint adds bounded, callback-free keyboard
+shortcut declarations for compiled profiles. It treats shortcuts as browser
+presentation and input policy: Rust remains authoritative for semantic routes,
+selection, mutation, history, and replay.
+
+### Exact state-addressed shortcut compilation
+
+- Added `createKeyboardShortcutManifest()` and the optional high-level
+  `keyboardShortcuts` editor option. Each declaration names an existing
+  Rust-owned action-state identity and one or more physical-code/Shift aliases; it
+  contains no JavaScript callback, action ID, intent ID, DOM value, or mutable
+  command object.
+- Browser startup compiles each declared state against the exact owned profile
+  descriptor. Only an exact stateless history direction or a routed no-input
+  intent with the same state contract is executable. Missing states, direct
+  actions, typed intents, or contract mismatches reject the complete explicit
+  manifest before editor or toolbar DOM and listeners are installed.
+- When the option is omitted, the base Bold/Undo/Redo declarations are filtered
+  to compatible states actually available in the selected profile and then use
+  the same exact compiler. Explicit manifests are never filtered, augmented,
+  or repaired.
+- Added immutable indexed chord and state lookups. Declaration order is not
+  priority: states and chords are canonicalized, while duplicate state or chord
+  ownership fails closed.
+
+### Closed keyboard and accessibility policy
+
+- Limited declarations to one exact `KeyA` through `KeyZ` code plus exact
+  optional Shift, under the host-selected Ctrl or Meta primary modifier. A manifest
+  admits at most 43 state declarations, four aliases per state, and 44 chords
+  total—the exact non-reserved letter/Shift domain.
+- Reserved A, C, V, and X under both Shift states for native Select All and
+  clipboard ownership. Existing unshifted B, unshifted Z, unshifted Y, and
+  shifted Z chords may be omitted but can target only Bold, Undo, Redo, and
+  Redo respectively.
+- Matching uses only exact physical `KeyboardEvent.code` values. Generated
+  `KeyboardEvent.key` text and active layout do not select a binding; codes name
+  US physical-key positions. A device without a conforming exact code may not
+  invoke the shortcut, and browser/operating-system reservation conflicts remain
+  possible.
+- Derived toolbar `aria-keyshortcuts` from the same compiled table and explicit
+  Ctrl/Meta policy used for execution. Unbound controls and editors with
+  shortcuts disabled advertise no shortcut. No mutation observer faults or
+  repairs later attribute drift immediately; a guarded toolbar interaction or
+  explicit canonical-DOM validation detects it.
+
+### Queue, history, and Showcase proof
+
+- Routed every admitted chord through exact semantic selection capture, native
+  cancellation, the one-use delivery authority, the bounded non-recursive
+  command FIFO, and guarded Rust intent/history execution. Shortcuts never
+  mutate contenteditable DOM directly or call extension JavaScript.
+- No-input intents request the existing close-before history boundary and
+  suppress held-key repeats. Undo and Redo retain repeat so each serialized
+  request can traverse one stored history unit. Composition, Dead/Process/229,
+  AltGraph, Alt, and a second primary modifier never activate a shortcut.
+- Conventional native `beforeinput` echo receipts expire at the end of the
+  current task when the browser emits no matching echo, so a later independent
+  native command cannot be swallowed.
+- Added a Showcase manifest for Bold, Italic, Strikethrough, Code, Highlight,
+  Undo, and Redo, with both primary+Y and primary+Shift+Z aliases for Redo. The
+  browser matrix executes all five format bindings, Undo, and both Redo aliases
+  alongside generated accessibility metadata; typed Link and Clear Formatting
+  remain intentionally unbound.
+- Documented the complete grammar, collision rules, omitted-versus-explicit
+  startup policy, exact physical-code-only behavior and its input-device/layout
+  limitations, event/selection/history behavior, accessibility projection,
+  compatibility boundary, and limitations in
+  [`docs/KEYBOARD_SHORTCUTS.md`](docs/KEYBOARD_SHORTCUTS.md).
+
+### Compatibility
+
+This checkpoint changes no Rust action, intent, state, operation, transaction,
+selection, history, or replay contract. Profile Bootstrap V2, schema
+fingerprints, Document V1/V2, all V3 records, storage envelopes, exports, and
+Wasm ABI 5 remain unchanged. Shortcut manifests and compiled indexes are
+process-local browser data and are not persisted, replayed, synchronized, or
+fingerprinted. Exact prerelease package matching remains required, and no
+alpha.11 package is published by this checkpoint.
+
 ## 0.3.0-alpha.10 - 2026-09-10
 
 This unpublished source checkpoint adds one Rust-owned command for clearing

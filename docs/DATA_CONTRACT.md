@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.10` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.11` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -67,6 +67,10 @@ pending set at a formatted caret. Existing operation and V3 checkpoint recipes
 therefore preserve exact undo/redo without a new record discriminant. Profile
 Bootstrap V2, schema fingerprints, Document V2, Wasm ABI 5, and all durable
 format generations remain unchanged.
+Alpha.11 adds no Rust data type or executable metadata. Its browser-only
+shortcut manifest compiles existing action-state descriptors to existing
+no-input intent or history requests, and remains absent from every AST, schema,
+operation, editor state, transaction, commit, checkpoint, and replay record.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions

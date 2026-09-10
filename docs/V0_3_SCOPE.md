@@ -1,10 +1,12 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.10` source checkpoint adds Rust-owned Clear Formatting
+Status: the `0.3.0-alpha.11` source checkpoint retains Rust-owned Clear Formatting
 across the existing generic action, intent, state, Wasm, browser, history, and
 replay surfaces. It retains alpha.9's independent Showcase profile and
-alpha.8's exact property observation and form hydration. Wasm ABI 5 remains
-current. Explicit Bootstrap V2 still selects
+alpha.8's exact property observation and form hydration, then adds a separate
+browser-owned declarative shortcut manifest compiled through existing profile
+descriptors and projected as truthful toolbar `aria-keyshortcuts`. Wasm ABI 5
+remains current. Explicit Bootstrap V2 still selects
 property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
@@ -26,6 +28,9 @@ executable in Rust. Alpha.8 lets that control observe a complete uniform map
 without turning observation or drafts into history, replay, or persisted state.
 Alpha.9 proves that the same generic compiler and browser presentation can add
 several visible features without format-specific mutation code.
+Alpha.10 adds core-owned all-inline Clear Formatting. Alpha.11 makes the
+extension shortcut presentation explicit without adding semantic or durable
+authority.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -586,6 +591,56 @@ maps. It has no allowlist, denylist, extension ownership policy, or block-level
 meaning. Retained exact-undo history may still contain removed values, so the
 command is not a data-erasure boundary.
 
+## Alpha.11 declarative extension shortcuts
+
+Alpha.11 adds a root-exported browser `KeyboardShortcutManifest` and optional
+high-level `keyboardShortcuts` startup option. The manifest remains separate
+from the toolbar layout and Rust extension profile. One declaration names an
+existing qualified action-state ID and one through four primary-modifier physical-code
+chords; it does not repeat an action/intent ID, retain an event, or contain a
+callback.
+
+The complete input is own-data-only, canonicalized, deeply frozen, and bounded
+to 43 unique state declarations and 44 globally unique chords. Chords contain
+exactly one physical `KeyA` through `KeyZ` code and a Boolean Shift requirement; the existing
+keyboard policy supplies Control or Meta. A/C/V/X are reserved with or without
+Shift. Primary+B, primary+Y, primary+Z, and primary+Shift+Z may be omitted but
+cannot be rebound away from their fixed Bold/Redo/Undo/Redo states. Duplicate
+states, duplicate chords, malformed shapes, accessors, sparse arrays, or bounds
+overflow reject the complete manifest.
+
+Browser startup compiles each state through the owned profile descriptor. Only
+a routed no-input intent with the same state contract or exact stateless/value-
+free history state is admitted. Unknown IDs, direct action states, typed intents,
+mismatched routed-state contracts, and nonstateless or valued history states
+fail before listeners or toolbar DOM become live. When no explicit manifest is
+supplied, the compatible subset of the
+default Bold/Undo/Redo declarations is retained; explicit input is exact and is
+not merged with defaults.
+
+The compiled table owns both native key lookup and generated toolbar
+`aria-keyshortcuts`. Intent requests preserve semantic selection, request
+`closeBefore`, and suppress auto-repeat; Undo/Redo repeat is supported. Exact
+primary/secondary/Alt/Shift state is required. AltGraph, dead/process/
+composition events, sequences, punctuation, function keys, and typed-input form
+launching are outside the grammar. Matching uses only exact physical
+`KeyboardEvent.code`; generated `KeyboardEvent.key` text does not select a
+binding. Codes identify US physical-key positions. Devices without conforming
+exact codes may not invoke shortcuts, and browser/OS reservations can conflict.
+
+The reference Showcase binds Bold, Italic, Strikethrough, Code, Highlight,
+Undo, and Redo; Redo has both primary+Y and primary+Shift+Z aliases. The
+three-engine gate executes all five format bindings, Undo, and both Redo aliases.
+Link and Clear Formatting remain unbound there. When shortcuts are disabled or
+a toolbar state is unbound, no `aria-keyshortcuts` attribute is emitted. No
+mutation observer faults or repairs later attribute drift immediately; a
+guarded toolbar interaction or explicit canonical-DOM validation detects it.
+Only conventional native chord/input-type pairs arm an echo receipt, and an
+unconsumed receipt expires at the end of the current task. This checkpoint
+changes no Rust action, intent route, selection, operation, transaction,
+history/replay law, Profile Bootstrap V2, fingerprint, Wasm ABI 5 member, or
+Document/State/Commit/Checkpoint durable generation.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -613,6 +668,10 @@ document/checkpoint field, or semantic mutation protocol.
 Alpha.10 uses the same ABI 5 catalog, state-value, and no-input-intent methods
 for the built-in Clear Formatting route. It adds no generated Wasm member or
 semantic wire format.
+
+Alpha.11 is entirely browser presentation and routing policy compiled from the
+existing descriptor. Rust and generated Wasm code change only their paired
+package version; ABI 5 and all semantic/durable shapes remain byte-compatible.
 
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
@@ -651,8 +710,13 @@ CSS grammar and other property presentations remain undefined.
   property-free Highlight-only profile. It is not a general Link schema,
   renderer, URL validator, or arbitrary toolbar-control registration protocol.
 - The additive Showcase proves three more property-free controls through the
-  generic path. Their fixed presentation is not an exclusion system, shortcut
-  declaration language, block model, or dynamic plugin loader.
+  generic path. Its bounded state-addressed physical-letter shortcuts are not an
+  exclusion system, callback keymap, key-sequence language, block model, or
+  dynamic plugin loader.
+- Declarative shortcuts cannot carry typed values, invoke direct actions, open
+  toolbar forms, use Alt/punctuation/function keys, override Select All or
+  clipboard families, define conditional priority handlers, or change while an
+  editor is live.
 - Form drafts hydrate only from a fresh, single-line-representable uniform
   state. CR/LF-bearing URL state leaves the form and its UI Remove action
   unavailable, while programmatic removal remains possible. Drafts are not

@@ -16,6 +16,7 @@ import {
   REFERENCE_SHOWCASE_EMPTY_DOCUMENT,
   REFERENCE_SHOWCASE_EMPTY_DOCUMENT_JSON,
   REFERENCE_SHOWCASE_IDS,
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
   REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP,
   REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
   REFERENCE_SHOWCASE_RENDER_MANIFEST,
@@ -265,6 +266,45 @@ describe("reference showcase browser presentation", () => {
     const establishedLink = REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[2];
     expect(showcaseLink).toEqual(establishedLink);
     expectDataOnlyFrozenGraph(REFERENCE_SHOWCASE_TOOLBAR_MANIFEST);
+  });
+
+  it("binds exact callback-free shortcuts by semantic state", () => {
+    expect(REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST).toEqual({
+      shortcuts: [
+        {
+          stateId: BASE_TOOLBAR_STATE_IDS.bold,
+          chords: [{ code: "KeyB", shift: false }],
+        },
+        {
+          stateId: BASE_TOOLBAR_STATE_IDS.redo,
+          chords: [
+            { code: "KeyY", shift: false },
+            { code: "KeyZ", shift: true },
+          ],
+        },
+        {
+          stateId: BASE_TOOLBAR_STATE_IDS.undo,
+          chords: [{ code: "KeyZ", shift: false }],
+        },
+        {
+          stateId: REFERENCE_SHOWCASE_IDS.codeActionStateId,
+          chords: [{ code: "KeyE", shift: false }],
+        },
+        {
+          stateId: REFERENCE_SHOWCASE_IDS.emphasisActionStateId,
+          chords: [{ code: "KeyI", shift: false }],
+        },
+        {
+          stateId: REFERENCE_SHOWCASE_IDS.highlightActionStateId,
+          chords: [{ code: "KeyH", shift: true }],
+        },
+        {
+          stateId: REFERENCE_SHOWCASE_IDS.strikethroughActionStateId,
+          chords: [{ code: "KeyS", shift: true }],
+        },
+      ],
+    });
+    expectDataOnlyFrozenGraph(REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST);
   });
 });
 

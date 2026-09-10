@@ -58,6 +58,15 @@ import {
 } from "./html_host.js";
 import type { KeyboardTranslationPolicy } from "./keyboard.js";
 import {
+  isOwnedKeyboardShortcutManifest,
+  type KeyboardShortcutManifest,
+} from "./keyboard_shortcut_manifest.js";
+import {
+  compileCompatibleDefaultKeyboardShortcuts,
+  compileKeyboardShortcutManifest,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
+import {
   BreditorSessionCheckpointAutosave,
   type SessionCheckpointAutosaveFlushResult,
   type SessionCheckpointAutosaveOptions,
@@ -182,6 +191,8 @@ export interface BreditorBrowserEditorOptions {
   readonly semanticProfile?: BreditorBrowserSemanticProfileOptions;
   /** Exact callback-free render coverage for the selected semantic profile. */
   readonly rendering?: InlineFormatRenderManifest;
+  /** Callback-free shortcut declarations compiled against the selected profile. */
+  readonly keyboardShortcuts?: KeyboardShortcutManifest;
   readonly keyboard: KeyboardTranslationPolicy;
   readonly toolbar?: BreditorBrowserToolbarOptions;
   readonly persistence?: BreditorBrowserEditorPersistenceOptions;
@@ -286,6 +297,7 @@ export interface BreditorBrowserEditorOpenError {
     | "browser_editor.persistence_load_failed"
     | "browser_editor.engine_bootstrap_failed"
     | "browser_editor.presentation_invalid"
+    | "browser_editor.keyboard_shortcut_profile_invalid"
     | "browser_editor.toolbar_profile_invalid"
     | "browser_editor.initial_render_failed"
     | "browser_editor.initial_selection_failed"
@@ -378,6 +390,7 @@ interface NormalizedOptions {
   readonly initialDocument: BreditorBrowserInitialDocument;
   readonly semanticProfile: BreditorBrowserSemanticProfileOptions | undefined;
   readonly rendering: InlineFormatRenderManifest;
+  readonly keyboardShortcuts: KeyboardShortcutManifest | undefined;
   readonly keyboard: KeyboardTranslationPolicy;
   readonly toolbar:
     | Readonly<{
@@ -617,6 +630,7 @@ export class BreditorBrowserEditor {
     let editor: BreditorBrowserEditor | undefined;
     let preflightProfileDescriptor:
       BrowserCompiledProfileDescriptor | undefined;
+    let keyboardShortcuts: BrowserCompiledKeyboardShortcuts | undefined;
     let transferred = false;
 
     try {
@@ -747,6 +761,21 @@ export class BreditorBrowserEditor {
         )
       ) {
         return openFailure("browser_editor.toolbar_profile_invalid");
+      }
+      try {
+        keyboardShortcuts =
+          normalized.keyboardShortcuts === undefined
+            ? compileCompatibleDefaultKeyboardShortcuts(
+                bootstrap.profileDescriptor,
+              )
+            : compileKeyboardShortcutManifest(
+                normalized.keyboardShortcuts,
+                bootstrap.profileDescriptor,
+              );
+      } catch {
+        return openFailure(
+          "browser_editor.keyboard_shortcut_profile_invalid",
+        );
       }
 
       // Generated module/profile methods can synchronously reenter application
@@ -927,9 +956,15 @@ export class BreditorBrowserEditor {
         editor.#installToolbar(
           normalized.toolbar.host,
           normalized.toolbar.manifest,
+          keyboardShortcuts,
+          normalized.keyboard,
         );
       }
-      editor.#installRouter(normalized.keyboard, normalized.scheduleTask);
+      editor.#installRouter(
+        normalized.keyboard,
+        keyboardShortcuts,
+        normalized.scheduleTask,
+      );
       if (normalized.signal?.isAborted() === true) {
         return openFailure("browser_editor.aborted");
       }
@@ -1465,9 +1500,18 @@ export class BreditorBrowserEditor {
     }
   }
 
-  #installToolbar(host: HTMLElement, manifest: ToolbarManifest): void {
+  #installToolbar(
+    host: HTMLElement,
+    manifest: ToolbarManifest,
+    keyboardShortcuts: BrowserCompiledKeyboardShortcuts,
+    keyboard: KeyboardTranslationPolicy,
+  ): void {
     const toolbar = new BreditorToolbar(host, manifest, this.#actionStore, {
       dispatch: (invocation) => this.#dispatchToolbar(invocation),
+    }, {
+      keyboardShortcuts,
+      primaryModifier: keyboard.primaryModifier,
+      shortcutsEnabled: keyboard.shortcuts === "enabled",
     });
     if (toolbar.state !== "live") {
       toolbar.dispose();
@@ -1488,10 +1532,12 @@ export class BreditorBrowserEditor {
 
   #installRouter(
     keyboard: KeyboardTranslationPolicy,
+    keyboardShortcuts: BrowserCompiledKeyboardShortcuts,
     scheduleTask: ((callback: () => void) => void) | undefined,
   ): void {
     const router = new BreditorBrowserEventRouter(this.#queue, this.#adapter, {
       keyboard,
+      keyboardShortcuts,
       ...(scheduleTask === undefined ? {} : { scheduleTask }),
     });
     this.#router = router;
@@ -2015,6 +2061,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
         : snapshotSemanticProfileOptions(semanticProfile);
     if (normalizedSemanticProfile === null) return null;
     const rendering = options.rendering;
+    const keyboardShortcuts = options.keyboardShortcuts;
     const keyboard = options.keyboard;
     const toolbar = options.toolbar;
     const persistence = options.persistence;
@@ -2033,6 +2080,8 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       (rendering !== undefined && semanticProfile === undefined) ||
       (rendering !== undefined &&
         !isOwnedInlineFormatRenderManifest(rendering)) ||
+      (keyboardShortcuts !== undefined &&
+        !isOwnedKeyboardShortcutManifest(keyboardShortcuts)) ||
       !validKeyboardPolicy(keyboard) ||
       typeof spellcheck !== "boolean" ||
       (scheduleTask !== undefined && typeof scheduleTask !== "function")
@@ -2087,6 +2136,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       initialDocument,
       semanticProfile: normalizedSemanticProfile,
       rendering: rendering ?? DEFAULT_INLINE_FORMAT_RENDER_MANIFEST,
+      keyboardShortcuts,
       keyboard: Object.freeze({
         editing: keyboard.editing,
         primaryModifier: keyboard.primaryModifier,
@@ -2745,6 +2795,8 @@ const OPEN_ERROR_MESSAGES: Readonly<
     "The Rust editor engine could not be initialized safely.",
   "browser_editor.presentation_invalid":
     "The browser render manifest does not exactly match the compiled profile.",
+  "browser_editor.keyboard_shortcut_profile_invalid":
+    "The keyboard shortcut manifest does not match the compiled semantic profile.",
   "browser_editor.toolbar_profile_invalid":
     "The toolbar manifest does not exactly match the compiled semantic profile.",
   "browser_editor.initial_render_failed":

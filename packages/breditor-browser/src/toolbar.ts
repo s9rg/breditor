@@ -50,6 +50,11 @@ import {
   BreditorToolbarInlineFormatForm,
   type ToolbarInlineFormatFormActionState,
 } from "./toolbar_inline_format_form.js";
+import {
+  compiledKeyboardShortcutBindingsForState,
+  isOwnedBrowserCompiledKeyboardShortcuts,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
 
 /** Maximum entries inspected from one browser action-state snapshot. */
 export const MAX_TOOLBAR_STATE_ENTRIES = 514;
@@ -137,6 +142,16 @@ export function toolbarCommandDispatchResult(
 /** Synchronous semantic sink; queueing and stale-base checks remain runtime-owned. */
 export interface ToolbarCommandDispatcher {
   dispatch(invocation: ToolbarCommandInvocation): ToolbarCommandDispatchResult;
+}
+
+/** Optional keyboard-shortcut metadata projected onto generated controls. */
+export interface BreditorToolbarPresentationOptions {
+  /** Descriptor-compiled shortcuts shared with the keyboard event controller. */
+  readonly keyboardShortcuts?: BrowserCompiledKeyboardShortcuts;
+  /** Host-selected primary modifier used by the active keyboard policy. */
+  readonly primaryModifier?: "control" | "meta";
+  /** Whether primary-modifier editing shortcuts are currently enabled. */
+  readonly shortcutsEnabled?: boolean;
 }
 
 /**
@@ -316,6 +331,7 @@ export type BreditorToolbarSubscriber = (
 interface ButtonRecord {
   readonly declaration: ToolbarControlDeclaration;
   readonly button: HTMLButtonElement;
+  readonly keyShortcuts: string | undefined;
   invocation: ToolbarCommandInvocation | undefined;
   form: BreditorToolbarInlineFormatForm | undefined;
   readonly onPointerDown: (event: PointerEvent) => void;
@@ -344,6 +360,11 @@ interface ToolbarFormFocusRestore {
   readonly control: HTMLElement;
 }
 
+interface NormalizedShortcutPresentation {
+  readonly keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
+  readonly primaryModifier: "control" | "meta";
+}
+
 const TOOLBAR_HOSTS = new WeakMap<HTMLElement, BreditorToolbar>();
 const NOOP_UNSUBSCRIBE = Object.freeze((): void => {});
 
@@ -356,6 +377,80 @@ function nodeSequenceHasPrefix(
     if (actual[index] !== prefix[index]) return false;
   }
   return true;
+}
+
+function normalizeShortcutPresentation(
+  value: BreditorToolbarPresentationOptions | undefined,
+): NormalizedShortcutPresentation | undefined {
+  if (value === undefined) return undefined;
+  try {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new TypeError("toolbar presentation options are invalid");
+    }
+    const expected = new Set([
+      "keyboardShortcuts",
+      "primaryModifier",
+      "shortcutsEnabled",
+    ]);
+    const keys = Reflect.ownKeys(value);
+    if (
+      keys.some((key) => typeof key !== "string" || !expected.has(key))
+    ) {
+      throw new TypeError("toolbar presentation options are invalid");
+    }
+    const read = (key: string): unknown => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor === undefined) return undefined;
+      if (!("value" in descriptor)) {
+        throw new TypeError("toolbar presentation options are invalid");
+      }
+      return descriptor.value;
+    };
+    const keyboardShortcuts = read("keyboardShortcuts");
+    const primaryModifier = read("primaryModifier");
+    const shortcutsEnabled = read("shortcutsEnabled");
+    if (
+      (keyboardShortcuts !== undefined &&
+        !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts)) ||
+      (primaryModifier !== undefined &&
+        primaryModifier !== "control" &&
+        primaryModifier !== "meta") ||
+      (shortcutsEnabled !== undefined &&
+        typeof shortcutsEnabled !== "boolean")
+    ) {
+      throw new TypeError("toolbar presentation options are invalid");
+    }
+    if (shortcutsEnabled !== true) return undefined;
+    if (
+      !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts) ||
+      (primaryModifier !== "control" && primaryModifier !== "meta")
+    ) {
+      throw new TypeError("enabled toolbar shortcuts require presentation data");
+    }
+    return Object.freeze({ keyboardShortcuts, primaryModifier });
+  } catch {
+    throw new TypeError("toolbar presentation options are invalid");
+  }
+}
+
+function toolbarKeyShortcuts(
+  presentation: NormalizedShortcutPresentation | undefined,
+  stateId: string,
+): string | undefined {
+  if (presentation === undefined) return undefined;
+  const bindings = compiledKeyboardShortcutBindingsForState(
+    presentation.keyboardShortcuts,
+    stateId,
+  );
+  if (bindings.length === 0) return undefined;
+  const primary =
+    presentation.primaryModifier === "meta" ? "Meta" : "Control";
+  return bindings
+    .map(
+      (binding) =>
+        `${primary}+${binding.shift ? "Shift+" : ""}${binding.code.slice(3)}`,
+    )
+    .join(" ");
 }
 
 /**
@@ -377,6 +472,7 @@ export class BreditorToolbar {
   readonly #readSnapshot!: () => ToolbarActionStateSnapshot | undefined;
   readonly #readStoreStatus!: () => unknown;
   readonly #dispatch!: (invocation: ToolbarCommandInvocation) => unknown;
+  readonly #shortcutPresentation!: NormalizedShortcutPresentation | undefined;
   readonly #buttons: ButtonRecord[] = [];
   readonly #forms: BreditorToolbarInlineFormatForm[] = [];
   readonly #subscribers: ToolbarSubscriberSlot[] = [];
@@ -390,6 +486,7 @@ export class BreditorToolbar {
     manifest: ToolbarManifest,
     stateStore: ToolbarActionStateStore,
     dispatcher: ToolbarCommandDispatcher,
+    presentation?: BreditorToolbarPresentationOptions,
   ) {
     requireToolbarHost(host);
     const hostFacts = nativeHtmlHostFacts(host);
@@ -411,6 +508,7 @@ export class BreditorToolbar {
       this.#manifest = isOwnedToolbarManifest(manifest)
         ? manifest
         : createToolbarManifest(manifest);
+      this.#shortcutPresentation = normalizeShortcutPresentation(presentation);
 
       const store = requireObject(stateStore, "toolbar action-state store");
       const getSnapshot = store["getSnapshot"];
@@ -623,6 +721,13 @@ export class BreditorToolbar {
       ) {
         nativeSetAttribute(button, "aria-pressed", "false");
       }
+      const keyShortcuts = toolbarKeyShortcuts(
+        this.#shortcutPresentation,
+        declaration.stateId,
+      );
+      if (keyShortcuts !== undefined) {
+        nativeSetAttribute(button, "aria-keyshortcuts", keyShortcuts);
+      }
 
       const invocation: ToolbarCommandInvocation | undefined =
         declaration.kind === "button"
@@ -651,6 +756,7 @@ export class BreditorToolbar {
       Object.assign(record, {
         declaration,
         button,
+        keyShortcuts,
         invocation,
         form: undefined,
         onPointerDown,
@@ -1134,6 +1240,7 @@ function isCanonicalToolbarButton(
     5 +
     (declaration.group === undefined ? 0 : 1) +
     (tracked ? 1 : 0) +
+    (record.keyShortcuts === undefined ? 0 : 1) +
     (declaration.kind === "inlineFormatForm" ? 4 : 0);
   return (
     children.length === 1 &&
@@ -1149,6 +1256,10 @@ function isCanonicalToolbarButton(
       (index === activeIndex ? "0" : "-1") &&
     nativeGetAttribute(button, "data-breditor-state-id") ===
       declaration.stateId &&
+    (record.keyShortcuts === undefined
+      ? !nativeHasAttribute(button, "aria-keyshortcuts")
+      : nativeGetAttribute(button, "aria-keyshortcuts") ===
+        record.keyShortcuts) &&
     (declaration.group === undefined
       ? !nativeHasAttribute(button, "data-breditor-group")
       : nativeGetAttribute(button, "data-breditor-group") ===

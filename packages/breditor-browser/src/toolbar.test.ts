@@ -24,6 +24,9 @@ import {
   type ToolbarCommandDeclaration,
   type ToolbarManifest,
 } from "./toolbar_manifest.js";
+import {
+  DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+} from "./keyboard_shortcut_profile_contract.js";
 
 beforeEach(() => {
   document.body.replaceChildren();
@@ -397,6 +400,140 @@ describe("BreditorToolbar", () => {
     expect(button?.hasAttribute("aria-keyshortcuts")).toBe(false);
     expect("ariaKeyShortcuts" in manifest.controls[0]!).toBe(false);
     toolbar.dispose();
+  });
+
+  it.each([
+    [
+      "control",
+      ["Control+B", "Control+Z", "Control+Y Control+Shift+Z"],
+    ],
+    ["meta", ["Meta+B", "Meta+Z", "Meta+Y Meta+Shift+Z"]],
+  ] as const)(
+    "projects descriptor-compiled shortcuts for the host-selected %s modifier",
+    (primaryModifier, expected) => {
+      const host = mountHost();
+      const toolbar = new BreditorToolbar(
+        host,
+        DEFAULT_TOOLBAR_MANIFEST,
+        new TestStateStore(baseEntries()),
+        { dispatch: completedDispatch },
+        {
+          keyboardShortcuts: DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+          primaryModifier,
+          shortcutsEnabled: true,
+        },
+      );
+      const buttons = toolbarButtons(host);
+
+      expect(
+        buttons.map((button) => button.getAttribute("aria-keyshortcuts")),
+      ).toEqual(expected);
+      expect(toolbar.validateCanonicalDom()).toBe(true);
+
+      const bold = buttons[0];
+      if (bold === undefined) throw new Error("missing Bold toolbar button");
+      bold.setAttribute("aria-keyshortcuts", `${expected[0]} Shift+X`);
+      expect(toolbar.validateCanonicalDom()).toBe(false);
+      bold.setAttribute("aria-keyshortcuts", expected[0]);
+      expect(toolbar.validateCanonicalDom()).toBe(true);
+
+      toolbar.dispose();
+    },
+  );
+
+  it("omits shortcut metadata when shortcuts are disabled or a control has no binding", () => {
+    const disabledHost = mountHost();
+    const disabled = new BreditorToolbar(
+      disabledHost,
+      DEFAULT_TOOLBAR_MANIFEST,
+      new TestStateStore(baseEntries()),
+      { dispatch: completedDispatch },
+      {
+        keyboardShortcuts: DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+        primaryModifier: "control",
+        shortcutsEnabled: false,
+      },
+    );
+    expect(
+      toolbarButtons(disabledHost).every(
+        (button) => !button.hasAttribute("aria-keyshortcuts"),
+      ),
+    ).toBe(true);
+    expect(disabled.validateCanonicalDom()).toBe(true);
+    disabled.dispose();
+
+    const unboundHost = mountHost();
+    const unboundManifest = createToolbarManifest({
+      label: "Unbound controls",
+      controls: [
+        {
+          kind: "button",
+          stateId: "example/control-emphasis",
+          label: "Emphasis",
+          activation: "tracked",
+          command: {
+            kind: "action",
+            actionId: "example/toggle-emphasis",
+            input: { kind: "none" },
+            history: "closeBefore",
+          },
+        },
+      ],
+    });
+    const unbound = new BreditorToolbar(
+      unboundHost,
+      unboundManifest,
+      new TestStateStore([
+        state("example/control-emphasis", "enabled", "inactive"),
+      ]),
+      { dispatch: completedDispatch },
+      {
+        keyboardShortcuts: DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+        primaryModifier: "control",
+        shortcutsEnabled: true,
+      },
+    );
+    expect(
+      toolbarButtons(unboundHost)[0]?.hasAttribute("aria-keyshortcuts"),
+    ).toBe(false);
+    expect(unbound.validateCanonicalDom()).toBe(true);
+    unbound.dispose();
+  });
+
+  it("rejects malformed or forged shortcut presentation before mounting", () => {
+    const forgedHost = mountHost();
+    expect(
+      () =>
+        new BreditorToolbar(
+          forgedHost,
+          DEFAULT_TOOLBAR_MANIFEST,
+          new TestStateStore(baseEntries()),
+          { dispatch: completedDispatch },
+          {
+            keyboardShortcuts: {
+              manifest: DEFAULT_COMPILED_KEYBOARD_SHORTCUTS.manifest,
+              profileDescriptor: undefined,
+              bindings: DEFAULT_COMPILED_KEYBOARD_SHORTCUTS.bindings,
+            } as never,
+            primaryModifier: "control",
+            shortcutsEnabled: true,
+          },
+        ),
+    ).toThrow(/presentation/u);
+    expect(forgedHost.childNodes).toHaveLength(0);
+
+    const incompleteHost = mountHost();
+    expect(
+      () =>
+        new BreditorToolbar(
+          incompleteHost,
+          DEFAULT_TOOLBAR_MANIFEST,
+          new TestStateStore(baseEntries()),
+          { dispatch: completedDispatch },
+          { shortcutsEnabled: true },
+        ),
+    ).toThrow(/presentation/u);
+    expect(incompleteHost.childNodes).toHaveLength(0);
   });
 
   it("fails closed for missing, malformed, duplicate, oversized, or contract-mismatched state", () => {

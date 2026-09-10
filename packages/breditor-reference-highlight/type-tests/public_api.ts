@@ -1,5 +1,7 @@
 import type {
   InlineFormatRenderManifest,
+  KeyboardShortcutManifest,
+  PrimaryKeyChord,
   ToolbarManifest,
 } from "@breditor/browser";
 
@@ -14,6 +16,7 @@ import {
   REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
   REFERENCE_SHOWCASE_EMPTY_DOCUMENT_JSON,
   REFERENCE_SHOWCASE_IDS,
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
   REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
   REFERENCE_SHOWCASE_RENDER_MANIFEST,
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
@@ -111,6 +114,12 @@ const showcaseRenderManifest: InlineFormatRenderManifest =
   REFERENCE_SHOWCASE_RENDER_MANIFEST;
 const showcaseToolbarManifest: ToolbarManifest =
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST;
+const showcaseKeyboardShortcuts: KeyboardShortcutManifest =
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST;
+const showcasePhysicalKeyChord: PrimaryKeyChord = {
+  code: "KeyB",
+  shift: false,
+};
 const showcaseOptions: ReferenceShowcaseDocumentOptions = {
   bold: true,
   italic: true,
@@ -130,6 +139,8 @@ void showcaseBootstrapJson;
 void showcaseDocumentJson;
 void showcaseRenderManifest;
 void showcaseToolbarManifest;
+void showcaseKeyboardShortcuts;
+void showcasePhysicalKeyChord;
 void showcaseOptions;
 void showcaseDocument;
 void generatedShowcaseDocumentJson;
@@ -149,3 +160,7 @@ createReferenceShowcaseDocument("text", { italic: "yes" });
 
 // @ts-expect-error showcase options are a closed public type
 createReferenceShowcaseDocument("text", { underline: true });
+
+// @ts-expect-error shortcut declarations use physical KeyboardEvent.code values
+const showcaseLogicalKeyChord: PrimaryKeyChord = { key: "b", shift: false };
+void showcaseLogicalKeyChord;

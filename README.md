@@ -19,6 +19,12 @@ Inline Code are ordinary manifest-generated extension toggles beside Bold,
 Highlight, Link, the core-owned Clear formatting command, Undo, and Redo. The
 Link launcher opens a runtime-owned
 nonmodal form beside the APG toolbar root.
+The Showcase also supplies a callback-free shortcut manifest for Bold, Italic,
+Strikethrough, Code, Highlight, Undo, and Redo, including both Redo aliases.
+Each chord uses the demo's
+explicitly selected Ctrl/Meta primary modifier, routes through the same Rust
+semantic intent or history queue as its toolbar control, and is advertised from
+that compiled map with `aria-keyshortcuts`.
 When the semantic selection has one uniform Link map, the pristine form opens
 with that exact stored single-line URL and Boolean value; mixed or absent Link
 state uses the declared defaults without inventing a merge. A stored URL
@@ -37,8 +43,8 @@ npm run demo
 example. The Wasm build requires the `wasm32-unknown-unknown` Rust target and a
 matching `wasm-bindgen` CLI. `npm run test:demo` runs the end-to-end Chromium
 demo gate for formatting, undo/redo, autosave reload, accessibility, the narrow
-responsive layout, and safe Link preservation through paragraph split/join,
-multiline paste, and restored redo history.
+responsive layout, declarative shortcuts, and safe Link preservation through
+paragraph split/join, multiline paste, and restored redo history.
 
 Version `0.2.0` retains the audited RC.1 immutable compiled editor profile
 through the guarded Rust engine, Wasm ABI 3, and the browser projection
@@ -263,6 +269,29 @@ ABI 5 remains current. The complete engine action-state catalog now admits 514
 entries, while one toolbar manifest remains independently limited to 64
 presented controls. Packages are still not published.
 
+The `0.3.0-alpha.11` source checkpoint adds bounded declarative keyboard
+shortcuts as browser-only presentation data. Each declaration names an existing
+Rust-owned action-state identity; startup compiles it exactly into the matching
+no-input semantic intent or history direction and rejects incompatible explicit
+manifests before installing DOM or listeners. Chords use one host-selected
+Ctrl/Meta primary modifier, one exact physical `KeyA` through `KeyZ` code, and
+optional Shift;
+clipboard and Select All letters plus the existing Bold and history bindings
+remain reserved. Omitted defaults are compatibility-filtered against the
+selected profile, while explicit manifests are never repaired. The three-engine
+Showcase gate executes Bold, Italic, Strikethrough, Code, Highlight, Undo, and
+both Redo aliases with exact selection and queue delivery. Execution uses only
+`KeyboardEvent.code`; generated `KeyboardEvent.key` text never chooses a
+binding, and an input device without a conforming exact code cannot invoke one.
+Codes follow US physical-key positions, and browser/OS-reserved conflicts remain
+possible. An unmatched conventional native echo receipt expires
+at the end of the current task. Generated `aria-keyshortcuts` drift is detected
+at a guarded toolbar interaction or explicit canonical-DOM validation, not
+immediately by a mutation observer. No Rust command, Wasm method, schema
+fingerprint, or durable format changes; ABI 5 remains current. See the
+[keyboard shortcut decision](docs/KEYBOARD_SHORTCUTS.md). Packages are still
+not published.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -416,6 +445,9 @@ The implementation includes:
   subscription store, and a bounded manifest-driven native-button toolbar
   whose supported controls are validated as routed no-input intents or exact
   history directions, preserve semantic selection, and re-enter the same FIFO,
+  plus a browser-only callback-free shortcut manifest compiled by action-state
+  identity into those same no-input intents and history directions, with exact
+  modifier policy, collision rejection, and derived `aria-keyshortcuts`,
   plus a synchronous high-level no-input `executeIntent()` boundary with
   immediate-only queue admission and public provenance redaction, plus the
   matching strict `executeIntentJson()` boundary for descriptor-declared typed

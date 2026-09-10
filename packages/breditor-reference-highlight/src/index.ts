@@ -94,6 +94,7 @@ export {
 
 /** Complete deterministic browser presentation for the showcase. */
 export {
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
   REFERENCE_SHOWCASE_RENDER_MANIFEST,
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
 } from "./showcase_presentation.js";

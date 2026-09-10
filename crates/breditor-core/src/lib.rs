@@ -782,6 +782,14 @@
 //! toggles and 255 generated setters. The AST, schema fingerprint, Profile
 //! Bootstrap V2, Wasm ABI 5, and all durable codec shapes and generations are
 //! unchanged.
+//!
+//! The unpublished `0.3.0-alpha.11` source checkpoint changes no Rust
+//! contract. Its declarative keyboard-shortcut manifest is a browser-only
+//! presentation and input-routing layer that targets already compiled
+//! action-state descriptors. Shortcut declarations contain no callbacks,
+//! executable Rust metadata, or durable editor state. They do not change
+//! action admission, transactions, history, replay, document bytes, schema
+//! fingerprints, Profile Bootstrap V2, or Wasm ABI 5.
 
 pub mod action;
 pub mod codec;

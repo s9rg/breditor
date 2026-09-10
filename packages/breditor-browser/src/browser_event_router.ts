@@ -14,6 +14,13 @@ import type { RenderedProjection } from "./dom_renderer.js";
 import { nativeHtmlHostFacts } from "./html_host.js";
 import type { KeyboardTranslationPolicy } from "./keyboard.js";
 import {
+  compileCompatibleDefaultKeyboardShortcuts,
+  DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+  isOwnedBrowserCompiledKeyboardShortcuts,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
+import {
+  profileDescriptorForAdapter,
   type BreditorWasmCommandAdapter,
   type WasmCommandSequenceOutcome,
 } from "./wasm_command_adapter.js";
@@ -41,6 +48,8 @@ export type BrowserEventRouterSubscriber = (
 /** Construction policy for the three package-owned event controllers. */
 export interface BrowserEventRouterOptions {
   readonly keyboard: KeyboardTranslationPolicy;
+  /** Descriptor-compiled semantic shortcuts; base bindings are the default. */
+  readonly keyboardShortcuts?: BrowserCompiledKeyboardShortcuts;
   readonly scheduleTask?: (callback: () => void) => void;
 }
 
@@ -175,7 +184,10 @@ export class BreditorBrowserEventRouter {
     let composition: BreditorCompositionController | undefined;
     let clipboard: BreditorClipboardController | undefined;
     try {
-      const snapshot = snapshotOptions(options);
+      const snapshot = snapshotOptions(
+        options,
+        profileDescriptorForAdapter(adapter),
+      );
       if (snapshot === null) {
         throw new TypeError("browser event router options are invalid");
       }
@@ -189,9 +201,13 @@ export class BreditorBrowserEventRouter {
       clipboard = new BreditorClipboardController(queue, adapter);
       const ordinary = new BreditorBrowserEventController(queue, {
         keyboard: snapshot.keyboard,
+        keyboardShortcuts: snapshot.keyboardShortcuts,
         selectionBridge: adapter.selectionBridge,
         deliveryAuthority: adapter.deliveryAuthority,
         compositionActive: () => composition?.active === true,
+        ...(snapshot.scheduleTask === undefined
+          ? {}
+          : { scheduleTask: snapshot.scheduleTask }),
       });
 
       this.#composition = composition;
@@ -848,19 +864,34 @@ function readTargetListenerIntrinsics(
   return intrinsics;
 }
 
-function snapshotOptions(options: BrowserEventRouterOptions): Readonly<{
+function snapshotOptions(
+  options: BrowserEventRouterOptions,
+  profileDescriptor: ReturnType<typeof profileDescriptorForAdapter>,
+): Readonly<{
   keyboard: KeyboardTranslationPolicy;
+  keyboardShortcuts: BrowserCompiledKeyboardShortcuts;
   scheduleTask?: (callback: () => void) => void;
 }> | null {
   try {
     if (!objectLike(options)) return null;
     const keyboard = options.keyboard;
+    const keyboardShortcuts =
+      options.keyboardShortcuts ??
+      (profileDescriptor === undefined
+        ? DEFAULT_COMPILED_KEYBOARD_SHORTCUTS
+        : compileCompatibleDefaultKeyboardShortcuts(profileDescriptor));
     const scheduleTask = options.scheduleTask;
-    if (scheduleTask !== undefined && typeof scheduleTask !== "function") {
+    if (
+      !isOwnedBrowserCompiledKeyboardShortcuts(keyboardShortcuts) ||
+      (profileDescriptor !== undefined &&
+        keyboardShortcuts.profileDescriptor !== profileDescriptor) ||
+      (scheduleTask !== undefined && typeof scheduleTask !== "function")
+    ) {
       return null;
     }
     return Object.freeze({
       keyboard,
+      keyboardShortcuts,
       ...(scheduleTask === undefined ? {} : { scheduleTask }),
     });
   } catch {

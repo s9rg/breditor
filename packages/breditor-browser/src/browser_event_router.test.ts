@@ -24,14 +24,28 @@ import {
   type EditorCommandRequest,
   type EditorDeliveryToken,
 } from "./editor_command.js";
+import { createKeyboardShortcutManifest } from "./keyboard_shortcut_manifest.js";
+import {
+  compileKeyboardShortcutManifest,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
 import { BaseDocumentProjection } from "./projection.js";
 import { BaseRangeSelection } from "./selection.js";
-import type {
+import {
   BreditorWasmCommandAdapter,
-  WasmCommandSequenceOutcome,
-  WasmCompositionLeaseRestoreOutcome,
-  WasmRenderReconciliationOutcome,
+  type WasmCommandEngineView,
+  type WasmCommandObservationView,
+  type WasmCommandSequenceOutcome,
+  type WasmCompositionLeaseRestoreOutcome,
+  type WasmRenderReconciliationOutcome,
 } from "./wasm_command_adapter.js";
+import { associateProjectionWithProfileGeneration } from "./wasm_projection_adapter.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type BrowserCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 interface ScheduledTask {
   readonly callback: () => void;
@@ -435,6 +449,83 @@ describe("BreditorBrowserEventRouter", () => {
     });
     expect(fixture.router.status).toEqual({ kind: "live" });
     fixture.router.dispose();
+  });
+
+  it("forwards an owned custom shortcut table to the ordinary controller", () => {
+    const adapter = new FakeAdapter(projection());
+    installDomSelection(adapter.host, 1);
+    const queue = new BreditorCommandQueue(adapter.commandExecutor);
+    const scheduler = new TaskScheduler();
+    const router = new BreditorBrowserEventRouter(
+      queue,
+      adapter as unknown as BreditorWasmCommandAdapter,
+      {
+        ...options(scheduler),
+        keyboardShortcuts: customKeyboardShortcuts(),
+      },
+    );
+
+    const event = keyEvent("i", "KeyI", { ctrlKey: true });
+    adapter.host.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(adapter.requests).toHaveLength(1);
+    expect(adapter.requests[0]?.command).toEqual({
+      kind: "intent",
+      intentId: "example/format-emphasis",
+      input: { kind: "none" },
+    });
+    expect(router.status).toEqual({ kind: "live" });
+    router.dispose();
+  });
+
+  it("rejects a forged shortcut table and releases constructor ownership", () => {
+    const adapter = new FakeAdapter(projection());
+    const queue = new BreditorCommandQueue(adapter.commandExecutor);
+    const scheduler = new TaskScheduler();
+    const forged = Object.freeze({
+      manifest: Object.freeze({ shortcuts: Object.freeze([]) }),
+      profileDescriptor: undefined,
+      bindings: Object.freeze([]),
+    }) as unknown as BrowserCompiledKeyboardShortcuts;
+
+    expect(() =>
+      new BreditorBrowserEventRouter(
+        queue,
+        adapter as unknown as BreditorWasmCommandAdapter,
+        { ...options(scheduler), keyboardShortcuts: forged },
+      )
+    ).toThrow(/options are invalid/u);
+
+    const replacement = new BreditorBrowserEventRouter(
+      queue,
+      adapter as unknown as BreditorWasmCommandAdapter,
+      options(scheduler),
+    );
+    expect(replacement.status).toEqual({ kind: "live" });
+    replacement.dispose();
+  });
+
+  it("rejects an owned shortcut table from another minted adapter profile", () => {
+    const fixture = realAdapterFixture();
+    const queue = new BreditorCommandQueue(fixture.adapter.commandExecutor);
+    const scheduler = new TaskScheduler();
+
+    expect(() =>
+      new BreditorBrowserEventRouter(queue, fixture.adapter, {
+        ...options(scheduler),
+        keyboardShortcuts: customKeyboardShortcuts(),
+      })
+    ).toThrow(/options are invalid/u);
+
+    const replacement = new BreditorBrowserEventRouter(
+      queue,
+      fixture.adapter,
+      options(scheduler),
+    );
+    expect(replacement.status).toEqual({ kind: "live" });
+    replacement.dispose();
+    fixture.adapter.dispose();
   });
 
   it("owns deferred composition settlement and stays live after its late callback", () => {
@@ -1048,6 +1139,170 @@ function projection(): BaseDocumentProjection {
   });
   if (!result.ok) throw new Error(result.error.code);
   return result.value;
+}
+
+function realAdapterFixture(): Readonly<{ adapter: BreditorWasmCommandAdapter }> {
+  const generation: WasmProfileGenerationView = {
+    matches(other): boolean {
+      return other === generation;
+    },
+    free: vi.fn(),
+  };
+  const descriptor = baseProfileDescriptor(generation);
+  const documentProjection = projection();
+  associateProjectionWithProfileGeneration(documentProjection, generation);
+  const renderer = new BreditorDomRenderer();
+  const host = document.createElement("div");
+  host.contentEditable = "true";
+  document.body.append(host);
+  const rendered = renderer.render(host, documentProjection);
+  if (!rendered.ok) throw new Error(rendered.error.code);
+  const unexpected = (): never => {
+    throw new Error("real adapter fixture must not execute");
+  };
+  const engine: WasmCommandEngineView = {
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    actionStates: unexpected,
+    sessionCheckpointJson: unexpected,
+    documentJson: unexpected,
+    clearSelection: unexpected,
+    setRangeSelection: unexpected,
+    selection: unexpected,
+    executeNoInputAction: unexpected,
+    executeNoInputIntent: unexpected,
+    executeStringAction: unexpected,
+    executeTypedActionJson: unexpected,
+    executeTypedIntentJson: unexpected,
+    undo: unexpected,
+    redo: unexpected,
+    closeHistoryGroup: unexpected,
+  };
+  const observation: WasmCommandObservationView = {
+    snapshotLineage: documentProjection.snapshot.lineage,
+    snapshotRevision: documentProjection.snapshot.revision,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    free: vi.fn(),
+  };
+  const adapter = new BreditorWasmCommandAdapter(engine, observation, {
+    profileGeneration: generation,
+    profileDescriptor: descriptor,
+    renderer,
+    rendered: rendered.value.rendered,
+    selectionBridge: new BreditorDomSelectionBridge(),
+  });
+  return Object.freeze({ adapter });
+}
+
+function baseProfileDescriptor(
+  generation: WasmProfileGenerationView,
+): BrowserCompiledProfileDescriptor {
+  const noEntry = (): undefined => undefined;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "breditor/base",
+    schemaVersion: 1,
+    schemaFingerprint:
+      "sha256:68aecbceb27b88171cf2f64f4ff6af8f4372fb338467eafd5fbf89ab04401173",
+    formatCount: 1,
+    intentCount: 0,
+    actionStateCount: 0,
+    inlineFormatSetCount: 0,
+    formatKind: (index) => index === 0 ? "breditor/strong" : undefined,
+    formatRevision: (index) => index === 0 ? 1 : undefined,
+    formatPropertyCount: (index) => index === 0 ? 0 : undefined,
+    formatPropertyName: noEntry,
+    formatPropertyPresence: noEntry,
+    formatPropertyValueType: noEntry,
+    formatPropertyIntegerMinimum: noEntry,
+    formatPropertyIntegerMaximum: noEntry,
+    formatPropertyStringMinimumUtf8Bytes: noEntry,
+    formatPropertyStringMaximumUtf8Bytes: noEntry,
+    intentId: noEntry,
+    intentInputKind: noEntry,
+    intentInputContractName: noEntry,
+    intentInputContractVersion: noEntry,
+    intentActivationContract: noEntry,
+    intentValueContractName: noEntry,
+    intentValueContractVersion: noEntry,
+    actionStateId: noEntry,
+    actionStateSourceKind: noEntry,
+    actionStateSourceActionId: noEntry,
+    actionStateSourceIntentId: noEntry,
+    actionStateHistoryDirection: noEntry,
+    actionStateActivationContract: noEntry,
+    actionStateValueContractName: noEntry,
+    actionStateValueContractVersion: noEntry,
+    inlineFormatSetFormatKind: noEntry,
+    inlineFormatSetIntentId: noEntry,
+    inlineFormatSetActionStateId: noEntry,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    free: vi.fn(),
+  };
+  const consumed = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!consumed.ok) throw new Error("base descriptor fixture failed");
+  return consumed.descriptor;
+}
+
+function customKeyboardShortcuts(): BrowserCompiledKeyboardShortcuts {
+  const generation: WasmProfileGenerationView = {
+    matches(other): boolean {
+      return other === generation;
+    },
+    free(): void {},
+  };
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: `sha256:${"a".repeat(64)}`,
+    formatCount: 0,
+    intentCount: 1,
+    actionStateCount: 1,
+    inlineFormatSetCount: 0,
+    formatKind: () => undefined,
+    formatRevision: () => undefined,
+    formatPropertyCount: () => undefined,
+    formatPropertyName: () => undefined,
+    formatPropertyPresence: () => undefined,
+    formatPropertyValueType: () => undefined,
+    formatPropertyIntegerMinimum: () => undefined,
+    formatPropertyIntegerMaximum: () => undefined,
+    formatPropertyStringMinimumUtf8Bytes: () => undefined,
+    formatPropertyStringMaximumUtf8Bytes: () => undefined,
+    intentId: (index) =>
+      index === 0 ? "example/format-emphasis" : undefined,
+    intentInputKind: (index) => index === 0 ? "none" : undefined,
+    intentInputContractName: () => undefined,
+    intentInputContractVersion: () => undefined,
+    intentActivationContract: (index) =>
+      index === 0 ? "tracked" : undefined,
+    intentValueContractName: () => undefined,
+    intentValueContractVersion: () => undefined,
+    actionStateId: (index) => index === 0 ? "example/emphasis" : undefined,
+    actionStateSourceKind: (index) => index === 0 ? "routed" : undefined,
+    actionStateSourceActionId: () => undefined,
+    actionStateSourceIntentId: (index) =>
+      index === 0 ? "example/format-emphasis" : undefined,
+    actionStateHistoryDirection: () => undefined,
+    actionStateActivationContract: (index) =>
+      index === 0 ? "tracked" : undefined,
+    actionStateValueContractName: () => undefined,
+    actionStateValueContractVersion: () => undefined,
+    inlineFormatSetFormatKind: () => undefined,
+    inlineFormatSetIntentId: () => undefined,
+    inlineFormatSetActionStateId: () => undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    free(): void {},
+  };
+  const consumed = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!consumed.ok) throw new Error("shortcut descriptor fixture failed");
+  return compileKeyboardShortcutManifest(
+    createKeyboardShortcutManifest({
+      shortcuts: [{
+        stateId: "example/emphasis",
+        chords: [{ code: "KeyI", shift: false }],
+      }],
+    }),
+    consumed.descriptor,
+  );
 }
 
 function textPoint(offset: number) {

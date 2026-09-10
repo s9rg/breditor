@@ -10,6 +10,7 @@ if (root === null) throw new Error("React root is missing");
 const primaryModifier = /Mac|iPhone|iPad|iPod/u.test(navigator.platform)
   ? "meta"
   : "control";
+const primaryKey = primaryModifier === "meta" ? "⌘" : "Ctrl";
 
 createRoot(root).render(
   <StrictMode>
@@ -51,8 +52,10 @@ createRoot(root).render(
           </p>
           <p>
             <span className="hint-number">02</span>
-            Stack Italic, Strikethrough, and Code on one range; their projected
-            DOM order stays deterministic.
+            Try <kbd>{primaryKey}+I</kbd>, <kbd>{primaryKey}+E</kbd>, or{" "}
+            <kbd>{primaryKey}+Shift+S</kbd>. The toolbar advertises the same
+            profile-checked shortcuts to assistive technology. Browser- or
+            OS-reserved combinations may stay with browser chrome.
           </p>
           <p>
             <span className="hint-number">03</span>

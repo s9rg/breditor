@@ -18,6 +18,7 @@ import {
   type IndexedDbSessionCheckpointBinding,
 } from "./indexeddb_session_checkpoint.js";
 import { createInlineFormatRenderManifest } from "./inline_format_render_manifest.js";
+import { createKeyboardShortcutManifest } from "./keyboard_shortcut_manifest.js";
 import { nativeDocumentDefaultView } from "./html_host.js";
 import { createToolbarManifest } from "./toolbar_manifest.js";
 import type {
@@ -1193,6 +1194,93 @@ describe("BreditorBrowserEditor", () => {
     expect(toolbarHost.childNodes).toHaveLength(0);
     expect(toolbarHost.attributes).toHaveLength(0);
     expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an owned shortcut whose state is absent before mutating either host", async () => {
+    const host = mountHost();
+    const toolbarHost = mountHost();
+    const fixture = moduleFixture();
+    const keyboardShortcuts = createKeyboardShortcutManifest({
+      shortcuts: [
+        {
+          stateId: "example/missing-control",
+          chords: [{ code: "KeyI", shift: false }],
+        },
+      ],
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        keyboardShortcuts,
+        toolbar: { host: toolbarHost },
+      }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: {
+        code: "browser_editor.keyboard_shortcut_profile_invalid",
+      },
+    });
+    expect(host.childNodes).toHaveLength(0);
+    expect(host.attributes).toHaveLength(0);
+    expect(toolbarHost.childNodes).toHaveLength(0);
+    expect(toolbarHost.attributes).toHaveLength(0);
+    expect(fixture.engines[0]?.rawFree).toHaveBeenCalledOnce();
+  });
+
+  it("compiles a custom shortcut once and projects it onto the matching toolbar control", async () => {
+    const host = mountHost();
+    const toolbarHost = mountHost();
+    const fixture = profileModuleFixture();
+    const keyboardShortcuts = createKeyboardShortcutManifest({
+      shortcuts: [
+        {
+          stateId: STATE_ID,
+          chords: [{ code: "KeyI", shift: false }],
+        },
+      ],
+    });
+
+    const opened = await BreditorBrowserEditor.open(
+      options(host, fixture.module, {
+        initialDocument: {
+          lineageId: LINEAGE,
+          documentJson: profileDocumentJson("shortcut text", PROFILE_SCHEMA),
+          historyCapacity: 100,
+        },
+        semanticProfile: PROFILE_BOOTSTRAP,
+        rendering: PROFILE_RENDERING,
+        keyboardShortcuts,
+        toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST },
+      }),
+    );
+
+    if (!opened.ok) throw new Error(opened.error.code);
+    expect(
+      toolbarHost.querySelector("button")?.getAttribute("aria-keyshortcuts"),
+    ).toBe("Control+I");
+    opened.editor.dispose();
+  });
+
+  it("rejects a forged shortcut manifest before constructing an engine", async () => {
+    const fixture = moduleFixture();
+
+    const opened = await BreditorBrowserEditor.open(
+      options(mountHost(), fixture.module, {
+        keyboardShortcuts: Object.freeze({
+          shortcuts: Object.freeze([]),
+        }) as NonNullable<
+          BreditorBrowserEditorOptions["keyboardShortcuts"]
+        >,
+      }),
+    );
+
+    expect(opened).toMatchObject({
+      ok: false,
+      error: { code: "browser_editor.invalid_options" },
+    });
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
   });
 
   it.each(["missing", "extra"] as const)(
@@ -2961,7 +3049,9 @@ describe("BreditorBrowserEditor", () => {
     });
     const opened = await BreditorBrowserEditor.open(
       options(host, fixture.module, {
-        scheduleTask: (callback) => scheduled.push(callback),
+        scheduleTask: (callback) => {
+          scheduled.push(callback);
+        },
       }),
     );
     if (!opened.ok) throw new Error(opened.error.code);

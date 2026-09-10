@@ -2,8 +2,10 @@ import {
   BASE_INTENT_IDS,
   BASE_TOOLBAR_STATE_IDS,
   createInlineFormatRenderManifest,
+  createKeyboardShortcutManifest,
   createToolbarManifest,
   type InlineFormatRenderManifest,
+  type KeyboardShortcutManifest,
   type ToolbarManifest,
 } from "@breditor/browser";
 
@@ -118,5 +120,48 @@ export const REFERENCE_SHOWCASE_TOOLBAR_MANIFEST: ToolbarManifest =
       },
       REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[3],
       REFERENCE_FORMATTING_TOOLBAR_MANIFEST.controls[4],
+    ],
+  });
+
+/**
+ * Exact shortcut presentation for the no-input actions in the showcase.
+ *
+ * Typed Link intentionally has no shortcut: opening and owning application UI
+ * remains a separate concern from executing its validated Rust intent.
+ */
+export const REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST: KeyboardShortcutManifest =
+  createKeyboardShortcutManifest({
+    shortcuts: [
+      {
+        stateId: BASE_TOOLBAR_STATE_IDS.bold,
+        chords: [{ code: "KeyB", shift: false }],
+      },
+      {
+        stateId: REFERENCE_SHOWCASE_IDS.emphasisActionStateId,
+        chords: [{ code: "KeyI", shift: false }],
+      },
+      {
+        stateId: REFERENCE_SHOWCASE_IDS.strikethroughActionStateId,
+        chords: [{ code: "KeyS", shift: true }],
+      },
+      {
+        stateId: REFERENCE_SHOWCASE_IDS.codeActionStateId,
+        chords: [{ code: "KeyE", shift: false }],
+      },
+      {
+        stateId: REFERENCE_SHOWCASE_IDS.highlightActionStateId,
+        chords: [{ code: "KeyH", shift: true }],
+      },
+      {
+        stateId: BASE_TOOLBAR_STATE_IDS.undo,
+        chords: [{ code: "KeyZ", shift: false }],
+      },
+      {
+        stateId: BASE_TOOLBAR_STATE_IDS.redo,
+        chords: [
+          { code: "KeyZ", shift: true },
+          { code: "KeyY", shift: false },
+        ],
+      },
     ],
   });

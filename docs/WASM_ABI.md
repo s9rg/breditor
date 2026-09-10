@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.10` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.11` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
 preserving the ABI-3-era V1/V2 entry points. Alpha.7 added only canonical
@@ -10,6 +10,8 @@ not bump ABI 5 or change a bootstrap or durable wire generation. Alpha.9 adds
 only a separately declared Showcase profile. Alpha.10 adds a built-in Clear
 Formatting route through existing descriptor, state, intent, operation, and
 checkpoint surfaces; it introduces no Wasm member or durable record generation.
+Alpha.11 adds only a browser-owned declarative shortcut compiler and likewise
+introduces no Wasm member, descriptor field, or durable record generation.
 Direct raw-handle use remains a narrow advanced integration surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
@@ -25,9 +27,9 @@ installs all three npm tarballs, resolves only package-root imports inside its
 own `node_modules`, initializes the real Wasm module, type-checks, bundles, and
 opens the reference profile in Chromium without workspace paths.
 
-After publication, `@breditor/browser@0.3.0-alpha.10` and
-`@breditor/wasm@0.3.0-alpha.10` must be installed as an exact-version pair. No
-alpha.10 package has been published at this checkpoint; repository development
+After publication, `@breditor/browser@0.3.0-alpha.11` and
+`@breditor/wasm@0.3.0-alpha.11` must be installed as an exact-version pair. No
+alpha.11 package has been published at this checkpoint; repository development
 uses the local workspace/tarball smoke path. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.

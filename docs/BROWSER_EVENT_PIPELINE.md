@@ -177,6 +177,12 @@ Receipts contain bounded command identity and exact render correlation. They do
 not retain events or clipboard payloads. Two independent `beforeinput` events
 remain two commands even when their payloads happen to be equal.
 
+A keyboard receipt is armed only for the conventional primary+B/`formatBold`,
+primary+Z/`historyUndo`, primary+Shift+Z/`historyRedo`, and
+Control+Y/`historyRedo` pairs. Meta+Y and arbitrary semantic aliases do not arm
+one. If the browser emits no matching `beforeinput`, the receipt expires at the
+end of the current task; it cannot suppress a later independent event.
+
 ## Composition and IME ownership (`0.0.54`)
 
 `BreditorCompositionController` is the explicit owner of one admitted native

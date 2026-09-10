@@ -90,6 +90,19 @@ export {
   type ToolbarInlineFormatFormValues,
 } from "./toolbar_inline_format_form_input.js";
 
+/** Declarative, profile-addressed keyboard shortcut presentation. */
+export {
+  DEFAULT_KEYBOARD_SHORTCUT_MANIFEST,
+  MAX_KEYBOARD_SHORTCUT_CHORDS_PER_DECLARATION,
+  MAX_KEYBOARD_SHORTCUT_CHORDS_TOTAL,
+  MAX_KEYBOARD_SHORTCUT_DECLARATIONS,
+  MAX_KEYBOARD_SHORTCUT_STATE_ID_ASCII,
+  createKeyboardShortcutManifest,
+  type KeyboardShortcutDeclaration,
+  type KeyboardShortcutManifest,
+  type PrimaryKeyChord,
+} from "./keyboard_shortcut_manifest.js";
+
 /** Public command-input bounds and typed-JSON preflight. */
 export {
   BASE_INTENT_IDS,

@@ -1,6 +1,5 @@
 import {
   BASE_ACTION_IDS,
-  BASE_INTENT_IDS,
   historyRequest,
   noInputActionRequest,
   noInputIntentRequest,
@@ -8,6 +7,13 @@ import {
   type EditorCommandRequest,
   type EditorSelectionSync,
 } from "./editor_command.js";
+import {
+  compiledKeyboardShortcutBindingFor,
+  DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
+  isOwnedBrowserCompiledKeyboardShortcuts,
+  keyboardShortcutCodeIdentity,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
 
 /** Host-selected keyboard policy; Breditor never sniffs an operating system. */
 export interface KeyboardTranslationPolicy {
@@ -55,10 +61,17 @@ export function translateKeyDown(
   compositionActive: boolean,
   delivery: EditorDeliveryToken,
   selection: EditorSelectionSync,
+  shortcuts: BrowserCompiledKeyboardShortcuts =
+    DEFAULT_COMPILED_KEYBOARD_SHORTCUTS,
 ): KeyboardTranslation {
   const safeSnapshot = snapshotKeyboard(snapshot);
   const safePolicy = snapshotPolicy(policy);
-  if (safeSnapshot === null || safePolicy === null || typeof compositionActive !== "boolean") {
+  if (
+    safeSnapshot === null ||
+    safePolicy === null ||
+    typeof compositionActive !== "boolean" ||
+    !isOwnedBrowserCompiledKeyboardShortcuts(shortcuts)
+  ) {
     return Object.freeze({ kind: "invalid" });
   }
   try {
@@ -68,6 +81,7 @@ export function translateKeyDown(
       compositionActive,
       delivery,
       selection,
+      shortcuts,
     );
   } catch {
     return Object.freeze({ kind: "invalid" });
@@ -80,6 +94,7 @@ function translateSafeKeyDown(
   compositionActive: boolean,
   delivery: EditorDeliveryToken,
   selection: EditorSelectionSync,
+  shortcuts: BrowserCompiledKeyboardShortcuts,
 ): KeyboardTranslation {
   if (
     compositionActive ||
@@ -98,53 +113,46 @@ function translateSafeKeyDown(
   const secondaryPrimary =
     policy.primaryModifier === "meta" ? snapshot.ctrlKey : snapshot.metaKey;
   if (primary && !secondaryPrimary && !snapshot.altKey) {
-    if (keyIs(snapshot.key, "c") || keyIs(snapshot.key, "x") || keyIs(snapshot.key, "v")) {
+    if (keyIs(snapshot, "c") || keyIs(snapshot, "x") || keyIs(snapshot, "v")) {
       return native("clipboardOwns");
     }
-    if (keyIs(snapshot.key, "a")) {
+    if (keyIs(snapshot, "a")) {
       return native("selectionOrPageCommand");
     }
-    if (
-      !snapshot.shiftKey &&
-      (keyIs(snapshot.key, "i") || keyIs(snapshot.key, "u"))
-    ) {
-      return blocked("unsupportedEditingShortcut");
-    }
-    const recognizedEditorShortcut =
-      (keyIs(snapshot.key, "b") && !snapshot.shiftKey) ||
-      keyIs(snapshot.key, "z") ||
-      (keyIs(snapshot.key, "y") && !snapshot.shiftKey);
-    if (policy.shortcuts === "disabled" && recognizedEditorShortcut) {
-      return blocked("unsupportedEditingShortcut");
-    }
-    if (policy.shortcuts === "enabled") {
-      const source = keyboardSource(snapshot, policy.primaryModifier);
-      if (keyIs(snapshot.key, "b") && !snapshot.shiftKey) {
-        return snapshot.repeat
-          ? blocked("repeatSuppressed")
-          : command(
-              noInputIntentRequest(
-                delivery,
-                selection,
-                source,
-                BASE_INTENT_IDS.formatStrong,
-                "closeBefore",
-              ),
-            );
+    const binding = compiledKeyboardShortcutBindingFor(
+      shortcuts,
+      snapshot.code,
+      snapshot.shiftKey,
+    );
+    if (binding !== undefined) {
+      if (policy.shortcuts === "disabled") {
+        return blocked("unsupportedEditingShortcut");
       }
-      if (keyIs(snapshot.key, "z")) {
+      const source = keyboardSource(snapshot, policy.primaryModifier);
+      if (binding.target.kind === "history") {
         return command(
           historyRequest(
             delivery,
             selection,
             source,
-            snapshot.shiftKey ? "redo" : "undo",
+            binding.target.operation,
           ),
         );
       }
-      if (keyIs(snapshot.key, "y") && !snapshot.shiftKey) {
-        return command(historyRequest(delivery, selection, source, "redo"));
-      }
+      return snapshot.repeat
+        ? blocked("repeatSuppressed")
+        : command(
+            noInputIntentRequest(
+              delivery,
+              selection,
+              source,
+              binding.target.intentId,
+              "closeBefore",
+            ),
+          );
+    }
+    if (isUnsupportedNativeEditingShortcut(snapshot)) {
+      return blocked("unsupportedEditingShortcut");
     }
     return native("selectionOrPageCommand");
   }
@@ -208,8 +216,37 @@ function safeKeyIdentity(snapshot: KeyboardSnapshot): string {
     : "Unidentified";
 }
 
-function keyIs(actual: string, lower: string): boolean {
-  return actual === lower || actual === lower.toUpperCase();
+function keyIs(snapshot: KeyboardSnapshot, lower: string): boolean {
+  return keyboardShortcutCodeIdentity(snapshot.code) ===
+    `Key${lower.toUpperCase()}`;
+}
+
+function isUnsupportedNativeEditingShortcut(
+  snapshot: KeyboardSnapshot,
+): boolean {
+  const letter = conservativeNativeEditingLetter(snapshot);
+  return (
+    (!snapshot.shiftKey &&
+      (letter === "b" ||
+        letter === "i" ||
+        letter === "u" ||
+        letter === "y")) ||
+    letter === "z"
+  );
+}
+
+function conservativeNativeEditingLetter(
+  snapshot: KeyboardSnapshot,
+): string | undefined {
+  const physical = keyboardShortcutCodeIdentity(snapshot.code);
+  if (physical !== undefined && /^Key[BIUYZ]$/u.test(physical)) {
+    return physical.slice(3).toLowerCase();
+  }
+  if (snapshot.key.length !== 1 || snapshot.key.charCodeAt(0) > 0x7f) {
+    return undefined;
+  }
+  const logical = snapshot.key.toLowerCase();
+  return /^[biuyz]$/u.test(logical) ? logical : undefined;
 }
 
 function isPotentialTextKey(key: string): boolean {

@@ -14,10 +14,20 @@ import {
   type EditorCommandRequest,
   type EditorDeliveryToken,
 } from "./editor_command.js";
+import { createKeyboardShortcutManifest } from "./keyboard_shortcut_manifest.js";
+import {
+  compileKeyboardShortcutManifest,
+  type BrowserCompiledKeyboardShortcuts,
+} from "./keyboard_shortcut_profile_contract.js";
 import { BaseDocumentProjection } from "./projection.js";
 import type { BrowserProjectionResult } from "./result.js";
 import { BaseRangeSelection } from "./selection.js";
 import type { BrowserSelectionResult } from "./selection_result.js";
+import {
+  consumeWasmCompiledProfileDescriptor,
+  type WasmCompiledProfileDescriptorView,
+  type WasmProfileGenerationView,
+} from "./wasm_profile_descriptor.js";
 
 interface Fixture {
   readonly host: HTMLElement;
@@ -200,6 +210,499 @@ describe("BreditorBrowserEventController", () => {
       kind: "intent",
       intentId: "breditor/format-strong",
     });
+  });
+
+  it("expires an unconsumed native keyboard echo at the task boundary", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const scheduled: Array<() => void> = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+        scheduleTask: (callback) => {
+          scheduled.push(callback);
+        },
+      },
+    );
+    const keydown = keyEvent("b", "KeyB", { ctrlKey: true });
+    dispatch(fixture.host, keydown, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+    expect(delivered).toHaveLength(1);
+    expect(scheduled).toHaveLength(1);
+
+    scheduled.shift()?.();
+    const nextDelivery = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      1n,
+      TEST_TOKEN_AUTHORITY,
+    );
+    const independent = inputEvent("beforeinput", "formatBold", null, []);
+    const disposition = dispatch(fixture.host, independent, (observed) =>
+      controller.handleBeforeInput(
+        observed as InputEvent,
+        fixture.rendered,
+        nextDelivery,
+      ),
+    );
+
+    expect(disposition.kind).toBe("handled");
+    expect(disposition.kind).not.toBe("keyboardEcho");
+    expect(delivered).toHaveLength(2);
+  });
+
+  it("expires a beforeinput-promoted keyboard receipt on its original task boundary", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const scheduled: Array<() => void> = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+        scheduleTask: (callback) => {
+          scheduled.push(callback);
+        },
+      },
+    );
+    dispatch(fixture.host, keyEvent("b", "KeyB", { ctrlKey: true }), (event) =>
+      controller.handleKeyDown(
+        event as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+    const echoDelivery = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      1n,
+      TEST_TOKEN_AUTHORITY,
+    );
+    const beforeDisposition = dispatch(
+      fixture.host,
+      inputEvent("beforeinput", "formatBold", null, []),
+      (event) =>
+        controller.handleBeforeInput(
+          event as InputEvent,
+          fixture.rendered,
+          echoDelivery,
+        ),
+    );
+    expect(beforeDisposition.kind).toBe("keyboardEcho");
+    expect(scheduled).toHaveLength(1);
+
+    scheduled.shift()?.();
+    const inputDisposition = dispatch(
+      fixture.host,
+      inputEvent("input", "formatBold", null),
+      (event) =>
+        controller.handleInput(event as InputEvent, fixture.rendered),
+    );
+
+    expect(inputDisposition).toEqual({
+      kind: "reconcileRequired",
+      defaultPrevented: false,
+      reason: "unexpectedInput",
+    });
+    expect(delivered).toHaveLength(1);
+  });
+
+  it.each([
+    ["inline", (callback: () => void) => callback()],
+    ["throwing", (_callback: () => void) => {
+      throw new Error("scheduler failed");
+    }],
+    ["promise-returning", (_callback: () => void) =>
+      Promise.reject(new Error("scheduler contract violation"))],
+  ])("fails safe when the echo-expiry scheduler is %s", (_name, scheduleTask) => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+        scheduleTask,
+      },
+    );
+    dispatch(fixture.host, keyEvent("b", "KeyB", { ctrlKey: true }), (event) =>
+      controller.handleKeyDown(
+        event as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+    const nextDelivery = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      1n,
+      TEST_TOKEN_AUTHORITY,
+    );
+    const disposition = dispatch(
+      fixture.host,
+      inputEvent("beforeinput", "formatBold", null, []),
+      (event) =>
+        controller.handleBeforeInput(
+          event as InputEvent,
+          fixture.rendered,
+          nextDelivery,
+        ),
+    );
+
+    expect(disposition.kind).toBe("handled");
+    expect(delivered).toHaveLength(2);
+  });
+
+  it("routes an owned custom shortcut and suppresses repeated intent work", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        keyboardShortcuts: customKeyboardShortcuts(),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+      },
+    );
+    const first = keyEvent("i", "KeyI", { ctrlKey: true });
+    const firstDisposition = dispatch(fixture.host, first, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+
+    expect(firstDisposition.kind).toBe("handled");
+    expect(first.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]?.requirements.history).toBe("closeBefore");
+    expect(delivered[0]?.command).toEqual({
+      kind: "intent",
+      intentId: "example/format-emphasis",
+      input: { kind: "none" },
+    });
+
+    const repeated = keyEvent("i", "KeyI", {
+      ctrlKey: true,
+      repeat: true,
+    });
+    const repeatDisposition = dispatch(fixture.host, repeated, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+    expect(repeatDisposition).toMatchObject({
+      kind: "blocked",
+      reason: "repeatSuppressed",
+    });
+    expect(repeated.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(1);
+  });
+
+  it("blocks a custom non-native chord when shortcut routing is disabled", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: { ...keyboardPolicy(), shortcuts: "disabled" },
+        keyboardShortcuts: customKeyboardShortcuts(),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+      },
+    );
+    const event = keyEvent("i", "KeyI", { ctrlKey: true });
+
+    const disposition = dispatch(fixture.host, event, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+
+    expect(disposition).toMatchObject({
+      kind: "blocked",
+      reason: "unsupportedEditingShortcut",
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(0);
+  });
+
+  it("routes physical shortcuts independently of logical keys and ignores missing codes", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = createController(fixture.bridge, delivered);
+    const bold = keyEvent("Unidentified", "KeyB", { ctrlKey: true });
+
+    const boldDisposition = dispatch(fixture.host, bold, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+
+    expect(boldDisposition.kind).toBe("handled");
+    expect(bold.defaultPrevented).toBe(true);
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]?.command).toEqual({
+      kind: "intent",
+      intentId: "breditor/format-strong",
+      input: { kind: "none" },
+    });
+
+    const unrelated = keyEvent("q", "", { ctrlKey: true });
+    const unrelatedDisposition = dispatch(
+      fixture.host,
+      unrelated,
+      (observed) =>
+        controller.handleKeyDown(
+          observed as KeyboardEvent,
+          fixture.rendered,
+          fixture.delivery,
+        ),
+    );
+    expect(unrelatedDisposition).toEqual({
+      kind: "ignored",
+      defaultPrevented: false,
+      reason: "selectionOrPageCommand",
+    });
+    expect(unrelated.defaultPrevented).toBe(false);
+    expect(delivered).toHaveLength(1);
+  });
+
+  it("does not arm a native Bold echo for a non-native alias of the Bold state", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        keyboardShortcuts: customKeyboardShortcuts({
+          stateId: "breditor/control-bold",
+          intentId: "breditor/format-strong",
+          chords: [
+            { code: "KeyB", shift: false },
+            { code: "KeyI", shift: false },
+          ],
+        }),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+      },
+    );
+    const alias = keyEvent("i", "KeyI", { ctrlKey: true });
+    const aliasDisposition = dispatch(fixture.host, alias, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+
+    expect(aliasDisposition.kind).toBe("handled");
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0]?.command).toMatchObject({
+      kind: "intent",
+      intentId: "breditor/format-strong",
+    });
+
+    const nextDelivery = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      1n,
+      TEST_TOKEN_AUTHORITY,
+    );
+    const independent = inputEvent("beforeinput", "formatBold", null, []);
+    const independentDisposition = dispatch(
+      fixture.host,
+      independent,
+      (observed) =>
+        controller.handleBeforeInput(
+          observed as InputEvent,
+          fixture.rendered,
+          nextDelivery,
+        ),
+    );
+
+    expect(independentDisposition.kind).toBe("handled");
+    expect(independentDisposition.kind).not.toBe("keyboardEcho");
+    expect(delivered).toHaveLength(2);
+    expect(delivered[1]?.source).toEqual({
+      kind: "beforeinput",
+      detail: "formatBold",
+    });
+  });
+
+  it("does not arm a native Undo echo for an arbitrary history alias", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: keyboardPolicy(),
+        keyboardShortcuts: customKeyboardShortcuts({
+          stateId: "example/control-undo",
+          historyDirection: "undo",
+          chords: [{ code: "KeyR", shift: false }],
+        }),
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+      },
+    );
+    const alias = keyEvent("r", "KeyR", { ctrlKey: true });
+    dispatch(fixture.host, alias, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+    expect(delivered[0]?.command).toEqual({
+      kind: "history",
+      operation: "undo",
+    });
+
+    const nextDelivery = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      1n,
+      TEST_TOKEN_AUTHORITY,
+    );
+    const independent = inputEvent("beforeinput", "historyUndo", null, []);
+    const disposition = dispatch(fixture.host, independent, (observed) =>
+      controller.handleBeforeInput(
+        observed as InputEvent,
+        fixture.rendered,
+        nextDelivery,
+      ),
+    );
+
+    expect(disposition.kind).toBe("handled");
+    expect(disposition.kind).not.toBe("keyboardEcho");
+    expect(delivered).toHaveLength(2);
+    expect(delivered[1]?.source).toEqual({
+      kind: "beforeinput",
+      detail: "historyUndo",
+    });
+  });
+
+  it("does not treat Meta+Y as a native Redo echo", () => {
+    const fixture = createFixture();
+    installCollapsedDomSelection(fixture.host, 2);
+    const delivered: EditorCommandRequest[] = [];
+    const controller = new BreditorBrowserEventController(
+      new BreditorCommandQueue((request) => {
+        delivered.push(request);
+        return request.source.detail;
+      }),
+      {
+        keyboard: {
+          editing: "structuralFallback",
+          primaryModifier: "meta",
+          shortcuts: "enabled",
+        },
+        selectionBridge: fixture.bridge,
+        deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+      },
+    );
+    const alias = keyEvent("y", "KeyY", { metaKey: true });
+    dispatch(fixture.host, alias, (observed) =>
+      controller.handleKeyDown(
+        observed as KeyboardEvent,
+        fixture.rendered,
+        fixture.delivery,
+      ),
+    );
+    expect(delivered[0]?.command).toEqual({
+      kind: "history",
+      operation: "redo",
+    });
+
+    const nextDelivery = issueEditorDeliveryToken(
+      fixture.rendered.projection,
+      fixture.rendered,
+      1n,
+      TEST_TOKEN_AUTHORITY,
+    );
+    const independent = inputEvent("beforeinput", "historyRedo", null, []);
+    const disposition = dispatch(fixture.host, independent, (observed) =>
+      controller.handleBeforeInput(
+        observed as InputEvent,
+        fixture.rendered,
+        nextDelivery,
+      ),
+    );
+
+    expect(disposition.kind).toBe("handled");
+    expect(disposition.kind).not.toBe("keyboardEcho");
+    expect(delivered).toHaveLength(2);
+    expect(delivered[1]?.source).toEqual({
+      kind: "beforeinput",
+      detail: "historyRedo",
+    });
+  });
+
+  it("rejects a forged compiled shortcut table at construction", () => {
+    const fixture = createFixture();
+    expect(() =>
+      new BreditorBrowserEventController(
+        new BreditorCommandQueue(() => "unused"),
+        {
+          keyboard: keyboardPolicy(),
+          keyboardShortcuts: Object.freeze({
+            manifest: Object.freeze({ shortcuts: Object.freeze([]) }),
+            profileDescriptor: undefined,
+            bindings: Object.freeze([]),
+          }) as unknown as BrowserCompiledKeyboardShortcuts,
+          selectionBridge: fixture.bridge,
+          deliveryAuthority: TEST_DELIVERY_AUTHORITY,
+        },
+      )
+    ).toThrow(/options are invalid/u);
   });
 
   it("leaves a foreign-token event untouched without consuming a keyboard receipt", () => {
@@ -1218,6 +1721,105 @@ function keyboardPolicy() {
     primaryModifier: "control",
     shortcuts: "enabled",
   } as const;
+}
+
+function keyEvent(
+  key: string,
+  code: string,
+  init: KeyboardEventInit = {},
+): KeyboardEvent {
+  return new KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    key,
+    code,
+    ...init,
+  });
+}
+
+function customKeyboardShortcuts(
+  options: Readonly<{
+    stateId: string;
+    intentId?: string;
+    historyDirection?: "undo" | "redo";
+    chords: readonly Readonly<{ code: string; shift: boolean }>[];
+  }> = {
+    stateId: "example/emphasis",
+    intentId: "example/format-emphasis",
+    chords: Object.freeze([{ code: "KeyI", shift: false }]),
+  },
+): BrowserCompiledKeyboardShortcuts {
+  const intentId = options.intentId;
+  const historyDirection = options.historyDirection;
+  if ((intentId === undefined) === (historyDirection === undefined)) {
+    throw new Error("shortcut target fixture is invalid");
+  }
+  const generation: WasmProfileGenerationView = {
+    matches(other): boolean {
+      return other === generation;
+    },
+    free(): void {},
+  };
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint: `sha256:${"a".repeat(64)}`,
+    formatCount: 0,
+    intentCount: intentId === undefined ? 0 : 1,
+    actionStateCount: 1,
+    inlineFormatSetCount: 0,
+    formatKind: () => undefined,
+    formatRevision: () => undefined,
+    formatPropertyCount: () => undefined,
+    formatPropertyName: () => undefined,
+    formatPropertyPresence: () => undefined,
+    formatPropertyValueType: () => undefined,
+    formatPropertyIntegerMinimum: () => undefined,
+    formatPropertyIntegerMaximum: () => undefined,
+    formatPropertyStringMinimumUtf8Bytes: () => undefined,
+    formatPropertyStringMaximumUtf8Bytes: () => undefined,
+    intentId: (index) => index === 0 ? intentId : undefined,
+    intentInputKind: (index) =>
+      index === 0 && intentId !== undefined ? "none" : undefined,
+    intentInputContractName: () => undefined,
+    intentInputContractVersion: () => undefined,
+    intentActivationContract: (index) =>
+      index === 0 && intentId !== undefined ? "tracked" : undefined,
+    intentValueContractName: () => undefined,
+    intentValueContractVersion: () => undefined,
+    actionStateId: (index) => index === 0 ? options.stateId : undefined,
+    actionStateSourceKind: (index) =>
+      index === 0
+        ? historyDirection === undefined ? "routed" : "history"
+        : undefined,
+    actionStateSourceActionId: () => undefined,
+    actionStateSourceIntentId: (index) =>
+      index === 0 ? intentId : undefined,
+    actionStateHistoryDirection: (index) =>
+      index === 0 ? historyDirection : undefined,
+    actionStateActivationContract: (index) =>
+      index === 0
+        ? historyDirection === undefined ? "tracked" : "stateless"
+        : undefined,
+    actionStateValueContractName: () => undefined,
+    actionStateValueContractVersion: () => undefined,
+    inlineFormatSetFormatKind: () => undefined,
+    inlineFormatSetIntentId: () => undefined,
+    inlineFormatSetActionStateId: () => undefined,
+    matchesProfileGeneration: (candidate) => candidate === generation,
+    free(): void {},
+  };
+  const consumed = consumeWasmCompiledProfileDescriptor(generation, view);
+  if (!consumed.ok) throw new Error("shortcut descriptor fixture failed");
+  return compileKeyboardShortcutManifest(
+    createKeyboardShortcutManifest({
+      shortcuts: [{
+        stateId: options.stateId,
+        chords: options.chords,
+      }],
+    }),
+    consumed.descriptor,
+  );
 }
 
 function inputEvent(

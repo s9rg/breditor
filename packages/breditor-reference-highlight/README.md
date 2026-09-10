@@ -4,9 +4,10 @@
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format. The `0.3.0-alpha.10` `REFERENCE_SHOWCASE_*` surface keeps
-both, adds three ordinary property-free text styles, and presents the base
-clear-inline-formatting route.
+`example/link` format. The `0.3.0-alpha.11` `REFERENCE_SHOWCASE_*` surface keeps
+both, adds three ordinary property-free text styles, presents the base
+clear-inline-formatting route, and supplies a separate declarative shortcut
+manifest for its no-input controls.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -53,6 +54,14 @@ the no-input `breditor/clear-inline-formatting` intent; Rust selects
 `breditor/clear-inline-formats` through
 `breditor/clear-inline-formatting-binding`.
 
+Alpha.11 changes no reference schema, semantic manifest, renderer recipe,
+fixture, fingerprint, or durable generation. It adds the separately frozen
+`REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST`, created by the exact peer
+`@breditor/browser` module. The manifest binds Showcase action-state identities
+to primary-modifier physical-letter-code chords; the browser derives the matching no-input
+intent or history direction from the owned compiled-profile descriptor. The same
+compiled table drives native `keydown` and toolbar `aria-keyshortcuts`.
+
 ## Use
 
 This repository does not publish packages automatically. After a maintainer
@@ -61,9 +70,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.10 \
-  @breditor/wasm@0.3.0-alpha.10 \
-  @breditor/reference-highlight@0.3.0-alpha.10
+npm install @breditor/browser@0.3.0-alpha.11 \
+  @breditor/wasm@0.3.0-alpha.11 \
+  @breditor/reference-highlight@0.3.0-alpha.11
 ```
 
 ```ts
@@ -200,10 +209,32 @@ Use `REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON`,
 `REFERENCE_SHOWCASE_RENDER_MANIFEST`,
 `REFERENCE_SHOWCASE_TOOLBAR_MANIFEST`, and
 `REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON` with the same Bootstrap-V2 open
-shape shown above. The sample starts with Highlight and a safe Link so Italic,
+shape shown above. Also pass the exact browser-owned shortcut data:
+
+```ts
+import {
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+} from "@breditor/reference-highlight";
+
+const opened = await openBreditorBrowserEditor({
+  // ...the Showcase profile, document, renderer, keyboard, and toolbar options
+  keyboardShortcuts: REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+});
+```
+
+The sample starts with Highlight and a safe Link so Italic,
 Strikethrough, and Code visibly begin inactive. The toolbar has exactly Bold,
 Italic, Strikethrough, Code, Highlight, Link, Clear formatting, Undo, and Redo
 in that order.
+
+The shortcut manifest declares primary+B for Bold, primary+I for Italic,
+primary+Shift+S for Strikethrough, primary+E for Code, primary+Shift+H for
+Highlight, primary+Z for Undo, and both primary+Y and primary+Shift+Z for Redo.
+The host's `keyboard.primaryModifier` chooses `Control` or `Meta`. Link remains
+typed application UI and has no shortcut; Clear formatting is intentionally
+unbound in this reference presentation. Matching toolbar buttons advertise the
+same compiled chords through `aria-keyshortcuts` only while shortcut
+translation is enabled.
 
 `createReferenceShowcaseDocumentJson(text, options)` accepts independent
 `bold`, `italic`, `strikethrough`, `code`, and `highlighted` flags plus the
@@ -266,12 +297,19 @@ command removes every inline format together and cannot preserve a chosen
 subset. It does not provide
 dynamic installation, arbitrary nodes
 or attributes, colors, custom JavaScript/Rust callbacks, arbitrary typed toolbar
-forms, extension keymaps, block code, headings, lists, `beforeinput` rules,
+forms, callback keymaps, key sequences, typed-input shortcuts, block code,
+headings, lists, extension-defined `beforeinput` rules,
 converters, rich paste, or a native/Wasm plugin ABI. The one Link form uses the
 browser's closed string/Boolean field
 vocabulary. The Link href contract validates scalar shape and size; URL safety
 remains a separate browser-owned presentation policy. Reconstruct the editor
 with a newly compiled profile when semantic extensions change.
+
+The Showcase shortcut value is browser presentation, not part of any Rust
+extension manifest. It is fixed for an editor lifetime, addresses only existing
+action-state IDs, and cannot change action preparation, history, replay, or
+durable bytes. See the normative
+[keyboard shortcut contract](../../docs/KEYBOARD_SHORTCUTS.md).
 
 Only a fresh uniform complete map hydrates fields; mixed state has no fieldwise
 values or merge base. Form drafts are not persisted, replayed, or undoable.

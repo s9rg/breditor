@@ -2,17 +2,18 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.10` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.11` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
-nine-control Showcase profile
+nine-control Showcase profile with descriptor-compiled declarative shortcuts
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
 typed projection, DOM renderer, selection bridge, serial command queue,
-native-event router, action-state store, optional toolbar, and optional
-IndexedDB autosave behind one framework-neutral owner.
+native-event router, action-state store, optional toolbar and shortcut
+presentation, and optional IndexedDB autosave behind one framework-neutral
+owner.
 
 The package-root API is intentionally small. Applications receive the editing
 element, immutable status snapshots, subscription, focus, persistence flush
@@ -115,7 +116,8 @@ including `inert` and `aria-disabled`. React or another view
 system must not render children beneath either mount while Breditor owns it.
 Spellcheck defaults to enabled. A custom `scheduleTask` must enqueue its
 callback for a later task, never invoke it inline, and return `void`; it is used
-for native composition settlement and deferred canonical repair.
+for native composition settlement, deferred canonical repair, and keyboard-echo
+expiry.
 
 `initialDocument` is used only when persistence is disabled or the exact
 IndexedDB slot is empty. A valid stored session checkpoint takes precedence and
@@ -125,7 +127,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.10 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.11 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -209,14 +211,25 @@ effective pending/context format set without a standalone history entry. The
 Showcase order is now Bold, Italic, Strikethrough, Code, Highlight, Link, Clear
 formatting, Undo, Redo. The default toolbar remains Bold, Undo, Redo.
 
+Alpha.11 adds a separate browser-only `KeyboardShortcutManifest`. Its
+declarations contain an existing action-state ID and bounded primary-modifier
+physical-letter-code chords, not actions, intents, callbacks, or native events. Startup
+compiles each state through the owned profile descriptor into a matching routed
+no-input intent or exact Undo/Redo direction. That one compiled table drives
+native `keydown` and the generated toolbar's `aria-keyshortcuts`, keeping the
+advertised and executable chord sets identical. The Showcase binds Bold,
+Italic, Strikethrough, Code, Highlight, Undo, and Redo; Link and Clear formatting
+remain unbound. Rust semantics, Wasm ABI 5, profile bootstrap, fingerprints,
+history/replay, and every durable generation are unchanged.
+
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.10` packages:
+exactly matching `0.3.0-alpha.11` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.10 \
-  @breditor/wasm@0.3.0-alpha.10 \
-  @breditor/reference-highlight@0.3.0-alpha.10
+npm install @breditor/browser@0.3.0-alpha.11 \
+  @breditor/wasm@0.3.0-alpha.11 \
+  @breditor/reference-highlight@0.3.0-alpha.11
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -450,7 +463,9 @@ second command.
 The ordinary controller maps native `formatBold` to
 `breditor/format-strong` and native `formatRemove` to
 `breditor/clear-inline-formatting`; generation-bound keyboard echo receipts
-recognize only those exact correlated input types and commands.
+recognize only exact conventional chord/input-type pairs. Arbitrary semantic
+aliases and Meta+Y Redo do not arm a native echo receipt. An unconsumed receipt
+expires at the end of the current task.
 
 Cancelable owned mutations are canceled before queue admission. If cancellation
 cannot be proved, canonical repair is deferred until the browser has had a
@@ -751,7 +766,10 @@ runtime admits only descriptor-matched no-input intents and exact history
 directions; the direct-action shape exists for advanced low-level assembly:
 
 ```ts
-import { createToolbarManifest } from "@breditor/browser";
+import {
+  createKeyboardShortcutManifest,
+  createToolbarManifest,
+} from "@breditor/browser";
 
 const manifest = createToolbarManifest({
   label: "Formatting",
@@ -772,6 +790,15 @@ const manifest = createToolbarManifest({
 
 // Pass this alongside the other required open options.
 const toolbar = { host: toolbarHost, manifest };
+
+const keyboardShortcuts = createKeyboardShortcutManifest({
+  shortcuts: [
+    {
+      stateId: "breditor/control-bold",
+      chords: [{ code: "KeyB", shift: false }],
+    },
+  ],
+});
 ```
 
 The manifest is presentation data, not a JavaScript plugin object. It retains
@@ -784,6 +811,42 @@ It is enabled only when the correlated Rust action-state
 catalog publishes fresh availability. Toolbar focus uses
 the last exact semantic editor selection, and dispatch still requires a fresh
 delivery token.
+
+`keyboardShortcuts` is separate callback-free browser presentation. Each
+declaration addresses one existing state ID and one through four exact
+primary-modifier physical-letter-code chords. Startup derives the executable no-input intent
+or Undo/Redo direction from the owned descriptor; direct action states, typed
+intents, unknown IDs, valued history, and state/intent contract mismatches fail
+the complete open with
+`browser_editor.keyboard_shortcut_profile_invalid`. Omitting the option compiles
+only the selected profile's compatible subset of the default Bold/Undo/Redo
+manifest. An explicitly supplied manifest is exact and gains no implicit
+bindings.
+
+The manifest accepts at most 43 unique state declarations, 44 chords total, and
+four aliases per state. A chord is one exact physical `KeyA` through `KeyZ`
+code plus the host-selected primary modifier and an exact Shift Boolean. A/C/V/X remain
+reserved for Select All/clipboard with either Shift value. Primary+B, primary+Y,
+primary+Z, and primary+Shift+Z can be omitted but cannot be rebound away from
+their exact core states. Duplicate states or chords fail the whole manifest.
+Alt, the secondary primary modifier, sequences, punctuation, function keys,
+callbacks, typed values, and runtime replacement are not admitted.
+
+With shortcut translation enabled, the runtime projects every compiled binding
+onto a matching generated toolbar control as `aria-keyshortcuts`, using
+`Control` or `Meta`, optional `Shift`, and an uppercase letter. Aliases are
+space-separated. Disabled shortcut policy and unbound controls omit the
+attribute. The same compiled lookup handles the event, so ARIA metadata never
+registers behavior by itself. No mutation observer immediately repairs or
+faults attribute drift; the next guarded toolbar interaction or an explicit
+canonical-DOM validation detects it, while keyboard execution never consults
+the attribute. Intent repeat is suppressed and uses `closeBefore`; Undo/Redo
+repeat is allowed. Matching uses only the exact physical `KeyboardEvent.code`;
+generated `KeyboardEvent.key` text does not select a binding. Codes identify US
+physical-key positions. Input devices without conforming exact codes may not
+invoke shortcuts, and browser/OS reservation conflicts remain possible. The
+exact boundary is in
+[`KEYBOARD_SHORTCUTS.md`](KEYBOARD_SHORTCUTS.md).
 
 An `inlineFormatForm` must correlate its `formatKind`, `intentId`, and
 `stateId` with one ABI-5 set-surface descriptor and exactly cover that format's
@@ -815,11 +878,13 @@ Adding real behavior therefore proceeds from the core outward:
 3. Supply a complete render recipe for the admitted format. Property-free
    formats use an inert wrapper; the sole property-aware choice is the exact
    browser-owned `safeLinkV1` policy.
-4. Supply the manifest at editor startup and style the generated native
+4. Supply the toolbar, rendering, and optional shortcut manifests at editor
+   startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
 There is no optional/integer form field, partial property patch, arbitrary
-widget, extension keymap or `beforeinput` rule, runtime JavaScript action
+widget, callback or sequence keymap, extension-defined `beforeinput` rule,
+runtime JavaScript action
 registration, arbitrary callback command, dynamic manifest replacement, plugin
 unload, custom node renderer, or
 stable third-party Wasm plugin ABI in the supported surface. Direct concrete
@@ -947,6 +1012,15 @@ properties, cross-paragraph selection, one-step undo, and persistence. It does
 not add per-format aggregate policy, exclusions, extension shortcuts, block
 code, headings, lists, rich paste, runtime plugins, or a broader browser or
 assistive-technology support claim.
+
+Alpha.11 supplies the Showcase's separate shortcut presentation and exercises
+Bold and its extension-owned Italic, Strikethrough, Code, and Highlight states,
+plus Undo and both Redo aliases, through genuine primary-modifier keyboard
+events in Chromium, Firefox, and WebKit. The same gate checks exact generated
+`aria-keyshortcuts`. This does not add callback
+keymaps, typed-input shortcuts, key sequences, extension-defined `beforeinput`,
+mobile/IME support, or an assistive-technology conformance claim, and it changes
+no Rust, Wasm ABI, history/replay, or durable contract.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

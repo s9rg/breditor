@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.10` Showcase source
+`0.2.0` extension surface, and the `0.3.0-alpha.11` Showcase source
 checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
@@ -125,6 +125,18 @@ standalone history entry. The default Bold/Undo/Redo manifest stays unchanged,
 while the Showcase now has nine controls with Clear formatting immediately
 before Undo and Redo.
 
+The unpublished `0.3.0-alpha.11` source package adds a separate browser-owned,
+callback-free keyboard shortcut manifest. Each declaration names an existing
+Rust-owned action-state identity and one or more primary-modifier physical-code chords;
+startup compiles that state through the owned profile descriptor into either an
+exact no-input semantic intent or Undo/Redo history work. The same compiled
+table routes `keydown` and supplies truthful `aria-keyshortcuts` on generated
+toolbar controls. The Showcase declares shortcuts for Bold, Italic,
+Strikethrough, Code, Highlight, Undo, and Redo; typed Link and Clear formatting
+remain unbound there. This adds no Rust action, Wasm ABI member, bootstrap or
+descriptor field, schema fingerprint, document, operation, history, replay,
+checkpoint, or persistence generation.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -138,7 +150,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.10 @breditor/wasm@0.3.0-alpha.10
+npm install @breditor/browser@0.3.0-alpha.11 @breditor/wasm@0.3.0-alpha.11
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -237,10 +249,59 @@ The keyboard policy is explicit and platform-independent.
 `structuralFallback` may translate those three keys at `keydown`; text is never
 derived from `keydown`. `primaryModifier` chooses `control` or `meta` for
 shortcuts, and `shortcuts` enables or disables Breditor's shortcut translation.
-When shortcuts are enabled, primary-modifier+B and native `beforeinput`
-`formatBold` both invoke `breditor/format-strong`. Native `formatRemove`
-invokes `breditor/clear-inline-formatting`. None of these supported browser
-routes hard-codes a concrete action.
+When `keyboardShortcuts` is omitted, the runtime compiles the compatible subset
+of the default Bold, Undo, and Redo declarations against the selected profile.
+An explicit owned manifest is exact: every declared state must compile or
+startup returns `browser_editor.keyboard_shortcut_profile_invalid`. Native
+`beforeinput` `formatBold` still invokes `breditor/format-strong`, and native
+`formatRemove` invokes `breditor/clear-inline-formatting`. None of these
+supported browser routes hard-codes a concrete action.
+
+Applications can supply browser presentation data without duplicating an action
+or intent identity:
+
+```ts
+import { createKeyboardShortcutManifest } from "@breditor/browser";
+
+const keyboardShortcuts = createKeyboardShortcutManifest({
+  shortcuts: [
+    {
+      stateId: "breditor/control-bold",
+      chords: [{ code: "KeyB", shift: false }],
+    },
+    {
+      stateId: "example/emphasis-control",
+      chords: [{ code: "KeyI", shift: false }],
+    },
+  ],
+});
+
+// Pass `keyboardShortcuts` beside `keyboard` at editor startup.
+```
+
+The exact declaration language is one physical `KeyA` through `KeyZ` code plus
+the host-selected primary modifier and optional Shift. It admits at most 43 unique
+state declarations, four aliases per state, and 44 chords total. State IDs use
+the same qualified 128-ASCII-character grammar. Select All and clipboard keys
+A/C/V/X are reserved with or without Shift. The core chords primary+B,
+primary+Y, primary+Z, and primary+Shift+Z may be omitted but cannot be rebound
+to a different state. Duplicate states or chords reject the whole manifest;
+the copied result is canonical and deeply frozen.
+
+Only a descriptor-declared routed no-input intent with a matching state
+contract, or exact stateless/value-free Undo or Redo state, is executable from
+this surface. Direct action states, typed intents, mismatched routed-state
+contracts, nonstateless or valued history states, and unknown IDs fail startup.
+Intent auto-repeat is suppressed and every admitted
+intent chord requests `closeBefore`; history repeat remains supported. Alt,
+AltGraph, the secondary primary modifier, dead/process/composition keys,
+sequences, punctuation, function keys, typed-input launchers, callbacks, and
+runtime manifest replacement are not shortcut declarations. Runtime matching
+uses only exact `KeyboardEvent.code`; generated `KeyboardEvent.key` text does
+not select a binding. Codes name US physical-key positions, devices without a
+conforming exact code may not invoke them, and browser/OS conflicts remain
+possible. See the normative
+[keyboard shortcut contract](../../docs/KEYBOARD_SHORTCUTS.md).
 
 The editing host is a connected, empty HTML `article`, `aside`, `div`, `footer`,
 `header`, `main`, `nav`, or `section` in the owner Document's light DOM.
@@ -253,8 +314,9 @@ Its optional case-insensitive role tokens are limited to
 also accepted). Both remain application-owned mounts with no framework-rendered
 children during the editor lifetime. `spellcheck` defaults to `true`. A custom
 `scheduleTask` must enqueue its callback for a later task and return `void`;
-calling it inline is invalid. An optional `AbortSignal` cancels startup only and
-does not dispose an editor that has already opened.
+calling it inline is invalid. It drives composition settlement, deferred
+canonical repair, and keyboard-echo expiry. An optional `AbortSignal` cancels
+startup only and does not dispose an editor that has already opened.
 
 Four root-owned styling hooks are stable in `0.1.x`. The application editing
 host carries `data-breditor-editor-root=""` for the successful owner lifetime,
@@ -644,6 +706,14 @@ contract. A direct state change is detected at the next guarded base check but
 cannot undo an already completed clipboard side effect. The package-root
 high-level runtime encapsulates these pieces for ordinary consumers.
 
+That host-trusted rule also covers shortcut correlation. The package-root
+editor and its integrated event router require a compiled shortcut table bound
+to the adapter's exact owned profile descriptor. A directly constructed
+advanced event controller or toolbar has no engine descriptor to compare, so
+its caller must compile and share one table from the descriptor used by the
+queue, action-state store, and toolbar manifest. Cross-profile advanced wiring
+is unsupported even though unknown semantic work still fails closed in Rust.
+
 ## Action state and toolbar
 
 The observation-owning command adapter exposes a handle-free action-state read
@@ -683,9 +753,9 @@ action IDs are at most 128 lowercase ASCII characters in
 Optional groups are valid Unicode, trimmed, nonempty, control-free, and at most
 64 UTF-16 code units / 256 UTF-8 bytes. Nonempty string inputs are valid Unicode
 and at most 65,536 UTF-16 code units / 65,536 UTF-8 bytes. The package root
-exports these bounds. Accessors and inherited fields are not executed. Shortcut descriptions
-remain out of the `0.1.0` schema until the runtime can register and verify the
-behavior they advertise.
+exports these bounds. Accessors and inherited fields are not executed. Alpha.11
+deliberately keeps shortcut declarations in their own root-exported manifest
+rather than adding them to the toolbar schema or Rust profile.
 
 The toolbar creates one isolated owned root inside a validated non-interactive
 mount. Native buttons expose only fresh availability and pressed/mixed state,
@@ -708,7 +778,7 @@ persisted, replayed, or undoable. The exact surface and
 threat model are in
 [`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
-A custom manifest does not register behavior. In the supported Alpha.10 editor,
+A custom manifest does not register behavior. In the supported Alpha.11 editor,
 startup accepts an intent button only when its state ID names a descriptor
 entry routed from the same declared no-input intent, its tracked/stateless
 activation matches, and neither contract exposes a value. History buttons must
@@ -716,6 +786,30 @@ name the descriptor's exact Undo or Redo source. A mismatch fails startup
 before a toolbar becomes live. The same manifest parser still understands
 concrete action commands for the advanced low-level toolbar, but the high-level
 runtime rejects those controls as policy bypasses.
+
+Alpha.11 similarly compiles an optional `KeyboardShortcutManifest` against the
+same owned profile descriptor before installing native listeners. A declaration
+contains a state ID and chords only. The compiler derives its no-input intent or
+history direction, so a shortcut cannot independently cross-wire the toolbar's
+action, intent, and state contracts. When shortcut translation is enabled, the
+toolbar projects the same compiled aliases onto the matching generated button
+as `aria-keyshortcuts` using `Control` or `Meta` and optional `Shift`; multiple
+aliases are space-separated. Disabled shortcut policy and unbound controls omit
+the attribute. The ARIA value is descriptive metadata, not execution authority.
+No mutation observer immediately repairs or faults attribute drift; the next
+guarded toolbar interaction or an explicit canonical-DOM validation detects it,
+and keyboard execution never consults the attribute.
+
+Shortcut matching uses only an exact physical `KeyboardEvent.code` from `KeyA`
+through `KeyZ`; generated `KeyboardEvent.key` text never chooses or rejects a
+binding. The codes follow US physical positions. A virtual keyboard or
+assistive input device without a conforming code may not invoke the shortcut,
+and browser/OS reservation conflicts remain possible. Native echo receipts are armed only
+for the conventional primary+B Bold,
+primary+Z Undo, primary+Shift+Z Redo, and Control+Y Redo pairs. Meta+Y and
+arbitrary aliases do not arm one. A receipt with no matching `beforeinput`
+expires at the end of the current task and cannot suppress a later independent
+event.
 
 An inline-format form is admitted only when its format/intent/state triple
 matches an ABI-5 set-surface descriptor and its field types and UTF-8 bounds
@@ -809,10 +903,16 @@ backpressure; terminal adapter loss pauses autosave. See
   `inlineFormatForm` supports
   required URL-presented strings and required Booleans for exact complete-map
   set/remove only. There are no optional/integer fields, partial patches,
-  arbitrary widgets, menus/selects, extension keymaps or `beforeinput` rules,
-  dynamic
+  arbitrary widgets, menus/selects, callback keymaps or extension-defined
+  `beforeinput` rules, dynamic
   manifest replacement, JavaScript action/catalog registration, or packaged
   React wrapper.
+- Extension-declared shortcuts are limited to the separate bounded
+  state-addressed physical-letter-code manifest described above. They cannot open the
+  typed Link form, carry input, invoke direct actions, use Alt, define key
+  sequences, override clipboard/Select All, or change while an editor is live.
+  Unsupported native formatting chords are blocked rather than allowed to
+  mutate `contenteditable` outside the Rust model.
 - Current property state compares complete maps. It has no fieldwise mixed
   values or merge base. Observations and drafts are not persisted, replayed, or
   undoable. Each generated setter and their collective catalog worst case are

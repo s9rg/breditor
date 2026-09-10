@@ -1,9 +1,10 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.10 source checkpoint retains
-exact uniform-property hydration and the additive Showcase composition proof,
-then adds the Rust-owned Clear formatting route described below.
+accessibility gate passed; the unpublished alpha.11 source checkpoint retains
+exact uniform-property hydration, the additive Showcase composition proof, and
+the Rust-owned Clear formatting route, then adds descriptor-compiled declarative
+shortcuts with truthful toolbar `aria-keyshortcuts` described below.
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -99,6 +100,29 @@ assertions also cover the stateless enabled/disabled presentation and native
 `formatRemove` routing; they do not broaden the desktop, mobile, IME,
 screen-reader, or WCAG-conformance claim.
 
+Alpha.11 passes the package-owned Showcase shortcut manifest to the public
+runtime in the Chromium, Firefox, and WebKit harness. The gate checks exact
+`Control+B`, `Control+I`, `Control+Shift+S`, `Control+E`, `Control+Shift+H`,
+`Control+Z`, and dual Redo ARIA declarations; it then selects text and executes
+Bold, Italic, Strikethrough, Code, Highlight, Undo, and both Redo aliases through
+Playwright's genuine primary-modifier keyboard path. The React demo uses the
+same exported manifest. Unit and browser-owner gates additionally cover exact
+physical `KeyboardEvent.code` and modifier matching, independence from
+generated `KeyboardEvent.key` text, repeat policy, disabled shortcuts,
+hostile/forged manifests,
+profile mismatch, and ARIA omission/drift detection at guarded toolbar
+interactions and explicit canonical-DOM validation. No mutation observer faults
+or repairs ARIA drift immediately.
+
+This is evidence for the bounded physical-letter contract, not arbitrary input
+hardware or layouts. Only an exact `KeyboardEvent.code` from `KeyA` through
+`KeyZ` selects a binding; generated `key` text does not. Those codes identify
+US physical-key positions. Virtual keyboards and assistive devices that do not
+emit a conforming code may not invoke a shortcut, and browser or operating-
+system reservations can intercept a chord. The tests do not establish
+Alt/AltGraph, multi-key sequence, typed-input shortcut, operating-system IME,
+screen-reader announcement, mobile, or WCAG-conformance support.
+
 Run the gate after generating the three public packages:
 
 ```sh
@@ -156,6 +180,12 @@ it can cover non-BMP payloads deterministically. The separate ASCII scenario
 uses Playwright's keyboard path for typing, Backspace, and Delete in every
 engine. Neither is evidence for arbitrary hardware keyboards, mobile virtual
 keyboards, autocorrect, dead-key layouts, or platform text services.
+
+The Alpha.11 primary-modifier scenario uses Playwright's desktop keyboard path
+in all three engines and verifies the resulting semantic intent/history work.
+It does not prove that every keyboard layout, remapping tool, browser-reserved
+shortcut, or assistive technology will deliver the same event sequence. Hosts
+must choose `control` or `meta`; Breditor does not sniff the operating system.
 
 The composition scenario exercises the complete native-event/DOM-settlement
 path in all three desktop engines, but synthetic composition cannot reproduce

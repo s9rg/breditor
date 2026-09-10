@@ -275,6 +275,10 @@ const CONTENT_READ_PORTS = new WeakMap<
   BreditorWasmCommandAdapter,
   Readonly<WasmContentReadPorts>
 >();
+const PROFILE_DESCRIPTORS = new WeakMap<
+  BreditorWasmCommandAdapter,
+  BrowserCompiledProfileDescriptor
+>();
 
 /**
  * Retrieves the constructor-minted content ports without consulting replaceable
@@ -285,6 +289,13 @@ export function contentReadPortsForAdapter(
   adapter: BreditorWasmCommandAdapter,
 ): Readonly<WasmContentReadPorts> | undefined {
   return CONTENT_READ_PORTS.get(adapter);
+}
+
+/** Retrieves the exact descriptor retained by one constructor-minted adapter. @internal */
+export function profileDescriptorForAdapter(
+  adapter: BreditorWasmCommandAdapter,
+): BrowserCompiledProfileDescriptor | undefined {
+  return PROFILE_DESCRIPTORS.get(adapter);
 }
 
 /** Synchronous listener for an adopted commit; failures are contained. */
@@ -610,6 +621,7 @@ export class BreditorWasmCommandAdapter {
         plainText: this.#plainTextReadPort,
       }),
     );
+    PROFILE_DESCRIPTORS.set(this, this.#profileDescriptor);
   }
 
   /** Exact bridge which event admission must share with this adapter. */

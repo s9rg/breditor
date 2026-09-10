@@ -265,6 +265,14 @@ built-in controls plus 255 generated toggles and 255 generated setters. No AST,
 operation, Profile Bootstrap V2, schema-fingerprint, Wasm ABI 5, or durable
 codec generation changes.
 
+The unpublished `0.3.0-alpha.11` source checkpoint changes no Rust contract.
+Its declarative keyboard-shortcut manifest is a browser-only presentation and
+input-routing layer that targets already compiled action-state descriptors.
+Shortcut declarations contain no callbacks, executable Rust metadata, or
+durable editor state. They do not change action admission, transactions,
+history, replay, document bytes, schema fingerprints, Profile Bootstrap V2, or
+Wasm ABI 5.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

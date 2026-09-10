@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.10
+npm install @breditor/wasm@0.3.0-alpha.11
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.10
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.11
 browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
@@ -46,7 +46,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `5` for this unpublished alpha.10 source checkpoint.
+with ABI generation `5` for this unpublished alpha.11 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -163,9 +163,17 @@ collapsed-caret transition, exact undo/redo, and Session-V3 replay are all
 Rust-owned. The full catalog reader now admits 514 state entries; one toolbar
 manifest remains capped at 64 controls.
 
-Alpha.10 does not yet provide format exclusions, extension keyboard shortcuts,
-block code, headings or lists, rich paste, or runtime plugin loading. Those
-remain explicit future capabilities rather than ABI changes.
+`0.3.0-alpha.11` retains ABI 5 and changes no Rust or generated Wasm member.
+Its descriptor-compiled keyboard shortcut manifest, native-event routing, and
+`aria-keyshortcuts` projection are browser-only presentation policy. Shortcut
+activation still reaches the existing no-input intent or history entry points;
+the Rust-owned transaction, selection, history, and replay contracts are
+unchanged.
+
+Alpha.11 does not yet provide format exclusions, block code, headings or
+lists, rich paste, chord sequences, runtime keymap replacement, or runtime
+plugin loading. Those remain explicit future capabilities rather than ABI
+changes.
 
 ## Reproducible build
 

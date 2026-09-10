@@ -19,6 +19,7 @@ import {
 } from "@breditor/browser";
 import {
   REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
   REFERENCE_SHOWCASE_RENDER_MANIFEST,
   REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
   REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
@@ -360,6 +361,7 @@ export const BreditorEditor = forwardRef<
             formatVersion: 2,
           },
           rendering: REFERENCE_SHOWCASE_RENDER_MANIFEST,
+          keyboardShortcuts: REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
           keyboard: {
             editing: "beforeinputPrimary",
             primaryModifier,
