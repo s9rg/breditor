@@ -69,6 +69,7 @@ export interface ToolbarActionStateEntry {
   readonly activation:
     "stateless" | "inactive" | "active" | "mixed" | undefined;
   readonly reasonCode?: string | undefined;
+  readonly value?: unknown;
 }
 
 /** Complete state read model needed by a toolbar refresh. */
@@ -330,6 +331,7 @@ interface NormalizedActionState {
   readonly availability: ToolbarActionStateEntry["availability"];
   readonly activation: ToolbarActionStateEntry["activation"];
   readonly reasonCode: string | undefined;
+  readonly value: unknown;
 }
 
 interface ToolbarSubscriberSlot {
@@ -679,6 +681,7 @@ export class BreditorToolbar {
             this.#dispatchInlineFormatForm(record, operation, inputJson),
           (callback) => this.#guardEvent(callback),
           (opening) => this.#closeOtherForms(opening),
+          this.#refreshFromStore,
         );
         record.form = form;
         this.#forms.push(form);
@@ -1197,6 +1200,11 @@ function normalizeActionStates(
     const availability = entry["availability"];
     const activation = entry["activation"];
     const reasonCode = entry["reasonCode"];
+    const valueDescriptor = Object.getOwnPropertyDescriptor(entry, "value");
+    if (valueDescriptor !== undefined && !("value" in valueDescriptor)) {
+      return null;
+    }
+    const value = valueDescriptor?.value;
     if (
       typeof id !== "string" ||
       id.length > 128 ||
@@ -1213,7 +1221,7 @@ function normalizeActionStates(
     }
     normalized.set(
       id,
-      Object.freeze({ availability, activation, reasonCode }),
+      Object.freeze({ availability, activation, reasonCode, value }),
     );
   }
   return normalized;

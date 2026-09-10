@@ -5,6 +5,7 @@ mod delete_forward;
 mod delete_selection;
 mod format_strong;
 mod grapheme_boundary;
+mod inline_format_properties_state;
 mod insert_paragraph_break;
 mod insert_plain_text;
 mod insert_text;
@@ -23,6 +24,10 @@ pub use format_strong::{
     format_strong_intent_id,
 };
 pub use grapheme_boundary::GRAPHEME_UNICODE_VERSION;
+pub use inline_format_properties_state::{
+    INLINE_FORMAT_PROPERTIES_STATE_CONTRACT_NAME, INLINE_FORMAT_PROPERTIES_STATE_VERSION,
+    inline_format_properties_state_contract,
+};
 pub use insert_paragraph_break::{InsertParagraphBreakAction, insert_paragraph_break_action_id};
 pub use insert_plain_text::{
     INSERT_PLAIN_TEXT_ACTION_NAME, INSERT_PLAIN_TEXT_EMPTY_INPUT_CODE,

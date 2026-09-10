@@ -1,10 +1,10 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.7` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.8` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
-advances the process-local transport to ABI 5, and adds one closed browser
-typed-form declaration described below
+uses process-local ABI 5, and adds exact current-property observation and
+pristine hydration to the closed browser typed-form declaration described below
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -443,17 +443,49 @@ not grant navigation safety; `safeLinkV1` owns that policy. Same-realm
 JavaScript is trusted rather than sandboxed. The normative contract is
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
+## `0.3.0-alpha.8` exact typed-state boundary
+
+Alpha.8 changes each generated property-aware set state from value-free to the
+exact independently typed `breditor/set-inline-format-input@1` output contract.
+The serialized name and version intentionally match the input contract because
+a uniform output is its canonical round-trippable `set` branch. Rust still
+models input and output versions with distinct types.
+
+Activation remains input-relative to the fixed Remove query. Value `unset`
+means absence; `uniform` means all relevant runs carry the same complete map;
+and `mixed` means partial presence or differing complete maps. Therefore active
+may pair with uniform or mixed, while activation mixed necessarily has value
+mixed. A collapsed selection observes effective pending/context formatting.
+This is exact whole-map comparison, not a fieldwise merge protocol.
+
+The browser admits only the descriptor-correlated contract and exact canonical
+map. It hydrates pristine fields from uniform state, uses defaults for unset or
+mixed, preserves dirty drafts across refresh and rejection, and discards them
+on completion or close before hydrating again from authoritative state. URL
+strings round-trip exactly and inertly; only `safeLinkV1` owns parsing,
+normalization, and navigation policy.
+
+This process-local observation is not serialized, undoable, replayed, or
+persisted, and form drafts remain equally ephemeral. Profile compilation proves
+per generated setter that every schema-valid map fits the action-value envelope
+and proves the canonical generated-setter catalog's collective worst case fits
+the state-batch value-count and text-byte budgets. The first canonical
+declaration that crosses a bound is rejected. Alpha.8 adds no Wasm member or
+durable field, so ABI 5, Bootstrap V2, fingerprints, Document V2, and Session/
+State/Commit V3 remain unchanged.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 reports ABI `5`. Startup checks both the exact
+pairs report ABI `4`; alpha.7 and alpha.8 report ABI `5`. Startup checks both
+the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.7 source configuration is tested as an exactly matching browser,
+The alpha.8 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -469,7 +501,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7:
+form remains supported throughout `0.1.x`, `0.2.x`, alpha.7, and alpha.8:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

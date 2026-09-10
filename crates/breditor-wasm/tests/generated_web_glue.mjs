@@ -259,6 +259,26 @@ function takeString(result) {
   return value;
 }
 
+function readCorrelatedActionStates(engine, observation, generation, descriptor) {
+  const read = browser.consumeWasmActionStates(
+    {
+      lineage: observation.snapshotLineage,
+      revision: observation.snapshotRevision,
+    },
+    engine.actionStates(observation),
+    generation,
+    [observation, engine],
+  );
+  assert.equal(read.ok, true);
+  const correlated = browser.correlateBrowserActionStatesWithProfileDescriptor(
+    descriptor,
+    read,
+  );
+  assert.equal(correlated.ok, true);
+  assert.strictEqual(correlated, read);
+  return correlated;
+}
+
 function assertCommandError(result, expectedCode) {
   assert.equal(result.status, "error");
   assert.equal(result.observation(), undefined);
@@ -664,6 +684,23 @@ assert.equal(
   typedDescriptorView.inlineFormatSetActionStateId(0),
   "example/link-presence",
 );
+assert.equal(typedDescriptorView.intentId(1), "example/set-link-intent");
+assert.equal(
+  typedDescriptorView.intentInputContractName(1),
+  "breditor/set-inline-format-input",
+);
+assert.equal(typedDescriptorView.intentInputContractVersion(1), 1);
+assert.equal(
+  typedDescriptorView.intentValueContractName(1),
+  "breditor/set-inline-format-input",
+);
+assert.equal(typedDescriptorView.intentValueContractVersion(1), 1);
+assert.equal(typedDescriptorView.actionStateId(3), "example/link-presence");
+assert.equal(
+  typedDescriptorView.actionStateValueContractName(3),
+  "breditor/set-inline-format-input",
+);
+assert.equal(typedDescriptorView.actionStateValueContractVersion(3), 1);
 assert.equal(typedDescriptorView.inlineFormatSetFormatKind(1), undefined);
 assert.equal(typedDescriptorView.inlineFormatSetIntentId(1), undefined);
 assert.equal(typedDescriptorView.inlineFormatSetActionStateId(1), undefined);
@@ -750,6 +787,26 @@ const typedSelected = typedSelectionResult.observation();
 typedSelectionResult.free();
 typedInitial.free();
 
+const typedUnsetRead = readCorrelatedActionStates(
+  typedEngine,
+  typedSelected,
+  typedGeneration,
+  typedDescriptor,
+);
+assert.equal(typedUnsetRead.kind, "full");
+const typedUnsetState = typedUnsetRead.snapshot.entries.find(
+  (entry) => entry.id === "example/link-presence",
+);
+assert.equal(typedUnsetState.availability, "blocked");
+assert.equal(typedUnsetState.activation, "inactive");
+assert.equal(typedUnsetState.reasonCode, "breditor/inline-format-unchanged");
+assert.equal(typedUnsetState.value.status, "unset");
+assert.equal(
+  typedUnsetState.value.contract.name,
+  "breditor/set-inline-format-input",
+);
+assert.equal(typedUnsetState.value.contract.version, 1);
+
 const duplicateTypedIntent = typedEngine.executeTypedIntentJson(
   typedSelected,
   "example/set-link-intent",
@@ -789,6 +846,27 @@ const typedActionCommitted = typedAction.observation();
 typedAction.free();
 typedSelected.free();
 
+const typedUniformRead = readCorrelatedActionStates(
+  typedEngine,
+  typedActionCommitted,
+  typedGeneration,
+  typedDescriptor,
+);
+assert.equal(typedUniformRead.kind, "delta");
+const typedUniformState = typedUniformRead.snapshot.entries.find(
+  (entry) => entry.id === "example/link-presence",
+);
+assert.equal(typedUniformState.availability, "enabled");
+assert.equal(typedUniformState.activation, "active");
+assert.equal(typedUniformState.reasonCode, undefined);
+assert.equal(typedUniformState.value.status, "uniform");
+assert.equal(
+  typedUniformState.value.contract.name,
+  "breditor/set-inline-format-input",
+);
+assert.equal(typedUniformState.value.contract.version, 1);
+assert.equal(JSON.stringify(typedUniformState.value.value), typedActionInput);
+
 const typedIntentInput = JSON.stringify({
   operation: "set",
   properties: [
@@ -811,6 +889,22 @@ const typedCommitted = typedIntent.observation();
 typedIntent.free();
 typedActionCommitted.free();
 assert.equal(JSON.parse(takeString(typedEngine.stateJson())).formatVersion, 3);
+
+const typedUpdatedUniformRead = readCorrelatedActionStates(
+  typedEngine,
+  typedCommitted,
+  typedGeneration,
+  typedDescriptor,
+);
+assert.equal(typedUpdatedUniformRead.kind, "delta");
+const typedUpdatedUniformState = typedUpdatedUniformRead.snapshot.entries.find(
+  (entry) => entry.id === "example/link-presence",
+);
+assert.equal(typedUpdatedUniformState.value.status, "uniform");
+assert.equal(
+  JSON.stringify(typedUpdatedUniformState.value.value),
+  typedIntentInput,
+);
 
 const typedProjectionResult = typedEngine.projection(typedCommitted);
 const typedProjectionView = typedProjectionResult.takeProjection();
@@ -875,9 +969,79 @@ const typedRestored = typedRestoreResult.takeEngine();
 typedRestoreResult.free();
 assert.equal(takeString(typedRestored.sessionCheckpointJson()), typedCheckpoint);
 
+const typedMixedEngineResult = typedProfile.createEngineFromDocumentJsonV3(
+  "web-glue-typed-mixed",
+  typedDocumentJson,
+  10,
+);
+const typedMixedEngine = typedMixedEngineResult.takeEngine();
+typedMixedEngineResult.free();
+const typedMixedInitial = typedMixedEngine.observation();
+const typedMixedPartialSelection = typedMixedEngine.setRangeSelection(
+  typedMixedInitial,
+  "text",
+  2,
+  0,
+  "before",
+  "text",
+  2,
+  1,
+  "after",
+);
+assert.equal(typedMixedPartialSelection.status, "committed");
+const typedMixedPartialSelected = typedMixedPartialSelection.observation();
+typedMixedPartialSelection.free();
+typedMixedInitial.free();
+const typedMixedSet = typedMixedEngine.executeTypedIntentJson(
+  typedMixedPartialSelected,
+  "example/set-link-intent",
+  typedIntentInput,
+  false,
+);
+assert.equal(typedMixedSet.status, "committed");
+const typedMixedAfterSet = typedMixedSet.observation();
+typedMixedSet.free();
+typedMixedPartialSelected.free();
+const typedMixedFullSelection = typedMixedEngine.setRangeSelection(
+  typedMixedAfterSet,
+  "text",
+  2,
+  0,
+  "before",
+  "text",
+  3,
+  2,
+  "after",
+);
+assert.equal(typedMixedFullSelection.status, "committed");
+const typedMixedSelected = typedMixedFullSelection.observation();
+typedMixedFullSelection.free();
+typedMixedAfterSet.free();
+const typedMixedRead = readCorrelatedActionStates(
+  typedMixedEngine,
+  typedMixedSelected,
+  typedGeneration,
+  typedDescriptor,
+);
+assert.equal(typedMixedRead.kind, "full");
+const typedMixedState = typedMixedRead.snapshot.entries.find(
+  (entry) => entry.id === "example/link-presence",
+);
+assert.equal(typedMixedState.availability, "enabled");
+assert.equal(typedMixedState.activation, "mixed");
+assert.equal(typedMixedState.reasonCode, undefined);
+assert.equal(typedMixedState.value.status, "mixed");
+assert.equal(
+  typedMixedState.value.contract.name,
+  "breditor/set-inline-format-input",
+);
+assert.equal(typedMixedState.value.contract.version, 1);
+
 typedRedone.free();
 typedCommitted.free();
 typedRestored.free();
+typedMixedSelected.free();
+typedMixedEngine.free();
 typedEngine.free();
 typedGeneration.free();
 typedProfile.free();

@@ -2,9 +2,10 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.7` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.8` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
-paragraph-structure path plus one closed native typed Link form
+paragraph-structure path plus one closed native typed Link form with exact
+current-property hydration
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -123,7 +124,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.7 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.8 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -167,14 +168,29 @@ the toolbar root. Rust supplies only the canonical set-surface correlation, and
 `safeLinkV1` remains solely responsible for navigation safety. See
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
+Alpha.8 requires that form's routed state to expose the independently typed
+exact `breditor/set-inline-format-input@1` output contract. `unset` means no
+target format, `uniform` carries the canonical set branch for one exact
+complete map, and `mixed` means partial presence or differing complete maps.
+Activation remains the input-relative fixed-Remove query. The browser rejects
+impossible activation/value pairs and any noncanonical or schema-drifted
+uniform value before it can replace last-good state.
+
+A pristine form hydrates a uniform value exactly; unset and mixed use the
+declaration defaults. Refreshes preserve a dirty draft, rejected dispatch keeps
+it, and completed dispatch discards it and hydrates from authoritative post-
+command state. Close/reopen also resets from fresh state. Hydrated URL values
+remain exact inert strings; only `safeLinkV1` may parse or normalize one for
+navigation. Alpha.8 adds no Wasm method and retains ABI 5.
+
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.7` packages:
+exactly matching `0.3.0-alpha.8` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.7 \
-  @breditor/wasm@0.3.0-alpha.7 \
-  @breditor/reference-highlight@0.3.0-alpha.7
+npm install @breditor/browser@0.3.0-alpha.8 \
+  @breditor/wasm@0.3.0-alpha.8 \
+  @breditor/reference-highlight@0.3.0-alpha.8
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -280,6 +296,10 @@ ordered lexical IDs equal the compiled descriptor and every resolved entry
 satisfies the declared tracked/stateless and exact value contract. A missing,
 extra, reordered, duplicate, substituted, or contract-drifted catalog becomes a
 failed refresh; the store retains but marks its prior last-good value stale.
+Alpha.8 additionally validates property-aware set values against the compiled
+format: inactive requires unset; uniform requires active and one exact complete
+canonical set map; value mixed allows either active with differing maps or
+mixed with partial presence. Any other pair fails the complete refresh.
 `subscribe(listener)` is compatible with external-store
 adapters, retains at most 64 distinct listeners, coalesces ordinary updates on
 a microtask, deduplicates repeat registration of the same function for
@@ -478,6 +498,16 @@ same synchronous queue, request a history close before an effective mutation,
 and rely on fresh routed presence state for availability. UI drafts are
 cleared on close or completed delivery, are not replay input, and are neither
 hydrated from selection values nor persisted.
+
+The preceding paragraph records alpha.7 behavior. Alpha.8 adds a strictly
+correlated read path: Rust derives unset, uniform complete-map, or mixed
+property state from the current semantic selection. The browser hydrates only
+pristine fields, never overwrites dirty edits, and resets a completed or closed
+form from the latest authoritative state. Its URL control is a text input with
+a URL input-mode hint, retaining surrounding whitespace; CR/LF-bearing state
+makes the single-line form unavailable instead of being normalized.
+Observation and drafts remain outside operation, undo/redo, replay, and
+persistence contracts.
 
 No ProseMirror, Lexical, Tiptap, CKEditor, DOM-operation, or plugin protocol is
 implemented. Those projects are design references only; Breditor's AST,
@@ -713,8 +743,10 @@ const toolbar = { host: toolbarHost, manifest };
 The manifest is presentation data, not a JavaScript plugin object. It retains
 only copied, frozen primitive fields and drops executable or extra properties.
 A supported control is installed only when its `stateId`, intent/history
-source, activation, and absent value contract exactly match the compiled
-profile descriptor. It is enabled only when the correlated Rust action-state
+source, activation, and declared value contract exactly match the compiled
+profile descriptor. Ordinary buttons require absent values; an Alpha.8 typed
+form requires the exact `breditor/set-inline-format-input@1` output contract.
+It is enabled only when the correlated Rust action-state
 catalog publishes fresh availability. Toolbar focus uses
 the last exact semantic editor selection, and dispatch still requires a fresh
 delivery token.
@@ -726,7 +758,10 @@ with exact profile bounds and a Boolean whose default is `false`. Values are
 copied from an exact plain property-name-keyed record; Apply serializes a
 complete lexically ordered property map and Remove serializes only
 `{"operation":"remove"}`. The runtime never treats URL presentation as URL
-sanitization.
+sanitization. On a pristine form, a strictly correlated uniform state hydrates
+the exact complete map; unset and mixed use defaults. Dirty input wins over
+later observations and survives rejection; completion or explicit close/reset
+discards it before authoritative hydration.
 
 The default profile publishes the routed `breditor/format-strong` Bold state
 plus Undo and Redo. A compiled extension toggle may contribute another tracked
@@ -846,10 +881,14 @@ synchronously, validate complete property deltas, and can be disabled when a
 split or multiline insertion duplicates typed property owners beyond the
 configured limits.
 
-Alpha.7 adds only the closed URL-string/Boolean native form described above.
-It does not hydrate a draft from the current selection, persist UI state,
-expose partial patches, or create a general widget protocol. Its same-realm
-JavaScript declarations are trusted configuration, not sandboxed code.
+Alpha.8 keeps the closed URL-string/Boolean native form and adds exact uniform-
+map hydration. It does not expose fieldwise mixed values, persist drafts,
+expose partial patches, or create a general widget protocol. State observation
+and form drafts are not undoable or replayed. A profile is rejected unless
+each generated setter's worst-case complete map fits one action value and all
+generated setters' collective worst case fits the Rust state-batch value-count
+and text-byte budgets. Same-realm JavaScript declarations remain trusted
+configuration, not sandboxed code.
 
 The reference package is trusted same-realm JavaScript that supplies frozen
 configuration and presentation values, not sandboxed code, a package-signature

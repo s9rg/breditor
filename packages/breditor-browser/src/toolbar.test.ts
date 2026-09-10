@@ -448,6 +448,34 @@ describe("BreditorToolbar", () => {
     toolbar.dispose();
   });
 
+  it("does not invoke an accessor-backed action-state value", () => {
+    const host = mountHost();
+    const store = new TestStateStore(baseEntries());
+    const toolbar = new BreditorToolbar(host, DEFAULT_TOOLBAR_MANIFEST, store, {
+      dispatch: completedDispatch,
+    });
+    let reads = 0;
+    const entry = {
+      id: BASE_TOOLBAR_STATE_IDS.bold,
+      availability: "enabled",
+      activation: "inactive",
+    };
+    Object.defineProperty(entry, "value", {
+      enumerable: true,
+      get() {
+        reads += 1;
+        return undefined;
+      },
+    });
+
+    store.publishRaw({ entries: [entry] });
+
+    expect(reads).toBe(0);
+    expect(toolbarButtons(host)[0]?.getAttribute("aria-disabled")).toBe("true");
+    expect(toolbar.state).toBe("live");
+    toolbar.dispose();
+  });
+
   it("uses cyclic roving focus for arrows and absolute Home/End navigation", () => {
     const host = mountHost();
     const toolbar = new BreditorToolbar(

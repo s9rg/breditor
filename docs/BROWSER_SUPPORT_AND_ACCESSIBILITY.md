@@ -1,9 +1,9 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.7 source checkpoint retains
-the combined Highlight + Link Chromium gates and adds the closed native typed
-form proof described below
+accessibility gate passed; the unpublished alpha.8 source checkpoint retains
+the combined Highlight + Link Chromium gates and adds exact uniform-property
+hydration to the closed native typed form proof described below
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -73,6 +73,12 @@ The gate covers launcher/field/Close focus, Escape, URL and Boolean input,
 Apply/Remove, selection preservation, state, history, teardown, and axe. It
 does not establish a screen-reader, mobile, or WCAG-conformance claim. See
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+
+Alpha.8 adds the state-value cases to that form gate: exact uniform values seed
+pristine URL/Boolean fields, unset and whole-map mixed use defaults, refresh
+preserves dirty input, rejection retains it, and completed dispatch plus close/
+reopen hydrate again from authoritative state. The accessibility scope remains
+unchanged; this behavior adds no broader assistive-technology claim.
 
 Run the gate after generating the three public packages:
 

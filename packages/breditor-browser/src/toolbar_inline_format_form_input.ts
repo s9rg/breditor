@@ -85,6 +85,9 @@ function createSetInputJson(
     }
 
     if (typeof value !== "string") invalid();
+    // `presentation: "url"` is deliberately a single-line browser surface.
+    // Reject values that an HTML text control cannot retain exactly.
+    if (/\r|\n/u.test(value)) invalid();
     const measurement = measureBoundedUnicodeText(
       value,
       field.maximumUtf8Bytes,

@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.7` native typed-toolbar checkpoint
+`0.3.0-alpha.8` exact typed-toolbar hydration checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -50,9 +50,9 @@ catalog, and toolbar/profile admission code. The application, Wasm, glue,
 gzip, and package-tarball ceilings are unchanged; the gate still counts every
 emitted module recursively.
 
-Alpha.8 adds separate ceilings for the callback-free reference package rather
-than hiding it inside the browser allowance. Its clean package artifacts
-measured:
+The historical `0.2.0-alpha.8` checkpoint added separate ceilings for the
+callback-free reference package rather than hiding it inside the browser
+allowance. Its clean package artifacts measured:
 
 - reference Highlight JavaScript: 8,088 bytes;
 - reference Highlight declarations: 7,880 bytes; and
@@ -64,13 +64,14 @@ three-package consumer gate. The 12,000/12,000/20,000-byte ceilings leave
 reviewable headroom without allowing a reference example to become an
 unbounded runtime or silently bundle another browser copy.
 
-A clean Alpha.8 rebuild of both the release candidate and the unchanged
-Alpha.7 tag with the lockfile-selected Node/Vite/Rolldown toolchain produced
-734,688 raw and 194,970 level-9-gzip application JavaScript bytes. The raw
-application ceiling therefore moves from 725,000 to 750,000 bytes; the gzip
-ceiling remains 200,000. The same-source tagged comparison produced the same
-734,688-byte output, so this recalibration is build-output headroom rather than
-reference-extension code being added to the React application.
+A clean `0.2.0-alpha.8` rebuild of both that release candidate and the
+unchanged `0.2.0-alpha.7` tag with the lockfile-selected Node/Vite/Rolldown
+toolchain produced 734,688 raw and 194,970 level-9-gzip application JavaScript
+bytes. The raw application ceiling therefore moves from 725,000 to 750,000
+bytes; the gzip ceiling remains 200,000. The same-source tagged comparison
+produced the same 734,688-byte output, so this recalibration is build-output
+headroom rather than reference-extension code being added to the React
+application.
 
 The final `0.2.0` gate measured:
 
@@ -234,6 +235,31 @@ only enough to carry that framework-neutral runtime in the eager demo bundle.
 Reference-package, Wasm, glue, and Wasm-tarball ceilings remain unchanged; no
 file class, code-splitting exemption, or package-content escape was added.
 
+The `0.3.0-alpha.8` checkpoint keeps every alpha.7 ceiling. Its final clean,
+reproducible build and lifecycle-disabled package gate measured:
+
+- browser-package JavaScript: 1,009,591 / 1,011,000 bytes;
+- browser declarations: 251,131 / 254,000 bytes;
+- Highlight + Link reference JavaScript: 26,543 / 28,000 bytes;
+- Highlight + Link reference declarations: 21,792 / 24,000 bytes;
+- generated Wasm: 1,598,400 / 1,600,000 bytes;
+- generated Wasm JavaScript glue: 52,572 / 100,000 bytes;
+- reference-application JavaScript: 812,611 / 822,000 raw bytes and
+  213,143 / 216,000 level-9-gzip bytes;
+- reference-application Wasm: 1,598,400 / 1,600,000 raw bytes and
+  447,834 / 450,000 level-9-gzip bytes;
+- packed browser package: 246,169 / 248,000 bytes;
+- packed Highlight + Link reference package: 15,549 / 20,000 bytes; and
+- packed Wasm package: 517,938 / 520,000 bytes.
+
+The measured growth is the reviewed exact property-state encoder, compile-time
+per-set and collective state-batch admission proofs, Wasm state-value transport
+coverage, and strict browser hydration/draft lifecycle. Alpha.8 adds no Wasm
+method or ABI signature, durable record field, replay operation, package file
+class, or size-budget increase. The narrow remaining Wasm, browser, and packed
+package headroom is intentional evidence that the next executable feature must
+include an explicit size review rather than silently widening a ceiling.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -263,7 +289,7 @@ Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
-ceilings, and ABI 5 within the current alpha.7 ceilings listed above.
+ceilings, and ABI 5 within the current alpha.8 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

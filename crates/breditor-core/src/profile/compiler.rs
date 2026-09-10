@@ -1,7 +1,10 @@
 use crate::{
     action::{
-        Action, ActionInput, ActionRegistration, ActionRegistry, ActionStateCatalog, ActionStateId,
-        ActionStateRegistration, ActionStateSource, ActionValue,
+        Action, ActionInput, ActionRegistration, ActionRegistry, ActionStateCatalog,
+        ActionStateDeriveError, ActionStateId, ActionStateRegistration, ActionStateSource,
+        ActionValue, ActionValueError, MAX_ACTION_STATE_BATCH_TEXT_BYTES,
+        MAX_ACTION_STATE_BATCH_VALUE_COUNT, MAX_ACTION_VALUE_CONTAINER_ENTRIES,
+        MAX_ACTION_VALUE_COUNT, MAX_ACTION_VALUE_DEPTH, MAX_ACTION_VALUE_TEXT_BYTES,
         builtins::{
             SetInlineFormatAction, ToggleInlineFormatAction, base_action_registrations,
             base_intent_bindings, base_intent_declarations, format_strong_intent_id,
@@ -12,7 +15,10 @@ use crate::{
             IntentRouter,
         },
     },
-    extension::{ExtensionId, ExtensionSet, InlineFormatSetSpecV1, InlineFormatToggleSpecV1},
+    extension::{
+        ExtensionId, ExtensionSet, InlineFormatPropertyContractV1, InlineFormatPropertyTypeV1,
+        InlineFormatSetSpecV1, InlineFormatToggleSpecV1,
+    },
     identity::QualifiedName,
     schema::{CompiledSchema, SchemaId},
     transaction::ReplayDirection,
@@ -146,6 +152,7 @@ fn validate_declaration_targets(extensions: &ExtensionSet) -> Result<(), Profile
         })
         .collect::<Vec<_>>();
     declarations.sort_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
+    let mut state_batch = InlineFormatSetStateSummary::default();
     for (format_kind, owner, owned_formats, property_contracts) in declarations {
         if !owned_formats.iter().any(|format| format.kind() == &format_kind) {
             return Err(ProfileCompilationError::InlineFormatToggleTargetNotOwned {
@@ -184,17 +191,138 @@ fn validate_declaration_targets(extensions: &ExtensionSet) -> Result<(), Profile
                 format_kind,
             });
         }
-        if property_contracts
+        let Ok(contract_index) = property_contracts
             .binary_search_by(|contract| contract.format_kind().cmp(&format_kind))
-            .is_err()
-        {
+        else {
             return Err(ProfileCompilationError::InlineFormatSetTargetHasNoProperties {
                 owner,
                 format_kind,
             });
+        };
+        let state_value = validate_inline_format_set_state_value(
+            &owner,
+            &format_kind,
+            &property_contracts[contract_index],
+        )?;
+        state_batch = state_batch.saturating_add(state_value);
+        if state_batch.value_count > MAX_ACTION_STATE_BATCH_VALUE_COUNT {
+            return Err(ProfileCompilationError::InlineFormatSetStateBatch {
+                owner,
+                format_kind,
+                source: ActionStateDeriveError::ValueCount {
+                    actual: state_batch.value_count,
+                    maximum: MAX_ACTION_STATE_BATCH_VALUE_COUNT,
+                },
+            });
+        }
+        if state_batch.text_bytes > MAX_ACTION_STATE_BATCH_TEXT_BYTES {
+            return Err(ProfileCompilationError::InlineFormatSetStateBatch {
+                owner,
+                format_kind,
+                source: ActionStateDeriveError::TextBytes {
+                    actual: state_batch.text_bytes,
+                    maximum: MAX_ACTION_STATE_BATCH_TEXT_BYTES,
+                },
+            });
         }
     }
     Ok(())
+}
+
+#[derive(Clone, Copy, Default)]
+struct InlineFormatSetStateSummary {
+    value_count: u32,
+    text_bytes: u64,
+}
+
+impl InlineFormatSetStateSummary {
+    const fn saturating_add(self, other: Self) -> Self {
+        Self {
+            value_count: self.value_count.saturating_add(other.value_count),
+            text_bytes: self.text_bytes.saturating_add(other.text_bytes),
+        }
+    }
+}
+
+/// Proves that every schema-valid property map for a generated setter can be
+/// represented truthfully by its round-trippable `ActionStateValue`.
+///
+/// The exact V1 envelope is a root object containing the `"set"` operation
+/// string and a property-entry array. Each property contributes one entry
+/// object, one qualified-name string, and one scalar value. This arithmetic is
+/// bounded and allocation-free so hostile maximum declarations cannot make
+/// profile compilation allocate their hypothetical strings.
+fn validate_inline_format_set_state_value(
+    owner: &ExtensionId,
+    format_kind: &QualifiedName,
+    contract: &InlineFormatPropertyContractV1,
+) -> Result<InlineFormatSetStateSummary, ProfileCompilationError> {
+    let property_count = contract.properties().len();
+    if property_count > MAX_ACTION_VALUE_CONTAINER_ENTRIES {
+        return Err(inline_format_set_state_value_error(
+            owner,
+            format_kind,
+            ActionValueError::ContainerEntries {
+                actual: property_count,
+                maximum: MAX_ACTION_VALUE_CONTAINER_ENTRIES,
+            },
+        ));
+    }
+
+    let depth = 3_u16;
+    if depth > MAX_ACTION_VALUE_DEPTH {
+        return Err(inline_format_set_state_value_error(
+            owner,
+            format_kind,
+            ActionValueError::Depth { actual: depth, maximum: MAX_ACTION_VALUE_DEPTH },
+        ));
+    }
+
+    let value_count = 3_u32.saturating_add(fixed_count(property_count).saturating_mul(3));
+    if value_count > MAX_ACTION_VALUE_COUNT {
+        return Err(inline_format_set_state_value_error(
+            owner,
+            format_kind,
+            ActionValueError::ValueCount { actual: value_count, maximum: MAX_ACTION_VALUE_COUNT },
+        ));
+    }
+
+    // Root keys `operation`/`properties`, scalar `set`, and per-entry keys
+    // `name`/`value` contribute 22 and 9 bytes respectively.
+    let mut text_bytes = 22_u64;
+    for property in contract.properties() {
+        let maximum_value_bytes = match property.value_type() {
+            InlineFormatPropertyTypeV1::String(string) => u64::from(string.maximum_utf8_bytes()),
+            InlineFormatPropertyTypeV1::Boolean | InlineFormatPropertyTypeV1::Integer(_) => 0,
+        };
+        text_bytes = text_bytes
+            .saturating_add(9)
+            .saturating_add(u64::try_from(property.name().as_str().len()).unwrap_or(u64::MAX))
+            .saturating_add(maximum_value_bytes);
+    }
+    if text_bytes > MAX_ACTION_VALUE_TEXT_BYTES {
+        return Err(inline_format_set_state_value_error(
+            owner,
+            format_kind,
+            ActionValueError::TextBytes {
+                actual: text_bytes,
+                maximum: MAX_ACTION_VALUE_TEXT_BYTES,
+            },
+        ));
+    }
+    Ok(InlineFormatSetStateSummary { value_count, text_bytes })
+}
+
+fn inline_format_set_state_value_error(
+    owner: &ExtensionId,
+    format_kind: &QualifiedName,
+    source: ActionValueError,
+) -> ProfileCompilationError {
+    ProfileCompilationError::InlineFormatSetStateValue {
+        owner: owner.clone(),
+        format_kind: format_kind.clone(),
+        source,
+    }
 }
 
 fn validate_cross_owner_identities(

@@ -79,13 +79,13 @@ describe("toolbar inline-format form input", () => {
   });
 
   it("escapes strings canonically without imposing a URL scheme policy", () => {
-    const value = 'javascript:alert("quoted\\path")\nnext';
+    const value = '  javascript:alert("quoted\\path")  ';
     const json = createToolbarInlineFormatFormSetInputJson(linkForm(), {
       [HREF]: value,
       [NEW_WINDOW]: false,
     });
     expect(json).toBe(
-      '{"operation":"set","properties":[{"name":"example/href","value":"javascript:alert(\\"quoted\\\\path\\")\\nnext"},{"name":"example/open-in-new-window","value":false}]}',
+      '{"operation":"set","properties":[{"name":"example/href","value":"  javascript:alert(\\"quoted\\\\path\\")  "},{"name":"example/open-in-new-window","value":false}]}',
     );
     expect(JSON.parse(json)).toEqual({
       operation: "set",
@@ -94,6 +94,17 @@ describe("toolbar inline-format form input", () => {
         { name: NEW_WINDOW, value: false },
       ],
     });
+  });
+
+  it("rejects CR and LF that a single-line URL presentation cannot retain", () => {
+    for (const value of ["one\rtwo", "one\ntwo", "one\r\ntwo"]) {
+      expect(() =>
+        createToolbarInlineFormatFormSetInputJson(linkForm(), {
+          [HREF]: value,
+          [NEW_WINDOW]: false,
+        }),
+      ).toThrow(TypeError);
+    }
   });
 
   it("measures astral Unicode by UTF-8 bytes", () => {

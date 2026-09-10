@@ -153,8 +153,9 @@ function inlineFormatFormDescriptor(
       index === 0 ? "breditor/set-inline-format-input" : undefined,
     intentInputContractVersion: (index) => index === 0 ? 1 : undefined,
     intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
-    intentValueContractName: () => undefined,
-    intentValueContractVersion: () => undefined,
+    intentValueContractName: (index) =>
+      index === 0 ? "breditor/set-inline-format-input" : undefined,
+    intentValueContractVersion: (index) => index === 0 ? 1 : undefined,
     actionStateId: (index) => index === 0 ? "example/link-presence" : undefined,
     actionStateSourceKind: (index) => index === 0 ? "routed" : undefined,
     actionStateSourceActionId: () => undefined,
@@ -163,8 +164,9 @@ function inlineFormatFormDescriptor(
     actionStateHistoryDirection: () => undefined,
     actionStateActivationContract: (index) =>
       index === 0 ? "tracked" : undefined,
-    actionStateValueContractName: () => undefined,
-    actionStateValueContractVersion: () => undefined,
+    actionStateValueContractName: (index) =>
+      index === 0 ? "breditor/set-inline-format-input" : undefined,
+    actionStateValueContractVersion: (index) => index === 0 ? 1 : undefined,
     inlineFormatSetFormatKind: (index) =>
       includeSet && index === 0 ? "example/link" : undefined,
     inlineFormatSetIntentId: (index) =>

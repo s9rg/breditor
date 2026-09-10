@@ -3,7 +3,8 @@
 Status: supported by the public `0.1.0` runtime and carried unchanged into the
 `0.2.0` descriptor-validated intent toolbar and reference-package
 consumer/cross-browser release; `0.3.0-alpha.7` adds the closed callback-free
-typed inline-format form defined in
+typed inline-format form, and `0.3.0-alpha.8` adds exact property-state
+hydration, as defined in
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md)
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
@@ -78,6 +79,16 @@ no value; otherwise the snapshot must repeat the exact value name and version.
 Missing, extra, substituted, reordered, duplicate, and contract-drifted
 catalogs fail closed before the last-good store can mutate. Unhandled/faulted
 entries retain the transport's deliberate absence of state observations.
+
+Alpha.8 requires every descriptor-declared property-aware set state to repeat
+the exact independently typed `breditor/set-inline-format-input@1` output
+contract. After generic action-value validation, the browser correlates its
+semantics as well: inactive pairs only with `unset`; uniform pairs only with
+active; and value `mixed` pairs with active when all runs contain differing
+maps or with mixed when presence itself is partial. The uniform property list
+must exactly match the compiled schema in lexical order, requiredness, type,
+and bounds. Any impossible pair or malformed value rejects the complete
+refresh without replacing last-good state.
 
 No generated handle, Wasm engine reference, observation capability, or
 executable preparation enters application state or a subscriber callback.
@@ -206,8 +217,10 @@ startup.
 An `inlineFormatForm` instead must match one ABI-5 canonical typed-set triple:
 format kind, typed intent ID, and routed action-state ID. Its fields must
 exactly cover the profile's required properties with equal types and string
-bounds. Optional properties, integer fields, omitted or extra keys, partial
-patches, and property-value state are rejected.
+bounds. Its intent input and state output both name the exact serialized
+`breditor/set-inline-format-input@1` pair, although Rust types their versions
+independently. Optional properties, integer fields, omitted or extra keys, and
+partial patches are rejected.
 
 Custom validated manifests can omit, reorder, relabel, group, or expose
 additional compiled property-free format toggle intents as native buttons. A
@@ -251,6 +264,22 @@ calls. Apply builds the same canonical complete-map set input; Remove builds
 the same canonical remove input. Drafts are runtime-owned, cleared on Close,
 Escape, completed delivery, and disposal, and are not hydrated from selection
 values or persisted.
+
+Alpha.8 adds exact state-value seeding without changing that declaration. The
+fixed Remove query still owns activation. Its orthogonal value is `unset` when
+Link is absent, `uniform` with canonical set input when every relevant run has
+the same complete Link map, and `mixed` for partial presence or differing maps.
+A collapsed selection observes the effective pending/context formats. This is
+whole-map equality; no fieldwise mixed or merge value exists.
+
+Opening a pristine form and refreshing a pristine open form hydrate a uniform
+value exactly; unset or mixed uses the declaration defaults. User input marks
+the draft dirty, after which background state refreshes preserve it. Rejected
+dispatch also preserves it. Completed dispatch clears the dirty state,
+refreshes synchronously, and hydrates from the authoritative post-command
+value. Close, Escape, another form opening, and disposal clear presentation
+state; a later open seeds from fresh state again. These drafts are not action
+state, history, replay, or persistence data.
 
 ## Accessible DOM behavior
 
@@ -332,8 +361,9 @@ toolbar.
 ## Explicit limits
 
 - The default catalog contains Bold, Undo, and Redo. Compiled profiles can add
-  property-free format toggle intents/states as native buttons; Alpha.7 also
-  supports the closed typed-form launcher and sibling form.
+  property-free format toggle intents/states as native buttons; Alpha.7 adds
+  the closed typed-form launcher and sibling form, and Alpha.8 adds its exact
+  property-value hydration.
 - One browser action-state snapshot admits at most 512 entries. One uniform
   value admits at most 524,288 encoded JSON bytes; one complete snapshot admits
   at most 8,388,608 such encoded bytes, 65,536 decoded values, and 1,048,576
@@ -352,15 +382,23 @@ toolbar.
   bridges status into a bounded, immutable external-store subscription.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
-- The public editor can execute descriptor-declared typed intent JSON. Alpha.7
-  adds required URL-string and Boolean fields only. There is no hydration,
-  persisted draft, optional/integer field, partial patch, or arbitrary widget.
+- The public editor can execute descriptor-declared typed intent JSON. The
+  typed form remains limited to required URL-string and Boolean fields. Alpha.8
+  hydrates only a uniform complete map; mixed state has no fieldwise value.
+  There is no persisted draft, optional/integer field, partial patch, or
+  arbitrary widget.
   There are no menus/selects, extension
   keymaps or `beforeinput` rules, dynamic manifest replacement, or asynchronous
   toolbar dispatch.
 - URL presentation checks only string shape and UTF-8 bounds. `safeLinkV1`
-  independently owns scheme and navigation safety. Same-realm JavaScript is
+  independently owns parsing, normalization, scheme, and navigation safety.
+  Hydration preserves the exact inert stored string. Same-realm JavaScript is
   trusted configuration and is not sandboxed.
+- A generated setter is compile-rejected unless every schema-valid complete
+  map fits one action value. Compilation also proves that the canonical set of
+  generated setters collectively fits the Rust state-batch value-count and
+  text-byte limits, rejecting the first canonical declaration that crosses a
+  bound. Runtime checks remain defense in depth.
 - Icons, styling, localization infrastructure, menus, comboboxes, overflow,
   vertical writing modes, and mobile-specific interaction remain host work.
 - The `0.1.0` automated gate covers keyboard navigation, computed focus

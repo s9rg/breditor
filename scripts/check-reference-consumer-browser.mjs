@@ -194,7 +194,7 @@ try {
     }
     launcher.click();
     const form = toolbar?.querySelector("form[data-breditor-toolbar-panel]");
-    const url = form?.querySelector('input[type="url"]');
+    const url = form?.querySelector('input[type="text"][inputmode="url"]');
     const newWindow = form?.querySelector('input[type="checkbox"]');
     const apply = [...(form?.querySelectorAll("button") ?? [])].find(
       (button) => button.textContent === "Apply Link",

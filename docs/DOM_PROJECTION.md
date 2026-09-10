@@ -3,11 +3,12 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.7` source checkpoint retains alpha.4's one closed
+unpublished `0.3.0-alpha.8` source checkpoint retains alpha.4's one closed
 property-driven Link presentation and carries it through typed structural
-paragraph edits described below. The Alpha.7 form's `presentation: "url"`
-does not alter this renderer contract: only `safeLinkV1` grants navigation
-attributes.
+paragraph edits described below. Alpha.8 current-property transport preserves
+the exact stored string and does not alter this renderer contract. Its native
+single-line form refuses CR/LF-bearing state instead of normalizing it; only
+`safeLinkV1` parses or normalizes a URL and grants navigation attributes.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -80,7 +81,8 @@ it is still semantic Link content and does not fault rendering.
 The policy cannot choose an attribute name, tag, class, `rel`, target, URL
 scheme, style, callback, or HTML string. Rust validates only the two declared
 scalar property contracts; URL parsing and admission belong to this browser
-presentation boundary.
+presentation boundary. A Rust action-state uniform value therefore returns the
+exact semantic string, not the canonical `href` derived by this policy.
 
 Raw URL spelling is also part of admission: the authority must start
 immediately after exactly `http://` or `https://`; excess authority slashes,

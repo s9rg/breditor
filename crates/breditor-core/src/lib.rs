@@ -740,6 +740,18 @@
 //! presentation, and navigation policy are not Rust data. Profile Bootstrap
 //! V2, schema-fingerprint bytes, Document V2, and all V3 durable record bytes
 //! remain exact.
+//!
+//! The unpublished `0.3.0-alpha.8` source checkpoint gives that generated
+//! setter state an independently typed, exact property-map output contract.
+//! Rust reports absent, uniform, or whole-map-mixed values across the selected
+//! runs, or the effective pending/context formats at a collapsed selection.
+//! Compiler admission proves both each maximum valid value and the collective
+//! generated-setter state batch fit their fixed resource envelopes. Wasm ABI 5
+//! already transports the value; the browser may hydrate a separately admitted
+//! form without making observations, drafts, or presentation durable editor
+//! state. The first browser field remains deliberately narrower than Rust's
+//! scalar language: it is a single-line URL presentation, so CR/LF-bearing
+//! strings make that form unavailable instead of being normalized.
 
 pub mod action;
 pub mod codec;

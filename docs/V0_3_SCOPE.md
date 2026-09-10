@@ -1,10 +1,10 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.7` source checkpoint adds one callback-free native
-typed Link form over alpha.6's cross-paragraph complete-map
-typed set/remove over the property-preserving paragraph structure completed in
-alpha.5. Wasm ABI 5 adds only canonical typed-set presentation correlation.
-Explicit Bootstrap V2 still selects property-aware
+Status: the `0.3.0-alpha.8` source checkpoint adds exact Rust-owned current-
+property observation and pristine Link-form hydration over alpha.7's callback-
+free native typed control. Alpha.8 retains Wasm ABI 5 and the existing typed-
+set presentation correlation surface. Explicit Bootstrap V2 still selects
+property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
 
@@ -21,7 +21,8 @@ algebra without broadening that algebra into a general block model. Alpha.6
 defines the multi-paragraph value, state, selection, history, and replay
 semantics for the existing registration-owned typed setter. Alpha.7 adds one
 closed browser input/presentation contract without making UI durable or
-executable in Rust.
+executable in Rust. Alpha.8 lets that control observe a complete uniform map
+without turning observation or drafts into history, replay, or persisted state.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -476,6 +477,52 @@ policy. Same-realm JavaScript configuration remains trusted rather than
 sandboxed. The normative decision and threat model are in
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
+## Alpha.8 exact property observation and hydration
+
+Alpha.8 gives every generated property-aware inline-format state the exact
+output contract `breditor/set-inline-format-input@1`. The output version is a
+distinct Rust action-state version type even though its serialized name and
+number match the input contract. A uniform observation is therefore the
+canonical, round-trippable `set` branch containing the format's complete
+strictly ordered property map.
+
+The value and activation answer different questions. Activation remains the
+fixed Remove-query result: inactive means absent, active means present on all
+relevant text, and mixed means partial presence. The value is `unset` when the
+target is absent, `uniform` only when every relevant run has the exact same
+complete map, and `mixed` for partial presence or differing maps. A collapsed
+selection observes its effective pending/context formats. This is whole-map
+comparison, not fieldwise mixed state or a merge algorithm.
+
+The browser accepts the value only after exact descriptor, state ID, activation,
+contract, schema, and canonical property-order correlation. A pristine form
+hydrates a form-admissible uniform map exactly; unset or mixed uses declared
+empty/default values. The URL field is a text input with a URL keyboard hint,
+so surrounding whitespace remains exact. CR/LF-bearing state makes this
+single-line form, including UI Remove, unavailable rather than being normalized;
+programmatic typed-intent removal remains possible. State refreshes do not overwrite a dirty draft. Rejected dispatch
+retains it; completed dispatch clears it and hydrates from the authoritative
+post-command state. Close, Escape, another form opening, and disposal clear
+the draft, so reopening starts from the latest fresh state.
+
+The stored URL scalar remains the exact inert string supplied to Rust and Wasm.
+The state transport does not trim, parse, normalize, or grant navigation
+authority. The narrower browser form rejects CR/LF on input and refuses to
+present stored CR/LF instead of mutating it. Only the separate browser
+`safeLinkV1` presentation policy may derive a safe
+canonical `href`, `rel`, and `target`; a schema-valid rejected URL remains an
+inert Link wrapper.
+
+This checkpoint adds no operation, durable field, or Wasm method and therefore
+does not bump ABI 5. Action-state values and form drafts are ephemeral: neither
+enters undo/redo, replay, Document V2, Session Checkpoint V3, or IndexedDB.
+Profile compilation rejects a generated setter if the worst-case schema-valid
+complete map cannot fit the fixed action-value envelope. It also admits the
+canonical generated-setter list only when the collective worst case fits the
+action-state batch value-count and text-byte budgets, rejecting the first
+canonical declaration that would cross a bound. Runtime limits remain defense
+in depth, not an unresolved generated-setter overflow case.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -495,6 +542,10 @@ Wasm method, browser protocol, or durable generation.
 Alpha.7 advances to Wasm ABI 5 solely for the canonical typed-set
 format/intent/state descriptor getters. It adds no durable generation or
 semantic mutation protocol.
+
+Alpha.8 uses those existing getters plus ABI 5's existing action-state value
+transport. It adds no generated Wasm member, bootstrap field, fingerprint byte,
+document/checkpoint field, or semantic mutation protocol.
 
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
@@ -518,6 +569,8 @@ CSS grammar and other property presentations remain undefined.
 - Typed declarations remain Boolean, JavaScript-safe integer, and bounded
   string only.
 - Set replaces a complete property map; there is no property patch operation.
+- Current properties are compared as whole maps. A mixed observation carries
+  no fieldwise values or merge base.
 - Structural editing remains limited to the compiler-minted direct-root
   document/paragraph/text grammar. Element or paragraph properties, entity
   identities, nested or heterogeneous blocks, and arbitrary structural schemas
@@ -530,11 +583,16 @@ CSS grammar and other property presentations remain undefined.
 - The additive reference Link proves one exact contract while preserving the
   property-free Highlight-only profile. It is not a general Link schema,
   renderer, URL validator, or arbitrary toolbar-control registration protocol.
-- Set is complete-map replacement; there is no partial property patch. Form
-  values are not hydrated from selection state or persisted, and same-realm
-  JavaScript declarations are not sandboxed.
+- Form drafts hydrate only from a fresh, single-line-representable uniform
+  state. CR/LF-bearing URL state leaves the form and its UI Remove action
+  unavailable, while programmatic removal remains possible. Drafts are not
+  persisted, undoable, or replayed, and same-realm JavaScript declarations are
+  not sandboxed.
 - No migration, generation negotiation, collaboration transform, or unknown
   typed-format preservation is introduced.
+- Per-set state-value representability and the generated-setter catalog's
+  aggregate worst case are compile-checked against action-value and state-batch
+  limits. Profiles that cannot satisfy either proof are rejected canonically.
 - Host limits can make a portable schema uninhabitable on that host.
 
 ## Next checkpoints

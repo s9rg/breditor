@@ -429,7 +429,9 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   await expect(highlight).toHaveAttribute("aria-pressed", "true");
   await link.click();
   await expect(linkUrl).toBeEnabled();
-  await expect(applyLink).toBeDisabled();
+  await expect(linkUrl).toHaveValue(REFERENCE_LINK_URL);
+  await expect(newWindow).toBeChecked();
+  await expect(applyLink).toBeEnabled();
   await linkUrl.fill("HTTPS://Example.COM:443/a/../docs?q=one&b=two");
   await expect(applyLink).toBeEnabled();
   await newWindow.uncheck();
@@ -440,26 +442,42 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   );
   await expect(editor.locator("a.breditor-link")).not.toHaveAttribute("target");
   await expect(page.getByText("Link applied.", { exact: true })).toBeVisible();
+  await expect(linkUrl).toHaveValue(
+    "HTTPS://Example.COM:443/a/../docs?q=one&b=two",
+  );
+  await expect(newWindow).not.toBeChecked();
 
   await undo.click();
   await expect(editor.locator("a.breditor-link")).toHaveAttribute(
     "href",
     "https://example.test/reference",
   );
+  await expect(linkUrl).toHaveValue(REFERENCE_LINK_URL);
+  await expect(newWindow).toBeChecked();
   await redo.click();
   await expect(editor.locator("a.breditor-link")).toHaveAttribute(
     "href",
     "https://example.com/docs?q=one&b=two",
   );
+  await expect(linkUrl).toHaveValue(
+    "HTTPS://Example.COM:443/a/../docs?q=one&b=two",
+  );
+  await expect(newWindow).not.toBeChecked();
   await expect(removeLink).toBeEnabled();
   await removeLink.click();
   await expect(editor.locator("a.breditor-link")).toHaveCount(0);
+  await expect(linkUrl).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
   await expect(applyLink).toBeDisabled();
   await undo.click();
   await expect(editor.locator("a.breditor-link")).toHaveAttribute(
     "href",
     "https://example.com/docs?q=one&b=two",
   );
+  await expect(linkUrl).toHaveValue(
+    "HTTPS://Example.COM:443/a/../docs?q=one&b=two",
+  );
+  await expect(newWindow).not.toBeChecked();
 
   await selectEditorText(editor, 12, 16);
   await expect(bold).toHaveAttribute("aria-pressed", "false");
@@ -666,15 +684,21 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
   // must still use the preserved cross-paragraph semantic selection.
   await link.click();
   await expect(linkUrl).toBeEnabled();
+  await expect(linkUrl).toHaveValue(REFERENCE_LINK_URL);
+  await expect(newWindow).toBeChecked();
   await linkUrl.fill(CROSS_PARAGRAPH_LINK_INPUT);
   await newWindow.check();
   await expect(applyLink).toBeEnabled();
   await applyLink.click();
   await expectHighlightedLinkLayout(editor, linkedLayout);
+  await expect(linkUrl).toHaveValue(CROSS_PARAGRAPH_LINK_INPUT);
+  await expect(newWindow).toBeChecked();
 
   await expect(removeLink).toBeEnabled();
   await removeLink.click();
   await expectHighlightedLinkLayout(editor, removedLayout);
+  await expect(linkUrl).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
 
   // Expanding the selection across linked edges and the unlinked middle must
   // expose the Rust-generated mixed presence state to the React controls.
@@ -684,6 +708,9 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
       exact: true,
     }),
   ).toBeVisible();
+  await expect(linkUrl).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
+  await expect(removeLink).toBeEnabled();
 
   await undo.click();
   await expectHighlightedLinkLayout(editor, linkedLayout);

@@ -925,7 +925,7 @@ describe("BreditorBrowserEditor", () => {
     opened.editor.dispose();
   });
 
-  it("keeps a toolbar form draft when Rust rejects typed input and clears it only after commit", async () => {
+  it("keeps a rejected toolbar form draft and hydrates the authoritative value after commit", async () => {
     const toolbarHost = mountHost();
     const profile = profileModuleFixture({
       formatsByCompilation: [
@@ -987,7 +987,7 @@ describe("BreditorBrowserEditor", () => {
     );
 
     expect(opened.editor.getStatus()).toEqual({ phase: "live" });
-    expect(href.value).toBe("");
+    expect(href.value).toBe("https://retry.example/private");
     expect(panel.textContent).toContain("Link applied.");
     expect(profile.engines[0]?.executeTypedIntentJson).toHaveBeenCalledTimes(2);
     opened.editor.dispose();
@@ -3918,8 +3918,12 @@ function profileDescriptorFixture(
     intentInputContractVersion: (index) =>
       index === 0 && intentInputKind === "typed" ? 1 : undefined,
     intentActivationContract: (index) => (index === 0 ? "tracked" : undefined),
-    intentValueContractName: () => undefined,
-    intentValueContractVersion: () => undefined,
+    intentValueContractName: (index) =>
+      index === 0 && inlineFormatSetFormatKind !== undefined
+        ? "breditor/set-inline-format-input"
+        : undefined,
+    intentValueContractVersion: (index) =>
+      index === 0 && inlineFormatSetFormatKind !== undefined ? 1 : undefined,
     actionStateId: (index) => (index === 0 ? STATE_ID : undefined),
     actionStateSourceKind: (index) => (index === 0 ? "routed" : undefined),
     actionStateSourceActionId: () => undefined,
@@ -3927,8 +3931,12 @@ function profileDescriptorFixture(
     actionStateHistoryDirection: () => undefined,
     actionStateActivationContract: (index) =>
       index === 0 ? "tracked" : undefined,
-    actionStateValueContractName: () => undefined,
-    actionStateValueContractVersion: () => undefined,
+    actionStateValueContractName: (index) =>
+      index === 0 && inlineFormatSetFormatKind !== undefined
+        ? "breditor/set-inline-format-input"
+        : undefined,
+    actionStateValueContractVersion: (index) =>
+      index === 0 && inlineFormatSetFormatKind !== undefined ? 1 : undefined,
     inlineFormatSetFormatKind: (index) =>
       index === 0 ? inlineFormatSetFormatKind : undefined,
     inlineFormatSetIntentId: (index) =>
@@ -3971,6 +3979,7 @@ function profileEngineFixture(
   let revision = initialRevision;
   let text = initialText;
   let active = false;
+  let inlineFormatUniformJson: string | undefined;
   const rawFree = vi.fn();
   const observationFrees: ReturnType<typeof vi.fn>[] = [];
   const makeObservation = (
@@ -3994,6 +4003,11 @@ function profileEngineFixture(
       true,
       active,
       engineGeneration,
+      undefined,
+      false,
+      undefined,
+      inlineFormatSetFormatKind !== undefined,
+      inlineFormatUniformJson,
     ),
   );
   const selection = vi.fn((expected: WasmCommandObservationView) =>
@@ -4102,6 +4116,12 @@ function profileEngineFixture(
           makeObservation(Number(expected.snapshotRevision)),
           engineGeneration,
           closeHistoryGroupBefore,
+          inlineFormatSetFormatKind === undefined
+            ? undefined
+            : {
+                name: "breditor/set-inline-format-input",
+                version: 1,
+              },
         );
       }
       if (typedIntentOutcome === "unhandled") {
@@ -4110,6 +4130,9 @@ function profileEngineFixture(
           engineGeneration,
           closeHistoryGroupBefore,
         );
+      }
+      if (inlineFormatSetFormatKind !== undefined) {
+        inlineFormatUniformJson = inputJson;
       }
       return executeIntentCommit(expected, intentId, closeHistoryGroupBefore);
     },
@@ -4638,6 +4661,8 @@ function actionStatesResult(
   onStatusRead?: () => void,
   includeHistory = false,
   catalogViolation?: "missing" | "extra",
+  inlineFormatSet = false,
+  inlineFormatUniformJson?: string,
 ): WasmActionStatesResultView {
   let taken = false;
   const canonicalIds: readonly string[] = includeHistory
@@ -4686,10 +4711,23 @@ function actionStatesResult(
               ? "breditor/nothing-to-undo"
               : "breditor/not-enabled",
     entryValueStatus: (index) =>
-      index < entryCount ? "unsupported" : undefined,
-    entryValueContractName: () => undefined,
-    entryValueContractVersion: () => undefined,
-    entryUniformValueJson: () => absentStringResult(),
+      index >= entryCount
+        ? undefined
+        : index === 0 && inlineFormatSet
+          ? active
+            ? "uniform"
+            : "unset"
+          : "unsupported",
+    entryValueContractName: (index) =>
+      index === 0 && inlineFormatSet
+        ? "breditor/set-inline-format-input"
+        : undefined,
+    entryValueContractVersion: (index) =>
+      index === 0 && inlineFormatSet ? 1 : undefined,
+    entryUniformValueJson: (index) =>
+      index === 0 && inlineFormatSet && active && inlineFormatUniformJson !== undefined
+        ? stringResult(inlineFormatUniformJson)
+        : absentStringResult(),
     changedId: (index) => ids[index],
     free: vi.fn(),
   };
@@ -4786,6 +4824,7 @@ function blockedIntentResult(
   successor: WasmCommandObservationView,
   generation: WasmProfileGenerationView,
   historyGroupClosedBefore = false,
+  valueContract?: Readonly<{ name: string; version: number }>,
 ): WasmIntentResultView {
   return {
     status: "blocked",
@@ -4796,9 +4835,10 @@ function blockedIntentResult(
     bindingPriority: 0,
     blockedReasonCode: "breditor/no-selection",
     blockedActivation: "inactive",
-    blockedValueStatus: "unsupported",
-    blockedValueContractName: undefined,
-    blockedValueContractVersion: undefined,
+    blockedValueStatus:
+      valueContract === undefined ? "unsupported" : "unset",
+    blockedValueContractName: valueContract?.name,
+    blockedValueContractVersion: valueContract?.version,
     fallthroughCount: 0,
     error: undefined,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),

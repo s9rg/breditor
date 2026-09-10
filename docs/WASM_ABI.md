@@ -1,12 +1,13 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.7` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.8` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
-preserving the ABI-3-era V1/V2 entry points. Alpha.7 adds only canonical
-typed-set presentation-correlation getters; it changes no bootstrap or durable
-wire generation. Direct raw-handle use remains a narrow advanced integration
-surface.
+preserving the ABI-3-era V1/V2 entry points. Alpha.7 added only canonical
+typed-set presentation-correlation getters. Alpha.8 carries exact uniform
+property maps through the already-existing action-state value getters and does
+not bump ABI 5 or change a bootstrap or durable wire generation. Direct raw-
+handle use remains a narrow advanced integration surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
 it is not a crates.io release because its `breditor-core` dependency has no
@@ -19,9 +20,9 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-After publication, `@breditor/browser@0.3.0-alpha.7` and
-`@breditor/wasm@0.3.0-alpha.7` must be installed as an exact-version pair. No
-alpha.7 package has been published at this checkpoint; repository development
+After publication, `@breditor/browser@0.3.0-alpha.8` and
+`@breditor/wasm@0.3.0-alpha.8` must be installed as an exact-version pair. No
+alpha.8 package has been published at this checkpoint; repository development
 uses the local workspace/tarball smoke path. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.
@@ -79,6 +80,15 @@ Profile Bootstrap V2, fingerprints, Document V2, and Session/State/Commit V3
 remain byte-for-byte unchanged. The normative contract is in
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 
+Alpha.8 adds no Wasm member. A generated typed-set action state now declares
+the independently typed output contract whose serialized pair is
+`breditor/set-inline-format-input@1`, matching its input contract. The existing
+`entryValueStatus`, value-contract name/version, and
+`entryUniformValueJson(index)` surface already represents its `unset`,
+`uniform`, and `mixed` results. Uniform JSON is the canonical complete-map
+`set` branch; mixed has no JSON payload. Input and output version types remain
+distinct inside Rust despite the intentionally equal wire pair.
+
 Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
 and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed
 `rolldown 1.2.7`. Cargo uses the dedicated size-oriented `wasm-release`
@@ -93,7 +103,7 @@ build-root prefixes plus common macOS, Linux, and Windows user-home path
 patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.7
+initializer is the supported `0.1.x`, exact-matched `0.2.x`, alpha.7, and alpha.8
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported
@@ -485,6 +495,13 @@ extended profile catalog also contains its admitted routed action-state entries
 without changing the flattened entry contract; Alpha.7 admits their supported
 native-button controls after exact descriptor validation.
 
+For an alpha.8 generated typed-set state, activation remains the fixed Remove-
+query observation while the value independently reports the complete property
+map. Absent is inactive/unset; all-present equal maps are active/uniform; all-
+present differing maps are active/mixed; and partial presence is mixed/mixed.
+A collapsed selection observes effective pending/context formats. These
+semantics require no new flattened getter.
+
 A successful result is `full`, `unchanged`, or `delta` and owns one complete
 snapshot. `takeSnapshot()` transfers it exactly once and changes the result to
 `taken`. The snapshot exposes its exact lineage/revision, canonical entry IDs,
@@ -521,6 +538,14 @@ contracts, and value-contract name/version before publication. This is a
 browser admission check over ABI 3, not a new ABI generation. Missing, extra,
 reordered, duplicate, or drifted catalogs fail closed without replacing the
 last-good browser snapshot.
+
+The alpha.8 browser additionally checks each typed-set uniform payload against
+the descriptor's complete property contract and rejects impossible activation/
+value pairs. Profile compilation first proves that every schema-valid map for
+one generated setter fits the fixed `ActionValue` envelope, then proves that
+all generated setters' collective worst case fits the Rust batch value-count
+and text-byte limits. It rejects the first canonical declaration that would
+cross a bound. Runtime Rust and browser limits remain defense in depth.
 
 Every numeric entry/change index is a raw generated `u32` parameter and shares
 the projection getter's JavaScript-coercion limitation. The reviewed browser

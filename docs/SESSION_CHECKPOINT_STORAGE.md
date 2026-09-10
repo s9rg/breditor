@@ -3,7 +3,7 @@
 Status: supported by the optional public `0.1.0` autosave path; the exact
 `"current"` V1 record remains the stable `0.1.x` profile. Version `0.2.0`
 retains the explicit profile-bound V2 outer record and scoped slots without
-changing the legacy bytes. The unpublished `0.3.0-alpha.7` Bootstrap-V2 path
+changing the legacy bytes. The unpublished `0.3.0-alpha.8` Bootstrap-V2 path
 stores Session Checkpoint V3 in that unchanged outer-V2 record. Direct store/
 autosave assembly remains an advanced integration surface.
 
@@ -20,6 +20,11 @@ Different exact slots can coexist in the same object store. It is deliberately
 separate from [`INDEXEDDB_STORAGE_PROFILE.md`](INDEXEDDB_STORAGE_PROFILE.md):
 that document specifies a multi-generation local log, while this profile is a
 per-slot atomic replacement with compare-and-swap conflict detection.
+
+Alpha.8's current inline-format action-state value and browser form draft do
+not enter this store. Only a committed semantic format map reaches Document V2
+inside Session Checkpoint V3. Unset/uniform/mixed observation, form-open state,
+focus, draft fields, and feedback are neither saved nor restored.
 
 The Rust checkpoint remains authoritative for document, selection, pending
 formats, undo, redo, and history merge behavior. JavaScript owns IndexedDB

@@ -4,7 +4,7 @@
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format for the `0.3.0-alpha.7` path.
+`example/link` format for the `0.3.0-alpha.8` path.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -31,6 +31,13 @@ Alpha.7 moves that Link form into the callback-free toolbar declaration. The
 browser runtime owns its draft URL and Boolean values and submits the existing
 typed intent; the semantic profile, durable fingerprint, and public Link input
 helpers remain unchanged.
+Alpha.8 hydrates a pristine Link form from an exact uniform Rust-owned complete
+map. Absent or mixed state uses defaults; dirty input survives refresh and
+rejection, while completion or close/reset hydrates again from authoritative
+state. Form-admissible URL text remains exact inert scalar data until the
+separate `safeLinkV1` renderer decides navigation presentation. The native
+single-line field preserves surrounding whitespace but rejects CR/LF rather
+than silently accepting browser normalization.
 
 ## Use
 
@@ -40,9 +47,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.7 \
-  @breditor/wasm@0.3.0-alpha.7 \
-  @breditor/reference-highlight@0.3.0-alpha.7
+npm install @breditor/browser@0.3.0-alpha.8 \
+  @breditor/wasm@0.3.0-alpha.8 \
+  @breditor/reference-highlight@0.3.0-alpha.8
 ```
 
 ```ts
@@ -221,7 +228,8 @@ vocabulary. The Link href contract validates scalar shape and size; URL safety
 remains a separate browser-owned presentation policy. Reconstruct the editor
 with a newly compiled profile when semantic extensions change.
 
-Form drafts are not hydrated from the current selection and are not persisted.
+Only a fresh uniform complete map hydrates fields; mixed state has no fieldwise
+values or merge base. Form drafts are not persisted, replayed, or undoable.
 The reference package is trusted same-realm JavaScript configuration, not a
 sandbox boundary. See the normative
 [typed toolbar decision](../../docs/TYPED_TOOLBAR_CONTROLS.md).

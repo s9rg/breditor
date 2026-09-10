@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.7
+npm install @breditor/wasm@0.3.0-alpha.8
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,8 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 browser bootstrap is
+The supported `0.1.x`, exact-matched `0.2.x`, alpha.7, and alpha.8 browser
+bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, before passing the initialized namespace to the exactly matching
@@ -45,7 +46,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `5` for this unpublished alpha.7 source checkpoint.
+with ABI generation `5` for this unpublished alpha.8 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -131,6 +132,14 @@ Rust/Wasm owns no form fields, labels, draft state, focus behavior, or URL
 policy. Profile Bootstrap V2, fingerprint bytes, Document V2, and every V3
 durable format remain unchanged. See the normative
 [typed toolbar decision](../../docs/TYPED_TOOLBAR_CONTROLS.md).
+
+`0.3.0-alpha.8` retains ABI 5 and every getter above. The generated state now
+uses the existing typed value surface to publish `unset`, `uniform`, or `mixed`
+under the independently typed output contract whose serialized pair is
+`breditor/set-inline-format-input@1`. A uniform value is the canonical complete-
+map set input; no new Wasm method or durable format is needed. Compiler
+admission proves both each setter's action-value bound and the generated
+setter catalog's collective state-batch value-count/text-byte bounds.
 
 ## Reproducible build
 

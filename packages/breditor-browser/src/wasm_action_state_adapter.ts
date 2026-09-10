@@ -4,6 +4,7 @@ import {
   wasmViewMatchesProfileGeneration,
   type BrowserCompiledProfileDescriptor,
   type BrowserProfileActionStateDescriptor,
+  type BrowserProfileFormatDescriptor,
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
@@ -31,6 +32,9 @@ const MAX_ACTION_VALUE_TEXT_BYTES = 65_536;
 const MAX_ACTION_VALUE_OBJECT_KEY_BYTES = 128;
 const MAX_U64 = 18_446_744_073_709_551_615n;
 const INVALID_ACTION_VALUE = Symbol("invalid-action-value");
+const INLINE_FORMAT_SET_STATE_CONTRACT_NAME =
+  "breditor/set-inline-format-input";
+const INLINE_FORMAT_SET_STATE_CONTRACT_VERSION = 1;
 
 /** Exact handle-free snapshot identity expected by one guarded Wasm read. */
 export interface WasmActionStateExpectedSnapshot {
@@ -342,6 +346,21 @@ function actionStateCatalogMatchesDescriptor(
       return false;
     }
   }
+  const entryMap = new Map(entries.map((entry) => [entry.id, entry] as const));
+  const formatMap = new Map(
+    descriptor.formats.map((format) => [format.kind, format] as const),
+  );
+  for (const declaration of descriptor.inlineFormatSets) {
+    const entry = entryMap.get(declaration.actionStateId);
+    const format = formatMap.get(declaration.formatKind);
+    if (
+      entry === undefined ||
+      format === undefined ||
+      !inlineFormatSetStateMatchesContract(entry, format)
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -371,6 +390,120 @@ function actionStateEntryMatchesContract(
     entry.value.status !== "unsupported" &&
     entry.value.contract.name === expectedValue.name &&
     entry.value.contract.version === expectedValue.version
+  );
+}
+
+/**
+ * Applies the semantic half of the generated inline-format setter contract.
+ * Generic state correlation above proves the declared type identity; this
+ * check proves the fixed presence/value pairing and the complete schema-valid
+ * round-trippable Set payload.
+ */
+function inlineFormatSetStateMatchesContract(
+  entry: BrowserActionStateEntry,
+  format: BrowserProfileFormatDescriptor,
+): boolean {
+  if (
+    entry.availability === "unhandled" ||
+    entry.availability === "faulted"
+  ) {
+    return true;
+  }
+  const value = entry.value;
+  if (
+    value === undefined ||
+    value.status === "unsupported" ||
+    value.contract.name !== INLINE_FORMAT_SET_STATE_CONTRACT_NAME ||
+    value.contract.version !== INLINE_FORMAT_SET_STATE_CONTRACT_VERSION
+  ) {
+    return false;
+  }
+  if (value.status === "unset") return entry.activation === "inactive";
+  if (value.status === "mixed") {
+    return entry.activation === "active" || entry.activation === "mixed";
+  }
+  if (value.status !== "uniform") return false;
+  return (
+    entry.activation === "active" &&
+    inlineFormatSetValueMatchesFormat(value.value, format)
+  );
+}
+
+function inlineFormatSetValueMatchesFormat(
+  value: BrowserActionValue,
+  format: BrowserProfileFormatDescriptor,
+): boolean {
+  if (!actionValueObjectHasExactKeys(value, ["operation", "properties"])) {
+    return false;
+  }
+  const operation = value["operation"];
+  const properties = value["properties"];
+  if (operation !== "set" || !Array.isArray(properties)) return false;
+
+  const declarations = new Map(
+    format.properties.map((property) => [property.name, property] as const),
+  );
+  const observed = new Set<string>();
+  let prior = "";
+  for (const property of properties) {
+    if (!actionValueObjectHasExactKeys(property, ["name", "value"])) {
+      return false;
+    }
+    const name = property["name"];
+    if (typeof name !== "string" || name <= prior || observed.has(name)) {
+      return false;
+    }
+    const declaration = declarations.get(name);
+    const propertyValue = property["value"];
+    if (
+      declaration === undefined ||
+      propertyValue === undefined ||
+      !inlineFormatPropertyValueMatches(propertyValue, declaration.valueType)
+    ) {
+      return false;
+    }
+    prior = name;
+    observed.add(name);
+  }
+  return format.properties.every(
+    (property) => property.presence === "optional" || observed.has(property.name),
+  );
+}
+
+function inlineFormatPropertyValueMatches(
+  value: BrowserActionValue,
+  declaration: BrowserProfileFormatDescriptor["properties"][number]["valueType"],
+): boolean {
+  if (declaration.kind === "boolean") return typeof value === "boolean";
+  if (declaration.kind === "integer") {
+    return (
+      typeof value === "number" &&
+      Number.isSafeInteger(value) &&
+      !Object.is(value, -0) &&
+      (declaration.minimum === null || value >= declaration.minimum) &&
+      (declaration.maximum === null || value <= declaration.maximum)
+    );
+  }
+  if (typeof value !== "string") return false;
+  const bytes = utf8Length(value, declaration.maximumUtf8Bytes);
+  return (
+    bytes !== null &&
+    bytes >= declaration.minimumUtf8Bytes &&
+    bytes <= declaration.maximumUtf8Bytes
+  );
+}
+
+function actionValueObjectHasExactKeys(
+  value: BrowserActionValue,
+  expected: readonly string[],
+): value is BrowserActionValueObject {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  return (
+    keys.length === expected.length &&
+    keys.every((key, index) => key === expected[index])
   );
 }
 

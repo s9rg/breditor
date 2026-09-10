@@ -199,6 +199,9 @@ const INVALID_DESCRIPTOR: BrowserProfileDescriptorError = Object.freeze({
 const INLINE_FORMAT_SET_INPUT_CONTRACT_NAME =
   "breditor/set-inline-format-input";
 const INLINE_FORMAT_SET_INPUT_CONTRACT_VERSION = 1;
+const INLINE_FORMAT_SET_STATE_CONTRACT_NAME =
+  "breditor/set-inline-format-input";
+const INLINE_FORMAT_SET_STATE_CONTRACT_VERSION = 1;
 const OWNED_DESCRIPTORS = new WeakSet<object>();
 const DESCRIPTOR_PROFILE_GENERATIONS =
   new WeakMap<object, WasmProfileGenerationView>();
@@ -727,12 +730,14 @@ function readInlineFormatSets(
       intent.input.contract.name !== INLINE_FORMAT_SET_INPUT_CONTRACT_NAME ||
       intent.input.contract.version !== INLINE_FORMAT_SET_INPUT_CONTRACT_VERSION ||
       intent.state.activation !== "tracked" ||
-      intent.state.value !== undefined ||
+      intent.state.value?.name !== INLINE_FORMAT_SET_STATE_CONTRACT_NAME ||
+      intent.state.value.version !== INLINE_FORMAT_SET_STATE_CONTRACT_VERSION ||
       state === undefined ||
       state.source.kind !== "routed" ||
       state.source.intentId !== intentId ||
       state.state.activation !== "tracked" ||
-      state.state.value !== undefined
+      state.state.value?.name !== INLINE_FORMAT_SET_STATE_CONTRACT_NAME ||
+      state.state.value.version !== INLINE_FORMAT_SET_STATE_CONTRACT_VERSION
     ) {
       return null;
     }

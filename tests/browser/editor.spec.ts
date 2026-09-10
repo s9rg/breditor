@@ -704,11 +704,15 @@ test("the native Link form preserves selection, formatting, focus, and responsiv
     "Link applied.",
   );
   await expect(url).toBeFocused();
+  await expect(url).toHaveValue(href);
+  await expect(newWindow).toBeChecked();
 
   await expect(undo).toHaveAttribute("aria-disabled", "false");
   await undo.click();
   await expect(safeLink).toHaveCount(0);
   await expect(url).toBeFocused();
+  await expect(url).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
   await expect(root.locator("mark.breditor-reference-highlight")).toHaveText(
     mounted.text,
   );
@@ -716,6 +720,8 @@ test("the native Link form preserves selection, formatting, focus, and responsiv
   await redo.click();
   await expect(safeLink).toHaveAttribute("href", href);
   await expect(url).toBeFocused();
+  await expect(url).toHaveValue(href);
+  await expect(newWindow).toBeChecked();
   await expect(remove).toBeEnabled();
   await url.focus();
   await remove.click();
@@ -724,6 +730,8 @@ test("the native Link form preserves selection, formatting, focus, and responsiv
     mounted.text,
   );
   await expect(url).toBeFocused();
+  await expect(url).toHaveValue("");
+  await expect(newWindow).not.toBeChecked();
 
   await url.fill("https://draft.example.test/private");
   await newWindow.check();
@@ -781,6 +789,47 @@ test("the native Link form preserves selection, formatting, focus, and responsiv
   }, second.probeId);
   await expect(secondRoot).toHaveCount(0);
   await expect(root).toHaveCount(1);
+});
+
+test("the Link form round-trips surrounding whitespace without native URL normalization", async ({
+  page,
+}) => {
+  const mounted = await mountReferenceFormatting(page);
+  const root = page.locator(
+    `[data-breditor-reference-formatting-probe="${mounted.probeId}"]`,
+  );
+  const toolbar = root.getByRole("toolbar", { name: "Editor controls" });
+  const link = toolbar.getByRole("button", { name: "Link", exact: true });
+  const undo = toolbar.getByRole("button", { name: "Undo", exact: true });
+  const redo = toolbar.getByRole("button", { name: "Redo", exact: true });
+  const panel = root.locator("form[data-breditor-toolbar-panel]");
+  const url = panel.getByLabel("Link URL", { exact: true });
+  const apply = panel.getByRole("button", { name: "Apply Link", exact: true });
+  const exact = "  https://example.test/exact-whitespace  ";
+
+  await link.click();
+  await expect(url).toHaveAttribute("type", "text");
+  await expect(url).toHaveAttribute("inputmode", "url");
+  await url.fill(exact);
+  await expect(url).toHaveValue(exact);
+  await apply.click();
+
+  // Completed dispatch clears the DOM draft, refreshes Rust-owned state, and
+  // hydrates again. The spaces therefore prove the authoritative round trip,
+  // not merely the pre-submit input value.
+  await expect(url).toHaveValue(exact);
+  await expect(root.locator("a.breditor-link")).toHaveText(mounted.text);
+  await expect(root.locator("a.breditor-link")).not.toHaveAttribute("href", /.+/u);
+
+  await undo.click();
+  await expect(url).toHaveValue("");
+  await redo.click();
+  await expect(url).toHaveValue(exact);
+
+  await link.click();
+  await expect(panel).toBeHidden();
+  await link.click();
+  await expect(url).toHaveValue(exact);
 });
 
 test("the native Link toolbar works from an open ShadowRoot without browser URL admission", async ({

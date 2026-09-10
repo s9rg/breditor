@@ -38,11 +38,162 @@ describe("BreditorToolbar inline-format forms", () => {
     expect(launcher.getAttribute("aria-disabled")).toBe("false");
     expect(panel.getAttribute("novalidate")).toBe("");
     expect(panel.noValidate).toBe(true);
+    expect(input.type).toBe("text");
+    expect(input.inputMode).toBe("url");
     expect(input.getAttribute("required")).toBe("");
     expect(input.required).toBe(true);
     expect(panel.hidden).toBe(true);
     expect(toolbar.validateCanonicalDom()).toBe(true);
 
+    toolbar.dispose();
+  });
+
+  it("hydrates exact single-line uniform values and follows authoritative refreshes while pristine", () => {
+    const host = mountHost();
+    const store = new TestStateStore([
+      uniformLinkState("  not a normalized URL  ", true),
+    ]);
+    const toolbar = new BreditorToolbar(host, linkManifest(), store, {
+      dispatch: () => toolbarCommandDispatchResult("completed"),
+    });
+
+    launcherButton(host).click();
+    expect(linkInput(host).value).toBe("  not a normalized URL  ");
+    expect(targetInput(host).checked).toBe(true);
+
+    store.publish([uniformLinkState("https://fresh.example", false)]);
+    expect(linkInput(host).value).toBe("https://fresh.example");
+    expect(targetInput(host).checked).toBe(false);
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+    toolbar.dispose();
+  });
+
+  it("makes a CR/LF-bearing stored URL unavailable instead of normalizing it", () => {
+    const host = mountHost();
+    const toolbar = new BreditorToolbar(
+      host,
+      linkManifest(),
+      new TestStateStore([uniformLinkState("https://one.example\r\nnext", false)]),
+      { dispatch: () => toolbarCommandDispatchResult("completed") },
+    );
+
+    expect(launcherButton(host).getAttribute("aria-disabled")).toBe("true");
+    launcherButton(host).click();
+    expect(linkPanel(host).hidden).toBe(true);
+    expect(linkInput(host).value).toBe("");
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+    toolbar.dispose();
+  });
+
+  it("preserves a dirty open draft across selection refresh and discards it on reopen", () => {
+    const host = mountHost();
+    const store = new TestStateStore([
+      uniformLinkState("https://one.example", false),
+    ]);
+    const toolbar = new BreditorToolbar(host, linkManifest(), store, {
+      dispatch: () => toolbarCommandDispatchResult("completed"),
+    });
+    const launcher = launcherButton(host);
+    launcher.click();
+    const input = linkInput(host);
+    input.value = "https://draft.example";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    store.publish([uniformLinkState("https://two.example", true)]);
+    expect(input.value).toBe("https://draft.example");
+    expect(targetInput(host).checked).toBe(false);
+
+    launcher.click();
+    expect(input.value).toBe("");
+    launcher.click();
+    expect(input.value).toBe("https://two.example");
+    expect(targetInput(host).checked).toBe(true);
+    toolbar.dispose();
+  });
+
+  it("hydrates only the authoritative post-completion state", () => {
+    const host = mountHost();
+    const store = new TestStateStore([inactiveLinkState()]);
+    const toolbar = new BreditorToolbar(host, linkManifest(), store, {
+      dispatch() {
+        store.publish([uniformLinkState("https://canonical.example", false)]);
+        return toolbarCommandDispatchResult("completed");
+      },
+    });
+    launcherButton(host).click();
+    const input = linkInput(host);
+    input.value = "https://submitted.example";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    targetInput(host).checked = true;
+    targetInput(host).dispatchEvent(new Event("change", { bubbles: true }));
+
+    linkPanel(host).dispatchEvent(
+      new SubmitEvent("submit", { bubbles: true, cancelable: true }),
+    );
+
+    expect(input.value).toBe("https://canonical.example");
+    expect(targetInput(host).checked).toBe(false);
+    expect(linkPanel(host).textContent).toContain("Link applied.");
+    toolbar.dispose();
+  });
+
+  it("fails closed on malformed or activation-inconsistent state values", () => {
+    const host = mountHost();
+    const store = new TestStateStore([
+      state(FORM_STATE_ID, "enabled", "active", undefined, {
+        status: "uniform",
+        contract: { name: "breditor/set-inline-format-input", version: 1 },
+        value: {
+          operation: "set",
+          properties: [{ name: "example/href", value: "missing boolean" }],
+        },
+      }),
+    ]);
+    const toolbar = new BreditorToolbar(host, linkManifest(), store, {
+      dispatch: () => toolbarCommandDispatchResult("completed"),
+    });
+    expect(launcherButton(host).getAttribute("aria-disabled")).toBe("true");
+    launcherButton(host).click();
+    expect(linkPanel(host).hidden).toBe(true);
+
+    store.publish([
+      state(
+        FORM_STATE_ID,
+        "enabled",
+        "inactive",
+        undefined,
+        defaultStateValue("mixed"),
+      ),
+    ]);
+    expect(launcherButton(host).getAttribute("aria-disabled")).toBe("true");
+    expect(toolbar.state).toBe("live");
+    toolbar.dispose();
+  });
+
+  it("keeps an all-present selection usable when its property maps are mixed", () => {
+    const host = mountHost();
+    const store = new TestStateStore([
+      state(
+        FORM_STATE_ID,
+        "enabled",
+        "active",
+        undefined,
+        defaultStateValue("mixed"),
+      ),
+    ]);
+    const toolbar = new BreditorToolbar(host, linkManifest(), store, {
+      dispatch: () => toolbarCommandDispatchResult("completed"),
+    });
+
+    expect(launcherButton(host).getAttribute("aria-disabled")).toBe("false");
+    launcherButton(host).click();
+    expect(linkInput(host).value).toBe("");
+    expect(targetInput(host).checked).toBe(false);
+    expect(formAction(host, "remove").disabled).toBe(false);
+    expect(linkPanel(host).textContent).toContain(
+      "Link is active with mixed values.",
+    );
+    expect(toolbar.validateCanonicalDom()).toBe(true);
     toolbar.dispose();
   });
 
@@ -345,7 +496,7 @@ describe("BreditorToolbar inline-format forms", () => {
     url.dispatchEvent(new Event("input", { bubbles: true }));
     expect(toolbar.state).toBe("live");
 
-    url.setAttribute("type", "text");
+    url.setAttribute("type", "url");
     url.dispatchEvent(new Event("input", { bubbles: true }));
     expect(toolbar.state).toBe("faulted");
     expect(dispatch).not.toHaveBeenCalled();
@@ -354,7 +505,7 @@ describe("BreditorToolbar inline-format forms", () => {
     toolbar.dispose();
   });
 
-  it("submits schema-valid text even when native URL validation would reject it", () => {
+  it("submits schema-valid single-line text without browser URL validation", () => {
     const host = mountHost();
     const invocations: ToolbarCommandInvocation[] = [];
     const toolbar = new BreditorToolbar(
@@ -529,7 +680,9 @@ describe("BreditorToolbar inline-format forms", () => {
     expect(panels.every((panel) => !collisionIds.has(panel.id))).toBe(true);
 
     launchers[0]?.click();
-    const firstInput = panels[0]?.querySelector<HTMLInputElement>("input[type=url]");
+    const firstInput = panels[0]?.querySelector<HTMLInputElement>(
+      'input[type="text"][inputmode="url"]',
+    );
     if (firstInput === null || firstInput === undefined) {
       throw new Error("missing first URL field");
     }
@@ -699,13 +852,47 @@ function inactiveLinkState(): ToolbarActionStateEntry {
   );
 }
 
+function uniformLinkState(
+  href: string,
+  openInNewWindow: boolean,
+): ToolbarActionStateEntry {
+  return state(FORM_STATE_ID, "enabled", "active", undefined, {
+    status: "uniform",
+    contract: {
+      name: "breditor/set-inline-format-input",
+      version: 1,
+    },
+    value: {
+      operation: "set",
+      properties: [
+        { name: "example/href", value: href },
+        { name: "example/open-in-new-window", value: openInNewWindow },
+      ],
+    },
+  });
+}
+
 function state(
   id: string,
   availability: ToolbarActionStateEntry["availability"],
   activation: ToolbarActionStateEntry["activation"],
   reasonCode: string | undefined,
+  value: unknown = defaultStateValue(activation),
 ): ToolbarActionStateEntry {
-  return Object.freeze({ id, availability, activation, reasonCode });
+  return Object.freeze({ id, availability, activation, reasonCode, value });
+}
+
+function defaultStateValue(
+  activation: ToolbarActionStateEntry["activation"],
+): unknown {
+  if (activation !== "inactive" && activation !== "mixed") return undefined;
+  return Object.freeze({
+    status: activation === "inactive" ? "unset" : "mixed",
+    contract: Object.freeze({
+      name: "breditor/set-inline-format-input",
+      version: 1,
+    }),
+  });
 }
 
 function formDeclaration(suffix: string, label: string) {

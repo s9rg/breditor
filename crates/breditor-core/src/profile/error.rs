@@ -2,7 +2,8 @@ use thiserror::Error;
 
 use crate::{
     action::{
-        ActionId, ActionRegistryError, ActionStateCatalogError, ActionStateId, ActionValueError,
+        ActionId, ActionRegistryError, ActionStateCatalogError, ActionStateDeriveError,
+        ActionStateId, ActionValueError,
         routing::{BindingId, IntentId, IntentRouterError},
     },
     extension::ExtensionId,
@@ -70,6 +71,34 @@ pub enum ProfileCompilationError {
         owner: ExtensionId,
         /// Property-free target format kind.
         format_kind: QualifiedName,
+    },
+    /// A generated setter could admit a property map too large to observe
+    /// truthfully through its bounded round-trippable state value.
+    #[error(
+        "extension {owner} inline-format set target {format_kind} has an unrepresentable state value: {source}"
+    )]
+    InlineFormatSetStateValue {
+        /// Manifest that owns the rejected set declaration.
+        owner: ExtensionId,
+        /// Property-bearing target format kind.
+        format_kind: QualifiedName,
+        /// Exact fixed resource bound exceeded by the worst valid map.
+        #[source]
+        source: ActionValueError,
+    },
+    /// The maximum simultaneous generated setter values could exceed the
+    /// all-or-nothing action-state batch resource envelope.
+    #[error(
+        "extension {owner} inline-format set target {format_kind} makes the generated state batch unrepresentable: {source}"
+    )]
+    InlineFormatSetStateBatch {
+        /// Manifest whose canonical declaration first crosses the batch bound.
+        owner: ExtensionId,
+        /// Target format kind whose maximum value first crosses the bound.
+        format_kind: QualifiedName,
+        /// Exact aggregate dynamic resource bound exceeded.
+        #[source]
+        source: ActionStateDeriveError,
     },
     /// Two extension manifests claimed one generated action identity.
     #[error("inline-format action {action_id} is owned by both {first_owner} and {second_owner}")]

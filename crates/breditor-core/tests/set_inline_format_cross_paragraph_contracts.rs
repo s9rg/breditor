@@ -7,9 +7,12 @@ use std::error::Error;
 use breditor_core::{
     action::{
         ActionActivation, ActionId, ActionInput, ActionInvocation, ActionPreparation,
-        ActionRegistration, ActionRegistry, ActionStateId, ActionStateOutcome, ActionValue,
-        ObservedAvailability, PreparedAction,
-        builtins::{SetInlineFormatAction, set_inline_format_input_contract},
+        ActionRegistration, ActionRegistry, ActionStateId, ActionStateOutcome, ActionStateValue,
+        ActionValue, ObservedAvailability, PreparedAction,
+        builtins::{
+            SetInlineFormatAction, inline_format_properties_state_contract,
+            set_inline_format_input_contract,
+        },
         routing::{BindingId, IntentId},
     },
     codec::{DocumentJsonCodecV2, SessionCheckpointJsonCodecV3, SessionCheckpointLimits},
@@ -49,6 +52,13 @@ struct Run<'a> {
     color: Option<&'a str>,
     href: Option<&'a str>,
     label: Option<&'a str>,
+}
+
+#[derive(Clone, Copy)]
+enum ExpectedStateValue<'a> {
+    Unset,
+    Uniform(&'a str),
+    Mixed,
 }
 
 impl<'a> Run<'a> {
@@ -302,6 +312,37 @@ fn assert_disabled(
     Ok(())
 }
 
+fn assert_state_value(value: &ActionStateValue, expected: ExpectedStateValue<'_>) -> TestResult {
+    match (value, expected) {
+        (ActionStateValue::Unset { contract }, ExpectedStateValue::Unset)
+        | (ActionStateValue::Mixed { contract }, ExpectedStateValue::Mixed) => {
+            assert_eq!(contract, &inline_format_properties_state_contract());
+        }
+        (ActionStateValue::Uniform { contract, value }, ExpectedStateValue::Uniform(expected)) => {
+            assert_eq!(contract, &inline_format_properties_state_contract());
+            let properties = value
+                .as_object()
+                .and_then(|object| object.get("properties"))
+                .and_then(ActionValue::as_array)
+                .ok_or_else(|| test_error("uniform state value has no property array"))?;
+            let [property] = properties else {
+                return Err(
+                    test_error("uniform link state must contain exactly one property").into()
+                );
+            };
+            let property = property
+                .as_object()
+                .ok_or_else(|| test_error("uniform link property is not an object"))?;
+            assert_eq!(property.get("name").and_then(ActionValue::as_string), Some(HREF));
+            assert_eq!(property.get("value").and_then(ActionValue::as_string), Some(expected));
+        }
+        (actual, _) => {
+            return Err(test_error(format!("unexpected action-state value: {actual:?}")).into());
+        }
+    }
+    Ok(())
+}
+
 fn only_root_replace(operations: &[Operation]) -> Result<&RootTextReplace, Box<dyn Error>> {
     let [Operation::RootTextReplace(operation)] = operations else {
         return Err(test_error(format!(
@@ -430,6 +471,7 @@ fn set_preserves_typed_peers_complete_properties_outside_edges_and_direction() -
         )?;
         let prepared = enabled(&registry, &initial, set_input("new")?)?;
         assert_eq!(prepared.indicator().activation(), ActionActivation::Inactive);
+        assert_state_value(prepared.indicator().value(), ExpectedStateValue::Mixed)?;
         let operation = only_root_replace(prepared.transaction().operations())?;
         assert_eq!(operation.range().start().paragraph_path(), &path(&[0])?);
         assert_eq!(operation.range().start().offset(), TextOffset::try_new(1)?);
@@ -510,6 +552,7 @@ fn remove_strips_only_the_target_kind_across_empty_middle_and_both_directions() 
         )?;
         let prepared = enabled(&registry, &initial, remove_input()?)?;
         assert_eq!(prepared.indicator().activation(), ActionActivation::Active);
+        assert_state_value(prepared.indicator().value(), ExpectedStateValue::Mixed)?;
         only_root_replace(prepared.transaction().operations())?;
         let commit = prepared.execute(&initial)?;
         assert_paragraph_runs(
@@ -841,7 +884,7 @@ fn v3_checkpoint_replay_preserves_typed_root_replace_on_undo_and_redo_branches()
 fn observed_presence(
     profile: &CompiledEditorProfile,
     session: &EditorSession,
-) -> Result<(ObservedAvailability, ActionActivation), Box<dyn Error>> {
+) -> Result<(ObservedAvailability, ActionActivation, ActionStateValue), Box<dyn Error>> {
     let batch = profile.action_state_catalog().derive(session)?;
     let entry = batch
         .entry(&ActionStateId::try_new(LINK_PRESENCE_STATE)?)
@@ -849,7 +892,11 @@ fn observed_presence(
     let ActionStateOutcome::Resolved(resolved) = entry.outcome() else {
         return Err(test_error("generated link presence state did not resolve").into());
     };
-    Ok((resolved.availability().clone(), resolved.indicator().activation()))
+    Ok((
+        resolved.availability().clone(),
+        resolved.indicator().activation(),
+        resolved.indicator().value().clone(),
+    ))
 }
 
 #[test]
@@ -869,6 +916,18 @@ fn generated_profile_presence_state_spans_paragraphs_and_blocks_structural_only_
             ],
             ActionActivation::Active,
             true,
+            ExpectedStateValue::Mixed,
+        ),
+        (
+            "generated-cross-presence-uniform",
+            [
+                paragraph_value(&[Run::linked("a", "same")]),
+                paragraph_value(&[]),
+                paragraph_value(&[Run::linked("b", "same")]),
+            ],
+            ActionActivation::Active,
+            true,
+            ExpectedStateValue::Uniform("same"),
         ),
         (
             "generated-cross-presence-mixed",
@@ -879,6 +938,7 @@ fn generated_profile_presence_state_spans_paragraphs_and_blocks_structural_only_
             ],
             ActionActivation::Mixed,
             true,
+            ExpectedStateValue::Mixed,
         ),
         (
             "generated-cross-presence-inactive",
@@ -889,13 +949,15 @@ fn generated_profile_presence_state_spans_paragraphs_and_blocks_structural_only_
             ],
             ActionActivation::Inactive,
             false,
+            ExpectedStateValue::Unset,
         ),
     ];
-    for (lineage, paragraphs, expected_activation, enabled) in cases {
+    for (lineage, paragraphs, expected_activation, enabled, expected_value) in cases {
         let session = EditorSession::new(state(&context, &paragraphs, selection.clone(), lineage)?);
-        let (availability, activation) = observed_presence(&profile, &session)?;
+        let (availability, activation, value) = observed_presence(&profile, &session)?;
         assert_eq!(activation, expected_activation);
         assert_eq!(matches!(availability, ObservedAvailability::Enabled), enabled);
+        assert_state_value(&value, expected_value)?;
     }
 
     let structural = EditorSession::new(state(
@@ -908,8 +970,9 @@ fn generated_profile_presence_state_spans_paragraphs_and_blocks_structural_only_
         selected(child_point(0, 1, Affinity::After)?, child_point(2, 0, Affinity::Before)?),
         "generated-cross-presence-structural",
     )?);
-    let (availability, activation) = observed_presence(&profile, &structural)?;
+    let (availability, activation, value) = observed_presence(&profile, &structural)?;
     assert_eq!(activation, ActionActivation::Inactive);
+    assert_state_value(&value, ExpectedStateValue::Unset)?;
     assert_eq!(
         availability.reason().map(|reason| reason.code().as_str()),
         Some("breditor/no-selected-text")

@@ -41,6 +41,10 @@ import {
   readDomKeyboardEvent,
   readDomMouseEvent,
 } from "./dom_event_intrinsics.js";
+import {
+  decodeToolbarInlineFormatFormStateValue,
+  type ToolbarInlineFormatFormStateSeed,
+} from "./toolbar_inline_format_form_state_value.js";
 
 const PREVENT_SCROLL_FOCUS_OPTIONS: FocusOptions = Object.freeze({
   preventScroll: true,
@@ -54,6 +58,7 @@ export interface ToolbarInlineFormatFormActionState {
   readonly activation:
     "stateless" | "inactive" | "active" | "mixed" | undefined;
   readonly reasonCode: string | undefined;
+  readonly value?: unknown;
 }
 
 export type ToolbarInlineFormatFormDispatch = (
@@ -90,9 +95,10 @@ type FieldRecord = StringFieldRecord | BooleanFieldRecord;
 /**
  * Internal native form owned by one `inlineFormatForm` toolbar launcher.
  *
- * The class is deliberately presentation-only: it builds the existing typed
- * input JSON and delegates the resulting semantic intent to the toolbar. It
- * never inspects editor DOM, document state, or current format property values.
+ * The class is deliberately presentation-only: it builds typed input JSON,
+ * consumes only a detached validated action-state seed, and delegates the
+ * resulting semantic intent to the toolbar. It never inspects editor DOM or
+ * document state.
  *
  * @internal
  */
@@ -105,6 +111,7 @@ export class BreditorToolbarInlineFormatForm {
   readonly #dispatch: ToolbarInlineFormatFormDispatch;
   readonly #guard: (callback: () => void) => void;
   readonly #beforeOpen: (form: BreditorToolbarInlineFormatForm) => void;
+  readonly #refreshState: () => void;
   readonly #panel: HTMLFormElement;
   readonly #panelId: string;
   readonly #fields: FieldRecord[] = [];
@@ -127,6 +134,8 @@ export class BreditorToolbarInlineFormatForm {
   #setInputJson: string | undefined;
   #open = false;
   #composing = false;
+  #dirty = false;
+  #stateSeed: ToolbarInlineFormatFormStateSeed | undefined;
   #disposed = false;
   #selectionText: string;
   #feedbackText = "";
@@ -139,6 +148,7 @@ export class BreditorToolbarInlineFormatForm {
     dispatch: ToolbarInlineFormatFormDispatch,
     guard: (callback: () => void) => void,
     beforeOpen: (form: BreditorToolbarInlineFormatForm) => void,
+    refreshState: () => void,
   ) {
     this.#ownerDocument = ownerDocument;
     this.#treeRoot = nativeTreeRoot(host);
@@ -148,6 +158,7 @@ export class BreditorToolbarInlineFormatForm {
     this.#dispatch = dispatch;
     this.#guard = guard;
     this.#beforeOpen = beforeOpen;
+    this.#refreshState = refreshState;
     this.#selectionText = `${declaration.label} is unavailable.`;
 
     const panel = nativeCreateHtmlElement(ownerDocument, "form");
@@ -282,6 +293,7 @@ export class BreditorToolbarInlineFormatForm {
     }
     this.#beforeOpen(this);
     if (this.#disposed || !this.#formReady) return;
+    this.#applyStateSeed();
     this.#open = true;
     nativeRemoveAttribute(this.#panel, "hidden");
     nativeSetAttribute(this.#launcher, "aria-expanded", "true");
@@ -315,32 +327,53 @@ export class BreditorToolbarInlineFormatForm {
     if (this.#disposed) return;
     const focusedControl = this.captureFocusedControl();
     const activation = state?.activation;
+    const stateSeed =
+      state === undefined
+        ? null
+        : decodeToolbarInlineFormatFormStateValue(
+            this.#declaration,
+            state.value,
+          );
+    const valueMatchesActivation =
+      (activation === "inactive" && stateSeed?.status === "unset") ||
+      (activation === "active" && stateSeed?.status === "uniform") ||
+      (activation === "active" && stateSeed?.status === "mixed") ||
+      (activation === "mixed" && stateSeed?.status === "mixed");
+    const presentedActivation = valueMatchesActivation
+      ? activation
+      : undefined;
+    this.#stateSeed = valueMatchesActivation ? stateSeed : undefined;
     this.#formReady =
-      (state?.availability === "enabled" &&
+      valueMatchesActivation &&
+      ((state?.availability === "enabled" &&
         (activation === "inactive" ||
           activation === "active" ||
           activation === "mixed")) ||
       ((state?.availability === "disabled" ||
         state?.availability === "blocked") &&
         activation === "inactive" &&
-        state.reasonCode === INLINE_FORMAT_UNCHANGED);
+        state.reasonCode === INLINE_FORMAT_UNCHANGED));
     this.#removeReady =
+      valueMatchesActivation &&
       state?.availability === "enabled" &&
       (activation === "active" || activation === "mixed");
+    if (this.#open && !this.#dirty) this.#applyStateSeed();
     nativeSetAttribute(
       this.#launcher,
       "data-breditor-activation",
-      activation === "inactive" ||
-        activation === "active" ||
-        activation === "mixed"
-        ? activation
+      presentedActivation === "inactive" ||
+        presentedActivation === "active" ||
+        presentedActivation === "mixed"
+        ? presentedActivation
         : "unavailable",
     );
-    if (activation === "active") {
-      this.#selectionText = `${this.#declaration.label} is active.`;
-    } else if (activation === "mixed") {
+    if (presentedActivation === "active") {
+      this.#selectionText = stateSeed?.status === "mixed"
+        ? `${this.#declaration.label} is active with mixed values.`
+        : `${this.#declaration.label} is active.`;
+    } else if (presentedActivation === "mixed") {
       this.#selectionText = `${this.#declaration.label} is mixed.`;
-    } else if (activation === "inactive" && this.#formReady) {
+    } else if (presentedActivation === "inactive" && this.#formReady) {
       this.#selectionText = `${this.#declaration.label} is not active.`;
     } else {
       this.#selectionText = `${this.#declaration.label} is unavailable.`;
@@ -474,7 +507,11 @@ export class BreditorToolbarInlineFormatForm {
     nativeSetAttribute(input, "name", field.propertyName);
     nativeSetAttribute(input, "data-breditor-property", field.propertyName);
     if (field.kind === "string") {
-      nativeSetAttribute(input, "type", "url");
+      // `type=url` trims surrounding ASCII whitespace in current engines.
+      // Keep the scalar surface as text and provide only the mobile-keyboard
+      // hint so a form-admissible stored value round-trips byte-for-byte.
+      nativeSetAttribute(input, "type", "text");
+      nativeSetAttribute(input, "inputmode", "url");
       nativeSetAttribute(input, "required", "");
       nativeSetAttribute(input, "autocomplete", field.autocomplete);
       if (field.placeholder !== undefined) {
@@ -529,6 +566,7 @@ export class BreditorToolbarInlineFormatForm {
       throw new TypeError("toolbar form draft event is invalid");
     }
     this.#refreshDraft();
+    this.#dirty = true;
     this.#setFeedback("");
   }
 
@@ -542,6 +580,7 @@ export class BreditorToolbarInlineFormatForm {
     }
     this.#requireCanonicalDom();
     if (this.#disposed || this.#composing || !this.#open) return;
+    this.#dirty = true;
     this.#refreshDraft();
     const inputJson = this.#setInputJson;
     if (!this.#formReady || inputJson === undefined) {
@@ -632,7 +671,10 @@ export class BreditorToolbarInlineFormatForm {
       throw new TypeError("toolbar form composition event is invalid");
     }
     this.#composing = active;
-    if (!active) this.#refreshDraft();
+    this.#dirty = true;
+    if (!active) {
+      this.#refreshDraft();
+    }
   }
 
   #runDispatch(
@@ -653,6 +695,8 @@ export class BreditorToolbarInlineFormatForm {
       );
     } else {
       this.#clearDraft();
+      this.#refreshState();
+      if (this.#disposed) return;
       this.#setFeedback(completedText);
     }
     if (restore !== undefined) this.restoreFocusedControl(restore);
@@ -686,11 +730,37 @@ export class BreditorToolbarInlineFormatForm {
   }
 
   #clearDraft(): void {
+    this.#dirty = false;
     for (const record of this.#fields) {
       if (record.declaration.kind === "string") {
         nativeSetInputValue(record.input, "");
       } else {
         nativeSetInputChecked(record.input, record.declaration.defaultValue);
+        nativeSetInputIndeterminate(record.input, false);
+      }
+    }
+    this.#refreshDraft();
+  }
+
+  #applyStateSeed(): void {
+    const values = new Map<string, string | boolean>();
+    if (this.#stateSeed?.status === "uniform") {
+      for (const field of this.#stateSeed.fields) {
+        values.set(field.name, field.value);
+      }
+    }
+    for (const record of this.#fields) {
+      const value = values.get(record.declaration.propertyName);
+      if (record.declaration.kind === "string") {
+        nativeSetInputValue(
+          record.input,
+          typeof value === "string" ? value : "",
+        );
+      } else {
+        nativeSetInputChecked(
+          record.input,
+          typeof value === "boolean" ? value : record.declaration.defaultValue,
+        );
         nativeSetInputIndeterminate(record.input, false);
       }
     }
@@ -722,7 +792,7 @@ export class BreditorToolbarInlineFormatForm {
     const stringField = record.declaration.kind === "string";
     const expectedInputAttributes =
       3 +
-      (stringField ? 2 : 0) +
+      (stringField ? 3 : 0) +
       (stringField && record.declaration.placeholder !== undefined ? 1 : 0);
     return (
       labelFacts?.tagName === "LABEL" &&
@@ -747,16 +817,18 @@ export class BreditorToolbarInlineFormatForm {
       nativeGetAttribute(record.input, "data-breditor-property") ===
         record.declaration.propertyName &&
       nativeGetAttribute(record.input, "type") ===
-        (stringField ? "url" : "checkbox") &&
+        (stringField ? "text" : "checkbox") &&
       (stringField
-        ? nativeGetAttribute(record.input, "required") === "" &&
+        ? nativeGetAttribute(record.input, "inputmode") === "url" &&
+          nativeGetAttribute(record.input, "required") === "" &&
           nativeGetAttribute(record.input, "autocomplete") ===
             record.declaration.autocomplete &&
           (record.declaration.placeholder === undefined
             ? !nativeHasAttribute(record.input, "placeholder")
             : nativeGetAttribute(record.input, "placeholder") ===
               record.declaration.placeholder)
-        : !nativeHasAttribute(record.input, "autocomplete") &&
+        : !nativeHasAttribute(record.input, "inputmode") &&
+          !nativeHasAttribute(record.input, "autocomplete") &&
           !nativeHasAttribute(record.input, "required") &&
           !nativeHasAttribute(record.input, "placeholder") &&
           !nativeInputIndeterminate(record.input)) &&

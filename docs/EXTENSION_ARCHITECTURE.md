@@ -3,11 +3,12 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.7` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.8` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
-typed form correlated through a new ABI-5 process-local set-surface triple. It
+typed form correlated through an ABI-5 process-local set-surface triple and now
+hydrates pristine fields from exact Rust-owned complete-map state. It
 does not introduce a generic attribute protocol, arbitrary toolbar widget, or
 extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
 normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
@@ -823,6 +824,34 @@ Close. Drafts are neither hydrated from current selection values nor persisted.
 Apply/Remove preserve semantic selection, use the existing synchronous queue,
 request the existing history boundary, and replay only the committed operation.
 
+## `0.3.0-alpha.8` exact typed state and hydration
+
+Alpha.8 adds no action, operation, replay rule, durable codec, descriptor getter,
+or Wasm member. The generated setter state uses the existing ABI-5 action-value
+surface and declares the independently typed output contract whose serialized
+pair is `breditor/set-inline-format-input@1`. A uniform value is exactly the
+canonical complete-map `set` branch; unset has no target map, and mixed carries
+no synthetic value.
+
+The fixed-Remove query keeps input-relative activation separate from value
+equality. All-present equal maps are active/uniform, all-present differing maps
+are active/mixed, partial presence is mixed/mixed, and absence is inactive/
+unset. Collapsed state observes effective pending/context formats. Whole-map
+mixed does not expose per-field differences or a merge base.
+
+The browser decodes only a strictly correlated canonical value. Uniform seeds
+a pristine form exactly; unset or mixed seeds defaults. A dirty form survives
+refresh and rejected dispatch. Completion and close/reset discard the draft so
+authoritative state can seed it again. Neither observations nor drafts enter
+undo/redo, replay, documents, checkpoints, or IndexedDB. URL strings remain
+exact inert scalar data until the separate `safeLinkV1` policy decides whether
+and how to render navigation attributes.
+
+Compiler admission proves that each setter's worst-case complete map fits one
+`ActionValue` and that all generated setters collectively fit Rust's action-
+state batch value-count and text-byte budgets. It rejects the first canonical
+declaration crossing either aggregate bound.
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:
@@ -978,6 +1007,9 @@ cross-paragraph complete-map set/remove. `0.3.0-alpha.7` advances to ABI 5 and
 settles the canonical set-surface correlation plus one browser-only closed
 URL-string/Boolean form. Bootstrap V2, fingerprint bytes, Document V2, and V3
 durable bytes remain unchanged.
+
+`0.3.0-alpha.8` settles exact complete-map state and pristine form hydration
+through ABI 5's existing getters. It adds no ABI or durable generation.
 
 The following choice remains for a later release and may be settled without
 weakening the decisions above:

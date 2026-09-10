@@ -8,10 +8,12 @@ use breditor_core::{
     action::{
         ActionActivation, ActionId, ActionInput, ActionInputContract, ActionInputError,
         ActionInputVersion, ActionInvocation, ActionPreparation, ActionPrepareError,
-        ActionRegistration, ActionRegistry, ActionValue, PreparedAction,
+        ActionRegistration, ActionRegistry, ActionStateIndicator, ActionStateValue, ActionValue,
+        DecodeActionInput, PreparedAction,
         builtins::{
             SET_INLINE_FORMAT_INPUT_PROPERTY_ORDER_CODE, SET_INLINE_FORMAT_INPUT_SHAPE_CODE,
-            SetInlineFormatAction, set_inline_format_input_contract,
+            SetInlineFormatAction, SetInlineFormatInput, inline_format_properties_state_contract,
+            set_inline_format_input_contract,
         },
     },
     codec::DocumentJsonCodecV2,
@@ -193,6 +195,54 @@ fn set_href_input(href: &str) -> Result<ActionInput, Box<dyn Error>> {
 fn remove_input() -> Result<ActionInput, Box<dyn Error>> {
     let value = object(vec![("operation", ActionValue::try_from_string("remove")?)])?;
     Ok(ActionInput::typed(set_inline_format_input_contract(), value))
+}
+
+fn assert_uniform_properties(
+    indicator: &ActionStateIndicator,
+    expected: &[(&str, &str)],
+) -> TestResult {
+    let ActionStateValue::Uniform { contract, value } = indicator.value() else {
+        return Err(test_error(format!(
+            "expected uniform state value, got {:?}",
+            indicator.value()
+        ))
+        .into());
+    };
+    assert_eq!(contract, &inline_format_properties_state_contract());
+    let input_contract = set_inline_format_input_contract();
+    assert_eq!(contract.name(), input_contract.name());
+    assert_eq!(contract.version().get(), input_contract.version().get());
+    let decoded = SetInlineFormatInput::decode(
+        Some(&input_contract),
+        &ActionInput::typed(input_contract.clone(), value.clone()),
+    )?;
+    let properties = decoded
+        .properties()
+        .ok_or_else(|| test_error("uniform state did not round-trip as a Set input"))?;
+    assert_eq!(properties.len(), expected.len());
+    for (property_name, expected_value) in expected {
+        assert_eq!(
+            properties.get(&name(property_name)?).and_then(PropertyValue::as_string),
+            Some(*expected_value)
+        );
+    }
+    Ok(())
+}
+
+fn assert_unset(indicator: &ActionStateIndicator) {
+    assert!(matches!(
+        indicator.value(),
+        ActionStateValue::Unset { contract }
+            if contract == &inline_format_properties_state_contract()
+    ));
+}
+
+fn assert_mixed(indicator: &ActionStateIndicator) {
+    assert!(matches!(
+        indicator.value(),
+        ActionStateValue::Mixed { contract }
+            if contract == &inline_format_properties_state_contract()
+    ));
 }
 
 fn prepare(
@@ -453,6 +503,76 @@ fn set_replaces_the_complete_map_and_remove_ignores_old_properties() -> TestResu
 }
 
 #[test]
+fn state_value_reports_current_complete_maps_independently_from_dynamic_activation() -> TestResult {
+    let schema = typed_schema()?;
+    let context = EditorContext::new(schema, DocumentLimits::default());
+    let id = action_id("example/set-link")?;
+    let registry = registry_with(id.clone(), name(LINK)?)?;
+
+    let uniform = state(
+        &context,
+        &[paragraph_value(&[run_value(
+            "a",
+            &[format_value(LINK, &json!({ (HREF): "https://old.test", (LABEL): "old label" }))],
+        )])],
+        Some(selected(
+            text_point(0, 0, 0, Affinity::Before)?,
+            text_point(0, 0, 1, Affinity::After)?,
+        )),
+        "set-link-state-uniform",
+    )?;
+    let prepared = enabled(&registry, &id, &uniform, set_href_input("https://new.test")?)?;
+    assert_eq!(prepared.indicator().activation(), ActionActivation::Inactive);
+    assert_uniform_properties(
+        prepared.indicator(),
+        &[(HREF, "https://old.test"), (LABEL, "old label")],
+    )?;
+
+    let differing = state(
+        &context,
+        &[paragraph_value(&[linked("a", "https://one.test"), linked("b", "https://two.test")])],
+        Some(selected(
+            text_point(0, 0, 0, Affinity::Before)?,
+            text_point(0, 1, 1, Affinity::After)?,
+        )),
+        "set-link-state-differing",
+    )?;
+    let prepared = enabled(&registry, &id, &differing, remove_input()?)?;
+    assert_eq!(prepared.indicator().activation(), ActionActivation::Active);
+    assert_mixed(prepared.indicator());
+
+    let partial = state(
+        &context,
+        &[paragraph_value(&[linked("a", "https://one.test"), plain("b")])],
+        Some(selected(
+            text_point(0, 0, 0, Affinity::Before)?,
+            text_point(0, 1, 1, Affinity::After)?,
+        )),
+        "set-link-state-partial",
+    )?;
+    let prepared = enabled(&registry, &id, &partial, remove_input()?)?;
+    assert_eq!(prepared.indicator().activation(), ActionActivation::Mixed);
+    assert_mixed(prepared.indicator());
+
+    let absent = state(
+        &context,
+        &[paragraph_value(&[plain("a")])],
+        Some(selected(
+            text_point(0, 0, 0, Affinity::Before)?,
+            text_point(0, 0, 1, Affinity::After)?,
+        )),
+        "set-link-state-absent",
+    )?;
+    let ActionPreparation::Disabled(prepared) = prepare(&registry, &id, &absent, remove_input()?)?
+    else {
+        return Err(test_error("absent remove unexpectedly enabled").into());
+    };
+    assert_eq!(prepared.indicator().activation(), ActionActivation::Inactive);
+    assert_unset(prepared.indicator());
+    Ok(())
+}
+
+#[test]
 fn shared_schema_admission_rejects_missing_wrong_and_unknown_properties() -> TestResult {
     let schema = typed_schema()?;
     let context = EditorContext::new(schema, DocumentLimits::default());
@@ -500,6 +620,7 @@ fn collapsed_set_and_remove_update_exact_typed_pending_formats_without_operation
 
     let set = enabled(&registry, &id, &collapsed_state, set_href_input("https://example.test")?)?;
     assert_eq!(set.indicator().activation(), ActionActivation::Inactive);
+    assert_unset(set.indicator());
     assert!(set.transaction().operations().is_empty());
     let set = set.execute(&collapsed_state)?;
     assert!(set.forward_operations().is_empty());
@@ -518,6 +639,7 @@ fn collapsed_set_and_remove_update_exact_typed_pending_formats_without_operation
 
     let remove = enabled(&registry, &id, set.after(), remove_input()?)?;
     assert_eq!(remove.indicator().activation(), ActionActivation::Active);
+    assert_uniform_properties(remove.indicator(), &[(HREF, "https://example.test")])?;
     assert!(remove.transaction().operations().is_empty());
     let remove = remove.execute(set.after())?;
     assert_eq!(remove.after().document(), collapsed_state.document());
@@ -525,6 +647,17 @@ fn collapsed_set_and_remove_update_exact_typed_pending_formats_without_operation
     assert!(
         remove.after().pending_formats().is_some_and(breditor_core::document::FormatSet::is_empty)
     );
+
+    let contextual = state(
+        &context,
+        &[paragraph_value(&[linked("x", "https://context.test")])],
+        Some(collapsed(text_point(0, 0, 1, Affinity::After)?)),
+        "set-link-collapsed-contextual",
+    )?;
+    let contextual_set =
+        enabled(&registry, &id, &contextual, set_href_input("https://replacement.test")?)?;
+    assert_eq!(contextual_set.indicator().activation(), ActionActivation::Inactive);
+    assert_uniform_properties(contextual_set.indicator(), &[(HREF, "https://context.test")])?;
     Ok(())
 }
 

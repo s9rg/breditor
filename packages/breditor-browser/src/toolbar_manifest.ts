@@ -34,7 +34,7 @@ export const MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS = 32;
 /** Maximum fields admitted across all inline-format forms in one manifest. */
 export const MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL = 64;
 
-/** Maximum UTF-8 ceiling admitted by one URL-presented string field. */
+/** Maximum UTF-8 ceiling admitted by one single-line URL-presented string field. */
 export const MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8 = 65_536;
 
 /** Fixed observable identities used by the base toolbar/action-state catalog. */
@@ -71,7 +71,7 @@ export interface ToolbarButtonDeclaration {
   readonly command: ToolbarCommandDeclaration;
 }
 
-/** Required URL-presented string property collected by an inline-format form. */
+/** Required single-line URL-presented string property collected by a form. */
 export interface ToolbarInlineFormatFormStringFieldDeclaration {
   readonly kind: "string";
   readonly propertyName: string;

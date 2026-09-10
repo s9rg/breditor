@@ -594,13 +594,15 @@ mod tests {
         let input = set_intent.input_contract().ok_or_else(invalid_bootstrap)?;
         assert_eq!(input.name().as_str(), "breditor/set-inline-format-input");
         assert_eq!(input.version().get(), 1);
-        assert!(
-            profile
-                .descriptor()
-                .action_states()
-                .iter()
-                .any(|state| state.id().as_str() == "example/link-control")
-        );
+        let set_state = profile
+            .descriptor()
+            .action_states()
+            .iter()
+            .find(|state| state.id().as_str() == "example/link-control")
+            .ok_or_else(invalid_bootstrap)?;
+        let state_value = set_state.contract().value_contract().ok_or_else(invalid_bootstrap)?;
+        assert_eq!(state_value.name().as_str(), "breditor/set-inline-format-input");
+        assert_eq!(state_value.version().get(), 1);
 
         let descriptor =
             crate::BreditorCompiledProfileDescriptor::new(profile.descriptor().clone());
@@ -627,6 +629,26 @@ mod tests {
             descriptor.inline_format_set_action_state_id(0).as_deref(),
             Some("example/link-control")
         );
+        let set_intent_index = (0..descriptor.intent_count())
+            .find(|&index| {
+                descriptor.intent_id(index).as_deref() == Some("example/set-link-intent")
+            })
+            .ok_or_else(invalid_bootstrap)?;
+        assert_eq!(
+            descriptor.intent_value_contract_name(set_intent_index).as_deref(),
+            Some("breditor/set-inline-format-input")
+        );
+        assert_eq!(descriptor.intent_value_contract_version(set_intent_index), Some(1));
+        let set_state_index = (0..descriptor.action_state_count())
+            .find(|&index| {
+                descriptor.action_state_id(index).as_deref() == Some("example/link-control")
+            })
+            .ok_or_else(invalid_bootstrap)?;
+        assert_eq!(
+            descriptor.action_state_value_contract_name(set_state_index).as_deref(),
+            Some("breditor/set-inline-format-input")
+        );
+        assert_eq!(descriptor.action_state_value_contract_version(set_state_index), Some(1));
         assert_eq!(descriptor.inline_format_set_format_kind(1), None);
         assert_eq!(descriptor.inline_format_set_intent_id(1), None);
         assert_eq!(descriptor.inline_format_set_action_state_id(1), None);

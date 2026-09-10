@@ -16,6 +16,11 @@ history is in the [Changelog](CHANGELOG.md).
 The React demo loads the packaged reference Highlight + Link profile, its
 canonical Document V2 sample, renderer, and five-control native toolbar. Its
 Link launcher opens a runtime-owned nonmodal form beside the APG toolbar root.
+When the semantic selection has one uniform Link map, the pristine form opens
+with that exact stored single-line URL and Boolean value; mixed or absent Link
+state uses the declared defaults without inventing a merge. A stored URL
+containing CR or LF makes the form unavailable rather than allowing an HTML
+input to normalize it.
 The demo also exercises local autosave and the explicit startup and persistence
 recovery paths.
 
@@ -206,6 +211,28 @@ or persisted. Profile Bootstrap V2, schema fingerprint bytes, Document V2, and
 all V3 record formats remain unchanged. See the
 [typed toolbar decision](docs/TYPED_TOOLBAR_CONTROLS.md).
 
+The `0.3.0-alpha.8` source checkpoint gives every generated typed-set state an
+exact Rust-owned property observation. Its independently typed output contract
+uses the same serialized pair, `breditor/set-inline-format-input@1`, so a
+uniform value is the canonical round-trippable complete-map `set` branch.
+Absent is `unset`; partial presence or differing complete maps is `mixed`.
+Activation remains the fixed Remove query, so all-present differing maps are
+active/mixed rather than falsely uniform. A collapsed selection reads its
+effective pending/context formatting.
+
+The browser strictly correlates and decodes that state before hydrating a
+pristine Link form. User-edited drafts survive refresh and rejected dispatch;
+completion and close/reset discard them before authoritative hydration. URL
+strings round-trip exactly and inertly through Rust/Wasm. The browser uses a
+text input with a URL keyboard hint so surrounding whitespace is retained;
+CR/LF is rejected by this deliberately single-line form instead of normalized.
+Only the separate `safeLinkV1` renderer may parse and normalize a value for
+navigation. Observations and drafts enter no
+history, replay, document, checkpoint, or IndexedDB record. The compiler proves
+both per-set action-value representability and the generated setter catalog's
+aggregate worst-case state-batch bounds. Alpha.8 adds no Wasm method and retains
+ABI 5. The packages remain unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -380,7 +407,7 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.7` contract admits typed properties in Document
+The experimental `0.3.0-alpha.8` contract admits typed properties in Document
 V2 and supports explicit set/remove, typed pending insertion, paragraph-local
 splice/delete paths, exact history, and the Operation, Editor State,
 Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 5
@@ -397,11 +424,12 @@ joins, multiline insertion, cross-paragraph type-over/delete, and property-free
 toggles while retaining typed peers. Alpha.6 uses the same guarded root
 replacement to set or remove a complete typed format instance across multiple
 paragraphs. Alpha.7 supplies the callback-free native Link form through the
-canonical compiled set-surface triple; draft values remain browser-local and
-the set operation still replaces the complete property map. No Local Log V3
+canonical compiled set-surface triple. Alpha.8 hydrates its pristine fields from
+exact uniform Rust state; drafts remain browser-local and the set operation
+still replaces the complete property map. No Local Log V3
 exists. Paste remains plain text and reconstructs no
 source Link properties, though target-context Link can be inherited; there is
-no arbitrary attribute or CSS mapping, current-value hydration, optional or
+no arbitrary attribute or CSS mapping, fieldwise mixed hydration, optional or
 integer form field, partial property patch, or arbitrary toolbar widget. Rust's
 Boolean/integer/string validation is not URL or CSS sanitization. One manifest
 and one complete profile can each contribute at most
@@ -1127,7 +1155,7 @@ manifest rather than a ProseMirror-style plugin protocol. It renders native
 buttons in an owned inner toolbar root with roving focus, fresh availability,
 tracked pressed/mixed state, and exact synchronous dispatch outcomes. Keyboard
 activation restores the same toolbar button after a command. The default
-manifest remains Bold, Undo, and Redo. Alpha.7 custom manifests can omit,
+manifest remains Bold, Undo, and Redo. Alpha.8 custom manifests can omit,
 reorder, relabel, or add native toggle buttons when each control exactly matches
 a compiled no-input intent and routed state contract; exact history controls
 remain supported too. The high-level runtime rejects direct action controls
@@ -1190,13 +1218,15 @@ async boundary. A different fingerprint/checkpoint generation at the selected
 slot fails non-destructively; it is never retried as another codec or
 overwritten.
 
-The Alpha.7 browser path validates the complete descriptor/action-state catalog
+The Alpha.8 browser path validates the complete descriptor/action-state catalog
 before startup publication and on every refresh. It also validates every
 supplied toolbar control against the descriptor before installing DOM: toggle
 buttons name no-input semantic intents and routed state, while Undo/Redo name
 their exact history sources; a typed form must match one ABI-5
 format/intent/state set-surface triple and the format's exact required property
-contract. Public `executeIntent()` shares that route but
+contract plus exact state output contract. Its uniform value must be one
+canonical complete map and its activation/value pairing must be semantically
+possible. Public `executeIntent()` shares that route but
 uses an immediate idle-queue lease, so composition, authoritative reads, active
 delivery, and reentrant calls return busy instead of becoming stale queued
 work. Public results omit concrete action and binding provenance; advanced

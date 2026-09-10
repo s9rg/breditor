@@ -16,6 +16,9 @@ import {
 const SET_INLINE_FORMAT_INPUT_CONTRACT_NAME =
   "breditor/set-inline-format-input";
 const SET_INLINE_FORMAT_INPUT_CONTRACT_VERSION = 1;
+const SET_INLINE_FORMAT_STATE_CONTRACT_NAME =
+  "breditor/set-inline-format-input";
+const SET_INLINE_FORMAT_STATE_CONTRACT_VERSION = 1;
 
 /**
  * Proves that every high-level toolbar control has one exact semantic profile
@@ -114,13 +117,15 @@ function inlineFormatFormMatchesDescriptor(
     state.source.kind !== "routed" ||
     state.source.intentId !== control.intentId ||
     state.state.activation !== "tracked" ||
-    state.state.value !== undefined ||
+    state.state.value?.name !== SET_INLINE_FORMAT_STATE_CONTRACT_NAME ||
+    state.state.value.version !== SET_INLINE_FORMAT_STATE_CONTRACT_VERSION ||
     intent === undefined ||
     intent.input.kind !== "typed" ||
     intent.input.contract.name !== SET_INLINE_FORMAT_INPUT_CONTRACT_NAME ||
     intent.input.contract.version !== SET_INLINE_FORMAT_INPUT_CONTRACT_VERSION ||
     intent.state.activation !== "tracked" ||
-    intent.state.value !== undefined ||
+    intent.state.value?.name !== SET_INLINE_FORMAT_STATE_CONTRACT_NAME ||
+    intent.state.value.version !== SET_INLINE_FORMAT_STATE_CONTRACT_VERSION ||
     format === undefined ||
     inlineFormatSet === undefined ||
     inlineFormatSet.intentId !== control.intentId ||

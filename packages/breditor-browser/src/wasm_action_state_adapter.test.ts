@@ -258,6 +258,98 @@ function compiledDescriptor(
   return result.descriptor;
 }
 
+function compiledInlineFormatSetDescriptor(): BrowserCompiledProfileDescriptor {
+  const properties = [
+    {
+      name: "example/href",
+      presence: "required" as const,
+      kind: "string" as const,
+    },
+    {
+      name: "example/open-in-new-window",
+      presence: "required" as const,
+      kind: "boolean" as const,
+    },
+  ] as const;
+  const view: WasmCompiledProfileDescriptorView = {
+    schemaName: "example/document",
+    schemaVersion: 1,
+    schemaFingerprint:
+      "sha256:1123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    formatCount: 1,
+    intentCount: 1,
+    actionStateCount: 1,
+    inlineFormatSetCount: 1,
+    matchesProfileGeneration: (generation) =>
+      generation === TEST_PROFILE_GENERATION,
+    formatKind: (index) => index === 0 ? "example/link" : undefined,
+    formatRevision: (index) => index === 0 ? 1 : undefined,
+    formatPropertyCount: (index) => index === 0 ? properties.length : undefined,
+    formatPropertyName: (formatIndex, propertyIndex) =>
+      formatIndex === 0 ? properties[propertyIndex]?.name : undefined,
+    formatPropertyPresence: (formatIndex, propertyIndex) =>
+      formatIndex === 0 ? properties[propertyIndex]?.presence : undefined,
+    formatPropertyValueType: (formatIndex, propertyIndex) =>
+      formatIndex === 0 ? properties[propertyIndex]?.kind : undefined,
+    formatPropertyIntegerMinimum: () => undefined,
+    formatPropertyIntegerMaximum: () => undefined,
+    formatPropertyStringMinimumUtf8Bytes: (formatIndex, propertyIndex) =>
+      formatIndex === 0 && propertyIndex === 0 ? 1 : undefined,
+    formatPropertyStringMaximumUtf8Bytes: (formatIndex, propertyIndex) =>
+      formatIndex === 0 && propertyIndex === 0 ? 2_048 : undefined,
+    intentId: (index) => index === 0 ? "example/set-link" : undefined,
+    intentInputKind: (index) => index === 0 ? "typed" : undefined,
+    intentInputContractName: (index) =>
+      index === 0 ? "breditor/set-inline-format-input" : undefined,
+    intentInputContractVersion: (index) => index === 0 ? 1 : undefined,
+    intentActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    intentValueContractName: (index) =>
+      index === 0 ? "breditor/set-inline-format-input" : undefined,
+    intentValueContractVersion: (index) => index === 0 ? 1 : undefined,
+    actionStateId: (index) => index === 0 ? "example/link-presence" : undefined,
+    actionStateSourceKind: (index) => index === 0 ? "routed" : undefined,
+    actionStateSourceActionId: () => undefined,
+    actionStateSourceIntentId: (index) =>
+      index === 0 ? "example/set-link" : undefined,
+    actionStateHistoryDirection: () => undefined,
+    actionStateActivationContract: (index) => index === 0 ? "tracked" : undefined,
+    actionStateValueContractName: (index) =>
+      index === 0 ? "breditor/set-inline-format-input" : undefined,
+    actionStateValueContractVersion: (index) => index === 0 ? 1 : undefined,
+    inlineFormatSetFormatKind: (index) =>
+      index === 0 ? "example/link" : undefined,
+    inlineFormatSetIntentId: (index) =>
+      index === 0 ? "example/set-link" : undefined,
+    inlineFormatSetActionStateId: (index) =>
+      index === 0 ? "example/link-presence" : undefined,
+    free: vi.fn(),
+  };
+  const result = consumeWasmCompiledProfileDescriptor(
+    TEST_PROFILE_GENERATION,
+    view,
+  );
+  if (!result.ok) {
+    throw new Error("inline-format set descriptor fixture was rejected");
+  }
+  return result.descriptor;
+}
+
+function inlineFormatSetEntry(
+  activation: BrowserActionStateActivation,
+  valueStatus: BrowserActionStateValueStatus,
+  uniformJson?: string,
+): FakeEntry {
+  return {
+    id: "example/link-presence",
+    status: "enabled",
+    activation,
+    valueStatus,
+    contractName: "breditor/set-inline-format-input",
+    contractVersion: 1,
+    ...(uniformJson === undefined ? {} : { uniformJson }),
+  };
+}
+
 function consumeFull(entries: readonly FakeEntry[]) {
   return consumeWasmActionStates(
     EXPECTED,
@@ -272,6 +364,88 @@ function consumeFull(entries: readonly FakeEntry[]) {
 }
 
 describe("Wasm action-state adapter", () => {
+  it("correlates exact inline-format presence and complete property states", () => {
+    const descriptor = compiledInlineFormatSetDescriptor();
+    const uniform =
+      '{"operation":"set","properties":[{"name":"example/href","value":"https://example.test"},{"name":"example/open-in-new-window","value":false}]}';
+    for (const entry of [
+      inlineFormatSetEntry("inactive", "unset"),
+      inlineFormatSetEntry("mixed", "mixed"),
+      inlineFormatSetEntry("active", "mixed"),
+      inlineFormatSetEntry("active", "uniform", uniform),
+    ]) {
+      const result = consumeFull([entry]);
+      expect(result.ok).toBe(true);
+      expect(
+        correlateBrowserActionStatesWithProfileDescriptor(descriptor, result),
+      ).toBe(result);
+    }
+  });
+
+  it.each([
+    ["unset activation", inlineFormatSetEntry("active", "unset")],
+    ["mixed activation", inlineFormatSetEntry("inactive", "mixed")],
+    [
+      "uniform activation",
+      inlineFormatSetEntry(
+        "inactive",
+        "uniform",
+        '{"operation":"set","properties":[{"name":"example/href","value":"x"},{"name":"example/open-in-new-window","value":false}]}',
+      ),
+    ],
+    [
+      "operation",
+      inlineFormatSetEntry(
+        "active",
+        "uniform",
+        '{"operation":"remove","properties":[{"name":"example/href","value":"x"},{"name":"example/open-in-new-window","value":false}]}',
+      ),
+    ],
+    [
+      "missing required property",
+      inlineFormatSetEntry(
+        "active",
+        "uniform",
+        '{"operation":"set","properties":[{"name":"example/href","value":"x"}]}',
+      ),
+    ],
+    [
+      "property order",
+      inlineFormatSetEntry(
+        "active",
+        "uniform",
+        '{"operation":"set","properties":[{"name":"example/open-in-new-window","value":false},{"name":"example/href","value":"x"}]}',
+      ),
+    ],
+    [
+      "property type",
+      inlineFormatSetEntry(
+        "active",
+        "uniform",
+        '{"operation":"set","properties":[{"name":"example/href","value":"x"},{"name":"example/open-in-new-window","value":"false"}]}',
+      ),
+    ],
+    [
+      "property bounds",
+      inlineFormatSetEntry(
+        "active",
+        "uniform",
+        '{"operation":"set","properties":[{"name":"example/href","value":""},{"name":"example/open-in-new-window","value":false}]}',
+      ),
+    ],
+  ])("rejects an inline-format state with invalid %s", (_label, entry) => {
+    const result = consumeFull([entry]);
+    expect(result.ok).toBe(true);
+    const correlated = correlateBrowserActionStatesWithProfileDescriptor(
+      compiledInlineFormatSetDescriptor(),
+      result,
+    );
+    expect(correlated).toMatchObject({
+      ok: false,
+      error: { code: "action_state.invalid_wasm_view" },
+    });
+  });
+
   it("rejects a result from another profile generation", () => {
     const foreignGeneration: WasmProfileGenerationView = {
       matches(other) { return other === foreignGeneration; },

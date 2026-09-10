@@ -254,8 +254,14 @@ class TwoSetDescriptor extends Descriptor {
     return index === 0 || index === 1 ? 1 : undefined;
   }
 
-  override intentValueContractName(): undefined { return undefined; }
-  override intentValueContractVersion(): undefined { return undefined; }
+  override intentValueContractName(index: number): string | undefined {
+    return index === 0 || index === 1
+      ? "breditor/set-inline-format-input"
+      : undefined;
+  }
+  override intentValueContractVersion(index: number): number | undefined {
+    return index === 0 || index === 1 ? 1 : undefined;
+  }
 
   override actionStateId(index: number): string | undefined {
     return [
@@ -300,8 +306,14 @@ class TwoSetDescriptor extends Descriptor {
         : undefined;
   }
 
-  override actionStateValueContractName(): undefined { return undefined; }
-  override actionStateValueContractVersion(): undefined { return undefined; }
+  override actionStateValueContractName(index: number): string | undefined {
+    return index === 1 || index === 2
+      ? "breditor/set-inline-format-input"
+      : undefined;
+  }
+  override actionStateValueContractVersion(index: number): number | undefined {
+    return index === 1 || index === 2 ? 1 : undefined;
+  }
 
   override inlineFormatSetFormatKind(index: number): string | undefined {
     return ["example/comment", "example/highlight"][index];

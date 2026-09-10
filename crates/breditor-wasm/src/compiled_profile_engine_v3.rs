@@ -145,12 +145,14 @@ mod tests {
         }]
       }]
     }"#;
+    const LINK_STATE_VALUE_JSON: &str = r#"{"operation":"set","properties":[{"name":"example/href","value":"https://example.test/path"}]}"#;
 
     #[test]
     fn explicit_v3_factories_preserve_typed_commands_projection_history_and_restore() -> TestResult
     {
         let profile = profile()?;
         let descriptor = profile.descriptor();
+        let set_state_index = assert_set_state_descriptor(&descriptor)?;
         let document = json!({
             "format": "breditor/document",
             "formatVersion": 2,
@@ -176,10 +178,11 @@ mod tests {
 
         select_all(&mut engine)?;
         let before = engine.observation();
+        assert_unset_state(&mut engine, &before, set_state_index, "full")?;
         let committed = engine.execute_typed_intent_json(
             &before,
             "example/set-link-intent",
-            r#"{"operation":"set","properties":[{"name":"example/href","value":"https://example.test/path"}]}"#,
+            LINK_STATE_VALUE_JSON,
             false,
         );
         assert_eq!(committed.status(), "committed");
@@ -191,26 +194,30 @@ mod tests {
         assert!(checkpoint.contains("https://example.test/path"));
 
         let after = engine.observation();
+        assert_uniform_state(&mut engine, &after, set_state_index, "delta")?;
         assert_link_projection(&engine, &after)?;
         let undone = engine.undo(&after, false);
         assert_eq!(undone.status(), "committed");
         let redo_base =
             undone.observation().ok_or_else(|| io::Error::other("undo observation was absent"))?;
+        assert_unset_state(&mut engine, &redo_base, set_state_index, "delta")?;
         let redone = engine.redo(&redo_base, false);
         assert_eq!(redone.status(), "committed");
         let redone_observation =
             redone.observation().ok_or_else(|| io::Error::other("redo observation was absent"))?;
+        assert_uniform_state(&mut engine, &redone_observation, set_state_index, "delta")?;
         assert_link_projection(&engine, &redone_observation)?;
 
         let mut restored_result =
             profile.create_engine_from_session_checkpoint_json_v3(&checkpoint);
         assert_eq!(restored_result.status(), "engine");
-        let restored = restored_result
+        let mut restored = restored_result
             .take_engine()
             .ok_or_else(|| io::Error::other("restored V3 engine was absent"))?;
         assert_eq!(restored.inner.session_checkpoint_format_version(), 3);
         assert_eq!(string(restored.session_checkpoint_json())?, checkpoint);
         assert_link_projection(&restored, &restored.observation())?;
+        assert_active_mixed_state(&mut restored, set_state_index)?;
         Ok(())
     }
 
@@ -240,17 +247,166 @@ mod tests {
             .ok_or_else(|| io::Error::other("compiled V2 profile was absent").into())
     }
 
+    fn descriptor_index(
+        count: u32,
+        mut value_at: impl FnMut(u32) -> Option<String>,
+        expected: &str,
+    ) -> TestResult<u32> {
+        (0..count)
+            .find(|&index| value_at(index).as_deref() == Some(expected))
+            .ok_or_else(|| io::Error::other(format!("descriptor omitted {expected}")).into())
+    }
+
+    fn assert_set_state_descriptor(
+        descriptor: &crate::BreditorCompiledProfileDescriptor,
+    ) -> TestResult<u32> {
+        let intent = descriptor_index(
+            descriptor.intent_count(),
+            |index| descriptor.intent_id(index),
+            "example/set-link-intent",
+        )?;
+        assert_eq!(
+            descriptor.intent_value_contract_name(intent).as_deref(),
+            Some("breditor/set-inline-format-input"),
+        );
+        assert_eq!(descriptor.intent_value_contract_version(intent), Some(1));
+        let state = descriptor_index(
+            descriptor.action_state_count(),
+            |index| descriptor.action_state_id(index),
+            "example/link-presence",
+        )?;
+        assert_eq!(
+            descriptor.action_state_value_contract_name(state).as_deref(),
+            Some("breditor/set-inline-format-input"),
+        );
+        assert_eq!(descriptor.action_state_value_contract_version(state), Some(1));
+        Ok(state)
+    }
+
+    fn assert_unset_state(
+        engine: &mut BreditorEngine,
+        observation: &crate::BreditorObservation,
+        index: u32,
+        expected_read: &str,
+    ) -> TestResult {
+        let mut states = engine.action_states(observation);
+        assert_eq!(states.status(), expected_read);
+        let snapshot = states
+            .take_snapshot()
+            .ok_or_else(|| io::Error::other("unset action-state snapshot was absent"))?;
+        assert_eq!(snapshot.entry_status(index).as_deref(), Some("blocked"));
+        assert_eq!(
+            snapshot.entry_reason_code(index).as_deref(),
+            Some("breditor/inline-format-unchanged"),
+        );
+        assert_eq!(snapshot.entry_activation(index).as_deref(), Some("inactive"));
+        assert_eq!(snapshot.entry_value_status(index).as_deref(), Some("unset"));
+        assert_value_contract(&snapshot, index);
+        assert_eq!(snapshot.entry_uniform_value_json(index).status(), "absent");
+        Ok(())
+    }
+
+    fn assert_uniform_state(
+        engine: &mut BreditorEngine,
+        observation: &crate::BreditorObservation,
+        index: u32,
+        expected_read: &str,
+    ) -> TestResult {
+        let mut states = engine.action_states(observation);
+        assert_eq!(states.status(), expected_read);
+        let snapshot = states
+            .take_snapshot()
+            .ok_or_else(|| io::Error::other("uniform action-state snapshot was absent"))?;
+        assert_eq!(snapshot.entry_status(index).as_deref(), Some("enabled"));
+        assert_eq!(snapshot.entry_activation(index).as_deref(), Some("active"));
+        assert_eq!(snapshot.entry_value_status(index).as_deref(), Some("uniform"));
+        assert_value_contract(&snapshot, index);
+        assert_eq!(string(snapshot.entry_uniform_value_json(index))?, LINK_STATE_VALUE_JSON);
+        Ok(())
+    }
+
+    fn assert_value_contract(snapshot: &crate::BreditorActionStateSnapshot, index: u32) {
+        assert_eq!(
+            snapshot.entry_value_contract_name(index).as_deref(),
+            Some("breditor/set-inline-format-input"),
+        );
+        assert_eq!(snapshot.entry_value_contract_version(index), Some(1));
+    }
+
+    fn assert_active_mixed_state(engine: &mut BreditorEngine, index: u32) -> TestResult {
+        select_text_range(engine, 0, 1)?;
+        let before = engine.observation();
+        let set = engine.execute_typed_intent_json(
+            &before,
+            "example/set-link-intent",
+            r#"{"operation":"set","properties":[{"name":"example/href","value":"https://different.example.test/"}]}"#,
+            false,
+        );
+        assert_eq!(set.status(), "committed");
+        select_split_text_all(engine)?;
+        let observation = engine.observation();
+        let mut states = engine.action_states(&observation);
+        assert_eq!(states.status(), "full");
+        let snapshot = states
+            .take_snapshot()
+            .ok_or_else(|| io::Error::other("mixed action-state snapshot was absent"))?;
+        assert_eq!(snapshot.entry_status(index).as_deref(), Some("enabled"));
+        assert_eq!(snapshot.entry_activation(index).as_deref(), Some("active"));
+        assert_eq!(snapshot.entry_value_status(index).as_deref(), Some("mixed"));
+        assert_value_contract(&snapshot, index);
+        assert_eq!(snapshot.entry_uniform_value_json(index).status(), "absent");
+        Ok(())
+    }
+
     fn select_all(engine: &mut BreditorEngine) -> TestResult {
+        select_text_range(engine, 0, 3)
+    }
+
+    fn select_text_range(
+        engine: &mut BreditorEngine,
+        start_utf16_offset: u32,
+        end_utf16_offset: u32,
+    ) -> TestResult {
         let path = NodePath::try_from_indices(vec![0, 0])?;
         let selection: Selection = RangeSelection::new(
-            Point::Text { text_path: path.clone(), utf16_offset: 0, affinity: Affinity::Before },
-            Point::Text { text_path: path, utf16_offset: 3, affinity: Affinity::After },
+            Point::Text {
+                text_path: path.clone(),
+                utf16_offset: start_utf16_offset,
+                affinity: Affinity::Before,
+            },
+            Point::Text {
+                text_path: path,
+                utf16_offset: end_utf16_offset,
+                affinity: Affinity::After,
+            },
         )
         .into();
         let before = engine.observation();
         let event = engine.inner.set_selection(before.inner(), Some(selection))?;
         if event.is_none() {
             return Err(io::Error::other("selection did not change").into());
+        }
+        Ok(())
+    }
+
+    fn select_split_text_all(engine: &mut BreditorEngine) -> TestResult {
+        let selection: Selection = RangeSelection::new(
+            Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 0])?,
+                utf16_offset: 0,
+                affinity: Affinity::Before,
+            },
+            Point::Text {
+                text_path: NodePath::try_from_indices(vec![0, 1])?,
+                utf16_offset: 2,
+                affinity: Affinity::After,
+            },
+        )
+        .into();
+        let before = engine.observation();
+        let event = engine.inner.set_selection(before.inner(), Some(selection))?;
+        if event.is_none() {
+            return Err(io::Error::other("split selection did not change").into());
         }
         Ok(())
     }

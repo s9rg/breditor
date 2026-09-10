@@ -4,6 +4,72 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.8 - 2026-09-10
+
+This unpublished source checkpoint adds exact Rust-owned current-property
+observation and pristine browser-form hydration to alpha.7's property-aware
+inline-format control. It reuses Wasm ABI 5 and changes no bootstrap,
+fingerprint, document, operation, state, commit, checkpoint, or storage format.
+
+### Exact typed-set state
+
+- Generated `SetInlineFormatAction` state now declares the independently typed
+  output contract whose serialized pair is
+  `breditor/set-inline-format-input@1`. The pair intentionally matches the
+  input contract because every uniform output is its canonical round-trippable
+  complete-map `set` branch; Rust input and output versions remain separate
+  types.
+- Added exact whole-map observation. Absence of the target format is `unset`; the same
+  complete `PropertyMap` on every relevant run is `uniform`; and partial
+  presence or differing complete maps is `mixed`. The fixed Remove query keeps
+  activation input-relative, so differing all-present maps are active/mixed,
+  partial presence is mixed/mixed, and absence is inactive/unset. A collapsed
+  selection observes its effective pending/context formats.
+- Added compile-time state representability proofs. Every schema-valid map for
+  one generated setter must fit the fixed canonical `ActionValue` envelope.
+  The generated setter catalog's collective worst case must also fit the Rust
+  action-state batch value-count and text-byte budgets; compilation rejects the
+  first canonical declaration that crosses a bound.
+
+### Strict hydration and draft ownership
+
+- The browser now requires the exact output contract and validates every
+  uniform operation, lexical property order, complete schema coverage, scalar
+  type/bounds, and activation/value pairing before replacing last-good state.
+  Unset and mixed carry no fabricated field values.
+- Opening a pristine form, or refreshing one while it remains pristine,
+  hydrates an exact form-admissible uniform map. Unset and mixed use declared
+  empty/default values. User input marks the draft dirty, after which ordinary
+  state refresh and rejected dispatch preserve it.
+- Completed dispatch discards the dirty draft, refreshes authoritative state,
+  and hydrates the still-open form from the post-command observation. Close,
+  Escape, opening another form, and disposal clear presentation state; reopening
+  seeds from the latest fresh observation.
+- Link URL strings remain exact inert scalar values in Rust and Wasm. The
+  native field is `type="text"` with `inputmode="url"`, avoiding `type="url"`'s
+  whitespace normalization. Because every single-line HTML input strips CR/LF,
+  those two scalars are explicitly outside the form presentation contract: a
+  stored value containing either makes the form (including UI Remove)
+  unavailable, and submitted form values containing either are rejected rather
+  than silently rewritten. The programmatic typed intent can still remove it.
+  Only the separate `safeLinkV1` renderer may derive canonical `href`, `rel`,
+  and `target` attributes.
+
+### Compatibility and limits
+
+- Alpha.8 adds no generated Wasm method and therefore keeps ABI 5. Exact
+  browser/Wasm/reference prerelease pairing remains required even when ABI
+  numbers match. No alpha.8 package is published by this checkpoint.
+- Property observation is ephemeral action state, not an operation, durable
+  cache, or executable capability. Observations, open/closed state, focus,
+  drafts, and feedback are not undoable, replayed, persisted, or restored.
+- Mixed is whole-map state with no per-field differences or merge base. Set
+  remains complete-map replacement; optional/integer fields, partial patches,
+  rich-paste property reconstruction, and arbitrary widgets remain outside the
+  closed browser form.
+- The complete decision and threat model are in
+  [`docs/TYPED_TOOLBAR_CONTROLS.md`](docs/TYPED_TOOLBAR_CONTROLS.md).
+
 ## 0.3.0-alpha.7 - 2026-09-10
 
 This unpublished source checkpoint adds the first native typed toolbar control

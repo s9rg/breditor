@@ -15,6 +15,10 @@ use crate::{
 use super::{
     super::text_position::{TextRangeSelection, point_at_fragment_offset},
     SetInlineFormatInput,
+    inline_format_properties_state::{
+        InlineFormatPropertiesScan, inline_format_properties_state_contract,
+        properties_state_for_formats,
+    },
     support::{
         CrossParagraphTextSource, CrossParagraphTextSourceError, base_shape_fits,
         base_total_text_fits, capture_cross_paragraph_text_source, disabled, fault,
@@ -78,7 +82,10 @@ impl Action for SetInlineFormatAction {
             | ActionStateDomains::HISTORY
             | ActionStateDomains::SNAPSHOT;
         ActionStateSpec::new(
-            ActionStateContract::new(ActionActivationContract::Tracked, None),
+            ActionStateContract::new(
+                ActionActivationContract::Tracked,
+                Some(inline_format_properties_state_contract()),
+            ),
             ActionEffects::new(reads, may_write),
         )
     }
@@ -100,13 +107,13 @@ fn evaluate_set_inline_format(
     let range = match require_text_splice_range(state)? {
         Ok(range) => range,
         Err(reason) => {
-            return Ok(evaluation(ActionDecision::Disabled(reason), ActionActivation::Inactive));
+            return Ok(evaluation(ActionDecision::Disabled(reason), unavailable_indicator()));
         }
     };
     if !state.context().schema().allows_text_format(format_kind) {
         return Ok(evaluation(
             disabled("breditor/unsupported-inline-format"),
-            ActionActivation::Inactive,
+            unavailable_indicator(),
         ));
     }
 
@@ -121,7 +128,10 @@ fn evaluate_set_inline_format(
             {
                 return Ok(evaluation(
                     disabled("breditor/invalid-inline-format-properties"),
-                    ActionActivation::Inactive,
+                    ActionStateIndicator::new(
+                        ActionActivation::Inactive,
+                        state_value_for_range(state, &range, format_kind)?,
+                    ),
                 ));
             }
             Some(format)
@@ -132,7 +142,7 @@ fn evaluate_set_inline_format(
     if !range.is_same_paragraph()
         && !state.context().schema().supports_paragraph_structure_operations()
     {
-        return Ok(evaluation(disabled("breditor/unsupported-schema"), ActionActivation::Inactive));
+        return Ok(evaluation(disabled("breditor/unsupported-schema"), unavailable_indicator()));
     }
     if !range.is_same_paragraph() {
         return evaluate_cross_paragraph(state, &range, format_kind, desired.as_ref());
@@ -157,7 +167,7 @@ fn evaluate_collapsed(
         range.start().offset(),
         focus_affinity,
     )?;
-    let activation = activation_for_formats(&formats, format_kind, desired);
+    let indicator = indicator_for_formats(&formats, format_kind, desired)?;
     let Some(replaced) = replace_format(
         &formats,
         format_kind,
@@ -165,10 +175,10 @@ fn evaluate_collapsed(
         state.context().limits().max_formats_per_text(),
     )?
     else {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     if replaced == formats {
-        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
+        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), indicator));
     }
     if !format_set_property_fits(
         state,
@@ -176,7 +186,7 @@ fn evaluate_collapsed(
         "breditor/set-inline-format-validation-fault",
         "breditor/set-inline-format-property-budget-fault",
     )? {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     }
     let plan = ActionPlan::new(
         Vec::new(),
@@ -185,7 +195,7 @@ fn evaluate_collapsed(
         PendingFormatsUpdate::Set(Some(replaced)),
         HistoryIntent::Record,
     );
-    Ok(evaluation(ActionDecision::Enabled(plan), activation))
+    Ok(evaluation(ActionDecision::Enabled(plan), indicator))
 }
 
 fn evaluate_extended(
@@ -198,10 +208,10 @@ fn evaluate_extended(
     let source = text_splice_paragraph_fragment(state, paragraph_path)?;
     let (prefix, selected, suffix) =
         fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
-    let activation = activation_for_fragment(&selected, format_kind, desired);
+    let indicator = indicator_for_fragment(&selected, format_kind, desired)?;
 
     if let Some(decision) = require_operation_budget(state, 1) {
-        return Ok(evaluation(decision, activation));
+        return Ok(evaluation(decision, indicator));
     }
     let limits = state.context().limits();
     let Some(replacement) = replace_fragment_format(
@@ -212,13 +222,13 @@ fn evaluate_extended(
         limits.max_text_bytes(),
     )?
     else {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     if replacement == selected {
-        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
+        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), indicator));
     }
     let Some(result) = concat_result(&prefix, &replacement, &suffix)? else {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     if !base_shape_fits(state, 1, source.len(), &[&result])
         || !property_result_fits(
@@ -229,7 +239,7 @@ fn evaluate_extended(
             "breditor/set-inline-format-property-budget-fault",
         )?
     {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     }
 
     let splice_range =
@@ -245,7 +255,7 @@ fn evaluate_extended(
         PendingFormatsUpdate::Set(None),
         HistoryIntent::Record,
     );
-    Ok(evaluation(ActionDecision::Enabled(plan), activation))
+    Ok(evaluation(ActionDecision::Enabled(plan), indicator))
 }
 
 fn evaluate_cross_paragraph(
@@ -256,23 +266,25 @@ fn evaluate_cross_paragraph(
 ) -> Result<ActionEvaluation, ActionFault> {
     let source = capture_cross_paragraph_text_source(state, range)
         .map_err(map_set_inline_format_cross_source_error)?;
-    let mut scan = ActivationScan::default();
+    let mut scan = SetInlineFormatScan::default();
     for selected in source.selected_fragments() {
-        scan.observe(selected, format_kind, desired);
+        scan.observe_fragment(selected, format_kind, desired);
     }
     let activation = scan.activation();
-    if scan.is_empty() {
-        return Ok(evaluation(disabled("breditor/no-selected-text"), activation));
+    let is_empty = scan.is_empty();
+    let indicator = scan.finish()?;
+    if is_empty {
+        return Ok(evaluation(disabled("breditor/no-selected-text"), indicator));
     }
     let is_exact_noop = match desired {
         Some(_) => activation == ActionActivation::Active,
         None => activation == ActionActivation::Inactive,
     };
     if is_exact_noop {
-        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
+        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), indicator));
     }
     if let Some(decision) = require_operation_budget(state, 1) {
-        return Ok(evaluation(decision, activation));
+        return Ok(evaluation(decision, indicator));
     }
 
     let limits = state.context().limits();
@@ -287,22 +299,22 @@ fn evaluate_cross_paragraph(
             limits.max_text_bytes(),
         )?
         else {
-            return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+            return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
         };
         changed |= replacement != *selected;
         replacements.push(replacement);
     }
     if !changed {
-        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
+        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), indicator));
     }
 
     let Some(results) = cross_result_fragments(&source, &replacements)? else {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     let Some(result_text_bytes) =
         results.iter().try_fold(0_usize, |total, result| total.checked_add(result.text_bytes()))
     else {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     };
     let result_fragments = results.iter().collect::<Vec<_>>();
     if !base_shape_fits(state, source.guards().len(), source.guard_run_count(), &result_fragments)
@@ -315,7 +327,7 @@ fn evaluate_cross_paragraph(
             "breditor/set-inline-format-property-budget-fault",
         )?
     {
-        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), indicator));
     }
 
     let result_selection = rebuild_cross_selection(state, range, &results)?;
@@ -329,7 +341,7 @@ fn evaluate_cross_paragraph(
         PendingFormatsUpdate::Set(None),
         HistoryIntent::Record,
     );
-    Ok(evaluation(ActionDecision::Enabled(plan), activation))
+    Ok(evaluation(ActionDecision::Enabled(plan), indicator))
 }
 
 fn map_set_inline_format_cross_source_error(error: CrossParagraphTextSourceError) -> ActionFault {
@@ -345,31 +357,48 @@ fn map_set_inline_format_cross_source_error(error: CrossParagraphTextSourceError
     }
 }
 
-fn evaluation(decision: ActionDecision, activation: ActionActivation) -> ActionEvaluation {
-    ActionEvaluation::new(
-        decision,
-        ActionStateIndicator::new(activation, ActionStateValue::Unsupported),
+fn evaluation(decision: ActionDecision, indicator: ActionStateIndicator) -> ActionEvaluation {
+    ActionEvaluation::new(decision, indicator)
+}
+
+fn unavailable_indicator() -> ActionStateIndicator {
+    ActionStateIndicator::new(
+        ActionActivation::Inactive,
+        ActionStateValue::unset(inline_format_properties_state_contract()),
     )
 }
 
-fn activation_for_fragment(
+fn indicator_for_fragment(
     fragment: &TextFragment,
     format_kind: &QualifiedName,
     desired: Option<&Format>,
-) -> ActionActivation {
-    let mut scan = ActivationScan::default();
-    scan.observe(fragment, format_kind, desired);
-    scan.activation()
+) -> Result<ActionStateIndicator, ActionFault> {
+    let mut scan = SetInlineFormatScan::default();
+    scan.observe_fragment(fragment, format_kind, desired);
+    scan.finish()
+}
+
+fn indicator_for_formats(
+    formats: &FormatSet,
+    format_kind: &QualifiedName,
+    desired: Option<&Format>,
+) -> Result<ActionStateIndicator, ActionFault> {
+    Ok(ActionStateIndicator::new(
+        activation_for_formats(formats, format_kind, desired),
+        properties_state_for_formats(formats, format_kind)
+            .map_err(|_| fault("breditor/set-inline-format-state-value-fault"))?,
+    ))
 }
 
 #[derive(Default)]
-struct ActivationScan {
+struct SetInlineFormatScan {
     matching: bool,
     other: bool,
+    properties: InlineFormatPropertiesScan,
 }
 
-impl ActivationScan {
-    fn observe(
+impl SetInlineFormatScan {
+    fn observe_fragment(
         &mut self,
         fragment: &TextFragment,
         format_kind: &QualifiedName,
@@ -383,7 +412,17 @@ impl ActivationScan {
             };
             self.matching |= is_match;
             self.other |= !is_match;
+            self.properties.observe_format(current);
         }
+    }
+
+    fn finish(self) -> Result<ActionStateIndicator, ActionFault> {
+        let activation = self.activation();
+        let value = self
+            .properties
+            .finish()
+            .map_err(|_| fault("breditor/set-inline-format-state-value-fault"))?;
+        Ok(ActionStateIndicator::new(activation, value))
     }
 
     const fn activation(&self) -> ActionActivation {
@@ -397,6 +436,44 @@ impl ActivationScan {
     const fn is_empty(&self) -> bool {
         !self.matching && !self.other
     }
+}
+
+fn state_value_for_range(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    format_kind: &QualifiedName,
+) -> Result<ActionStateValue, ActionFault> {
+    if !range.is_same_paragraph() {
+        let source = capture_cross_paragraph_text_source(state, range)
+            .map_err(map_set_inline_format_cross_source_error)?;
+        let mut scan = InlineFormatPropertiesScan::default();
+        for selected in source.selected_fragments() {
+            for run in selected {
+                scan.observe_format(run.formats().get(format_kind));
+            }
+        }
+        return scan.finish().map_err(|_| fault("breditor/set-inline-format-state-value-fault"));
+    }
+    if range.is_collapsed() {
+        let source = text_splice_paragraph_fragment(state, range.start().paragraph_path())?;
+        let focus_affinity = source_range(state)?.focus().affinity();
+        let formats = super::support::effective_typing_formats(
+            state,
+            &source,
+            range.start().offset(),
+            focus_affinity,
+        )?;
+        return properties_state_for_formats(&formats, format_kind)
+            .map_err(|_| fault("breditor/set-inline-format-state-value-fault"));
+    }
+    let source = text_splice_paragraph_fragment(state, range.start().paragraph_path())?;
+    let (_, selected, _) =
+        fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
+    let mut scan = InlineFormatPropertiesScan::default();
+    for run in &selected {
+        scan.observe_format(run.formats().get(format_kind));
+    }
+    scan.finish().map_err(|_| fault("breditor/set-inline-format-state-value-fault"))
 }
 
 fn activation_for_formats(

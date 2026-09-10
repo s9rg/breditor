@@ -21,7 +21,8 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the alpha.7 typed-toolbar source checkpoint.
+`0.2.0` extension surface, and the `0.3.0-alpha.8` typed-toolbar source
+checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -89,6 +90,18 @@ queue and history contract, and `safeLinkV1` alone decides navigation safety.
 See the normative
 [typed toolbar decision](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
+The unpublished `0.3.0-alpha.8` source package keeps ABI 5 and uses the existing
+action-state value transport to expose exact Rust-owned Link properties. The
+state is unset for absence, uniform only for one identical complete map, and
+mixed for partial presence or differing maps. A pristine form hydrates a
+form-admissible uniform value exactly; unset/mixed uses defaults, dirty input
+survives refresh and rejection, and completion or close/reset discards it
+before authoritative hydration. The URL field is `type="text"` with
+`inputmode="url"`, so surrounding whitespace is not normalized. CR/LF-bearing
+state makes this single-line form unavailable, and CR/LF-bearing form input is
+rejected. `safeLinkV1` separately decides navigation presentation. No
+observation or draft enters history, replay, or persistence.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -102,7 +115,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.7 @breditor/wasm@0.3.0-alpha.7
+npm install @breditor/browser@0.3.0-alpha.8 @breditor/wasm@0.3.0-alpha.8
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -611,7 +624,7 @@ high-level runtime encapsulates these pieces for ordinary consumers.
 The observation-owning command adapter exposes a handle-free action-state read
 port. It consumes and frees the generated result, complete snapshot, nested
 value results, and cloned errors internally, while protecting the adapter's
-live observation from aliasing. Before publication, Alpha.7 requires the
+live observation from aliasing. Before publication, Alpha.8 requires the
 complete snapshot to match the owned compiled-profile descriptor's action-state
 count, ordered lexical IDs, activation contracts, and value contracts exactly.
 An unsupported value is accepted only for a descriptor entry with no value
@@ -622,6 +635,13 @@ validated complete snapshots, keeps the last good value on failure, and offers
 synchronous ordered subscriptions suitable for a command-queue observer. Each
 store compares complete snapshots locally; the engine-global full/delta/cache-hit
 relation is never mistaken for an individual consumer's baseline.
+
+For a descriptor-declared typed setter, Alpha.8 also requires the exact
+`breditor/set-inline-format-input@1` output contract and validates the complete
+canonical uniform map against the compiled property schema. Inactive pairs
+only with unset; uniform only with active; and mixed value pairs with active
+for differing all-present maps or mixed for partial presence. Impossible pairs
+fail the complete refresh.
 
 `BreditorToolbar` is driven by a bounded immutable presentation manifest. The
 default manifest contains Bold, Undo, and Redo, but visible order, labels, and
@@ -653,11 +673,14 @@ interactive nonmodal form is a sibling of the toolbar root so field Arrow keys
 retain native behavior. Fields are limited to required URL-presented bounded
 strings and required Booleans and must exactly cover one profile format.
 Apply/Remove use the existing typed-intent queue and complete-map contract;
-drafts are neither selection-hydrated nor persisted. The exact surface and
+pristine fields hydrate from exact uniform state, while mixed has no fieldwise
+merge value. Dirty drafts survive refresh and rejected dispatch; completion or
+close/reset discards them before authoritative hydration. Drafts are not
+persisted, replayed, or undoable. The exact surface and
 threat model are in
 [`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
-A custom manifest does not register behavior. In the supported Alpha.7 editor,
+A custom manifest does not register behavior. In the supported Alpha.8 editor,
 startup accepts an intent button only when its state ID names a descriptor
 entry routed from the same declared no-input intent, its tracked/stateless
 activation matches, and neither contract exposes a value. History buttons must
@@ -670,7 +693,13 @@ An inline-format form is admitted only when its format/intent/state triple
 matches an ABI-5 set-surface descriptor and its field types and UTF-8 bounds
 exactly match all required format properties. Form presentation does not
 sanitize URLs; only the separate `safeLinkV1` renderer decides whether a stored
-value becomes a navigable anchor.
+value becomes a navigable anchor. Hydration retains the exact inert stored
+single-line string; it does not trim, parse, or normalize it. The native
+control uses `type="text"` plus `inputmode="url"`, not normalizing
+`type="url"`. CR/LF-bearing stored state makes the form unavailable, and the
+form input builder rejects either scalar, because no single-line HTML input can
+retain it exactly. That also withholds UI Remove; the public programmatic typed
+intent remains available for removal.
 
 ## Session checkpoint persistence
 
@@ -753,6 +782,10 @@ backpressure; terminal adapter loss pauses autosave. See
   dynamic
   manifest replacement, JavaScript action/catalog registration, or packaged
   React wrapper.
+- Current property state compares complete maps. It has no fieldwise mixed
+  values or merge base. Observations and drafts are not persisted, replayed, or
+  undoable. Each generated setter and their collective catalog worst case are
+  compiler-checked against action-value and state-batch bounds.
 - Each checkpoint owner uses one best-effort local slot. Slots may coexist but
   there is no registry, append log, merge, authentication, rollback defense, or
   cross-device synchronization.

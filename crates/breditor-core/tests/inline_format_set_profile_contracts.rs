@@ -6,9 +6,11 @@ use std::error::Error;
 
 use breditor_core::{
     action::{
-        ActionActivation, ActionActivationContract, ActionId, ActionInput, ActionStateId,
-        ActionStateOutcome, ActionStateSource, ActionValue, ObservedAvailability,
-        builtins::set_inline_format_input_contract,
+        ActionActivation, ActionActivationContract, ActionId, ActionInput, ActionStateDeriveError,
+        ActionStateId, ActionStateOutcome, ActionStateSource, ActionStateValue, ActionValue,
+        ActionValueError, MAX_ACTION_STATE_BATCH_TEXT_BYTES, MAX_ACTION_VALUE_TEXT_BYTES,
+        ObservedAvailability,
+        builtins::{inline_format_properties_state_contract, set_inline_format_input_contract},
         routing::{
             BindingId, BindingPriority, DisabledRouting, IntentId, IntentInvocation,
             IntentRouteOutcome,
@@ -69,6 +71,22 @@ fn contract(value: &str) -> Result<InlineFormatPropertyContractV1, Box<dyn Error
             InlineFormatPropertyTypeV1::try_string(1, 2_048)?,
         )],
     )?)
+}
+
+fn bounded_string_contract(
+    format_kind: &str,
+    property_name: &str,
+    maximum_utf8_bytes: u32,
+) -> Result<InlineFormatPropertyContractV1, Box<dyn Error>> {
+    InlineFormatPropertyContractV1::try_new(
+        name(format_kind)?,
+        vec![InlineFormatPropertySpecV1::new(
+            name(property_name)?,
+            PropertyPresenceV1::Optional,
+            InlineFormatPropertyTypeV1::try_string(0, maximum_utf8_bytes)?,
+        )],
+    )
+    .map_err(Into::into)
 }
 
 fn setter(
@@ -848,6 +866,115 @@ fn setter_target_must_be_owned_and_typed_by_its_containing_manifest() -> TestRes
     Ok(())
 }
 
+#[test]
+fn setter_state_value_representability_accepts_the_exact_text_limit_and_rejects_first_excess()
+-> TestResult {
+    const KIND: &str = "example/bounded-format";
+    const PROPERTY: &str = "example/bounded-value";
+    let fixed_text = 22_u64 + 9 + u64::try_from(PROPERTY.len())?;
+    let exact_maximum = u32::try_from(MAX_ACTION_VALUE_TEXT_BYTES - fixed_text)?;
+
+    let compile = |owner: &str, schema: &str, maximum| -> Result<_, Box<dyn Error>> {
+        let declaration = setter(
+            KIND,
+            "example/bounded-action",
+            "example/bounded-intent",
+            "example/bounded-binding",
+            "example/bounded-state",
+        )?;
+        CompiledEditorProfile::try_compile_base_text_profile(
+            schema_id(schema)?,
+            extension_set(vec![manifest(
+                owner,
+                vec![format(KIND)?],
+                vec![bounded_string_contract(KIND, PROPERTY, maximum)?],
+                Vec::new(),
+                vec![declaration],
+            )?])?,
+        )
+        .map_err(Into::into)
+    };
+
+    let exact =
+        compile("example/bounded-exact-owner", "example/bounded-exact-profile", exact_maximum)?;
+    let contract = exact
+        .descriptor()
+        .action_state(&ActionStateId::try_new("example/bounded-state")?)
+        .and_then(|descriptor| descriptor.contract().value_contract())
+        .ok_or_else(|| test_error("exact-boundary setter lost its state value contract"))?;
+    assert_eq!(contract, &inline_format_properties_state_contract());
+
+    let owner = extension_id("example/bounded-excess-owner")?;
+    let excess =
+        compile(owner.name().as_str(), "example/bounded-excess-profile", exact_maximum + 1);
+    assert!(matches!(
+        excess,
+        Err(error)
+            if error.downcast_ref::<ProfileCompilationError>()
+                == Some(&ProfileCompilationError::InlineFormatSetStateValue {
+                    owner,
+                    format_kind: name(KIND)?,
+                    source: ActionValueError::TextBytes {
+                        actual: MAX_ACTION_VALUE_TEXT_BYTES + 1,
+                        maximum: MAX_ACTION_VALUE_TEXT_BYTES,
+                    },
+                })
+    ));
+    Ok(())
+}
+
+#[test]
+fn setter_state_values_fit_the_atomic_batch_at_the_exact_limit() -> TestResult {
+    const PROPERTY: &str = "example/bounded-value";
+    let fixed_text = 22_u64 + 9 + u64::try_from(PROPERTY.len())?;
+    let maximum = u32::try_from(MAX_ACTION_VALUE_TEXT_BYTES - fixed_text)?;
+
+    let compile = |owner: &str, schema: &str, count: u32| -> Result<_, Box<dyn Error>> {
+        let mut formats = Vec::new();
+        let mut contracts = Vec::new();
+        let mut sets = Vec::new();
+        for index in 0..count {
+            let kind = format!("example/batch-format-{index:02}");
+            formats.push(format(&kind)?);
+            contracts.push(bounded_string_contract(&kind, PROPERTY, maximum)?);
+            sets.push(setter(
+                &kind,
+                &format!("example/batch-action-{index:02}"),
+                &format!("example/batch-intent-{index:02}"),
+                &format!("example/batch-binding-{index:02}"),
+                &format!("example/batch-state-{index:02}"),
+            )?);
+        }
+        CompiledEditorProfile::try_compile_base_text_profile(
+            schema_id(schema)?,
+            extension_set(vec![manifest(owner, formats, contracts, Vec::new(), sets)?])?,
+        )
+        .map_err(Into::into)
+    };
+
+    let exact_count =
+        u32::try_from(MAX_ACTION_STATE_BATCH_TEXT_BYTES / MAX_ACTION_VALUE_TEXT_BYTES)?;
+    compile("example/batch-exact-owner", "example/batch-exact-profile", exact_count)?;
+
+    let excess =
+        compile("example/batch-excess-owner", "example/batch-excess-profile", exact_count + 1);
+    assert!(matches!(
+        excess,
+        Err(error)
+            if matches!(
+                error.downcast_ref::<ProfileCompilationError>(),
+                Some(ProfileCompilationError::InlineFormatSetStateBatch {
+                    source: ActionStateDeriveError::TextBytes {
+                        actual,
+                        maximum: MAX_ACTION_STATE_BATCH_TEXT_BYTES,
+                    },
+                    ..
+                }) if *actual == MAX_ACTION_STATE_BATCH_TEXT_BYTES + MAX_ACTION_VALUE_TEXT_BYTES
+            )
+    ));
+    Ok(())
+}
+
 #[derive(Clone, Copy)]
 enum IdentityKind {
     Action,
@@ -1000,7 +1127,7 @@ fn every_set_identity_namespace_rejects_reserved_core_names() -> TestResult {
 fn observed_presence(
     profile: &CompiledEditorProfile,
     session: &EditorSession,
-) -> Result<(ObservedAvailability, ActionActivation), Box<dyn Error>> {
+) -> Result<(ObservedAvailability, ActionActivation, ActionStateValue), Box<dyn Error>> {
     let batch = profile.action_state_catalog().derive(session)?;
     let entry = batch
         .entry(&ActionStateId::try_new(ACTION_STATE)?)
@@ -1008,10 +1135,42 @@ fn observed_presence(
     let ActionStateOutcome::Resolved(resolved) = entry.outcome() else {
         return Err(test_error("generated set action state did not resolve").into());
     };
-    Ok((resolved.availability().clone(), resolved.indicator().activation()))
+    Ok((
+        resolved.availability().clone(),
+        resolved.indicator().activation(),
+        resolved.indicator().value().clone(),
+    ))
+}
+
+fn assert_observed_href(value: &ActionStateValue, expected: Option<&str>) -> TestResult {
+    let contract = inline_format_properties_state_contract();
+    match (value, expected) {
+        (ActionStateValue::Unset { contract: actual }, None) => assert_eq!(actual, &contract),
+        (ActionStateValue::Uniform { contract: actual, value }, Some(expected)) => {
+            assert_eq!(actual, &contract);
+            let properties = value
+                .as_object()
+                .and_then(|object| object.get("properties"))
+                .and_then(ActionValue::as_array)
+                .ok_or_else(|| test_error("uniform generated state has no property array"))?;
+            let [property] = properties else {
+                return Err(test_error("uniform generated link state is not a complete map").into());
+            };
+            let property = property
+                .as_object()
+                .ok_or_else(|| test_error("uniform generated property is not an object"))?;
+            assert_eq!(property.get("name").and_then(ActionValue::as_string), Some(HREF));
+            assert_eq!(property.get("value").and_then(ActionValue::as_string), Some(expected));
+        }
+        (actual, _) => {
+            return Err(test_error(format!("unexpected generated state value: {actual:?}")).into());
+        }
+    }
+    Ok(())
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn compiled_setter_has_a_fixed_presence_query_but_executes_dynamic_set_and_remove() -> TestResult {
     let profile = CompiledEditorProfile::try_compile_base_text_profile(
         schema_id("example/link-set-profile")?,
@@ -1037,6 +1196,10 @@ fn compiled_setter_has_a_fixed_presence_query_but_executes_dynamic_set_and_remov
     assert_eq!(
         intent.state_spec().contract().activation_contract(),
         ActionActivationContract::Tracked
+    );
+    assert_eq!(
+        action.state_spec().contract().value_contract(),
+        Some(&inline_format_properties_state_contract())
     );
     let binding = profile
         .intent_router()
@@ -1072,11 +1235,23 @@ fn compiled_setter_has_a_fixed_presence_query_but_executes_dynamic_set_and_remov
             .map(breditor_core::profile::CompiledProfileActionStateDescriptor::source),
         Some(CompiledProfileActionStateSource::Routed(intent)) if intent == &intent_id
     ));
+    assert_eq!(
+        state_descriptor.contract().value_contract(),
+        Some(&inline_format_properties_state_contract())
+    );
+    assert_eq!(
+        profile
+            .descriptor()
+            .action_state(&state_id)
+            .and_then(|descriptor| descriptor.contract().value_contract()),
+        Some(&inline_format_properties_state_contract())
+    );
 
     let mut session = EditorSession::new(initial_state(&profile)?);
-    let (availability, activation) = observed_presence(&profile, &session)?;
+    let (availability, activation, value) = observed_presence(&profile, &session)?;
     assert!(matches!(availability, ObservedAvailability::Blocked(_)));
     assert_eq!(activation, ActionActivation::Inactive);
+    assert_observed_href(&value, None)?;
     assert_eq!(href(session.state().document())?, None);
 
     let no_input = profile
@@ -1091,13 +1266,20 @@ fn compiled_setter_has_a_fixed_presence_query_but_executes_dynamic_set_and_remov
     let set_receipt = session.execute_intent_route(set_route)?;
     assert!(set_receipt.commit().is_some());
     assert_eq!(href(session.state().document())?, Some("https://example.test"));
-    assert_eq!(observed_presence(&profile, &session)?.1, ActionActivation::Active);
+    let (_, activation, value) = observed_presence(&profile, &session)?;
+    assert_eq!(activation, ActionActivation::Active);
+    assert_observed_href(&value, Some("https://example.test"))?;
 
     session.undo()?.ok_or_else(|| test_error("generated set undo was unavailable"))?;
     assert_eq!(href(session.state().document())?, None);
-    assert_eq!(observed_presence(&profile, &session)?.1, ActionActivation::Inactive);
+    let (_, activation, value) = observed_presence(&profile, &session)?;
+    assert_eq!(activation, ActionActivation::Inactive);
+    assert_observed_href(&value, None)?;
     session.redo()?.ok_or_else(|| test_error("generated set redo was unavailable"))?;
     assert_eq!(href(session.state().document())?, Some("https://example.test"));
+    let (_, activation, value) = observed_presence(&profile, &session)?;
+    assert_eq!(activation, ActionActivation::Active);
+    assert_observed_href(&value, Some("https://example.test"))?;
 
     let remove_invocation = IntentInvocation::new(intent_id, remove_input()?);
     let remove_route = profile.intent_router().route(session.state(), &remove_invocation)?;
@@ -1105,6 +1287,8 @@ fn compiled_setter_has_a_fixed_presence_query_but_executes_dynamic_set_and_remov
     let remove_receipt = session.execute_intent_route(remove_route)?;
     assert!(remove_receipt.commit().is_some());
     assert_eq!(href(session.state().document())?, None);
-    assert_eq!(observed_presence(&profile, &session)?.1, ActionActivation::Inactive);
+    let (_, activation, value) = observed_presence(&profile, &session)?;
+    assert_eq!(activation, ActionActivation::Inactive);
+    assert_observed_href(&value, None)?;
     Ok(())
 }

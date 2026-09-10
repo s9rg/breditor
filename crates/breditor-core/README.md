@@ -217,6 +217,21 @@ Document V2 byte, or Session/State/Commit V3 byte. The exact browser-side
 contract is documented in
 [`TYPED_TOOLBAR_CONTROLS.md`](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
+The unpublished `0.3.0-alpha.8` source checkpoint gives that generated state
+the independently typed exact `breditor/set-inline-format-input@1` output
+contract. Target absence is `unset`; one exact complete map everywhere is `uniform`
+with the canonical set value; partial presence or differing complete maps is
+`mixed`. Activation remains the fixed-Remove query and a collapsed selection
+observes effective pending/context formats. Input and output version types are
+distinct even though their serialized name/version pair intentionally matches.
+
+The compiler proves every schema-valid setter map fits one `ActionValue` and
+that all generated setters' collective worst case fits the action-state batch
+value-count and text-byte limits, rejecting the first canonical declaration
+that crosses a bound. The observation is ephemeral and changes no operation,
+history, replay, document, checkpoint, fingerprint, bootstrap, or Wasm ABI;
+alpha.8 retains ABI 5.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

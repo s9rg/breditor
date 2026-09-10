@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.7` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.8` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -48,7 +48,9 @@ each compiled typed setter and exposes it through ABI 5. Browser form metadata
 and draft input remain outside Rust. Profile Bootstrap V2, schema fingerprints,
 Document V2, and all V3 record format numbers and bytes remain unchanged. Local
 Log V3, arbitrary attribute/CSS mapping, rich paste, arbitrary toolbar widgets,
-and persisted or selection-hydrated form drafts remain unsupported. See
+and persisted form drafts remain unsupported. Alpha.8 gives that generated state
+the exact complete property-map observation used to hydrate pristine browser
+fields. The observation remains process-local and ephemeral. See
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
@@ -1754,6 +1756,28 @@ inactive. A structural-only range containing no text is disabled as
 `breditor/no-selected-text` and reports inactive; empty paragraphs surrounded
 by selected text contribute no sample.
 
+Alpha.8 gives the same generated state an independently typed output contract
+whose serialized pair is `breditor/set-inline-format-input@1`. It intentionally
+matches the typed input pair so a `uniform` value is the canonical
+round-trippable `set` branch with the complete strictly ordered `PropertyMap`.
+The Rust input and output version types remain distinct.
+
+The fixed-Remove activation and property value are orthogonal. Target absence
+is inactive/`unset`; equal maps on every relevant run are active/
+`uniform`; differing all-present maps are active/`mixed`; and partial presence
+is mixed/`mixed`. A collapsed selection observes the effective pending/context
+format set. This compares complete maps and never fabricates fieldwise mixed
+values or a merge base. Unhandled and faulted routes expose no value.
+
+Compiler admission statically measures the canonical uniform-set envelope.
+Every schema-valid map for one generated setter must fit the fixed
+`ActionValue` depth, count, container, and text limits. The compiler also sums
+all generated setters in canonical declaration order and requires their
+collective worst case to fit `MAX_ACTION_STATE_BATCH_VALUE_COUNT` and
+`MAX_ACTION_STATE_BATCH_TEXT_BYTES`; the first declaration crossing a bound is
+rejected. Runtime action-state limits remain defense in depth rather than an
+unresolved representability gap for admitted generated setters.
+
 The root-replacement plan explicitly rebuilds anchor and focus against the
 canonical result fragments, retaining range direction and endpoint affinities.
 It clears pending formats and records one independent history event. Planning
@@ -1956,6 +1980,12 @@ deliberately omits action and binding identity because browser presentation
 needs only the public semantic route and authoritative state correlation. This
 is ABI-5 observation data, not a bootstrap member, schema-fingerprint input, or
 durable record.
+
+Alpha.8 changes no descriptor field or Wasm getter. The referenced generated
+state now declares the exact `breditor/set-inline-format-input@1` output pair
+through the descriptor's existing action-state value-contract projection.
+The action-state batch carries unset/uniform/mixed through its existing value
+model, so no ABI or durable generation changes.
 
 `EditorEngine::execute_intent` checks the complete observation, uses only its
 owned profile router, routes and consumes one cached prepared action inside the
@@ -2234,6 +2264,12 @@ typed categories; they cannot retain document fragments or validation reports
 outside those budgets. Action-state, invocation, preparation, and routing Debug
 output redacts documents, payloads, uniform values, reason details, and cached
 commits.
+
+For alpha.8 generated typed setters, compiler admission proves the complete
+catalog's declared worst-case uniform values fit the batch value-count and
+text-byte limits above. That guarantee is specific to the compiler-generated
+setter catalog; runtime accounting still protects arbitrary native action-state
+registrations and any other dynamic detail.
 
 `ActionStateCatalog::derive` remains the eager reference path introduced in
 version `0.0.8`: every descriptor evaluates independently, including duplicate
