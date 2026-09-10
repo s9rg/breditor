@@ -12,6 +12,7 @@ import {
 
 const HREF = "example/href";
 const NEW_WINDOW = "example/open-in-new-window";
+const RGB24 = "example/rgb24";
 
 function linkForm(
   minimumUtf8Bytes = 1,
@@ -57,6 +58,39 @@ function linkForm(
   return form;
 }
 
+function colorForm(): ToolbarInlineFormatFormDeclaration {
+  const control = createToolbarManifest({
+    label: "Editor controls",
+    controls: [
+      {
+        kind: "inlineFormatForm",
+        stateId: "example/color-presence",
+        label: "Text color",
+        formatKind: "example/text-color",
+        intentId: "example/set-text-color-intent",
+        fields: [
+          {
+            kind: "integer",
+            propertyName: RGB24,
+            label: "Text color",
+            presentation: "rgb24",
+            minimum: 0,
+            maximum: 16_777_215,
+            defaultValue: 0,
+          },
+        ],
+        applyLabel: "Apply color",
+        removeLabel: "Remove color",
+        closeLabel: "Close color controls",
+      },
+    ],
+  }).controls[0];
+  if (control?.kind !== "inlineFormatForm") {
+    throw new Error("Color form fixture was not admitted");
+  }
+  return control;
+}
+
 describe("toolbar inline-format form input", () => {
   it("sorts properties lexically independent of declaration and record order", () => {
     expect(
@@ -67,6 +101,42 @@ describe("toolbar inline-format form input", () => {
     ).toBe(
       '{"operation":"set","properties":[{"name":"example/href","value":"https://example.test/a"},{"name":"example/open-in-new-window","value":true}]}',
     );
+  });
+
+  it("serializes an exact RGB24 integer through the typed property path", () => {
+    expect(
+      createToolbarInlineFormatFormSetInputJson(colorForm(), {
+        [RGB24]: 0x12abef,
+      }),
+    ).toBe(
+      '{"operation":"set","properties":[{"name":"example/rgb24","value":1223663}]}',
+    );
+
+    for (const value of [-0, 1.5, "#12abef", null]) {
+      expect(() =>
+        createToolbarInlineFormatFormSetInputJson(colorForm(), {
+          [RGB24]: value,
+        }),
+      ).toThrow(TypeError);
+    }
+    for (const value of [-1, 16_777_216]) {
+      expect(() =>
+        createToolbarInlineFormatFormSetInputJson(colorForm(), {
+          [RGB24]: value,
+        }),
+      ).toThrow(RangeError);
+    }
+
+    const form = colorForm();
+    const forged = {
+      ...form,
+      fields: [{ ...form.fields[0], presentation: "number" }],
+    } as unknown as ToolbarInlineFormatFormDeclaration;
+    expect(() =>
+      createToolbarInlineFormatFormSetInputJson(forged, {
+        [RGB24]: 0x12abef,
+      }),
+    ).toThrow(TypeError);
   });
 
   it("returns one fixed canonical remove input", () => {

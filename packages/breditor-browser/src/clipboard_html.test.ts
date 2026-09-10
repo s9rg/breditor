@@ -252,6 +252,82 @@ describe("parseClipboardHtmlToPlainText", () => {
     }
   });
 
+  it("admits only canonical policy-derived RGB24 text-color styles", () => {
+    const { generation, descriptor, presentation } = presentationFor(
+      [SAFE_TEXT_COLOR_FORMAT],
+      [{
+        formatKind: "example/text-color",
+        element: "span",
+        classes: ["breditor-text-color"],
+        attributes: { kind: "safeTextColorV1" },
+      }],
+    );
+
+    const projected = createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "clipboard-text-color", revision: "0" },
+      paragraphs: [{
+        runs: [{
+          text: "safe",
+          formatDetails: [{
+            kind: "example/text-color",
+            properties: [{ name: "example/rgb24", value: 0x00_a1_ff }],
+          }],
+        }],
+      }],
+    }, generation, descriptor);
+    if (!projected.ok) throw new Error("text-color projection fixture failed");
+    expect(bindProjectionPresentation(projected.value, presentation)).toBe(true);
+    const selected = BaseRangeSelection.create(projected.value, {
+      kind: "range",
+      anchor: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 0,
+        affinity: "after",
+      },
+      focus: {
+        kind: "children",
+        parentPath: [0],
+        childIndex: 1,
+        affinity: "before",
+      },
+    });
+    if (!selected.ok) throw new Error("text-color selection fixture failed");
+
+    const serialized = serializeClipboardSelection(
+      selected.value,
+      presentation,
+    );
+
+    expect(serialized).toMatchObject({ ok: true });
+    if (!serialized.ok) throw new Error("text-color serialization failed");
+    expect(serialized.value).toEqual({
+      plainText: "safe",
+      html:
+        '<p><span class="breditor-text-color" style="color:#00a1ff">safe</span></p>',
+    });
+    expect(
+      parseClipboardHtmlToPlainText(serialized.value.html, presentation),
+    ).toEqual({ ok: true, value: "safe" });
+
+    for (const html of [
+      '<p><span class="breditor-text-color">x</span></p>',
+      '<p><span class="breditor-text-color" style="color:#00A1FF">x</span></p>',
+      '<p><span class="breditor-text-color" style="color: #00a1ff">x</span></p>',
+      '<p><span class="breditor-text-color" style="color:#00a1ff;">x</span></p>',
+      '<p><span class="breditor-text-color" style="color:red">x</span></p>',
+      '<p><span class="breditor-text-color" style="background:#00a1ff">x</span></p>',
+      '<p><span class="breditor-text-color" style="color:#00a1ff;background:url(javascript:alert(1))">x</span></p>',
+      '<p><span class="breditor-text-color" style="color:#00a1ff" title="x">x</span></p>',
+    ]) {
+      expect(parseClipboardHtmlToPlainText(html, presentation)).toMatchObject({
+        ok: false,
+        error: { code: "clipboard.html.unsupported_structure" },
+      });
+    }
+  });
+
   it.each([
     '<p><span class="missing">x</span></p>',
     '<p><span class="highlight extra">x</span></p>',
@@ -702,3 +778,19 @@ const SAFE_LINK_FORMAT: Exclude<ProfileFormatFixture, string> = Object.freeze({
     }),
   ]),
 });
+
+const SAFE_TEXT_COLOR_FORMAT: Exclude<ProfileFormatFixture, string> =
+  Object.freeze({
+    kind: "example/text-color",
+    properties: Object.freeze([
+      Object.freeze({
+        name: "example/rgb24",
+        presence: "required" as const,
+        valueType: Object.freeze({
+          kind: "integer" as const,
+          minimum: 0,
+          maximum: 0xff_ffff,
+        }),
+      }),
+    ]),
+  });

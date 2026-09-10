@@ -273,6 +273,17 @@ durable editor state. They do not change action admission, transactions,
 history, replay, document bytes, schema fingerprints, Profile Bootstrap V2, or
 Wasm ABI 5.
 
+The unpublished `0.3.0-alpha.12` source checkpoint also changes no Rust
+contract. Its Color Showcase declares `example/text-color@1` through the
+existing `InlineFormatSetSpecV1`, with one required integer
+`example/rgb24` bounded to `0..=16_777_215`. Profile compilation generates the
+ordinary `SetInlineFormatAction`, typed intent, priority-zero blocking binding,
+and exact unset/uniform/mixed state. Collapsed pending formatting, same- and
+cross-paragraph mutation, selection relocation, undo/redo, Session-V3 replay,
+and retained-value limits are therefore the existing generic Rust behavior.
+The closed `safeTextColorV1` renderer and native RGB24 field are browser
+presentation only. See the [text-color contract](../../docs/TEXT_COLOR.md).
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

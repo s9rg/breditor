@@ -11,6 +11,15 @@ import {
 /** Exact UTF-8 ceiling accepted by the built-in safe-link policy. */
 export const MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES = 2_048;
 
+/** Exact semantic contract rendered by the built-in safe text-color policy. */
+export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND =
+  "example/text-color";
+export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_REVISION = 1;
+export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME = "example/rgb24";
+export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM = 0;
+export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM = 0xff_ffff;
+export const INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS = "breditor-text-color";
+
 /** Closed attribute policy for one schema-declared link format. */
 export interface InlineFormatRenderSafeLinkV1Policy {
   readonly kind: "safeLinkV1";
@@ -18,13 +27,19 @@ export interface InlineFormatRenderSafeLinkV1Policy {
   readonly openInNewWindowProperty: string;
 }
 
+/** Closed zero-configuration policy for the exact RGB24 text-color format. */
+export interface InlineFormatRenderSafeTextColorV1Policy {
+  readonly kind: "safeTextColorV1";
+}
+
 /** Closed browser-owned attribute policies admitted by render recipes. */
 export type InlineFormatRenderAttributePolicy =
-  InlineFormatRenderSafeLinkV1Policy;
+  | InlineFormatRenderSafeLinkV1Policy
+  | InlineFormatRenderSafeTextColorV1Policy;
 
-/** One canonical inert DOM attribute emitted by a closed render policy. */
+/** One canonical browser-derived DOM attribute emitted by a closed policy. */
 export interface InlineFormatRenderAttribute {
-  readonly name: "href" | "rel" | "target";
+  readonly name: "href" | "rel" | "style" | "target";
   readonly value: string;
 }
 
@@ -36,6 +51,8 @@ const OWN_KEYS = Reflect.ownKeys;
 const GET_OWN_PROPERTY_DESCRIPTOR = Reflect.getOwnPropertyDescriptor;
 const GET_PROTOTYPE_OF = Reflect.getPrototypeOf;
 const APPLY = Reflect.apply;
+const NUMBER_IS_SAFE_INTEGER = Number.isSafeInteger;
+const OBJECT_IS = Object.is;
 const STRING_CHAR_CODE_AT = String.prototype.charCodeAt;
 const URL_CONSTRUCTOR = URL;
 const URL_PROTOCOL_GETTER = urlGetter("protocol");
@@ -47,13 +64,33 @@ const URL_HREF_GETTER = urlGetter("href");
 /**
  * Copies an application value into the exact callback-free attribute schema.
  *
- * The input must contain only the three `safeLinkV1` fields as own data
- * properties. The returned policy is detached from the caller and frozen.
+ * The input must have the exact own-data shape of one closed policy. The
+ * returned policy is detached from the caller and frozen. `safeTextColorV1`
+ * deliberately has no configurable property names or CSS surface.
  * @internal
  */
 export function createInlineFormatRenderAttributePolicy(
   value: unknown,
 ): InlineFormatRenderAttributePolicy {
+  let policyKind: unknown;
+  try {
+    policyKind = ownDataValue(value, "kind");
+  } catch {
+    throw new TypeError(
+      "inline-format render attribute policy could not be inspected",
+    );
+  }
+  if (policyKind === "safeTextColorV1") {
+    const record = readExactDataRecord(
+      value,
+      ["kind"],
+      "inline-format render attribute policy",
+    );
+    if (record["kind"] !== policyKind) {
+      throw new TypeError("inline-format render attribute policy kind is invalid");
+    }
+    return Object.freeze({ kind: policyKind });
+  }
   const record = readExactDataRecord(
     value,
     ["kind", "hrefProperty", "openInNewWindowProperty"],
@@ -82,12 +119,12 @@ export function createInlineFormatRenderAttributePolicy(
 }
 
 /**
- * Checks whether one format descriptor provides the exact safe-link values.
+ * Checks whether one format descriptor provides one policy's exact values.
  *
- * Both policy properties must be required. The href must use the exact
- * inclusive UTF-8 contract `1..=2048`, and the new-window flag must be a
- * Boolean. The format must contain exactly those two properties, preventing
- * an admitted semantic value from being silently discarded by rendering.
+ * `safeLinkV1` requires its closed two-property contract. `safeTextColorV1`
+ * requires literal `example/text-color@1` with one required integer
+ * `example/rgb24` property bounded to `0..=16777215`. Extra semantic values
+ * are rejected rather than silently discarded by rendering.
  * @internal
  */
 export function inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
@@ -95,6 +132,9 @@ export function inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
   format: BrowserProfileFormatDescriptor,
 ): boolean {
   try {
+    if (isExactSafeTextColorV1Policy(policy)) {
+      return formatMatchesSafeTextColorV1(format);
+    }
     const fields = safeLinkPolicyFields(policy);
     if (fields === null) return false;
     const properties = ownDataValue(format, "properties");
@@ -128,9 +168,11 @@ export function inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
 }
 
 /**
- * Resolves one safe-link policy against projected scalar properties.
+ * Resolves one closed policy against projected scalar properties.
  *
- * Only absolute credential-free HTTP(S) URLs without control or Unicode
+ * The text-color policy emits only `style="color:#rrggbb"` derived from an
+ * admitted integer; it never consumes CSS text. The link policy admits only
+ * absolute credential-free HTTP(S) URLs without control or Unicode
  * whitespace scalars are admitted. Both source and normalized URL must fit 2048
  * UTF-8 bytes. Any absent, duplicate, ill-typed, malformed, or unsafe stored
  * value yields the shared frozen empty list, so callers create an inert `<a>`.
@@ -142,6 +184,28 @@ export function resolveInlineFormatRenderAttributes(
   properties: readonly InlineFormatPropertyProjection[],
 ): readonly InlineFormatRenderAttribute[] {
   try {
+    if (isExactSafeTextColorV1Policy(policy)) {
+      const propertyCount = exactDenseArrayLength(
+        properties,
+        MAX_BROWSER_PROFILE_PROPERTIES_PER_FORMAT,
+      );
+      if (propertyCount !== 1) return EMPTY_ATTRIBUTES;
+      const property = ownArrayValue(properties, 0);
+      if (
+        !hasExactOwnDataKeys(property, ["name", "value"]) ||
+        ownDataValue(property, "name") !==
+          INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME
+      ) {
+        return EMPTY_ATTRIBUTES;
+      }
+      const value = ownDataValue(property, "value");
+      const style = canonicalSafeTextColorStyle(value);
+      return style === null
+        ? EMPTY_ATTRIBUTES
+        : Object.freeze([
+          Object.freeze({ name: "style" as const, value: style }),
+        ]);
+    }
     const fields = safeLinkPolicyFields(policy);
     const propertyCount = boundedArrayLength(
       properties,
@@ -223,6 +287,35 @@ export function inlineFormatRenderAttributesAreCanonicalSafeLinkV1(
   }
 }
 
+/** Checks the sole canonical style emitted by `safeTextColorV1`. @internal */
+export function inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(
+  value: unknown,
+): value is readonly InlineFormatRenderAttribute[] {
+  try {
+    if (exactDenseArrayLength(value, 1) !== 1) return false;
+    const style = readExactRenderAttribute(ownArrayValue(value, 0));
+    return style?.name === "style" && isCanonicalSafeTextColorStyle(style.value);
+  } catch {
+    return false;
+  }
+}
+
+/** Dispatches inverse attribute admission through one exact closed policy. @internal */
+export function inlineFormatRenderAttributesAreCanonicalForPolicy(
+  policy: InlineFormatRenderAttributePolicy,
+  value: unknown,
+): value is readonly InlineFormatRenderAttribute[] {
+  try {
+    if (isExactSafeTextColorV1Policy(policy)) {
+      return inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(value);
+    }
+    return safeLinkPolicyFields(policy) !== null &&
+      inlineFormatRenderAttributesAreCanonicalSafeLinkV1(value);
+  } catch {
+    return false;
+  }
+}
+
 interface SafeLinkPolicyFields {
   readonly hrefProperty: string;
   readonly openInNewWindowProperty: string;
@@ -244,6 +337,45 @@ function safeLinkPolicyFields(
       hrefProperty !== openInNewWindowProperty
     ? { hrefProperty, openInNewWindowProperty }
     : null;
+}
+
+function isExactSafeTextColorV1Policy(
+  policy: InlineFormatRenderAttributePolicy,
+): policy is InlineFormatRenderSafeTextColorV1Policy {
+  return hasExactOwnDataKeys(policy, ["kind"]) &&
+    ownDataValue(policy, "kind") === "safeTextColorV1";
+}
+
+function formatMatchesSafeTextColorV1(
+  format: BrowserProfileFormatDescriptor,
+): boolean {
+  if (
+    !hasExactOwnDataKeys(format, ["kind", "revision", "properties"]) ||
+    ownDataValue(format, "kind") !==
+      INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND ||
+    ownDataValue(format, "revision") !==
+      INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_REVISION
+  ) {
+    return false;
+  }
+  const properties = ownDataValue(format, "properties");
+  if (exactDenseArrayLength(properties, 1) !== 1) return false;
+  const property = ownArrayValue(properties, 0);
+  if (
+    !hasExactOwnDataKeys(property, ["name", "presence", "valueType"]) ||
+    ownDataValue(property, "name") !==
+      INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME ||
+    ownDataValue(property, "presence") !== "required"
+  ) {
+    return false;
+  }
+  const valueType = ownDataValue(property, "valueType");
+  return hasExactOwnDataKeys(valueType, ["kind", "minimum", "maximum"]) &&
+    ownDataValue(valueType, "kind") === "integer" &&
+    ownDataValue(valueType, "minimum") ===
+      INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM &&
+    ownDataValue(valueType, "maximum") ===
+      INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM;
 }
 
 function findPropertyDescriptor(
@@ -296,10 +428,51 @@ function readExactRenderAttribute(
   }
   const name = ownDataValue(value, "name");
   const attributeValue = ownDataValue(value, "value");
-  return (name === "href" || name === "rel" || name === "target") &&
+  return (name === "href" || name === "rel" || name === "style" ||
+      name === "target") &&
       typeof attributeValue === "string"
     ? { name, value: attributeValue }
     : null;
+}
+
+function canonicalSafeTextColorStyle(value: unknown): string | null {
+  if (
+    typeof value !== "number" ||
+    !NUMBER_IS_SAFE_INTEGER(value) ||
+    OBJECT_IS(value, -0) ||
+    value < INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM ||
+    value > INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM
+  ) {
+    return null;
+  }
+  const hex = "0123456789abcdef";
+  let color = "color:#";
+  for (let shift = 20; shift >= 0; shift -= 4) {
+    color += hex[(value >>> shift) & 0xf];
+  }
+  return color;
+}
+
+function isCanonicalSafeTextColorStyle(value: string): boolean {
+  if (
+    value.length !== 13 ||
+    stringCharCodeAt(value, 0) !== 0x63 ||
+    stringCharCodeAt(value, 1) !== 0x6f ||
+    stringCharCodeAt(value, 2) !== 0x6c ||
+    stringCharCodeAt(value, 3) !== 0x6f ||
+    stringCharCodeAt(value, 4) !== 0x72 ||
+    stringCharCodeAt(value, 5) !== 0x3a ||
+    stringCharCodeAt(value, 6) !== 0x23
+  ) {
+    return false;
+  }
+  for (let index = 7; index < value.length; index += 1) {
+    const unit = stringCharCodeAt(value, index);
+    if (!((unit >= 0x30 && unit <= 0x39) || (unit >= 0x61 && unit <= 0x66))) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function isExactHrefValueType(value: unknown): boolean {
@@ -533,6 +706,24 @@ function ownDataValue(value: unknown, key: PropertyKey): unknown {
 
 function isRecord(value: unknown): value is Readonly<Record<PropertyKey, unknown>> {
   return typeof value === "object" && value !== null && !ARRAY_IS_ARRAY(value);
+}
+
+function hasExactOwnDataKeys(
+  value: unknown,
+  expected: readonly string[],
+): boolean {
+  if (!isRecord(value)) return false;
+  const keys = OWN_KEYS(value);
+  if (
+    keys.length !== expected.length ||
+    keys.some((key) => typeof key !== "string" || !expected.includes(key))
+  ) {
+    return false;
+  }
+  return expected.every((key) => {
+    const descriptor = GET_OWN_PROPERTY_DESCRIPTOR(value, key);
+    return descriptor !== undefined && "value" in descriptor;
+  });
 }
 
 function isPropertyScalar(

@@ -2,6 +2,14 @@ package/LICENSE
 package/LICENSE-APACHE
 package/LICENSE-MIT
 package/README.md
+package/dist/color_showcase_documents.d.ts
+package/dist/color_showcase_documents.js
+package/dist/color_showcase_ids.d.ts
+package/dist/color_showcase_ids.js
+package/dist/color_showcase_presentation.d.ts
+package/dist/color_showcase_presentation.js
+package/dist/color_showcase_profile.d.ts
+package/dist/color_showcase_profile.js
 package/dist/documents.d.ts
 package/dist/documents.js
 package/dist/formatting_documents.d.ts
@@ -30,4 +38,6 @@ package/dist/showcase_presentation.d.ts
 package/dist/showcase_presentation.js
 package/dist/showcase_profile.d.ts
 package/dist/showcase_profile.js
+package/dist/text_color_input.d.ts
+package/dist/text_color_input.js
 package/package.json

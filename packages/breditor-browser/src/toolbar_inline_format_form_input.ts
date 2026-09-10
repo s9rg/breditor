@@ -2,10 +2,13 @@ import { measureBoundedUnicodeText } from "./composition_event.js";
 import { browserCommandJsonIsAdmissible } from "./editor_command.js";
 import {
   MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_QUALIFIED_NAME_ASCII,
   type ToolbarInlineFormatFormDeclaration,
 } from "./toolbar_manifest.js";
+import { isToolbarInlineFormatRgb24Integer } from "./toolbar_inline_format_rgb24.js";
 
 /** Values captured from one typed inline-format form, keyed by property name. */
 export type ToolbarInlineFormatFormValues = Readonly<Record<string, unknown>>;
@@ -25,6 +28,7 @@ const getPrototypeOf = Object.getPrototypeOf;
 const ownKeys = Reflect.ownKeys;
 const jsonStringify = JSON.stringify;
 const numberIsSafeInteger = Number.isSafeInteger;
+const objectIs = Object.is;
 
 type SafeField =
   | Readonly<{
@@ -33,7 +37,13 @@ type SafeField =
       minimumUtf8Bytes: number;
       maximumUtf8Bytes: number;
     }>
-  | Readonly<{ kind: "boolean"; propertyName: string }>;
+  | Readonly<{ kind: "boolean"; propertyName: string }>
+  | Readonly<{
+      kind: "integer";
+      propertyName: string;
+      minimum: number;
+      maximum: number;
+    }>;
 
 /**
  * Creates compact canonical JSON for one declared typed inline-format form.
@@ -80,6 +90,23 @@ function createSetInputJson(
       if (typeof value !== "boolean") invalid();
       properties.push(
         `{"name":${quote(field.propertyName)},"value":${value ? "true" : "false"}}`,
+      );
+      continue;
+    }
+
+    if (field.kind === "integer") {
+      if (!isToolbarInlineFormatRgb24Integer(value)) {
+        if (
+          typeof value === "number" &&
+          numberIsSafeInteger(value) &&
+          !objectIs(value, -0)
+        ) {
+          outsideBounds();
+        }
+        invalid();
+      }
+      properties.push(
+        `{"name":${quote(field.propertyName)},"value":${value}}`,
       );
       continue;
     }
@@ -136,6 +163,22 @@ function snapshotFields(form: unknown): SafeField[] {
     if (kind === "boolean") {
       if (ownDataProperty(rawField, "defaultValue") !== false) invalid();
       fields.push(Object.freeze({ kind, propertyName }));
+      continue;
+    }
+    if (kind === "integer") {
+      const presentation = ownDataProperty(rawField, "presentation");
+      const minimum = ownDataProperty(rawField, "minimum");
+      const maximum = ownDataProperty(rawField, "maximum");
+      const defaultValue = ownDataProperty(rawField, "defaultValue");
+      if (
+        presentation !== "rgb24" ||
+        minimum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM ||
+        maximum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM ||
+        !isToolbarInlineFormatRgb24Integer(defaultValue)
+      ) {
+        invalid();
+      }
+      fields.push(Object.freeze({ kind, propertyName, minimum, maximum }));
       continue;
     }
     if (kind !== "string" || ownDataProperty(rawField, "presentation") !== "url") {

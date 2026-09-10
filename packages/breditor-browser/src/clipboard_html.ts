@@ -12,7 +12,7 @@ import {
   type BrowserCompiledPresentation,
 } from "./compiled_browser_presentation.js";
 import {
-  inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
+  inlineFormatRenderAttributesAreCanonicalForPolicy,
   type InlineFormatRenderAttribute,
 } from "./inline_format_render_attributes.js";
 import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
@@ -584,6 +584,7 @@ function wrapperAttributesMatchRecipe(
       attribute === undefined ||
       (attribute.name !== "href" &&
         attribute.name !== "rel" &&
+        attribute.name !== "style" &&
         attribute.name !== "target") ||
       attribute.prefix !== undefined ||
       attribute.namespace !== undefined
@@ -594,7 +595,10 @@ function wrapperAttributesMatchRecipe(
   }
   return recipe.attributes === undefined
     ? attributes.length === 0 && node.attrs.length === offset
-    : inlineFormatRenderAttributesAreCanonicalSafeLinkV1(attributes);
+    : inlineFormatRenderAttributesAreCanonicalForPolicy(
+      recipe.attributes,
+      attributes,
+    );
 }
 
 function isExactElement(node: ChildNode | undefined, tagName: string): node is Element {

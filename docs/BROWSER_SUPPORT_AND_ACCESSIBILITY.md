@@ -1,10 +1,11 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.11 source checkpoint retains
+accessibility gate passed; the unpublished alpha.12 source checkpoint retains
 exact uniform-property hydration, the additive Showcase composition proof, and
 the Rust-owned Clear formatting route, then adds descriptor-compiled declarative
-shortcuts with truthful toolbar `aria-keyshortcuts` described below.
+shortcuts with truthful toolbar `aria-keyshortcuts`, then adds the closed RGB24
+Color Showcase described below.
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -122,6 +123,22 @@ emit a conforming code may not invoke a shortcut, and browser or operating-
 system reservations can intercept a chord. The tests do not establish
 Alt/AltGraph, multi-key sequence, typed-input shortcut, operating-system IME,
 screen-reader announcement, mobile, or WCAG-conformance support.
+
+Alpha.12 moves the React demo and the dedicated Color Showcase browser scenario
+to `example/color-showcase-editor@1`. The gate submits a native-picker value,
+observes canonical lowercase `style="color:#rrggbb"` and Rust-state form
+hydration, combines it with every peer format in the fixed seven-wrapper order,
+and covers Remove, Clear formatting, Undo, Redo, safe copy, formatting-losing
+HTML-only paste, Session-V3 flush/reload, and the distinct demo slot. Unit gates
+prove the exact RGB24 integer conversion plus descriptor/recipe correlation,
+hostile values and style shapes, field/state hydration, and manifest bounds.
+
+This is desktop-engine evidence for one semantic contract, not proof of a
+uniform native color-picker UI, keyboard experience, screen-reader
+announcement, high-contrast result, or WCAG contrast. CSP `style-src-attr`,
+forced-colors modes, user styles, and browser preferences can suppress or
+override the visible author color. Text color has no shortcut, and paste does
+not preserve the source RGB24 value. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 Run the gate after generating the three public packages:
 

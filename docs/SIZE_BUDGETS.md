@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.11` declarative-keyboard-shortcut checkpoint
+`0.3.0-alpha.12` closed-RGB24-text-color checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -12,16 +12,16 @@ total.
 
 The current release ceilings are deliberately explicit:
 
-- all emitted `@breditor/browser` JavaScript: 1,040,000 bytes;
+- all emitted `@breditor/browser` JavaScript: 1,060,000 bytes;
 - all emitted browser declarations: 264,000 bytes;
-- all emitted `@breditor/reference-highlight` JavaScript: 45,000 bytes;
-- all emitted reference-package declarations: 39,000 bytes;
+- all emitted `@breditor/reference-highlight` JavaScript: 65,000 bytes;
+- all emitted reference-package declarations: 55,000 bytes;
 - generated Wasm binary: 1,610,000 bytes;
 - generated Wasm JavaScript glue: 100,000 bytes;
-- packed `@breditor/browser` tarball: 260,000 bytes;
-- packed `@breditor/reference-highlight` tarball: 22,000 bytes;
+- packed `@breditor/browser` tarball: 270,000 bytes;
+- packed `@breditor/reference-highlight` tarball: 28,000 bytes;
 - packed `@breditor/wasm` tarball: 522,000 bytes;
-- reference-application JavaScript: 835,000 raw and 220,000 gzip bytes; and
+- reference-application JavaScript: 850,000 raw and 225,000 gzip bytes; and
 - reference-application Wasm: 1,610,000 raw and 452,000 gzip bytes.
 
 Alpha.6 recalibrated only the two raw JavaScript ceilings from 800,000 to
@@ -335,6 +335,35 @@ generated Wasm, Wasm glue, reference emitted-code, and Wasm-tarball ceilings
 remain unchanged. No code-splitting exemption, package-content escape,
 callback registry, or browser-owned semantic command was added.
 
+The `0.3.0-alpha.12` checkpoint recalibrates only the artifacts that carry the
+closed RGB24 renderer/native-field presentation and the separate Color
+Showcase profile. Its final clean-build and lifecycle-disabled package
+measurements are:
+
+- browser-package JavaScript: 1,051,010 / 1,060,000 bytes;
+- browser declarations: 263,925 / 264,000 bytes;
+- reference Color Showcase JavaScript: 61,211 / 65,000 bytes;
+- reference Color Showcase declarations: 51,144 / 55,000 bytes;
+- generated Wasm: 1,607,767 / 1,610,000 bytes;
+- generated Wasm JavaScript glue: 52,572 / 100,000 bytes;
+- reference-application JavaScript: 841,764 / 850,000 raw bytes and
+  220,305 / 225,000 level-9-gzip bytes;
+- reference-application Wasm: 1,607,767 / 1,610,000 raw bytes and
+  450,651 / 452,000 level-9-gzip bytes;
+- packed browser package: 259,230 / 270,000 bytes;
+- packed reference Color Showcase package: 26,263 / 28,000 bytes; and
+- packed Wasm package: 521,510 / 522,000 bytes.
+
+The browser JavaScript and application ceilings move only for the reviewed
+`safeTextColorV1` canonical-attribute path, exact RGB24 form conversion and
+hydration, and composition/clipboard admission. Reference code, declarations,
+and tarball ceilings move for the additive frozen Color Showcase profile,
+fixtures, typed-input helpers, and presentation manifests. The browser tarball
+ceiling includes the expanded contract documentation. Wasm, glue, Wasm gzip,
+Wasm tarball, and browser-declaration ceilings remain unchanged; no Rust or
+Wasm executable feature, file-class exemption, code-splitting escape, or
+arbitrary CSS surface was added.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -364,7 +393,7 @@ Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings, ABI 4 within the alpha.6
-ceilings, and ABI 5 within the current alpha.11 ceilings listed above.
+ceilings, and ABI 5 within the current alpha.12 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

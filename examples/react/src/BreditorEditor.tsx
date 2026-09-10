@@ -18,15 +18,15 @@ import {
   type BreditorBrowserEditorSnapshot,
 } from "@breditor/browser";
 import {
-  REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
-  REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
-  REFERENCE_SHOWCASE_RENDER_MANIFEST,
-  REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
-  REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
 
-const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-showcase.v1";
+const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-color-showcase.v1";
 
 let wasmInitialization: Promise<unknown> | undefined;
 
@@ -352,16 +352,17 @@ export const BreditorEditor = forwardRef<
           label,
           wasm: breditorWasm,
           initialDocument: {
-            lineageId: "breditor-react-reference-showcase",
-            documentJson: REFERENCE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+            lineageId: "breditor-react-reference-color-showcase",
+            documentJson: REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
             historyCapacity: 100,
           },
           semanticProfile: {
-            bootstrapJson: REFERENCE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+            bootstrapJson: REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
             formatVersion: 2,
           },
-          rendering: REFERENCE_SHOWCASE_RENDER_MANIFEST,
-          keyboardShortcuts: REFERENCE_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+          rendering: REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+          keyboardShortcuts:
+            REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
           keyboard: {
             editing: "beforeinputPrimary",
             primaryModifier,
@@ -369,7 +370,7 @@ export const BreditorEditor = forwardRef<
           },
           toolbar: {
             host: toolbarHost,
-            manifest: REFERENCE_SHOWCASE_TOOLBAR_MANIFEST,
+            manifest: REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
           },
           persistence: {
             indexedDB: window.indexedDB,

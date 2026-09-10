@@ -4,6 +4,8 @@ Status: supported inside the public `0.1.0` runtime for the closed base schema,
 retained by the supported `0.2.0` compiled-profile and intent path, and
 strengthened in `0.3.0-alpha.3` by Rust-atomic close-before command execution;
 the `0.3.0-alpha.6` typed multi-paragraph setter uses the same event protocol;
+the alpha.12 RGB24 typed setter uses that existing programmatic/toolbar route
+and adds no native input translation;
 direct event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
@@ -136,6 +138,14 @@ selection is retained. That request enters the same immediate queue and Rust
 returns one guarded root-replacement result; the browser neither expands it
 into per-paragraph commands nor recreates activation, limits, or selection
 mapping.
+
+Alpha.12 changes no native-event translation either. Its native
+`<input type="color">` belongs to the sibling toolbar form, not the editable
+host. Apply and Remove submit the existing strict typed intent through the same
+preserved-selection queue; no `beforeinput` color type, DOM mutation, shortcut,
+or CSS payload is introduced. A collapsed application changes pending typing
+formats under the existing operation-free history-boundary law, while a range
+application produces the existing generic undoable operation.
 
 ## Selection and target ranges
 

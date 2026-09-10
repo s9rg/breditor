@@ -3,7 +3,7 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.11` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.12` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
@@ -15,10 +15,13 @@ stateless Clear Formatting command over complete inline `FormatSet` values,
 without making its semantics extension-configurable. Alpha.11 adds a separate
 browser-owned declarative shortcut manifest compiled through existing
 action-state descriptors, and projects that same checked table as toolbar
-`aria-keyshortcuts`. It
+`aria-keyshortcuts`. Alpha.12 adds a second closed property presentation:
+opaque RGB24 text color through the existing typed-set semantics, one exact
+browser-owned renderer policy, and one exact native integer field. It
 does not introduce a generic attribute protocol, arbitrary toolbar widget, or
 extensible operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md) and the
-normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md).
+normative [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md) and
+[`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` ships. It complements
@@ -1015,6 +1018,49 @@ defined `beforeinput` rules remain absent. Profile Bootstrap V2, compiled
 descriptor ABI, schema fingerprint, Rust/Wasm ABI 5, Document V2, and every
 Operation/State/Transaction/Commit/Checkpoint V3 shape remain unchanged.
 
+## `0.3.0-alpha.12` closed RGB24 presentation
+
+Alpha.12 deliberately exercises the integer branch already present in the
+typed-property language. The new `example/color-showcase-editor@1` profile
+adds `example/text-color-extension@1`, whose `example/text-color@1` format has
+exactly one required integer `example/rgb24` property bounded to
+`0..=16_777_215`. Its `InlineFormatSetSpecV1` generates
+`example/set-text-color`, `example/set-text-color-intent`,
+`example/set-text-color-binding`, and `example/text-color-presence` through the
+same Rust compiler used by Link. No color-specific action or operation is
+registered.
+
+That choice keeps architecture ownership clear. Rust validates and stores an
+opaque RGB24 integer, evaluates complete-map set/remove state, performs
+collapsed or range changes, and owns exact selection, history, and replay. The
+browser receives only the compiled descriptor and projection. Its
+zero-configuration `safeTextColorV1` policy matches the literal format,
+revision, sole property contract, `<span>` element, and sole
+`breditor-text-color` class, then derives only canonical lowercase
+`style="color:#rrggbb"`. Neither profile nor document can provide CSS text.
+
+The toolbar's new integer branch is equally closed: `presentation: "rgb24"`,
+fixed `0..=16_777_215` bounds, and an in-range default are required, and the
+control renders as native `<input type="color">`. Apply/Remove, state
+hydration, preserved selection, queue admission, and Rust execution remain the
+existing typed-form path. The field is not a generic number renderer, callback
+widget, theme picker, or command capability. Text color has no shortcut.
+
+The Color Showcase is a separate profile with fingerprint
+`sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d`,
+seven render recipes, and ten toolbar controls. It uses a separate demo lineage
+and persistence slot. Document V2 and Session Checkpoint V3 already preserve
+the integer and its generic operations; Profile Bootstrap V2, Wasm ABI 5, and
+all durable format numbers are unchanged.
+
+The deliberately closed result still has important limits: opaque sRGB24 only,
+no alpha/background/gradient/arbitrary CSS/theme token/color conversion,
+contrast guarantee, typed shortcut, or source-color preservation on paste.
+Inline-style CSP and forced-colors policy may suppress or override presentation,
+and native picker UX varies. A collapsed pending-color edit has no standalone
+undo entry under the existing generic set-action history law. The normative
+details are in [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
 ## Deferred beyond 0.2.0
 
 The following are explicitly deferred:
@@ -1022,9 +1068,10 @@ The following are explicitly deferred:
 - a public stable wire codec for extension manifests, unless separately frozen
   after the initial Rust value model proves itself;
 - arbitrary block, inline, leaf, atom, embed, table, or nested editable nodes;
-- property-bearing presentation beyond the exact `safeLinkV1` policy, including
-  general DOM attributes, color/CSS policies, and renderer callbacks; toolbar
-  fields beyond the closed required URL-string/Boolean form;
+- property-bearing presentation beyond the exact `safeLinkV1` and
+  `safeTextColorV1` policies, including general DOM attributes, CSS policies,
+  and renderer callbacks; toolbar fields beyond the closed required
+  URL-string/Boolean and exact RGB24 forms;
 - format exclusions, groups, inclusivity rules, multiple instances, and
   arbitrary normalization;
 - optional peer dependencies, capability selection, extension-version ranges,
@@ -1042,8 +1089,9 @@ The following are explicitly deferred:
   negotiation;
 - package discovery, downloading, registry policy, or permission UI;
 - arbitrary callback or sequence keymaps, typed-input shortcuts,
-  extension-defined `beforeinput` rules, menus, selects, optional or integer
-  fields, partial property patches, and arbitrary custom toolbar controls;
+  extension-defined `beforeinput` rules, menus, selects, optional or general
+  integer fields, partial property patches, and arbitrary custom toolbar
+  controls;
 - sandboxing browser presentation code supplied by the host;
 - generic HTML fidelity, arbitrary executable portable converters, and a
   framework-neutral server-side renderer.
@@ -1174,6 +1222,13 @@ durable bytes remain unchanged.
 
 `0.3.0-alpha.8` settles exact complete-map state and pristine form hydration
 through ABI 5's existing getters. It adds no ABI or durable generation.
+
+`0.3.0-alpha.9` proves multi-extension composition; alpha.10 adds generic
+all-inline clearing; alpha.11 settles state-addressed physical shortcut data.
+`0.3.0-alpha.12` settles only the literal `safeTextColorV1` RGB24 renderer and
+exact native color field over the existing integer/set-surface path. It does
+not settle general CSS, theming, arbitrary integer widgets, rich paste, a new
+Wasm ABI, or a durable-format generation.
 
 The following choice remains for a later release and may be settled without
 weakening the decisions above:

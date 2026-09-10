@@ -42,6 +42,37 @@ const form = createToolbarManifest({
 
 if (form.kind !== "inlineFormatForm") throw new Error("fixture is invalid");
 
+const colorForm = createToolbarManifest({
+  label: "Editor controls",
+  controls: [
+    {
+      kind: "inlineFormatForm",
+      stateId: "example/color-presence",
+      label: "Text color",
+      formatKind: "example/text-color",
+      intentId: "example/set-text-color-intent",
+      fields: [
+        {
+          kind: "integer",
+          propertyName: "example/rgb24",
+          label: "Text color",
+          presentation: "rgb24",
+          minimum: 0,
+          maximum: 16_777_215,
+          defaultValue: 0,
+        },
+      ],
+      applyLabel: "Apply",
+      removeLabel: "Remove",
+      closeLabel: "Close",
+    },
+  ],
+}).controls[0]!;
+
+if (colorForm.kind !== "inlineFormatForm") {
+  throw new Error("color fixture is invalid");
+}
+
 const contract = () => ({
   name: TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_NAME,
   version: TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_VERSION,
@@ -88,6 +119,28 @@ describe("decodeToolbarInlineFormatFormStateValue", () => {
         contract: contract(),
       }),
     ).toEqual({ status });
+  });
+
+  it("copies an exact RGB24 integer and rejects noncanonical numbers", () => {
+    const value = (rgb24: unknown) => ({
+      status: "uniform",
+      contract: contract(),
+      value: {
+        operation: "set",
+        properties: [{ name: "example/rgb24", value: rgb24 }],
+      },
+    });
+    expect(
+      decodeToolbarInlineFormatFormStateValue(colorForm, value(0x12abef)),
+    ).toEqual({
+      status: "uniform",
+      fields: [{ name: "example/rgb24", value: 0x12abef }],
+    });
+    for (const rgb24 of [-0, -1, 16_777_216, 1.5, "1223663", null]) {
+      expect(
+        decodeToolbarInlineFormatFormStateValue(colorForm, value(rgb24)),
+      ).toBeNull();
+    }
   });
 
   it("rejects wrong contracts, unsupported states, and extra fields", () => {

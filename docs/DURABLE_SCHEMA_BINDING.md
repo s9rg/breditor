@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.11` checkpoint. Wasm ABI 5 and the browser explicitly select
+`0.3.0-alpha.12` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -19,6 +19,12 @@ therefore not secure erasure.
 Alpha.11 shortcut declarations target process-local action-state descriptors.
 They do not enter the schema fingerprint, document, operation, history,
 checkpoint, or IndexedDB record and cannot change replay meaning.
+
+Alpha.12 adds a separately fingerprinted Color Showcase content language by
+using the existing bounded integer-property contract. Its semantic RGB24 value
+enters Document V2 and the existing V3 operation/history records; the derived
+CSS style and native picker state do not. No durable record generation or
+envelope changes.
 
 This contract defines how Breditor records name the exact content language
 under which they were created. It is an original Breditor wire contract.

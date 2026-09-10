@@ -3,10 +3,18 @@ import { describe, expect, it } from "vitest";
 import type { InlineFormatPropertyProjection } from "./projection.js";
 import type { BrowserProfileFormatDescriptor } from "./wasm_profile_descriptor.js";
 import {
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_REVISION,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME,
   MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES,
   createInlineFormatRenderAttributePolicy,
   inlineFormatRenderAttributePolicyMatchesFormatDescriptor,
+  inlineFormatRenderAttributesAreCanonicalForPolicy,
   inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
+  inlineFormatRenderAttributesAreCanonicalSafeTextColorV1,
   resolveInlineFormatRenderAttributes,
 } from "./inline_format_render_attributes.js";
 
@@ -14,6 +22,10 @@ const POLICY = createInlineFormatRenderAttributePolicy({
   kind: "safeLinkV1",
   hrefProperty: "example/href",
   openInNewWindowProperty: "example/open-in-new-window",
+});
+
+const TEXT_COLOR_POLICY = createInlineFormatRenderAttributePolicy({
+  kind: "safeTextColorV1",
 });
 
 describe("inline-format render attributes", () => {
@@ -315,6 +327,252 @@ describe("inline-format render attributes", () => {
       false,
     );
   });
+
+  it("owns only the zero-configuration safe text-color policy", () => {
+    const source = { kind: "safeTextColorV1" } as const;
+    const policy = createInlineFormatRenderAttributePolicy(source);
+    expect(policy).toEqual({ kind: "safeTextColorV1" });
+    expect(Object.isFrozen(policy)).toBe(true);
+    expect(INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND).toBe(
+      "example/text-color",
+    );
+    expect(INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_REVISION).toBe(1);
+    expect(INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME).toBe("example/rgb24");
+    expect(INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM).toBe(0);
+    expect(INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM).toBe(0xff_ffff);
+    expect(INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS).toBe("breditor-text-color");
+
+    for (const invalid of [
+      { kind: "safeTextColorV2" },
+      { kind: "safeTextColorV1", rgb24Property: "example/rgb24" },
+      { kind: "safeTextColorV1", style: "color:red" },
+      { kind: "safeTextColorV1", [Symbol("hidden")]: true },
+    ]) {
+      expect(() => createInlineFormatRenderAttributePolicy(invalid)).toThrow();
+    }
+
+    let reads = 0;
+    const accessor = {} as Record<string, unknown>;
+    Object.defineProperty(accessor, "kind", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return "safeTextColorV1";
+      },
+    });
+    expect(() => createInlineFormatRenderAttributePolicy(accessor)).toThrow();
+    expect(reads).toBe(0);
+
+    const privateMessage = "private-policy-trap-value";
+    const hostile = new Proxy(Object.create(null) as Record<string, unknown>, {
+      getOwnPropertyDescriptor() {
+        throw new Error(privateMessage);
+      },
+    });
+    let failure: unknown;
+    try {
+      createInlineFormatRenderAttributePolicy(hostile);
+    } catch (error: unknown) {
+      failure = error;
+    }
+    expect(failure).toBeInstanceOf(TypeError);
+    expect(String(failure)).not.toContain(privateMessage);
+  });
+
+  it("requires the literal text-color format revision and RGB24 property contract", () => {
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        TEXT_COLOR_POLICY,
+        textColorDescriptor(),
+      ),
+    ).toBe(true);
+
+    for (const descriptor of [
+      textColorDescriptor({ kind: "example/other" }),
+      textColorDescriptor({ revision: 2 }),
+      textColorDescriptor({ propertyName: "example/color" }),
+      textColorDescriptor({ presence: "optional" }),
+      textColorDescriptor({ valueKind: "boolean" }),
+      textColorDescriptor({ minimum: -1 }),
+      textColorDescriptor({ minimum: 1 }),
+      textColorDescriptor({ maximum: 0xff_fffe }),
+      textColorDescriptor({ maximum: 0x1_00_0000 }),
+      textColorDescriptor({ extraProperty: true }),
+    ]) {
+      expect(
+        inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+          TEXT_COLOR_POLICY,
+          descriptor,
+        ),
+      ).toBe(false);
+    }
+
+    const widenedFormat = {
+      ...textColorDescriptor(),
+      rendererHint: "trusted",
+    } as BrowserProfileFormatDescriptor;
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        TEXT_COLOR_POLICY,
+        widenedFormat,
+      ),
+    ).toBe(false);
+
+    const forgedPolicy = {
+      kind: "safeTextColorV1",
+      property: "example/rgb24",
+    } as unknown as typeof TEXT_COLOR_POLICY;
+    expect(
+      inlineFormatRenderAttributePolicyMatchesFormatDescriptor(
+        forgedPolicy,
+        textColorDescriptor(),
+      ),
+    ).toBe(false);
+  });
+
+  it("derives only canonical lowercase zero-padded RGB24 style text", () => {
+    const cases = [
+      [0, "color:#000000"],
+      [1, "color:#000001"],
+      [0x12_ab_ef, "color:#12abef"],
+      [0xa0_b1_c2, "color:#a0b1c2"],
+      [0xff_ffff, "color:#ffffff"],
+    ] as const;
+    for (const [rgb24, style] of cases) {
+      const attributes = resolveInlineFormatRenderAttributes(
+        TEXT_COLOR_POLICY,
+        [projectedProperty("example/rgb24", rgb24)],
+      );
+      expect(attributes).toEqual([{ name: "style", value: style }]);
+      expect(Object.isFrozen(attributes)).toBe(true);
+      expect(Object.isFrozen(attributes[0])).toBe(true);
+    }
+
+    const originalToString = Number.prototype.toString;
+    try {
+      Number.prototype.toString = () => {
+        throw new Error("number formatting must not be delegated");
+      };
+      expect(
+        resolveInlineFormatRenderAttributes(TEXT_COLOR_POLICY, [
+          projectedProperty("example/rgb24", 0xab_cdef),
+        ]),
+      ).toEqual([{ name: "style", value: "color:#abcdef" }]);
+    } finally {
+      Number.prototype.toString = originalToString;
+    }
+  });
+
+  it("fails text-color resolution closed for every non-RGB24 projection shape", () => {
+    const invalidValues: readonly unknown[] = [
+      -1,
+      -0,
+      0x1_00_0000,
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      "16711680",
+      "#ff0000",
+      "red",
+      "0; background:url(javascript:alert(1))",
+      true,
+      null,
+    ];
+    for (const value of invalidValues) {
+      expect(
+        resolveInlineFormatRenderAttributes(TEXT_COLOR_POLICY, [
+          { name: "example/rgb24", value } as InlineFormatPropertyProjection,
+        ]),
+      ).toEqual([]);
+    }
+
+    for (const properties of [
+      [],
+      [projectedProperty("example/color", 0xff_0000)],
+      [
+        projectedProperty("example/rgb24", 0xff_0000),
+        projectedProperty("example/rgb24", 0x00_ff00),
+      ],
+      [
+        projectedProperty("example/rgb24", 0xff_0000),
+        projectedProperty("example/ignored", 0),
+      ],
+    ]) {
+      expect(
+        resolveInlineFormatRenderAttributes(TEXT_COLOR_POLICY, properties),
+      ).toEqual([]);
+    }
+
+    const widened = [projectedProperty("example/rgb24", 0xff_0000)];
+    Object.defineProperty(widened, "hidden", { value: "color:red" });
+    expect(resolveInlineFormatRenderAttributes(TEXT_COLOR_POLICY, widened)).toEqual(
+      [],
+    );
+    expect(
+      resolveInlineFormatRenderAttributes(TEXT_COLOR_POLICY, [{
+        name: "example/rgb24",
+        value: 0xff_0000,
+        css: "background:url(javascript:alert(1))",
+      } as unknown as InlineFormatPropertyProjection]),
+    ).toEqual([]);
+  });
+
+  it("admits only the one canonical text-color style attribute", () => {
+    const canonical = [{ name: "style", value: "color:#00a1ff" }] as const;
+    expect(
+      inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(canonical),
+    ).toBe(true);
+    expect(
+      inlineFormatRenderAttributesAreCanonicalForPolicy(
+        TEXT_COLOR_POLICY,
+        canonical,
+      ),
+    ).toBe(true);
+
+    for (const invalid of [
+      [],
+      [{ name: "style", value: "color:#00A1FF" }],
+      [{ name: "style", value: "color: #00a1ff" }],
+      [{ name: "style", value: "color:#00a1ff;" }],
+      [{ name: "style", value: "color:#0af" }],
+      [{ name: "style", value: "color:rgb(0,161,255)" }],
+      [{ name: "style", value: "background:#00a1ff" }],
+      [{ name: "style", value: "color:#00a1ff;background:url(x)" }],
+      [{ name: "onclick", value: "alert(1)" }],
+      [
+        { name: "style", value: "color:#00a1ff" },
+        { name: "title", value: "extra" },
+      ],
+      [{ name: "style", value: "color:#00a1ff", hidden: true }],
+    ]) {
+      expect(
+        inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(invalid),
+      ).toBe(false);
+    }
+
+    const widened = [...canonical] as unknown[];
+    Object.defineProperty(widened, "hidden", { value: true });
+    expect(
+      inlineFormatRenderAttributesAreCanonicalSafeTextColorV1(widened),
+    ).toBe(false);
+    expect(
+      inlineFormatRenderAttributesAreCanonicalForPolicy(POLICY, canonical),
+    ).toBe(false);
+
+    let reads = 0;
+    const accessor = { name: "style" } as Record<string, unknown>;
+    Object.defineProperty(accessor, "value", {
+      enumerable: true,
+      get: () => {
+        reads += 1;
+        return "color:#00a1ff";
+      },
+    });
+    expect(
+      inlineFormatRenderAttributesAreCanonicalSafeTextColorV1([accessor]),
+    ).toBe(false);
+    expect(reads).toBe(0);
+  });
 });
 
 interface DescriptorOverrides {
@@ -365,6 +623,48 @@ function linkDescriptor(
     revision: 1,
     properties,
   } as BrowserProfileFormatDescriptor;
+}
+
+interface TextColorDescriptorOverrides {
+  readonly kind?: string;
+  readonly revision?: number;
+  readonly propertyName?: string;
+  readonly presence?: "required" | "optional";
+  readonly valueKind?: "integer" | "boolean";
+  readonly minimum?: number;
+  readonly maximum?: number;
+  readonly extraProperty?: boolean;
+}
+
+function textColorDescriptor(
+  overrides: TextColorDescriptorOverrides = {},
+): BrowserProfileFormatDescriptor {
+  const valueType = overrides.valueKind === "boolean"
+    ? { kind: "boolean" as const }
+    : {
+      kind: "integer" as const,
+      minimum: overrides.minimum ?? 0,
+      maximum: overrides.maximum ?? 0xff_ffff,
+    };
+  const properties: BrowserProfileFormatDescriptor["properties"][number][] = [
+    {
+      name: overrides.propertyName ?? "example/rgb24",
+      presence: overrides.presence ?? "required",
+      valueType,
+    },
+  ];
+  if (overrides.extraProperty === true) {
+    properties.push({
+      name: "example/extra",
+      presence: "optional",
+      valueType: { kind: "boolean" },
+    });
+  }
+  return {
+    kind: overrides.kind ?? "example/text-color",
+    revision: overrides.revision ?? 1,
+    properties,
+  };
 }
 
 function projectedProperties(

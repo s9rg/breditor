@@ -13,6 +13,9 @@ const CROSS_PARAGRAPH_LINK_INPUT =
   "HTTPS://Cross.Example.TEST:443/a/../guide?q=alpha&b=two";
 const CROSS_PARAGRAPH_LINK_URL =
   "https://cross.example.test/guide?q=alpha&b=two";
+const DEFAULT_TEXT_COLOR = "#5b21b6";
+const SELECTED_TEXT_COLOR = "#123456";
+const SELECTED_TEXT_COLOR_STYLE = "color:#123456";
 
 async function openDemo(page: Page): Promise<{
   readonly editor: Locator;
@@ -220,6 +223,77 @@ async function pastePlainText(editor: Locator, text: string): Promise<void> {
   expect(outcome).toEqual({ defaultPrevented: true, plainText: text });
 }
 
+interface EditorClipboardPayload {
+  readonly defaultPrevented: boolean;
+  readonly plainText: string;
+  readonly html: string;
+}
+
+/** Captures the synchronous semantic copy payload written by the editor. */
+async function copyEditorSelection(
+  editor: Locator,
+): Promise<EditorClipboardPayload> {
+  return editor.evaluate((host) => {
+    const transfer = new DataTransfer();
+    const copy = new ClipboardEvent("copy", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      clipboardData: transfer,
+    });
+    host.dispatchEvent(copy);
+    const observed = copy.clipboardData ?? transfer;
+    return {
+      defaultPrevented: copy.defaultPrevented,
+      plainText: observed.getData("text/plain"),
+      html: observed.getData("text/html"),
+    };
+  });
+}
+
+/** Dispatches one native-shaped HTML-only paste and its duplicate followups. */
+async function pasteHtmlOnly(
+  editor: Locator,
+  html: string,
+): Promise<EditorClipboardPayload> {
+  return editor.evaluate((host, sourceHtml) => {
+    const transfer = new DataTransfer();
+    transfer.setData("text/html", sourceHtml);
+    const paste = new ClipboardEvent("paste", {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      clipboardData: transfer,
+    });
+    host.dispatchEvent(paste);
+
+    if (paste.defaultPrevented) {
+      host.dispatchEvent(
+        new InputEvent("beforeinput", {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          inputType: "insertFromPaste",
+        }),
+      );
+      host.dispatchEvent(
+        new InputEvent("input", {
+          bubbles: true,
+          composed: true,
+          inputType: "insertFromPaste",
+        }),
+      );
+    }
+
+    const observed = paste.clipboardData ?? transfer;
+    return {
+      defaultPrevented: paste.defaultPrevented,
+      plainText: observed.getData("text/plain"),
+      html: observed.getData("text/html"),
+    };
+  }, html);
+}
+
 /**
  * Checks text and full inline-format coverage without depending on how many
  * equivalent adjacent runs the canonical projection chooses to expose.
@@ -405,6 +479,7 @@ async function expectUniformShowcaseTree(
   editor: Locator,
   expectedText: readonly string[],
   expectedChain: readonly string[],
+  expectedTextColorStyle: string | null = null,
 ): Promise<void> {
   await expect
     .poll(() =>
@@ -433,10 +508,14 @@ async function expectUniformShowcaseTree(
             singleBranch = false;
           }
           const link = paragraph.querySelector(":scope > a.breditor-link");
+          const textColor = paragraph.querySelector(
+            "span.breditor-text-color",
+          );
           return {
             text: paragraph.textContent ?? "",
             chain,
             singleBranch,
+            textColorStyle: textColor?.getAttribute("style") ?? null,
             link: {
               href: link?.getAttribute("href") ?? null,
               rel: link?.getAttribute("rel") ?? null,
@@ -451,6 +530,7 @@ async function expectUniformShowcaseTree(
         text,
         chain: [...expectedChain],
         singleBranch: true,
+        textColorStyle: expectedTextColorStyle,
         link: expectedChain.includes("a.breditor-link")
           ? {
               href: REFERENCE_LINK_URL,
@@ -672,7 +752,7 @@ test("the React Showcase advertises and routes profile-declared shortcuts", asyn
   await expect(editor.locator("em")).toHaveText(SAMPLE_TEXT);
 });
 
-test("the nine-control Showcase composes and clears deterministic formats across paragraphs and persistence", async ({
+test("the ten-control Color Showcase composes and clears deterministic formats across paragraphs and persistence", async ({
   page,
 }) => {
   const { editor, status } = await openDemo(page);
@@ -682,9 +762,30 @@ test("the nine-control Showcase composes and clears deterministic formats across
   const italic = page.getByRole("button", { name: "Italic" });
   const strikethrough = page.getByRole("button", { name: "Strikethrough" });
   const code = page.getByRole("button", { name: "Code" });
+  const textColor = page.getByRole("button", {
+    name: "Text color",
+    exact: true,
+  });
+  const colorInput = page.locator(
+    'input[type="color"][name="example/rgb24"]',
+  );
+  const applyColor = page.getByRole("button", { name: "Apply color" });
   const clearFormatting = page.getByRole("button", { name: "Clear formatting" });
   const undo = page.getByRole("button", { name: "Undo" });
   const redo = page.getByRole("button", { name: "Redo" });
+  const completeChain = [
+    "a.breditor-link",
+    "strong",
+    "em",
+    "mark.breditor-reference-highlight",
+    "s",
+    "code",
+    "span.breditor-text-color",
+  ] as const;
+  const copiedHtml = [
+    '<p><a class="breditor-link" href="https://example.test/reference" rel="noopener noreferrer" target="_blank"><strong><em><mark class="breditor-reference-highlight"><s><code><span class="breditor-text-color" style="color:#123456">Breditor</span></code></s></mark></em></strong></a></p>',
+    '<p><a class="breditor-link" href="https://example.test/reference" rel="noopener noreferrer" target="_blank"><strong><em><mark class="breditor-reference-highlight"><s><code><span class="breditor-text-color" style="color:#123456"> showcase</span></code></s></mark></em></strong></a></p>',
+  ].join("");
 
   await expect(topLevelControls).toHaveText([
     "Bold",
@@ -692,19 +793,20 @@ test("the nine-control Showcase composes and clears deterministic formats across
     "Strikethrough",
     "Code",
     "Highlight",
+    "Text color",
     "Link",
     "Clear formatting",
     "Undo",
     "Redo",
   ]);
-  await expect(topLevelControls).toHaveCount(9);
+  await expect(topLevelControls).toHaveCount(10);
   for (const control of [bold, italic, strikethrough, code]) {
     await expect(control).toBeVisible();
     await expect(control).toHaveAttribute("aria-pressed", "false");
   }
 
-  // Split the initially highlighted safe Link, then apply every property-free
-  // Showcase format through one real backward DOM selection spanning blocks.
+  // Split the initially highlighted safe Link, then apply every Showcase
+  // format through one real backward DOM selection spanning peer blocks.
   await selectEditorText(editor, FIRST_WORD.length, FIRST_WORD.length);
   await page.keyboard.press("Enter");
   await expectUniformShowcaseTree(
@@ -724,6 +826,28 @@ test("the nine-control Showcase composes and clears deterministic formats across
   await italic.click();
   await strikethrough.click();
   await code.click();
+  await textColor.click();
+  await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
+  await colorInput.fill(SELECTED_TEXT_COLOR);
+  await applyColor.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    completeChain,
+    SELECTED_TEXT_COLOR_STYLE,
+  );
+  for (const control of [bold, italic, strikethrough, code]) {
+    await expect(control).toHaveAttribute("aria-pressed", "true");
+  }
+  await expect(textColor).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
+
+  // Each undo removes exactly the latest semantic format and each redo restores
+  // it in the same canonical position without disturbing Highlight or Link.
+  await undo.click();
   await expectUniformShowcaseTree(
     editor,
     [FIRST_WORD, SECOND_PARAGRAPH],
@@ -736,12 +860,11 @@ test("the nine-control Showcase composes and clears deterministic formats across
       "code",
     ],
   );
-  for (const control of [bold, italic, strikethrough, code]) {
-    await expect(control).toHaveAttribute("aria-pressed", "true");
-  }
-
-  // Each undo removes exactly the latest semantic format and each redo restores
-  // it in the same canonical position without disturbing Highlight or Link.
+  await expect(textColor).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+  await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
   await undo.click();
   await expectUniformShowcaseTree(
     editor,
@@ -802,9 +925,45 @@ test("the nine-control Showcase composes and clears deterministic formats across
     ],
   );
   await expect(code).toHaveAttribute("aria-pressed", "true");
+  await redo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    completeChain,
+    SELECTED_TEXT_COLOR_STYLE,
+  );
+  await expect(textColor).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
 
-  // Clear all base and extension formats across the backward block selection
-  // as one Rust transaction, then restore that exact tree with one undo.
+  // Re-establish the native selection after form focus, then prove copy emits
+  // the exact canonical, safe seven-wrapper HTML rather than serializing DOM.
+  await selectParagraphRange(
+    editor,
+    1,
+    SECOND_PARAGRAPH.length,
+    0,
+    0,
+  );
+  const copied = await copyEditorSelection(editor);
+  expect(copied).toEqual({
+    defaultPrevented: true,
+    plainText: `${FIRST_WORD}\n${SECOND_PARAGRAPH}`,
+    html: copiedHtml,
+  });
+  const pastedFirstParagraph = `${FIRST_WORD} copied`;
+  const pastedHtml = copied.html.replace(
+    `>${FIRST_WORD}</span>`,
+    `>${pastedFirstParagraph}</span>`,
+  );
+  expect(pastedHtml).not.toBe(copied.html);
+
+  // Clear includes the property-bearing color in one Rust transaction. Pasting
+  // an HTML-only copy with altered text back over that cleared range deliberately
+  // imports its text and paragraph break, never any source format or CSS. The
+  // text change keeps Paste independently undoable instead of being a no-op.
   await clearFormatting.click();
   await expectUniformShowcaseTree(
     editor,
@@ -812,18 +971,39 @@ test("the nine-control Showcase composes and clears deterministic formats across
     [],
   );
   await expect(clearFormatting).toHaveAttribute("aria-disabled", "true");
+  await selectParagraphRange(
+    editor,
+    1,
+    SECOND_PARAGRAPH.length,
+    0,
+    0,
+  );
+  const pasted = await pasteHtmlOnly(editor, pastedHtml);
+  expect(pasted).toEqual({
+    defaultPrevented: true,
+    plainText: "",
+    html: pastedHtml,
+  });
+  await expectUniformShowcaseTree(
+    editor,
+    [pastedFirstParagraph, SECOND_PARAGRAPH],
+    [],
+  );
+
+  // Undo the plain-text paste, then undo Clear itself. The complete semantic
+  // tree and canonical RGB24 style must return in two exact history steps.
   await undo.click();
   await expectUniformShowcaseTree(
     editor,
     [FIRST_WORD, SECOND_PARAGRAPH],
-    [
-      "a.breditor-link",
-      "strong",
-      "em",
-      "mark.breditor-reference-highlight",
-      "s",
-      "code",
-    ],
+    [],
+  );
+  await undo.click();
+  await expectUniformShowcaseTree(
+    editor,
+    [FIRST_WORD, SECOND_PARAGRAPH],
+    completeChain,
+    SELECTED_TEXT_COLOR_STYLE,
   );
   await expect(clearFormatting).toHaveAttribute("aria-disabled", "false");
 
@@ -834,14 +1014,8 @@ test("the nine-control Showcase composes and clears deterministic formats across
   await expectUniformShowcaseTree(
     restored.editor,
     [FIRST_WORD, SECOND_PARAGRAPH],
-    [
-      "a.breditor-link",
-      "strong",
-      "em",
-      "mark.breditor-reference-highlight",
-      "s",
-      "code",
-    ],
+    completeChain,
+    SELECTED_TEXT_COLOR_STYLE,
   );
   await expect(page.getByRole("button", { name: "Italic" })).toHaveAttribute(
     "aria-pressed",
@@ -854,6 +1028,132 @@ test("the nine-control Showcase composes and clears deterministic formats across
   await expect(
     page.getByRole("checkbox", { name: "Open in new window" }),
   ).toBeChecked();
+});
+
+test("Text color applies an exact RGB24 value through Rust-owned history and persistence", async ({
+  page,
+}) => {
+  const { editor, status } = await openDemo(page);
+  const textColor = page.getByRole("button", {
+    name: "Text color",
+    exact: true,
+  });
+  const colorInput = page.locator(
+    'input[type="color"][name="example/rgb24"]',
+  );
+  const applyColor = page.getByRole("button", { name: "Apply color" });
+  const removeColor = page.getByRole("button", { name: "Remove color" });
+  const undo = page.getByRole("button", { name: "Undo" });
+  const redo = page.getByRole("button", { name: "Redo" });
+  const coloredText = editor.locator("span.breditor-text-color");
+
+  await expect(coloredText).toHaveCount(0);
+  await selectEditorText(editor, TARGET_START, SAMPLE_TEXT.length);
+  await expect(textColor).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+
+  // The launcher exposes a native color input. Its lower-case value is decoded
+  // to an RGB24 integer before the generated typed intent crosses into Rust.
+  await textColor.click();
+  await expect(textColor).toHaveAttribute("aria-expanded", "true");
+  await expect(colorInput).toBeVisible();
+  await expect(colorInput).toHaveAttribute("type", "color");
+  await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
+  await expect(
+    page.getByText("Text color is not active.", { exact: true }),
+  ).toBeVisible();
+  await expect(applyColor).toBeEnabled();
+  await expect(removeColor).toBeDisabled();
+
+  await colorInput.fill(SELECTED_TEXT_COLOR);
+  await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
+  await applyColor.click();
+
+  await expect(coloredText).toHaveText(TARGET_TEXT);
+  // Read the authored attribute directly: CSSOM serializes colors differently
+  // across engines, while the renderer contract is this exact canonical text.
+  await expect(coloredText).toHaveAttribute(
+    "style",
+    SELECTED_TEXT_COLOR_STYLE,
+  );
+  await expect(textColor).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
+  await expect(
+    page.getByText("Text color is active.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Text color applied.", { exact: true }),
+  ).toBeVisible();
+  await expect(removeColor).toBeEnabled();
+
+  // History replays the semantic RGB24 integer, and the form hydrates from the
+  // Rust-generated action state rather than retaining a JavaScript-only draft.
+  await undo.click();
+  await expect(coloredText).toHaveCount(0);
+  await expect(textColor).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+  await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
+
+  await redo.click();
+  await expect(coloredText).toHaveAttribute(
+    "style",
+    SELECTED_TEXT_COLOR_STYLE,
+  );
+  await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
+
+  await removeColor.click();
+  await expect(coloredText).toHaveCount(0);
+  await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
+  await expect(
+    page.getByText("Text color removed.", { exact: true }),
+  ).toBeVisible();
+
+  // Persist the restored color while keeping its removal as the redo branch.
+  await undo.click();
+  await expect(status).not.toHaveText("All changes saved.");
+  await expect(coloredText).toHaveAttribute(
+    "style",
+    SELECTED_TEXT_COLOR_STYLE,
+  );
+  await expect(redo).toHaveAttribute("aria-disabled", "false");
+  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+
+  await page.reload();
+  const restored = await openDemo(page);
+  const restoredColor = restored.editor.locator("span.breditor-text-color");
+  const restoredTextColor = page.getByRole("button", {
+    name: "Text color",
+    exact: true,
+  });
+  const restoredRedo = page.getByRole("button", { name: "Redo" });
+
+  await expect(restoredColor).toHaveText(TARGET_TEXT);
+  await expect(restoredColor).toHaveAttribute(
+    "style",
+    SELECTED_TEXT_COLOR_STYLE,
+  );
+  await expect(restoredTextColor).toHaveAttribute(
+    "data-breditor-activation",
+    "active",
+  );
+  await restoredTextColor.click();
+  await expect(colorInput).toHaveValue(SELECTED_TEXT_COLOR);
+  await expect(restoredRedo).toHaveAttribute("aria-disabled", "false");
+
+  await restoredRedo.click();
+  await expect(restoredColor).toHaveCount(0);
+  await expect(restoredTextColor).toHaveAttribute(
+    "data-breditor-activation",
+    "inactive",
+  );
+  await expect(colorInput).toHaveValue(DEFAULT_TEXT_COLOR);
 });
 
 test("safe Link survives structural editing and persisted undo/redo history", async ({

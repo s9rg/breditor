@@ -10,12 +10,87 @@ import {
 import { createToolbarManifest } from "./toolbar_manifest.js";
 
 const FORM_STATE_ID = "example/link-presence";
+const COLOR_STATE_ID = "example/color-presence";
 
 beforeEach(() => {
   document.body.replaceChildren();
 });
 
 describe("BreditorToolbar inline-format forms", () => {
+  it("renders RGB24 only as an explicitly declared labeled native color input", () => {
+    const host = mountHost();
+    const toolbar = new BreditorToolbar(
+      host,
+      colorManifest(0x00000a),
+      new TestStateStore([inactiveColorState()]),
+      { dispatch: () => toolbarCommandDispatchResult("completed") },
+    );
+
+    const color = colorInput(host);
+    expect(color.type).toBe("color");
+    expect(color.value).toBe("#00000a");
+    expect(color.parentElement?.tagName).toBe("LABEL");
+    expect(color.parentElement?.textContent).toContain("Text color");
+    expect(color.getAttribute("name")).toBe("example/rgb24");
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+
+    toolbar.dispose();
+  });
+
+  it("hydrates authoritative RGB24 state and dispatches its exact integer value", () => {
+    const host = mountHost();
+    const store = new TestStateStore([uniformColorState(0x12abef)]);
+    const invocations: ToolbarCommandInvocation[] = [];
+    const toolbar = new BreditorToolbar(host, colorManifest(), store, {
+      dispatch(invocation) {
+        invocations.push(invocation);
+        return toolbarCommandDispatchResult("completed");
+      },
+    });
+    colorLauncherButton(host).click();
+    const color = colorInput(host);
+    expect(color.value).toBe("#12abef");
+
+    color.value = "#00000a";
+    color.dispatchEvent(new Event("input", { bubbles: true }));
+    formAction(host, "apply").click();
+
+    expect(invocations).toEqual([{
+      stateId: COLOR_STATE_ID,
+      selection: "preserve",
+      command: {
+        kind: "intentJson",
+        intentId: "example/set-text-color-intent",
+        inputJson:
+          '{"operation":"set","properties":[{"name":"example/rgb24","value":10}]}',
+      },
+    }]);
+    expect(toolbar.validateCanonicalDom()).toBe(true);
+    toolbar.dispose();
+  });
+
+  it("fails closed on malformed RGB24 state and color-input DOM drift", () => {
+    const host = mountHost();
+    const store = new TestStateStore([
+      uniformColorState("#12abef"),
+    ]);
+    const dispatch = vi.fn(() => toolbarCommandDispatchResult("completed"));
+    const toolbar = new BreditorToolbar(host, colorManifest(), store, {
+      dispatch,
+    });
+
+    expect(colorLauncherButton(host).getAttribute("aria-disabled")).toBe("true");
+    store.publish([inactiveColorState()]);
+    colorLauncherButton(host).click();
+    const color = colorInput(host);
+    color.setAttribute("type", "text");
+    expect(toolbar.validateCanonicalDom()).toBe(false);
+    color.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(toolbar.state).toBe("faulted");
+    expect(dispatch).not.toHaveBeenCalled();
+    toolbar.dispose();
+  });
+
   it("renders a sibling disclosure form without putting fields in the toolbar", () => {
     const host = mountHost();
     const toolbar = new BreditorToolbar(
@@ -802,6 +877,36 @@ function linkManifest() {
   });
 }
 
+function colorManifest(defaultValue = 0) {
+  return createToolbarManifest({
+    label: "Editor controls",
+    controls: [
+      {
+        kind: "inlineFormatForm",
+        stateId: COLOR_STATE_ID,
+        label: "Text color",
+        group: "inline",
+        formatKind: "example/text-color",
+        intentId: "example/set-text-color-intent",
+        fields: [
+          {
+            kind: "integer",
+            propertyName: "example/rgb24",
+            label: "Text color",
+            presentation: "rgb24",
+            minimum: 0,
+            maximum: 16_777_215,
+            defaultValue,
+          },
+        ],
+        applyLabel: "Apply color",
+        removeLabel: "Remove color",
+        closeLabel: "Close color controls",
+      },
+    ],
+  });
+}
+
 class TestStateStore {
   #snapshot: ToolbarActionStateSnapshot;
   #status: "fresh" | "stale" = "fresh";
@@ -872,6 +977,29 @@ function uniformLinkState(
   });
 }
 
+function inactiveColorState(): ToolbarActionStateEntry {
+  return state(
+    COLOR_STATE_ID,
+    "disabled",
+    "inactive",
+    "breditor/inline-format-unchanged",
+  );
+}
+
+function uniformColorState(rgb24: unknown): ToolbarActionStateEntry {
+  return state(COLOR_STATE_ID, "enabled", "active", undefined, {
+    status: "uniform",
+    contract: {
+      name: "breditor/set-inline-format-input",
+      version: 1,
+    },
+    value: {
+      operation: "set",
+      properties: [{ name: "example/rgb24", value: rgb24 }],
+    },
+  });
+}
+
 function state(
   id: string,
   availability: ToolbarActionStateEntry["availability"],
@@ -933,6 +1061,14 @@ function launcherButton(host: HTMLElement): HTMLButtonElement {
   return value;
 }
 
+function colorLauncherButton(host: HTMLElement): HTMLButtonElement {
+  const value = host.querySelector<HTMLButtonElement>(
+    `button[data-breditor-state-id="${COLOR_STATE_ID}"]`,
+  );
+  if (value === null) throw new Error("missing Text color launcher");
+  return value;
+}
+
 function linkPanel(host: HTMLElement): HTMLFormElement {
   const value = host.querySelector<HTMLFormElement>(
     "form[data-breditor-toolbar-panel]",
@@ -954,6 +1090,14 @@ function targetInput(host: HTMLElement): HTMLInputElement {
     'input[name="example/open-in-new-window"]',
   );
   if (value === null) throw new Error("missing Link target input");
+  return value;
+}
+
+function colorInput(host: HTMLElement): HTMLInputElement {
+  const value = host.querySelector<HTMLInputElement>(
+    'input[name="example/rgb24"]',
+  );
+  if (value === null) throw new Error("missing Text color input");
   return value;
 }
 

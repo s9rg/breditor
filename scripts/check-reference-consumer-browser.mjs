@@ -66,6 +66,7 @@ try {
       plainText: smoke?.plainText,
       snapshot: smoke?.snapshot,
       profile: smoke?.profile,
+      colorProfile: smoke?.colorProfile,
       fixturesFrozen: smoke?.fixturesFrozen,
       formatting: smoke?.formatting,
       formattingContentEditable: document
@@ -140,6 +141,17 @@ try {
     outcome.profile?.schemaFingerprint,
   );
   assert.equal(outcome.fixturesFrozen, true);
+  assert.deepEqual(outcome.colorProfile, {
+    schemaName: "example/color-showcase-editor",
+    schemaVersion: 1,
+    schemaFingerprint:
+      "sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d",
+    formatCount: 7,
+    intentCount: 8,
+    actionStateCount: 10,
+    inlineFormatSetCount: 2,
+    textColorFormatKind: "example/text-color",
+  });
 
   assert.equal(outcome.formattingContentEditable, "true");
   assert.equal(outcome.formattingToolbarButtons, 5);
@@ -511,7 +523,7 @@ try {
 }
 
 console.log(
-  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, and nine-control Showcase profiles, including Clear formatting and one-unit Undo, in Chromium.",
+  "check-reference-consumer-browser: supported-root tarballs initialized legacy Highlight, combined typed-Link, and nine-control Showcase editors, then compiled the closed RGB24 Color Showcase profile, in Chromium.",
 );
 
 async function serve(rawUrl, response) {

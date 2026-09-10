@@ -282,6 +282,42 @@ describe("toolbarManifestMatchesProfileDescriptor", () => {
     )).toBe(true);
   });
 
+  it("admits RGB24 only through its explicit exact integer presentation", () => {
+    const field = {
+      kind: "integer",
+      propertyName: "example/rgb24",
+      label: "Text color",
+      presentation: "rgb24",
+      minimum: 0,
+      maximum: 16_777_215,
+      defaultValue: 0,
+    } as const;
+    const exactProperties: readonly FormProfileProperty[] = [{
+      name: "example/rgb24",
+      presence: "required",
+      valueType: { kind: "integer", minimum: 0, maximum: 16_777_215 },
+    }];
+    expect(toolbarManifestMatchesProfileDescriptor(
+      inlineFormatFormManifest([field]),
+      inlineFormatFormDescriptor(exactProperties),
+    )).toBe(true);
+
+    for (const [minimum, maximum] of [
+      [1, 16_777_215],
+      [0, 16_777_214],
+      [0, 16_777_216],
+    ] as const) {
+      expect(toolbarManifestMatchesProfileDescriptor(
+        inlineFormatFormManifest([field]),
+        inlineFormatFormDescriptor([{
+          name: "example/rgb24",
+          presence: "required",
+          valueType: { kind: "integer", minimum, maximum },
+        }]),
+      )).toBe(false);
+    }
+  });
+
   it("requires the same format, typed intent, routed state, and generated set surface", () => {
     const profile = inlineFormatFormDescriptor();
     expect(toolbarManifestMatchesProfileDescriptor(

@@ -9,8 +9,23 @@ import {
   openBreditorBrowserEditor,
 } from "@breditor/browser";
 import {
+  MAX_REFERENCE_COLOR_SHOWCASE_DOCUMENT_TEXT_UTF8,
   MAX_REFERENCE_FORMATTING_DOCUMENT_TEXT_UTF8,
   MAX_REFERENCE_LINK_HREF_UTF8,
+  MAX_REFERENCE_TEXT_COLOR_RGB24,
+  MIN_REFERENCE_TEXT_COLOR_RGB24,
+  REFERENCE_COLOR_SHOWCASE_DEFAULT_RGB24,
+  REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_COLOR_SHOWCASE_IDS,
+  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_COLOR_SHOWCASE_SCHEMA_FINGERPRINT,
+  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
   REFERENCE_FORMATTING_EMPTY_DOCUMENT,
   REFERENCE_FORMATTING_EMPTY_DOCUMENT_JSON,
   REFERENCE_FORMATTING_IDS,
@@ -27,6 +42,9 @@ import {
   REFERENCE_HIGHLIGHT_SCHEMA_FINGERPRINT,
   REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
   REFERENCE_LINK_REMOVE_INPUT_JSON,
+  REFERENCE_TEXT_COLOR_REMOVE_INPUT_JSON,
+  createReferenceColorShowcaseDocument,
+  createReferenceColorShowcaseDocumentJson,
   createReferenceFormattingDocument,
   createReferenceFormattingDocumentJson,
   createReferenceHighlightDocumentJson,
@@ -34,6 +52,10 @@ import {
   createReferenceLinkRemoveInputJson,
   createReferenceLinkSetInput,
   createReferenceLinkSetInputJson,
+  createReferenceTextColorRemoveInput,
+  createReferenceTextColorRemoveInputJson,
+  createReferenceTextColorSetInput,
+  createReferenceTextColorSetInputJson,
 } from "@breditor/reference-highlight";
 import initializeWasm, {
   breditorVersion,
@@ -44,7 +66,7 @@ assert.equal(typeof openBreditorBrowserEditor, "function");
 assert.equal(typeof initializeWasm, "function");
 assert.equal(typeof breditorWasmAbiVersion, "function");
 assert.equal(typeof breditorVersion, "function");
-assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.11");
+assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.12");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatKind, "example/highlight");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatRevision, 7);
 assert.equal(
@@ -157,6 +179,116 @@ for (const fixture of [
   generatedFormattingDocument,
   linkSetInput,
   createReferenceLinkRemoveInput(),
+]) {
+  assertDeeplyFrozen(fixture);
+}
+
+assert.equal(MAX_REFERENCE_COLOR_SHOWCASE_DOCUMENT_TEXT_UTF8, 1_048_576);
+assert.equal(MIN_REFERENCE_TEXT_COLOR_RGB24, 0);
+assert.equal(MAX_REFERENCE_TEXT_COLOR_RGB24, 16_777_215);
+assert.equal(REFERENCE_COLOR_SHOWCASE_DEFAULT_RGB24, 0x5b_21_b6);
+assert.equal(
+  REFERENCE_COLOR_SHOWCASE_IDS.textColorFormatKind,
+  "example/text-color",
+);
+assert.equal(
+  REFERENCE_COLOR_SHOWCASE_IDS.textColorRgb24Property,
+  "example/rgb24",
+);
+assert.equal(REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP.formatVersion, 2);
+assert.deepEqual(
+  JSON.parse(REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON),
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP,
+);
+assert.equal(
+  REFERENCE_COLOR_SHOWCASE_SCHEMA_FINGERPRINT,
+  "sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d",
+);
+assert.deepEqual(
+  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST.recipes.find(
+    (recipe) => recipe.formatKind === "example/text-color",
+  ),
+  {
+    formatKind: "example/text-color",
+    element: "span",
+    classes: ["breditor-text-color"],
+    before: [],
+    after: [],
+    attributes: { kind: "safeTextColorV1" },
+  },
+);
+assert.deepEqual(
+  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST.controls.map(
+    (control) => control.label,
+  ),
+  [
+    "Bold",
+    "Italic",
+    "Strikethrough",
+    "Code",
+    "Highlight",
+    "Text color",
+    "Link",
+    "Clear formatting",
+    "Undo",
+    "Redo",
+  ],
+);
+assert.equal(
+  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST.shortcuts.some(
+    (shortcut) => shortcut.stateId === "example/text-color-presence",
+  ),
+  false,
+);
+const colorSetInput = createReferenceTextColorSetInput(0x00_ff_80);
+assert.deepEqual(colorSetInput, {
+  operation: "set",
+  properties: [{ name: "example/rgb24", value: 65_408 }],
+});
+assert.equal(
+  createReferenceTextColorSetInputJson(0x00_ff_80),
+  '{"operation":"set","properties":[{"name":"example/rgb24","value":65408}]}',
+);
+assert.deepEqual(createReferenceTextColorRemoveInput(), { operation: "remove" });
+assert.equal(
+  createReferenceTextColorRemoveInputJson(),
+  REFERENCE_TEXT_COLOR_REMOVE_INPUT_JSON,
+);
+const generatedColorDocument = createReferenceColorShowcaseDocument(
+  "package color proof",
+  { textColor: 0x00_ff_80 },
+);
+assert.equal(
+  generatedColorDocument.schemaFingerprint,
+  REFERENCE_COLOR_SHOWCASE_SCHEMA_FINGERPRINT,
+);
+assert.equal(
+  JSON.parse(
+    createReferenceColorShowcaseDocumentJson("package color proof", {
+      textColor: 0x00_ff_80,
+    }),
+  ).root.children[0].children[0].formats[0].properties["example/rgb24"],
+  65_408,
+);
+assert.equal(
+  REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  JSON.stringify(REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT),
+);
+assert.equal(
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  JSON.stringify(REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT),
+);
+for (const fixture of [
+  REFERENCE_COLOR_SHOWCASE_IDS,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT,
+  generatedColorDocument,
+  colorSetInput,
+  createReferenceTextColorRemoveInput(),
 ]) {
   assertDeeplyFrozen(fixture);
 }

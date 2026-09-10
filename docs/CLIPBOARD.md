@@ -4,7 +4,9 @@ Status: supported by the public `0.1.0` runtime for the closed base schema,
 extended by the supported `0.2.0` compiled-profile browser path, and extended
 again by the unpublished `0.3.0-alpha.4` exact `safeLinkV1` policy and
 `0.3.0-alpha.5` typed target-context insertion path. Alpha.6 and alpha.7 retain
-those rules unchanged; direct controller construction remains an advanced
+those rules unchanged; alpha.12 adds the exact `safeTextColorV1` copy and HTML
+admission shape without changing formatting-losing paste; direct controller
+construction remains an advanced
 integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and
@@ -94,11 +96,14 @@ representation uses only attribute-free `<p>` blocks, sole empty-paragraph
 checked browser presentation. In the legacy unprofiled path that chain is only
 attribute-free `<strong>`; a profiled path may use `a`, `code`, `em`, `mark`,
 `s`, `span`, `strong`, `sub`, `sup`, or `u`. Property-free recipes emit only
-their exact canonical class value. The sole property-driven exception is
+their exact canonical class value. The first property-driven exception is
 `<a class="breditor-link">` under an exact `safeLinkV1` recipe: it emits either
 no dynamic attributes for an unsafe value, canonical `href`, or canonical
 `href` plus `rel="noopener noreferrer"` and `target="_blank"`. Caller text is
-escaped, including carriage return as `&#13;`.
+escaped, including carriage return as `&#13;`. Alpha.12 adds only the exact
+`<span class="breditor-text-color" style="color:#rrggbb">` shape under
+`safeTextColorV1`, where six hexadecimal digits are lowercase and zero-padded.
+The style is derived from one validated RGB24 integer; no source CSS is copied.
 Scalars which strict HTML tokenization reports as controls or
 noncharacters are not representable in the paired HTML form: U+0000,
 U+0001–U+0008, U+000B, U+000E–U+001F, U+007F–U+009F, U+FDD0–U+FDEF, and each
@@ -147,13 +152,16 @@ repaired fragment must fit this closed allowlist:
 - for a profiled path, only exact tag/class signatures from its checked
   presentation in canonical outer-to-inner order, with at most 32 wrappers per
   run; a `safeLinkV1` anchor must additionally have exactly the inert,
-  canonical href-only, or canonical href/rel/target attribute shape;
+  canonical href-only, or canonical href/rel/target attribute shape, and a
+  `safeTextColorV1` span must have exactly the sole canonical lowercase RGB24
+  style attribute;
 - an empty paragraph with no children or one sole attribute-free `<br>`; and
 - optionally, exact `StartFragment` and `EndFragment` comments surrounding all
   paragraphs.
 
 Surviving attributes beyond one exact recipe class or the complete
-`safeLinkV1` output, styles, foreign or non-policy Link shapes, scripts, images,
+`safeLinkV1`/`safeTextColorV1` output, noncanonical styles, foreign or
+non-policy shapes, scripts, images,
 lists, tables, headings, unknown elements, foreign namespaces,
 noncanonical wrapper nesting, extra comments, and adjacent runs with the same
 complete format set are rejected. Parser errors are
@@ -166,7 +174,7 @@ to admission and therefore do not cause rejection; for example, an ignored
 evidence retained by this policy.
 
 Admitted paragraphs are flattened with LF separators. All admitted wrapper
-markup and `safeLinkV1` attributes are deliberately discarded on paste because
+markup and policy-derived attributes are deliberately discarded on paste because
 the current atomic multiline action accepts one plain string in the insertion
 context; mixed clipboard formatting cannot be represented honestly by that
 action yet. Alpha.5 allows the action to capture one complete destination
@@ -178,6 +186,10 @@ property owner; an interior empty fragment between consecutive newlines remains
 an empty output paragraph. The complete derived result is checked against the
 property budgets. This is inheritance from the target caret or selection
 context, not preservation of any source wrapper or property.
+
+That rule includes RGB24. Canonical Breditor color markup can be admitted as
+HTML evidence but its source color is discarded; inserted text may retain or
+inherit a destination color only through the ordinary target-context rule.
 
 Alpha.6 cross-paragraph typed set/remove does not change this clipboard rule.
 An application may format the resulting multi-paragraph semantic selection in
@@ -240,6 +252,11 @@ custom internal MIME, rich mixed-format paste, source application metadata,
 cross-block structure beyond direct paragraphs, shadow/composed ownership,
 multi-range selection, or a generic HTML sanitizer. It supports one connected
 light-DOM editor and synchronous `ClipboardEvent.clipboardData` only.
+
+Alpha.12 does not turn clipboard HTML into a CSS interchange format. It accepts
+no alternate color syntax, arbitrary style declaration, alpha, background,
+gradient, theme token, or source-color preservation. See
+[`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 The low-level controller accepts the TypeScript adapter surface structurally.
 Application code must not forge, proxy, or mutate that wiring and must route all

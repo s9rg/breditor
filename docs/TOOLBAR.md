@@ -6,10 +6,12 @@ consumer/cross-browser release; `0.3.0-alpha.7` adds the closed callback-free
 typed inline-format form, and `0.3.0-alpha.8` adds exact property-state
 hydration. `0.3.0-alpha.9` proves additive eight-control manifest composition,
 `0.3.0-alpha.10` adds the Rust-owned aggregate Clear formatting route and
-nine-control Showcase, and `0.3.0-alpha.11` projects a separately compiled
+nine-control Showcase, `0.3.0-alpha.11` projects a separately compiled
 declarative shortcut manifest onto toolbar `aria-keyshortcuts`, as defined in
 [`TYPED_TOOLBAR_CONTROLS.md`](TYPED_TOOLBAR_CONTROLS.md) and
-[`KEYBOARD_SHORTCUTS.md`](KEYBOARD_SHORTCUTS.md).
+[`KEYBOARD_SHORTCUTS.md`](KEYBOARD_SHORTCUTS.md), and
+`0.3.0-alpha.12` adds one exact native RGB24 field and ten-control Color
+Showcase as defined in [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 This is Breditor's own presentation protocol. Rust owns semantic availability,
 activation, typed values, selection, history, and action preparation. The
@@ -202,9 +204,13 @@ declarations retain primitive data only:
 
 Alpha.7 adds `inlineFormatForm`, containing a unique state ID, format kind,
 typed intent ID, bounded labels, and 1 through 32 fields. Across all forms one
-toolbar admits at most 64 fields. At least one field is a required
+toolbar admits at most 64 fields. One Alpha.7 field is a required
 `presentation: "url"` string with its exact profile UTF-8 minimum and maximum;
-the other closed field shape is a required Boolean with `defaultValue: false`.
+the other Alpha.7 field shape is a required Boolean with `defaultValue: false`.
+Alpha.12 adds one exact required integer shape with presentation
+`"rgb24"`, fixed bounds `0..=16_777_215`, and an in-range non-negative-zero
+default. Every form must contain at least one value-presenting URL string or
+RGB24 integer field; a Boolean-only form is rejected.
 Property names are unique inside the form. The declaration carries no value,
 callback, URL policy, DOM node, or executable object.
 
@@ -235,7 +241,9 @@ exactly cover the profile's required properties with equal types and string
 bounds. Its intent input and state output both name the exact serialized
 `breditor/set-inline-format-input@1` pair, although Rust types their versions
 independently. Optional properties, integer fields, omitted or extra keys, and
-partial patches are rejected.
+partial patches are rejected. Alpha.12's sole exception to the integer
+rejection is the exact RGB24 field with bounds equal to its required profile
+integer property; arbitrary integer fields remain rejected.
 
 Custom validated manifests can omit, reorder, relabel, group, or expose
 additional compiled property-free format toggle intents as native buttons. A
@@ -323,6 +331,30 @@ standalone undo entry. Structural-only and already-plain selections remain
 disabled. This supersedes only Alpha.9's aggregate-clear limitation; it does
 not add per-format clearing, exclusion groups, callbacks, or a new Wasm ABI or
 durable generation.
+
+Alpha.12 adds one closed required integer field for the Color Showcase's
+`example/text-color@1` format. It is admitted only when all three correlated
+descriptor surfaces name the existing typed-set contract and the profile
+declares exactly required integer `example/rgb24` with bounds
+`0..=16_777_215`. The manifest field must use `kind: "integer"`,
+`presentation: "rgb24"`, those exact bounds, and a valid RGB24 default. It is
+not a general numeric input.
+
+The runtime creates native `<input type="color">`. Hydration maps one uniform
+Rust integer to lowercase zero-padded `#rrggbb`; unset or mixed uses the
+declared default. Input is mapped back only from that canonical seven-scalar
+form. Apply emits the existing complete-map set JSON in lexical property order
+and Remove emits the existing property-free removal JSON. Dirty-draft,
+selection preservation, dispatch, close/reset, feedback, and focus semantics
+are the same as the Link form. Drafts never become Rust state or persisted
+content.
+
+The Color Showcase toolbar order is Bold, Italic, Strikethrough, Code,
+Highlight, Text color, Link, Clear formatting, Undo, Redo. Text color has no
+shortcut; the shortcut contract cannot carry a value or open the native form.
+Native color-picker UI and keyboard affordances vary across browsers and
+operating systems. The browser neither guarantees contrast nor bypasses CSP or
+forced-colors policy. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 ## Shortcut presentation
 
@@ -486,13 +518,14 @@ toolbar.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
 - The public editor can execute descriptor-declared typed intent JSON. The
-  typed form remains limited to required URL-string and Boolean fields. Alpha.8
+  typed form remains limited to required URL-string and Boolean fields plus the
+  exact Alpha.12 RGB24 integer field. Alpha.8
   hydrates only a uniform complete map; mixed state has no fieldwise value.
   A stored string containing CR or LF cannot be represented exactly by the
   native single-line control, so the complete form, including Remove, becomes
   unavailable; programmatic removal remains available.
-  There is no persisted draft, optional/integer field, partial patch, or
-  arbitrary widget.
+  There is no persisted draft, optional or general integer field, partial
+  patch, or arbitrary widget.
   There are no menus/selects, callback or multi-key keymaps, extension-defined
   `beforeinput` rules, dynamic manifest replacement, or asynchronous
   toolbar dispatch.
@@ -504,6 +537,9 @@ toolbar.
   independently owns parsing, normalization, scheme, and navigation safety.
   Hydration preserves the exact inert stored string. Same-realm JavaScript is
   trusted configuration and is not sandboxed.
+- RGB24 presentation is opaque sRGB only. It has no alpha, background,
+  gradient, theme-token, palette, arbitrary CSS, or contrast policy; native
+  picker UX and visible forced-colors/CSP behavior remain host/browser work.
 - A generated setter is compile-rejected unless every schema-valid complete
   map fits one action value. Compilation also proves that the canonical set of
   generated setters collectively fits the Rust state-batch value-count and

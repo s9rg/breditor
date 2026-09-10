@@ -121,3 +121,56 @@ export {
   type ReferenceShowcaseStrongFormatV2,
   type ReferenceShowcaseTextV2,
 } from "./showcase_documents.js";
+
+/** Closed RGB24 identities and primitive bounds for the Color Showcase. */
+export {
+  MAX_REFERENCE_TEXT_COLOR_RGB24,
+  MIN_REFERENCE_TEXT_COLOR_RGB24,
+  REFERENCE_COLOR_SHOWCASE_IDS,
+} from "./color_showcase_ids.js";
+
+/** Profile Bootstrap V2 and durable schema identity for the Color Showcase. */
+export {
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_COLOR_SHOWCASE_SCHEMA_FINGERPRINT,
+  type ReferenceColorShowcaseProfileBootstrap,
+  type ReferenceColorShowcaseTextColorExtensionBootstrap,
+} from "./color_showcase_profile.js";
+
+/** Canonical typed inputs for the generated RGB24 set/remove surfaces. */
+export {
+  REFERENCE_TEXT_COLOR_REMOVE_INPUT_JSON,
+  createReferenceTextColorRemoveInput,
+  createReferenceTextColorRemoveInputJson,
+  createReferenceTextColorSetInput,
+  createReferenceTextColorSetInputJson,
+  type ReferenceTextColorRemoveInput,
+  type ReferenceTextColorSetInput,
+} from "./text_color_input.js";
+
+/** Fingerprint-bound Document V2 fixtures for the Color Showcase. */
+export {
+  MAX_REFERENCE_COLOR_SHOWCASE_DOCUMENT_TEXT_UTF8,
+  REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT,
+  REFERENCE_COLOR_SHOWCASE_EMPTY_DOCUMENT_JSON,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  createReferenceColorShowcaseDocument,
+  createReferenceColorShowcaseDocumentJson,
+  type ReferenceColorShowcaseDocumentOptions,
+  type ReferenceColorShowcaseDocumentV2,
+  type ReferenceColorShowcaseFormatV2,
+  type ReferenceColorShowcaseParagraphV2,
+  type ReferenceColorShowcaseTextColorFormatV2,
+  type ReferenceColorShowcaseTextColorPropertiesV2,
+  type ReferenceColorShowcaseTextV2,
+} from "./color_showcase_documents.js";
+
+/** Complete closed browser presentation for the RGB24 Color Showcase. */
+export {
+  REFERENCE_COLOR_SHOWCASE_DEFAULT_RGB24,
+  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
+} from "./color_showcase_presentation.js";

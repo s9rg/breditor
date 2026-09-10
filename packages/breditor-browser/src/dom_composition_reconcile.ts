@@ -19,7 +19,7 @@ import {
 } from "./compiled_browser_presentation.js";
 import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
 import {
-  inlineFormatRenderAttributesAreCanonicalSafeLinkV1,
+  inlineFormatRenderAttributesAreCanonicalForPolicy,
   type InlineFormatRenderAttribute,
 } from "./inline_format_render_attributes.js";
 import {
@@ -84,7 +84,7 @@ interface TextAccumulator {
  *
  * The AST projection remains authoritative. Every non-target paragraph must
  * still be canonical, the target must use only text and wrappers admitted by
- * the exact presentation (including closed safe-link attributes), and
+ * the exact presentation (including closed policy-derived attributes), and
  * unchanged prefix/suffix text must match the base exactly. No DOM object is
  * returned or retained.
  */
@@ -483,13 +483,23 @@ function recipeElementIsAdmittedCompositionTarget(
   const attributes: InlineFormatRenderAttribute[] = [];
   for (let index = offset; index < names.length; index += 1) {
     const name = names[index];
-    if (name !== "href" && name !== "rel" && name !== "target") return false;
+    if (
+      name !== "href" &&
+      name !== "rel" &&
+      name !== "style" &&
+      name !== "target"
+    ) {
+      return false;
+    }
     const value = nativeGetAttribute(facts.element, name);
     if (value === null) return false;
     if (!consumeDynamicAttributeValue(budget, value)) return false;
     attributes.push({ name, value });
   }
-  return inlineFormatRenderAttributesAreCanonicalSafeLinkV1(attributes);
+  return inlineFormatRenderAttributesAreCanonicalForPolicy(
+    recipe.attributes,
+    attributes,
+  );
 }
 
 function consumeNode(budget: ScanBudget): boolean {

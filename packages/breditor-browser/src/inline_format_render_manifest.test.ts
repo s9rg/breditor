@@ -127,6 +127,69 @@ describe("inline-format render manifest", () => {
     expect(Object.isFrozen(manifest.recipes[0]?.attributes)).toBe(true);
   });
 
+  it("keeps the exact text-color format, wrapper, class, and policy inseparable", () => {
+    const manifest = createInlineFormatRenderManifest({
+      recipes: [{
+        formatKind: "example/text-color",
+        element: "span",
+        classes: ["breditor-text-color"],
+        attributes: { kind: "safeTextColorV1" },
+      }],
+    });
+    expect(manifest).toEqual({
+      recipes: [{
+        formatKind: "example/text-color",
+        element: "span",
+        classes: ["breditor-text-color"],
+        before: [],
+        after: [],
+        attributes: { kind: "safeTextColorV1" },
+      }],
+    });
+    expect(Object.isFrozen(manifest.recipes[0]?.attributes)).toBe(true);
+
+    for (const recipe of [
+      {
+        formatKind: "example/text-color",
+        element: "span",
+        classes: ["breditor-text-color"],
+      },
+      {
+        formatKind: "example/text-color",
+        element: "mark",
+        classes: ["breditor-text-color"],
+        attributes: { kind: "safeTextColorV1" },
+      },
+      {
+        formatKind: "example/text-color",
+        element: "span",
+        classes: ["custom-color"],
+        attributes: { kind: "safeTextColorV1" },
+      },
+      {
+        formatKind: "example/text-color",
+        element: "span",
+        classes: ["breditor-text-color", "extra"],
+        attributes: { kind: "safeTextColorV1" },
+      },
+      {
+        formatKind: "example/other",
+        element: "span",
+        classes: ["breditor-text-color"],
+        attributes: { kind: "safeTextColorV1" },
+      },
+      {
+        formatKind: "example/other",
+        element: "span",
+        classes: ["breditor-text-color"],
+      },
+    ]) {
+      expect(() =>
+        createInlineFormatRenderManifest({ recipes: [recipe] })
+      ).toThrow(/text-color/u);
+    }
+  });
+
   it("admits only the closed safe inline element vocabulary", () => {
     for (const element of INLINE_FORMAT_RENDER_ELEMENTS) {
       expect(() =>

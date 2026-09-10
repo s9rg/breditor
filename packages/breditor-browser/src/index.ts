@@ -52,10 +52,17 @@ export {
   type InlineFormatRenderRecipe,
 } from "./inline_format_render_manifest.js";
 export {
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_REVISION,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MAXIMUM,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_MINIMUM,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_PROPERTY_NAME,
   MAX_INLINE_FORMAT_SAFE_LINK_HREF_UTF8_BYTES,
   type InlineFormatRenderAttribute,
   type InlineFormatRenderAttributePolicy,
   type InlineFormatRenderSafeLinkV1Policy,
+  type InlineFormatRenderSafeTextColorV1Policy,
 } from "./inline_format_render_attributes.js";
 
 /** Declarative toolbar extension surface. */
@@ -67,6 +74,8 @@ export {
   MAX_TOOLBAR_GROUP_UTF8,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_LABEL_UTF16,
   MAX_TOOLBAR_LABEL_UTF8,
@@ -80,6 +89,7 @@ export {
   type ToolbarInlineFormatFormBooleanFieldDeclaration,
   type ToolbarInlineFormatFormDeclaration,
   type ToolbarInlineFormatFormFieldDeclaration,
+  type ToolbarInlineFormatFormIntegerFieldDeclaration,
   type ToolbarInlineFormatFormStringFieldDeclaration,
   type ToolbarManifest,
 } from "./toolbar_manifest.js";

@@ -1,6 +1,6 @@
 # `@breditor/reference-highlight`
 
-`@breditor/reference-highlight` packages three complete callback-free reference
+`@breditor/reference-highlight` packages four complete callback-free reference
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
@@ -8,10 +8,13 @@ property-free `example/highlight` proof shipped for `0.2.0`. The additive
 both, adds three ordinary property-free text styles, presents the base
 clear-inline-formatting route, and supplies a separate declarative shortcut
 manifest for its no-input controls.
+The `0.3.0-alpha.12` `REFERENCE_COLOR_SHOWCASE_*` surface keeps those values
+and adds one closed RGB24 text-color extension, renderer, native toolbar field,
+typed input helpers, and distinct fingerprint-bound documents.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
-toolbar manifests, and canonical Link set/remove input helpers. It does not
+toolbar manifests, and canonical Link and RGB24 set/remove input helpers. It does not
 register JavaScript behavior, mutate the AST, or adopt a ProseMirror, Lexical,
 Tiptap, or CKEditor protocol.
 
@@ -62,6 +65,14 @@ to primary-modifier physical-letter-code chords; the browser derives the matchin
 intent or history direction from the owned compiled-profile descriptor. The same
 compiled table drives native `keydown` and toolbar `aria-keyshortcuts`.
 
+Alpha.12 preserves every earlier reference profile and fingerprint. The new
+Color Showcase declares required integer `example/rgb24` on
+`example/text-color@1`, uses the existing Rust-generated typed setter and
+state, renders only the browser-derived canonical `color:#rrggbb` style, and
+presents the value through native `<input type="color">`. It adds no Rust
+action, Wasm method, operation, or durable format generation; ABI 5 remains
+current.
+
 ## Use
 
 This repository does not publish packages automatically. After a maintainer
@@ -70,9 +81,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.11 \
-  @breditor/wasm@0.3.0-alpha.11 \
-  @breditor/reference-highlight@0.3.0-alpha.11
+npm install @breditor/browser@0.3.0-alpha.12 \
+  @breditor/wasm@0.3.0-alpha.12 \
+  @breditor/reference-highlight@0.3.0-alpha.12
 ```
 
 ```ts
@@ -243,6 +254,66 @@ outer-to-inner chain is Link, Strong, Emphasis, Highlight, Strikethrough, Code
 (`<a><strong><em><mark><s><code>`). The AST still stores one canonical format
 set on its text leaf; wrapper nesting is browser presentation only.
 
+## Color Showcase
+
+Use the parallel `REFERENCE_COLOR_SHOWCASE_*` exports for the closed RGB24
+slice:
+
+```ts
+import {
+  REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+  REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+  REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
+} from "@breditor/reference-highlight";
+
+const opened = await openBreditorBrowserEditor({
+  host,
+  label: "Notes",
+  wasm: breditorWasm,
+  semanticProfile: {
+    bootstrapJson: REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+    formatVersion: 2,
+  },
+  initialDocument: {
+    lineageId: "notes-color-showcase",
+    documentJson: REFERENCE_COLOR_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+    historyCapacity: 100,
+  },
+  rendering: REFERENCE_COLOR_SHOWCASE_RENDER_MANIFEST,
+  keyboardShortcuts: REFERENCE_COLOR_SHOWCASE_KEYBOARD_SHORTCUT_MANIFEST,
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+  toolbar: {
+    host: toolbarHost,
+    manifest: REFERENCE_COLOR_SHOWCASE_TOOLBAR_MANIFEST,
+  },
+});
+```
+
+The Color Showcase retains every earlier Showcase control and inserts Text
+color between Highlight and Link, for ten controls total. Its native picker
+defaults to `0x5b21b6` when the semantic selection is unset or mixed. Apply
+submits one exact integer property and Remove submits the shared
+`{"operation":"remove"}` input. A pristine form hydrates an exact uniform
+Rust-owned RGB24 value; drafts remain ephemeral browser state.
+
+`createReferenceColorShowcaseDocumentJson(text, options)` accepts the earlier
+Showcase options plus `textColor`, which must be an integer from `0` through
+`16_777_215`. When every format overlaps, semantic `FormatSet` order is Strong,
+Code, Emphasis, Highlight, Link, Strikethrough, Text Color. The renderer's
+independent outer-to-inner order is Link, Strong, Emphasis, Highlight,
+Strikethrough, Code, Text Color. The innermost wrapper is exactly
+`<span class="breditor-text-color" style="color:#rrggbb">`.
+
+The Color Showcase reuses the earlier shortcut manifest by identity. Text
+color has no shortcut because its typed intent requires an explicit value.
+See the normative [text-color contract](../../docs/TEXT_COLOR.md).
+
 ## Contract
 
 The frozen identities are available through `REFERENCE_HIGHLIGHT_IDS`. The
@@ -288,22 +359,49 @@ action, intent, binding, and state names are available through
 `REFERENCE_SHOWCASE_IDS`. The exact Showcase fingerprint is
 `sha256:2a90a5fea97e6f4c3b9c535a78b76e9daf50afd95df3e3119392bfc19fd5ec63`.
 
+The Color Showcase uses schema `example/color-showcase-editor@1`, retains all
+five Showcase extension formats (alongside built-in Strong), and adds:
+
+- extension `example/text-color-extension@1`;
+- typed format `example/text-color@1`;
+- sole required integer property `example/rgb24` with inclusive bounds
+  `0..=16_777_215`;
+- generated action `example/set-text-color`;
+- typed intent `example/set-text-color-intent`;
+- binding `example/set-text-color-binding`; and
+- presence state `example/text-color-presence`.
+
+That exact content language compiles to
+`sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d`.
+The Color Showcase has four extension declarations, seven total formats
+including built-in Strong, seven render recipes, ten action-state entries, and
+ten toolbar controls.
+
 ## Deliberate limitations
 
-This package demonstrates several immutable property-free formats and one
-closed typed Link format. The styles coexist independently; there are no
+This package demonstrates several immutable property-free formats, one closed
+typed Link format, and one closed RGB24 text-color format. The styles coexist
+independently; there are no
 exclusion groups or per-format aggregate policies. The base Clear formatting
 command removes every inline format together and cannot preserve a chosen
 subset. It does not provide
 dynamic installation, arbitrary nodes
-or attributes, colors, custom JavaScript/Rust callbacks, arbitrary typed toolbar
+or attributes, arbitrary CSS, custom JavaScript/Rust callbacks, arbitrary typed toolbar
 forms, callback keymaps, key sequences, typed-input shortcuts, block code,
 headings, lists, extension-defined `beforeinput` rules,
-converters, rich paste, or a native/Wasm plugin ABI. The one Link form uses the
-browser's closed string/Boolean field
-vocabulary. The Link href contract validates scalar shape and size; URL safety
+converters, rich paste, or a native/Wasm plugin ABI. The Link form uses the
+browser's closed string/Boolean field vocabulary, and the color form uses only
+the exact RGB24 integer field. The Link href contract validates scalar shape and size; URL safety
 remains a separate browser-owned presentation policy. Reconstruct the editor
 with a newly compiled profile when semantic extensions change.
+
+Text color is opaque sRGB24 only. There is no alpha, background, gradient,
+named color, CSS variable, theme token, contrast guarantee, or source-format
+preservation on paste. CSP `style-src-attr`, forced-colors modes, user styles,
+and browser settings may suppress or override the visible color. Native color
+picker UI and keyboard access vary by browser and operating system. A
+collapsed pending-color change creates no standalone undo entry under the
+existing typed-set history law.
 
 The Showcase shortcut value is browser presentation, not part of any Rust
 extension manifest. It is fixed for an editor lifetime, addresses only existing

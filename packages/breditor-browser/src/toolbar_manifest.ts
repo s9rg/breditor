@@ -3,6 +3,7 @@ import {
   BASE_INTENT_IDS,
   browserCommandTextIsAdmissible,
 } from "./editor_command.js";
+import { isToolbarInlineFormatRgb24Integer } from "./toolbar_inline_format_rgb24.js";
 
 /** Minimum controls admitted by one presentation manifest. */
 export const MIN_TOOLBAR_CONTROLS = 1;
@@ -36,6 +37,12 @@ export const MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL = 64;
 
 /** Maximum UTF-8 ceiling admitted by one single-line URL-presented string field. */
 export const MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8 = 65_536;
+
+/** Exact lower bound represented by the closed RGB24 color presentation. */
+export const TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM = 0 as const;
+
+/** Exact upper bound represented by the closed RGB24 color presentation. */
+export const TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM = 16_777_215 as const;
 
 /** Fixed observable identities used by the base toolbar/action-state catalog. */
 export const BASE_TOOLBAR_STATE_IDS = Object.freeze({
@@ -92,10 +99,23 @@ export interface ToolbarInlineFormatFormBooleanFieldDeclaration {
   readonly defaultValue: false;
 }
 
-/** Closed field vocabulary supported by the alpha.7 inline-format form. */
+/** Required RGB24 integer property presented by one native color input. */
+export interface ToolbarInlineFormatFormIntegerFieldDeclaration {
+  readonly kind: "integer";
+  readonly propertyName: string;
+  readonly label: string;
+  /** Explicitly opts this exact integer contract into the color presentation. */
+  readonly presentation: "rgb24";
+  readonly minimum: typeof TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM;
+  readonly maximum: typeof TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM;
+  readonly defaultValue: number;
+}
+
+/** Closed field vocabulary supported by the inline-format form. */
 export type ToolbarInlineFormatFormFieldDeclaration =
   | ToolbarInlineFormatFormStringFieldDeclaration
-  | ToolbarInlineFormatFormBooleanFieldDeclaration;
+  | ToolbarInlineFormatFormBooleanFieldDeclaration
+  | ToolbarInlineFormatFormIntegerFieldDeclaration;
 
 /** Callback-free, runtime-rendered form for one property-aware inline format. */
 export interface ToolbarInlineFormatFormDeclaration {
@@ -353,7 +373,7 @@ function snapshotInlineFormatForm(
 
   const safeFields: ToolbarInlineFormatFormFieldDeclaration[] = [];
   const seenPropertyNames = new Set<string>();
-  let hasUrlField = false;
+  let hasValuePresentation = false;
   for (let index = 0; index < rawFieldCount; index += 1) {
     const field = snapshotInlineFormatFormField(
       requiredOwnDataProperty(
@@ -368,12 +388,14 @@ function snapshotInlineFormatForm(
       );
     }
     seenPropertyNames.add(field.propertyName);
-    if (field.kind === "string") hasUrlField = true;
+    if (field.kind === "string" || field.kind === "integer") {
+      hasValuePresentation = true;
+    }
     safeFields.push(field);
   }
-  if (!hasUrlField) {
+  if (!hasValuePresentation) {
     throw new TypeError(
-      "toolbar inline-format form requires a URL-presented string field",
+      "toolbar inline-format form requires a URL or RGB24 value field",
     );
   }
 
@@ -427,6 +449,55 @@ function snapshotInlineFormatFormField(
       throw new TypeError("toolbar inline-format form Boolean default is invalid");
     }
     return Object.freeze({ kind, propertyName, label, defaultValue });
+  }
+  if (kind === "integer") {
+    const presentation = requiredOwnDataProperty(
+      field,
+      "presentation",
+      "toolbar inline-format form integer presentation",
+    );
+    const minimum = requiredOwnDataProperty(
+      field,
+      "minimum",
+      "toolbar inline-format form integer minimum",
+    );
+    const maximum = requiredOwnDataProperty(
+      field,
+      "maximum",
+      "toolbar inline-format form integer maximum",
+    );
+    const defaultValue = requiredOwnDataProperty(
+      field,
+      "defaultValue",
+      "toolbar inline-format form integer default",
+    );
+    if (presentation !== "rgb24") {
+      throw new TypeError(
+        "toolbar inline-format form integer presentation is invalid",
+      );
+    }
+    if (
+      minimum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM ||
+      maximum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM
+    ) {
+      throw new RangeError(
+        "toolbar inline-format form RGB24 bounds are outside their fixed limits",
+      );
+    }
+    if (!isToolbarInlineFormatRgb24Integer(defaultValue)) {
+      throw new RangeError(
+        "toolbar inline-format form RGB24 default is outside its fixed limits",
+      );
+    }
+    return Object.freeze({
+      kind,
+      propertyName,
+      label,
+      presentation,
+      minimum,
+      maximum,
+      defaultValue,
+    });
   }
   if (kind !== "string") {
     throw new TypeError("toolbar inline-format form field kind is invalid");

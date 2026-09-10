@@ -1,12 +1,12 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.11` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.12` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the
 core-owned Clear Formatting route plus descriptor-compiled declarative
-shortcuts described below.
+shortcuts and one closed RGB24 text-color presentation described below.
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -570,18 +570,48 @@ Redo; Link and Clear formatting remain unbound. This presentation addition
 changes no Rust action, intent, operation, transaction, selection, history,
 replay, Wasm ABI 5 member, or persistence format.
 
+## `0.3.0-alpha.12` closed RGB24 text color
+
+Alpha.12 adds one new reference content profile,
+`example/color-showcase-editor@1`, with fingerprint
+`sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d`.
+It retains the existing Showcase declarations and adds
+`example/text-color-extension@1`, typed format `example/text-color@1`, and
+sole required integer property `example/rgb24` in `0..=16_777_215`. Generated
+action, intent, binding, and state IDs are respectively
+`example/set-text-color`, `example/set-text-color-intent`,
+`example/set-text-color-binding`, and `example/text-color-presence`.
+
+This semantic feature uses the existing `InlineFormatSetSpecV1`, typed input,
+generic Rust action, state-value contract, selection mapping, history, replay,
+Wasm, and Session-V3 paths. The browser adds only the exact
+`safeTextColorV1` policy and an exact integer/`rgb24` native toolbar field. The
+policy is inseparable from literal `example/text-color@1`, one required RGB24
+property, and `<span class="breditor-text-color">`; it synthesizes only
+lowercase zero-padded `style="color:#rrggbb"`. The toolbar uses native
+`<input type="color">` and strict integer/simple-color conversion.
+
+Alpha.12 does not reinterpret any earlier reference fingerprint or durable
+record. Profile Bootstrap V2, the fingerprint algorithm, Document V2, every V3
+record shape, storage envelopes, and Wasm ABI 5 are unchanged. Exact official
+prerelease pairing remains required. Text color is opaque sRGB24 only and is
+not arbitrary CSS, alpha/background/gradient support, a theme system, a
+contrast guarantee, or rich-paste preservation. CSP, forced-colors, user
+styles, and native picker variability remain host/browser concerns. See
+[`TEXT_COLOR.md`](TEXT_COLOR.md).
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.11 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.12 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.11 source configuration is tested as an exactly matching browser,
+The alpha.12 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -598,7 +628,7 @@ an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
 form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7 through
-alpha.11:
+alpha.12:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -697,6 +727,14 @@ omission, forged-value rejection, and ARIA drift detection at guarded toolbar
 interactions and explicit canonical-DOM validation. No mutation observer faults
 or repairs that drift immediately. This remains desktop-browser evidence, not a
 mobile, arbitrary-layout, OS-IME, screen-reader, or WCAG claim.
+
+The alpha.12 gates additionally exercise the separate Color Showcase profile,
+exact RGB24 descriptor and fingerprint, policy-derived canonical style, native
+color field hydration and dispatch, ten-control toolbar, seven-wrapper order,
+copy/paste policy, undo/redo, and Session-V3 reload. Hostile descriptors,
+values, manifests, and noncanonical CSS spelling fail closed. These checks do
+not guarantee native picker UX, contrast, CSP visibility, forced-colors
+behavior, mobile, or assistive-technology conformance.
 
 ## Dependency boundary
 

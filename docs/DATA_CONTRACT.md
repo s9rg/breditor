@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.11` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.12` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -36,7 +36,7 @@ Alpha.4 added no Rust data contract or Wasm method. It corrected the generic
 toggle capability gate so collapsed and same-paragraph property-free toggles
 use the already defined property-preserving `TextSplice` path; cross-paragraph
 toggle remained structural and closed at that checkpoint. Its browser-owned
-`safeLinkV1` policy is the sole property-to-DOM mapping, and its reference Link
+`safeLinkV1` policy is the first property-to-DOM mapping, and its reference Link
 form calls the existing typed intent boundary. Alpha.5 makes the existing
 `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` records validate and
 preserve typed inline-format instances and lifts their built-in action paths.
@@ -71,6 +71,11 @@ Alpha.11 adds no Rust data type or executable metadata. Its browser-only
 shortcut manifest compiles existing action-state descriptors to existing
 no-input intent or history requests, and remains absent from every AST, schema,
 operation, editor state, transaction, commit, checkpoint, and replay record.
+Alpha.12 likewise adds no Rust data type: the Color Showcase applies an
+existing required integer contract and generated `InlineFormatSetSpecV1` to
+RGB24. Its `safeTextColorV1` CSS derivation and native picker are browser-only;
+the AST, operations, history, and checkpoints contain only the semantic
+integer. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -5425,6 +5430,12 @@ arbitrary attributes, styles, callbacks, raw HTML, URL schemes, `rel`, or
 target values. Rust validates the declared string/Boolean shape and bounds; it
 does not parse URLs or decide browser navigation safety.
 
+Alpha.12 additionally admits `safeTextColorV1` only for literal
+`example/text-color@1`, one required integer `example/rgb24` property bounded
+to `0..=16_777_215`, and the exact
+`<span class="breditor-text-color">` recipe. The browser derives exactly
+lowercase zero-padded `style="color:#rrggbb"`; no CSS text is semantic input.
+
 Before parsing, the raw spelling must place a nonempty authority immediately
 after exactly `http://` or `https://`. The authority is restricted to visible
 ASCII and may contain neither percent escapes, backslashes, nor a raw `@`;
@@ -5725,6 +5736,9 @@ exact canonical wrapper chain from the projection's checked browser
 presentation. Alpha.4 emits the `safeLinkV1`-resolved, HTML-escaped Link
 attributes; unsafe schema-valid URLs produce an inert anchor. The legacy
 unprofiled path emits only attribute-free `<strong>`.
+Alpha.12 emits only the exact `safeTextColorV1` lowercase RGB24 style. HTML
+paste may admit that exact shape but still discards the source color when it
+flattens the tree to plain text.
 Cut first clears the clipboard, writes `text/plain`, then writes `text/html`,
 and confirms native cancellation. Only after all four steps succeed can one
 `breditor/delete-selection` action with a `closeBefore` history boundary run.

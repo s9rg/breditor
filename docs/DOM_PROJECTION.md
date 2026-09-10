@@ -3,7 +3,7 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.11` source checkpoint retains alpha.4's one closed
+unpublished `0.3.0-alpha.12` source checkpoint retains alpha.4's closed
 property-driven Link presentation and carries it through typed structural
 paragraph edits described below. Alpha.8 current-property transport preserves
 the exact stored string and does not alter this renderer contract. Its native
@@ -15,6 +15,8 @@ through Clear Formatting and projecting the authoritative successor; it adds
 no in-place DOM mutation or recipe kind.
 Alpha.11 derives toolbar shortcut metadata and keyboard behavior from a
 browser-only compiled table; it adds no document wrapper or projection recipe.
+Alpha.12 adds the second closed property-driven recipe, `safeTextColorV1`,
+without admitting document-owned CSS or a general attribute protocol.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -53,7 +55,8 @@ properties and retains them in `formatDetails`. Both paths retain the schema
 fingerprint and bind the projection to one checked browser presentation. They
 do not add arbitrary blocks, element properties, entities, or DOM callbacks.
 Alpha.4 permits property-derived attributes only through the closed
-browser-owned `safeLinkV1` recipe; it is not a generic attribute mapping.
+browser-owned `safeLinkV1` recipe. Alpha.12 adds the separately exact
+`safeTextColorV1` recipe; neither is a generic attribute mapping.
 
 ## Safe DOM vocabulary
 
@@ -71,7 +74,7 @@ attributes. The structural mapping is fixed:
   property-free `<strong>`); and
 - an empty paragraph renders a projection-only `<br>` placeholder.
 
-The only attribute-bearing wrapper is `<a class="breditor-link">` with
+The first attribute-bearing wrapper is `<a class="breditor-link">` with
 `attributes.kind: "safeLinkV1"`. Compilation requires the bound format to have
 exactly two required properties: the named href property must be a string with
 the exact inclusive UTF-8 bounds `1..=2048`, and the named
@@ -95,6 +98,17 @@ immediately after exactly `http://` or `https://`; excess authority slashes,
 non-visible-ASCII authority scalars, authority percent escapes, backslashes,
 and a raw authority `@` are rejected before the repairing URL parser runs.
 Internationalized host names use their explicit `xn--` ASCII spelling.
+
+Alpha.12's only other attribute-bearing wrapper is exactly
+`<span class="breditor-text-color">` with
+`attributes.kind: "safeTextColorV1"`. The policy has no configurable fields.
+Compilation accepts it only for literal `example/text-color@1` with exactly
+one required integer `example/rgb24` property bounded to
+`0..=16_777_215`. A valid projection value produces exactly one attribute,
+`style="color:#rrggbb"`, with lowercase zero-padded hexadecimal digits. No
+CSS text crosses from the AST or manifest. Missing, duplicated, additional,
+wrong-kind, or out-of-range values produce no dynamic attribute; noncanonical
+style spelling or any additional attribute fails canonical-DOM checks.
 
 Only the host, paragraph elements, and text nodes are exact AST-backed DOM
 nodes. Presentation wrappers and `<br>` placeholders deliberately have no
@@ -192,12 +206,20 @@ Toggling, undo, redo, replay, or reload regenerates the wrapper chain from that
 semantic set. The chosen HTML tags do not introduce block code, nesting
 semantics, format exclusion, or rich-paste import.
 
+Alpha.12's Color Showcase adds Text Color as the innermost seventh wrapper, so
+the complete outer-to-inner chain is
+`<a><strong><em><mark><s><code><span>`. This renderer order is distinct from
+the semantic `FormatSet`'s lexical order. DOM rendering, drift validation,
+composition evidence, and semantic copy all use the same exact derived style.
+The profile and document store the RGB24 integer, not wrapper nesting or CSS.
+
 ## Known limits
 
 - The renderer supports the base-text grammar, fixed property-free recipes,
-  and the single `safeLinkV1` property policy. Arbitrary property-to-attribute
-  or CSS mappings, blocks, structural nesting, element properties, entity IDs,
-  callbacks, and application-defined DOM renderers are not accepted.
+  and the exact `safeLinkV1` and `safeTextColorV1` property policies.
+  Arbitrary property-to-attribute or CSS mappings, blocks, structural nesting,
+  element properties, entity IDs, callbacks, and application-defined DOM
+  renderers are not accepted.
 - There are no persistent per-node IDs. Exact DOM reuse is proved only for a
   particular predecessor/successor pair; equal-looking nodes after reload or a
   full rebuild have no continuity promise.
@@ -229,6 +251,14 @@ before issuing one Rust command. Semantic
 copy/cut escapes and emits the same resolved attributes. HTML paste may admit
 those exact shapes, but it flattens the repaired fragment and inserts plain
 text; it never reconstructs source formats or Link properties.
+
+Known Text Color wrappers are likewise admitted only with the sole canonical
+lowercase `color:#rrggbb` style and no extra attribute. Safe copy may emit it;
+HTML paste may recognize it but still flattens it to plain text and never
+reconstructs the source RGB24 property. CSP `style-src-attr`, forced-colors
+mode, user styles, or browser settings can suppress or override the visible
+color without changing the semantic projection. Breditor provides no contrast
+guarantee. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 The package-level API and development commands are documented in
 `packages/breditor-browser/README.md`.

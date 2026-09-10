@@ -1,7 +1,7 @@
 # Typed toolbar controls
 
 Status: normative `0.3.0-alpha.8` architecture and compatibility decision,
-retained unchanged by the `0.3.0-alpha.9` Showcase checkpoint
+extended by `0.3.0-alpha.12` with one exact RGB24 integer presentation
 
 Alpha.7 added one deliberately closed native typed-control protocol for
 property-aware inline-format set/remove intents. Alpha.8 adds exact Rust-owned
@@ -97,9 +97,10 @@ durable payload.
   `removeLabel`, and `closeLabel`;
 - one through 32 fields, with at most 64 form fields across one toolbar
   manifest; and
-- at least one required URL-presented string field.
+- at least one value-presenting URL string or RGB24 integer field. A
+  Boolean-only form is rejected.
 
-The Alpha.8 field vocabulary remains closed:
+The Alpha.8 field vocabulary is:
 
 - a required string field has `kind: "string"`, a qualified `propertyName`, a
   label, `presentation: "url"`, `autocomplete: "url" | "off"`, inclusive
@@ -107,12 +108,22 @@ The Alpha.8 field vocabulary remains closed:
 - a required Boolean field has `kind: "boolean"`, a qualified `propertyName`,
   a label, and the only admitted initial `defaultValue: false`.
 
+Alpha.12 adds exactly one more shape: a required integer field with
+`presentation: "rgb24"`, fixed bounds `0..=16_777_215`, and an in-range
+non-negative-zero default. It is presented as native `<input type="color">`
+and is not a general integer field.
+
 String minimums are positive, maximums are at most 65,536 UTF-8 bytes, and
 every field name is unique within its form. Startup requires the fields to
 cover the target format's complete property contract exactly: every property
 must be required, kinds must agree, and string bounds must match. Declaration
 order controls visual order; command JSON always sorts properties by qualified
 name.
+
+For RGB24, hydration encodes the semantic integer as lowercase zero-padded
+`#rrggbb`, and input construction accepts only that canonical seven-scalar
+native-control value before converting it back to the integer. The exact
+Color Showcase contract is in [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 The reference Link declaration uses:
 
@@ -328,12 +339,13 @@ realm/process and message protocol; Alpha.8 does not provide one.
 
 ## Explicit limitations
 
-Alpha.8 still does not add:
+The current typed-form protocol still does not add:
 
 - fieldwise mixed-state reporting or merging; property observation compares
   complete maps and `mixed` carries no editable value;
-- optional fields, integer fields, enums, colors, selects, comboboxes, menus,
-  arbitrary widgets, or host callbacks;
+- optional fields, general integer fields, enums, colors beyond the exact
+  RGB24 presentation, selects, comboboxes, menus, arbitrary widgets, or host
+  callbacks;
 - partial property patches, property deletion, coercion, normalization,
   cross-field rules, or async validation;
 - arbitrary URL schemes or navigation authority in the form layer;
@@ -358,7 +370,8 @@ bound. Runtime per-entry and aggregate checks remain defense in depth for the
 general action-state system; an admitted generated-setter profile cannot fail
 its state refresh merely because its declared worst-case maps fill the catalog.
 
-The first protocol intentionally proves only required URL-presented bounded
-strings plus required Booleans for a complete-map inline-format set/remove
-intent. Any wider field language, fieldwise mixed representation, or draft
-persistence requires a separately reviewed, versioned compatibility decision.
+The protocol intentionally proves only required URL-presented bounded strings,
+required Booleans, and the exact RGB24 integer presentation for complete-map
+inline-format set/remove intents. Any wider field language, fieldwise mixed
+representation, or draft persistence requires a separately reviewed,
+versioned compatibility decision.

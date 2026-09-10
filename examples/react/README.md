@@ -1,13 +1,14 @@
 # Breditor React reference
 
-This example runs the complete `@breditor/reference-highlight` Showcase
+This example runs the complete `@breditor/reference-highlight` Color Showcase
 profile through the public browser API: the canonical Document V2 sample,
 Bootstrap V2 semantic profile, render manifest, and toolbar manifest. The
 runtime-owned toolbar exposes Bold, Italic, Strikethrough, Code, Highlight,
-Link, Clear formatting, Undo, and Redo. A sibling runtime-owned Link form is
-launched by its toolbar control and
-demonstrates typed extension input with a required URL string and Boolean
-new-window choice. Select some text, apply or remove a link, toggle a format,
+Text color, Link, Clear formatting, Undo, and Redo. Sibling runtime-owned color
+and Link forms are launched by their toolbar controls. The color form presents
+one required RGB24 integer through native `<input type="color">`; the Link form
+uses a required URL string and Boolean new-window choice. Select some text,
+apply or remove a color or link, toggle a format,
 use the declared primary-modifier formatting/history shortcuts, and watch the
 truthful autosave status.
 
@@ -16,16 +17,19 @@ permanently empty mount elements; `BreditorBrowserEditor` owns all toolbar,
 typed-form, and editor children beneath them. It initializes `@breditor/wasm`
 once, survives React Strict Mode's setup/cleanup probe, subscribes through
 `useSyncExternalStore`, and enables an explicit demo-slot IndexedDB checkpoint.
-The callback-free Link declaration is correlated with the Rust-compiled set
-surface, and the runtime submits its complete-map input through the shared
+The callback-free typed declarations are correlated with Rust-compiled set
+surfaces, and the runtime submits their complete-map input through the shared
 typed intent queue. Rust's preserved semantic selection remains authoritative
-while keyboard focus is in the URL or checkbox control. Rejected and blocked
+while keyboard focus is in the native form controls. Rejected and blocked
 results are reported without echoing the URL or exposing internal routing.
 The current action-state projection reports exact unset, uniform, or whole-map
 mixed Link state. A pristine form hydrates a uniform complete map; dirty input
 remains an explicit replacement draft. The browser-owned `safeLinkV1` renderer
 activates only absolute, credential-free HTTP(S) URLs; other persisted values
 remain visible as inert text-bearing anchors.
+The closed `safeTextColorV1` policy derives only lowercase, zero-padded
+`style="color:#rrggbb"` from the stored integer. The document never stores CSS
+text, and paste still discards source color formatting.
 At the alpha.6 source checkpoint, the then-React-owned form could apply or
 remove the complete Link instance across selected text in multiple paragraphs.
 Rust preserves
@@ -42,7 +46,10 @@ alpha.11 passes
 primary+I, primary+Shift+S, primary+E, primary+Shift+H, primary+Z,
 primary+Y, and primary+Shift+Z and advertises them on matching buttons through
 `aria-keyshortcuts`. Typed Link and Clear formatting remain unbound in this
-reference presentation. There are still no exclusion rules, arbitrary callback
+reference presentation. Alpha.12 moves the demo to the distinct
+`example/color-showcase-editor@1` profile, new lineage, and new persistence
+slot. Text color is the seventh renderer recipe and tenth toolbar control; it
+has no shortcut. There are still no exclusion rules, arbitrary callback
 keymaps, key sequences, extension-defined `beforeinput` rules, block code,
 headings/lists, rich paste, or runtime plugins.
 Startup failures expose only stable, payload-redacted error codes and can be
@@ -81,8 +88,9 @@ npm run test --workspace @breditor/example-react
 ```
 
 The repository-level Chromium gate exercises the rendered page through actual
-single- and cross-paragraph selection, all nine controls (including Clear
-formatting), the package-owned shortcuts and exact `aria-keyshortcuts`, exact
+single- and cross-paragraph selection, all ten controls (including Text color
+and Clear formatting), the package-owned shortcuts and exact
+`aria-keyshortcuts`, exact
 wrapper nesting, per-command history, input, IndexedDB reload, accessibility,
 and a 320-pixel responsive viewport:
 

@@ -581,9 +581,10 @@ export class BreditorDomRenderer {
    * Replaces a host's children with a complete safe DOM projection.
    *
    * The renderer creates only paragraphs, manifest-admitted inert inline
-   * wrappers, empty-paragraph `br` placeholders, and text nodes. The sole
-   * dynamic attribute mapping is the closed `safeLinkV1` href/rel/target
-   * policy. It never interprets HTML or exposes AST paths as DOM attributes.
+   * wrappers, empty-paragraph `br` placeholders, and text nodes. Dynamic
+   * attributes come only from closed browser-owned policies such as
+   * `safeLinkV1` and `safeTextColorV1`; arbitrary CSS is never interpreted.
+   * The renderer never interprets HTML or exposes AST paths as DOM attributes.
    */
   render(
     host: HTMLElement,

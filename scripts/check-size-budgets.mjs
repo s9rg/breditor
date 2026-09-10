@@ -11,7 +11,7 @@ const budgets = Object.freeze([
     actual: sumFiles("packages/breditor-browser/dist", (name) =>
       name.endsWith(".js"),
     ),
-    maximum: 1_040_000,
+    maximum: 1_060_000,
   }),
   Object.freeze({
     label: "browser declarations",
@@ -25,14 +25,14 @@ const budgets = Object.freeze([
     actual: sumFiles("packages/breditor-reference-highlight/dist", (name) =>
       name.endsWith(".js"),
     ),
-    maximum: 45_000,
+    maximum: 65_000,
   }),
   Object.freeze({
     label: "reference Showcase declarations",
     actual: sumFiles("packages/breditor-reference-highlight/dist", (name) =>
       name.endsWith(".d.ts"),
     ),
-    maximum: 39_000,
+    maximum: 55_000,
   }),
   fileBudget(
     "generated Wasm binary",
@@ -48,13 +48,13 @@ const budgets = Object.freeze([
     "reference application JavaScript",
     "examples/react/dist/assets",
     (name) => name.endsWith(".js"),
-    835_000,
+    850_000,
   ),
   matchedFilesGzipBudget(
     "reference application JavaScript (gzip)",
     "examples/react/dist/assets",
     (name) => name.endsWith(".js"),
-    220_000,
+    225_000,
   ),
   matchedFileBudget(
     "reference application Wasm",

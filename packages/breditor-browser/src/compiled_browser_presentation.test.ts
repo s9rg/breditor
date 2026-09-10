@@ -239,6 +239,48 @@ describe("compiled browser presentation", () => {
     ).toThrow(/attribute policy/u);
   });
 
+  it("binds safe text color only to the exact RGB24 format revision", () => {
+    const generation = new Generation();
+    const colored = renderManifest([{
+      formatKind: "example/text-color",
+      element: "span",
+      classes: ["breditor-text-color"],
+      attributes: { kind: "safeTextColorV1" },
+    }]);
+    const descriptor = ownedDescriptor(generation, [SAFE_TEXT_COLOR_FORMAT]);
+
+    expect(() =>
+      compileBrowserPresentation(generation, descriptor, colored)
+    ).not.toThrow();
+
+    const property = SAFE_TEXT_COLOR_FORMAT.properties[0];
+    if (property === undefined) throw new Error("missing RGB24 test property");
+    for (const format of [
+      { ...SAFE_TEXT_COLOR_FORMAT, revision: 2 },
+      {
+        ...SAFE_TEXT_COLOR_FORMAT,
+        properties: [{
+          name: property.name,
+          presence: property.presence,
+          valueType: { kind: "integer" as const, minimum: 0, maximum: 255 },
+        }],
+      },
+      {
+        ...SAFE_TEXT_COLOR_FORMAT,
+        properties: [{
+          name: property.name,
+          presence: "optional" as const,
+          valueType: property.valueType,
+        }],
+      },
+    ] satisfies readonly ProfileFormatFixture[]) {
+      const mismatch = ownedDescriptor(generation, [format]);
+      expect(() =>
+        compileBrowserPresentation(generation, mismatch, colored)
+      ).toThrow(/attribute policy/u);
+    }
+  });
+
   it("requires the descriptor's exact opaque generation correlation", () => {
     const sourceGeneration = new Generation();
     const descriptor = ownedDescriptor(sourceGeneration, ["example/alpha"]);
@@ -436,8 +478,8 @@ function ownedDescriptor(
 ): BrowserCompiledProfileDescriptor {
   const absent = (): undefined => undefined;
   const normalized = formatKinds.map((format) => typeof format === "string"
-    ? { kind: format, properties: [] }
-    : format);
+    ? { kind: format, revision: 1, properties: [] }
+    : { revision: 1, ...format });
   const view: WasmCompiledProfileDescriptorView = {
     schemaName: "example/document",
     schemaVersion: 1,
@@ -448,8 +490,7 @@ function ownedDescriptor(
     inlineFormatSetCount: 0,
     matchesProfileGeneration: (candidate) => generation.matches(candidate),
     formatKind: (index) => normalized[index]?.kind,
-    formatRevision: (index) =>
-      index >= 0 && index < formatKinds.length ? 1 : undefined,
+    formatRevision: (index) => normalized[index]?.revision,
     formatPropertyCount: (index) => normalized[index]?.properties.length,
     formatPropertyName: (formatIndex, propertyIndex) =>
       normalized[formatIndex]?.properties[propertyIndex]?.name,
@@ -513,6 +554,7 @@ type ProfilePropertyFixture = Readonly<{
 
 type ProfileFormatFixture = string | Readonly<{
   kind: string;
+  revision?: number;
   properties: readonly ProfilePropertyFixture[];
 }>;
 
@@ -535,3 +577,20 @@ const SAFE_LINK_FORMAT: Exclude<ProfileFormatFixture, string> = Object.freeze({
     }),
   ]),
 });
+
+const SAFE_TEXT_COLOR_FORMAT: Exclude<ProfileFormatFixture, string> =
+  Object.freeze({
+    kind: "example/text-color",
+    revision: 1,
+    properties: Object.freeze([
+      Object.freeze({
+        name: "example/rgb24",
+        presence: "required" as const,
+        valueType: Object.freeze({
+          kind: "integer" as const,
+          minimum: 0,
+          maximum: 0xff_ffff,
+        }),
+      }),
+    ]),
+  });

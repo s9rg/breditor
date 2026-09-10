@@ -142,6 +142,12 @@ function inlineFormatFormMatchesDescriptor(
     const field = fields.get(property.name);
     if (field === undefined || field.kind !== property.valueType.kind) return false;
     if (field.kind === "boolean") return field.defaultValue === false;
+    if (field.kind === "integer") {
+      return property.valueType.kind === "integer" &&
+        field.presentation === "rgb24" &&
+        field.minimum === property.valueType.minimum &&
+        field.maximum === property.valueType.maximum;
+    }
     return property.valueType.kind === "string" &&
       field.minimumUtf8Bytes === property.valueType.minimumUtf8Bytes &&
       field.maximumUtf8Bytes === property.valueType.maximumUtf8Bytes;

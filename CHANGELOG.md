@@ -4,6 +4,72 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.12 - 2026-09-10
+
+This unpublished source checkpoint proves one closed RGB24 text-color feature
+through the existing generic typed-format architecture. Rust still owns the
+semantic value, mutation, selection, undo/redo, and replay; the browser owns a
+strict presentation policy and native value-entry control.
+
+### Closed RGB24 semantic profile
+
+- Added the separate `example/color-showcase-editor@1` reference profile and
+  fingerprint
+  `sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d`.
+  It reuses the existing Showcase's three extensions and adds
+  `example/text-color-extension@1` as the fourth declaration.
+- Declared `example/text-color@1` with the sole required integer property
+  `example/rgb24`, bounded to `0..=16_777_215`. Its generated set surface uses
+  action `example/set-text-color`, intent `example/set-text-color-intent`,
+  binding `example/set-text-color-binding`, and state
+  `example/text-color-presence`.
+- Reused `InlineFormatSetSpecV1` and `SetInlineFormatAction` unchanged. Set and
+  remove therefore retain the existing complete-map, collapsed pending-format,
+  same- and cross-paragraph selection, exact no-op, undo/redo, and Session-V3
+  replay semantics. No color-specific Rust action or operation was added.
+- Added frozen typed-input and fingerprint-bound Document V2 helpers. Semantic
+  documents contain only the RGB24 integer; CSS source text never crosses the
+  profile boundary.
+
+### Safe renderer, toolbar, and demo
+
+- Added the zero-configuration `safeTextColorV1` render policy. It admits only
+  literal `example/text-color@1`, exactly one required `example/rgb24` integer
+  property with the fixed bounds, and exactly
+  `<span class="breditor-text-color">`. It synthesizes the sole canonical
+  dynamic attribute `style="color:#rrggbb"` with lowercase zero-padded digits;
+  arbitrary CSS and extra attributes remain rejected.
+- Extended the closed `inlineFormatForm` vocabulary with an exact required
+  integer field presented as native `<input type="color">`. Integer/color
+  conversion is exact, Apply still emits the canonical complete property map,
+  Remove stays property-free, and pristine hydration uses the existing
+  unset/uniform/mixed Rust state contract.
+- The Color Showcase has seven renderer recipes and ten toolbar controls, with
+  Text color innermost in the DOM order. Semantic `FormatSet` order remains
+  lexical and independent from renderer nesting. Text color has no shortcut;
+  the existing no-input Showcase shortcut manifest is reused unchanged.
+- Semantic copy and HTML-only paste validate the same exact canonical style.
+  Paste deliberately strips the source wrapper and RGB24 value to plain text,
+  as it does for every other admitted source format.
+- Switched the React demo to the new fingerprint, lineage
+  `breditor-react-reference-color-showcase`, and persistence slot
+  `breditor.react-reference-color-showcase.v1` rather than reinterpreting an
+  earlier Showcase checkpoint.
+
+### Compatibility and limits
+
+This checkpoint changes no Rust contract, Profile Bootstrap V2 shape,
+fingerprint algorithm, Document V2 or any V3 durable record generation,
+IndexedDB envelope, or Wasm method; ABI 5 remains current. The value is opaque sRGB24
+only: no alpha, arbitrary CSS, background/gradient, theme token, or contrast
+guarantee is implied. CSP `style-src-attr`, forced-colors modes, user styling,
+and browser settings can suppress or override presentation, and native color
+picker UX varies across browsers and operating systems. A collapsed set/remove
+has no standalone undo entry under the existing pending-format history law.
+The exact decision is in [`docs/TEXT_COLOR.md`](docs/TEXT_COLOR.md). Alpha.12
+packages remain unpublished; registry install examples apply only after a
+maintainer publishes them.
+
 ## 0.3.0-alpha.11 - 2026-09-10
 
 This unpublished source checkpoint adds bounded, callback-free keyboard

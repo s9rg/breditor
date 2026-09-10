@@ -1,7 +1,12 @@
 import { measureBoundedUnicodeText } from "./composition_event.js";
-import type { ToolbarInlineFormatFormDeclaration } from "./toolbar_manifest.js";
+import {
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
+  type ToolbarInlineFormatFormDeclaration,
+} from "./toolbar_manifest.js";
+import { isToolbarInlineFormatRgb24Integer } from "./toolbar_inline_format_rgb24.js";
 
-/** Action-state value contract understood by the alpha.8 inline-format form. */
+/** Action-state value contract understood by the property-aware form. */
 export const TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_NAME =
   "breditor/set-inline-format-input" as const;
 
@@ -10,7 +15,7 @@ export const TOOLBAR_INLINE_FORMAT_FORM_STATE_VALUE_CONTRACT_VERSION = 1 as cons
 
 export type ToolbarInlineFormatFormHydratedField = Readonly<{
   name: string;
-  value: string | boolean;
+  value: string | boolean | number;
 }>;
 
 /** Safe, detached form seed decoded from one authoritative action-state value. */
@@ -36,7 +41,13 @@ type SafeField =
       minimumUtf8Bytes: number;
       maximumUtf8Bytes: number;
     }>
-  | Readonly<{ kind: "boolean"; propertyName: string }>;
+  | Readonly<{ kind: "boolean"; propertyName: string }>
+  | Readonly<{
+      kind: "integer";
+      propertyName: string;
+      minimum: number;
+      maximum: number;
+    }>;
 
 /**
  * Decodes the exact versioned Rust state-value contract without retaining any
@@ -101,6 +112,8 @@ export function decodeToolbarInlineFormatFormStateValue(
       if (field === undefined || name !== field.propertyName) return null;
       if (field.kind === "boolean") {
         if (typeof propertyValue !== "boolean") return null;
+      } else if (field.kind === "integer") {
+        if (!isToolbarInlineFormatRgb24Integer(propertyValue)) return null;
       } else {
         if (typeof propertyValue !== "string") return null;
         // Single-line HTML inputs must strip CR/LF from their value. Reject
@@ -135,6 +148,23 @@ function snapshotFields(form: ToolbarInlineFormatFormDeclaration): SafeField[] {
         Object.freeze({
           kind: field.kind,
           propertyName: field.propertyName,
+        }),
+      );
+    } else if (field.kind === "integer") {
+      if (
+        field.presentation !== "rgb24" ||
+        field.minimum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM ||
+        field.maximum !== TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM ||
+        !isToolbarInlineFormatRgb24Integer(field.defaultValue)
+      ) {
+        throw new TypeError("invalid RGB24 field");
+      }
+      result.push(
+        Object.freeze({
+          kind: field.kind,
+          propertyName: field.propertyName,
+          minimum: field.minimum,
+          maximum: field.maximum,
         }),
       );
     } else {

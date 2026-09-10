@@ -13,12 +13,13 @@ history is in the [Changelog](CHANGELOG.md).
 
 ## Run the browser demo
 
-The React demo loads the packaged Showcase profile, its canonical Document V2
-sample, renderer, and nine-control native toolbar. Italic, Strikethrough, and
+The React demo loads the packaged Color Showcase profile, its canonical
+Document V2 sample, renderer, and ten-control native toolbar. Italic,
+Strikethrough, and
 Inline Code are ordinary manifest-generated extension toggles beside Bold,
-Highlight, Link, the core-owned Clear formatting command, Undo, and Redo. The
-Link launcher opens a runtime-owned
-nonmodal form beside the APG toolbar root.
+Highlight, RGB24 Text color, Link, the core-owned Clear formatting command,
+Undo, and Redo. The Text color and Link launchers open runtime-owned nonmodal
+forms beside the APG toolbar root.
 The Showcase also supplies a callback-free shortcut manifest for Bold, Italic,
 Strikethrough, Code, Highlight, Undo, and Redo, including both Redo aliases.
 Each chord uses the demo's
@@ -30,6 +31,9 @@ with that exact stored single-line URL and Boolean value; mixed or absent Link
 state uses the declared defaults without inventing a merge. A stored URL
 containing CR or LF makes the form unavailable rather than allowing an HTML
 input to normalize it.
+The color form uses a native picker but stores one opaque integer in Rust; the
+closed renderer alone derives lowercase `style="color:#rrggbb"` and never
+accepts arbitrary CSS. Text color deliberately has no shortcut.
 The demo also exercises local autosave and the explicit startup and persistence
 recovery paths.
 
@@ -292,6 +296,27 @@ fingerprint, or durable format changes; ABI 5 remains current. See the
 [keyboard shortcut decision](docs/KEYBOARD_SHORTCUTS.md). Packages are still
 not published.
 
+The `0.3.0-alpha.12` source checkpoint adds a closed RGB24 text-color vertical
+slice without adding a color-specific Rust action. The new
+`example/color-showcase-editor@1` profile declares `example/text-color@1` with
+one required integer `example/rgb24` in `0..=16_777_215`; the existing
+generated typed-set action owns collapsed pending formatting, range mutation,
+undo/redo, and Session-V3 replay. Its fingerprint is
+`sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d`.
+
+The browser's exact `safeTextColorV1` policy accepts only
+`<span class="breditor-text-color">` paired with that literal format revision
+and property contract, then synthesizes only lowercase, zero-padded
+`style="color:#rrggbb"`. A new closed integer/`rgb24` toolbar field renders as
+native `<input type="color">`, hydrates from the existing exact Rust state, and
+submits the canonical complete-map set/remove intent. Semantic copy recognizes
+the exact style; paste remains conservatively formatting-losing. The demo uses
+a distinct lineage and persistence slot and keeps the prior Showcase shortcut
+manifest unchanged, so Text color has no shortcut. No Rust, fingerprint
+algorithm, durable generation, or Wasm method changes; ABI 5 remains current.
+See the [text-color decision](docs/TEXT_COLOR.md). Packages are still not
+published.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -301,8 +326,9 @@ The implementation includes:
 - a minimal compiled base schema plus a sealed compiler for adding
   inline formats to the same document/paragraph/text grammar, with optional
   closed typed scalar-property contracts that alpha.3 carries as data through
-  the explicitly selected Wasm/browser profile path and that alpha.4 can map
-  only through the browser-owned `safeLinkV1` presentation policy;
+  the explicitly selected Wasm/browser profile path and that the browser can
+  map only through the closed `safeLinkV1` and `safeTextColorV1` presentation
+  policies;
 - separate Rust-only fingerprint-bearing V2 codecs for document, operation,
   transaction request, editor state, commit, session checkpoint, local-log
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,

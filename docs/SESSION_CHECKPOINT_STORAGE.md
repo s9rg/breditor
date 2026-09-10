@@ -3,8 +3,9 @@
 Status: supported by the optional public `0.1.0` autosave path; the exact
 `"current"` V1 record remains the stable `0.1.x` profile. Version `0.2.0`
 retains the explicit profile-bound V2 outer record and scoped slots without
-changing the legacy bytes. The unpublished `0.3.0-alpha.11` Bootstrap-V2 path
-stores Session Checkpoint V3 in that unchanged outer-V2 record. Direct store/
+changing the legacy bytes. The unpublished `0.3.0-alpha.12` source state uses
+the existing Bootstrap-V2 path to store Session Checkpoint V3 in that unchanged
+outer-V2 record. Direct store/
 autosave assembly remains an advanced integration surface.
 
 Profile identifier: `breditor/indexeddb-session-checkpoint`
@@ -34,6 +35,13 @@ replace or compact that history under a separate retention policy.
 Alpha.9 adds no storage field or record version. Its Showcase uses a distinct
 application lineage and slot, and persists the ordinary fingerprint-bound
 Document V2 plus Session Checkpoint V3 for its own schema.
+
+Alpha.12 likewise adds no storage field or record version. Its distinct Color
+Showcase fingerprint uses application lineage
+`breditor-react-reference-color-showcase` and caller slot
+`breditor.react-reference-color-showcase.v1`. The picker draft and derived CSS
+style are never stored; only the semantic RGB24 integer and generic typed
+operation/history values enter Document V2 and Session Checkpoint V3.
 
 The Rust checkpoint remains authoritative for document, selection, pending
 formats, undo, redo, and history merge behavior. JavaScript owns IndexedDB

@@ -200,6 +200,11 @@ h1 {
   gap: 0.28rem;
 }
 
+.toolbar-mount [data-breditor-toolbar-field="integer"] {
+  display: grid;
+  gap: 0.28rem;
+}
+
 .toolbar-mount
   [data-breditor-toolbar-field="string"]
   > [data-breditor-property] {
@@ -212,6 +217,18 @@ h1 {
   color: #173126;
   font: inherit;
   font-size: 0.875rem;
+}
+
+.toolbar-mount
+  [data-breditor-toolbar-field="integer"]
+  > [data-breditor-property] {
+  width: 4rem;
+  min-height: 2.35rem;
+  padding: 0.22rem;
+  border: 1px solid #aebbb2;
+  border-radius: 0.45rem;
+  background: #fff;
+  cursor: pointer;
 }
 
 .toolbar-mount [data-breditor-property]:disabled {

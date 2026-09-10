@@ -6,6 +6,9 @@ import {
 } from "@breditor/browser";
 import {
   MAX_REFERENCE_SHOWCASE_DOCUMENT_TEXT_UTF8,
+  REFERENCE_COLOR_SHOWCASE_IDS,
+  REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+  REFERENCE_COLOR_SHOWCASE_SCHEMA_FINGERPRINT,
   REFERENCE_FORMATTING_EMPTY_DOCUMENT,
   REFERENCE_FORMATTING_IDS,
   REFERENCE_FORMATTING_PROFILE_BOOTSTRAP,
@@ -88,6 +91,16 @@ interface ReferencePackageSmoke {
   readonly profile: Readonly<{
     formatKind: string;
     schemaFingerprint: string;
+  }>;
+  readonly colorProfile: Readonly<{
+    schemaName: string;
+    schemaVersion: number;
+    schemaFingerprint: string;
+    formatCount: number;
+    intentCount: number;
+    actionStateCount: number;
+    inlineFormatSetCount: number;
+    textColorFormatKind: string;
   }>;
   readonly formatting: Readonly<{
     documentJson: BreditorBrowserContentExport<"documentJson">;
@@ -183,6 +196,48 @@ async function start(): Promise<void> {
   }
 
   await initializeWasm();
+  const colorProfileResult =
+    breditorWasm.BreditorCompiledProfile.fromBootstrapJsonV2(
+      REFERENCE_COLOR_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
+    );
+  if (colorProfileResult.status !== "profile") {
+    const error = colorProfileResult.error;
+    const code = error?.code ?? "profile.invalid";
+    const message =
+      error?.message ?? "Color Showcase profile compilation failed";
+    error?.free();
+    colorProfileResult.free();
+    throw new Error(
+      `${code}: ${message}`,
+    );
+  }
+  const colorCompiledProfile = colorProfileResult.takeProfile();
+  if (colorCompiledProfile === undefined) {
+    colorProfileResult.free();
+    throw new Error("Color Showcase compiled profile was unavailable");
+  }
+  const colorDescriptor = colorCompiledProfile.descriptor();
+  const colorProfile = Object.freeze({
+    schemaName: colorDescriptor.schemaName,
+    schemaVersion: colorDescriptor.schemaVersion,
+    schemaFingerprint: colorDescriptor.schemaFingerprint,
+    formatCount: colorDescriptor.formatCount,
+    intentCount: colorDescriptor.intentCount,
+    actionStateCount: colorDescriptor.actionStateCount,
+    inlineFormatSetCount: colorDescriptor.inlineFormatSetCount,
+    textColorFormatKind: REFERENCE_COLOR_SHOWCASE_IDS.textColorFormatKind,
+  });
+  colorDescriptor.free();
+  colorCompiledProfile.free();
+  colorProfileResult.free();
+  if (
+    colorProfile.schemaFingerprint !==
+    REFERENCE_COLOR_SHOWCASE_SCHEMA_FINGERPRINT
+  ) {
+    throw new Error(
+      "Color Showcase compiler fingerprint did not match its package contract",
+    );
+  }
   const legacyOpened = await openBreditorBrowserEditor({
     host,
     label: "Tarball reference Highlight editor",
@@ -408,6 +463,7 @@ async function start(): Promise<void> {
         formatKind: REFERENCE_HIGHLIGHT_IDS.formatKind,
         schemaFingerprint: REFERENCE_HIGHLIGHT_SCHEMA_FINGERPRINT,
       }),
+      colorProfile,
       formatting: Object.freeze({
         documentJson: formattingDocumentJson,
         plainText: formattingPlainText,

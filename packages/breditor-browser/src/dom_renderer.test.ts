@@ -208,6 +208,78 @@ describe("BreditorDomRenderer", () => {
     expect(rendered.validateCanonicalDom()).toBe(false);
   });
 
+  it("renders the exact RGB24 text-color contract without accepting CSS text", () => {
+    const generation = profileGeneration();
+    const descriptor = ownedProfileDescriptor(generation, [
+      SAFE_TEXT_COLOR_FORMAT,
+    ]);
+    const presentation = compileBrowserPresentation(
+      generation,
+      descriptor,
+      createInlineFormatRenderManifest({
+        recipes: [{
+          formatKind: "example/text-color",
+          element: "span",
+          classes: ["breditor-text-color"],
+          attributes: { kind: "safeTextColorV1" },
+        }],
+      }),
+    );
+    const profiled = valueOf(createProfiledDocumentProjection({
+      schema: { ...descriptor.schema },
+      snapshot: { lineage: "safe-text-color-dom-tests", revision: "0" },
+      paragraphs: [{ runs: [{
+        text: "colored",
+        formatDetails: [{
+          kind: "example/text-color",
+          properties: [{ name: "example/rgb24", value: 0x00_a1_ff }],
+        }],
+      }] }],
+    }, generation, descriptor));
+    const host = document.createElement("div");
+    document.body.append(host);
+    const renderer = new BreditorDomRenderer(presentation);
+
+    const rendered = valueOf(renderer.render(host, profiled)).rendered;
+
+    expect(host.innerHTML).toBe(
+      '<p><span class="breditor-text-color" style="color:#00a1ff">colored</span></p>',
+    );
+    expect(rendered.validateCanonicalDom()).toBe(true);
+    const span = host.querySelector("span");
+    const selection = valueOf(BaseRangeSelection.create(profiled, {
+      kind: "range",
+      anchor: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 2,
+        affinity: "after",
+      },
+      focus: {
+        kind: "text",
+        textPath: [0, 0],
+        utf16Offset: 5,
+        affinity: "before",
+      },
+    }));
+    expect(renderer.beginCompositionDomLease(rendered)).not.toBeNull();
+    span?.replaceChildren(document.createTextNode("coXed"));
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: true,
+      value: { originalText: "lor", text: "X" },
+    });
+
+    span?.setAttribute(
+      "style",
+      "color:#00a1ff;background:url(javascript:alert(1))",
+    );
+    expect(rendered.validateCanonicalDom()).toBe(false);
+    expect(reconcileCompositionDom(host, profiled, selection)).toMatchObject({
+      ok: false,
+      error: { code: "composition.dom.invalid_structure" },
+    });
+  });
+
   it("admits only canonical safe links during a native-composition lease", () => {
     const generation = profileGeneration();
     const descriptor = ownedProfileDescriptor(generation, [SAFE_LINK_FORMAT]);
@@ -1750,6 +1822,22 @@ const SAFE_LINK_FORMAT: Exclude<ProfileFormatFixture, string> = Object.freeze({
     }),
   ]),
 });
+
+const SAFE_TEXT_COLOR_FORMAT: Exclude<ProfileFormatFixture, string> =
+  Object.freeze({
+    kind: "example/text-color",
+    properties: Object.freeze([
+      Object.freeze({
+        name: "example/rgb24",
+        presence: "required" as const,
+        valueType: Object.freeze({
+          kind: "integer" as const,
+          minimum: 0,
+          maximum: 0xff_ffff,
+        }),
+      }),
+    ]),
+  });
 
 function propertyFreeFormats(formats: readonly string[]) {
   return formats.map((kind) => ({ kind, properties: [] }));

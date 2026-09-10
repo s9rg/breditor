@@ -790,6 +790,15 @@
 //! executable Rust metadata, or durable editor state. They do not change
 //! action admission, transactions, history, replay, document bytes, schema
 //! fingerprints, Profile Bootstrap V2, or Wasm ABI 5.
+//!
+//! The unpublished `0.3.0-alpha.12` source checkpoint changes no Rust
+//! production contract. Its separate Color Showcase compiles the existing
+//! bounded integer-property and generic inline-format setter surfaces into an
+//! opaque RGB24 semantic value. The exact value, mutation, selection,
+//! undo/redo, replay, and durable V3 history remain Rust-owned; native picker
+//! input and canonical CSS projection stay in the browser layer. The new
+//! content language has its own Document-V2 fingerprint, while Profile
+//! Bootstrap V2, durable record generations, and Wasm ABI 5 remain unchanged.
 
 pub mod action;
 pub mod codec;

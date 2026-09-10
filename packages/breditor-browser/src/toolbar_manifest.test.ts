@@ -9,6 +9,8 @@ import {
   MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL,
   MAX_TOOLBAR_INLINE_FORMAT_FORM_STRING_UTF8,
   MAX_TOOLBAR_LABEL_UTF16,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+  TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
   createToolbarManifest,
   isOwnedToolbarManifest,
 } from "./toolbar_manifest.js";
@@ -288,6 +290,19 @@ describe("toolbar manifest", () => {
       controls: [inlineFormatForm("example/link-presence", [field])],
     })).toThrow(/own data property/u);
 
+    const colorField = rgb24Field("example/rgb24", 0);
+    Object.defineProperty(colorField, "defaultValue", {
+      configurable: true,
+      get: () => {
+        reads += 1;
+        return 0;
+      },
+    });
+    expect(() => createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/color-presence", [colorField])],
+    })).toThrow(/own data property/u);
+
     const fields = [urlField("example/href")];
     Object.defineProperty(fields, "0", {
       configurable: true,
@@ -322,7 +337,7 @@ describe("toolbar manifest", () => {
     })).toThrow(/property identity is duplicated/u);
   });
 
-  it("enforces per-form and aggregate field bounds and requires a URL field", () => {
+  it("enforces field bounds and requires a URL or RGB24 value presentation", () => {
     expect(() => createToolbarManifest({
       label: "Tools",
       controls: [inlineFormatForm("example/link-presence", [])],
@@ -344,7 +359,13 @@ describe("toolbar manifest", () => {
       controls: [inlineFormatForm("example/link-presence", [
         booleanField("example/open-in-new-window"),
       ])],
-    })).toThrow(/requires a URL-presented string field/u);
+    })).toThrow(/requires a URL or RGB24 value field/u);
+    expect(createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/color-presence", [
+        rgb24Field("example/rgb24", 0),
+      ])],
+    }).controls[0]).toMatchObject({ fields: [{ kind: "integer" }] });
 
     const fieldCountPerForm =
       Math.floor(MAX_TOOLBAR_INLINE_FORMAT_FORM_FIELDS_TOTAL / 3) + 1;
@@ -384,6 +405,54 @@ describe("toolbar manifest", () => {
         label: "Tools",
         controls: [{ ...inlineFormatForm("example/link-presence"), [field]: "" }],
       })).toThrow(/action label/u);
+    }
+  });
+
+  it("admits only the explicit exact RGB24 integer presentation", () => {
+    const sourceField = {
+      ...rgb24Field("example/rgb24", 0x12abef),
+      alpha: true,
+      colorSpace: "display-p3",
+      onInput: () => undefined,
+    };
+    const manifest = createToolbarManifest({
+      label: "Tools",
+      controls: [inlineFormatForm("example/color-presence", [
+        sourceField,
+      ])],
+    });
+    expect(manifest.controls[0]).toMatchObject({
+      fields: [{
+        kind: "integer",
+        propertyName: "example/rgb24",
+        presentation: "rgb24",
+        minimum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
+        maximum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+        defaultValue: 0x12abef,
+      }],
+    });
+    const control = manifest.controls[0];
+    if (control?.kind !== "inlineFormatForm") throw new Error("missing form");
+    expect(Object.isFrozen(control.fields[0])).toBe(true);
+    expect("alpha" in control.fields[0]!).toBe(false);
+    expect("colorSpace" in control.fields[0]!).toBe(false);
+    expect("onInput" in control.fields[0]!).toBe(false);
+
+    const invalidFields = [
+      { ...rgb24Field("example/rgb24", 0), presentation: "number" },
+      { ...rgb24Field("example/rgb24", 0), minimum: 1 },
+      { ...rgb24Field("example/rgb24", 0), maximum: 16_777_214 },
+      { ...rgb24Field("example/rgb24", 0), defaultValue: -0 },
+      { ...rgb24Field("example/rgb24", 0), defaultValue: -1 },
+      { ...rgb24Field("example/rgb24", 0), defaultValue: 16_777_216 },
+      { ...rgb24Field("example/rgb24", 0), defaultValue: 1.5 },
+      { ...rgb24Field("example/rgb24", 0), defaultValue: "0" },
+    ];
+    for (const field of invalidFields) {
+      expect(() => createToolbarManifest({
+        label: "Tools",
+        controls: [inlineFormatForm("example/color-presence", [field])],
+      })).toThrow();
     }
   });
 
@@ -755,5 +824,20 @@ function booleanField(propertyName: string): Record<string, unknown> {
     propertyName,
     label: "Open in new window",
     defaultValue: false,
+  };
+}
+
+function rgb24Field(
+  propertyName: string,
+  defaultValue: unknown,
+): Record<string, unknown> {
+  return {
+    kind: "integer",
+    propertyName,
+    label: "Text color",
+    presentation: "rgb24",
+    minimum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MINIMUM,
+    maximum: TOOLBAR_INLINE_FORMAT_FORM_RGB24_MAXIMUM,
+    defaultValue,
   };
 }

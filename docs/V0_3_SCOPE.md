@@ -1,12 +1,10 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.11` source checkpoint retains Rust-owned Clear Formatting
-across the existing generic action, intent, state, Wasm, browser, history, and
-replay surfaces. It retains alpha.9's independent Showcase profile and
-alpha.8's exact property observation and form hydration, then adds a separate
-browser-owned declarative shortcut manifest compiled through existing profile
-descriptors and projected as truthful toolbar `aria-keyshortcuts`. Wasm ABI 5
-remains current. Explicit Bootstrap V2 still selects
+Status: the `0.3.0-alpha.12` source checkpoint adds a separate Color Showcase
+whose closed RGB24 text color uses the existing generic typed-set semantics,
+then adds exact browser renderer and native-field presentation. It retains
+alpha.11's declarative shortcut manifest unchanged; color has no shortcut.
+Wasm ABI 5 remains current. Explicit Bootstrap V2 still selects
 property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
@@ -30,7 +28,8 @@ Alpha.9 proves that the same generic compiler and browser presentation can add
 several visible features without format-specific mutation code.
 Alpha.10 adds core-owned all-inline Clear Formatting. Alpha.11 makes the
 extension shortcut presentation explicit without adding semantic or durable
-authority.
+authority. Alpha.12 proves a required integer property end to end without
+opening arbitrary CSS or a general widget protocol.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -641,6 +640,49 @@ changes no Rust action, intent route, selection, operation, transaction,
 history/replay law, Profile Bootstrap V2, fingerprint, Wasm ABI 5 member, or
 Document/State/Commit/Checkpoint durable generation.
 
+## Alpha.12 closed RGB24 text color
+
+Alpha.12 creates the distinct `example/color-showcase-editor@1` profile with
+fingerprint
+`sha256:b3d051b7a68a15ef8d47ce2a7c4f051a76d09c386f9545f7b955590d2cc7433d`.
+Its fourth extension declares `example/text-color@1` and exactly one required
+integer `example/rgb24` property bounded to `0..=16_777_215`. The generated
+surface is action `example/set-text-color`, typed intent
+`example/set-text-color-intent`, binding `example/set-text-color-binding`, and
+tracked state `example/text-color-presence`.
+
+This is an application of the existing `InlineFormatSetSpecV1` rather than a
+new Rust feature. Complete-map set/remove, collapsed pending formats,
+same-paragraph `TextSplice`, cross-paragraph `RootTextReplace`, exact selection
+relocation, one-unit range history, operation-free collapsed history
+boundaries, undo/redo, and Session-V3 replay retain their existing semantics.
+Document V2 stores only the integer.
+
+The browser adds one zero-configuration `safeTextColorV1` policy. It correlates
+only with the exact format revision and property contract, and only with
+`<span class="breditor-text-color">`; it derives exactly one lowercase,
+zero-padded `style="color:#rrggbb"` attribute. A new exact integer/`rgb24`
+toolbar field is rendered as native `<input type="color">` and submits the
+existing strict typed intent. The ten-control reference toolbar places Text
+color between Highlight and Link. Renderer nesting is Link, Strong, Emphasis,
+Highlight, Strikethrough, Code, Text Color, independently of lexical semantic
+format ordering.
+
+Safe copy and HTML-only paste recognize only that exact canonical style, but
+paste still discards source formatting and inserts plain text. The demo uses
+lineage `breditor-react-reference-color-showcase` and slot
+`breditor.react-reference-color-showcase.v1`. The inherited shortcut manifest
+is unchanged and has no color binding.
+
+This checkpoint changes no Rust contract, Profile Bootstrap V2 shape,
+fingerprint algorithm, durable format generation, IndexedDB envelope, or Wasm
+method; ABI 5 remains current. It provides opaque sRGB24 only, with no alpha,
+background/gradient, arbitrary CSS, theme token, color conversion, or contrast
+guarantee. CSP `style-src-attr`, forced-colors policy, user styles, and browser
+settings may suppress or override presentation. Native picker UX varies by
+browser and operating system. The exact contract and pending-caret undo nuance
+are in [`TEXT_COLOR.md`](TEXT_COLOR.md).
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -673,18 +715,24 @@ Alpha.11 is entirely browser presentation and routing policy compiled from the
 existing descriptor. Rust and generated Wasm code change only their paired
 package version; ABI 5 and all semantic/durable shapes remain byte-compatible.
 
+Alpha.12 likewise reuses the existing descriptor and typed-set Wasm surface.
+Only browser/reference presentation code and the new profile data are added;
+ABI 5 and semantic/durable shapes remain unchanged.
+
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
-closed `safeLinkV1` policy derives attributes from properties. Safe copy emits
-those exact Link attributes and paste remains plain text. The supported toolbar
-accepts the closed required URL-string/Boolean Link form, but no optional or
-integer field, partial patch, menu, select, color control, or arbitrary widget.
+closed `safeLinkV1` and `safeTextColorV1` policies derive attributes from
+properties. Safe copy emits those exact attributes and paste remains plain
+text. The supported toolbar accepts the closed required URL-string/Boolean
+Link form and exact RGB24 integer field, but no optional or general integer
+field, partial patch, menu, select, or arbitrary widget.
 Existing no-input toggle buttons continue to work for property-free formats.
 
 Typed scalar validation is not sanitization. A valid Link string is not
-automatically a navigable URL, and a valid color string is not automatically
-safe CSS. Alpha.4 supplies the exact browser-facing URL/attribute policy above;
-CSS grammar and other property presentations remain undefined.
+automatically a navigable URL. Alpha.4 supplies the exact browser-facing
+URL/attribute policy; alpha.12 supplies one browser-derived RGB24 style without
+admitting CSS input. Other CSS grammar and property presentations remain
+undefined.
 
 ## Remaining limitations
 
@@ -704,8 +752,9 @@ CSS grammar and other property presentations remain undefined.
 - No V3 local-log/storage family exists.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
-  support only `safeLinkV1`; paste never reconstructs properties, and the native
-  toolbar supports only the closed required URL-string/Boolean form.
+  support only `safeLinkV1` and `safeTextColorV1`; paste never reconstructs
+  properties, and the native toolbar supports only the closed required
+  URL-string/Boolean and exact RGB24 forms.
 - The additive reference Link proves one exact contract while preserving the
   property-free Highlight-only profile. It is not a general Link schema,
   renderer, URL validator, or arbitrary toolbar-control registration protocol.
@@ -713,6 +762,10 @@ CSS grammar and other property presentations remain undefined.
   generic path. Its bounded state-addressed physical-letter shortcuts are not an
   exclusion system, callback keymap, key-sequence language, block model, or
   dynamic plugin loader.
+- The Color Showcase proves one required RGB24 integer. It is not arbitrary
+  CSS, an alpha/background/gradient system, a theme palette, a contrast
+  checker, or a rich-paste format transfer. Inline-style CSP and forced-colors
+  behavior remain host/browser policy, and native picker UX varies.
 - Declarative shortcuts cannot carry typed values, invoke direct actions, open
   toolbar forms, use Alt/punctuation/function keys, override Select All or
   clipboard families, define conditional priority handlers, or change while an
@@ -732,9 +785,9 @@ CSS grammar and other property presentations remain undefined.
 ## Next checkpoints
 
 Future browser work may add another separately closed property presentation or
-field vocabulary, but must not silently widen
-`safeLinkV1`, accept arbitrary attributes/CSS, preserve source formatting on
-paste, or bypass the intent router.
+field vocabulary, but must not silently widen `safeLinkV1` or
+`safeTextColorV1`, accept arbitrary attributes/CSS, preserve source formatting
+on paste, or bypass the intent router.
 
 A later durable checkpoint must version the local-log graph around Session
 Checkpoint V3 rather than placing V3 nested bytes inside a V1/V2 envelope. A

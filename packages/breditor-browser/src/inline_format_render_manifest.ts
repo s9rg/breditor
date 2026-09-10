@@ -1,5 +1,7 @@
 import { MAX_BROWSER_PROFILE_FORMATS } from "./wasm_profile_descriptor.js";
 import {
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS,
+  INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND,
   createInlineFormatRenderAttributePolicy,
   type InlineFormatRenderAttributePolicy,
 } from "./inline_format_render_attributes.js";
@@ -143,8 +145,15 @@ export function createInlineFormatRenderManifest(
     const attributes = HAS_OWN(record, "attributes")
       ? createInlineFormatRenderAttributePolicy(record["attributes"])
       : undefined;
+    const safeLink = attributes?.kind === "safeLinkV1";
+    if (safeLink && element !== "a") {
+      throw new TypeError(
+        "inline-format render safeLinkV1 attributes are allowed only on link recipes",
+      );
+    }
     if (element === "a") {
       if (
+        !safeLink ||
         attributes === undefined ||
         classes.length !== 1 ||
         classes[0] !== "breditor-link"
@@ -153,10 +162,30 @@ export function createInlineFormatRenderManifest(
           "inline-format link recipe requires safeLinkV1 attributes and the canonical class",
         );
       }
-    } else if (attributes !== undefined) {
-      throw new TypeError(
-        "inline-format render attributes are allowed only on link recipes",
-      );
+    } else {
+      const safeTextColor = attributes?.kind === "safeTextColorV1";
+      const textColorSignature = element === "span" &&
+        classes.length === 1 &&
+        classes[0] === INLINE_FORMAT_SAFE_TEXT_COLOR_V1_CLASS;
+      if (
+        formatKind === INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND ||
+        safeTextColor ||
+        textColorSignature
+      ) {
+        if (
+          formatKind !== INLINE_FORMAT_SAFE_TEXT_COLOR_V1_FORMAT_KIND ||
+          !safeTextColor ||
+          !textColorSignature
+        ) {
+          throw new TypeError(
+            "inline-format text-color recipe requires safeTextColorV1, the exact format kind, span element, and canonical class",
+          );
+        }
+      } else if (attributes !== undefined) {
+        throw new TypeError(
+          "inline-format render attributes require a closed compatible recipe",
+        );
+      }
     }
     const before = readOptionalCanonicalStringSet(
       record,

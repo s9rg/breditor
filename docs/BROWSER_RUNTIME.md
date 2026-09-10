@@ -2,11 +2,12 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.11` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.12` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
-nine-control Showcase profile with descriptor-compiled declarative shortcuts
+ten-control Color Showcase profile with descriptor-compiled declarative
+shortcuts and closed RGB24 text-color presentation
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -127,7 +128,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.11 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.12 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -222,14 +223,25 @@ Italic, Strikethrough, Code, Highlight, Undo, and Redo; Link and Clear formattin
 remain unbound. Rust semantics, Wasm ABI 5, profile bootstrap, fingerprints,
 history/replay, and every durable generation are unchanged.
 
+Alpha.12 adds the separate `example/color-showcase-editor@1` source profile.
+Its required `example/rgb24` integer travels through the existing generic
+typed-set descriptor, action-state, strict intent, undo/redo, replay, and
+Session-V3 paths. The browser adds `safeTextColorV1`, which accepts only the
+literal format/contract and `<span class="breditor-text-color">`, then derives
+only lowercase zero-padded `style="color:#rrggbb"`. It also adds the exact
+required integer/`rgb24` `inlineFormatForm` field rendered as native
+`<input type="color">`. The demo uses a new lineage and persistence slot;
+color has no shortcut. No Rust or Wasm method changes and ABI 5 remains
+current.
+
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.11` packages:
+exactly matching `0.3.0-alpha.12` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.11 \
-  @breditor/wasm@0.3.0-alpha.11 \
-  @breditor/reference-highlight@0.3.0-alpha.11
+npm install @breditor/browser@0.3.0-alpha.12 \
+  @breditor/wasm@0.3.0-alpha.12 \
+  @breditor/reference-highlight@0.3.0-alpha.12
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -851,7 +863,10 @@ exact boundary is in
 An `inlineFormatForm` must correlate its `formatKind`, `intentId`, and
 `stateId` with one ABI-5 set-surface descriptor and exactly cover that format's
 required properties. The closed field vocabulary is a URL-presented string
-with exact profile bounds and a Boolean whose default is `false`. Values are
+with exact profile bounds, a Boolean whose default is `false`, and one exact
+required integer with `presentation: "rgb24"` and fixed
+`0..=16_777_215` bounds. At least one URL string or RGB24 value-presenting
+field is required; a Boolean-only form is rejected. Values are
 copied from an exact plain property-name-keyed record; Apply serializes a
 complete lexically ordered property map and Remove serializes only
 `{"operation":"remove"}`. The runtime never treats URL presentation as URL
@@ -876,23 +891,24 @@ Adding real behavior therefore proceeds from the core outward:
    `inlineFormatForm` whose format/intent/state triple and exact field set match
    the descriptor and profile.
 3. Supply a complete render recipe for the admitted format. Property-free
-   formats use an inert wrapper; the sole property-aware choice is the exact
-   browser-owned `safeLinkV1` policy.
+   formats use an inert wrapper; the only property-aware choices are the exact
+   browser-owned `safeLinkV1` and `safeTextColorV1` policies.
 4. Supply the toolbar, rendering, and optional shortcut manifests at editor
    startup and style the generated native
    elements through their role and `data-breditor-*` attributes.
 
-There is no optional/integer form field, partial property patch, arbitrary
-widget, callback or sequence keymap, extension-defined `beforeinput` rule,
+There is no optional or general integer form field, partial property patch,
+arbitrary widget, callback or sequence keymap, extension-defined `beforeinput` rule,
 runtime JavaScript action
 registration, arbitrary callback command, dynamic manifest replacement, plugin
 unload, custom node renderer, or
 stable third-party Wasm plugin ABI in the supported surface. Direct concrete
 action toolbar declarations remain an advanced policy bypass. The alpha.4
 `safeLinkV1` recipe can derive only its closed canonical Link attribute set
-from one exact two-property contract. Arbitrary attributes, style/CSS mapping,
-schemes, callbacks, raw HTML, and user-selected `rel` or target values remain
-unsupported.
+from one exact two-property contract. `safeTextColorV1` derives only
+`style="color:#rrggbb"` from its exact RGB24 contract. Arbitrary attributes,
+CSS input or other style properties, schemes, callbacks, raw HTML, and
+user-selected `rel` or target values remain unsupported.
 
 The high-level startup gate is all-or-nothing for presentation as well as
 semantic data. A missing or extra render recipe, missing or extra initial
@@ -1021,6 +1037,16 @@ events in Chromium, Firefox, and WebKit. The same gate checks exact generated
 keymaps, typed-input shortcuts, key sequences, extension-defined `beforeinput`,
 mobile/IME support, or an assistive-technology conformance claim, and it changes
 no Rust, Wasm ABI, history/replay, or durable contract.
+
+Alpha.12 adds one exact RGB24 integer control and policy-derived text-color
+style. It does not admit arbitrary CSS, alpha, backgrounds, gradients, named
+colors, theme tokens, color-space conversion, or a contrast guarantee. Its
+inline style can be suppressed by CSP `style-src-attr` or overridden by
+forced-colors/user policy. Native color-picker UX varies across browsers and
+operating systems. Safe copy can carry the exact canonical style, but paste
+still strips its source value. Applying color at a collapsed caret changes
+pending typing state without a standalone undo entry. Text color has no
+shortcut. See [`TEXT_COLOR.md`](TEXT_COLOR.md).
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),
