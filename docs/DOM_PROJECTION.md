@@ -3,7 +3,7 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.5` source checkpoint retains alpha.4's one closed
+unpublished `0.3.0-alpha.6` source checkpoint retains alpha.4's one closed
 property-driven Link presentation and carries it through typed structural
 paragraph edits described below.
 
@@ -165,6 +165,13 @@ history, not from retained DOM. Alpha.4 cannot restore an alpha.5 V3 checkpoint
 whose history contains a typed structural operation even though the outer
 format number is unchanged; this is a prerelease downgrade limitation, not a
 projection fallback.
+
+Alpha.6 cross-paragraph set/remove uses that same projection path. The one
+typed `RootTextReplace` exposes complete final Link and peer-format details;
+the renderer derives every DOM attribute anew from the semantic projection.
+Selection direction and affinities come from Rust's rebuilt semantic range,
+not retained DOM nodes. The action introduces no projection discriminant,
+persistent node identity, or property-to-attribute rule.
 
 ## Known limits
 

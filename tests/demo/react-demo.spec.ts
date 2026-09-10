@@ -5,6 +5,10 @@ const EDITOR_LABEL = "Breditor formatting reference document";
 const SAMPLE_TEXT = "Highlighted link";
 const APPENDED_TEXT = " demo-ready";
 const REFERENCE_LINK_URL = "https://example.test/reference";
+const CROSS_PARAGRAPH_LINK_INPUT =
+  "HTTPS://Cross.Example.TEST:443/a/../guide?q=alpha&b=two";
+const CROSS_PARAGRAPH_LINK_URL =
+  "https://cross.example.test/guide?q=alpha&b=two";
 
 async function openDemo(page: Page): Promise<{
   readonly editor: Locator;
@@ -87,6 +91,23 @@ async function selectParagraphText(
   anchorOffset: number,
   focusOffset: number,
 ): Promise<void> {
+  await selectParagraphRange(
+    editor,
+    paragraphIndex,
+    anchorOffset,
+    paragraphIndex,
+    focusOffset,
+  );
+}
+
+/** Selects a semantic range whose endpoints may belong to different blocks. */
+async function selectParagraphRange(
+  editor: Locator,
+  anchorParagraphIndex: number,
+  anchorOffset: number,
+  focusParagraphIndex: number,
+  focusOffset: number,
+): Promise<void> {
   await editor.evaluate(
     (host, offsets) => {
       const ownerDocument = host.ownerDocument;
@@ -97,26 +118,30 @@ async function selectParagraphText(
       const paragraphs = Array.from(host.children).filter(
         (child) => child.localName === "p",
       );
-      const paragraph = paragraphs.at(offsets.paragraphIndex);
-      if (paragraph === undefined) throw new Error("paragraph is unavailable");
-
-      const textNodes: Text[] = [];
-      const walker = ownerDocument.createTreeWalker(
-        paragraph,
-        NodeFilter.SHOW_TEXT,
-      );
-      for (
-        let node = walker.nextNode();
-        node !== null;
-        node = walker.nextNode()
-      ) {
-        textNodes.push(node as Text);
-      }
-
-      const locate = (paragraphOffset: number): readonly [Text, number] => {
+      const locate = (
+        paragraphIndex: number,
+        paragraphOffset: number,
+      ): readonly [Text, number] => {
         if (!Number.isSafeInteger(paragraphOffset) || paragraphOffset < 0) {
           throw new Error("selection offset is invalid");
         }
+        const paragraph = paragraphs.at(paragraphIndex);
+        if (paragraph === undefined)
+          throw new Error("paragraph is unavailable");
+
+        const textNodes: Text[] = [];
+        const walker = ownerDocument.createTreeWalker(
+          paragraph,
+          NodeFilter.SHOW_TEXT,
+        );
+        for (
+          let node = walker.nextNode();
+          node !== null;
+          node = walker.nextNode()
+        ) {
+          textNodes.push(node as Text);
+        }
+
         let consumed = 0;
         for (const textNode of textNodes) {
           const length = textNode.data.length;
@@ -128,13 +153,24 @@ async function selectParagraphText(
         throw new Error("selection offset exceeds paragraph text");
       };
 
-      const [anchorNode, anchor] = locate(offsets.anchorOffset);
-      const [focusNode, focus] = locate(offsets.focusOffset);
+      const [anchorNode, anchor] = locate(
+        offsets.anchorParagraphIndex,
+        offsets.anchorOffset,
+      );
+      const [focusNode, focus] = locate(
+        offsets.focusParagraphIndex,
+        offsets.focusOffset,
+      );
       (host as HTMLElement).focus();
       selection.setBaseAndExtent(anchorNode, anchor, focusNode, focus);
       ownerDocument.dispatchEvent(new Event("selectionchange"));
     },
-    { paragraphIndex, anchorOffset, focusOffset },
+    {
+      anchorParagraphIndex,
+      anchorOffset,
+      focusParagraphIndex,
+      focusOffset,
+    },
   );
 }
 
@@ -187,6 +223,7 @@ async function pastePlainText(editor: Locator, text: string): Promise<void> {
 async function expectSafelyLinkedParagraphs(
   editor: Locator,
   expectedText: readonly string[],
+  expectedLinkUrl = REFERENCE_LINK_URL,
 ): Promise<void> {
   await expect
     .poll(() =>
@@ -232,7 +269,7 @@ async function expectSafelyLinkedParagraphs(
                 ),
             };
           }),
-        REFERENCE_LINK_URL,
+        expectedLinkUrl,
       ),
     )
     .toEqual(
@@ -240,6 +277,115 @@ async function expectSafelyLinkedParagraphs(
         text,
         fullyLinked: true,
         safeLinkAttributes: true,
+        highlightPreserved: true,
+      })),
+    );
+}
+
+/** Checks that Highlight still covers every character after Link is removed. */
+async function expectHighlightedUnlinkedParagraphs(
+  editor: Locator,
+  expectedText: readonly string[],
+): Promise<void> {
+  await expect
+    .poll(() =>
+      editor.locator(":scope > p").evaluateAll((paragraphs) =>
+        paragraphs.map((paragraph) => {
+          const highlights = Array.from(
+            paragraph.querySelectorAll("mark.breditor-reference-highlight"),
+          );
+          const textNodes: Text[] = [];
+          const walker = paragraph.ownerDocument.createTreeWalker(
+            paragraph,
+            NodeFilter.SHOW_TEXT,
+          );
+          for (
+            let node = walker.nextNode();
+            node !== null;
+            node = walker.nextNode()
+          ) {
+            if ((node.textContent ?? "").length > 0)
+              textNodes.push(node as Text);
+          }
+          return {
+            text: paragraph.textContent ?? "",
+            linkCount: paragraph.querySelectorAll("a.breditor-link").length,
+            highlightPreserved:
+              highlights.length > 0 &&
+              textNodes.every((node) =>
+                highlights.some((highlight) => highlight.contains(node)),
+              ),
+          };
+        }),
+      ),
+    )
+    .toEqual(
+      expectedText.map((text) => ({
+        text,
+        linkCount: 0,
+        highlightPreserved: true,
+      })),
+    );
+}
+
+/** Checks exact Link segments while requiring Highlight to cover all text. */
+async function expectHighlightedLinkLayout(
+  editor: Locator,
+  expected: readonly {
+    readonly text: string;
+    readonly links: readonly {
+      readonly text: string;
+      readonly href: string;
+    }[];
+  }[],
+): Promise<void> {
+  await expect
+    .poll(() =>
+      editor.locator(":scope > p").evaluateAll((paragraphs) =>
+        paragraphs.map((paragraph) => {
+          const highlights = Array.from(
+            paragraph.querySelectorAll("mark.breditor-reference-highlight"),
+          );
+          const textNodes: Text[] = [];
+          const walker = paragraph.ownerDocument.createTreeWalker(
+            paragraph,
+            NodeFilter.SHOW_TEXT,
+          );
+          for (
+            let node = walker.nextNode();
+            node !== null;
+            node = walker.nextNode()
+          ) {
+            if ((node.textContent ?? "").length > 0)
+              textNodes.push(node as Text);
+          }
+          return {
+            text: paragraph.textContent ?? "",
+            links: Array.from(
+              paragraph.querySelectorAll("a.breditor-link"),
+            ).map((link) => ({
+              text: link.textContent ?? "",
+              href: link.getAttribute("href") ?? "",
+              rel: link.getAttribute("rel"),
+              target: link.getAttribute("target"),
+            })),
+            highlightPreserved:
+              highlights.length > 0 &&
+              textNodes.every((node) =>
+                highlights.some((highlight) => highlight.contains(node)),
+              ),
+          };
+        }),
+      ),
+    )
+    .toEqual(
+      expected.map(({ text, links }) => ({
+        text,
+        links: links.map((link) => ({
+          ...link,
+          rel: "noopener noreferrer",
+          target: "_blank",
+        })),
         highlightPreserved: true,
       })),
     );
@@ -463,6 +609,102 @@ test("safe Link survives structural editing and persisted undo/redo history", as
     "Highlighted",
     " firstsecondlink",
   ]);
+  await expect(restoredUndo).toHaveAttribute("aria-disabled", "false");
+  await expect(restoredRedo).toHaveAttribute("aria-disabled", "true");
+});
+
+test("cross-paragraph Link changes preserve Highlight and a persisted redo branch", async ({
+  page,
+}) => {
+  const { editor, status } = await openDemo(page);
+  const undo = page.getByRole("button", { name: "Undo" });
+  const redo = page.getByRole("button", { name: "Redo" });
+  const linkUrl = page.getByRole("textbox", { name: "Link URL" });
+  const newWindow = page.getByRole("checkbox", { name: "Open in new window" });
+  const applyLink = page.getByRole("button", { name: "Apply Link" });
+  const removeLink = page.getByRole("button", { name: "Remove Link" });
+  const paragraphs = ["Highlighted", " link"] as const;
+  const linkedLayout = [
+    {
+      text: paragraphs[0],
+      links: [
+        { text: "Hi", href: REFERENCE_LINK_URL },
+        { text: "ghlighted", href: CROSS_PARAGRAPH_LINK_URL },
+      ],
+    },
+    {
+      text: paragraphs[1],
+      links: [
+        { text: " lin", href: CROSS_PARAGRAPH_LINK_URL },
+        { text: "k", href: REFERENCE_LINK_URL },
+      ],
+    },
+  ] as const;
+  const removedLayout = [
+    {
+      text: paragraphs[0],
+      links: [{ text: "Hi", href: REFERENCE_LINK_URL }],
+    },
+    {
+      text: paragraphs[1],
+      links: [{ text: "k", href: REFERENCE_LINK_URL }],
+    },
+  ] as const;
+
+  // Start from the property-preserving split proven above, then address a
+  // backward partial range across both Rust-owned paragraphs. The outer
+  // Link runs are deliberately left unselected as an end-to-end edge guard.
+  await selectEditorText(editor, 11, 11);
+  await page.keyboard.press("Enter");
+  await expectSafelyLinkedParagraphs(editor, paragraphs);
+  await selectParagraphRange(editor, 1, 4, 0, 2);
+
+  // Form focus intentionally replaces the DOM selection. The typed intent
+  // must still use the preserved cross-paragraph semantic selection.
+  await expect(linkUrl).toBeEnabled();
+  await linkUrl.fill(CROSS_PARAGRAPH_LINK_INPUT);
+  await newWindow.check();
+  await expect(applyLink).toBeEnabled();
+  await applyLink.click();
+  await expectHighlightedLinkLayout(editor, linkedLayout);
+
+  await expect(removeLink).toBeEnabled();
+  await removeLink.click();
+  await expectHighlightedLinkLayout(editor, removedLayout);
+
+  // Expanding the selection across linked edges and the unlinked middle must
+  // expose the Rust-generated mixed presence state to the React controls.
+  await selectParagraphRange(editor, 0, 0, 1, paragraphs[1].length);
+  await expect(
+    page.getByText("Link formatting is mixed across the selection.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await undo.click();
+  await expectHighlightedLinkLayout(editor, linkedLayout);
+  await redo.click();
+  await expectHighlightedLinkLayout(editor, removedLayout);
+
+  // Persist the linked document with removal available as redo. Observe the
+  // dirty edge first so a slow assertion cannot miss the short autosave delay.
+  await undo.click();
+  await expect(status).not.toHaveText("All changes saved.");
+  await expectHighlightedLinkLayout(editor, linkedLayout);
+  await expect(undo).toHaveAttribute("aria-disabled", "false");
+  await expect(redo).toHaveAttribute("aria-disabled", "false");
+  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+
+  await page.reload();
+  const restored = await openDemo(page);
+  const restoredUndo = page.getByRole("button", { name: "Undo" });
+  const restoredRedo = page.getByRole("button", { name: "Redo" });
+  await expectHighlightedLinkLayout(restored.editor, linkedLayout);
+  await expect(restoredUndo).toHaveAttribute("aria-disabled", "false");
+  await expect(restoredRedo).toHaveAttribute("aria-disabled", "false");
+
+  await restoredRedo.click();
+  await expectHighlightedLinkLayout(restored.editor, removedLayout);
   await expect(restoredUndo).toHaveAttribute("aria-disabled", "false");
   await expect(restoredRedo).toHaveAttribute("aria-disabled", "true");
 });

@@ -117,6 +117,20 @@ const SAFE_LINK_PROFILE_BOOTSTRAP_JSON = JSON.stringify({
   formatVersion: 2,
   schema: { name: "example/safe-link-editor", version: 1 },
   extensions: [{
+    id: { name: "example/safe-highlight-extension", version: 1 },
+    dependencies: [],
+    conflicts: [],
+    inlineFormats: [{ kind: "example/highlight", revision: 1 }],
+    inlineFormatPropertyContracts: [],
+    inlineFormatToggles: [{
+      formatKind: "example/highlight",
+      actionId: "example/toggle-highlight",
+      intentId: "example/toggle-highlight-intent",
+      bindingId: "example/toggle-highlight-binding",
+      actionStateId: "example/highlight-presence",
+    }],
+    inlineFormatSets: [],
+  }, {
     id: { name: "example/safe-link-extension", version: 1 },
     dependencies: [],
     conflicts: [],
@@ -1678,10 +1692,10 @@ Object.defineProperty(runtimeDom.window.InputEvent.prototype, "getTargetRanges",
 
 // Exercise Profile Bootstrap V2 + Session V3 through the complete public
 // browser owner. Derive the initial document binding from the dedicated exact
-// safe-Link descriptor instead of weakening the browser policy to accommodate
-// the broader typed ABI fixture. A deterministic Rust rejection must remain
-// contained before history control, and a later valid property-bearing intent
-// must still commit.
+// Highlight + safe-Link descriptor instead of weakening the browser policy to
+// accommodate the broader typed ABI fixture. A deterministic Rust rejection
+// must remain contained before history control, and a later valid
+// property-bearing intent must still commit.
 const safeLinkProfileResult =
   api.BreditorCompiledProfile.fromBootstrapJsonV2(
     SAFE_LINK_PROFILE_BOOTSTRAP_JSON,
@@ -1708,9 +1722,16 @@ safeLinkProfile.free();
 
 const typedRuntimeHost = document.createElement("div");
 document.body.append(typedRuntimeHost);
+const typedRuntimeDatabase = new IDBFactory();
+const typedRuntimePersistenceSlot = "web-glue-public-typed-v3";
 const typedRuntimeRendering = browser.createInlineFormatRenderManifest({
   recipes: [
     { formatKind: "breditor/strong", element: "strong" },
+    {
+      formatKind: "example/highlight",
+      element: "mark",
+      classes: ["breditor-highlight"],
+    },
     {
       formatKind: "example/link",
       element: "a",
@@ -1742,6 +1763,12 @@ const openedTypedRuntime = await browser.openBreditorBrowserEditor({
     primaryModifier: "control",
     shortcuts: "enabled",
   },
+  persistence: {
+    indexedDB: typedRuntimeDatabase,
+    crypto: globalThis.crypto.subtle,
+    scope: { kind: "slot", name: typedRuntimePersistenceSlot },
+    autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
+  },
 });
 assert.equal(
   openedTypedRuntime.ok,
@@ -1751,6 +1778,49 @@ assert.equal(
     : `typed browser runtime failed: ${openedTypedRuntime.error.code}/${openedTypedRuntime.error.causeCode ?? "none"}`,
 );
 const typedRuntime = openedTypedRuntime.editor;
+const typedRuntimeParagraphShape = (host, href) =>
+  Array.from(host.querySelectorAll(":scope > p"), (paragraph) => {
+    const links = Array.from(paragraph.querySelectorAll("a.breditor-link"));
+    const highlights = Array.from(
+      paragraph.querySelectorAll("mark.breditor-highlight"),
+    );
+    const text = paragraph.textContent ?? "";
+    return {
+      text,
+      fullyHighlighted:
+        highlights.length > 0 &&
+        highlights.map((highlight) => highlight.textContent ?? "").join("") ===
+          text,
+      expectedLinkCoverage:
+        href === undefined
+          ? links.length === 0
+          : links.length > 0 &&
+            links.map((link) => link.textContent ?? "").join("") === text,
+      canonicalLinks: links.every(
+        (link) =>
+          link.getAttribute("href") === href &&
+          link.getAttribute("rel") === "noopener noreferrer" &&
+          link.getAttribute("target") === "_blank",
+      ),
+    };
+  });
+const assertTypedRuntimeParagraphs = (host, text, href) =>
+  assert.deepEqual(
+    typedRuntimeParagraphShape(host, href),
+    text.map((value) => ({
+      text: value,
+      fullyHighlighted: true,
+      expectedLinkCoverage: true,
+      canonicalLinks: true,
+    })),
+  );
+const typedRuntimeTextNode = (element) => {
+  const node = runtimeDom.window.document
+    .createTreeWalker(element, runtimeDom.window.NodeFilter.SHOW_TEXT)
+    .nextNode();
+  assert.ok(node instanceof runtimeDom.window.Text);
+  return node;
+};
 const typedRuntimeText = typedRuntimeHost.querySelector("p")?.firstChild;
 assert.ok(typedRuntimeText instanceof runtimeDom.window.Text);
 runtimeDom.window.getSelection().setBaseAndExtent(
@@ -1777,6 +1847,12 @@ assert.deepEqual(typedRuntimeRejected, {
 });
 assert.equal(typedRuntime.getStatus().phase, "live");
 
+const typedRuntimeHighlight = typedRuntime.executeIntent(
+  "example/toggle-highlight-intent",
+);
+assert.equal(typedRuntimeHighlight.status, "committed");
+assert.equal(typedRuntimeHighlight.document.revision, "2");
+
 const typedRuntimeSet = typedRuntime.executeIntentJson(
   "example/set-link-intent",
   JSON.stringify({
@@ -1788,19 +1864,22 @@ const typedRuntimeSet = typedRuntime.executeIntentJson(
   }),
 );
 assert.equal(typedRuntimeSet.status, "committed");
-assert.equal(typedRuntimeSet.document.revision, "2");
-assert.equal(
-  typedRuntimeHost.innerHTML,
-  '<p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">abc</a></p>',
+assert.equal(typedRuntimeSet.document.revision, "3");
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["abc"],
+  "https://runtime.example.test/",
 );
 const typedRuntimeDocument = typedRuntime.exportContent("documentJson");
 assert.equal(typedRuntimeDocument.ok, true);
 assert.match(typedRuntimeDocument.value, /https:\/\/runtime\.example\.test/);
+assert.match(typedRuntimeDocument.value, /example\/highlight/);
 
 // Structural actions stay on the existing ABI: the Rust operation carries the
-// complete typed fragments and the browser reprojects both Link owners.
-const linkedRuntimeText = typedRuntimeHost.querySelector("a")?.firstChild;
-assert.ok(linkedRuntimeText instanceof runtimeDom.window.Text);
+// complete typed fragments and the browser reprojects both format owners.
+const linkedRuntimeText = typedRuntimeTextNode(
+  typedRuntimeHost.querySelector("a.breditor-link"),
+);
 runtimeDom.window.getSelection().setBaseAndExtent(
   linkedRuntimeText,
   1,
@@ -1808,7 +1887,7 @@ runtimeDom.window.getSelection().setBaseAndExtent(
   1,
 );
 document.dispatchEvent(new runtimeDom.window.Event("selectionchange"));
-assert.equal(typedRuntime.getSnapshot().document.revision, "3");
+assert.equal(typedRuntime.getSnapshot().document.revision, "4");
 const typedRuntimeBreak = new runtimeDom.window.InputEvent("beforeinput", {
   bubbles: true,
   cancelable: true,
@@ -1816,66 +1895,175 @@ const typedRuntimeBreak = new runtimeDom.window.InputEvent("beforeinput", {
 });
 assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeBreak), false);
 assert.equal(typedRuntimeBreak.defaultPrevented, true);
-assert.equal(typedRuntime.getSnapshot().document.revision, "4");
-assert.equal(
-  typedRuntimeHost.innerHTML,
-  '<p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">a</a></p><p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">bc</a></p>',
-);
-
-const typedRuntimeUndo = new runtimeDom.window.KeyboardEvent("keydown", {
-  bubbles: true,
-  cancelable: true,
-  code: "KeyZ",
-  ctrlKey: true,
-  key: "z",
-});
-assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeUndo), false);
 assert.equal(typedRuntime.getSnapshot().document.revision, "5");
-assert.equal(
-  typedRuntimeHost.innerHTML,
-  '<p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">abc</a></p>',
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["a", "bc"],
+  "https://runtime.example.test/",
 );
-const typedRuntimeRedo = new runtimeDom.window.KeyboardEvent("keydown", {
-  bubbles: true,
-  cancelable: true,
-  code: "KeyY",
-  ctrlKey: true,
-  key: "y",
-});
-assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeRedo), false);
-assert.equal(typedRuntime.getSnapshot().document.revision, "6");
-assert.equal(typedRuntimeHost.querySelectorAll("a").length, 2);
-const typedRuntimeSecondUndo = new runtimeDom.window.KeyboardEvent("keydown", {
-  bubbles: true,
-  cancelable: true,
-  code: "KeyZ",
-  ctrlKey: true,
-  key: "z",
-});
-assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeSecondUndo), false);
-assert.equal(typedRuntime.getSnapshot().document.revision, "7");
 
-const restoredTypedRuntimeText = typedRuntimeHost.querySelector("a")?.firstChild;
-assert.ok(restoredTypedRuntimeText instanceof runtimeDom.window.Text);
+const dispatchTypedRuntimeHistory = (host, code, key) => {
+  const event = new runtimeDom.window.KeyboardEvent("keydown", {
+    bubbles: true,
+    cancelable: true,
+    code,
+    ctrlKey: true,
+    key,
+  });
+  assert.equal(host.dispatchEvent(event), false);
+  assert.equal(event.defaultPrevented, true);
+};
+dispatchTypedRuntimeHistory(typedRuntimeHost, "KeyZ", "z");
+assert.equal(typedRuntime.getSnapshot().document.revision, "6");
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["abc"],
+  "https://runtime.example.test/",
+);
+dispatchTypedRuntimeHistory(typedRuntimeHost, "KeyY", "y");
+assert.equal(typedRuntime.getSnapshot().document.revision, "7");
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["a", "bc"],
+  "https://runtime.example.test/",
+);
+
+// Replace Link across both blocks with one property-bearing action. Highlight
+// remains additive and every rendered Link attribute stays canonical.
+const typedRuntimeLinks = typedRuntimeHost.querySelectorAll("a.breditor-link");
+const typedRuntimeFirstText = typedRuntimeTextNode(typedRuntimeLinks[0]);
+const typedRuntimeLastText = typedRuntimeTextNode(typedRuntimeLinks[1]);
 runtimeDom.window.getSelection().setBaseAndExtent(
-  restoredTypedRuntimeText,
+  typedRuntimeFirstText,
   0,
-  restoredTypedRuntimeText,
-  3,
+  typedRuntimeLastText,
+  2,
 );
 document.dispatchEvent(new runtimeDom.window.Event("selectionchange"));
 assert.equal(typedRuntime.getSnapshot().document.revision, "8");
+
+const crossParagraphHref = "https://cross.example.test/guide?q=alpha&b=two";
+const typedRuntimeCrossSet = typedRuntime.executeIntentJson(
+  "example/set-link-intent",
+  JSON.stringify({
+    operation: "set",
+    properties: [
+      { name: "example/href", value: crossParagraphHref },
+      { name: "example/open", value: true },
+    ],
+  }),
+);
+assert.equal(typedRuntimeCrossSet.status, "committed");
+assert.equal(typedRuntimeCrossSet.document.revision, "9");
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["a", "bc"],
+  crossParagraphHref,
+);
 
 const typedRuntimeRemove = typedRuntime.executeIntentJson(
   "example/set-link-intent",
   '{"operation":"remove"}',
 );
 assert.equal(typedRuntimeRemove.status, "committed");
-assert.equal(typedRuntimeRemove.document.revision, "9");
-assert.equal(typedRuntimeHost.innerHTML, "<p>abc</p>");
+assert.equal(typedRuntimeRemove.document.revision, "10");
+assertTypedRuntimeParagraphs(typedRuntimeHost, ["a", "bc"]);
+
+dispatchTypedRuntimeHistory(typedRuntimeHost, "KeyZ", "z");
+assert.equal(typedRuntime.getSnapshot().document.revision, "11");
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["a", "bc"],
+  crossParagraphHref,
+);
+dispatchTypedRuntimeHistory(typedRuntimeHost, "KeyY", "y");
+assert.equal(typedRuntime.getSnapshot().document.revision, "12");
+assertTypedRuntimeParagraphs(typedRuntimeHost, ["a", "bc"]);
+dispatchTypedRuntimeHistory(typedRuntimeHost, "KeyZ", "z");
+assert.equal(typedRuntime.getSnapshot().document.revision, "13");
+assertTypedRuntimeParagraphs(
+  typedRuntimeHost,
+  ["a", "bc"],
+  crossParagraphHref,
+);
+
+assert.deepEqual(await typedRuntime.flushPersistence(), {
+  status: "committed",
+});
 assert.equal(typedRuntime.getStatus().phase, "live");
 typedRuntime.dispose();
 typedRuntimeHost.remove();
+
+// Inspect the stored generation before public startup consumes it: Profile V2
+// must select Session V3 and retain a cursor before the removal redo entry.
+const typedRuntimeCheckpointReader =
+  new browser.IndexedDbSessionCheckpointStore({
+    indexedDB: typedRuntimeDatabase,
+    crypto: globalThis.crypto.subtle,
+    binding: {
+      slot: typedRuntimePersistenceSlot,
+      schemaFingerprint: safeLinkDescriptor.schema.fingerprint,
+      checkpointFormatVersion: 3,
+    },
+  });
+const typedRuntimeCheckpointLoad = await typedRuntimeCheckpointReader.load();
+assert.equal(typedRuntimeCheckpointLoad.ok, true);
+assert.equal(typedRuntimeCheckpointLoad.status, "loaded");
+const typedRuntimeCheckpoint = JSON.parse(
+  typedRuntimeCheckpointLoad.checkpointJson,
+);
+assert.equal(typedRuntimeCheckpoint.formatVersion, 3);
+assert.equal(typedRuntimeCheckpoint.currentRevision, "13");
+assert.ok(typedRuntimeCheckpoint.cursor < typedRuntimeCheckpoint.entries.length);
+assert.match(typedRuntimeCheckpointLoad.checkpointJson, /example\/highlight/);
+assert.match(typedRuntimeCheckpointLoad.checkpointJson, /cross\.example\.test/);
+typedRuntimeCheckpointReader.close();
+
+const reloadedTypedRuntimeHost = document.createElement("div");
+document.body.append(reloadedTypedRuntimeHost);
+const reloadedTypedRuntimeResult = await browser.openBreditorBrowserEditor({
+  host: reloadedTypedRuntimeHost,
+  label: "Reloaded generated typed editor",
+  wasm: api,
+  initialDocument: {
+    lineageId: "must-not-replace-typed-checkpoint",
+    documentJson: safeLinkDocumentJson,
+    historyCapacity: 1,
+  },
+  semanticProfile: {
+    bootstrapJson: SAFE_LINK_PROFILE_BOOTSTRAP_JSON,
+    formatVersion: 2,
+  },
+  rendering: typedRuntimeRendering,
+  keyboard: {
+    editing: "beforeinputPrimary",
+    primaryModifier: "control",
+    shortcuts: "enabled",
+  },
+  persistence: {
+    indexedDB: typedRuntimeDatabase,
+    crypto: globalThis.crypto.subtle,
+    scope: { kind: "slot", name: typedRuntimePersistenceSlot },
+    autosave: { delayMs: 60_000, maxLatencyMs: 60_000 },
+  },
+});
+assert.equal(reloadedTypedRuntimeResult.ok, true);
+const reloadedTypedRuntime = reloadedTypedRuntimeResult.editor;
+assert.deepEqual(reloadedTypedRuntime.getSnapshot().document, {
+  lineage: "web-glue-public-typed-runtime",
+  revision: "13",
+});
+assertTypedRuntimeParagraphs(
+  reloadedTypedRuntimeHost,
+  ["a", "bc"],
+  crossParagraphHref,
+);
+dispatchTypedRuntimeHistory(reloadedTypedRuntimeHost, "KeyY", "y");
+assert.equal(reloadedTypedRuntime.getSnapshot().document.revision, "14");
+assertTypedRuntimeParagraphs(reloadedTypedRuntimeHost, ["a", "bc"]);
+assert.equal(reloadedTypedRuntime.getStatus().phase, "live");
+reloadedTypedRuntime.dispose();
+reloadedTypedRuntimeHost.remove();
 
 const runtimeDatabase = new IDBFactory();
 const runtimeHost = document.createElement("div");

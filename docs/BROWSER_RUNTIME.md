@@ -2,7 +2,7 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.5` ABI-4 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.6` ABI-4 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path
 
@@ -121,7 +121,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.5 source path verifies Wasm ABI generation `4` and the exact matching
+The alpha.6 source path verifies Wasm ABI generation `4` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -156,12 +156,12 @@ applications call `executeIntentJson()` from their own typed controls.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.5` packages:
+exactly matching `0.3.0-alpha.6` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.5 \
-  @breditor/wasm@0.3.0-alpha.5 \
-  @breditor/reference-highlight@0.3.0-alpha.5
+npm install @breditor/browser@0.3.0-alpha.6 \
+  @breditor/wasm@0.3.0-alpha.6 \
+  @breditor/reference-highlight@0.3.0-alpha.6
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -449,8 +449,15 @@ paragraph joins, and cross-paragraph property-free toggles. Multiline plain-
 text insertion applies one destination-derived complete format set to each
 non-empty inserted line. Clipboard source wrappers and properties are still
 discarded: a pasted line can inherit Link from the target caret, but paste does
-not import a Link from clipboard HTML. Typed `SetInlineFormatAction` input
-remains same-paragraph application UI and is not routed over multiple blocks.
+not import a Link from clipboard HTML.
+
+Alpha.6 lets the same application-owned typed `SetInlineFormatAction` request
+span selected text in multiple direct-root paragraphs. Rust replaces the
+complete Link instance or removes Link through one guarded root replacement,
+preserves Highlight and other peers plus empty paragraphs and unselected edges,
+and rebuilds directional selection/affinities. The existing generated presence
+state and queue remain authoritative; no browser action table or toolbar input
+kind is added.
 
 No ProseMirror, Lexical, Tiptap, CKEditor, DOM-operation, or plugin protocol is
 implemented. Those projects are design references only; Breditor's AST,
@@ -490,6 +497,12 @@ conforming alpha.4 checkpoints. An alpha.4 runtime cannot restore an alpha.5
 V3 checkpoint whose retained history contains a typed split, join, or root-text
 replacement; it fails startup and does not overwrite that stored evidence.
 The unchanged checkpoint number is not a prerelease downgrade guarantee.
+
+Alpha.6 changes no outer record or Session V3 field. Its cross-paragraph Link
+set/remove history is one typed `RootTextReplace`, which alpha.5 already knows
+how to restore and replay on either side of the history cursor. Thus a
+conforming alpha.5 runtime can restore this specific alpha.6 checkpoint even
+though it cannot originate the newer action behavior.
 
 Every validated Rust successor marks a private dirty epoch, including a commit
 whose later DOM publication fails. Autosave defaults to a 250 ms trailing quiet
@@ -794,8 +807,9 @@ form calling `executeIntentJson()` rather than a new toolbar control kind.
 
 Alpha.5 removes that typed structural restriction only for the sealed direct-
 root paragraph grammar. It does not add headings, lists, tables, block
-properties or identities, nested blocks, rich paste, cross-paragraph typed
-set/remove, or a typed native toolbar control. Structural commands still run
+properties or identities, nested blocks, rich paste, or a typed native toolbar
+control. Alpha.6 adds cross-paragraph complete-map set/remove within that same
+sealed grammar. Structural commands still run
 synchronously, validate complete property deltas, and can be disabled when a
 split or multiline insertion duplicates typed property owners beyond the
 configured limits.
@@ -807,7 +821,9 @@ Chromium/Firefox/WebKit matrix proves the property-free Highlight intent/state/
 toolbar, mixed-format nesting, history, export/copy, plain paste, persistence
 reload, restored history, and teardown paths. Alpha.4 adds the combined
 Highlight + Link profile, and alpha.5 adds its structural-edit/history demo
-gate. Neither matrix establishes broad mobile, operating-system IME, or
+gate. Alpha.6 extends that gate through multi-paragraph Link set/remove and
+generated mixed presence. Neither matrix establishes broad mobile,
+operating-system IME, or
 assistive-technology support.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),

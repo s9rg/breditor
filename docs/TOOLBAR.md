@@ -216,9 +216,15 @@ not receive renderer, selection, or Rust mutation authority.
 
 Alpha.5 likewise adds no control kind or toolbar dispatch rule. The existing
 Enter, paste, delete, undo, and redo routes can now preserve typed peer formats
-through Rust's sealed paragraph-structure operations; cross-paragraph typed
-set/remove remains outside the native toolbar and disabled as
-`breditor/cross-paragraph-inline-format-unsupported`.
+through Rust's sealed paragraph-structure operations.
+
+Alpha.6 adds no control kind or toolbar dispatch rule either. The React-owned
+Link form can now apply its existing strict typed-intent set/remove request to a
+multi-paragraph semantic selection. Rust reports the generated presence state
+as active when all selected text has Link, mixed when only part does, inactive
+when none does, and unavailable/inactive for a structural-only range. This does
+not make the form a toolbar manifest control or allow the toolbar to collect a
+property value.
 
 ## Accessible DOM behavior
 
@@ -306,7 +312,7 @@ toolbar.
   bridges status into a bounded, immutable external-store subscription.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
-- The public editor can execute descriptor-declared typed intent JSON. Alpha.5
+- The public editor can execute descriptor-declared typed intent JSON. Alpha.6
   demonstrates a React-owned Link form, but the toolbar still has no typed-input
   control kind. There are no custom control kinds, menus/selects, extension
   keymaps or `beforeinput` rules, dynamic manifest replacement, or asynchronous

@@ -6,7 +6,7 @@ use crate::{
     },
     document::{Format, FormatSet, TextFragment, TextFragmentError, TextRun},
     identity::QualifiedName,
-    operation::{Operation, TextRange, TextSplice},
+    operation::{Operation, RootTextReplace, TextRange, TextSplice},
     selection::{RangeOrder, RangeSelection, Selection},
     state::EditorState,
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
@@ -16,7 +16,9 @@ use super::{
     super::text_position::{TextRangeSelection, point_at_fragment_offset},
     SetInlineFormatInput,
     support::{
-        base_shape_fits, disabled, fault, format_set_property_fits, fragment_range_parts,
+        CrossParagraphTextSource, CrossParagraphTextSourceError, base_shape_fits,
+        base_total_text_fits, capture_cross_paragraph_text_source, disabled, fault,
+        format_set_property_fits, fragment_range_parts, property_fragment_delta_fits,
         property_result_fits, require_operation_budget, require_text_splice_range,
         strict_relocation, text_splice_paragraph_fragment,
     },
@@ -29,19 +31,19 @@ use super::{
 /// behavior reusable for links, colors, annotations, and future extension
 /// formats without assigning any of those concepts a core identity.
 ///
-/// Version 1 is deliberately paragraph-local. A non-collapsed selection in one
-/// direct-root paragraph is rewritten through one exact guarded
-/// [`TextSplice`]. A collapsed range updates the exact pending typing formats
-/// without rewriting the document. `Set` replaces the configured format's
-/// complete property map, while `Remove` removes that format regardless of its
-/// current properties. Cross-paragraph ranges fail closed until structural
-/// operation contracts can preserve typed properties end to end.
+/// A non-collapsed selection in one direct-root paragraph is rewritten through
+/// one exact guarded [`TextSplice`]. A cross-paragraph range preserves every
+/// paragraph boundary through one same-count [`RootTextReplace`]. A collapsed
+/// range updates the exact pending typing formats without rewriting the
+/// document. `Set` replaces the configured format's complete property map on
+/// all selected text, while `Remove` removes that format regardless of its
+/// current properties. Structural-only selections remain mutation-disabled.
 ///
 /// Every requested format instance is admitted through the schema's shared
 /// validator. Result node, text, property-value, and property-string budgets
 /// are checked before an action plan is published. Durable operation codecs
 /// remain an independent versioned boundary: V3 preserves the resulting
-/// property-bearing splice, while V1/V2 reject it rather than losing data.
+/// property-bearing operation, while V1/V2 reject it rather than losing data.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SetInlineFormatAction {
     format_kind: QualifiedName,
@@ -127,11 +129,13 @@ fn evaluate_set_inline_format(
         SetInlineFormatInput::Remove => None,
     };
 
+    if !range.is_same_paragraph()
+        && !state.context().schema().supports_paragraph_structure_operations()
+    {
+        return Ok(evaluation(disabled("breditor/unsupported-schema"), ActionActivation::Inactive));
+    }
     if !range.is_same_paragraph() {
-        return Ok(evaluation(
-            disabled("breditor/cross-paragraph-inline-format-unsupported"),
-            ActionActivation::Inactive,
-        ));
+        return evaluate_cross_paragraph(state, &range, format_kind, desired.as_ref());
     }
     if range.is_collapsed() {
         return evaluate_collapsed(state, &range, format_kind, desired.as_ref());
@@ -244,6 +248,103 @@ fn evaluate_extended(
     Ok(evaluation(ActionDecision::Enabled(plan), activation))
 }
 
+fn evaluate_cross_paragraph(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    format_kind: &QualifiedName,
+    desired: Option<&Format>,
+) -> Result<ActionEvaluation, ActionFault> {
+    let source = capture_cross_paragraph_text_source(state, range)
+        .map_err(map_set_inline_format_cross_source_error)?;
+    let mut scan = ActivationScan::default();
+    for selected in source.selected_fragments() {
+        scan.observe(selected, format_kind, desired);
+    }
+    let activation = scan.activation();
+    if scan.is_empty() {
+        return Ok(evaluation(disabled("breditor/no-selected-text"), activation));
+    }
+    let is_exact_noop = match desired {
+        Some(_) => activation == ActionActivation::Active,
+        None => activation == ActionActivation::Inactive,
+    };
+    if is_exact_noop {
+        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
+    }
+    if let Some(decision) = require_operation_budget(state, 1) {
+        return Ok(evaluation(decision, activation));
+    }
+
+    let limits = state.context().limits();
+    let mut replacements = Vec::with_capacity(source.guards().len());
+    let mut changed = false;
+    for selected in source.selected_fragments() {
+        let Some(replacement) = replace_fragment_format(
+            selected,
+            format_kind,
+            desired,
+            limits.max_formats_per_text(),
+            limits.max_text_bytes(),
+        )?
+        else {
+            return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+        };
+        changed |= replacement != *selected;
+        replacements.push(replacement);
+    }
+    if !changed {
+        return Ok(evaluation(disabled("breditor/inline-format-unchanged"), activation));
+    }
+
+    let Some(results) = cross_result_fragments(&source, &replacements)? else {
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+    };
+    let Some(result_text_bytes) =
+        results.iter().try_fold(0_usize, |total, result| total.checked_add(result.text_bytes()))
+    else {
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+    };
+    let result_fragments = results.iter().collect::<Vec<_>>();
+    if !base_shape_fits(state, source.guards().len(), source.guard_run_count(), &result_fragments)
+        || !base_total_text_fits(state, source.guard_text_bytes(), result_text_bytes)
+        || !property_fragment_delta_fits(
+            state,
+            source.guards().iter(),
+            results.iter(),
+            "breditor/set-inline-format-validation-fault",
+            "breditor/set-inline-format-property-budget-fault",
+        )?
+    {
+        return Ok(evaluation(disabled("breditor/result-limit-exceeded"), activation));
+    }
+
+    let result_selection = rebuild_cross_selection(state, range, &results)?;
+    let (operation_range, guards) = source.into_range_and_guards();
+    let operation = RootTextReplace::try_new(operation_range, guards, replacements)
+        .map_err(|_| fault("breditor/set-inline-format-root-replace-fault"))?;
+    let plan = ActionPlan::new(
+        vec![Operation::from(operation)],
+        strict_relocation(),
+        SelectionUpdate::Set(Some(result_selection)),
+        PendingFormatsUpdate::Set(None),
+        HistoryIntent::Record,
+    );
+    Ok(evaluation(ActionDecision::Enabled(plan), activation))
+}
+
+fn map_set_inline_format_cross_source_error(error: CrossParagraphTextSourceError) -> ActionFault {
+    match error {
+        CrossParagraphTextSourceError::Span => fault("breditor/set-inline-format-cross-span-fault"),
+        CrossParagraphTextSourceError::Range => {
+            fault("breditor/set-inline-format-root-range-fault")
+        }
+        CrossParagraphTextSourceError::Source => {
+            fault("breditor/set-inline-format-cross-source-fault")
+        }
+        CrossParagraphTextSourceError::Paragraph(fault) => fault,
+    }
+}
+
 fn evaluation(decision: ActionDecision, activation: ActionActivation) -> ActionEvaluation {
     ActionEvaluation::new(
         decision,
@@ -256,21 +357,45 @@ fn activation_for_fragment(
     format_kind: &QualifiedName,
     desired: Option<&Format>,
 ) -> ActionActivation {
-    let mut matching = false;
-    let mut other = false;
-    for run in fragment {
-        let current = run.formats().get(format_kind);
-        let is_match = match desired {
-            Some(desired) => current == Some(desired),
-            None => current.is_some(),
-        };
-        matching |= is_match;
-        other |= !is_match;
+    let mut scan = ActivationScan::default();
+    scan.observe(fragment, format_kind, desired);
+    scan.activation()
+}
+
+#[derive(Default)]
+struct ActivationScan {
+    matching: bool,
+    other: bool,
+}
+
+impl ActivationScan {
+    fn observe(
+        &mut self,
+        fragment: &TextFragment,
+        format_kind: &QualifiedName,
+        desired: Option<&Format>,
+    ) {
+        for run in fragment {
+            let current = run.formats().get(format_kind);
+            let is_match = match desired {
+                Some(desired) => current == Some(desired),
+                None => current.is_some(),
+            };
+            self.matching |= is_match;
+            self.other |= !is_match;
+        }
     }
-    match (matching, other) {
-        (true, true) => ActionActivation::Mixed,
-        (true, false) => ActionActivation::Active,
-        (false, true | false) => ActionActivation::Inactive,
+
+    const fn activation(&self) -> ActionActivation {
+        match (self.matching, self.other) {
+            (true, true) => ActionActivation::Mixed,
+            (true, false) => ActionActivation::Active,
+            (false, true | false) => ActionActivation::Inactive,
+        }
+    }
+
+    const fn is_empty(&self) -> bool {
+        !self.matching && !self.other
     }
 }
 
@@ -410,6 +535,36 @@ fn concat_result(
     }
 }
 
+fn cross_result_fragments(
+    source: &CrossParagraphTextSource,
+    replacements: &[TextFragment],
+) -> Result<Option<Vec<TextFragment>>, ActionFault> {
+    if replacements.len() != source.guards().len() || replacements.len() < 2 {
+        return Err(fault("breditor/set-inline-format-cross-result-fault"));
+    }
+    let last_index = replacements
+        .len()
+        .checked_sub(1)
+        .ok_or_else(|| fault("breditor/set-inline-format-cross-result-fault"))?;
+    let mut results = Vec::with_capacity(replacements.len());
+    for (index, replacement) in replacements.iter().enumerate() {
+        let folded = if index == 0 {
+            source.prefix().try_concat(replacement)
+        } else if index == last_index {
+            replacement.try_concat(source.suffix())
+        } else {
+            results.push(replacement.clone());
+            continue;
+        };
+        match folded {
+            Ok(result) => results.push(result),
+            Err(error) if fragment_error_is_capacity(&error) => return Ok(None),
+            Err(_) => return Err(fault("breditor/set-inline-format-result-fold-fault")),
+        }
+    }
+    Ok(Some(results))
+}
+
 const fn fragment_error_is_capacity(error: &TextFragmentError) -> bool {
     matches!(
         error,
@@ -442,6 +597,54 @@ fn rebuild_selection(
     let focus = point_at_fragment_offset(
         range.start().paragraph_path(),
         result,
+        focus_offset,
+        source.focus().affinity(),
+    )
+    .map_err(|_| fault("breditor/set-inline-format-selection-fault"))?;
+    Ok(RangeSelection::new(anchor, focus).into())
+}
+
+fn rebuild_cross_selection(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    results: &[TextFragment],
+) -> Result<Selection, ActionFault> {
+    let source = source_range(state)?;
+    let first =
+        results.first().ok_or_else(|| fault("breditor/set-inline-format-selection-fault"))?;
+    let last = results.last().ok_or_else(|| fault("breditor/set-inline-format-selection-fault"))?;
+    let (anchor_path, anchor_fragment, anchor_offset, focus_path, focus_fragment, focus_offset) =
+        match range.order() {
+            RangeOrder::Collapsed => {
+                return Err(fault("breditor/set-inline-format-selection-order-fault"));
+            }
+            RangeOrder::Forward => (
+                range.start().paragraph_path(),
+                first,
+                range.start().offset(),
+                range.end().paragraph_path(),
+                last,
+                range.end().offset(),
+            ),
+            RangeOrder::Backward => (
+                range.end().paragraph_path(),
+                last,
+                range.end().offset(),
+                range.start().paragraph_path(),
+                first,
+                range.start().offset(),
+            ),
+        };
+    let anchor = point_at_fragment_offset(
+        anchor_path,
+        anchor_fragment,
+        anchor_offset,
+        source.anchor().affinity(),
+    )
+    .map_err(|_| fault("breditor/set-inline-format-selection-fault"))?;
+    let focus = point_at_fragment_offset(
+        focus_path,
+        focus_fragment,
         focus_offset,
         source.focus().affinity(),
     )

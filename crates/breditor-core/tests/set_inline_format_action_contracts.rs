@@ -529,27 +529,18 @@ fn collapsed_set_and_remove_update_exact_typed_pending_formats_without_operation
 }
 
 #[test]
-fn cross_paragraph_and_unknown_format_ranges_fail_closed() -> TestResult {
+fn unknown_format_ranges_fail_closed() -> TestResult {
     let schema = typed_schema()?;
     let context = EditorContext::new(schema, DocumentLimits::default());
-    let id = action_id("example/set-link")?;
-    let registry = registry_with(id.clone(), name(LINK)?)?;
 
-    let cross_state = state(
+    let selected_state = state(
         &context,
         &[paragraph_value(&[plain("a")]), paragraph_value(&[plain("b")])],
         Some(selected(
             text_point(0, 0, 0, Affinity::Before)?,
             text_point(1, 0, 1, Affinity::After)?,
         )),
-        "set-link-cross-paragraph",
-    )?;
-    assert_disabled(
-        &registry,
-        &id,
-        &cross_state,
-        remove_input()?,
-        "breditor/cross-paragraph-inline-format-unsupported",
+        "set-missing-cross-paragraph",
     )?;
 
     let unknown_id = action_id("example/set-missing")?;
@@ -557,7 +548,7 @@ fn cross_paragraph_and_unknown_format_ranges_fail_closed() -> TestResult {
     assert_disabled(
         &unknown_registry,
         &unknown_id,
-        &cross_state,
+        &selected_state,
         remove_input()?,
         "breditor/unsupported-inline-format",
     )?;

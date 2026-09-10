@@ -4,6 +4,54 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.6 - 2026-09-09
+
+This unpublished source checkpoint completes property-aware inline formatting
+across Breditor's sealed direct-root paragraph selection. It changes action
+semantics only: Wasm ABI 4, Profile Bootstrap V2, the schema fingerprint,
+Document V2, and the Operation, State, Transaction, Commit, and Session V3
+record generations remain unchanged.
+
+### Cross-paragraph typed set and remove
+
+- `SetInlineFormatAction` now accepts a non-collapsed range spanning two or
+  more direct-root paragraphs. `Set` replaces the target format's complete
+  property map on every selected character; `Remove` strips that target kind
+  regardless of its prior properties. Unselected prefix/suffix text, paragraph
+  boundaries, empty middle paragraphs, and every non-target typed or
+  property-free peer format remain exact.
+- One cross-paragraph command emits one guarded, same-paragraph-count
+  `RootTextReplace`. A selection that crosses structure but contains no text is
+  disabled as `breditor/no-selected-text`; an already exact set or absent
+  remove remains `breditor/inline-format-unchanged` with no operation.
+- The action rebuilds the selected endpoints explicitly after canonical run
+  folding, preserving anchor/focus direction and endpoint affinities. It clears
+  pending formats, records one independent history entry, and restores the
+  exact document, selection, and pending state through undo and redo. A new
+  edit after undo still clears the linear redo branch.
+- Cross-paragraph activation is global. A requested set is active only when
+  all selected text already has the exact requested instance and mixed when
+  only some does. The generated fixed remove query reports target-format
+  presence: all present is active, partial presence is mixed, none is inactive,
+  and a structural-only range is unavailable/inactive.
+
+### Admission, replay, and compatibility
+
+- Planning validates the requested instance and the complete derived result,
+  including the one-operation ceiling, formats per leaf, leaf and aggregate
+  text, child/node counts, aggregate property values, and aggregate property-
+  string bytes. A plan is never published when canonical seam folding or
+  property-owner duplication would exceed a host limit.
+- Session Checkpoint V3 retains the resulting typed `RootTextReplace` recipe on
+  both undo and redo branches and replay-proves it without rerunning the action.
+  Alpha.6 restores conforming alpha.5 checkpoints. Alpha.5 can also restore and
+  replay alpha.6 checkpoints containing this action because alpha.5 already
+  defined the same property-preserving `RootTextReplace` V3 contract.
+- No typed native toolbar control, rich paste, arbitrary block grammar,
+  property patch operation, general property-to-DOM/CSS policy, or Local Log
+  V3 is introduced. The application-owned Link form uses the existing strict
+  typed-intent path, and paste continues to discard source formatting.
+
 ## 0.3.0-alpha.5 - 2026-09-09
 
 This unpublished source checkpoint makes Breditor's sealed direct-root

@@ -173,6 +173,23 @@ V3 record number. Alpha.5 reads conforming alpha.4 V3 checkpoints, but alpha.4
 cannot restore alpha.5 history containing typed structural operations. The
 packages remain unpublished.
 
+The `0.3.0-alpha.6` source checkpoint completes typed set/remove across that
+same sealed paragraph grammar. A cross-paragraph `SetInlineFormatAction`
+replaces the target format's complete property map on every selected character
+or removes the target kind, while preserving paragraph boundaries, empty middle
+paragraphs, unselected edge text, and all peer formats. It emits one guarded
+`RootTextReplace`, explicitly rebuilds the directional selection with its
+endpoint affinities, clears pending formats, and records one exact undo unit.
+Structural-only ranges with no selected text remain disabled. Result planning
+checks operation, format, text-leaf, tree, property-value, and property-string
+budgets before publication; exact no-ops stay operation-free. The generated
+presence state reports active, mixed, or inactive across all selected text.
+Session Checkpoint V3 retains and replay-proves the operation on either history
+branch. Alpha.5 can restore that alpha.6 history because it already understands
+the same typed `RootTextReplace` V3 recipe. This adds no Wasm ABI 4 method and
+changes no Bootstrap V2 shape, schema fingerprint, Document V2, or V3 record
+number. The packages remain unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -347,7 +364,7 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.5` contract admits typed properties in Document
+The experimental `0.3.0-alpha.6` contract admits typed properties in Document
 V2 and supports explicit set/remove, typed pending insertion, paragraph-local
 splice/delete paths, exact history, and the Operation, Editor State,
 Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 4
@@ -360,8 +377,10 @@ anchors. React reference controls construct typed Link inputs outside the
 native toolbar. Alpha.5 adds typed `ParagraphSplit`, `ParagraphJoin`, and
 `RootTextReplace` for that sealed base-text shape, lifting Enter, boundary
 joins, multiline insertion, cross-paragraph type-over/delete, and property-free
-toggles while retaining typed peers. `SetInlineFormatAction` remains paragraph-
-local. No Local Log V3 exists. Paste remains plain text and reconstructs no
+toggles while retaining typed peers. Alpha.6 uses the same guarded root
+replacement to set or remove a complete typed format instance across multiple
+paragraphs, including through the application-owned Link form. No Local Log V3
+exists. Paste remains plain text and reconstructs no
 source Link properties, though target-context Link can be inherited; there is
 no arbitrary attribute or CSS mapping, and the native toolbar has no typed-
 input control. Rust's

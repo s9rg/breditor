@@ -1,10 +1,11 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.5` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.6` source checkpoint uses ABI generation
 `4` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
 preserving the ABI-3-era V1/V2 entry points; alpha.5 adds no Wasm method or wire
-generation. Direct raw-handle use remains a narrow advanced integration
+generation; alpha.6 routes cross-paragraph typed set/remove through existing
+methods. Direct raw-handle use remains a narrow advanced integration
 surface.
 
 The `publish = false` Rust crate remains a repository implementation artifact;
@@ -18,9 +19,9 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-When published, `@breditor/browser@0.3.0-alpha.5` and
-`@breditor/wasm@0.3.0-alpha.5` must be installed as an exact-version pair. No
-alpha.5 package has been published at this checkpoint. The generated raw
+When published, `@breditor/browser@0.3.0-alpha.6` and
+`@breditor/wasm@0.3.0-alpha.6` must be installed as an exact-version pair. No
+alpha.6 package has been published at this checkpoint. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.
 The reference package likewise requires the exact browser peer so its branded
@@ -59,6 +60,15 @@ make that unpublished-prerelease downgrade supported; official browser/Wasm
 packages must remain exactly paired, and the browser never retries another
 checkpoint factory.
 
+Alpha.6 likewise adds no ABI method or record generation. A descriptor-declared
+typed set intent can now target selected text across multiple paragraphs; Rust
+returns the ordinary action/intent result and projection for one guarded
+`RootTextReplace`. Existing action-state projection reports the generated
+fixed-remove presence query as active, mixed, inactive, or unavailable. The
+existing Session-V3 factory retains this operation on undo and redo branches.
+Alpha.5 can restore and replay it because the operation payload and reducer
+meaning were already complete; no action input or JavaScript planner is replayed.
+
 Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
 and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed
 `rolldown 1.2.7`. Cargo uses the dedicated size-oriented `wasm-release`
@@ -73,7 +83,7 @@ build-root prefixes plus common macOS, Linux, and Windows user-home path
 patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.5
+initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.6
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported

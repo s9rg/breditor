@@ -184,6 +184,29 @@ alpha.4 reader cannot restore alpha.5 V3 history containing one of these typed
 structural operations. The unchanged format number is not a downgrade promise
 between unpublished prereleases.
 
+The unpublished `0.3.0-alpha.6` source checkpoint extends the registration-
+owned `SetInlineFormatAction` over non-collapsed selections spanning the sealed
+direct-root paragraphs. `Set` installs one exact complete target instance on
+every selected character; `Remove` strips the target kind regardless of old
+properties. One same-paragraph-count `RootTextReplace` preserves unselected
+edge fragments, empty middle paragraphs, and all property-bearing or property-
+free peer formats. A structural-only selection is disabled with
+`breditor/no-selected-text`; an exact set or absent remove remains an
+operation-free no-op.
+
+Planning validates the requested format and complete derived document against
+operation, per-leaf format/text, tree, aggregate text, property-value, and
+property-string limits. It explicitly rebuilds anchor and focus after canonical
+run folding, preserving direction and endpoint affinities, clears pending
+formats, and records one exact linear undo unit. Generated fixed-remove state
+reports all-present as active, partial presence as mixed, absent as inactive,
+and structural-only as unavailable/inactive. Session Checkpoint V3 preserves
+and replay-proves the typed root replacement on both history branches. Alpha.5
+can restore that alpha.6 recipe because the property-preserving
+`RootTextReplace` V3 contract was already complete; replay never reruns the
+action. Wasm ABI 4, Profile Bootstrap V2, fingerprint bytes, Document V2, and
+all V3 format numbers remain unchanged.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),

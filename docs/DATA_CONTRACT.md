@@ -26,7 +26,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.5` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.6` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -40,6 +40,9 @@ toggle remained structural and closed at that checkpoint. Its browser-owned
 form calls the existing typed intent boundary. Alpha.5 makes the existing
 `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` records validate and
 preserve typed inline-format instances and lifts their built-in action paths.
+Alpha.6 uses that property-preserving root operation for multi-paragraph
+complete-map `SetInlineFormatAction` set/remove, including exact selection,
+state, history, and V3 replay behavior.
 Wasm ABI 4, Profile Bootstrap V2, schema fingerprints, Document V2, and all V3
 record format numbers remain unchanged. Local Log V3, arbitrary attribute/CSS
 mapping, rich paste, and native typed toolbar controls remain unsupported.
@@ -256,9 +259,9 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- typed element or block properties and identities, cross-paragraph
-  `SetInlineFormatAction`, arbitrary structural schema kinds, general property-
-  driven rendering or native typed toolbar controls, custom extension actions
+- typed element or block properties and identities, arbitrary structural schema
+  kinds, general property-driven rendering or native typed toolbar controls,
+  custom extension actions
   or inputs, callback planners, cross-extension toggle targets, shared toggle
   routes, and fallback toggle routing;
 - serialization, scalar exposure, or cross-compilation equality for
@@ -1727,13 +1730,30 @@ action or intent.
 `Send` and `Sync` make values thread-safe; they do not make parallel editor
 histories linear.
 
-The registration-owned `SetInlineFormatAction` remains deliberately narrower
-than the property-free toggle action. It can replace/remove its complete typed
-format instance at a collapsed caret or over selected text in one paragraph.
-Alpha.5 does not enable a cross-paragraph set/remove: that range remains
-disabled as `breditor/cross-paragraph-inline-format-unsupported` even though
-`RootTextReplace` can now preserve typed peer formats. A future contract must
-define the multi-paragraph value semantics explicitly.
+The registration-owned `SetInlineFormatAction` replaces or removes one complete
+typed format instance. At a collapsed caret it changes the effective pending
+typing set without a document operation. A non-collapsed same-paragraph range
+uses one `TextSplice`. In alpha.6 a range spanning multiple direct-root
+paragraphs uses one same-paragraph-count `RootTextReplace`: `Set` installs the
+exact requested instance on every selected character and `Remove` strips the
+target kind regardless of old properties. Unselected edge text, empty middle
+paragraphs, and every peer format remain exact. This is complete-map
+replacement, not a property patch.
+
+Cross-paragraph activation scans selected text globally. Set is active when all
+selected characters already have the exact requested instance, mixed when only
+some do, and inactive when none do. The generated fixed-remove presence query
+reports all-present as active, partial presence as mixed, and absent as
+inactive. A structural-only range containing no text is disabled as
+`breditor/no-selected-text` and reports inactive; empty paragraphs surrounded
+by selected text contribute no sample.
+
+The root-replacement plan explicitly rebuilds anchor and focus against the
+canonical result fragments, retaining range direction and endpoint affinities.
+It clears pending formats and records one independent history event. Planning
+preflights the one-operation budget and the complete format, leaf/aggregate
+text, tree, property-value, and property-string result limits. An exact set or
+absent remove is `breditor/inline-format-unchanged` and publishes no operation.
 
 Five base actions take no input. Inline and plain-text insertion each accept an
 independently versioned typed input:
@@ -1962,6 +1982,15 @@ checkpoint whose retained undo or redo branch contains a typed
 validator rejects that operation. This prerelease downgrade caveat is not
 resolved by the shared `formatVersion: 3`, and no decoder drops or converts the
 unsupported entry.
+
+Alpha.6 also changes no V3 record or nested generation. Its action-generated
+typed `RootTextReplace` is the operation alpha.5 already validates, applies,
+inverts, and persists. Session Checkpoint V3 therefore retains that recipe on
+both sides of the history cursor and replay-proves undo/redo without rerunning
+the action. Alpha.6 reads conforming alpha.5 checkpoints, and alpha.5 can read
+and replay conforming alpha.6 checkpoints containing cross-paragraph set/remove
+history. This forward compatibility is specific to the unchanged operation
+contract; it does not make arbitrary prerelease downgrade generally safe.
 
 All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range

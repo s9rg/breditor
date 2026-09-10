@@ -4,7 +4,7 @@
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format for the `0.3.0-alpha.5` path.
+`example/link` format for the `0.3.0-alpha.6` path.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -23,6 +23,10 @@ Alpha.5 changes none of that package data; it proves the combined Link and
 Highlight values through Enter, multiline plain-text paste, paragraph-boundary
 join, undo, reload with both history branches, and redo. Paste inherits target
 formatting only and never reconstructs source Link properties.
+Alpha.6 changes no reference data. The same application-owned Link form can set
+or remove the complete Link instance across a multi-paragraph selection while
+Highlight peers, empty paragraphs, edge text, undo/redo, and Session V3 reload
+remain exact.
 
 ## Use
 
@@ -32,9 +36,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.5 \
-  @breditor/wasm@0.3.0-alpha.5 \
-  @breditor/reference-highlight@0.3.0-alpha.5
+npm install @breditor/browser@0.3.0-alpha.6 \
+  @breditor/wasm@0.3.0-alpha.6 \
+  @breditor/reference-highlight@0.3.0-alpha.6
 ```
 
 ```ts

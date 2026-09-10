@@ -709,6 +709,27 @@
 //! values instead of discarding them. Cross-paragraph typed set/remove, rich
 //! paste, arbitrary block structure, Local Log V3, and general property-driven
 //! presentation remain outside this checkpoint.
+//!
+//! The unpublished `0.3.0-alpha.6` source checkpoint uses that existing typed
+//! structural contract for registration-owned cross-paragraph set/remove.
+//! [`action::builtins::SetInlineFormatAction`] replaces the target format's
+//! complete property map on every selected character or removes that target
+//! kind, while preserving unselected edge text, empty middle paragraphs, and
+//! all peer formats. It emits one same-paragraph-count
+//! [`operation::RootTextReplace`], explicitly rebuilds the directional
+//! selection with its endpoint affinities, clears pending formats, and records
+//! one exact undo unit. Structural-only ranges remain disabled, and exact
+//! set/absent-remove results remain operation-free no-ops.
+//!
+//! Planning checks operation, format, text-leaf, tree, aggregate-text,
+//! property-value, and property-string budgets before publication. Generated
+//! fixed-remove action state reports all-present, partial, absent, and no-text
+//! selections as active, mixed, inactive, and unavailable/inactive
+//! respectively. Session Checkpoint V3 retains and replay-proves the resulting
+//! typed root replacement on both history branches. Alpha.5 can restore that
+//! alpha.6 history because it already implements the same V3 operation recipe;
+//! replay does not rerun the action. Wasm ABI 4, Profile Bootstrap V2, schema
+//! fingerprints, Document V2, and all V3 record numbers remain unchanged.
 
 pub mod action;
 pub mod codec;

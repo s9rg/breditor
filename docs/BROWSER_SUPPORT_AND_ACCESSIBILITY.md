@@ -1,7 +1,7 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.5 source checkpoint retains
+accessibility gate passed; the unpublished alpha.6 source checkpoint retains
 the combined Highlight + Link Chromium gates and adds the typed structural
 history/reload proof described below
 
@@ -59,6 +59,12 @@ through Enter, multiline plain-text paste, paragraph-boundary Backspace, undo,
 autosave/reload with an intact redo branch, and redo. The assertion exercises
 the ordinary public event, toolbar, projection, and persistence paths; it does
 not inject a browser-side operation or restore from retained DOM.
+
+Alpha.6 adds a multi-paragraph Link Apply/Remove gate through the same React-
+owned form and Chromium demo. It verifies Highlight peers and unselected edge
+text, generated mixed/presence state, undo/redo, and reload without adding a
+native toolbar control or broadening the desktop, synthetic-IME, mobile, or
+assistive-technology claim.
 
 Run the gate after generating the three public packages:
 

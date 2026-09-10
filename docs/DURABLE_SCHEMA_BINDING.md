@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.5` checkpoint. Wasm ABI 4 and the browser explicitly select
+`0.3.0-alpha.6` checkpoint. Wasm ABI 4 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -190,6 +190,15 @@ V3 checkpoint whose retained history contains one of those typed structural
 operations. The equal `formatVersion` is not a supported prerelease downgrade,
 and no reader drops, converts, or retries that history.
 
+Alpha.6 likewise changes no binding, bootstrap, document, operation, state,
+transaction, commit, checkpoint, or IndexedDB outer-record generation. Its
+cross-paragraph typed set/remove action records one property-preserving
+`RootTextReplace`, exactly the V3 recipe alpha.5 already admits. Session
+Checkpoint V3 retains it on both undo and redo branches and reconstructs the
+inverse by replay rather than serializing action identity or input. Alpha.6
+restores alpha.5 checkpoints, and alpha.5 can restore and replay conforming
+alpha.6 cross-set history because no operation meaning changed.
+
 V2 storage support stops at checked prepare, encode, decode, and selected-value
 normalization. It does not enter the existing `Prepared` -> `Uncertain`
 publication-attempt lifecycle, whose public types expose V1 frame projections.
@@ -255,8 +264,9 @@ helper from being mistaken for persistence migration.
   property-free toggle, plus paragraph-boundary join paths. The older base-
   text capability remains property-free as the sentinel for frozen V1/V2
   operation codecs and the existing local-splice incremental proof.
-  Cross-paragraph `SetInlineFormatAction` remains disabled as
-  `breditor/cross-paragraph-inline-format-unsupported`.
+  Alpha.6 uses the same typed `RootTextReplace` for cross-paragraph complete-map
+  `SetInlineFormatAction`, preserving peer formats, unselected edge fragments,
+  empty middle paragraphs, directional selection, and one exact history entry.
 - A manifest-owned toggle bundle contains one same-manifest format kind plus
   action, no-input intent, binding, and action-state IDs. Compilation generates
   the existing Rust toggle action, a tracked intent, one priority-0 blocking

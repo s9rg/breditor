@@ -2,7 +2,7 @@
 
 Status: supported by the public `0.1.0` runtime for the closed base schema,
 extended by the supported `0.2.0` compiled-profile browser path, and extended
-again by the unpublished `0.3.0-alpha.5` exact `safeLinkV1` and typed target-
+again by the unpublished `0.3.0-alpha.6` exact `safeLinkV1` and typed target-
 context insertion paths; direct controller construction remains an advanced
 integration surface
 
@@ -177,6 +177,11 @@ property owner; an interior empty fragment between consecutive newlines remains
 an empty output paragraph. The complete derived result is checked against the
 property budgets. This is inheritance from the target caret or selection
 context, not preservation of any source wrapper or property.
+
+Alpha.6 cross-paragraph typed set/remove does not change this clipboard rule.
+An application may format the resulting multi-paragraph semantic selection in
+a later explicit typed-intent command, but paste itself still carries only the
+plain string and reconstructs no source property instance.
 
 HTML admission limits are 2 MiB of source in both UTF-16 and UTF-8, 65,536
 inspected nodes, legacy depth three, profiled depth 34

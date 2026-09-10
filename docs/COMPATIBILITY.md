@@ -1,7 +1,7 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.5` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.6` source checkpoint retains the explicitly
 selected ABI-4 typed-profile, browser command, Session-V3, and closed safe-Link
 paths while enabling property-preserving structural paragraph edits described
 below
@@ -396,16 +396,41 @@ its retained undo or redo history contains a typed structural operation. The
 shared envelope number does not authorize an older prerelease to discard or
 reinterpret that history.
 
+## `0.3.0-alpha.6` cross-paragraph typed setter
+
+Alpha.6 extends the existing registration-owned `SetInlineFormatAction` across
+selected text in multiple direct-root paragraphs. Set replaces the target
+format's complete property map on every selected character; remove strips only
+that target kind. One guarded, same-paragraph-count `RootTextReplace` preserves
+unselected edges, empty middle paragraphs, paragraph boundaries, and all peer
+formats. Structural-only ranges are disabled as `breditor/no-selected-text`;
+exact set and absent-remove no-ops remain operation-free.
+
+The action globally derives inactive/active/mixed state, while the generated
+fixed-remove presence query reports none/all/partial target presence as
+inactive/active/mixed. Planning checks operation, format, text leaf and total,
+child/node, property-value, and property-string budgets before publication.
+Successful plans explicitly rebuild the directional selection and affinities,
+clear pending formats, and record one exact history entry. Session Checkpoint
+V3 retains the typed root replacement on both history branches and replay-
+proves undo/redo without rerunning the action.
+
+Alpha.6 changes no Wasm ABI 4 method, Profile Bootstrap V2 shape, descriptor or
+projection shape, schema fingerprint, Document V2 byte contract, or V3 record
+number. Alpha.6 restores conforming alpha.5 checkpoints. Alpha.5 also restores
+and replays conforming alpha.6 cross-set history because it already implements
+the identical property-aware `RootTextReplace` V3 contract.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 and alpha.5 source
+ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
 pairs report ABI `4`. Startup checks both the exact ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.5 source configuration is tested as an exactly matching browser,
+The alpha.6 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -421,7 +446,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, and alpha.5:
+form remains supported throughout `0.1.x`, `0.2.x`, and alpha.6:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -501,6 +526,13 @@ through Enter, multiline plain-text paste, boundary Backspace, undo, autosave
 reload with the redo branch intact, and restored redo. It remains desktop
 Chromium automation and does not widen the OS-clipboard, IME, mobile, or
 assistive-technology claims.
+
+The alpha.6 Rust gates additionally cover forward/backward multi-paragraph set
+and remove, exact peer and edge preservation, structural-only and no-op cases,
+operation/format/text/tree/property limits, directional selection rebuilding,
+linear undo/redo branching, V3 restoration at both history cursors, and the
+generated all/partial/absent presence state. The existing browser typed-intent
+and demo route exercises the behavior without a new ABI or control protocol.
 
 ## Dependency boundary
 

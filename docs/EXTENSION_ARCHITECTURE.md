@@ -3,9 +3,10 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.5` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.6` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
-operations preserve typed inline-format properties. It does not introduce a
+operations preserve typed inline-format properties, then uses that operation
+contract for cross-paragraph typed set/remove. It does not introduce a
 generic attribute protocol, a native typed toolbar control, or an extensible
 operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
@@ -767,6 +768,34 @@ Highlight-only exports. Its application-owned React form creates exact typed
 set/remove JSON and calls `executeIntentJson()`. The built-in declarative
 toolbar remains restricted to native no-input buttons; the form is an example
 of host UI, not a new toolbar plugin or callback surface.
+
+## `0.3.0-alpha.5` and `.6` typed paragraph formatting
+
+Alpha.5 makes the sealed `ParagraphSplit`, `ParagraphJoin`, and
+`RootTextReplace` operations preserve complete typed format instances and
+lifts the existing structural actions over them. The separate property-free
+base capability remains the V1/V2 codec sentinel. Alpha.6 then uses the same
+property-aware root replacement for the registration-owned setter without
+adding an operation kind, callback, or browser planner.
+
+Across multiple direct-root paragraphs, `SetInlineFormatAction` installs one
+exact complete target instance on every selected character or removes that
+target kind. One same-paragraph-count `RootTextReplace` preserves all peer
+formats, unselected edge fragments, empty middle paragraphs, and paragraph
+boundaries. A structure-only range with no text remains unavailable. The
+action's global activation and the manifest-generated fixed-remove presence
+state report exact all/partial/none truth; no property value is retained in the
+declaration or state catalog.
+
+Planning checks the full derived tree and property delta before publication.
+The result selection is rebuilt against canonical runs with anchor/focus
+direction and affinities intact, pending formats are cleared, and history
+records one independent entry. Undo, redo, and Session Checkpoint V3 replay use
+the committed root operation and never invoke extension UI or reevaluate the
+action. Alpha.5 can restore this alpha.6 history because it already implements
+that exact V3 operation contract. Wasm ABI 4, Profile Bootstrap V2, descriptor
+and projection shapes, schema fingerprints, Document V2, and V3 format numbers
+are unchanged.
 
 ## Deferred beyond 0.2.0
 

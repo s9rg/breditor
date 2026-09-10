@@ -1,7 +1,7 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.5` typed paragraph-structure checkpoint
+`0.3.0-alpha.6` cross-paragraph typed-formatting checkpoint
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
@@ -184,6 +184,31 @@ ABI signature, durable-format generation, or package file class; all three
 package tarballs still pass isolated import, type-check, production-bundle, and
 real-Chromium initialization from local artifacts.
 
+The `0.3.0-alpha.6` checkpoint also keeps every alpha.5 ceiling. Its final
+clean, reproducible build and lifecycle-disabled package gate measured:
+
+- browser-package JavaScript: 931,778 / 950,000 bytes;
+- browser declarations: 240,208 / 245,000 bytes;
+- Highlight + Link reference JavaScript: 25,391 / 28,000 bytes;
+- Highlight + Link reference declarations: 21,764 / 24,000 bytes;
+- generated Wasm: 1,574,285 / 1,600,000 bytes;
+- generated Wasm JavaScript glue: 51,502 / 100,000 bytes;
+- reference-application JavaScript: 783,144 / 800,000 raw bytes and
+  206,253 / 210,000 gzip bytes;
+- reference-application Wasm: 1,574,285 / 1,600,000 raw bytes and
+  438,793 / 450,000 gzip bytes;
+- packed browser package: 229,147 / 235,000 bytes;
+- packed Highlight + Link reference package: 14,839 / 20,000 bytes; and
+- packed Wasm package: 508,441 / 520,000 bytes.
+
+The measured executable growth is confined to the reviewed Rust
+cross-paragraph property replacement and its exact history path. Documentation
+and release-version changes account for the remaining tarball movement.
+Alpha.6 adds no browser module, Wasm ABI signature, schema-fingerprint input,
+durable-format generation, or package file class. The clean reference consumer
+still initializes both the legacy Highlight profile and the combined typed
+Highlight + Link profile from local tarballs in Chromium.
+
 These are regression ceilings, not claims that every consumer downloads every
 unbundled browser module. They include measured headroom for the supported
 content-egress boundary without hiding growth by raising the bundler warning.
@@ -213,7 +238,7 @@ Cargo-home, or target prefixes from entering the module. Canonical relative
 paths such as `cargo/registry/...` remain intentionally available for useful
 panic locations. This reviewed recipe preserves the native throughput policy.
 It kept ABI 3 within the historical `0.2.0` ceilings and keeps ABI 4 within the
-current alpha.5 ceilings listed above.
+current alpha.6 ceilings listed above.
 
 The current React example deliberately initializes the editor eagerly and
 disables Vite's module-preload polyfill because its production build emits one

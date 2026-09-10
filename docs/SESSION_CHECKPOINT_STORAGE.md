@@ -3,7 +3,7 @@
 Status: supported by the optional public `0.1.0` autosave path; the exact
 `"current"` V1 record remains the stable `0.1.x` profile. Version `0.2.0`
 retains the explicit profile-bound V2 outer record and scoped slots without
-changing the legacy bytes. The unpublished `0.3.0-alpha.5` Bootstrap-V2 path
+changing the legacy bytes. The unpublished `0.3.0-alpha.6` Bootstrap-V2 path
 stores Session Checkpoint V3 in that unchanged outer-V2 record. Direct store/
 autosave assembly remains an advanced integration surface.
 
@@ -191,6 +191,12 @@ undo, so autosave/reload can reproduce the exact typed state and later redo it.
 Alpha.5 restores conforming alpha.4 checkpoints. An alpha.4 reader rejects an
 alpha.5 V3 checkpoint whose retained undo or redo history contains a typed
 structural operation, and it must not repair, replace, or retry that record.
+
+Alpha.6 stores cross-paragraph set/remove as the same typed
+`RootTextReplace` V3 recipe alpha.5 already supports. Autosave after the action
+or after undo retains the exact cursor and either history branch; restore
+replay-proves the operation before publication. Alpha.5 can restore this
+alpha.6 history because no checkpoint field or operation meaning changed.
 
 ## Atomic save
 

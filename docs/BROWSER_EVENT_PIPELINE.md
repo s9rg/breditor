@@ -3,7 +3,7 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema,
 retained by the supported `0.2.0` compiled-profile and intent path, and
 strengthened in `0.3.0-alpha.3` by Rust-atomic close-before command execution;
-the `0.3.0-alpha.5` typed structural widening uses the same event protocol;
+the `0.3.0-alpha.6` typed multi-paragraph setter uses the same event protocol;
 direct event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
@@ -129,6 +129,13 @@ from native-event translation and remains same-paragraph through the strict
 programmatic typed-intent path. Clipboard paste still supplies plain text only;
 destination context can contribute a typed format to inserted text, but source
 formatting never crosses the command request.
+
+Alpha.6 changes no native-event translation. An application can submit the
+existing strict typed set/remove intent while a multi-paragraph semantic
+selection is retained. That request enters the same immediate queue and Rust
+returns one guarded root-replacement result; the browser neither expands it
+into per-paragraph commands nor recreates activation, limits, or selection
+mapping.
 
 ## Selection and target ranges
 

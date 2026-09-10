@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the alpha.5 typed-profile source checkpoint.
+`0.2.0` extension surface, and the alpha.6 typed-profile source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -69,6 +69,15 @@ properties. Undo/redo and Session Checkpoint V3 reload replay those exact
 operations. Paste still strips source formatting, and typed set/remove remains
 same-paragraph application UI.
 
+The unpublished `0.3.0-alpha.6` source package routes that existing typed
+set/remove intent across a multi-paragraph semantic selection. Rust emits one
+guarded `RootTextReplace`, preserves empty paragraphs, unselected edge text and
+peer formats, rebuilds direction/affinities, and owns one undo entry plus V3
+replay on either history branch. Structural-only ranges remain unavailable and
+exact no-ops remain operation-free. No browser API, Wasm ABI 4 method,
+Bootstrap V2 shape, projection shape, fingerprint, Document V2, or V3 format
+changes.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -82,7 +91,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.5 @breditor/wasm@0.3.0-alpha.5
+npm install @breditor/browser@0.3.0-alpha.6 @breditor/wasm@0.3.0-alpha.6
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -727,9 +736,9 @@ backpressure; terminal adapter loss pauses autosave. See
   URL-policy, or CSS extension mechanism. Rust performs scalar validation, not
   URL semantic validation. Arbitrary nodes, entities, nested blocks, callbacks,
   and extension-owned DOM renderers remain absent.
-- Structural typed edits support only the sealed direct-root paragraph/text
-  grammar. Cross-paragraph `SetInlineFormatAction` remains closed with
-  `breditor/cross-paragraph-inline-format-unsupported`.
+- Structural typed edits and cross-paragraph `SetInlineFormatAction` support
+  only the sealed direct-root paragraph/text grammar. Set replaces a complete
+  property map; there is no patch operation or arbitrary block support.
 - History is local and linear; collaboration, CRDT/OT rebasing, remote
   selections, and selective undo are absent.
 - Public content egress is mode-selected Document V1/V2 or semantic plain text.

@@ -24,6 +24,11 @@ the selected Link's property values, so the form is an explicit replacement
 input rather than a property inspector. The browser-owned `safeLinkV1` renderer
 activates only absolute, credential-free HTTP(S) URLs; other persisted values
 remain visible as inert text-bearing anchors.
+In the alpha.6 source checkpoint the same form can apply or remove the complete
+Link instance across selected text in multiple paragraphs. Rust preserves
+Highlight peers, empty middle paragraphs, unselected edge text, directional
+selection, and one exact undo/redo unit; the form still owns only typed input
+and receives no operation-planning authority.
 Startup failures expose only stable, payload-redacted error codes and can be
 retried in place. A paused autosave exposes the same safe diagnostics and the
 public persistence retry operation.
@@ -76,7 +81,7 @@ adapts its lifecycle and external-store subscription.
 Browser or process termination can stop JavaScript without waiting for React
 cleanup, so no component cleanup can guarantee a final write on tab close,
 reload, a crash, or power loss. For a route change, document switch, or other
-navigation your application controls, flush *before* changing the React tree:
+navigation your application controls, flush _before_ changing the React tree:
 
 ```tsx
 import { useRef } from "react";

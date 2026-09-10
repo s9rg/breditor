@@ -1,9 +1,9 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.5` source checkpoint makes the three sealed
-paragraph-structure operations preserve typed inline-format properties and
-lifts the corresponding built-in editing paths through the existing Wasm ABI 4
-and browser runtime. Explicit Bootstrap V2 still selects property-aware
+Status: the `0.3.0-alpha.6` source checkpoint adds cross-paragraph complete-map
+typed set/remove over the property-preserving paragraph structure completed in
+alpha.5. The existing Wasm ABI 4 and browser typed-intent path expose it without
+a new method. Explicit Bootstrap V2 still selects property-aware
 Session/State/Commit V3; V1 and V2 paths remain separately available. The
 packages remain unpublished.
 
@@ -16,7 +16,9 @@ without claiming that every structural edit is complete. Alpha.4 proves one
 safe Link rendering/copy slice without generalizing it into arbitrary DOM
 attributes or a native typed toolbar protocol. Alpha.5 completes typed
 property preservation for Breditor's existing direct-root paragraph operation
-algebra without broadening that algebra into a general block model.
+algebra without broadening that algebra into a general block model. Alpha.6
+defines the multi-paragraph value, state, selection, history, and replay
+semantics for the existing registration-owned typed setter.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -401,6 +403,45 @@ though its envelope version is still 3. Exact package pairing and one-way
 downgrade caution remain required; no reader sniffs, rewrites, or drops the
 unsupported history.
 
+## Alpha.6 cross-paragraph typed set/remove
+
+Alpha.6 extends `SetInlineFormatAction` across a non-collapsed selection
+spanning two or more paragraphs in the compiler-minted base-text structure.
+`Set` replaces the target format's complete property map on every selected
+character; `Remove` strips that format kind regardless of prior properties.
+Unselected prefix and suffix text, paragraph count and boundaries, empty middle
+paragraphs, and every non-target typed or property-free format remain exact.
+
+The plan contains one guarded, same-paragraph-count `RootTextReplace`. A range
+that crosses paragraph structure but selects no characters is disabled as
+`breditor/no-selected-text`. If every selected character already has the exact
+requested instance, or none has the format being removed, the action stays
+disabled as `breditor/inline-format-unchanged` and publishes no operation.
+
+For a requested set, activation is active only when all selected characters
+already carry that exact instance, mixed when only some do, and inactive when
+none do. The manifest-generated presence state uses its fixed remove query:
+all-present is active, partial presence is mixed, absent is inactive, and a
+structural-only range is unavailable/inactive. Empty paragraphs contribute no
+format owner and no activation sample.
+
+Canonical folding can split or merge text leaves and property owners, so
+planning validates the requested format and complete derived result against
+the transaction operation ceiling, formats per leaf, leaf and aggregate text,
+children and nodes, property values, and property-string bytes. A successful
+plan explicitly rebuilds anchor and focus against the result fragments,
+preserves direction and endpoint affinities, clears pending formats, and
+records one independent history entry. Undo/redo restores the exact state, and
+a new edit after undo clears the redo suffix.
+
+Session Checkpoint V3 stores the resulting typed `RootTextReplace` on either
+side of its history cursor and replay-proves it without reevaluating the action.
+Alpha.6 restores conforming alpha.5 checkpoints. Alpha.5 also restores and
+replays alpha.6 checkpoints containing this action because its V3 codec and
+reducer already understand the identical property-preserving root replacement.
+Wasm ABI 4, Profile Bootstrap V2, descriptor/projection shapes, the schema
+fingerprint, Document V2, and every V3 record number remain exact.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -414,7 +455,8 @@ declarations, property descriptors, property-bearing projections, strict typed
 action/intent JSON, explicit V3 engine factories, browser durable validation,
 IndexedDB/autosave, and programmatic `executeIntentJson()` now exercise the
 Rust typed path. Alpha.5 uses those same paths for typed structural operations;
-it adds no Wasm method, browser protocol, or durable generation.
+alpha.6 routes cross-paragraph typed set/remove through them. Neither adds a
+Wasm method, browser protocol, or durable generation.
 
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
@@ -442,8 +484,6 @@ CSS grammar and other property presentations remain undefined.
   document/paragraph/text grammar. Element or paragraph properties, entity
   identities, nested or heterogeneous blocks, and arbitrary structural schemas
   still require separately specified operations.
-- `SetInlineFormatAction` remains same-paragraph only; cross-paragraph typed
-  set/remove is not inferred from the now property-aware root replacement.
 - No V3 local-log/storage family exists.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
@@ -465,7 +505,6 @@ paste, or bypass the intent router.
 
 A later durable checkpoint must version the local-log graph around Session
 Checkpoint V3 rather than placing V3 nested bytes inside a V1/V2 envelope. A
-future formatting checkpoint must define cross-paragraph typed set/remove
-semantics explicitly rather than reusing the property-free toggle rule. Link
-URL policy is explicit browser policy; it is not implied by the scalar property
-contract.
+future formatting checkpoint may add a property patch language, but it must not
+reinterpret alpha.6 complete-map replacement. Link URL policy is explicit
+browser policy; it is not implied by the scalar property contract.
