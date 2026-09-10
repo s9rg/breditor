@@ -369,7 +369,7 @@ pub(super) fn compile_base_text_profile(
     compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
 }
 
-pub(super) fn supports_text_splice_operations(definition: &CompiledSchemaDefinition) -> bool {
+fn supports_base_text_structure(definition: &CompiledSchemaDefinition) -> bool {
     let base = base_spec();
     if definition.root_kind != base.root_kind
         || definition.paragraph_kind != base.paragraph_kind
@@ -399,8 +399,18 @@ pub(super) fn supports_text_splice_operations(definition: &CompiledSchemaDefinit
     strong.revision == PersistedTypeRevision::one() && strong.property_contract.is_none()
 }
 
+pub(super) fn supports_text_splice_operations(definition: &CompiledSchemaDefinition) -> bool {
+    supports_base_text_structure(definition)
+}
+
+pub(super) fn supports_paragraph_structure_operations(
+    definition: &CompiledSchemaDefinition,
+) -> bool {
+    supports_base_text_structure(definition)
+}
+
 pub(super) fn supports_base_text_operations(definition: &CompiledSchemaDefinition) -> bool {
-    supports_text_splice_operations(definition)
+    supports_base_text_structure(definition)
         && definition.inline_formats.values().all(|format| format.property_contract.is_none())
 }
 
@@ -1349,6 +1359,7 @@ mod tests {
         let base = super::compile_breditor_base();
         assert!(base.is_exact_breditor_base());
         assert!(base.supports_text_splice_operations());
+        assert!(base.supports_paragraph_structure_operations());
         assert!(base.supports_base_text_operations());
 
         let owner = external_owner("example/capability-test", 1)?;
@@ -1389,7 +1400,7 @@ mod tests {
         changed_child_kind.elements[1].children.kind =
             ChildKind::Element(QualifiedName::from_known_static("breditor/paragraph"));
 
-        for (label, spec, supports_splice) in [
+        for (label, spec, supports_structural_text) in [
             ("extra element", extra_element, false),
             ("property-bearing added format", property_format, true),
             ("strong revision", strong_revision, false),
@@ -1405,8 +1416,13 @@ mod tests {
             assert!(!schema.is_exact_breditor_base(), "{label} remained exact base");
             assert_eq!(
                 schema.supports_text_splice_operations(),
-                supports_splice,
+                supports_structural_text,
                 "{label} received the wrong paragraph-local splice capability"
+            );
+            assert_eq!(
+                schema.supports_paragraph_structure_operations(),
+                supports_structural_text,
+                "{label} received the wrong paragraph-structure capability"
             );
             assert!(
                 !schema.supports_base_text_operations(),

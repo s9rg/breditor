@@ -26,20 +26,23 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.4` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.5` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 4 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
 browser's V3 restore/autosave path preserve property values. The existing
 exact-base V1 and Bootstrap-V1/Session-V2 paths remain separately available.
-Alpha.4 adds no Rust data contract or Wasm method. It corrects the generic
+Alpha.4 added no Rust data contract or Wasm method. It corrected the generic
 toggle capability gate so collapsed and same-paragraph property-free toggles
 use the already defined property-preserving `TextSplice` path; cross-paragraph
-toggle remains structural and closed. Its browser-owned `safeLinkV1` policy is
-the sole property-to-DOM mapping, and its reference Link form calls the
-existing typed intent boundary. Typed structural paragraph split/join/root
-replace, Local Log V3, arbitrary attribute/CSS mapping, rich paste, and native
-typed toolbar controls remain unsupported.
+toggle remained structural and closed at that checkpoint. Its browser-owned
+`safeLinkV1` policy is the sole property-to-DOM mapping, and its reference Link
+form calls the existing typed intent boundary. Alpha.5 makes the existing
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` records validate and
+preserve typed inline-format instances and lifts their built-in action paths.
+Wasm ABI 4, Profile Bootstrap V2, schema fingerprints, Document V2, and all V3
+record format numbers remain unchanged. Local Log V3, arbitrary attribute/CSS
+mapping, rich paste, and native typed toolbar controls remain unsupported.
 Document format: `breditor/document`, explicit versions `1` and `2`
 Operation format: `breditor/operation`, explicit versions `1`, `2`, and `3`
 Transaction-request format: `breditor/transaction-request`, explicit versions
@@ -84,9 +87,9 @@ The implemented Rust slice owns:
   selections;
 - `EditorContext`, `EditorState`, lineage-local snapshots, and pending typing
   formats;
-- paragraph-local `TextSplice`, direct-root `ParagraphSplit`/`ParagraphJoin`,
-  and guarded root-text range replacement operations with closed exact content
-  inverses;
+- property-preserving paragraph-local `TextSplice`, direct-root
+  `ParagraphSplit`/`ParagraphJoin`, and guarded root-text range replacement
+  operations with closed exact content inverses;
 - property-preserving Operation, Editor State, Transaction Request, Commit,
   and Session Checkpoint V3 codecs with bounded preflight and replay, while
   retaining Document V2 and leaving the local-log/storage graph at V1/V2;
@@ -253,8 +256,9 @@ The following remain deliberately unimplemented:
 - structural operations beyond direct-root base-paragraph text structure,
   including arbitrary block kinds, list changes, metadata conflict rules, and
   node movement;
-- property-aware mutation, pending typing, Wasm/bootstrap, browser rendering,
-  toolbar controls, arbitrary structural schema kinds, custom extension actions
+- typed element or block properties and identities, cross-paragraph
+  `SetInlineFormatAction`, arbitrary structural schema kinds, general property-
+  driven rendering or native typed toolbar controls, custom extension actions
   or inputs, callback planners, cross-extension toggle targets, shared toggle
   routes, and fallback toggle routing;
 - serialization, scalar exposure, or cross-compilation equality for
@@ -1443,8 +1447,10 @@ it neither registers an action nor grants ownership.
 `CompiledSchema::inline_format_property_contract` returns the immutable typed
 contract when present. Property-free schemas retain exact compiler-contract
 version-1 bytes; any typed format selects compiler-contract version 2.
-The private compiler-minted base-text capability, rather than matching names
-alone, gates the primitive edit paths.
+Private compiler-minted text-splice and paragraph-structure capabilities,
+rather than matching names alone, gate the property-aware primitive edit
+paths. The older property-free base-text capability remains a separate legacy
+codec and incremental-proof sentinel.
 
 These non-base schemas use Document V2. The explicitly selected Operation,
 Editor State, Transaction Request, Commit, and Session Checkpoint V3 families
@@ -1465,15 +1471,18 @@ their historical meanings.
 Alpha.2 makes `TextSplice` property-aware: capture, validation, application,
 inverse generation, relocation, undo/redo, and V3 replay retain complete typed
 format instances. Same-paragraph set, insert/type-over, selection deletion,
-and backward/forward grapheme deletion use this path. `ParagraphSplit`,
-`ParagraphJoin`, and `RootTextReplace` remain property-free and fail closed for
-typed schemas, leaving a rejected transaction's base state unchanged.
+and backward/forward grapheme deletion use this path. Alpha.5 applies the same
+preservation rule to `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace`,
+opening the sealed structural action paths described below while leaving a
+rejected transaction's base state unchanged.
 
 The frozen V1/V2 operation payload generation cannot represent properties. It
 therefore rejects every actual operation under any typed-contract schema—even
 an optional-only contract with an empty property map—instead of silently
 stripping data. Callers explicitly select V3 for property-bearing operations;
-there is no automatic detection or conversion.
+there is no automatic detection or conversion. The compiler's older base-text
+capability remains a property-free V1/V2 sentinel; the separate paragraph-
+structure capability is the one allowed to admit typed formats.
 
 `TextSplice` replaces one half-open UTF-16 range inside one paragraph. Its range
 is paragraph-local rather than tied to unstable text-leaf paths, so one splice
@@ -1505,13 +1514,14 @@ the transaction operation cap, and all final document limits.
 ## Structural paragraph operation contract
 
 `ParagraphSplit` and `ParagraphJoin` are the first structural primitives. They
-support only property-free paragraphs that are direct children of a compiler-
-minted base-text root. This includes exact `breditor/base@1` and the sealed
-profiles produced by `CompiledSchema::try_compile_base_text_profile`; it does
-not include an arbitrary schema that happens to reuse the same names. That
-restriction is explicit: copying or reconciling entity identities, properties,
-and arbitrary block metadata has not been specified, so other schemas fail
-instead of inheriting accidental behavior.
+support paragraphs that are direct children of a compiler-minted base-text
+root, including complete typed inline-format instances admitted by the active
+schema. This includes exact `breditor/base@1` and the sealed profiles produced
+by `CompiledSchema::try_compile_base_text_profile`; it does not include an
+arbitrary schema that happens to reuse the same names. That restriction is
+explicit: copying or reconciling element/entity identities, element
+properties, and arbitrary block metadata has not been specified, so other
+schemas fail instead of inheriting accidental behavior.
 
 `ParagraphSplit` carries a direct-root paragraph path, one aggregate UTF-16
 scalar boundary, and the complete canonical paragraph expected at that path. It
@@ -1525,6 +1535,15 @@ guarded by the exact joined fragment. Split/join therefore restore exact documen
 content and cached summaries even when a seam was represented by one merged text
 leaf. Whole-paragraph guards also make later operations in a multi-operation
 transaction fail deterministically against unexpected intermediates.
+
+Splitting inside a property-bearing run copies that complete format instance
+onto both non-empty halves, making each half a distinct property owner. Joining
+preserves both guarded fragments and canonicalizes only an exactly equal seam.
+Validation checks every source and derived format instance against the compiled
+contract, and checks aggregate property-value and property-string-byte totals
+across the complete two-paragraph source or result slice. A structurally valid
+split can therefore be rejected when duplicated properties exceed the active
+document limits.
 
 `RootTextReplace` is the general guarded text-structure primitive for a range
 whose endpoints are aggregate UTF-16 scalar boundaries in direct-root base
@@ -1545,6 +1564,12 @@ Same-paragraph source ranges are allowed because the inverse of a
 cross-paragraph collapse must insert several paragraphs back into one result
 paragraph.
 
+Both complete `RootTextReplace` slices are independently checked for canonical
+runs, compiled property contracts, property-value count, and aggregate
+property-string bytes before application. The derived final document is then
+authoritatively validated. This prevents a replacement vector from passing
+per-fragment checks while exceeding the document-wide ceiling in aggregate.
+
 Its inverse is another `RootTextReplace`. The inverse guards every complete
 generated result paragraph, selects exactly the inserted replacement slice, and
 replaces it with the removed first tail, complete middle paragraphs, and last
@@ -1562,11 +1587,13 @@ tree cannot fail merely because a temporary representation exceeded a limit.
 Candidate limit/schema-rule failures carry the validator's unchanged
 `ValidationReport`; schema identity or unsupported-schema failures remain
 distinct typed errors. The transaction stays atomic in every case. These
-operations intentionally support only the compiler-minted base-text capability.
+operations intentionally support only the compiler-minted paragraph-structure
+capability.
 A schema with block properties, entity identities, different role kinds,
 different child constraints, different canonicality laws, or heterogeneous
 block shells needs an explicit operation policy rather than silently inheriting
-this contract. Property-free extension format sets are preserved exactly.
+this contract. Property-free and property-bearing extension format instances
+are preserved exactly within the admitted paragraph structure.
 
 ## Transactions, relocation, and commits
 
@@ -1700,6 +1727,14 @@ action or intent.
 `Send` and `Sync` make values thread-safe; they do not make parallel editor
 histories linear.
 
+The registration-owned `SetInlineFormatAction` remains deliberately narrower
+than the property-free toggle action. It can replace/remove its complete typed
+format instance at a collapsed caret or over selected text in one paragraph.
+Alpha.5 does not enable a cross-paragraph set/remove: that range remains
+disabled as `breditor/cross-paragraph-inline-format-unsupported` even though
+`RootTextReplace` can now preserve typed peer formats. A future contract must
+define the multi-paragraph value semantics explicitly.
+
 Five base actions take no input. Inline and plain-text insertion each accept an
 independently versioned typed input:
 
@@ -1728,6 +1763,8 @@ from silently widening either version-1 contract.
   emits one exact guarded `TextSplice`; a genuinely cross-paragraph replacement
   emits one guarded `RootTextReplace` with one replacement fragment and
   collapses the selected paragraphs into the surviving start paragraph. Both
+  operation paths preserve every unaffected complete typed format instance;
+  only the inserted text receives the selected pending/context format set. Both
   paths place a collapsed `Affinity::Before` caret at the inserted text's end,
   consume the pending override with `Set(None)`, and request merge group
   `breditor/typing`. Empty input is invalid input, never deletion, a no-op, or a
@@ -1743,7 +1780,13 @@ from silently widening either version-1 contract.
   formats and then focus-affinity context; an extended range uses the first
   spatially selected run, falling back only to the retained left seam, retained
   right seam, then plain text for a structural-only range. One inherited format
-  set applies to every non-empty inserted paragraph. Success consumes pending
+  set, including complete typed properties, applies to every non-empty
+  replacement paragraph. An empty replacement fragment introduces no formatted
+  run itself; retained edge content can still make its result paragraph
+  non-empty, and splitting retained formatted content can increase the complete
+  property-owner count. The source string has no formatting, and the clipboard
+  adapter strips all source HTML formatting and properties before invoking this
+  action. Success consumes pending
   formats, places a before-affinity caret after the final inserted fragment but
   before retained suffix text, and requests `HistoryIntent::Record`. A session
   creates one independent entry only if canonical execution retains a document
@@ -1758,13 +1801,14 @@ from silently widening either version-1 contract.
   replacement fragments: the retained start prefix and end suffix become
   distinct result paragraphs without a delete/split intermediate. This result
   is monotone in paragraph, node, run, leaf, and text-byte limits for every
-  valid source document. A selection containing only the boundary between two
+  valid source document. Under a typed schema, same-paragraph extended Enter
+  also uses one `RootTextReplace`, avoiding an unobservable intermediate that
+  could temporarily duplicate property owners. The historical split/delete or
+  delete/split planner remains only for the property-free path, where each
+  intermediate must fit active limits. A selection containing only the boundary between two
   adjacent paragraphs therefore leaves document content unchanged and becomes
   a selection-only commit; under the current document-operation history law it
-  creates no standalone undo entry. Same-paragraph extended ranges retain the
-  split/delete or delete/split planner so each validated intermediate fits the
-  active limits; if neither route can represent an otherwise valid final tree,
-  it returns the stable intermediate-limit disabled reason. Every path
+  creates no standalone undo entry. Every path
   explicitly places an `Affinity::After` child-boundary caret at the new right
   paragraph start, preserves the exact pending-format option, and requests one
   independent history event.
@@ -1777,6 +1821,8 @@ from silently widening either version-1 contract.
   limits can also disable deletion when joining differently formatted retained
   seams would canonicalize into an oversized leaf or otherwise exceed the
   result bounds.
+  Alpha.5 admits the same plan under a typed schema and preserves complete
+  properties on both retained seams.
 - `breditor/delete-backward` and `breditor/delete-forward` delegate extended
   ranges to that same selection-deletion planner. For a collapsed caret they
   delete the preceding or following default extended grapheme cluster under
@@ -1790,7 +1836,8 @@ from silently widening either version-1 contract.
   after selection applicability is known and before paragraph capture or
   segmentation.
   Collapsed backward/forward edits use `TextSplice` or `ParagraphJoin`, preserve
-  pending formats, place respectively after- and before-affinity carets, and
+  complete typed format instances and pending formats, place respectively
+  after- and before-affinity carets, and
   offer distinct directional history merge groups. If deleting text or joining
   paragraphs forms one grapheme across the removed seam, backward deletion
   snaps its core-produced caret to the cluster end and forward deletion snaps
@@ -1812,7 +1859,8 @@ from silently widening either version-1 contract.
   guarded `RootTextReplace` with one toggled selected fragment per guarded
   paragraph, retaining the first prefix and last suffix and preserving every
   paragraph boundary one-for-one. Both paths preserve text, directional
-  anchor/focus roles, and endpoint affinities; point aliases canonicalize
+  anchor/focus roles, endpoint affinities, and every non-target typed peer
+  format; point aliases canonicalize
   against the result's run topology. Both clear pending formats and record one
   independent history event. A cross-paragraph range containing no selected
   text reports inactive and is disabled as `breditor/no-selected-text`; empty
@@ -1834,6 +1882,9 @@ strong action. Adding one kind preserves every other format in canonical
 qualified-name order; removing it remains possible at the format-count ceiling.
 `ToggleStrongAction` delegates to this implementation while preserving the
 existing `breditor/toggle-strong` identity and strong-specific fault codes.
+Alpha.5 allows the cross-paragraph plan under a typed schema because the
+property-aware `RootTextReplace` preserves every non-target format instance;
+the configured toggle target itself is still required to be property-free.
 
 At alpha.4, a manifest can instead own an `InlineFormatToggleSpecV1` bundle.
 The compiled-profile builder requires its target to be a property-free format
@@ -1899,6 +1950,18 @@ Checkpoint V3. Every private mutation candidate uses the already selected codec
 before publication; the generation never changes implicitly. The alpha.3
 close-before action, intent, undo, and redo methods apply both logical steps to
 one private candidate and publish them only after its final checkpoint encodes.
+
+Alpha.5 changes no V3 record number or nested generation. The existing V3
+operation payload already carries complete properties for every structural
+guard and replacement, so exact forward operations and inverses now survive
+Session Checkpoint V3 encoding, replay, undo, redo, and browser autosave/reload.
+Both history branches and the cursor are retained. Alpha.5 accepts conforming
+alpha.4 V3 checkpoints, but an alpha.4 reader cannot restore an alpha.5
+checkpoint whose retained undo or redo branch contains a typed
+`ParagraphSplit`, `ParagraphJoin`, or `RootTextReplace`; its older semantic
+validator rejects that operation. This prerelease downgrade caveat is not
+resolved by the shared `formatVersion: 3`, and no decoder drops or converts the
+unsupported entry.
 
 All seven base actions support point aliases and non-BMP scalar boundaries; the
 content-changing paths preserve forward/backward range direction where a range
@@ -2359,8 +2422,10 @@ profile document, but:
 - any profile/schema/path the local proof cannot establish falls back to
   full-tree schema and resource validation;
 - every paragraph split/join and root-text replacement performs full-tree
-  validation and carries complete paragraph guards until structural subtree
-  proofs are specified. A wide cross-paragraph
+  validation, validates complete typed format instances, aggregates property
+  budgets across each source/result slice, and carries complete paragraph
+  guards until structural subtree proofs are specified. Splitting one typed
+  run can duplicate its property map into two owners. A wide cross-paragraph
   replacement therefore scans and retains the complete affected paragraph
   slice in both the forward operation and its inverse. Construction and
   application also derive and canonicalize those slices repeatedly to prove
@@ -2678,7 +2743,7 @@ The exact V1 tagged payloads are:
 - `paragraphSplit`: `paragraphPath`, `offset`, and `expected`;
 - `paragraphJoin`: `leftPath`, `expectedLeft`, and `expectedRight`; and
 - `rootTextReplace`: `range: {start: {paragraphPath, offset}, end:
-  {paragraphPath, offset}}`, `expectedParagraphs`, and
+{paragraphPath, offset}}`, `expectedParagraphs`, and
   `replacementParagraphs`.
 
 Every fixed object rejects unknown, missing, duplicate, null-in-place-of-value,
@@ -5148,9 +5213,9 @@ session before publication, so admission time is linear in checkpoint size and
 transient memory includes candidate plus encoded bytes. Semantic projection
 also copies strings through Wasm and is synchronous. At the `0.0.51` checkpoint
 there were no persistent node IDs, custom schema renderers, selection conversion,
-  event adapter, composition owner, clipboard policy, toolbar delivery, IndexedDB
-  I/O, or React runtime. Later sections record the selection, event,
-  composition, and clipboard additions. The full projection contract and limits are in
+event adapter, composition owner, clipboard policy, toolbar delivery, IndexedDB
+I/O, or React runtime. Later sections record the selection, event,
+composition, and clipboard additions. The full projection contract and limits are in
 [`DOM_PROJECTION.md`](DOM_PROJECTION.md).
 
 ## Profile-aware browser AST projection (alpha.6)
@@ -5239,7 +5304,9 @@ plain-text action enters Rust. Source formatting and properties are not
 transported, although the existing target pending/context-format rules still
 apply. There is no rich-fragment round trip. Copy may also exceed the much
 smaller one-action paste budget, so a successful Breditor copy is not promised
-to fit one Breditor paste.
+to fit one Breditor paste. Alpha.5 lets that target-context rule carry a typed
+format such as Link across every non-empty line of a multiline paste; this does
+not preserve any formatting from the clipboard source.
 
 Canonical content export is selected before bytes are inspected. The legacy
 engine emits exact-base Document V1. A compiled semantic profile emits
@@ -5268,6 +5335,12 @@ before autosave begins. A binding mismatch returns no CAS token and performs no
 digest fallback, alternate-codec retry, deletion, repair, or write. The
 deliberate double compilation is a bounded startup cost chosen so no generated
 profile authority survives across IndexedDB.
+
+An alpha.5 Bootstrap-V2 slot can contain Session Checkpoint V3 history with
+typed structural operations. Alpha.4 used the same outer and checkpoint format
+numbers but cannot restore that newer semantic history and fails startup
+without replacing the evidence. Applications must not treat an exact format
+number as permission to downgrade unpublished package versions.
 
 This remains a sealed base-text editor, not a general rich-document system.
 Alpha.4 supports only the closed Link presentation above, not general

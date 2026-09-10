@@ -3,6 +3,7 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema,
 retained by the supported `0.2.0` compiled-profile and intent path, and
 strengthened in `0.3.0-alpha.3` by Rust-atomic close-before command execution;
+the `0.3.0-alpha.5` typed structural widening uses the same event protocol;
 direct event-controller assembly remains an advanced integration surface
 
 This is Breditor's own browser-to-core command contract. ProseMirror, Lexical,
@@ -118,6 +119,16 @@ Browser-originated string payloads must be nonempty valid Unicode scalar text
 and fit both a 65,536 UTF-16-code-unit ceiling and a 65,536 UTF-8-byte ceiling.
 Line-ending normalization and the final document/action limits remain Rust
 responsibilities.
+
+Alpha.5 does not add an input type or translation rule. It enables the existing
+Enter, multiline insertion, cross-paragraph type-over/delete, boundary-delete,
+and property-free toggle commands under a Bootstrap-V2 typed profile because
+their Rust `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` plans now
+preserve complete typed peer formats. `SetInlineFormatAction` remains absent
+from native-event translation and remains same-paragraph through the strict
+programmatic typed-intent path. Clipboard paste still supplies plain text only;
+destination context can contribute a typed format to inserted text, but source
+formatting never crosses the command request.
 
 ## Selection and target ranges
 
@@ -504,4 +515,7 @@ The release tests establish at least:
 21. advertised plain text is authoritative, while HTML-only paste must pass the
     bounded closed allowlist and is reduced to plain text; and
 22. a committed cut or paste creates at most one exact echo receipt and never
-    executes a second semantic command.
+    executes a second semantic command; and
+23. the unchanged Enter/paste/Backspace routes can preserve one exact safe Link
+    through structural edits, undo, checkpoint reload with both history
+    directions, and redo without a browser-side operation or wire protocol.

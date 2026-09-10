@@ -106,7 +106,7 @@ fn ensure_supported_schema(
     if let Some(mismatch) = document.proof_mismatch(active_schema, limits) {
         return Err(local_proof_mismatch(mismatch));
     }
-    if !active_schema.supports_base_text_operations() {
+    if !active_schema.supports_paragraph_structure_operations() {
         return Err(LocalParagraphStructureError::UnsupportedSchema {
             active_schema: active_schema.id().clone(),
         });

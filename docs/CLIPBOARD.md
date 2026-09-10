@@ -2,8 +2,9 @@
 
 Status: supported by the public `0.1.0` runtime for the closed base schema,
 extended by the supported `0.2.0` compiled-profile browser path, and extended
-again by the unpublished `0.3.0-alpha.4` exact `safeLinkV1` policy; direct
-controller construction remains an advanced integration surface
+again by the unpublished `0.3.0-alpha.5` exact `safeLinkV1` and typed target-
+context insertion paths; direct controller construction remains an advanced
+integration surface
 
 This is Breditor's own clipboard protocol. ProseMirror, Lexical, Tiptap, and
 CKEditor are design references only; Breditor does not adopt their slice,
@@ -167,7 +168,15 @@ Admitted paragraphs are flattened with LF separators. All admitted wrapper
 markup and `safeLinkV1` attributes are deliberately discarded on paste because
 the current atomic multiline action accepts one plain string in the insertion
 context; mixed clipboard formatting cannot be represented honestly by that
-action yet.
+action yet. Alpha.5 allows the action to capture one complete destination
+`FormatSet`, including typed Link properties, and applies it to every non-empty
+replacement line. An empty replacement fragment introduces no formatted run
+itself. A leading or trailing fragment can receive retained prefix or suffix
+content, and splitting retained formatted context can duplicate an existing
+property owner; an interior empty fragment between consecutive newlines remains
+an empty output paragraph. The complete derived result is checked against the
+property budgets. This is inheritance from the target caret or selection
+context, not preservation of any source wrapper or property.
 
 HTML admission limits are 2 MiB of source in both UTF-16 and UTF-8, 65,536
 inspected nodes, legacy depth three, profiled depth 34

@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.4
+npm install @breditor/wasm@0.3.0-alpha.5
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.4 browser bootstrap is
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.5 browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, before passing the initialized namespace to the exactly matching
@@ -45,7 +45,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `4` for this unpublished alpha.4 source checkpoint.
+with ABI generation `4` for this unpublished alpha.5 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -104,6 +104,15 @@ core also corrects paragraph-local property-free toggle capability routing, and
 that behavior is observable through the existing ABI without adding a method.
 Native typed toolbar controls remain unsupported; the reference Link form is
 application-owned. These packages remain unpublished.
+
+`0.3.0-alpha.5` also leaves ABI 4, Profile Bootstrap V2, descriptor/projection
+shapes, Document V2, and every V3 record generation unchanged. The existing
+command and history methods expose property-preserving typed paragraph split,
+join, root replacement, undo/redo, and Session-V3 replay because the Rust core
+now admits those operations. No raw structural-operation method is added.
+Alpha.5 restores conforming alpha.4 V3 checkpoints; alpha.4 cannot restore an
+alpha.5 checkpoint whose retained history contains a typed structural
+operation, so the shared ABI and format numbers are not a downgrade guarantee.
 
 ## Reproducible build
 

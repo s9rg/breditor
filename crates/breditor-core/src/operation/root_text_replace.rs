@@ -431,6 +431,8 @@ fn validate_fragments(
         });
     }
 
+    let mut property_value_count = 0_u64;
+    let mut property_string_bytes = 0_u64;
     for (paragraph_index, fragment) in fragments.iter().enumerate() {
         if fragment.len() > context.limits().max_children_per_element() {
             return Err(RootTextReplaceApplyError::FragmentRunCountLimit {
@@ -469,17 +471,44 @@ fn validate_fragments(
                         kind: format.kind().clone(),
                     });
                 }
-                if !format.properties().is_empty() {
-                    return Err(RootTextReplaceApplyError::FragmentFormatPropertiesNotAllowed {
+                let summary = context
+                    .schema()
+                    .validate_inline_format_instance(context.limits(), format)
+                    .map_err(|source| RootTextReplaceApplyError::InvalidFormatInstance {
                         role,
                         paragraph_index,
                         run_index,
                         format_index,
                         kind: format.kind().clone(),
-                    });
-                }
+                        source,
+                    })?;
+                property_value_count = property_value_count
+                    .checked_add(summary.property_value_count())
+                    .ok_or(RootTextReplaceApplyError::CoordinateOverflow)?;
+                property_string_bytes = property_string_bytes
+                    .checked_add(summary.property_string_bytes())
+                    .ok_or(RootTextReplaceApplyError::CoordinateOverflow)?;
             }
         }
+    }
+
+    let maximum_property_values =
+        u64::try_from(context.limits().max_property_values()).unwrap_or(u64::MAX);
+    if property_value_count > maximum_property_values {
+        return Err(RootTextReplaceApplyError::PropertyValueCountLimit {
+            role,
+            actual: property_value_count,
+            maximum: maximum_property_values,
+        });
+    }
+    let maximum_property_string_bytes =
+        u64::try_from(context.limits().max_total_property_string_bytes()).unwrap_or(u64::MAX);
+    if property_string_bytes > maximum_property_string_bytes {
+        return Err(RootTextReplaceApplyError::PropertyStringBytesLimit {
+            role,
+            actual: property_string_bytes,
+            maximum: maximum_property_string_bytes,
+        });
     }
     Ok(())
 }
@@ -786,6 +815,47 @@ pub enum RootTextReplaceApplyError {
         format_index: usize,
         /// Rejected format kind.
         kind: QualifiedName,
+    },
+    /// One format instance violates its compiled typed-property contract.
+    #[error(
+        "{role:?} paragraph {paragraph_index} run {run_index} format {format_index} `{kind}` is invalid: {source}"
+    )]
+    InvalidFormatInstance {
+        /// Failing operation slice.
+        role: RootTextFragmentRole,
+        /// Slice-relative paragraph index.
+        paragraph_index: usize,
+        /// Failing run index.
+        run_index: usize,
+        /// Failing format index.
+        format_index: usize,
+        /// Rejected format kind.
+        kind: QualifiedName,
+        /// Structured property-contract or resource failure.
+        #[source]
+        source: ValidationReport,
+    },
+    /// One fragment slice exceeds the document-wide property-value ceiling.
+    #[error("{role:?} slice has {actual} property values; the configured maximum is {maximum}")]
+    PropertyValueCountLimit {
+        /// Failing operation slice.
+        role: RootTextFragmentRole,
+        /// Exact aggregate property-value count.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
+    },
+    /// One fragment slice exceeds the document-wide property-string byte ceiling.
+    #[error(
+        "{role:?} slice has {actual} property-string bytes; the configured maximum is {maximum}"
+    )]
+    PropertyStringBytesLimit {
+        /// Failing operation slice.
+        role: RootTextFragmentRole,
+        /// Exact aggregate UTF-8 property-string bytes.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
     },
     /// Reading one canonical guarded paragraph failed.
     #[error(transparent)]

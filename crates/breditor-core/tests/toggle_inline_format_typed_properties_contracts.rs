@@ -230,12 +230,20 @@ fn expected_formats(
 }
 
 fn assert_runs(document: &Document, expected: &[ExpectedRun<'_>]) -> TestResult {
+    assert_paragraph_runs(document, 0, expected)
+}
+
+fn assert_paragraph_runs(
+    document: &Document,
+    paragraph_index: usize,
+    expected: &[ExpectedRun<'_>],
+) -> TestResult {
     let paragraph = document
         .root()
         .as_element()
-        .and_then(|root| root.children().get(0))
+        .and_then(|root| root.children().get(paragraph_index))
         .and_then(breditor_core::document::NodeRef::as_element)
-        .ok_or_else(|| test_error("first paragraph is missing"))?;
+        .ok_or_else(|| test_error(format!("paragraph {paragraph_index} is missing")))?;
     assert_eq!(paragraph.children().len(), expected.len());
     for (child, (text, strong, highlight, link)) in paragraph.children().iter().zip(expected) {
         let run = child.as_text().ok_or_else(|| test_error("paragraph child was not text"))?;
@@ -642,8 +650,7 @@ fn same_paragraph_range_typing_inherits_the_first_exact_typed_format_and_replays
 }
 
 #[test]
-fn typed_toggle_reports_capacity_and_structural_boundaries_as_stable_disabled_states() -> TestResult
-{
+fn typed_toggle_reports_capacity_and_preserves_cross_paragraph_properties() -> TestResult {
     let profile = typed_profile()?;
     let registry = profile.action_registry();
     let highlight_id = action_id(HIGHLIGHT_ACTION)?;
@@ -680,6 +687,10 @@ fn typed_toggle_reports_capacity_and_structural_boundaries_as_stable_disabled_st
     assert_eq!(limited_state.indicator().activation(), ActionActivation::Inactive);
 
     let cross_context = profile.editor_context(DocumentLimits::default());
+    let cross_selection = selected(
+        paragraph_text_point(1, 0, 1, Affinity::After)?,
+        paragraph_text_point(0, 0, 0, Affinity::Before)?,
+    );
     let cross = state(
         &cross_context,
         &[
@@ -696,24 +707,51 @@ fn typed_toggle_reports_capacity_and_structural_boundaries_as_stable_disabled_st
                 Some(("https://example.test/right", true)),
             )]),
         ],
-        selected(
-            paragraph_text_point(0, 0, 0, Affinity::Before)?,
-            paragraph_text_point(1, 0, 1, Affinity::After)?,
-        ),
+        cross_selection.clone(),
         "typed-toggle-cross-paragraph",
     )?;
-    let ActionPreparation::Disabled(cross_preparation) =
+    let ActionPreparation::Enabled(cross_preparation) =
         registry.prepare(&cross, &without_input(&highlight_id))?
     else {
-        return Err(test_error("typed cross-paragraph toggle did not disable preparation").into());
+        return Err(test_error("typed cross-paragraph toggle was not enabled").into());
     };
-    assert_eq!(cross_preparation.reason().code().as_str(), "breditor/unsupported-schema");
-    let cross_state = catalog.derive(&EditorSession::new(cross))?;
+    assert!(matches!(
+        cross_preparation.transaction().operations(),
+        [Operation::RootTextReplace(_)]
+    ));
+    let initial = cross.clone();
+    let mut session = EditorSession::new(cross);
+    let cross_state = catalog.derive(&session)?;
     let cross_state = resolved(&cross_state, &observable_id)?;
-    let ObservedAvailability::Blocked(reason) = cross_state.availability() else {
-        return Err(test_error("typed cross-paragraph toggle did not fail closed").into());
-    };
-    assert_eq!(reason.code().as_str(), "breditor/unsupported-schema");
+    assert!(cross_state.availability().is_enabled());
     assert_eq!(cross_state.indicator().activation(), ActionActivation::Inactive);
+
+    let commit = session.execute_prepared_action(ActionPreparation::Enabled(cross_preparation))?;
+    assert!(matches!(commit.inverse_operations(), [Operation::RootTextReplace(_)]));
+    assert_paragraph_runs(
+        session.state().document(),
+        0,
+        &[("a", false, true, Some(("https://example.test/left", false)))],
+    )?;
+    assert_paragraph_runs(
+        session.state().document(),
+        1,
+        &[("b", false, true, Some(("https://example.test/right", true)))],
+    )?;
+    assert_eq!(session.state().selection(), Some(&cross_selection));
+    let final_state = session.state().clone();
+
+    let Some(undo) = session.undo()? else {
+        return Err(test_error("typed cross-paragraph toggle was not undoable").into());
+    };
+    assert_eq!(undo.forward_operations(), commit.inverse_operations());
+    assert_eq!(session.state().document(), initial.document());
+    assert_eq!(session.state().selection(), initial.selection());
+    let Some(redo) = session.redo()? else {
+        return Err(test_error("typed cross-paragraph toggle was not redoable").into());
+    };
+    assert_eq!(redo.forward_operations(), commit.forward_operations());
+    assert_eq!(session.state().document(), final_state.document());
+    assert_eq!(session.state().selection(), final_state.selection());
     Ok(())
 }

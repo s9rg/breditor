@@ -16,8 +16,8 @@ use super::{
     support::{
         CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
         capture_cross_paragraph_text_source, collapsed_selection_at, disabled, fault,
-        fragment_range_parts, require_operation_budget, require_text_splice_range,
-        strict_relocation, text_splice_paragraph_fragment,
+        fragment_range_parts, property_fragment_delta_fits, require_operation_budget,
+        require_text_splice_range, strict_relocation, text_splice_paragraph_fragment,
     },
 };
 
@@ -27,12 +27,13 @@ use super::{
 /// backward selection deletes the same content as its forward equivalent and
 /// collapses at the same spatial start. Same-paragraph selections use one
 /// [`TextSplice`] and preserve complete typed inline-format instances in its
-/// source guard and inverse. Property-free cross-paragraph selections use one
-/// atomic [`RootTextReplace`], including selections that contain only paragraph
-/// boundaries; typed structural deletion remains disabled. Pending typing
-/// formats are preserved exactly. Active resource limits can disable deletion
-/// when canonicalizing retained seams would create an oversized leaf or
-/// otherwise exceed the result bounds.
+/// source guard and inverse. Cross-paragraph selections use one atomic
+/// [`RootTextReplace`], including selections that contain only paragraph
+/// boundaries, and preserve complete schema-valid typed format instances.
+/// Pending typing formats are preserved exactly. Active resource limits can
+/// disable deletion when canonicalizing retained seams would create an
+/// oversized leaf, duplicate too many property owners, or otherwise exceed the
+/// result bounds.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeleteSelectionAction;
 
@@ -89,9 +90,9 @@ pub(super) fn delete_selected_range(
     if range.is_collapsed() {
         return Ok(disabled("breditor/collapsed-selection"));
     }
-    // RootTextReplace remains a property-free structural contract. Opening the
-    // paragraph-local TextSplice path must not widen cross-paragraph deletion.
-    if !range.is_same_paragraph() && !state.context().schema().supports_base_text_operations() {
+    if !range.is_same_paragraph()
+        && !state.context().schema().supports_paragraph_structure_operations()
+    {
         return Ok(disabled("breditor/unsupported-schema"));
     }
     if let Some(decision) = require_operation_budget(state, 1) {
@@ -142,6 +143,13 @@ fn delete_cross_paragraph_range(
     };
     if !base_shape_fits(state, source.guards().len(), source.guard_run_count(), &[&result])
         || !base_total_text_fits(state, source.guard_text_bytes(), result.text_bytes())
+        || !property_fragment_delta_fits(
+            state,
+            source.guards().iter(),
+            [&result],
+            "breditor/delete-selection-property-validation-fault",
+            "breditor/delete-selection-property-budget-fault",
+        )?
     {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }

@@ -3,8 +3,9 @@
 Status: supported inside the public `0.1.0` runtime for the closed base schema
 and extended by the supported `0.2.0` compiled-profile path; direct
 adapter and renderer construction remains advanced and experimental. The
-unpublished `0.3.0-alpha.4` source checkpoint adds the one closed
-property-driven Link presentation described below.
+unpublished `0.3.0-alpha.5` source checkpoint retains alpha.4's one closed
+property-driven Link presentation and carries it through typed structural
+paragraph edits described below.
 
 The canonical editor document is the immutable Rust AST. Browser DOM is a
 disposable rendering of one exact `SnapshotId`; it is never parsed back as an
@@ -121,6 +122,15 @@ Broad, malformed, untrusted, or DOM-drifted cases use the complete final
 projection and rebuild safely. Invalidation is therefore an optimization, not
 a correctness dependency.
 
+Alpha.5 changes no projection or invalidation discriminant. Typed
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` commits already expose
+their complete final `formatDetails` through the existing projection. A single
+structural operation may qualify for `rootSplice`; a multi-operation legacy
+planner or any unproved shape remains conservative `root`. In both cases the
+renderer resolves preserved Link values again and emits the same inert or
+canonical safe attributes. Wrapper or DOM-node identity is never used to carry
+properties across the edit.
+
 ## Checkpoint admission
 
 The browser-facing Wasm engine is backed by `CheckpointedEditorEngine`. Every
@@ -148,6 +158,13 @@ bytes. Disabled actions and exact no-ops discard their private candidate without
 encoding and return observations valid against the unchanged owner. Benchmarking
 and, if necessary, bounded incremental checkpoint construction are post-contract
 optimizations; they may not weaken failure atomicity.
+
+The typed profile still uses Session Checkpoint V3 after alpha.5 structural
+edits. Undo/redo and reload reconstruct format properties from guarded V3
+history, not from retained DOM. Alpha.4 cannot restore an alpha.5 V3 checkpoint
+whose history contains a typed structural operation even though the outer
+format number is unchanged; this is a prerelease downgrade limitation, not a
+projection fallback.
 
 ## Known limits
 

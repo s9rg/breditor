@@ -44,7 +44,7 @@ assert.equal(typeof openBreditorBrowserEditor, "function");
 assert.equal(typeof initializeWasm, "function");
 assert.equal(typeof breditorWasmAbiVersion, "function");
 assert.equal(typeof breditorVersion, "function");
-assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.4");
+assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.5");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatKind, "example/highlight");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatRevision, 7);
 assert.equal(

@@ -286,6 +286,50 @@ pub enum OperationValidationError {
         /// Configured document-wide maximum.
         maximum: u64,
     },
+    /// One independent fragment slice exceeds the document-wide property-value budget.
+    #[error(
+        "{kind:?} {role:?} slice has {actual} property values; the configured maximum is {maximum}"
+    )]
+    TotalPropertyValueCountLimit {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected slice.
+        role: OperationFragmentSliceRole,
+        /// Exact aggregate property-value count.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
+    },
+    /// Summing property values across a fragment slice overflowed.
+    #[error("{kind:?} {role:?} slice property-value arithmetic overflowed")]
+    PropertyValueCountOverflow {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected slice.
+        role: OperationFragmentSliceRole,
+    },
+    /// One independent fragment slice exceeds the document-wide property-string budget.
+    #[error(
+        "{kind:?} {role:?} slice has {actual} property-string bytes; the configured maximum is {maximum}"
+    )]
+    TotalPropertyStringBytesLimit {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected slice.
+        role: OperationFragmentSliceRole,
+        /// Exact aggregate UTF-8 property-string bytes.
+        actual: u64,
+        /// Configured document-wide maximum.
+        maximum: u64,
+    },
+    /// Summing property-string bytes across a fragment slice overflowed.
+    #[error("{kind:?} {role:?} slice property-string arithmetic overflowed")]
+    PropertyStringBytesOverflow {
+        /// Rejected operation kind.
+        kind: OperationKind,
+        /// Purpose of the rejected slice.
+        role: OperationFragmentSliceRole,
+    },
     /// A statically required source or result prefix exceeds the text budget.
     #[error(
         "{kind:?} {role:?} slice requires at least {actual} text bytes; the configured maximum is {maximum}"
@@ -606,7 +650,7 @@ fn validate_paragraph_split(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::ParagraphSplit;
-    validate_base_text_schema(context, kind)?;
+    validate_paragraph_structure_schema(context, kind)?;
     validate_path(context, kind, OperationPathRole::Paragraph, operation.paragraph_path())?;
     validate_offset(context, kind, OperationOffsetRole::ParagraphSplit, operation.offset())?;
     let target_index = operation.paragraph_path().last_index().ok_or(
@@ -655,8 +699,16 @@ fn validate_paragraph_split(
         .expected()
         .split_at(operation.offset())
         .map_err(|source| OperationValidationError::DerivedParagraphSplit { source })?;
-    validate_fragment(context, kind, OperationFragmentRole::Result, Some(0), 1, &left)?;
-    validate_fragment(context, kind, OperationFragmentRole::Result, Some(1), 1, &right)?;
+    let left_properties =
+        validate_fragment(context, kind, OperationFragmentRole::Result, Some(0), 1, &left)?;
+    let right_properties =
+        validate_fragment(context, kind, OperationFragmentRole::Result, Some(1), 1, &right)?;
+    validate_property_summary_slice(
+        context,
+        kind,
+        OperationFragmentSliceRole::Result,
+        [left_properties, right_properties],
+    )?;
     validate_total_text_bytes(context, kind, OperationFragmentSliceRole::Result, [&left, &right])?;
     validate_minimum_node_count(
         context,
@@ -672,7 +724,7 @@ fn validate_paragraph_join(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::ParagraphJoin;
-    validate_base_text_schema(context, kind)?;
+    validate_paragraph_structure_schema(context, kind)?;
     validate_path(context, kind, OperationPathRole::LeftParagraph, operation.left_path())?;
     let left_index = operation.left_path().last_index().ok_or(
         OperationValidationError::RootChildSpanStartMissing {
@@ -693,7 +745,7 @@ fn validate_paragraph_join(
             role: OperationFragmentSliceRole::Result,
         })?;
     validate_paragraph_count(context, kind, OperationFragmentSliceRole::Source, 2)?;
-    validate_fragment(
+    let left_properties = validate_fragment(
         context,
         kind,
         OperationFragmentRole::ExpectedLeft,
@@ -701,13 +753,19 @@ fn validate_paragraph_join(
         1,
         operation.expected_left(),
     )?;
-    validate_fragment(
+    let right_properties = validate_fragment(
         context,
         kind,
         OperationFragmentRole::ExpectedRight,
         None,
         1,
         operation.expected_right(),
+    )?;
+    validate_property_summary_slice(
+        context,
+        kind,
+        OperationFragmentSliceRole::Source,
+        [left_properties, right_properties],
     )?;
     validate_total_text_bytes(
         context,
@@ -743,7 +801,7 @@ fn validate_root_text_replace(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     let kind = OperationKind::RootTextReplace;
-    validate_base_text_schema(context, kind)?;
+    validate_paragraph_structure_schema(context, kind)?;
     validate_path(
         context,
         kind,
@@ -812,11 +870,11 @@ fn validate_root_text_replace(
     )
 }
 
-fn validate_base_text_schema(
+fn validate_paragraph_structure_schema(
     context: &EditorContext,
     kind: OperationKind,
 ) -> Result<(), OperationValidationError> {
-    if !context.schema().supports_base_text_operations() {
+    if !context.schema().supports_paragraph_structure_operations() {
         return Err(OperationValidationError::UnsupportedSchema {
             kind,
             schema: context.schema().id().clone(),
@@ -897,16 +955,18 @@ fn validate_fragment_slice(
     minimum_non_text_nodes: u64,
 ) -> Result<(), OperationValidationError> {
     validate_paragraph_count(context, kind, slice_role, usize_to_u64(fragments.len()))?;
+    let mut property_summaries = Vec::with_capacity(fragments.len());
     for (paragraph_index, fragment) in fragments.iter().enumerate() {
-        validate_fragment(
+        property_summaries.push(validate_fragment(
             context,
             kind,
             fragment_role,
             Some(usize_to_u64(paragraph_index)),
             1,
             fragment,
-        )?;
+        )?);
     }
+    validate_property_summary_slice(context, kind, slice_role, property_summaries)?;
     validate_total_text_bytes(context, kind, slice_role, fragments.iter())?;
     validate_minimum_node_count(context, kind, slice_role, minimum_non_text_nodes, fragments.iter())
 }
@@ -1073,7 +1133,7 @@ fn validate_fragment(
     paragraph_index: Option<u64>,
     container_depth: u64,
     fragment: &TextFragment,
-) -> Result<(), OperationValidationError> {
+) -> Result<FragmentPropertySummary, OperationValidationError> {
     if !fragment.is_empty() {
         validate_fragment_leaf_depth(context, kind, role, paragraph_index, container_depth)?;
     }
@@ -1123,13 +1183,52 @@ fn validate_fragment(
             maximum: maximum_property_string_bytes,
         });
     }
-    Ok(())
+    Ok(property_summary)
 }
 
-#[derive(Default)]
+#[derive(Clone, Copy, Default)]
 struct FragmentPropertySummary {
     value_count: u64,
     string_bytes: u64,
+}
+
+fn validate_property_summary_slice(
+    context: &EditorContext,
+    kind: OperationKind,
+    role: OperationFragmentSliceRole,
+    summaries: impl IntoIterator<Item = FragmentPropertySummary>,
+) -> Result<(), OperationValidationError> {
+    let mut value_count = 0_u64;
+    let mut string_bytes = 0_u64;
+    for summary in summaries {
+        value_count = value_count
+            .checked_add(summary.value_count)
+            .ok_or(OperationValidationError::PropertyValueCountOverflow { kind, role })?;
+        string_bytes = string_bytes
+            .checked_add(summary.string_bytes)
+            .ok_or(OperationValidationError::PropertyStringBytesOverflow { kind, role })?;
+    }
+
+    let maximum_values = u64::try_from(context.limits().max_property_values()).unwrap_or(u64::MAX);
+    if value_count > maximum_values {
+        return Err(OperationValidationError::TotalPropertyValueCountLimit {
+            kind,
+            role,
+            actual: value_count,
+            maximum: maximum_values,
+        });
+    }
+    let maximum_string_bytes =
+        u64::try_from(context.limits().max_total_property_string_bytes()).unwrap_or(u64::MAX);
+    if string_bytes > maximum_string_bytes {
+        return Err(OperationValidationError::TotalPropertyStringBytesLimit {
+            kind,
+            role,
+            actual: string_bytes,
+            maximum: maximum_string_bytes,
+        });
+    }
+    Ok(())
 }
 
 fn validate_fragment_run(

@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.4` checkpoint. Wasm ABI 4 and the browser explicitly select
+`0.3.0-alpha.5` checkpoint. Wasm ABI 4 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -179,6 +179,17 @@ there. Autosave captures and structurally revalidates the same V3 mode.
 Bootstrap V1 continues to select the existing profile-aware V2 path, and
 omitting a semantic profile continues to select exact-base V1.
 
+Alpha.5 changes no binding, bootstrap, document, operation, state,
+transaction, commit, checkpoint, or IndexedDB outer-record generation. Its
+property-preserving `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace`
+values already fit the complete typed format instances carried by Operation
+V3. Exact guards and inverses therefore survive Session Checkpoint V3 undo,
+redo, replay, and browser reload under the same schema fingerprint. Alpha.5
+restores conforming alpha.4 checkpoints; an alpha.4 reader rejects an alpha.5
+V3 checkpoint whose retained history contains one of those typed structural
+operations. The equal `formatVersion` is not a supported prerelease downgrade,
+and no reader drops, converts, or retries that history.
+
 V2 storage support stops at checked prepare, encode, decode, and selected-value
 normalization. It does not enter the existing `Prepared` -> `Uncertain`
 publication-attempt lifecycle, whose public types expose V1 frame projections.
@@ -236,12 +247,16 @@ helper from being mistaken for persistence migration.
   `CompiledEditorProfile::try_compile_base_text_profile` over that sealed
   compiler and co-owns its exact `ExtensionSet`, schema, generated registry,
   router, and catalog.
-- Existing primitive operation validation accepts the compiler-minted sealed
-  base-text capability. Alpha.2 makes `TextSplice` property-aware and proves
-  paragraph-local set, insert/type-over, selection deletion, grapheme deletion,
-  exact inverse, relocation, undo/redo, and V3 replay. `ParagraphSplit`,
-  `ParagraphJoin`, and `RootTextReplace` remain property-free and fail closed
-  for typed schemas.
+- Existing primitive operation validation accepts compiler-minted capabilities
+  for the sealed root/paragraph/text shape. Alpha.2 makes `TextSplice`
+  property-aware. Alpha.5 makes `ParagraphSplit`, `ParagraphJoin`, and
+  `RootTextReplace` preserve complete typed format instances, lifting Enter,
+  multiline plain-text insertion, cross-paragraph type-over/delete and
+  property-free toggle, plus paragraph-boundary join paths. The older base-
+  text capability remains property-free as the sentinel for frozen V1/V2
+  operation codecs and the existing local-splice incremental proof.
+  Cross-paragraph `SetInlineFormatAction` remains disabled as
+  `breditor/cross-paragraph-inline-format-unsupported`.
 - A manifest-owned toggle bundle contains one same-manifest format kind plus
   action, no-input intent, binding, and action-state IDs. Compilation generates
   the existing Rust toggle action, a tracked intent, one priority-0 blocking

@@ -1,10 +1,11 @@
 # Breditor `0.3.0` scope
 
-Status: the `0.3.0-alpha.4` source checkpoint retains the typed inline-format
-contract through Wasm ABI 4 and adds one closed browser presentation policy for
-Link plus application-owned React controls. Explicit Bootstrap V2 selects
-property-aware Session/State/Commit V3; V1 and V2 paths remain separately
-available. The packages remain unpublished.
+Status: the `0.3.0-alpha.5` source checkpoint makes the three sealed
+paragraph-structure operations preserve typed inline-format properties and
+lifts the corresponding built-in editing paths through the existing Wasm ABI 4
+and browser runtime. Explicit Bootstrap V2 still selects property-aware
+Session/State/Commit V3; V1 and V2 paths remain separately available. The
+packages remain unpublished.
 
 `0.3.0` is the path from property-free formatting to semantic formats such as
 links, mentions, text colors, and annotations. Alpha.1 defined and validated
@@ -13,7 +14,9 @@ editable and replayable. Alpha.3 transports that exact contract through Wasm,
 browser projection, strict programmatic input, and durable browser restore
 without claiming that every structural edit is complete. Alpha.4 proves one
 safe Link rendering/copy slice without generalizing it into arbitrary DOM
-attributes or a native typed toolbar protocol.
+attributes or a native typed toolbar protocol. Alpha.5 completes typed
+property preservation for Breditor's existing direct-root paragraph operation
+algebra without broadening that algebra into a general block model.
 
 This remains an original Breditor design. ProseMirror, Lexical, Tiptap, and
 CKEditor are research references only. Breditor does not adopt their document,
@@ -75,9 +78,7 @@ or:
 ```json
 {
   "operation": "set",
-  "properties": [
-    { "name": "example/href", "value": "https://example.test" }
-  ]
+  "properties": [{ "name": "example/href", "value": "https://example.test" }]
 }
 ```
 
@@ -135,12 +136,13 @@ effects including duplicated property owners caused by run splitting, and
 preserve the unaffected property-bearing runs. Directional deletion preserves
 pending typing formats. Typing merge groups retain their existing behavior.
 
-Three structural primitives are still property-free under a typed schema:
-`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace`. Consequently typed
-paragraph breaks, paragraph-boundary directional deletion, cross-paragraph
-selection deletion or type-over, and multiline/root replacement fail closed.
-`InsertPlainTextAction` remains on the structural root-replacement path and is
-not the typed insertion boundary.
+Alpha.5 makes the three sealed structural primitives—`ParagraphSplit`,
+`ParagraphJoin`, and `RootTextReplace`—validate and retain complete typed format
+instances. Their source guards, replacements, derived result fragments,
+inverses, relocation, undo/redo, and V3 replay now preserve those values. This
+opens typed paragraph breaks, paragraph-boundary directional deletion,
+cross-paragraph selection deletion or type-over, and atomic multiline plain-
+text insertion while retaining the direct-root paragraph/text shape.
 
 ## Selection relocation and exact history
 
@@ -336,6 +338,69 @@ buttons are React-owned application controls that call `executeIntentJson()`
 with exact set/remove input. The supported toolbar manifest remains a closed
 native-button protocol for no-input intent/history commands.
 
+## Alpha.5 property-preserving paragraph structure
+
+Alpha.5 changes no data declaration or transport generation. Wasm ABI remains
+4; Profile Bootstrap remains V2; schema fingerprints and compiler-contract
+bytes are unchanged; Document remains V2; and typed Operation, Editor State,
+Transaction Request, Commit, and Session Checkpoint remain V3. The existing
+V3 payloads already represent complete format properties in structural guards
+and replacements, so this is stricter execution and validation of those
+records rather than a new protocol.
+
+The compiler now distinguishes two private capabilities. The paragraph-
+structure capability proves the exact sealed root-to-paragraph-to-text grammar
+while allowing schema-declared typed inline formats. The older base-text
+capability remains property-free and continues to be the sentinel for frozen
+V1/V2 operation payloads and property-free-only local proof paths. Alpha.5 does
+not let a typed schema enter a codec that cannot represent its properties.
+
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` now validate every
+format instance against the compiled contract. Validation aggregates property-
+value and property-string-byte usage across each complete source, replacement,
+and derived-result slice before mutation. A split inside one typed run creates
+two property owners and can therefore exceed a configured property budget; an
+equal-format join may merge owners. Exact whole-paragraph guards, canonical
+seam merging, reciprocal split/join inverses, the same-type root-replacement
+inverse, authoritative final-document validation, and all-or-nothing
+transaction publication remain unchanged.
+
+The lifted built-in paths are:
+
+- collapsed, same-paragraph extended, and cross-paragraph Enter;
+- multiline `insert-plain-text`, including paste, with one inherited complete
+  target format set applied to each non-empty inserted paragraph;
+- cross-paragraph `insert-text` type-over and selection deletion;
+- backward/forward deletion at paragraph boundaries through typed joins; and
+- cross-paragraph Strong or extension no-input toggles whose target format is
+  property-free, while preserving all typed peer formats.
+
+`SetInlineFormatAction` deliberately remains paragraph-local. A typed set or
+remove over a cross-paragraph range is still disabled as
+`breditor/cross-paragraph-inline-format-unsupported`; alpha.5 does not define
+how one caller-supplied property map should rewrite multiple blocks. Clipboard
+paste also remains formatting-stripping: source HTML wrappers and Link
+properties are discarded. The resulting plain text can inherit the complete
+typed format set at the destination, but that is target-context formatting,
+not rich-fragment reconstruction. An empty replacement fragment introduces no
+formatted run itself. A retained prefix or suffix can make the first or last
+result paragraph non-empty, and separating typed retained text across result
+paragraphs can still increase the complete property-owner count.
+
+Every lifted edit records the same exact guarded operation recipes used for
+undo, redo, and V3 replay. Session Checkpoint V3 retains both history branches,
+so a browser autosave after undo can reload the exact typed document,
+directional selection, pending formats, undo cursor, and redo branch before
+redo reapplies the preserved structural operation.
+
+This is a prerelease semantic widening under existing V3 record numbers.
+Alpha.5 restores conforming alpha.4 V3 checkpoints. Alpha.4 cannot in general
+restore an alpha.5 Session Checkpoint V3 whose retained undo or redo history
+contains a typed `ParagraphSplit`, `ParagraphJoin`, or `RootTextReplace`, even
+though its envelope version is still 3. Exact package pairing and one-way
+downgrade caution remain required; no reader sniffs, rewrites, or drops the
+unsupported history.
+
 ## Rust, Wasm, browser, and toolbar boundary
 
 Rust provides memory safety, checked construction, exhaustive failures, compact
@@ -348,7 +413,8 @@ Alpha.3 widens the transport to Wasm ABI 4. Typed contracts, set-action
 declarations, property descriptors, property-bearing projections, strict typed
 action/intent JSON, explicit V3 engine factories, browser durable validation,
 IndexedDB/autosave, and programmatic `executeIntentJson()` now exercise the
-Rust typed path.
+Rust typed path. Alpha.5 uses those same paths for typed structural operations;
+it adds no Wasm method, browser protocol, or durable generation.
 
 The DOM and toolbar layers deliberately remain narrower. Render recipes select
 a fixed safe wrapper element, canonical classes, and wrapper order; only the
@@ -372,8 +438,12 @@ CSS grammar and other property presentations remain undefined.
 - Typed declarations remain Boolean, JavaScript-safe integer, and bounded
   string only.
 - Set replaces a complete property map; there is no property patch operation.
-- Typed `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` are not
-  supported, with the action limitations described above.
+- Structural editing remains limited to the compiler-minted direct-root
+  document/paragraph/text grammar. Element or paragraph properties, entity
+  identities, nested or heterogeneous blocks, and arbitrary structural schemas
+  still require separately specified operations.
+- `SetInlineFormatAction` remains same-paragraph only; cross-paragraph typed
+  set/remove is not inferred from the now property-aware root replacement.
 - No V3 local-log/storage family exists.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
@@ -393,9 +463,9 @@ a reusable application-control layer, but must not silently widen
 `safeLinkV1`, accept arbitrary attributes/CSS, preserve source formatting on
 paste, or bypass the intent router.
 
-The remaining Rust structural checkpoint must make paragraph split, paragraph
-join, and root replacement preserve typed format instances and exact inverses
-before lifting those action gates. A later durable checkpoint must version the
-local-log graph around Session Checkpoint V3 rather than placing V3 nested bytes
-inside a V1/V2 envelope. Link URL policy is explicit browser policy; it is not
-implied by the scalar property contract.
+A later durable checkpoint must version the local-log graph around Session
+Checkpoint V3 rather than placing V3 nested bytes inside a V1/V2 envelope. A
+future formatting checkpoint must define cross-paragraph typed set/remove
+semantics explicitly rather than reusing the property-free toggle rule. Link
+URL policy is explicit browser policy; it is not implied by the scalar property
+contract.

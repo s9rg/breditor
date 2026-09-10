@@ -694,6 +694,21 @@
 //! root-text-replacement structural path and fails closed for typed schemas.
 //! The browser's exact `safeLinkV1` policy is not a Rust URL contract; core
 //! continues to validate only declared scalar shape and bounds.
+//!
+//! The unpublished `0.3.0-alpha.5` source checkpoint extends the sealed
+//! paragraph-structure capability to complete schema-valid typed format
+//! instances. [`operation::ParagraphSplit`], [`operation::ParagraphJoin`],
+//! and [`operation::RootTextReplace`] preserve exact properties through
+//! application, inverse replay, undo/redo, and V3 checkpoint restoration.
+//! The built-in Enter, multiline plain-text insertion, cross-paragraph
+//! replacement/deletion, paragraph-boundary deletion, and property-free toggle
+//! paths use that capability while retaining typed peer formats. Aggregate
+//! property-value and string-byte budgets are checked for complete source,
+//! replacement, and result slices. The frozen property-free base capability
+//! remains the V1/V2 codec sentinel, so older generations still reject typed
+//! values instead of discarding them. Cross-paragraph typed set/remove, rich
+//! paste, arbitrary block structure, Local Log V3, and general property-driven
+//! presentation remain outside this checkpoint.
 
 pub mod action;
 pub mod codec;

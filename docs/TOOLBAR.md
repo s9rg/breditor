@@ -214,6 +214,12 @@ toolbar. They construct exact typed set/remove JSON and call the existing
 `executeIntentJson()` boundary. They are not toolbar manifest controls and do
 not receive renderer, selection, or Rust mutation authority.
 
+Alpha.5 likewise adds no control kind or toolbar dispatch rule. The existing
+Enter, paste, delete, undo, and redo routes can now preserve typed peer formats
+through Rust's sealed paragraph-structure operations; cross-paragraph typed
+set/remove remains outside the native toolbar and disabled as
+`breditor/cross-paragraph-inline-format-unsupported`.
+
 ## Accessible DOM behavior
 
 `BreditorToolbar` treats its constructor element as a mount. It accepts only an
@@ -300,7 +306,7 @@ toolbar.
   bridges status into a bounded, immutable external-store subscription.
 - A host can inject a descriptor-matched custom manifest, but the surface does
   not dynamically register Rust actions or catalog entries from JavaScript.
-- The public editor can execute descriptor-declared typed intent JSON. Alpha.4
+- The public editor can execute descriptor-declared typed intent JSON. Alpha.5
   demonstrates a React-owned Link form, but the toolbar still has no typed-input
   control kind. There are no custom control kinds, menus/selects, extension
   keymaps or `beforeinput` rules, dynamic manifest replacement, or asynchronous

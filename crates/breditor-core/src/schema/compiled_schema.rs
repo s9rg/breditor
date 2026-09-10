@@ -9,7 +9,7 @@ use crate::{
 use super::compiler::{
     ChildConstraint, CompiledSchemaDefinition, GlobalConstraints, compile_base_text_profile,
     compile_breditor_base, is_exact_breditor_base, supports_base_text_operations,
-    supports_text_splice_operations,
+    supports_paragraph_structure_operations, supports_text_splice_operations,
 };
 
 /// The immutable schema used to validate a document.
@@ -24,6 +24,7 @@ pub struct CompiledSchema {
     fingerprint: SchemaFingerprint,
     proof: CompiledSchemaProof,
     supports_text_splice_operations: bool,
+    supports_paragraph_structure_operations: bool,
     supports_base_text_operations: bool,
 }
 
@@ -97,12 +98,15 @@ impl CompiledSchema {
         fingerprint: SchemaFingerprint,
     ) -> Self {
         let supports_text_splice_operations = supports_text_splice_operations(&definition);
+        let supports_paragraph_structure_operations =
+            supports_paragraph_structure_operations(&definition);
         let supports_base_text_operations = supports_base_text_operations(&definition);
         Self {
             definition,
             fingerprint,
             proof: CompiledSchemaProof::fresh(),
             supports_text_splice_operations,
+            supports_paragraph_structure_operations,
             supports_base_text_operations,
         }
     }
@@ -247,13 +251,26 @@ impl CompiledSchema {
     /// Returns whether the compiled schema preserves the sealed base text
     /// container shape required by paragraph-local guarded splices.
     ///
-    /// Unlike the broader structural-operation capability, this permits typed
-    /// inline formats because a `TextSplice` carries complete format instances
-    /// in both its source guard and replacement.
+    /// Like the structural-operation capability, this permits typed inline
+    /// formats because a `TextSplice` carries complete format instances in
+    /// both its source guard and replacement.
     pub(crate) const fn supports_text_splice_operations(&self) -> bool {
         self.supports_text_splice_operations
     }
 
+    /// Returns whether the compiled schema preserves the sealed root,
+    /// paragraph, and text shape required by paragraph split, join, and
+    /// root-text replacement operations.
+    ///
+    /// Complete typed inline-format instances are admitted because structural
+    /// operations carry exact source guards and replacement fragments.
+    pub(crate) const fn supports_paragraph_structure_operations(&self) -> bool {
+        self.supports_paragraph_structure_operations
+    }
+
+    /// Returns whether the schema supports the frozen property-free operation
+    /// generations. New typed structural code must use the more specific
+    /// capability queries above.
     pub(crate) const fn supports_base_text_operations(&self) -> bool {
         self.supports_base_text_operations
     }

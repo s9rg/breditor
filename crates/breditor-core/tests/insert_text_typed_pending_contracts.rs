@@ -359,8 +359,7 @@ fn split_property_owners_accept_exact_limits_and_disable_at_first_excess() -> Te
 }
 
 #[test]
-fn typed_cross_paragraph_insert_is_closed_while_property_free_behavior_is_preserved() -> TestResult
-{
+fn typed_cross_paragraph_insert_preserves_properties_and_property_free_behavior() -> TestResult {
     let registry = base_action_registry()?;
     let cross_selection = Some(selected(
         text_point(0, 0, 0, Affinity::Before)?,
@@ -370,12 +369,20 @@ fn typed_cross_paragraph_insert_is_closed_while_property_free_behavior_is_preser
     let typed_context = EditorContext::new(typed_schema()?, DocumentLimits::default());
     let typed = state(
         &typed_context,
-        &[paragraph_value(&[plain("a")]), paragraph_value(&[plain("b")])],
+        &[paragraph_value(&[linked("a", "left")]), paragraph_value(&[plain("b")])],
         cross_selection.clone(),
         None,
-        "insert-typed-cross-disabled",
+        "insert-typed-cross-enabled",
     )?;
-    assert_disabled(&registry, &typed, "X", "breditor/unsupported-schema")?;
+    let typed_preparation = registry.prepare(&typed, &invocation("X")?)?;
+    let ActionPreparation::Enabled(typed_plan) = typed_preparation else {
+        return Err(test_error("typed cross-paragraph insertion was disabled").into());
+    };
+    assert!(matches!(typed_plan.transaction().operations(), [Operation::RootTextReplace(_)]));
+    let typed_commit = typed_plan.execute(&typed)?;
+    assert!(matches!(typed_commit.inverse_operations(), [Operation::RootTextReplace(_)]));
+    assert_runs(typed_commit.after().document(), &[("X", Some("left"))])?;
+    assert_eq!(typed_commit.after().pending_formats(), None);
 
     let base_context = EditorContext::default();
     let base = state(

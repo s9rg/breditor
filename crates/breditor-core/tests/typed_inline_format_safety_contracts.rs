@@ -24,9 +24,8 @@ use breditor_core::{
     },
     identity::QualifiedName,
     operation::{
-        Operation, OperationApplyError, OperationKind, OperationValidationError, ParagraphJoin,
-        ParagraphJoinApplyError, ParagraphSplit, ParagraphSplitApplyError, RootTextBoundary,
-        RootTextRange, RootTextReplace, RootTextReplaceApplyError, TextRange, TextSplice,
+        Operation, ParagraphJoin, ParagraphSplit, RootTextBoundary, RootTextRange, RootTextReplace,
+        TextRange, TextSplice,
     },
     position::{Affinity, NodePath, Point, TextOffset},
     schema::{
@@ -36,7 +35,7 @@ use breditor_core::{
     selection::{RangeSelection, Selection},
     session::EditorSession,
     state::{EditorContext, EditorState, LineageId},
-    transaction::{Transaction, TransactionApplyError},
+    transaction::Transaction,
 };
 use serde_json::{Value, json};
 use support::{TestResult, test_error};
@@ -329,7 +328,7 @@ fn all_base_operations() -> Result<Vec<Operation>, Box<dyn Error>> {
 }
 
 #[test]
-fn only_property_preserving_text_splice_is_admitted_for_a_typed_schema() -> TestResult {
+fn all_property_preserving_text_operations_are_admitted_for_a_typed_schema() -> TestResult {
     let schema = typed_schema("example/typed-operation-gate")?;
     let limits = DocumentLimits::default();
     let context = EditorContext::new(schema.clone(), limits);
@@ -350,40 +349,8 @@ fn only_property_preserving_text_splice_is_admitted_for_a_typed_schema() -> Test
             .is_unchanged()
     );
 
-    let expected_kinds = [
-        OperationKind::ParagraphSplit,
-        OperationKind::ParagraphJoin,
-        OperationKind::RootTextReplace,
-    ];
-    for (operation, expected_kind) in operations[1..].iter().zip(expected_kinds) {
-        assert_eq!(
-            operation.validate(&context),
-            Err(OperationValidationError::UnsupportedSchema {
-                kind: expected_kind,
-                schema: schema.id().clone(),
-            })
-        );
-    }
-
-    let expected_apply_errors = [
-        OperationApplyError::ParagraphSplit(ParagraphSplitApplyError::UnsupportedSchema {
-            schema: schema.id().clone(),
-        }),
-        OperationApplyError::ParagraphJoin(ParagraphJoinApplyError::UnsupportedSchema {
-            schema: schema.id().clone(),
-        }),
-        OperationApplyError::RootTextReplace(RootTextReplaceApplyError::UnsupportedSchema {
-            schema: schema.id().clone(),
-        }),
-    ];
-    for (operation, expected_error) in operations[1..].iter().zip(expected_apply_errors) {
-        let before = state.clone();
-        let transaction = Transaction::new(&state, vec![operation.clone()]);
-        assert_eq!(
-            transaction.apply(&context, &state),
-            Err(TransactionApplyError::Operation { operation_index: 0, source: expected_error })
-        );
-        assert_eq!(state, before, "a rejected transaction must not alter its base state");
+    for operation in &operations[1..] {
+        assert_eq!(operation.validate(&context), Ok(()));
     }
     Ok(())
 }

@@ -3,11 +3,11 @@
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.4` checkpoint retains the alpha.3 typed-property
-Wasm/browser bridge and adds the first closed property-driven presentation:
-browser-owned `safeLinkV1`, an additive reference Link profile, and React-owned
-typed controls. It does not introduce a generic attribute protocol or a native
-typed toolbar control. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+The unpublished `0.3.0-alpha.5` checkpoint retains alpha.4's first closed
+property-driven presentation and makes the sealed paragraph-structure
+operations preserve typed inline-format properties. It does not introduce a
+generic attribute protocol, a native typed toolbar control, or an extensible
+operation protocol. See [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 This document defines Breditor's extension architecture and the deliberately
 narrow part of it that `0.2.0` ships. It complements
@@ -236,7 +236,7 @@ every input that can change canonical content meaning, including:
 - the exact admitted semantic schema projection, including qualified node and
   format identities, persisted type revisions, and every compiled content,
   property, and context constraint; and
-- compiled semantic admission constraints, including any semantic minimum or
+- compiled content-language constraints, including any semantic minimum or
   maximum encoded by a type rule.
 
 Whole extension identities, `ExtensionVersion` values, and manifest versions are
@@ -248,7 +248,7 @@ timestamps, localized labels, icons, CSS, toolbar placement, and browser
 rendering. Consequently an extension-identity, extension-version, action-,
 state-, or intent-only change preserves the schema fingerprint even when the
 extension also contributes schema, provided the compiled schema projection,
-compiler contract, and semantic admission constraints are unchanged. Host
+compiler contract, and content-language constraints are unchanged. Host
 resource policy is deliberately separate: `DocumentLimits`, JSON byte budgets,
 transaction-operation limits, and similar memory or work ceilings are not
 fingerprint inputs. They can reject otherwise valid content on one host and
@@ -448,11 +448,16 @@ tracked no-input intent, one priority-0 blocking binding, and routed observable
 state. There are no custom action handlers, callbacks, inputs, effect choices,
 cross-extension targets, shared toggle identities, or fallback routes.
 
-All four existing primitives—`TextSplice`, `ParagraphSplit`, `ParagraphJoin`,
-and `RootTextReplace`—accept only the compiler-minted base-text capability,
-not an arbitrary schema that happens to use similar names. Their wire shape is
-unchanged, and exact inverses, relocation, undo/redo, and V2 checkpoint replay
-preserve extension formats without invoking the generic action again.
+The existing primitives accept only compiler-minted capabilities for the
+sealed root/paragraph/text shape, not an arbitrary schema that happens to use
+similar names. `TextSplice` has its property-aware text capability;
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` use the distinct
+paragraph-structure capability added in alpha.5. The older property-free base-
+text capability remains the explicit sentinel for the frozen V1/V2 operation
+codecs and the property-free local-splice proof. Wire shapes are unchanged.
+Exact inverses, relocation, undo/redo, and replay preserve property-free
+extension formats through V2 and complete typed format instances through the
+explicitly selected V3 families without invoking the generic action again.
 
 There is no browser-to-Rust extension action planner callback and no arbitrary
 operation-plan ingress in `0.2.0`. Portable browser code selects a registered
@@ -1051,7 +1056,7 @@ In addition to the complete repository gates, `0.2.0` requires proof that:
 - changing only extension identity or version, action, state, intent,
   presentation declarations, or host resource policy leaves the schema
   fingerprint unchanged when the admitted schema projection, compiler contract,
-  and compiled semantic admission constraints are identical, while a new engine
+  and compiled content-language constraints are identical, while a new engine
   still mints a fresh process-local profile generation;
 - duplicate ownership, missing/wrong dependencies, conflicts, cycles, reserved
   identity impersonation, and every limit-plus-one case fail before engine

@@ -339,6 +339,15 @@ pub enum ActionStateOperationFault {
     /// A root-text fragment used disallowed format properties.
     #[error("root-text replacement fragment format properties not allowed")]
     RootTextReplaceFragmentFormatPropertiesNotAllowed,
+    /// A root-text fragment carried a format instance that violated its typed contract.
+    #[error("root-text replacement invalid format instance")]
+    RootTextReplaceInvalidFormatInstance,
+    /// A root-text fragment slice exceeded the aggregate property-value ceiling.
+    #[error("root-text replacement property-value limit")]
+    RootTextReplacePropertyValueCountLimit,
+    /// A root-text fragment slice exceeded the aggregate property-string byte ceiling.
+    #[error("root-text replacement property-string limit")]
+    RootTextReplacePropertyStringBytesLimit,
     /// Reading or rebuilding a root-text fragment failed.
     #[error("root-text replacement fragment")]
     RootTextReplaceFragment,
@@ -871,6 +880,15 @@ fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFa
             RootTextReplaceApplyError::FragmentFormatPropertiesNotAllowed { .. } => {
                 ActionStateOperationFault::RootTextReplaceFragmentFormatPropertiesNotAllowed
             }
+            RootTextReplaceApplyError::InvalidFormatInstance { .. } => {
+                ActionStateOperationFault::RootTextReplaceInvalidFormatInstance
+            }
+            RootTextReplaceApplyError::PropertyValueCountLimit { .. } => {
+                ActionStateOperationFault::RootTextReplacePropertyValueCountLimit
+            }
+            RootTextReplaceApplyError::PropertyStringBytesLimit { .. } => {
+                ActionStateOperationFault::RootTextReplacePropertyStringBytesLimit
+            }
             RootTextReplaceApplyError::Fragment(_) => {
                 ActionStateOperationFault::RootTextReplaceFragment
             }
@@ -991,5 +1009,71 @@ const fn history_fault_category(fault: ActionStateHistoryFault) -> &'static str 
         ActionStateHistoryFault::Transaction(_) => "transaction",
         ActionStateHistoryFault::UnexpectedUnchanged => "unexpected-unchanged",
         ActionStateHistoryFault::ResultMismatch => "result-mismatch",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        document::{Format, PropertyMap, PropertyValue},
+        identity::QualifiedName,
+        operation::{OperationApplyError, RootTextFragmentRole, RootTextReplaceApplyError},
+        schema::{CompiledSchema, DocumentLimits},
+    };
+
+    use super::{ActionStateOperationFault, project_operation_error};
+
+    #[test]
+    fn root_text_typed_property_failures_have_bounded_exhaustive_projections()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let schema = CompiledSchema::breditor_base();
+        let kind = QualifiedName::from_known_static("breditor/strong");
+        let properties = PropertyMap::try_from_sorted(vec![(
+            QualifiedName::from_known_static("example/value"),
+            PropertyValue::from_string("secret"),
+        )])?;
+        let Err(report) = schema.validate_inline_format_instance(
+            &DocumentLimits::default(),
+            &Format::new(kind.clone(), properties),
+        ) else {
+            return Err(std::io::Error::other("base strong properties were accepted").into());
+        };
+
+        let cases = [
+            (
+                RootTextReplaceApplyError::InvalidFormatInstance {
+                    role: RootTextFragmentRole::Replacement,
+                    paragraph_index: 0,
+                    run_index: 0,
+                    format_index: 0,
+                    kind,
+                    source: report,
+                },
+                ActionStateOperationFault::RootTextReplaceInvalidFormatInstance,
+            ),
+            (
+                RootTextReplaceApplyError::PropertyValueCountLimit {
+                    role: RootTextFragmentRole::Replacement,
+                    actual: 2,
+                    maximum: 1,
+                },
+                ActionStateOperationFault::RootTextReplacePropertyValueCountLimit,
+            ),
+            (
+                RootTextReplaceApplyError::PropertyStringBytesLimit {
+                    role: RootTextFragmentRole::Replacement,
+                    actual: 2,
+                    maximum: 1,
+                },
+                ActionStateOperationFault::RootTextReplacePropertyStringBytesLimit,
+            ),
+        ];
+
+        for (error, expected) in cases {
+            let projected = project_operation_error(OperationApplyError::RootTextReplace(error));
+            assert_eq!(projected, expected);
+            assert!(!format!("{projected:?}").contains("secret"));
+        }
+        Ok(())
     }
 }

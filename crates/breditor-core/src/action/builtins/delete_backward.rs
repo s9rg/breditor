@@ -20,8 +20,8 @@ use super::{
     grapheme_boundary::{grapheme_boundary_at_or_after, previous_grapheme_boundary},
     support::{
         base_shape_fits, collapsed_selection_at, disabled, fault, fragment_range_parts,
-        require_operation_budget, require_text_splice_range, strict_relocation,
-        text_splice_paragraph_fragment,
+        property_fragment_delta_fits, require_operation_budget, require_text_splice_range,
+        strict_relocation, text_splice_paragraph_fragment,
     },
 };
 
@@ -31,8 +31,8 @@ use super::{
 /// become one independent history record. A collapsed range deletes one
 /// Unicode extended grapheme cluster and offers the stable
 /// `breditor/delete-backward` history merge group, or joins with the previous
-/// paragraph at paragraph offset zero when the schema supports property-free
-/// structural operations. Paragraph-local splices preserve complete typed
+/// paragraph at paragraph offset zero when the schema supports sealed paragraph
+/// structure operations. Paragraph-local and structural edits preserve complete typed
 /// inline-format instances. Formatting seams do not split grapheme clusters. A
 /// protocol caret inside a grapheme cluster is disabled rather than widened or
 /// guessed. If removing content or a paragraph boundary forms a cluster across
@@ -83,10 +83,8 @@ fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, Actio
     }
     let paragraph_path = range.start().paragraph_path();
     if range.start().offset() == TextOffset::ZERO
-        && !state.context().schema().supports_base_text_operations()
+        && !state.context().schema().supports_paragraph_structure_operations()
     {
-        // ParagraphJoin is intentionally still property-free. This also keeps
-        // the pre-existing typed-schema outcome stable at document start.
         return Ok(disabled("breditor/unsupported-schema"));
     }
     if let Some(decision) = require_operation_budget(state, 1) {
@@ -118,7 +116,15 @@ fn evaluate_delete_backward(state: &EditorState) -> Result<ActionDecision, Actio
         .len()
         .checked_add(join.expected_right().len())
         .ok_or_else(|| fault("breditor/result-node-count-fault"))?;
-    if !base_shape_fits(state, 2, removed_runs, &[&joined]) {
+    if !base_shape_fits(state, 2, removed_runs, &[&joined])
+        || !property_fragment_delta_fits(
+            state,
+            [join.expected_left(), join.expected_right()],
+            [&joined],
+            "breditor/delete-backward-property-validation-fault",
+            "breditor/delete-backward-property-budget-fault",
+        )?
+    {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }
     let caret = grapheme_boundary_at_or_after(&joined, seam)?;

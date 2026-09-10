@@ -18,7 +18,10 @@ use crate::{
         InlineFormatSpecV1, PropertyPresenceV1,
     },
     identity::QualifiedName,
-    operation::{Operation, OperationValidationError, TextRange, TextSplice},
+    operation::{
+        Operation, OperationValidationError, ParagraphJoin, ParagraphSplit, RootTextBoundary,
+        RootTextRange, RootTextReplace, TextRange, TextSplice,
+    },
     position::{NodePath, TextOffset},
     schema::{CompiledSchema, DocumentLimits, PersistedTypeRevision, SchemaId, SchemaVersion},
     session::EditorSession,
@@ -92,6 +95,21 @@ fn property_insertion(value: bool) -> Result<Operation, Box<dyn Error>> {
     )])?)
 }
 
+fn typed_fragment(text: &str, value: bool) -> Result<TextFragment, Box<dyn Error>> {
+    let properties =
+        PropertyMap::try_from_sorted(vec![(name(PROPERTY_NAME)?, PropertyValue::boolean(value))])?;
+    let formats = FormatSet::try_from_formats(vec![Format::new(name(FORMAT_KIND)?, properties)])?;
+    TextFragment::try_from_runs(vec![TextRun::try_new(text, formats)?]).map_err(Into::into)
+}
+
+fn root_boundary(paragraph: u32, offset: u64) -> Result<RootTextBoundary, Box<dyn Error>> {
+    RootTextBoundary::try_new(
+        NodePath::try_from_indices(vec![paragraph])?,
+        TextOffset::try_new(offset)?,
+    )
+    .map_err(Into::into)
+}
+
 fn empty_state(context: &EditorContext, lineage: &str) -> Result<EditorState, Box<dyn Error>> {
     let paragraph =
         ElementNode::try_new(name("breditor/paragraph")?, None, PropertyMap::default(), Vec::new())
@@ -138,6 +156,42 @@ fn optional_property_round_trips_without_loss_and_is_byte_stable() -> TestResult
     let decoded = codec.decode(&encoded)?;
     assert_eq!(decoded, operation);
     assert_eq!(codec.encode(&decoded)?, encoded);
+    Ok(())
+}
+
+#[test]
+fn typed_structural_operations_round_trip_without_property_loss() -> TestResult {
+    let schema = optional_property_schema("example/operation-v3-typed-structure")?;
+    let context = EditorContext::new(schema, DocumentLimits::default());
+    let codec = OperationJsonCodecV3::new(context.clone());
+
+    let split: Operation = ParagraphSplit::try_new(
+        NodePath::try_from_indices(vec![0])?,
+        TextOffset::try_new(1)?,
+        typed_fragment("ab", true)?,
+    )?
+    .into();
+    let join: Operation = ParagraphJoin::try_new(
+        NodePath::try_from_indices(vec![0])?,
+        typed_fragment("a", true)?,
+        typed_fragment("b", false)?,
+    )?
+    .into();
+    let replace: Operation = RootTextReplace::try_new(
+        RootTextRange::try_new(root_boundary(0, 1)?, root_boundary(1, 1)?)?,
+        vec![typed_fragment("ab", true)?, typed_fragment("cd", false)?],
+        vec![typed_fragment("X", true)?, typed_fragment("Y", false)?],
+    )?
+    .into();
+
+    for operation in [split, join, replace] {
+        assert_eq!(operation.validate(&context), Ok(()));
+        let encoded = codec.encode(&operation)?;
+        assert!(encoded.contains(&format!("\"{PROPERTY_NAME}\":")));
+        let decoded = codec.decode(&encoded)?;
+        assert_eq!(decoded, operation);
+        assert_eq!(codec.encode(&decoded)?, encoded);
+    }
     Ok(())
 }
 

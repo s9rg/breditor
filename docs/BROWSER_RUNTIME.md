@@ -2,8 +2,9 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.4` ABI-4 typed-profile, typed-intent, explicit
-Session-V3 persistence, and closed safe-Link presentation path
+the unpublished `0.3.0-alpha.5` ABI-4 typed-profile, typed-intent, explicit
+Session-V3 persistence, closed safe-Link presentation, and property-preserving
+paragraph-structure path
 
 `BreditorBrowserEditor` is the recommended application boundary introduced in
 `0.1.0` and retained by `0.2.0`. It assembles the generated Rust/Wasm engine,
@@ -120,7 +121,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.4 source path verifies Wasm ABI generation `4` and the exact matching
+The alpha.5 source path verifies Wasm ABI generation `4` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -155,12 +156,12 @@ applications call `executeIntentJson()` from their own typed controls.
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.4` packages:
+exactly matching `0.3.0-alpha.5` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.4 \
-  @breditor/wasm@0.3.0-alpha.4 \
-  @breditor/reference-highlight@0.3.0-alpha.4
+npm install @breditor/browser@0.3.0-alpha.5 \
+  @breditor/wasm@0.3.0-alpha.5 \
+  @breditor/reference-highlight@0.3.0-alpha.5
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -192,7 +193,10 @@ const opened = await openBreditorBrowserEditor({
     historyCapacity: 100,
   },
   rendering: REFERENCE_HIGHLIGHT_RENDER_MANIFEST,
-  toolbar: { host: toolbarHost, manifest: REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST },
+  toolbar: {
+    host: toolbarHost,
+    manifest: REFERENCE_HIGHLIGHT_TOOLBAR_MANIFEST,
+  },
   keyboard: {
     editing: "beforeinputPrimary",
     primaryModifier: "control",
@@ -306,9 +310,7 @@ const result = editor.executeIntentJson(
   "example/set-link-intent",
   JSON.stringify({
     operation: "set",
-    properties: [
-      { name: "example/href", value: "https://example.test" },
-    ],
+    properties: [{ name: "example/href", value: "https://example.test" }],
   }),
 );
 ```
@@ -439,6 +441,17 @@ selection rather than arbitrary DOM, and pasted HTML is reduced through the
 closed legacy-base or exact compiled-presentation allowlist before a Rust
 plain-text insertion.
 
+In alpha.5 the same event, queue, Wasm, projection, and toolbar contracts route
+the newly enabled typed structural plans without a browser-side action table
+change. A Bootstrap-V2 profile can now retain complete Link or other typed peer
+formats through Enter, cross-paragraph type-over or deletion, Backspace/Delete
+paragraph joins, and cross-paragraph property-free toggles. Multiline plain-
+text insertion applies one destination-derived complete format set to each
+non-empty inserted line. Clipboard source wrappers and properties are still
+discarded: a pasted line can inherit Link from the target caret, but paste does
+not import a Link from clipboard HTML. Typed `SetInlineFormatAction` input
+remains same-paragraph application UI and is not routed over multiple blocks.
+
 No ProseMirror, Lexical, Tiptap, CKEditor, DOM-operation, or plugin protocol is
 implemented. Those projects are design references only; Breditor's AST,
 positions, actions, history, and persistence formats are independent contracts.
@@ -468,6 +481,15 @@ documents exist only after recipe execution. The selected Rust restore factory
 is authoritative for complete decode, resource-limit enforcement,
 canonicality, and forward/inverse replay; a checkpoint that passes browser
 preflight can still fail closed there.
+
+Alpha.5 uses the existing Bootstrap-V2 outer record and Session Checkpoint V3
+binding. Its structural edit history carries exact typed guards and inverses,
+so autosave after undo retains both the undo prefix and redo suffix and reload
+can replay either direction without re-running an action. Alpha.5 reads
+conforming alpha.4 checkpoints. An alpha.4 runtime cannot restore an alpha.5
+V3 checkpoint whose retained history contains a typed split, join, or root-text
+replacement; it fails startup and does not overwrite that stored evidence.
+The unchanged checkpoint number is not a prerelease downgrade guarantee.
 
 Every validated Rust successor marks a private dirty epoch, including a commit
 whose later DOM publication fails. Autosave defaults to a 250 ms trailing quiet
@@ -561,9 +583,9 @@ representations:
 ```ts
 const document = editor.exportContent("documentJson");
 if (document.ok) {
-  console.log(document.format);    // "documentJson"
+  console.log(document.format); // "documentJson"
   console.log(document.utf8Bytes); // exact UTF-8 length
-  console.log(document.snapshot);  // lineage + revision for these bytes
+  console.log(document.snapshot); // lineage + revision for these bytes
   upload(document.value);
 }
 
@@ -751,13 +773,14 @@ keymaps, rich paste, collaboration, selective undo, or dynamic extension
 lifecycle. These additions do not alter the stable
 `0.1.x` promises listed above.
 
-The alpha.3 source path additionally validates and freezes typed property
-contracts and property-bearing semantic projections, exposes strict synchronous
-`executeIntentJson()`, and carries Session Checkpoint V3 through the same
-profile-bound IndexedDB/autosave lifecycle. It still does not map properties to
-safe DOM attributes or copy HTML, accept rich formatting on paste, or provide a
-typed-input toolbar control. Its structural typed-edit and Local Log V3 limits
-remain those documented in [`V0_3_SCOPE.md`](V0_3_SCOPE.md).
+The alpha.3 source path additionally validated and froze typed property
+contracts and property-bearing semantic projections, exposed strict synchronous
+`executeIntentJson()`, and carried Session Checkpoint V3 through the same
+profile-bound IndexedDB/autosave lifecycle. At that checkpoint it did not map
+properties to safe DOM attributes or copy HTML, accept rich formatting on
+paste, or provide a typed-input toolbar control. Its structural typed-edit and
+Local Log V3 limits were those documented in
+[`V0_3_SCOPE.md`](V0_3_SCOPE.md).
 
 The unpublished alpha.4 source path adds one deliberately closed exception to
 those alpha.3 presentation limits. An exact two-property `safeLinkV1` format
@@ -765,9 +788,17 @@ may render and copy as `<a class="breditor-link">` with only canonical safe
 `href` and, when requested, fixed `rel`/`target` attributes; unsafe but
 schema-valid URLs remain inert. Canonical HTML-only Link shapes can pass the
 paste allowlist, but paste and composition still flatten every wrapper and
-property to plain replacement text. Typed structural paragraph edits remain
-unsupported, and typed Link input remains an application-owned form calling
-`executeIntentJson()` rather than a new toolbar control kind.
+property to plain replacement text. At alpha.4, typed structural paragraph
+edits remained unsupported, and typed Link input remained an application-owned
+form calling `executeIntentJson()` rather than a new toolbar control kind.
+
+Alpha.5 removes that typed structural restriction only for the sealed direct-
+root paragraph grammar. It does not add headings, lists, tables, block
+properties or identities, nested blocks, rich paste, cross-paragraph typed
+set/remove, or a typed native toolbar control. Structural commands still run
+synchronously, validate complete property deltas, and can be disabled when a
+split or multiline insertion duplicates typed property owners beyond the
+configured limits.
 
 The reference package is trusted same-realm JavaScript that supplies frozen
 configuration and presentation values, not sandboxed code, a package-signature
@@ -775,9 +806,9 @@ proof, or a dynamic Rust/Wasm plugin. Its original Alpha.8
 Chromium/Firefox/WebKit matrix proves the property-free Highlight intent/state/
 toolbar, mixed-format nesting, history, export/copy, plain paste, persistence
 reload, restored history, and teardown paths. Alpha.4 adds the combined
-Highlight + Link profile and corresponding consumer/demo gates; neither matrix
-establishes broad mobile, operating-system IME, or assistive-technology
-support.
+Highlight + Link profile, and alpha.5 adds its structural-edit/history demo
+gate. Neither matrix establishes broad mobile, operating-system IME, or
+assistive-technology support.
 
 See [the browser event pipeline](./BROWSER_EVENT_PIPELINE.md),
 [toolbar contract](./TOOLBAR.md),

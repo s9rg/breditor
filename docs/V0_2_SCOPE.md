@@ -305,7 +305,7 @@ when review finds a correctness boundary; later features are not claimed early.
   schema fingerprint, diagnostics, renderer order, and encoded bytes;
 - changing only extension identity or version, action, state, intent, or
   presentation declarations preserves the schema fingerprint when the admitted
-  schema projection, compiler contract, and compiled semantic admission
+  schema projection, compiler contract, and compiled content-language
   constraints are unchanged. Tightening host-only `DocumentLimits`, JSON byte
   budgets, or transaction-operation limits also preserves that durable
   fingerprint. Document fast-path proof reuse still requires the exact relevant

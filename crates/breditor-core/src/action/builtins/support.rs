@@ -12,10 +12,10 @@ use super::super::text_position::{
     TextPositionError, TextRangeSelection, normalize_range_selection, point_at_fragment_offset,
 };
 
-pub(super) fn require_base_text_range(
+pub(super) fn require_paragraph_structure_range(
     state: &EditorState,
 ) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
-    if !state.context().schema().supports_base_text_operations() {
+    if !state.context().schema().supports_paragraph_structure_operations() {
         return Ok(Err(disabled_reason("breditor/unsupported-schema")));
     }
     match normalize_range_selection(state) {
@@ -26,9 +26,8 @@ pub(super) fn require_base_text_range(
 
 /// Requires only the paragraph-local splice capability and a normalizable range.
 ///
-/// Property-aware inline formatting deliberately uses this narrower gate. The
-/// structural base-operation gate remains property-free until every split,
-/// join, and root-replacement contract can preserve typed format properties.
+/// Property-aware inline formatting deliberately uses this narrower gate so
+/// same-paragraph edits do not depend on structural operation support.
 pub(super) fn require_text_splice_range(
     state: &EditorState,
 ) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
@@ -448,10 +447,32 @@ pub(super) fn property_result_fits(
     validation_fault_code: &'static str,
     budget_fault_code: &'static str,
 ) -> Result<bool, ActionFault> {
+    property_fragment_delta_fits(
+        state,
+        [source],
+        [result],
+        validation_fault_code,
+        budget_fault_code,
+    )
+}
+
+/// Checks the exact document-wide property delta of affected paragraph slices.
+///
+/// Structural edits can split one property-bearing run across paragraphs or
+/// clone one insertion format into many paragraphs. Each resulting text run is
+/// a distinct property owner, so callers must measure the complete derived
+/// paragraphs rather than only the explicit replacement fragments.
+pub(super) fn property_fragment_delta_fits<'source, 'result>(
+    state: &EditorState,
+    source: impl IntoIterator<Item = &'source TextFragment>,
+    result: impl IntoIterator<Item = &'result TextFragment>,
+    validation_fault_code: &'static str,
+    budget_fault_code: &'static str,
+) -> Result<bool, ActionFault> {
     let source =
-        fragment_property_summary(state, source, validation_fault_code, budget_fault_code)?;
+        fragments_property_summary(state, source, validation_fault_code, budget_fault_code)?;
     let result =
-        fragment_property_summary(state, result, validation_fault_code, budget_fault_code)?;
+        fragments_property_summary(state, result, validation_fault_code, budget_fault_code)?;
     let current = state.document().summary();
     let value_count = current
         .property_value_count()
@@ -468,6 +489,27 @@ pub(super) fn property_result_fits(
         usize::try_from(actual)
             .is_ok_and(|actual| actual <= limits.max_total_property_string_bytes())
     }))
+}
+
+fn fragments_property_summary<'fragment>(
+    state: &EditorState,
+    fragments: impl IntoIterator<Item = &'fragment TextFragment>,
+    validation_fault_code: &'static str,
+    budget_fault_code: &'static str,
+) -> Result<PropertySummary, ActionFault> {
+    let mut property_value_count = 0_u64;
+    let mut property_string_bytes = 0_u64;
+    for fragment in fragments {
+        let summary =
+            fragment_property_summary(state, fragment, validation_fault_code, budget_fault_code)?;
+        property_value_count = property_value_count
+            .checked_add(summary.property_value_count)
+            .ok_or_else(|| fault(budget_fault_code))?;
+        property_string_bytes = property_string_bytes
+            .checked_add(summary.property_string_bytes)
+            .ok_or_else(|| fault(budget_fault_code))?;
+    }
+    Ok(PropertySummary { property_value_count, property_string_bytes })
 }
 
 /// Checks one pending format set against the property-resource ceilings.

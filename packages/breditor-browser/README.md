@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the alpha.4 typed-profile source checkpoint.
+`0.2.0` extension surface, and the alpha.5 typed-profile source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -60,6 +60,15 @@ toolbar still cannot collect typed input; the reference React form calls
 boundary and its action, intent, undo, or redo remain one Rust checkpoint
 publication rather than separate browser-issued mutations.
 
+The unpublished `0.3.0-alpha.5` source package changes no browser API, Wasm ABI
+4 method, Bootstrap V2 shape, projection shape, or persistence format. The
+existing Enter, multiline paste, cross-paragraph type-over/delete, boundary
+Backspace/Delete, and property-free toggle routes now preserve typed peer
+formats because Rust's sealed paragraph structural operations retain complete
+properties. Undo/redo and Session Checkpoint V3 reload replay those exact
+operations. Paste still strips source formatting, and typed set/remove remains
+same-paragraph application UI.
+
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are
 available from the explicit `@breditor/browser/advanced` entry point, which is
@@ -73,7 +82,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.4 @breditor/wasm@0.3.0-alpha.4
+npm install @breditor/browser@0.3.0-alpha.5 @breditor/wasm@0.3.0-alpha.5
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -94,13 +103,15 @@ const EMPTY_DOCUMENT_JSON = JSON.stringify({
     type: "breditor/document",
     entityId: null,
     properties: {},
-    children: [{
-      kind: "element",
-      type: "breditor/paragraph",
-      entityId: null,
-      properties: {},
-      children: [],
-    }],
+    children: [
+      {
+        kind: "element",
+        type: "breditor/paragraph",
+        entityId: null,
+        properties: {},
+        children: [],
+      },
+    ],
   },
 });
 
@@ -706,14 +717,19 @@ backpressure; terminal adapter loss pauses autosave. See
   there is no registry, append log, merge, authentication, rollback defense, or
   cross-device synchronization.
 - Clipboard uses synchronous event `clipboardData`; safe profile formatting is
-  copied, but every paste is plain-text. There is no async Clipboard API,
-  internal MIME, files/images, or rich paste.
+  copied, but every paste is plain-text. Inserted non-empty lines may inherit a
+  complete typed format set from the destination; no source property is
+  reconstructed. There is no async Clipboard API, internal MIME, files/images,
+  or rich paste.
 - Extensions may add closed typed scalar properties to inline formats in the
   sealed paragraph/text AST. Rendering and copy HTML derive attributes only
   through the exact `safeLinkV1` contract; there is no arbitrary attribute,
   URL-policy, or CSS extension mechanism. Rust performs scalar validation, not
   URL semantic validation. Arbitrary nodes, entities, nested blocks, callbacks,
   and extension-owned DOM renderers remain absent.
+- Structural typed edits support only the sealed direct-root paragraph/text
+  grammar. Cross-paragraph `SetInlineFormatAction` remains closed with
+  `breditor/cross-paragraph-inline-format-unsupported`.
 - History is local and linear; collaboration, CRDT/OT rebasing, remote
   selections, and selective undo are absent.
 - Public content egress is mode-selected Document V1/V2 or semantic plain text.

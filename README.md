@@ -27,8 +27,9 @@ npm run demo
 `npm run demo` builds the workspace first, then starts Vite for the React
 example. The Wasm build requires the `wasm32-unknown-unknown` Rust target and a
 matching `wasm-bindgen` CLI. `npm run test:demo` runs the end-to-end Chromium
-demo gate for formatting, undo/redo, autosave reload, accessibility,
-and the narrow responsive layout.
+demo gate for formatting, undo/redo, autosave reload, accessibility, the narrow
+responsive layout, and safe Link preservation through paragraph split/join,
+multiline paste, and restored redo history.
 
 Version `0.2.0` retains the audited RC.1 immutable compiled editor profile
 through the guarded Rust engine, Wasm ABI 3, and the browser projection
@@ -156,6 +157,22 @@ profile uses a React-owned form and the existing strict `executeIntentJson()`
 path; the native toolbar remains button-only. These packages remain
 unpublished.
 
+The `0.3.0-alpha.5` source checkpoint makes the existing sealed
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` operations preserve
+complete typed inline-format properties. Enter, multiline plain-text insertion,
+cross-paragraph type-over/deletion, paragraph-boundary Backspace/Delete, and
+cross-paragraph property-free toggles now retain typed peers such as Link
+through exact inverse operations, undo/redo, V3 replay, and browser autosave
+reload. Structural validation accounts for aggregate property values and
+property-string bytes; splitting one typed run may create another property
+owner and hit an active limit. `SetInlineFormatAction` remains same-paragraph,
+and paste still discards source formatting and properties while allowing plain
+text to inherit the destination's complete format set. This changes no Wasm
+ABI 4 method, Profile Bootstrap V2 shape, schema fingerprint, Document V2, or
+V3 record number. Alpha.5 reads conforming alpha.4 V3 checkpoints, but alpha.4
+cannot restore alpha.5 history containing typed structural operations. The
+packages remain unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -218,11 +235,13 @@ The implementation includes:
   operations, text-preserving interior relocation, and proof-backed local
   result validation with authoritative fallback;
 - direct-root base-paragraph `ParagraphSplit` and `ParagraphJoin` operations
-  with whole-paragraph guards, exact content inverses, and structural
-  relocation laws;
+  with whole-paragraph guards, complete typed format properties, aggregate
+  property-budget checks, exact content inverses, and structural relocation
+  laws;
 - guarded `RootTextReplace` operations for one- or multi-paragraph root text
-  ranges, with complete source guards, multiline replacement fragments,
-  same-type closed inverses, and deterministic deleted-point relocation;
+  ranges, with complete typed source guards, multiline property-bearing
+  replacement fragments, per-slice aggregate property checks, same-type closed
+  inverses, and deterministic deleted-point relocation;
 - atomic transactions, explicit state updates, relocation maps,
   heterogeneous operation-relative change sets, and typed failures;
 - an immutable, deterministic action registry with namespaced identities,
@@ -257,9 +276,9 @@ The implementation includes:
   browser input, toolbar, and public API delivery select `toggle-strong`
   through the frozen `breditor/format-strong` intent route, while typed
   insertion consumes pending formats, and typed schemas support paragraph-local
-  insertion/type-over and deletion across property-bearing run seams; multiline
-  insertion and extended deletion atomically replace cross-paragraph selections
-  only on the property-free structural path, while `toggle-strong`
+  and cross-paragraph insertion/type-over and deletion across property-bearing
+  run seams; multiline insertion and extended deletion atomically replace cross-
+  paragraph selections while preserving typed properties, and `toggle-strong`
   publishes tracked inactive/active/mixed state and preserves selected block
   boundaries during cross-paragraph formatting, plus a public Rust-owned
   `ToggleInlineFormatAction` that can be registered explicitly for any
@@ -328,7 +347,7 @@ browser projection, rendering, and intent-backed toggle buttons. It does not
 add format attributes, arbitrary nodes, custom actions, typed public intents,
 callbacks, extension keymaps/`beforeinput` rules, custom control kinds, or
 cross-extension/shared/fallback toggle routing.
-The experimental `0.3.0-alpha.4` contract admits typed properties in Document
+The experimental `0.3.0-alpha.5` contract admits typed properties in Document
 V2 and supports explicit set/remove, typed pending insertion, paragraph-local
 splice/delete paths, exact history, and the Operation, Editor State,
 Transaction Request, Commit, and Session Checkpoint V3 families. Wasm ABI 4
@@ -338,13 +357,14 @@ and preserve them through Session Checkpoint V3 IndexedDB restore/autosave. The
 browser's single closed `safeLinkV1` policy maps an exact two-property Link to
 canonical fixed attributes; unsafe-but-schema-valid URLs stay visible as inert
 anchors. React reference controls construct typed Link inputs outside the
-native toolbar. It
-does not yet support typed `ParagraphSplit`, `ParagraphJoin`, or
-`RootTextReplace`, so paragraph breaks, paragraph-boundary deletes,
-cross-paragraph replacement, and the `InsertPlainTextAction` structural path
-remain property-free. No Local Log V3 exists. Paste remains plain text and
-reconstructs no Link properties; there is no arbitrary attribute or CSS
-mapping, and the native toolbar has no typed-input control. Rust's
+native toolbar. Alpha.5 adds typed `ParagraphSplit`, `ParagraphJoin`, and
+`RootTextReplace` for that sealed base-text shape, lifting Enter, boundary
+joins, multiline insertion, cross-paragraph type-over/delete, and property-free
+toggles while retaining typed peers. `SetInlineFormatAction` remains paragraph-
+local. No Local Log V3 exists. Paste remains plain text and reconstructs no
+source Link properties, though target-context Link can be inherited; there is
+no arbitrary attribute or CSS mapping, and the native toolbar has no typed-
+input control. Rust's
 Boolean/integer/string validation is not URL or CSS sanitization. One manifest
 and one complete profile can each contribute at most
 255 toggle declarations and at most 255 set declarations; every target is owned

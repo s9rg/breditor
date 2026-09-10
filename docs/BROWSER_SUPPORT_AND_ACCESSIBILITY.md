@@ -1,8 +1,9 @@
 # Browser support and accessibility gate
 
 Status: required `0.1.0` base and `0.2.0` profile desktop-browser and
-accessibility gate passed; the unpublished alpha.4 source checkpoint adds the
-separate combined Highlight + Link Chromium gates described below
+accessibility gate passed; the unpublished alpha.5 source checkpoint retains
+the combined Highlight + Link Chromium gates and adds the typed structural
+history/reload proof described below
 
 Breditor's supported desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`
@@ -51,6 +52,13 @@ undo/redo, ordinary keyboard editing, dirty-to-idle Session-V3 autosave and
 reload restoration, a full-page axe scan, and toolbar containment at a
 320-pixel viewport. It complements rather than replaces the three-engine
 package harness.
+
+Alpha.5 extends that demo gate without changing the browser protocol. One safe
+Link must preserve its exact `href`, `rel`, and `target` plus its Highlight peer
+through Enter, multiline plain-text paste, paragraph-boundary Backspace, undo,
+autosave/reload with an intact redo branch, and redo. The assertion exercises
+the ordinary public event, toolbar, projection, and persistence paths; it does
+not inject a browser-side operation or restore from retained DOM.
 
 Run the gate after generating the three public packages:
 

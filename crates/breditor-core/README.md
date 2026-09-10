@@ -157,6 +157,33 @@ fails closed for typed schemas. The browser's exact `safeLinkV1` policy is not
 a Rust URL contract; core continues to validate only the declared scalar shape
 and bounds.
 
+The unpublished `0.3.0-alpha.5` source checkpoint makes the sealed
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` primitives preserve
+complete typed inline-format instances. Their source guards, replacement and
+derived-result fragments, exact inverses, relocation, undo/redo, and V3 replay
+retain canonical properties. Structural admission validates every instance and
+aggregates property-value and property-string-byte usage independently across
+complete fragment slices before mutation. A split can duplicate one typed
+format owner and exceed a configured property limit even when its text is
+unchanged; an equal-format join can merge owners.
+
+The compiler now exposes a separate private capability for that fixed direct-
+root document/paragraph/text structure with typed inline formats. The previous
+property-free base-text capability remains the frozen V1/V2 operation-codec
+sentinel and continues to reject every typed schema at that lossy boundary. No
+codec, bootstrap, fingerprint, or Wasm ABI generation changes.
+
+The built-ins now use the typed structural path for Enter, multiline plain-
+text insertion, cross-paragraph type-over and deletion, paragraph-boundary
+backward/forward joins, and cross-paragraph property-free toggles that preserve
+typed peer formats. `SetInlineFormatAction` deliberately stays paragraph-local.
+Plain-text insertion applies one captured target `FormatSet` to every non-empty
+inserted line; it does not reconstruct source clipboard formatting or
+properties. Alpha.5 reads conforming alpha.4 Session Checkpoint V3 data, but an
+alpha.4 reader cannot restore alpha.5 V3 history containing one of these typed
+structural operations. The unchanged format number is not a downgrade promise
+between unpublished prereleases.
+
 See the
 [extension architecture](../../docs/EXTENSION_ARCHITECTURE.md),
 [`0.2.0` scope](../../docs/V0_2_SCOPE.md),
@@ -233,16 +260,17 @@ toolbar-shaped control: it reports inactive, active, or mixed state, toggles
 explicit pending formats at a caret, performs one guarded same-paragraph splice
 for a local extended selection, and uses one guarded root-text replacement
 while preserving every selected paragraph boundary for a cross-paragraph
-selection. The typed text-insertion action consumes that pending override,
+selection, including typed peer formats. The typed text-insertion action consumes that pending override,
 inherits deterministic context otherwise, replaces one exact direct-root text
 range, and offers adjacent edits to the `breditor/typing` history group.
 Same-paragraph insertion stays on the property-aware local splice path, while
-cross-paragraph type-over uses the property-free guarded root-text replacement
-path and therefore fails closed for typed schemas.
+cross-paragraph type-over uses the property-preserving guarded root-text
+replacement path.
 Atomic plain-text insertion converts CRLF/CR/LF into structural paragraphs with
-one root-text replacement. Grapheme-aware backward and forward deletion share a
-dedicated exact-selection planner while preserving directional splice/join
-paths and merge groups for collapsed carets.
+one property-preserving root-text replacement and applies one captured target
+format set to every non-empty inserted line. Grapheme-aware backward and
+forward deletion share a dedicated exact-selection planner while preserving
+directional splice/join paths and merge groups for collapsed carets.
 Cross-paragraph paragraph breaks use the same atomic primitive with two empty
 replacement fragments, preserving the retained boundary text as two distinct
 paragraphs without a delete/split intermediate.
@@ -250,8 +278,8 @@ Operation records retain exact optimistic guards and pass checked constructors
 plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The core
 stays platform-independent: it has no action-state subscription/delivery
-layer, presentation manifest, DOM or browser scheduler, typed structural
-paragraph split/join/root-replacement protocol, V3 local-log/storage codec,
+layer, presentation manifest, DOM or browser scheduler, structural operations
+beyond the sealed direct-root paragraph grammar, V3 local-log/storage codec,
 log-storage I/O, checkpoint/log atomic replacement,
 storage-generation publication or initial scope provisioning, process-restart
 append reconstruction, or collaboration transform. Alpha.5 does propagate a

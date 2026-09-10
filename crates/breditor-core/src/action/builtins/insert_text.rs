@@ -22,8 +22,8 @@ use super::super::text_position::TextRangeSelection;
 use super::support::{
     CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
     capture_cross_paragraph_text_source, collapsed_selection_at_with_affinity, disabled,
-    effective_typing_formats, fault, fragment_range_parts, property_result_fits,
-    require_operation_budget, require_text_splice_range, strict_relocation,
+    effective_typing_formats, fault, fragment_range_parts, property_fragment_delta_fits,
+    property_result_fits, require_operation_budget, require_text_splice_range, strict_relocation,
     text_splice_paragraph_fragment,
 };
 
@@ -260,10 +260,9 @@ fn evaluate_insert_text(
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
-    // RootTextReplace, and therefore cross-paragraph insertion, remains behind
-    // the broader property-free structural capability. Do not let opening the
-    // paragraph-local TextSplice path implicitly widen that contract.
-    if !range.is_same_paragraph() && !state.context().schema().supports_base_text_operations() {
+    if !range.is_same_paragraph()
+        && !state.context().schema().supports_paragraph_structure_operations()
+    {
         return Ok(disabled("breditor/unsupported-schema"));
     }
     if let Some(decision) = require_operation_budget(state, 1) {
@@ -374,6 +373,13 @@ fn evaluate_cross_paragraph_insert(
     };
     if !base_shape_fits(state, source.guards().len(), source.guard_run_count(), &[&result])
         || !base_total_text_fits(state, source.guard_text_bytes(), result.text_bytes())
+        || !property_fragment_delta_fits(
+            state,
+            source.guards().iter(),
+            [&result],
+            "breditor/insert-text-property-validation-fault",
+            "breditor/insert-text-property-budget-fault",
+        )?
     {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }

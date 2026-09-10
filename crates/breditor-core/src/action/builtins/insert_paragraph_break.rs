@@ -2,7 +2,10 @@ use crate::{
     action::{Action, ActionDecision, ActionEvaluation, ActionFault, ActionId, ActionPlan},
     document::TextFragment,
     identity::QualifiedName,
-    operation::{Operation, ParagraphSplit, RootTextReplace, TextRange, TextSplice},
+    operation::{
+        Operation, ParagraphSplit, RootTextBoundary, RootTextRange, RootTextReplace, TextRange,
+        TextSplice,
+    },
     position::{Affinity, Point},
     selection::Selection,
     state::EditorState,
@@ -14,16 +17,18 @@ use super::{
     support::{
         CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
         capture_cross_paragraph_text_source, collapsed_selection, disabled, fault,
-        fragment_range_parts, paragraph_fragment, require_base_text_range,
-        require_operation_budget, strict_relocation,
+        fragment_range_parts, paragraph_fragment, property_fragment_delta_fits,
+        require_operation_budget, require_paragraph_structure_range, strict_relocation,
     },
 };
 
 /// Semantic action that replaces selected content with a paragraph break.
 ///
-/// A collapsed range becomes one [`ParagraphSplit`]. A same-paragraph extended
-/// range chooses a deterministic split/delete ordering whose intermediate state
-/// satisfies the active limits, and publishes both operations atomically.
+/// A collapsed range becomes one [`ParagraphSplit`]. In a property-free schema,
+/// a same-paragraph extended range chooses a deterministic split/delete ordering
+/// whose intermediate state satisfies the active limits. A typed schema uses one
+/// atomic [`RootTextReplace`] so a valid final result cannot be rejected because
+/// an unobservable intermediate temporarily duplicates property owners.
 /// A cross-paragraph range becomes one [`RootTextReplace`] whose two empty
 /// replacement fragments retain the spatial start prefix and end suffix as
 /// separate result paragraphs, without exposing delete/split intermediates.
@@ -51,7 +56,7 @@ impl Action for InsertParagraphBreakAction {
 }
 
 fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_text_range(state)? {
+    let range = match require_paragraph_structure_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
@@ -61,7 +66,8 @@ fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision
         }
         return insert_cross_paragraph_break(state, &range);
     }
-    let operation_count = if range.is_collapsed() { 1 } else { 2 };
+    let property_free_structure = state.context().schema().supports_base_text_operations();
+    let operation_count = if range.is_collapsed() || !property_free_structure { 1 } else { 2 };
     if let Some(decision) = require_operation_budget(state, operation_count) {
         return Ok(decision);
     }
@@ -70,40 +76,13 @@ fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision
     let split_offset = range.start().offset();
     let source = paragraph_fragment(state, paragraph_path, split_offset)?;
     let operations = if range.is_collapsed() {
-        let (left, right) =
-            source.split_at(split_offset).map_err(|_| fault("breditor/fragment-split-fault"))?;
-        if !base_shape_fits(state, 1, source.len(), &[&left, &right]) {
-            return Ok(disabled("breditor/result-limit-exceeded"));
-        }
-        let split = ParagraphSplit::try_new(paragraph_path.clone(), split_offset, source)
-            .map_err(|_| fault("breditor/paragraph-split-construction-fault"))?;
-        vec![Operation::from(split)]
+        collapsed_break_operations(state, paragraph_path, split_offset, source)?
     } else {
-        let (prefix, selected, suffix) =
-            fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
-        if !base_shape_fits(state, 1, source.len(), &[&prefix, &suffix]) {
-            return Ok(disabled("breditor/result-limit-exceeded"));
-        }
-        let tail =
-            selected.try_concat(&suffix).map_err(|_| fault("breditor/fragment-concat-fault"))?;
-        if base_shape_fits(state, 1, source.len(), &[&prefix, &tail]) {
-            split_then_delete(paragraph_path, split_offset, source, selected)?
-        } else {
-            let Ok(without_selection) = prefix.try_concat(&suffix) else {
-                return Ok(disabled("breditor/intermediate-limit-exceeded"));
-            };
-            if !base_shape_fits(state, 1, source.len(), &[&without_selection]) {
-                return Ok(disabled("breditor/intermediate-limit-exceeded"));
-            }
-            delete_then_split(
-                state,
-                paragraph_path,
-                range.start().offset(),
-                range.end().offset(),
-                split_offset,
-                without_selection,
-            )?
-        }
+        selected_break_operations(state, &range, paragraph_path, source, property_free_structure)?
+    };
+    let operations = match operations {
+        BreakOperations::Enabled(operations) => operations,
+        BreakOperations::Disabled(code) => return Ok(disabled(code)),
     };
 
     let result_paragraph = right_paragraph_path(paragraph_path)
@@ -123,6 +102,139 @@ fn evaluate_insert_paragraph_break(state: &EditorState) -> Result<ActionDecision
     )))
 }
 
+enum BreakOperations {
+    Enabled(Vec<Operation>),
+    Disabled(&'static str),
+}
+
+fn collapsed_break_operations(
+    state: &EditorState,
+    paragraph_path: &crate::position::NodePath,
+    split_offset: crate::position::TextOffset,
+    source: TextFragment,
+) -> Result<BreakOperations, ActionFault> {
+    let (left, right) =
+        source.split_at(split_offset).map_err(|_| fault("breditor/fragment-split-fault"))?;
+    let Some(result_text_bytes) = left.text_bytes().checked_add(right.text_bytes()) else {
+        return Ok(BreakOperations::Disabled("breditor/result-limit-exceeded"));
+    };
+    if !base_shape_fits(state, 1, source.len(), &[&left, &right])
+        || !base_total_text_fits(state, source.text_bytes(), result_text_bytes)
+        || !property_fragment_delta_fits(
+            state,
+            [&source],
+            [&left, &right],
+            "breditor/insert-paragraph-break-property-validation-fault",
+            "breditor/insert-paragraph-break-property-budget-fault",
+        )?
+    {
+        return Ok(BreakOperations::Disabled("breditor/result-limit-exceeded"));
+    }
+    let split = ParagraphSplit::try_new(paragraph_path.clone(), split_offset, source)
+        .map_err(|_| fault("breditor/paragraph-split-construction-fault"))?;
+    Ok(BreakOperations::Enabled(vec![Operation::from(split)]))
+}
+
+fn selected_break_operations(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    paragraph_path: &crate::position::NodePath,
+    source: TextFragment,
+    property_free_structure: bool,
+) -> Result<BreakOperations, ActionFault> {
+    let (prefix, selected, suffix) =
+        fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
+    let Some(result_text_bytes) = prefix.text_bytes().checked_add(suffix.text_bytes()) else {
+        return Ok(BreakOperations::Disabled("breditor/result-limit-exceeded"));
+    };
+    if !base_shape_fits(state, 1, source.len(), &[&prefix, &suffix])
+        || !base_total_text_fits(state, source.text_bytes(), result_text_bytes)
+        || !property_fragment_delta_fits(
+            state,
+            [&source],
+            [&prefix, &suffix],
+            "breditor/insert-paragraph-break-property-validation-fault",
+            "breditor/insert-paragraph-break-property-budget-fault",
+        )?
+    {
+        return Ok(BreakOperations::Disabled("breditor/result-limit-exceeded"));
+    }
+    if property_free_structure {
+        return property_free_selected_break_operations(
+            state, range, source, &prefix, selected, &suffix,
+        );
+    }
+
+    let operation_range = RootTextRange::try_new(
+        RootTextBoundary::try_new(paragraph_path.clone(), range.start().offset())
+            .map_err(|_| fault("breditor/insert-paragraph-break-root-range-fault"))?,
+        RootTextBoundary::try_new(paragraph_path.clone(), range.end().offset())
+            .map_err(|_| fault("breditor/insert-paragraph-break-root-range-fault"))?,
+    )
+    .map_err(|_| fault("breditor/insert-paragraph-break-root-range-fault"))?;
+    let operation = RootTextReplace::try_new(
+        operation_range,
+        vec![source],
+        vec![TextFragment::empty(), TextFragment::empty()],
+    )
+    .map_err(|_| fault("breditor/insert-paragraph-break-root-replace-fault"))?;
+    Ok(BreakOperations::Enabled(vec![Operation::from(operation)]))
+}
+
+fn property_free_selected_break_operations(
+    state: &EditorState,
+    range: &TextRangeSelection,
+    source: TextFragment,
+    prefix: &TextFragment,
+    selected: TextFragment,
+    suffix: &TextFragment,
+) -> Result<BreakOperations, ActionFault> {
+    let tail = selected.try_concat(suffix).map_err(|_| fault("breditor/fragment-concat-fault"))?;
+    let split_first_fits = base_shape_fits(state, 1, source.len(), &[prefix, &tail])
+        && base_total_text_fits(state, source.text_bytes(), source.text_bytes())
+        && property_fragment_delta_fits(
+            state,
+            [&source],
+            [prefix, &tail],
+            "breditor/insert-paragraph-break-property-validation-fault",
+            "breditor/insert-paragraph-break-property-budget-fault",
+        )?;
+    if split_first_fits {
+        let operations = split_then_delete(
+            range.start().paragraph_path(),
+            range.start().offset(),
+            source,
+            selected,
+        )?;
+        return Ok(BreakOperations::Enabled(operations));
+    }
+
+    let Ok(without_selection) = prefix.try_concat(suffix) else {
+        return Ok(BreakOperations::Disabled("breditor/intermediate-limit-exceeded"));
+    };
+    if !base_shape_fits(state, 1, source.len(), &[&without_selection])
+        || !base_total_text_fits(state, source.text_bytes(), without_selection.text_bytes())
+        || !property_fragment_delta_fits(
+            state,
+            [&source],
+            [&without_selection],
+            "breditor/insert-paragraph-break-property-validation-fault",
+            "breditor/insert-paragraph-break-property-budget-fault",
+        )?
+    {
+        return Ok(BreakOperations::Disabled("breditor/intermediate-limit-exceeded"));
+    }
+    let operations = delete_then_split(
+        state,
+        range.start().paragraph_path(),
+        range.start().offset(),
+        range.end().offset(),
+        range.start().offset(),
+        without_selection,
+    )?;
+    Ok(BreakOperations::Enabled(operations))
+}
+
 fn insert_cross_paragraph_break(
     state: &EditorState,
     range: &TextRangeSelection,
@@ -140,6 +252,13 @@ fn insert_cross_paragraph_break(
         source.guard_run_count(),
         &[source.prefix(), source.suffix()],
     ) || !base_total_text_fits(state, source.guard_text_bytes(), retained_text_bytes)
+        || !property_fragment_delta_fits(
+            state,
+            source.guards().iter(),
+            [source.prefix(), source.suffix()],
+            "breditor/insert-paragraph-break-property-validation-fault",
+            "breditor/insert-paragraph-break-property-budget-fault",
+        )?
     {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }

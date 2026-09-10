@@ -1797,12 +1797,81 @@ const typedRuntimeDocument = typedRuntime.exportContent("documentJson");
 assert.equal(typedRuntimeDocument.ok, true);
 assert.match(typedRuntimeDocument.value, /https:\/\/runtime\.example\.test/);
 
+// Structural actions stay on the existing ABI: the Rust operation carries the
+// complete typed fragments and the browser reprojects both Link owners.
+const linkedRuntimeText = typedRuntimeHost.querySelector("a")?.firstChild;
+assert.ok(linkedRuntimeText instanceof runtimeDom.window.Text);
+runtimeDom.window.getSelection().setBaseAndExtent(
+  linkedRuntimeText,
+  1,
+  linkedRuntimeText,
+  1,
+);
+document.dispatchEvent(new runtimeDom.window.Event("selectionchange"));
+assert.equal(typedRuntime.getSnapshot().document.revision, "3");
+const typedRuntimeBreak = new runtimeDom.window.InputEvent("beforeinput", {
+  bubbles: true,
+  cancelable: true,
+  inputType: "insertParagraph",
+});
+assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeBreak), false);
+assert.equal(typedRuntimeBreak.defaultPrevented, true);
+assert.equal(typedRuntime.getSnapshot().document.revision, "4");
+assert.equal(
+  typedRuntimeHost.innerHTML,
+  '<p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">a</a></p><p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">bc</a></p>',
+);
+
+const typedRuntimeUndo = new runtimeDom.window.KeyboardEvent("keydown", {
+  bubbles: true,
+  cancelable: true,
+  code: "KeyZ",
+  ctrlKey: true,
+  key: "z",
+});
+assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeUndo), false);
+assert.equal(typedRuntime.getSnapshot().document.revision, "5");
+assert.equal(
+  typedRuntimeHost.innerHTML,
+  '<p><a class="breditor-link" href="https://runtime.example.test/" rel="noopener noreferrer" target="_blank">abc</a></p>',
+);
+const typedRuntimeRedo = new runtimeDom.window.KeyboardEvent("keydown", {
+  bubbles: true,
+  cancelable: true,
+  code: "KeyY",
+  ctrlKey: true,
+  key: "y",
+});
+assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeRedo), false);
+assert.equal(typedRuntime.getSnapshot().document.revision, "6");
+assert.equal(typedRuntimeHost.querySelectorAll("a").length, 2);
+const typedRuntimeSecondUndo = new runtimeDom.window.KeyboardEvent("keydown", {
+  bubbles: true,
+  cancelable: true,
+  code: "KeyZ",
+  ctrlKey: true,
+  key: "z",
+});
+assert.equal(typedRuntimeHost.dispatchEvent(typedRuntimeSecondUndo), false);
+assert.equal(typedRuntime.getSnapshot().document.revision, "7");
+
+const restoredTypedRuntimeText = typedRuntimeHost.querySelector("a")?.firstChild;
+assert.ok(restoredTypedRuntimeText instanceof runtimeDom.window.Text);
+runtimeDom.window.getSelection().setBaseAndExtent(
+  restoredTypedRuntimeText,
+  0,
+  restoredTypedRuntimeText,
+  3,
+);
+document.dispatchEvent(new runtimeDom.window.Event("selectionchange"));
+assert.equal(typedRuntime.getSnapshot().document.revision, "8");
+
 const typedRuntimeRemove = typedRuntime.executeIntentJson(
   "example/set-link-intent",
   '{"operation":"remove"}',
 );
 assert.equal(typedRuntimeRemove.status, "committed");
-assert.equal(typedRuntimeRemove.document.revision, "3");
+assert.equal(typedRuntimeRemove.document.revision, "9");
 assert.equal(typedRuntimeHost.innerHTML, "<p>abc</p>");
 assert.equal(typedRuntime.getStatus().phase, "live");
 typedRuntime.dispose();

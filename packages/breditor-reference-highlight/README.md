@@ -4,7 +4,7 @@
 profiles. The original `REFERENCE_HIGHLIGHT_*` surface remains the exact
 property-free `example/highlight` proof shipped for `0.2.0`. The additive
 `REFERENCE_FORMATTING_*` surface combines that unchanged Highlight with a typed
-`example/link` format for the `0.3.0-alpha.4` path.
+`example/link` format for the `0.3.0-alpha.5` path.
 
 The package exports inert profile data, exact durable schema fingerprints,
 fingerprint-bound Document V2 fixtures, complete owned browser render and
@@ -19,6 +19,10 @@ the new ABI-4 typed-profile command or Session Checkpoint V3 path.
 `0.3.0-alpha.4` adds the combined surface without changing any byte or meaning
 of the Highlight-only exports. The combined profile explicitly selects Profile
 Bootstrap V2 and the browser's property-preserving Session Checkpoint V3 path.
+Alpha.5 changes none of that package data; it proves the combined Link and
+Highlight values through Enter, multiline plain-text paste, paragraph-boundary
+join, undo, reload with both history branches, and redo. Paste inherits target
+formatting only and never reconstructs source Link properties.
 
 ## Use
 
@@ -28,9 +32,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.4 \
-  @breditor/wasm@0.3.0-alpha.4 \
-  @breditor/reference-highlight@0.3.0-alpha.4
+npm install @breditor/browser@0.3.0-alpha.5 \
+  @breditor/wasm@0.3.0-alpha.5 \
+  @breditor/reference-highlight@0.3.0-alpha.5
 ```
 
 ```ts

@@ -408,50 +408,90 @@ fn directional_delete_removes_one_grapheme_across_typed_run_seams_and_replays() 
 }
 
 #[test]
-fn typed_structural_delete_routes_keep_the_stable_unsupported_schema_outcome() -> TestResult {
-    let context = EditorContext::new(typed_schema()?, DocumentLimits::default())
-        .with_max_operations_per_transaction(0);
+fn typed_structural_delete_routes_preserve_properties_and_replay() -> TestResult {
+    let context = EditorContext::new(typed_schema()?, DocumentLimits::default());
     let registry = base_action_registry()?;
-    let paragraphs = [paragraph_value(&[linked("a", "left")]), paragraph_value(&[plain("b")])];
-    let cross = state(
-        &context,
-        &paragraphs,
-        selected(text_point(0, 0, 0, Affinity::Before)?, text_point(1, 0, 1, Affinity::After)?),
-        None,
-        "delete-typed-cross-disabled",
-    )?;
     for action in
         [delete_selection_action_id(), delete_backward_action_id(), delete_forward_action_id()]
     {
-        assert_disabled(&registry, &cross, &action, "breditor/unsupported-schema")?;
+        let initial_selection =
+            selected(text_point(1, 0, 1, Affinity::After)?, text_point(0, 0, 1, Affinity::Before)?);
+        let initial = state(
+            &context,
+            &[paragraph_value(&[linked("ab", "left")]), paragraph_value(&[linked("cd", "right")])],
+            initial_selection,
+            None,
+            &format!("delete-typed-cross-{}", action.as_str().replace('/', "-")),
+        )?;
+        let initial_value = initial.clone();
+        let mut session = EditorSession::new(initial);
+        let prepared = enabled(&registry, session.state(), &action)?;
+        assert!(matches!(prepared.transaction().operations(), [Operation::RootTextReplace(_)]));
+        let commit = session.execute_prepared_action(ActionPreparation::Enabled(prepared))?;
+        assert!(matches!(commit.inverse_operations(), [Operation::RootTextReplace(_)]));
+        assert_runs(session.state().document(), &[("a", Some("left")), ("d", Some("right"))])?;
+        assert_caret(session.state(), &text_point(0, 1, 0, Affinity::After)?)?;
+        assert_eq!(session.state().pending_formats(), None);
+        let final_value = session.state().clone();
+
+        let Some(undo) = session.undo()? else {
+            return Err(test_error("typed structural deletion was not undoable").into());
+        };
+        assert_eq!(undo.forward_operations(), commit.inverse_operations());
+        assert_same_editor_value(session.state(), &initial_value);
+        let Some(redo) = session.redo()? else {
+            return Err(test_error("typed structural deletion was not redoable").into());
+        };
+        assert_eq!(redo.forward_operations(), commit.forward_operations());
+        assert_same_editor_value(session.state(), &final_value);
     }
 
+    let paragraphs = [paragraph_value(&[linked("a", "left")]), paragraph_value(&[plain("b")])];
+    let pending = formats(Some("pending"))?;
     let backward_boundary = state(
         &context,
         &paragraphs,
         collapsed(text_point(1, 0, 0, Affinity::Before)?),
-        Some(formats(Some("pending"))?),
+        Some(pending.clone()),
         "delete-typed-backward-boundary",
     )?;
-    assert_disabled(
-        &registry,
-        &backward_boundary,
-        &delete_backward_action_id(),
-        "breditor/unsupported-schema",
-    )?;
+    let backward = enabled(&registry, &backward_boundary, &delete_backward_action_id())?
+        .execute(&backward_boundary)?;
+    assert!(matches!(backward.forward_operations(), [Operation::ParagraphJoin(_)]));
+    assert!(matches!(backward.inverse_operations(), [Operation::ParagraphSplit(_)]));
+    assert_runs(backward.after().document(), &[("a", Some("left")), ("b", None)])?;
+    assert_caret(backward.after(), &text_point(0, 1, 0, Affinity::After)?)?;
+    assert_eq!(backward.after().pending_formats(), Some(&pending));
 
     let forward_boundary = state(
         &context,
         &paragraphs,
         collapsed(text_point(0, 0, 1, Affinity::After)?),
-        Some(formats(Some("pending"))?),
+        Some(pending.clone()),
         "delete-typed-forward-boundary",
+    )?;
+    let forward = enabled(&registry, &forward_boundary, &delete_forward_action_id())?
+        .execute(&forward_boundary)?;
+    assert!(matches!(forward.forward_operations(), [Operation::ParagraphJoin(_)]));
+    assert!(matches!(forward.inverse_operations(), [Operation::ParagraphSplit(_)]));
+    assert_runs(forward.after().document(), &[("a", Some("left")), ("b", None)])?;
+    assert_caret(forward.after(), &text_point(0, 1, 0, Affinity::Before)?)?;
+    assert_eq!(forward.after().pending_formats(), Some(&pending));
+
+    let zero_budget = EditorContext::new(typed_schema()?, DocumentLimits::default())
+        .with_max_operations_per_transaction(0);
+    let at_start = state(
+        &zero_budget,
+        &[paragraph_value(&[linked("a", "left")])],
+        collapsed(text_point(0, 0, 0, Affinity::Before)?),
+        None,
+        "delete-typed-zero-budget",
     )?;
     assert_disabled(
         &registry,
-        &forward_boundary,
-        &delete_forward_action_id(),
-        "breditor/unsupported-schema",
+        &at_start,
+        &delete_backward_action_id(),
+        "breditor/operation-budget-exceeded",
     )?;
     Ok(())
 }

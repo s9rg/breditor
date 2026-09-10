@@ -3,8 +3,9 @@
 Status: supported by the optional public `0.1.0` autosave path; the exact
 `"current"` V1 record remains the stable `0.1.x` profile. Version `0.2.0`
 retains the explicit profile-bound V2 outer record and scoped slots without
-changing the legacy bytes. Direct store/autosave assembly remains an advanced
-integration surface.
+changing the legacy bytes. The unpublished `0.3.0-alpha.5` Bootstrap-V2 path
+stores Session Checkpoint V3 in that unchanged outer-V2 record. Direct store/
+autosave assembly remains an advanced integration surface.
 
 Profile identifier: `breditor/indexeddb-session-checkpoint`
 
@@ -72,7 +73,10 @@ that was selected before the load:
 
 Outer record version and inner checkpoint version are independent fields. An
 explicitly scoped base-profile store uses outer version 2 with
-`checkpointFormatVersion: 1`; an extension profile uses checkpoint version 2.
+`checkpointFormatVersion: 1`; a Bootstrap-V1 extension profile uses checkpoint
+version 2; and a Bootstrap-V2 typed profile uses checkpoint version 3. The
+outer shape and physical database version do not change for those inner
+generations.
 A slot is 1 through 128 ASCII bytes, begins with an ASCII letter or digit, and
 then permits letters, digits, `.`, `_`, `:`, and `-`. The schema fingerprint is
 the canonical `sha256:` form. The binding is exact: slot, fingerprint, and
@@ -120,8 +124,9 @@ For a semantic profile, startup synchronously compiles and consumes the
 bootstrap JSON before opening IndexedDB. That preflight returns only a deeply
 frozen, handle-free compiled-profile descriptor and releases every generated
 profile, descriptor, and generation handle. Storage is then bound to that
-descriptor's fingerprint and Checkpoint V2 before `load()`. A record under the
-selected key with a different binding returns
+descriptor's fingerprint and the checkpoint generation selected by the
+bootstrap (`2` for V1 or `3` for V2) before `load()`. A record under the selected
+key with a different binding returns
 `session_checkpoint.binding_mismatch` before digest verification and without a
 CAS token, fallback load, deletion, repair, or write.
 
@@ -136,7 +141,8 @@ An explicitly bound base `"current"`/base-fingerprint/Checkpoint-V1 owner can
 read the legacy outer-V1 record. Its next successful compare-and-swap writes the
 profile-bound outer-V2 form. No other implicit migration or slot fallback is
 performed. Checkpoint V1 bindings accept only the built-in base fingerprint;
-custom schema fingerprints require Checkpoint V2.
+custom schema fingerprints require the explicit profile-selected Checkpoint V2
+or V3 binding.
 
 ## Opening and schema attestation
 
@@ -173,9 +179,18 @@ make it stale.
 Outer record and binding validation, UTF-8 measurement, and SHA-256 verification
 happen before the checkpoint text is handed to the already selected generated
 engine factory. Rust then performs its own strict, bounded, canonical Session
-Checkpoint V1 or V2 decode under that compiled schema. The mode is never inferred
-from payload contents and a V2 failure is never retried as V1. A Rust rejection
-is surfaced without installing a partial engine or changing the stored record.
+Checkpoint V1, V2, or V3 decode under that compiled schema. The mode is never
+inferred from payload contents and a failure is never retried as another
+generation. A Rust rejection is surfaced without installing a partial engine
+or changing the stored record.
+
+Alpha.5 changes no outer record, schema fingerprint, or Session Checkpoint V3
+format. Its typed split, join, and root-text-replacement recipes retain complete
+guards and inverses in the existing V3 history, including both branches after
+undo, so autosave/reload can reproduce the exact typed state and later redo it.
+Alpha.5 restores conforming alpha.4 checkpoints. An alpha.4 reader rejects an
+alpha.5 V3 checkpoint whose retained undo or redo history contains a typed
+structural operation, and it must not repair, replace, or retry that record.
 
 ## Atomic save
 

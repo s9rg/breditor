@@ -1,9 +1,10 @@
 # Breditor compatibility policy
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.4` source checkpoint retains the explicitly
-selected ABI-4 typed-profile, browser command, and Session-V3 path and adds the
-closed safe-Link presentation described below
+the unpublished `0.3.0-alpha.5` source checkpoint retains the explicitly
+selected ABI-4 typed-profile, browser command, Session-V3, and closed safe-Link
+paths while enabling property-preserving structural paragraph edits described
+below
 
 This policy defines the deliberately narrow compatibility promise made by
 supported Breditor releases. It is a source and runtime contract, not a claim
@@ -189,8 +190,8 @@ public Rust-owned generic planner.
 Alpha.4 adds a manifest-owned immutable toggle declaration for one
 same-manifest format kind and its action, no-input intent, binding, and
 action-state IDs. Compilation admits at most 255 per manifest and profile,
-rejects duplicate typed identities and all extension semantic IDs under
-`breditor/*`, and creates the existing generic toggle action, a tracked intent,
+rejects duplicate identities within each typed namespace and all extension
+semantic IDs under `breditor/*`, and creates the existing generic toggle action, a tracked intent,
 one priority-0 blocking binding, and routed state. `CompiledEditorProfile`
 co-owns the extension set, schema, generated registry, router, and catalog under
 a fresh opaque Rust-local generation. These semantic declarations do not change
@@ -300,12 +301,13 @@ property-free. V1 pending-format shapes similarly cannot carry typed instances.
 A V2 state or empty-history checkpoint can still carry a property-aware
 Document V2 when it contains no typed pending value or operation recipe.
 
-Preservation remains deliberately incomplete. `ParagraphSplit`,
-`ParagraphJoin`, and `RootTextReplace` are not enabled for typed schemas, so
-typed paragraph breaks, paragraph-boundary deletion, cross-paragraph
-replacement, and structural plain-text insertion fail closed. There is no V3
-local-log, frame, root, or storage-generation family, and no automatic codec
-generation detection, upgrade, downgrade, or mixed nesting.
+At the alpha.2 checkpoint, preservation remained deliberately incomplete.
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` were not enabled for
+typed schemas, so typed paragraph breaks, paragraph-boundary deletion, cross-
+paragraph replacement, and structural plain-text insertion failed closed.
+Alpha.5 supersedes that operation restriction for the sealed paragraph shape.
+There is still no V3 local-log, frame, root, or storage-generation family, and
+no automatic codec generation detection, upgrade, downgrade, or mixed nesting.
 
 At alpha.2, Wasm ABI 3 was unchanged. Its bootstrap and browser descriptor could
 not declare or expose typed contracts, and the package-root profile path
@@ -360,16 +362,50 @@ same-paragraph Bold/extension toggles preserve property-bearing peer formats
 through `TextSplice`, including exact property-budget checks. Typed structural
 paragraph and cross-paragraph operations remain closed.
 
+## `0.3.0-alpha.5` typed paragraph-structure boundary
+
+Alpha.5 admits complete schema-valid typed format instances through the
+existing `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` operations.
+It preserves their canonical properties in guards, replacements, derived
+results, inverses, relocation, undo/redo, and V3 replay. Each complete fragment
+slice is checked against aggregate property-value and property-string-byte
+limits; a split may duplicate one typed owner and fail a property ceiling,
+while an exactly equal join seam may merge owners.
+
+The new paragraph-structure capability still proves only the fixed compiler-
+minted document/paragraph/text grammar. The older property-free base-text
+capability remains the sentinel for frozen Operation V1/V2 codecs and older
+property-free local proofs. A typed operation never enters those payload
+generations, even when the particular format instance has an empty map.
+
+The lifted behavior includes typed Enter, multiline plain-text insertion,
+cross-paragraph type-over and deletion, paragraph-boundary backward/forward
+joins, and cross-paragraph no-input toggles whose target remains property-free.
+All preserve unaffected typed peers. `SetInlineFormatAction` remains same-
+paragraph only with
+`breditor/cross-paragraph-inline-format-unsupported`. Paste continues to
+discard source formatting and properties; its plain text may inherit one
+complete typed format set from the destination and applies it uniformly to
+non-empty inserted lines.
+
+Alpha.5 does not change Wasm ABI 4, Profile Bootstrap V2, schema fingerprint
+bytes, Document V2, or the Operation/State/Transaction/Commit/Session V3 format
+numbers. Alpha.5 restores conforming alpha.4 Session Checkpoint V3 values.
+Downgrade is not generally safe: alpha.4 rejects an alpha.5 V3 checkpoint when
+its retained undo or redo history contains a typed structural operation. The
+shared envelope number does not authorize an older prerelease to discard or
+reinterpret that history.
+
 ## Official package pairing
 
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
-ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 source pair reports ABI
-`4`. Startup checks both the exact ABI string and exact embedded package version
+ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 and alpha.5 source
+pairs report ABI `4`. Startup checks both the exact ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.4 source configuration is tested as an exactly matching browser,
+The alpha.5 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -385,7 +421,7 @@ package-root default asynchronous initializer called once with no argument in
 an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
-form remains supported throughout `0.1.x`, `0.2.x`, and alpha.4:
+form remains supported throughout `0.1.x`, `0.2.x`, and alpha.5:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
@@ -408,7 +444,7 @@ mean that Wasm is unnecessary, nor that arbitrary generated modules are
 compatible.
 
 Through `0.1.x`, the root option type also accepted a bare structural factory
-for tests and advanced hosts. Alpha.5 removes that option arm: the supported
+for tests and advanced hosts. `0.2.0-alpha.5` removed that option arm: the supported
 root configuration is now only the initialized, exactly version-matched
 official module namespace. `BreditorBrowserWasmFactory` remains an advanced
 descriptive type for that namespace's nested generated class; it is not a
@@ -456,6 +492,15 @@ safe/inert rendering, DOM drift, bounded composition attributes, copy HTML,
 typed set/remove/undo/redo, Session-V3 reload, and a tarball-only combined
 Highlight + Link consumer in Chromium. These are still source-checkpoint tests,
 not a registry-publication claim.
+
+The alpha.5 Rust gates additionally cover typed-property split/join/root-
+replacement validation, source/result aggregate property budgets, exact
+inverses, every lifted built-in action route, and V3 replay in both history
+directions. The React demo gate exercises one existing safe Link plus Highlight
+through Enter, multiline plain-text paste, boundary Backspace, undo, autosave
+reload with the redo branch intact, and restored redo. It remains desktop
+Chromium automation and does not widen the OS-clipboard, IME, mobile, or
+assistive-technology claims.
 
 ## Dependency boundary
 

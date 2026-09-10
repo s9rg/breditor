@@ -24,7 +24,8 @@ use super::{
         CrossParagraphTextSourceError, base_shape_fits, base_total_text_fits,
         capture_cross_paragraph_text_source, collapsed_selection_at_with_affinity, disabled,
         effective_typing_formats, fault, fragment_range_parts, paragraph_fragment,
-        require_base_text_range, require_operation_budget, strict_relocation,
+        property_fragment_delta_fits, require_operation_budget, require_paragraph_structure_range,
+        strict_relocation,
     },
 };
 
@@ -317,7 +318,7 @@ fn evaluate_insert_plain_text(
     state: &EditorState,
     input: &InsertPlainTextInput,
 ) -> Result<ActionDecision, ActionFault> {
-    let range = match require_base_text_range(state)? {
+    let range = match require_paragraph_structure_range(state)? {
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
@@ -347,6 +348,13 @@ fn evaluate_insert_plain_text(
     let result_refs: Vec<_> = result.iter().collect();
     if !base_shape_fits(state, source.guards.len(), source.guard_run_count, &result_refs)
         || !base_total_text_fits(state, source.guard_text_bytes, result_text_bytes)
+        || !property_fragment_delta_fits(
+            state,
+            source.guards.iter(),
+            result.iter(),
+            "breditor/insert-plain-text-property-validation-fault",
+            "breditor/insert-plain-text-property-budget-fault",
+        )?
     {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }

@@ -19,8 +19,8 @@ use super::{
     grapheme_boundary::{grapheme_boundary_at_or_before, next_grapheme_boundary},
     support::{
         base_shape_fits, collapsed_selection_at_with_affinity, disabled, fault,
-        fragment_range_parts, require_operation_budget, require_text_splice_range,
-        strict_relocation, text_splice_paragraph_fragment,
+        fragment_range_parts, property_fragment_delta_fits, require_operation_budget,
+        require_text_splice_range, strict_relocation, text_splice_paragraph_fragment,
     },
 };
 
@@ -30,8 +30,8 @@ use super::{
 /// becomes one independent history record. A collapsed selection deletes one
 /// Unicode extended grapheme cluster and offers the stable
 /// `breditor/delete-forward` history merge group. At a paragraph end it joins
-/// the immediate next paragraph only when the schema supports property-free
-/// structural operations; typed paragraph-local splices preserve complete
+/// the immediate next paragraph only when the schema supports sealed paragraph
+/// structure operations; typed paragraph-local and structural edits preserve complete
 /// inline-format instances. At document end it is disabled. A protocol caret
 /// inside a grapheme cluster is also disabled instead of widening or guessing
 /// its deletion range. If removing content or a paragraph boundary forms a
@@ -82,17 +82,15 @@ fn evaluate_delete_forward(state: &EditorState) -> Result<ActionDecision, Action
     }
     let paragraph_path = range.start().paragraph_path();
     let caret = range.start().offset();
-    let supports_structural = state.context().schema().supports_base_text_operations();
-    // Preserve the property-free action's early operation-budget exit. Typed
-    // schemas need the paragraph length first so a boundary route can retain
-    // its stable unsupported-schema outcome instead of appearing budget-bound.
+    let supports_structural = state.context().schema().supports_paragraph_structure_operations();
+    // Preserve the action's early operation-budget exit. Unsupported schemas
+    // need the paragraph length first so a boundary route can report its stable
+    // schema outcome instead of appearing budget-bound.
     if supports_structural && let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
     }
     let source = text_splice_paragraph_fragment(state, paragraph_path)?;
     if caret == source.utf16_len() && !supports_structural {
-        // ParagraphJoin is intentionally still property-free. This also keeps
-        // the pre-existing typed-schema outcome stable at document end.
         return Ok(disabled("breditor/unsupported-schema"));
     }
     if !supports_structural && let Some(decision) = require_operation_budget(state, 1) {
@@ -170,7 +168,15 @@ fn join_next_paragraph(
         .len()
         .checked_add(join.expected_right().len())
         .ok_or_else(|| fault("breditor/delete-forward-result-node-count-fault"))?;
-    if !base_shape_fits(state, 2, removed_runs, &[&joined]) {
+    if !base_shape_fits(state, 2, removed_runs, &[&joined])
+        || !property_fragment_delta_fits(
+            state,
+            [join.expected_left(), join.expected_right()],
+            [&joined],
+            "breditor/delete-forward-property-validation-fault",
+            "breditor/delete-forward-property-budget-fault",
+        )?
+    {
         return Ok(disabled("breditor/result-limit-exceeded"));
     }
     let caret = grapheme_boundary_at_or_before(&joined, seam)?;

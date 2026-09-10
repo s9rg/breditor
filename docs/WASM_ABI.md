@@ -1,9 +1,9 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.4` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.5` source checkpoint uses ABI generation
 `4` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
-preserving the ABI-3-era V1/V2 entry points; alpha.4 adds no Wasm method or wire
+preserving the ABI-3-era V1/V2 entry points; alpha.5 adds no Wasm method or wire
 generation. Direct raw-handle use remains a narrow advanced integration
 surface.
 
@@ -18,15 +18,15 @@ consumer installs all three npm tarballs, resolves only package-root imports
 inside its own `node_modules`, initializes the real Wasm module, type-checks,
 bundles, and opens the reference profile in Chromium without workspace paths.
 
-When published, `@breditor/browser@0.3.0-alpha.4` and
-`@breditor/wasm@0.3.0-alpha.4` must be installed as an exact-version pair. No
-alpha.4 package has been published at this checkpoint. The generated raw
+When published, `@breditor/browser@0.3.0-alpha.5` and
+`@breditor/wasm@0.3.0-alpha.5` must be installed as an exact-version pair. No
+alpha.5 package has been published at this checkpoint. The generated raw
 classes and ownership handles documented below remain available for advanced
 integrations, but they are not the high-level browser compatibility surface.
 The reference package likewise requires the exact browser peer so its branded
 presentation values are created by the same module instance that admits them.
 
-Alpha.5 carries the Rust core's compiled semantic profile through ABI 3. A
+`0.2.0-alpha.5` carries the Rust core's compiled semantic profile through ABI 3. A
 strict bounded bootstrap request creates a reusable compiled-profile owner;
 fresh and restore factories use fingerprint-bearing Document V2 and Session
 Checkpoint V2. The profile descriptor and every engine-related owned result
@@ -43,6 +43,22 @@ typed action/intent JSON methods and explicit V3 profile factories carry that
 data through Session, Editor State, and Commit V3. Bootstrap V1, compiled-
 profile V2 factories, and exact-base V1 factories keep their prior meanings.
 
+`0.3.0-alpha.4` added no ABI method; its safe-Link policy was browser-owned.
+`0.3.0-alpha.5` also leaves ABI 4, Profile Bootstrap V2, descriptor/projection
+shapes, and every codec generation unchanged. The existing string/no-input
+action, intent, undo, redo, projection, and Session-V3 methods now observe typed
+`ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` behavior because the
+Rust core admits complete properties through those operations. There is no new
+JavaScript structural-operation protocol.
+
+Typed structural history uses the existing Operation/Session V3 property
+records. Alpha.5 restores conforming alpha.4 checkpoints, but alpha.4 cannot
+restore an alpha.5 Session Checkpoint V3 whose undo or redo history contains a
+typed structural operation. An exact format number or equal ABI probe does not
+make that unpublished-prerelease downgrade supported; official browser/Wasm
+packages must remain exactly paired, and the browser never retries another
+checkpoint factory.
+
 Generation requires `npm ci`, the locked Cargo graph, the pinned Rust toolchain
 and Wasm target, exactly `wasm-bindgen 0.2.127`, and lockfile-installed
 `rolldown 1.2.7`. Cargo uses the dedicated size-oriented `wasm-release`
@@ -57,7 +73,7 @@ build-root prefixes plus common macOS, Linux, and Windows user-home path
 patterns. Native Windows path handling is not currently an official
 package-build host. The package check compares the complete
 content hashes from two such clean builds. The no-argument default asynchronous
-initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.4
+initializer is the supported `0.1.x`, exact-matched `0.2.x`, and alpha.5
 HTTP(S)-browser/browser-bundler entry point. Advanced hosts may import
 `@breditor/wasm/wasm` and call `initSync`, but synchronous, binary,
 argument-taking, and direct Node/file-URL initialization carry no supported
@@ -153,9 +169,7 @@ bootstrap shape is ABI-local configuration, not a durable manifest codec.
       "id": { "name": "example/highlight-extension", "version": 1 },
       "dependencies": [],
       "conflicts": [],
-      "inlineFormats": [
-        { "kind": "example/highlight", "revision": 7 }
-      ],
+      "inlineFormats": [{ "kind": "example/highlight", "revision": 7 }],
       "inlineFormatToggles": [
         {
           "formatKind": "example/highlight",
@@ -190,32 +204,40 @@ typed manifest is:
   "format": "breditor/profile-bootstrap",
   "formatVersion": 2,
   "schema": { "name": "example/editor", "version": 1 },
-  "extensions": [{
-    "id": { "name": "example/link-extension", "version": 1 },
-    "dependencies": [],
-    "conflicts": [],
-    "inlineFormats": [{ "kind": "example/link", "revision": 1 }],
-    "inlineFormatPropertyContracts": [{
-      "formatKind": "example/link",
-      "properties": [{
-        "name": "example/href",
-        "presence": "required",
-        "valueType": {
-          "kind": "string",
-          "minimumUtf8Bytes": 1,
-          "maximumUtf8Bytes": 2048
+  "extensions": [
+    {
+      "id": { "name": "example/link-extension", "version": 1 },
+      "dependencies": [],
+      "conflicts": [],
+      "inlineFormats": [{ "kind": "example/link", "revision": 1 }],
+      "inlineFormatPropertyContracts": [
+        {
+          "formatKind": "example/link",
+          "properties": [
+            {
+              "name": "example/href",
+              "presence": "required",
+              "valueType": {
+                "kind": "string",
+                "minimumUtf8Bytes": 1,
+                "maximumUtf8Bytes": 2048
+              }
+            }
+          ]
         }
-      }]
-    }],
-    "inlineFormatToggles": [],
-    "inlineFormatSets": [{
-      "formatKind": "example/link",
-      "actionId": "example/set-link",
-      "intentId": "example/set-link-intent",
-      "bindingId": "example/set-link-binding",
-      "actionStateId": "example/link-control"
-    }]
-  }]
+      ],
+      "inlineFormatToggles": [],
+      "inlineFormatSets": [
+        {
+          "formatKind": "example/link",
+          "actionId": "example/set-link",
+          "intentId": "example/set-link-intent",
+          "bindingId": "example/set-link-binding",
+          "actionStateId": "example/link-control"
+        }
+      ]
+    }
+  ]
 }
 ```
 

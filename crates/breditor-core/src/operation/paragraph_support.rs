@@ -59,7 +59,7 @@ pub(super) fn ensure_base_document(
     if let Some(mismatch) = document.proof_mismatch(context.schema(), context.limits()) {
         return Err(map_document_proof_mismatch(mismatch));
     }
-    if !context.schema().supports_base_text_operations() {
+    if !context.schema().supports_paragraph_structure_operations() {
         return Err(ResolveParagraphError::UnsupportedSchema {
             schema: context.schema().id().clone(),
         });

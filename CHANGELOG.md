@@ -4,6 +4,64 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.5 - 2026-09-09
+
+This unpublished source checkpoint makes Breditor's sealed direct-root
+paragraph operations preserve typed inline-format properties and lifts the
+corresponding built-in editor paths. It changes no schema language, fingerprint
+bytes, Profile Bootstrap generation, durable format number, or Wasm method:
+typed profiles still use Wasm ABI 4, Bootstrap V2, Document V2, and the V3
+operation/state/transaction/commit/session families.
+
+### Property-preserving structural operations
+
+- `ParagraphSplit`, `ParagraphJoin`, and `RootTextReplace` now admit complete
+  schema-valid typed format instances in source guards, replacements, and
+  derived results. Their exact guards, canonical seam merging, relocation,
+  reciprocal split/join inverses, same-type root-replacement inverse, atomic
+  failure behavior, undo/redo, and V3 replay retain those property values.
+- Structural validation accounts for aggregate property-value and property-
+  string-byte budgets across each complete source, replacement, and result
+  slice. Splitting one typed run can create another property owner and may
+  therefore be disabled at a configured property ceiling; joining equal runs
+  may merge owners.
+- Added a separate compiler-minted paragraph-structure capability for the
+  fixed document/paragraph/text grammar with typed inline formats. The prior
+  property-free base-text capability remains the explicit V1/V2 operation-codec
+  sentinel, so older payload generations still fail closed for every typed
+  schema rather than dropping properties.
+
+### Lifted built-in actions and browser proof
+
+- Typed profiles now support collapsed and extended Enter, multiline plain-
+  text insertion, cross-paragraph type-over and selection deletion, backward/
+  forward paragraph-boundary joins, and cross-paragraph Strong or extension
+  property-free toggles while preserving typed peer formats.
+- Multiline insertion applies one captured destination format set to every
+  non-empty replacement line and checks the complete final property delta. An
+  empty replacement fragment introduces no formatted run itself; retained
+  prefix or suffix text can still make an edge result paragraph non-empty, and
+  splitting formatted context can duplicate an existing property owner.
+  Clipboard paste remains formatting-stripping: it discards source wrappers
+  and properties, although the resulting text can inherit typed formats such
+  as Link from the target context.
+- Added a React-demo end-to-end gate for safe Link plus Highlight across Enter,
+  multiline paste, boundary Backspace, undo, autosave/reload with both history
+  branches, and redo. Exact safe `href`, `rel`, and `target` values must survive
+  every step.
+
+### Compatibility and remaining boundary
+
+- Alpha.5 restores conforming alpha.4 V3 checkpoints. Downgrade is not
+  generally safe: alpha.4 cannot restore an alpha.5 Session Checkpoint V3 whose
+  retained undo or redo history contains a typed structural operation, even
+  though the envelope version remains 3. No reader sniffs, converts, or drops
+  that history.
+- `SetInlineFormatAction` remains same-paragraph only. Cross-paragraph typed
+  set/remove, rich paste, arbitrary blocks or node kinds, block properties and
+  identities, general property-to-DOM/CSS policies, typed native toolbar
+  controls, and Local Log V3 remain unsupported.
+
 ## 0.3.0-alpha.4 - 2026-09-09
 
 This source checkpoint adds the first property-driven browser presentation and
