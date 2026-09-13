@@ -2,7 +2,7 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.19` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.20` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
@@ -187,9 +187,10 @@ it, and completed dispatch discards it and hydrates from authoritative post-
 command state. Close/reopen also resets from fresh state. Hydrated URL values
 remain exact inert strings; only `safeLinkV1` may parse or normalize one for
 navigation. A stored URL value containing CR or LF cannot be represented
-exactly in the native single-line field, so the complete form, including
-Remove, is unavailable for that observation; programmatic removal remains
-available. Alpha.8 adds no Wasm method and retains ABI 5.
+exactly in the native single-line field. Alpha.20 admits a removal-only form
+after validating the entire map: no stored field is hydrated, Apply and form
+submission remain disabled, and Remove uses the existing typed intent. The
+form explains this state. Malformed maps still fail closed. ABI 5 is unchanged.
 
 Alpha.9 adds a Showcase source configuration under
 `example/showcase-editor@1`. It combines the unchanged Highlight and Link
@@ -249,12 +250,12 @@ generations, and ABI 5 remain unchanged. See
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.19` packages:
+exactly matching `0.3.0-alpha.20` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.19 \
-  @breditor/wasm@0.3.0-alpha.19 \
-  @breditor/reference-highlight@0.3.0-alpha.19
+npm install @breditor/browser@0.3.0-alpha.20 \
+  @breditor/wasm@0.3.0-alpha.20 \
+  @breditor/reference-highlight@0.3.0-alpha.20
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -579,7 +580,7 @@ property state from the current semantic selection. The browser hydrates only
 pristine fields, never overwrites dirty edits, and resets a completed or closed
 form from the latest authoritative state. Its URL control is a text input with
 a URL input-mode hint, retaining surrounding whitespace; CR/LF-bearing state
-makes the single-line form unavailable instead of being normalized.
+opens a removal-only form in alpha.20 instead of being normalized.
 Observation and drafts remain outside operation, undo/redo, replay, and
 persistence contracts.
 

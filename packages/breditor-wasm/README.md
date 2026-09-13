@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.19
+npm install @breditor/wasm@0.3.0-alpha.20
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -185,7 +185,7 @@ action-state, projection, undo/redo, and Session-V3 surfaces. Its exhaustive
 presentation only. See
 [`TEXT_SIZE_PRESETS.md`](../../docs/TEXT_SIZE_PRESETS.md).
 
-`0.3.0-alpha.19` retains that exact ABI 5 surface. Its new Entry,
+`0.3.0-alpha.20` retains that exact ABI 5 surface. Its new Entry,
 Checkpoint, Frame, and tail V3 contracts live entirely in `breditor-core`;
 storage root/generation integration is intentionally deferred.
 

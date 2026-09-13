@@ -1,9 +1,9 @@
 # breditor-core
 
-Current alpha.19 addition: observational V3 root readback correlates a
-completed host read with the exact candidate bytes, complete binding, and
-head-index result. It grants no retry or writer authority and performs no I/O.
-See [Root readback V3](../../docs/ROOT_READBACK_V3.md).
+Current alpha.20 addition: validated Link maps that cannot fit a single-line
+input open a removal-only toolbar form. Stored values are never normalized;
+Remove and Undo use the unchanged Rust-owned semantics.
+See [Typed toolbar controls](../../docs/TYPED_TOOLBAR_CONTROLS.md).
 
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or

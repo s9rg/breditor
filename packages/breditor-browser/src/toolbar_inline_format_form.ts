@@ -376,6 +376,7 @@ export class BreditorToolbarInlineFormatForm {
     const valueMatchesActivation =
       (activation === "inactive" && stateSeed?.status === "unset") ||
       (activation === "active" && stateSeed?.status === "uniform") ||
+      (activation === "active" && stateSeed?.status === "unrepresentable") ||
       (activation === "active" && stateSeed?.status === "mixed") ||
       (activation === "mixed" && stateSeed?.status === "mixed");
     const presentedActivation = valueMatchesActivation ? activation : undefined;
@@ -406,9 +407,11 @@ export class BreditorToolbarInlineFormatForm {
     );
     if (presentedActivation === "active") {
       this.#selectionText =
-        stateSeed?.status === "mixed"
-          ? `${this.#declaration.label} is active with mixed values.`
-          : `${this.#declaration.label} is active.`;
+        stateSeed?.status === "unrepresentable"
+          ? `${this.#declaration.label} contains a value that cannot be displayed. Remove the formatting to replace it.`
+          : stateSeed?.status === "mixed"
+            ? `${this.#declaration.label} is active with mixed values.`
+            : `${this.#declaration.label} is active.`;
     } else if (presentedActivation === "mixed") {
       this.#selectionText = `${this.#declaration.label} is mixed.`;
     } else if (presentedActivation === "inactive" && this.#formReady) {
@@ -668,8 +671,16 @@ export class BreditorToolbarInlineFormatForm {
     this.#dirty = true;
     this.#refreshDraft();
     const inputJson = this.#setInputJson;
-    if (!this.#formReady || inputJson === undefined) {
-      this.#setFeedback("Complete the required fields before applying.");
+    if (
+      !this.#formReady ||
+      this.#stateSeed?.status === "unrepresentable" ||
+      inputJson === undefined
+    ) {
+      this.#setFeedback(
+        this.#stateSeed?.status === "unrepresentable"
+          ? "Remove the formatting before entering a replacement value."
+          : "Complete the required fields before applying.",
+      );
       return;
     }
     this.#runDispatch("set", inputJson, `${this.#declaration.label} applied.`);
@@ -821,7 +832,10 @@ export class BreditorToolbarInlineFormatForm {
   }
 
   #renderButtons(): void {
-    const applyReady = this.#formReady && this.#setInputJson !== undefined;
+    const applyReady =
+      this.#formReady &&
+      this.#stateSeed?.status !== "unrepresentable" &&
+      this.#setInputJson !== undefined;
     setButtonDisabled(this.#apply, !applyReady);
     setButtonDisabled(this.#remove, !this.#removeReady);
   }

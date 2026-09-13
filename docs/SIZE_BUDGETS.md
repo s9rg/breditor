@@ -1,7 +1,13 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.19` Rust root-readback checkpoint.
+`0.3.0-alpha.20` removal-only toolbar checkpoint.
+
+Alpha.20 retains every ceiling. Browser JavaScript measures 1,077,469 bytes
+and declarations 270,367 bytes. Freshly rebuilt React JavaScript measures
+857,442 raw / 223,364 gzip bytes; its Wasm measures 1,607,692 raw / 450,484
+gzip bytes. Clean-consumer tarballs measure 264,764, 32,084, and 521,589 bytes
+for browser, reference, and Wasm respectively. All gates pass.
 
 Alpha.19 retains every ceiling. Clean-consumer tarballs measure 264,565,
 32,083, and 521,580 bytes for browser, reference, and Wasm respectively.
@@ -40,6 +46,10 @@ reference build. It fails when an expected emitted set is empty, a required
 singleton is absent or duplicated, or a budget is exceeded. Browser package
 sets are enumerated recursively so nested emitted modules cannot escape the
 total.
+
+`npm run smoke:packages` rebuilds the packages, not the React production app.
+Before using the size-check helper directly after that gate, also rebuild
+`@breditor/example-react`; otherwise app measurements may describe stale output.
 
 The current release ceilings are deliberately explicit:
 

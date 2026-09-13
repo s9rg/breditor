@@ -26,6 +26,7 @@ export type ToolbarInlineFormatFormHydratedField = Readonly<{
 /** Safe, detached form seed decoded from one authoritative action-state value. */
 export type ToolbarInlineFormatFormStateSeed =
   | Readonly<{ status: "unset" | "mixed" }>
+  | Readonly<{ status: "unrepresentable" }>
   | Readonly<{
       status: "uniform";
       fields: readonly ToolbarInlineFormatFormHydratedField[];
@@ -107,6 +108,7 @@ export function decodeToolbarInlineFormatFormStateValue(
       return 0;
     });
     const hydrated: ToolbarInlineFormatFormHydratedField[] = [];
+    let representable = true;
     for (let index = 0; index < length; index += 1) {
       const property = exactRecord(ownData(properties, String(index)), [
         "name",
@@ -130,10 +132,9 @@ export function decodeToolbarInlineFormatFormStateValue(
         if (!valid) return null;
       } else {
         if (typeof propertyValue !== "string") return null;
-        // Single-line HTML inputs must strip CR/LF from their value. Reject
-        // such a seed instead of displaying and later submitting a different
-        // scalar than Rust owns.
-        if (/\r|\n/u.test(propertyValue)) return null;
+        // Validate the entire map before allowing removal-only presentation.
+        // Never write a CR/LF-bearing scalar into a sanitizing HTML input.
+        if (/\r|\n/u.test(propertyValue)) representable = false;
         const measurement = measureBoundedUnicodeText(
           propertyValue,
           field.maximumUtf8Bytes,
@@ -153,7 +154,9 @@ export function decodeToolbarInlineFormatFormStateValue(
         }),
       );
     }
-    return Object.freeze({ status, fields: Object.freeze(hydrated) });
+    return representable
+      ? Object.freeze({ status, fields: Object.freeze(hydrated) })
+      : Object.freeze({ status: "unrepresentable" });
   } catch {
     return null;
   }

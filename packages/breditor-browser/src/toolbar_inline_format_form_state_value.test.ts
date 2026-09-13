@@ -321,4 +321,22 @@ describe("decodeToolbarInlineFormatFormStateValue", () => {
       decodeToolbarInlineFormatFormStateValue(form, value("x".repeat(33))),
     ).toBeNull();
   });
+
+  it("admits removal-only line breaks only after validating the entire map", () => {
+    const value = (text: string, flag: unknown = false) => ({
+      status: "uniform",
+      contract: contract(),
+      value: { operation: "set", properties: [
+        { name: "example/href", value: text },
+        { name: "example/open-in-new-window", value: flag },
+      ] },
+    });
+    for (const text of ["a\rb", "a\nb", "a\r\nb"]) {
+      expect(decodeToolbarInlineFormatFormStateValue(form, value(text)))
+        .toEqual({ status: "unrepresentable" });
+      expect(decodeToolbarInlineFormatFormStateValue(form, value(text, "false"))).toBeNull();
+    }
+    expect(decodeToolbarInlineFormatFormStateValue(form, value("\n\ud800"))).toBeNull();
+    expect(decodeToolbarInlineFormatFormStateValue(form, value("\n" + "x".repeat(33)))).toBeNull();
+  });
 });

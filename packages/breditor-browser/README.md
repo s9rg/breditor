@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.19` source checkpoint.
+`0.2.0` extension surface, and the `0.3.0-alpha.20` source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -97,7 +97,7 @@ form-admissible uniform value exactly; unset/mixed uses defaults, dirty input
 survives refresh and rejection, and completion or close/reset discards it
 before authoritative hydration. The URL field is `type="text"` with
 `inputmode="url"`, so surrounding whitespace is not normalized. CR/LF-bearing
-state makes this single-line form unavailable, and CR/LF-bearing form input is
+state opens a removal-only form in alpha.20, and CR/LF-bearing form input is
 rejected. `safeLinkV1` separately decides navigation presentation. No
 observation or draft enters history, replay, or persistence.
 
@@ -165,7 +165,7 @@ existing generic paths; Rust production code, generated Wasm members, durable
 generations, and ABI 5 are unchanged. See the normative
 [text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
 
-The unpublished `0.3.0-alpha.19` source package changes no browser or Wasm
+The unpublished `0.3.0-alpha.20` source package changes no browser or Wasm
 API. It advances the Rust-only durable local-log path through explicit Entry,
 Checkpoint, Frame, and tail V3 types while this package remains on ABI 5.
 
@@ -182,7 +182,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.19 @breditor/wasm@0.3.0-alpha.19
+npm install @breditor/browser@0.3.0-alpha.20 @breditor/wasm@0.3.0-alpha.20
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -898,10 +898,11 @@ sanitize URLs; only the separate `safeLinkV1` renderer decides whether a stored
 value becomes a navigable anchor. Hydration retains the exact inert stored
 single-line string; it does not trim, parse, or normalize it. The native
 control uses `type="text"` plus `inputmode="url"`, not normalizing
-`type="url"`. CR/LF-bearing stored state makes the form unavailable, and the
-form input builder rejects either scalar, because no single-line HTML input can
-retain it exactly. That also withholds UI Remove; the public programmatic typed
-intent remains available for removal.
+`type="url"`. A validated CR/LF-bearing stored map opens a removal-only form:
+no stored fields are hydrated, Apply/submission are blocked, and Remove uses
+the existing typed intent. The form input builder still rejects either scalar
+because no single-line HTML input can retain it exactly. Invalid maps remain
+unavailable. Undo restores the exact original Rust-owned value.
 
 ## Session checkpoint persistence
 

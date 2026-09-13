@@ -257,21 +257,35 @@ describe("BreditorToolbar inline-format forms", () => {
     toolbar.dispose();
   });
 
-  it("makes a CR/LF-bearing stored URL unavailable instead of normalizing it", () => {
+  it("allows removal but never submits a normalized CR/LF-bearing stored URL", () => {
     const host = mountHost();
+    const dispatch = vi.fn((_invocation: ToolbarCommandInvocation) => toolbarCommandDispatchResult("completed"));
     const toolbar = new BreditorToolbar(
       host,
       linkManifest(),
       new TestStateStore([
         uniformLinkState("https://one.example\r\nnext", false),
       ]),
-      { dispatch: () => toolbarCommandDispatchResult("completed") },
+      { dispatch },
     );
 
-    expect(launcherButton(host).getAttribute("aria-disabled")).toBe("true");
+    expect(launcherButton(host).getAttribute("aria-disabled")).toBe("false");
     launcherButton(host).click();
-    expect(linkPanel(host).hidden).toBe(true);
+    expect(linkPanel(host).hidden).toBe(false);
     expect(linkInput(host).value).toBe("");
+    expect(linkPanel(host).textContent).toContain("cannot be displayed");
+    expect(formAction(host, "apply").disabled).toBe(true);
+    expect(formAction(host, "remove").disabled).toBe(false);
+    linkInput(host).value = "https://replacement.example";
+    linkInput(host).dispatchEvent(new Event("input", { bubbles: true }));
+    expect(formAction(host, "apply").disabled).toBe(true);
+    linkPanel(host).dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+    expect(dispatch).not.toHaveBeenCalled();
+    formAction(host, "remove").click();
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(dispatch.mock.calls[0]?.[0]).toMatchObject({
+      command: { kind: "intentJson", inputJson: '{"operation":"remove"}' },
+    });
     expect(toolbar.validateCanonicalDom()).toBe(true);
     toolbar.dispose();
   });

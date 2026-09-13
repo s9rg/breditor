@@ -4,6 +4,25 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.20 - 2026-09-13
+
+This unpublished browser checkpoint makes valid but single-line-unrepresentable
+Link formatting removable through the native toolbar.
+
+- Validate the entire state map before admitting a removal-only form. Never
+  hydrate CR/LF-bearing values into sanitizing HTML inputs or retain them in
+  the detached form seed. Malformed maps still disable the form entirely.
+- Explain the state, keep Apply and submission blocked even after draft edits,
+  and route Remove through the existing Rust-owned typed intent. Undo/Redo
+  preserve the exact original scalar and unrelated formatting.
+- Added malformed-map/unit coverage and Chromium/Firefox/WebKit real-Wasm
+  regression coverage for blocked submission, removal, and exact undo/redo.
+- No Rust operation, durable format, Wasm ABI, or rendering-policy change.
+
+Release checks: 1,559 Rust tests, 1,198 TypeScript tests, 66 browser and 24
+React demo tests across Chromium/Firefox/WebKit, strict lint/type/docs checks,
+clean package consumers, and freshly rebuilt production size budgets passed.
+
 ## 0.3.0-alpha.19 - 2026-09-13
 
 This unpublished Rust-only checkpoint adds exact-current V3 root readback.

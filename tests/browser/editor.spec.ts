@@ -888,6 +888,42 @@ test("the Link form round-trips surrounding whitespace without native URL normal
   await expect(url).toHaveValue(exact);
 });
 
+test("a line-break-bearing Link can be removed and exactly restored without input normalization", async ({ page }) => {
+  const exact = "https://one.example/\r\nprivate";
+  const mounted = await page.evaluate(async (href) => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("missing harness");
+    return harness.mountReferenceFormatting(false, href);
+  }, exact);
+  const root = page.locator(`[data-breditor-reference-formatting-probe="${mounted.probeId}"]`);
+  const original = await page.evaluate((id) => window.__breditorHarness!.referenceFormattingDocument(id), mounted.probeId);
+  expect(original).toContain(JSON.stringify(exact));
+  const panel = root.locator("form[data-breditor-toolbar-panel]");
+  await root.getByRole("button", { name: "Link", exact: true }).click();
+  const input = panel.getByLabel("Link URL", { exact: true });
+  const apply = panel.getByRole("button", { name: "Apply Link", exact: true });
+  const remove = panel.getByRole("button", { name: "Remove Link", exact: true });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText("cannot be displayed");
+  await expect(input).toHaveValue("");
+  await expect(apply).toBeDisabled();
+  await expect(remove).toBeEnabled();
+  await input.fill("https://not-applied.example");
+  await input.press("Enter");
+  await expect(apply).toBeDisabled();
+  expect(await page.evaluate((id) => window.__breditorHarness!.referenceFormattingDocument(id), mounted.probeId)).toBe(original);
+  await remove.click();
+  await expect(root.locator("a.breditor-link")).toHaveCount(0);
+  await expect(root.locator("mark.breditor-reference-highlight")).toHaveText(mounted.text);
+  await root.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(root.locator("a.breditor-link")).toHaveCount(1);
+  await expect(input).toHaveValue("");
+  await expect(apply).toBeDisabled();
+  expect(await page.evaluate((id) => window.__breditorHarness!.referenceFormattingDocument(id), mounted.probeId)).toBe(original);
+  await root.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(root.locator("a.breditor-link")).toHaveCount(0);
+});
+
 test("the native Link toolbar works from an open ShadowRoot without browser URL admission", async ({
   page,
 }) => {

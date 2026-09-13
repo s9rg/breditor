@@ -547,8 +547,9 @@ toolbar.
   exact Alpha.12 RGB24 field and Alpha.13 exhaustive integer select. Alpha.8
   hydrates only a uniform complete map; mixed state has no fieldwise value.
   A stored string containing CR or LF cannot be represented exactly by the
-  native single-line control, so the complete form, including Remove, becomes
-  unavailable; programmatic removal remains available.
+  native single-line control. Alpha.20 opens a removal-only form for a fully
+  validated map: no stored fields are hydrated, Apply remains disabled, and
+  Remove uses the existing Rust intent. Invalid maps remain unavailable.
   There is no persisted draft, optional or general free-form integer field, partial
   patch, or arbitrary widget.
   There are no menus or custom/dynamic selects, callback or multi-key keymaps, extension-defined

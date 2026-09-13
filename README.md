@@ -29,8 +29,8 @@ that compiled map with `aria-keyshortcuts`.
 When the semantic selection has one uniform Link map, the pristine form opens
 with that exact stored single-line URL and Boolean value; mixed or absent Link
 state uses the declared defaults without inventing a merge. A stored URL
-containing CR or LF makes the form unavailable rather than allowing an HTML
-input to normalize it.
+containing CR or LF opens a removal-only form: Apply stays disabled, and
+Remove uses the Rust-owned command without normalizing the stored value.
 The color form uses a native picker but stores one opaque integer in Rust; the
 closed renderer alone derives lowercase `style="color:#rrggbb"` and never
 accepts arbitrary CSS. Text color deliberately has no shortcut.

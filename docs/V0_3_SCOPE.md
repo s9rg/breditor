@@ -1,9 +1,9 @@
 # Breditor `0.3.0` scope
 
-Current alpha.19 addition: observational V3 root readback correlates a
-completed host read with the exact candidate bytes, complete binding, and
-head-index result. It grants no retry or writer authority and performs no I/O.
-See [Root readback V3](ROOT_READBACK_V3.md).
+Current alpha.20 addition: validated Link maps that cannot fit a single-line
+input open a removal-only toolbar form. Stored values are never normalized;
+Remove and Undo use the unchanged Rust-owned semantics.
+See [Typed toolbar controls](TYPED_TOOLBAR_CONTROLS.md).
 
 The preceding `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
 whose exhaustive Text Size presets use the existing generic integer typed-set
@@ -514,8 +514,9 @@ contract, schema, and canonical property-order correlation. A pristine form
 hydrates a form-admissible uniform map exactly; unset or mixed uses declared
 empty/default values. The URL field is a text input with a URL keyboard hint,
 so surrounding whitespace remains exact. CR/LF-bearing state makes this
-single-line form, including UI Remove, unavailable rather than being normalized;
-programmatic typed-intent removal remains possible. State refreshes do not overwrite a dirty draft. Rejected dispatch
+single-line form removal-only in alpha.20 rather than being normalized;
+Apply and submission stay disabled, while Remove uses the existing Rust intent.
+State refreshes do not overwrite a dirty draft. Rejected dispatch
 retains it; completed dispatch clears it and hydrates from the authoritative
 post-command state. Close, Escape, another form opening, and disposal clear
 the draft, so reopening starts from the latest fresh state.
@@ -835,8 +836,8 @@ undefined.
   clipboard families, define conditional priority handlers, or change while an
   editor is live.
 - Form drafts hydrate only from a fresh, single-line-representable uniform
-  state. CR/LF-bearing URL state leaves the form and its UI Remove action
-  unavailable, while programmatic removal remains possible. Drafts are not
+  state. A validated CR/LF-bearing URL map opens a removal-only form in
+  alpha.20, with no stored-field hydration or Apply. Drafts are not
   persisted, undoable, or replayed, and same-realm JavaScript declarations are
   not sandboxed.
 - No migration, generation negotiation, collaboration transform, or unknown

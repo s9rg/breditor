@@ -232,7 +232,9 @@ interface BreditorBrowserHarness {
   probeReferenceHighlight(): Promise<ReferenceHighlightProbeResult>;
   mountReferenceFormatting(
     toolbarInShadow?: boolean,
+    initialHref?: string,
   ): Promise<ReferenceFormattingMountResult>;
+  referenceFormattingDocument(probeId: string): string;
   cleanupReferenceFormatting(probeId?: string): void;
   mountReferenceShowcase(): Promise<ReferenceShowcaseMountResult>;
   cleanupReferenceShowcase(probeId?: string): void;
@@ -336,8 +338,15 @@ async function start(): Promise<void> {
       probeDetachedToolbarButtonShadow(editor, mode),
     probeAdoptedEditorHost: () => probeAdoptedEditorHost(),
     probeReferenceHighlight: () => probeReferenceHighlight(),
-    mountReferenceFormatting: (toolbarInShadow = false) =>
-      mountReferenceFormatting(toolbarInShadow),
+    mountReferenceFormatting: (toolbarInShadow = false, initialHref?: string) =>
+      mountReferenceFormatting(toolbarInShadow, initialHref),
+    referenceFormattingDocument: (probeId: string) => {
+      const probe = referenceFormattingProbes.get(probeId);
+      if (probe === undefined) throw new Error("missing formatting probe");
+      const exported = probe.editor.exportContent("documentJson");
+      if (!exported.ok) throw new Error("formatting export failed");
+      return exported.value;
+    },
     cleanupReferenceFormatting: (probeId?: string) =>
       cleanupReferenceFormatting(probeId),
     mountReferenceShowcase: () => mountReferenceShowcase(),
@@ -453,6 +462,7 @@ function cleanupReferenceShowcase(probeId?: string): void {
 
 async function mountReferenceFormatting(
   toolbarInShadow = false,
+  initialHref?: string,
 ): Promise<ReferenceFormattingMountResult> {
   const sequence = nextReferenceFormattingProbeId;
   nextReferenceFormattingProbeId += 1;
@@ -485,6 +495,7 @@ async function mountReferenceFormatting(
         lineageId: `browser-${probeId}`,
         documentJson: createReferenceFormattingDocumentJson(text, {
           highlighted: true,
+          ...(initialHref === undefined ? {} : { link: { href: initialHref, openInNewWindow: false } }),
         }),
         historyCapacity: 20,
       },

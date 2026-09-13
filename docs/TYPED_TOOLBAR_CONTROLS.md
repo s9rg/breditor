@@ -300,8 +300,10 @@ and feedback are presentation state and are never persisted or restored.
 Alpha.8 hydrates only from a fresh descriptor-correlated action-state value.
 Opening a pristine form copies an exact form-admissible `uniform` map into its
 fields. A CR/LF-bearing URL map remains exact in Rust/Wasm but cannot enter the
-single-line form, which stays unavailable instead of displaying a normalized
-value. `unset` and `mixed` seed the declared empty/default values because
+single-line input. Alpha.20 opens a removal-only form without hydrating stored
+fields or enabling Apply; it never displays a normalized value. The entire
+map must still validate before removal becomes available. `unset` and `mixed`
+seed the declared empty/default values because
 neither supplies one truthful complete map. A state refresh may update a pristine open form, but it
 never overwrites a draft after the user changes a field. A rejected command
 retains that dirty draft. A completed command discards the draft, refreshes

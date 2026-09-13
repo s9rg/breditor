@@ -1,12 +1,12 @@
 # Breditor compatibility policy
 
-Current alpha.19 addition: observational V3 root readback correlates a
-completed host read with the exact candidate bytes, complete binding, and
-head-index result. It grants no retry or writer authority and performs no I/O.
-See [Root readback V3](ROOT_READBACK_V3.md).
+Current alpha.20 addition: validated Link maps that cannot fit a single-line
+input open a removal-only toolbar form. Stored values are never normalized;
+Remove and Undo use the unchanged Rust-owned semantics.
+See [Typed toolbar controls](TYPED_TOOLBAR_CONTROLS.md).
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.19` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.20` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the
@@ -473,8 +473,9 @@ mixed, preserves dirty drafts across refresh and rejection, and discards them
 on completion or close before hydrating again from authoritative state. Rust
 and Wasm preserve URL strings exactly and inertly. The browser form does so for
 CR/LF-free single-line strings; a current value containing CR or LF makes the
-whole form, including its Remove command, unavailable because native text
-controls cannot round-trip it exactly. Programmatic removal remains possible.
+form removal-only in alpha.20 because native text controls cannot round-trip it
+exactly. Apply and submission remain disabled until an authoritative
+representable/unset/mixed state is observed. Malformed maps remain unavailable.
 Only `safeLinkV1` owns parsing, normalization, and navigation policy.
 
 This process-local observation is not serialized, undoable, replayed, or
