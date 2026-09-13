@@ -5,6 +5,8 @@
 //! V3 with explicit selected-storage normalization and opaque V3 policy types.
 //! Alpha.16 adds explicit V3 schema admission and matching root preparation;
 //! neither grants storage-write authority or mutates the source session.
+//! Alpha.17 adds closed V3 root-publication plans with exact candidate and host
+//! incarnation identity, but no dispatch or writer-authority transition.
 //! V3 tail observation and compaction preserve typed replay values and return
 //! the unchanged cursor on failure. No new Wasm surface is introduced.
 //!

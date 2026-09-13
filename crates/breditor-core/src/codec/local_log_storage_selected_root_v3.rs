@@ -32,6 +32,15 @@ use super::{
 pub struct LocalLogStorageSelectedRootV3(LocalLogStorageSelectedRoot);
 
 impl LocalLogStorageSelectedRootV3 {
+    // Transfer only inspection facts/bytes and drop the validation anchor.
+    // The publication-plan constructor rechecks their complete V3 binding.
+    pub(super) fn into_publication_envelope(
+        self,
+    ) -> (super::LocalLogStorageSelectedBinding, std::sync::Arc<str>, Option<std::sync::Arc<str>>)
+    {
+        self.0.into_attempt_envelope()
+    }
+
     pub(super) const fn new(inner: LocalLogStorageSelectedRoot) -> Self {
         Self(inner)
     }

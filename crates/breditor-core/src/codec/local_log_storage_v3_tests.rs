@@ -6,6 +6,9 @@ mod typed;
 #[path = "local_log_storage_adversarial_v3_tests.rs"]
 mod adversarial;
 
+#[path = "local_log_storage_root_publication_v3_tests.rs"]
+mod publication;
+
 use crate::{
     local_log::{
         LocalLogCheckpointBinding, LocalLogCompactionLimits, LocalLogId, LocalLogRecovery,

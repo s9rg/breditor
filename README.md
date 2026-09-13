@@ -363,6 +363,11 @@ It preserves the unchanged document under a compatible target schema while
 starting fresh session history; it leaves the source intact and grants no
 storage-write authority. The browser demo and Wasm ABI 5 are unchanged.
 
+Alpha.17 adds [closed V3 root-publication plans](docs/ROOT_PUBLICATION_PLAN_V3.md),
+binding exact candidate bytes to host-selected database and scope incarnations.
+This is preparation only; dispatch, terminal handling, and writer ownership
+remain separate work.
+
 The implementation includes:
 
 - immutable, structurally shared document values;

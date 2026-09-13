@@ -1,9 +1,9 @@
 # Rust data contract
 
-Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
-AST and typed properties in a fresh session, with a separate prepared owner and
-a matching Storage Root V3 bridge. Source state stays intact; no write authority
-is granted. See [Schema admission V3](SCHEMA_ADMISSION_V3.md).
+Current alpha.17 addition: closed V3 root-publication plans retain exact
+candidate bytes and complete host-incarnation bindings. There is no V3 dispatch,
+terminal handling, or writer-authority transition yet.
+See [Root publication preparation V3](ROOT_PUBLICATION_PLAN_V3.md).
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path. Document V2 and Session Checkpoint V2 are supported
@@ -31,7 +31,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.16` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.17` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the

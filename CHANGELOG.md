@@ -4,6 +4,28 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.17 - 2026-09-13
+
+This unpublished Rust-only checkpoint closes a checked Storage Root V3 into
+an owned prospective publication plan.
+
+- Added `prepare_root_publication` and `LocalLogStorageRootPublicationPlanV3`.
+  Preparation revalidates canonical candidate bytes, complete V3 binding,
+  host-selected database/scope incarnations, and input/output/checkpoint limits.
+- Plan identity compares exact bytes and complete bindings, not just JSON
+  length or transaction identity. Debug output omits document payloads.
+- The plan drops the temporary validation checkpoint and retains no session,
+  writable tail, or writer capability. It has no Clone or dispatch API.
+- Added incarnation/payload identity, policy, binding mismatch, typed-property,
+  source-preservation, and compile-fail tests. No wire/ABI/UI change is included.
+- Dispatch, uncertainty/terminal handling, retries, rotation publication, and
+  actual storage writes remain deferred. See
+  [Root publication preparation V3](docs/ROOT_PUBLICATION_PLAN_V3.md).
+
+Release checks: 1,541 Rust tests, 1,197 TypeScript tests, strict lint/type/docs
+checks, clean package-consumer browser smoke tests, and unchanged size budgets
+passed.
+
 ## 0.3.0-alpha.16 - 2026-09-13
 
 This unpublished Rust-only checkpoint adds explicit V3 structural schema

@@ -2,7 +2,7 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.16` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.17` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
@@ -249,12 +249,12 @@ generations, and ABI 5 remain unchanged. See
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.16` packages:
+exactly matching `0.3.0-alpha.17` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.16 \
-  @breditor/wasm@0.3.0-alpha.16 \
-  @breditor/reference-highlight@0.3.0-alpha.16
+npm install @breditor/browser@0.3.0-alpha.17 \
+  @breditor/wasm@0.3.0-alpha.17 \
+  @breditor/reference-highlight@0.3.0-alpha.17
 ```
 
 Then import only the package roots and pass the exported data to the ordinary

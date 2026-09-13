@@ -128,6 +128,16 @@ fn typed_properties_survive_storage_root_rotation_and_history() -> TestResult {
     );
     let fixture = StorageV3Fixture::with_events(EditorSession::new(before.clone()), vec![entry])?;
     let root_json = fixture.encoded_root()?;
+    let root_codec = fixture.root_codec();
+    let root = root_codec.decode_root(&root_json)?;
+    let plan = root_codec.prepare_root_publication(
+        &fixture.database_incarnation_id,
+        &fixture.scope_incarnation_id,
+        &root,
+    )?;
+    assert_eq!(plan.candidate_json_bytes(), root_json.len());
+    assert_eq!(plan.schema_binding(), &context.schema().durable_binding());
+    assert!(!format!("{plan:?}").contains("https://example.test/docs"));
     let selected = fixture.normalize_root(&root_json)?;
     let outcome = fixture.rotation_outcome(&selected)?;
     assert_eq!(outcome.anchor().session().state(), &after);

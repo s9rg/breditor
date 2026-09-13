@@ -1,7 +1,11 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.16` Rust schema-admission V3 checkpoint.
+`0.3.0-alpha.17` Rust root-publication preparation checkpoint.
+
+Alpha.17 retains every ceiling and the same raw Wasm/application sizes below.
+The size gate passed after the clean package-consumer rebuild. Browser,
+reference, and Wasm tarballs measure 264,566, 32,083, and 521,603 bytes.
 
 Alpha.16 retains every ceiling and the alpha.15 raw Wasm/application sizes
 below. The size gate passed against the artifacts rebuilt by the clean package

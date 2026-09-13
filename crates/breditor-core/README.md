@@ -1,9 +1,9 @@
 # breditor-core
 
-Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
-AST and typed properties in a fresh session, with a separate prepared owner and
-a matching Storage Root V3 bridge. Source state stays intact; no write authority
-is granted. See [Schema admission V3](../../docs/SCHEMA_ADMISSION_V3.md).
+Current alpha.17 addition: closed V3 root-publication plans retain exact
+candidate bytes and complete host-incarnation bindings. There is no V3 dispatch,
+terminal handling, or writer-authority transition yet.
+See [Root publication preparation V3](../../docs/ROOT_PUBLICATION_PLAN_V3.md).
 
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or

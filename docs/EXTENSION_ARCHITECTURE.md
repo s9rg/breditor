@@ -1,14 +1,14 @@
 # Breditor extension architecture
 
-Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
-AST and typed properties in a fresh session, with a separate prepared owner and
-a matching Storage Root V3 bridge. Source state stays intact; no write authority
-is granted. See [Schema admission V3](SCHEMA_ADMISSION_V3.md).
+Current alpha.17 addition: closed V3 root-publication plans retain exact
+candidate bytes and complete host-incarnation bindings. There is no V3 dispatch,
+terminal handling, or writer-authority transition yet.
+See [Root publication preparation V3](ROOT_PUBLICATION_PLAN_V3.md).
 
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.16` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.17` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
