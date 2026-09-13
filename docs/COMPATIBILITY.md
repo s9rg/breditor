@@ -645,13 +645,12 @@ visible ratios, and Text Size has no shortcut. See
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.17 report ABI `5`. Startup checks both
-the exact
-ABI string and exact embedded package version
+pairs report ABI `4`; the current alpha.22 pair retains ABI `5`, introduced in
+alpha.7. Startup checks both the exact ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.17 source configuration is tested as an exactly matching browser,
+The alpha.22 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The

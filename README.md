@@ -1425,6 +1425,14 @@ See [Compatibility](docs/COMPATIBILITY.md) and the [Changelog](CHANGELOG.md).
 
 ## Development
 
+After installing the documented toolchain and workspace dependencies, run
+`npm run verify:release` for the complete, sequential, fail-fast local gate.
+It includes native Rust, real Wasm-target tests, ABI comparison, TypeScript,
+packed consumers, a fresh production build and size check, and both browser
+matrices. It never publishes packages. `npm run verify:release -- --dry-run`
+prints the plan without running checks; it is not a verification result.
+Individual setup/check commands remain below for targeted development.
+
 ```sh
 export WASM_BINDGEN_BIN=/absolute/path/to/wasm-bindgen
 export WASM_BINDGEN_TEST_RUNNER_BIN=/absolute/path/to/wasm-bindgen-test-runner

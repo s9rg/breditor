@@ -11,6 +11,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "verify:release": "node scripts/verify-release.mjs",
     "clean": "npm run clean --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "demo": "npm run build && npm run dev --workspace @breditor/example-react",

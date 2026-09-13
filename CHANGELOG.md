@@ -6,6 +6,15 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Added `npm run verify:release`, one sequential fail-fast local gate covering
+  native Rust, target-specific Wasm tests, ABI regeneration, TypeScript,
+  clean packed consumers, a fresh demo build, size budgets, and both browser
+  matrices. Its explicit dry-run does not execute checks. No package publishing
+  or dependency-setup step is added; the documented toolchain is required.
+  All 17 gates passed end to end: 9 runner tests, 1,560 native Rust tests,
+  25 real Wasm-target tests, 1,219 TypeScript tests, 72 browser cases and 30
+  demo cases, plus strict type/lint/docs, ABI, consumer and size checks. The
+  earlier intermittent WebKit failure did not recur and remains unresolved.
 - Added a 96-case generated Rust history law for Unicode range formatting,
   directional selections, endpoint affinities, complete property replacement,
   optional-property removal, and exact V3 restoration at every retained cursor.
