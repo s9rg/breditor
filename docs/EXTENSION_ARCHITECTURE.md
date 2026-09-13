@@ -1,9 +1,13 @@
 # Breditor extension architecture
 
+Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
+and tail V3 preserve typed properties through recovery and compaction. Storage
+Root and Storage Generation remain V1/V2. See [Local Log V3](LOCAL_LOG_V3.md).
+
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.13` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.14` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned
@@ -763,7 +767,8 @@ Operation, Editor State, Transaction Request, Commit, and Session Checkpoint V3
 are separate explicitly selected property-preserving families around Document
 V2. V1/V2 bytes remain unchanged and fail closed where their property-free
 operation or pending-format payload cannot represent a typed value. Structural
-typed paragraph split/join/root replacement and Local Log V3 remain absent.
+typed paragraph split/join/root replacement and Local Log V3 were absent at
+alpha.2; alpha.5 and alpha.14 respectively add those capabilities.
 
 ## `0.3.0-alpha.3` ABI 4 and browser bridge
 

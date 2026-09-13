@@ -1,5 +1,9 @@
 # breditor-core
 
+Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
+and tail V3 preserve typed properties through recovery and compaction. Storage
+Root and Storage Generation remain V1/V2. See [Local Log V3](../../docs/LOCAL_LOG_V3.md).
+
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or
 Wasm binding dependencies.
@@ -127,7 +131,7 @@ the existing selector/fingerprint binding. V3 state boundaries continue to
 embed Document V2; there is no Document V3. V1/V2 operation payloads retain
 their exact bytes and reject typed-schema operations rather than projecting
 them through empty property records. Generations are selected explicitly; no
-codec sniffs or converts them. Local Log V3 does not yet exist. Wasm ABI 3,
+codec sniffs or converts them. Local Log V3 was absent at alpha.2. Wasm ABI 3,
 profile bootstrap, browser descriptors/rendering, clipboard, and toolbar
 controls remained property-free at that alpha.2 checkpoint.
 
@@ -309,8 +313,8 @@ document, singular guarded-operation, exact-base transaction-request,
 contextual complete editor-state, replay-proved commit, and bounded durable
 session-checkpoint plus replay-identified local-log-entry JSON codecs. Its
 explicit V3 operation, state, transaction, commit, and session families preserve
-typed properties while retaining Document V2, and its local-log/storage
-families remain V1/V2. The crate also provides bounded atomic recovery of one
+typed properties while retaining Document V2. Alpha.14 adds explicit local-log
+entry, checkpoint, frame, and tail V3; storage envelopes remain V1/V2. The crate also provides bounded atomic recovery of one
 supplied genesis-anchored log prefix plus a
 compact runtime anchor, checked batch or recoverable one-observation successor
 admission with fixed cumulative budgets, repeated cumulative compaction, and a
@@ -397,7 +401,7 @@ plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The core
 stays platform-independent: it has no action-state subscription/delivery
 layer, presentation manifest, DOM or browser scheduler, structural operations
-beyond the sealed direct-root paragraph grammar, V3 local-log/storage codec,
+beyond the sealed direct-root paragraph grammar, V3 storage envelopes,
 log-storage I/O, checkpoint/log atomic replacement,
 storage-generation publication or initial scope provisioning, process-restart
 append reconstruction, or collaboration transform. Alpha.5 does propagate a

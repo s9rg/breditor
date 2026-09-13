@@ -341,6 +341,22 @@ production contract, durable generation, fingerprint algorithm, or Wasm method
 changes; ABI 5 remains current. See the
 [Text Size decision](docs/TEXT_SIZE_PRESETS.md). Packages remain unpublished.
 
+The `0.3.0-alpha.14` source checkpoint advances the experimental Rust-only
+local-log semantic, framing, and active-tail boundary to property-preserving
+V3. The exact nesting graph is Local Log Entry V3 to Commit V3, Local Log
+Checkpoint V3 to Session Checkpoint V3, and binary Local Log Frame V3 to Local
+Log Entry V3; the distinct V3 tail cursor admits only Frame V3. These families
+retain the V2 outer field order, V1's 28-byte frame layout and CRC-32C rules,
+and the existing runtime recovery, sequence, replay, tombstone, and cumulative
+compaction laws while preserving typed properties through current state and
+both history directions. Document V2 remains the document nested by the V3
+state/session graph. V1 and V2 codecs and bytes stay frozen, selection is
+explicit, and mixed generations fail closed without sniffing or conversion.
+Storage Root and Storage Generation remain V1/V2. Matching V3 storage
+envelopes and selected-storage paths are planned next; I/O, publication, and
+browser/Wasm transport require further checkpoints. ABI 5 remains current and the
+packages remain unpublished.
+
 The implementation includes:
 
 - immutable, structurally shared document values;
@@ -358,10 +374,12 @@ The implementation includes:
   entry and checkpoint, Local Log Frame, Storage Root, and Storage Generation,
   with generation-locked nesting and non-destructive mismatch handling;
 - explicit property-preserving V3 codecs for operation, editor state,
-  transaction request, commit, and session checkpoint, with Document V2 kept
-  as the nested document generation, property-aware operation/pending-format
-  payloads, bounded preflight, exact replay, and no automatic generation
-  detection or conversion; the local-log/storage graph remains V1/V2 only;
+  transaction request, commit, session checkpoint, local-log entry,
+  local-log checkpoint, and Local Log Frame, with Document V2 kept as the
+  nested document generation, property-aware operation/pending-format payloads,
+  bounded preflight, exact replay, and no automatic generation detection or
+  conversion; version-branded V3 tail observation and compaction retain that
+  graph, while Storage Root and Storage Generation remain V1/V2 only;
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
   editor-state checkpoints, self-contained replay-proved commit records, and
@@ -538,8 +556,10 @@ replacement to set or remove a complete typed format instance across multiple
 paragraphs. Alpha.7 supplies the callback-free native Link form through the
 canonical compiled set-surface triple. Alpha.8 hydrates its pristine fields from
 exact uniform Rust state; drafts remain browser-local and the set operation
-still replaces the complete property map. No Local Log V3
-exists. Paste remains plain text and reconstructs no
+still replaces the complete property map. Alpha.14 adds explicit Rust-only
+Local Log Entry, Checkpoint, Frame, and tail V3 families around Commit and
+Session Checkpoint V3, but no Storage Root or Storage Generation V3 exists.
+Paste remains plain text and reconstructs no
 source Link properties, though target-context Link can be inherited; there is
 no arbitrary attribute or CSS mapping, fieldwise mixed hydration, optional or
 integer form field, partial property patch, or arbitrary toolbar widget. Rust's

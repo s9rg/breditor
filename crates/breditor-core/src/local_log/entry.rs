@@ -112,8 +112,8 @@ impl LocalLogEntry {
     /// Session and active-log membership are verified separately by recovery.
     /// Log placement is deliberately excluded so a future checked compaction
     /// protocol can carry the same logical replay binding into a new generation.
-    /// Commit-bearing events compare their complete durable Commit V1 proof,
-    /// excluding replay-derived runtime caches.
+    /// Commit-bearing events compare their complete generation-neutral commit
+    /// checkpoint proof, excluding replay-derived runtime caches.
     pub(crate) fn same_replay_binding(&self, other: &Self) -> bool {
         let Self { schema_binding, log_id: _, session_id: _, sequence, replay_id, event } = self;
         schema_binding == &other.schema_binding

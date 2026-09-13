@@ -13,7 +13,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the registry package with:
 
 ```sh
-npm install @breditor/wasm@0.3.0-alpha.13
+npm install @breditor/wasm@0.3.0-alpha.14
 ```
 
 The package is ESM. Initialize it before calling any exported Rust function:
@@ -25,7 +25,7 @@ await init();
 console.log(breditorVersion());
 ```
 
-The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.13
+The supported `0.1.x`, exact-matched `0.2.x`, and alpha.7 through alpha.14
 browser bootstrap is
 the no-argument default asynchronous initializer shown above, called once in an
 HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
@@ -46,7 +46,7 @@ Generated objects own Rust allocations. Follow the declaration's one-shot
 preferred by editor integrations. Raw generated handles and classes are an
 advanced boundary outside the supported high-level API compatibility promise;
 official browser/Wasm packages are supported only as an exact same-version pair
-with ABI generation `5` for this unpublished alpha.13 source checkpoint.
+with ABI generation `5` for this unpublished alpha.14 source checkpoint.
 
 Wasm ABI 3, introduced in `0.2.0-alpha.5`, adds strict bounded ABI-local profile bootstrap,
 reusable `BreditorCompiledProfile` factories over Document V2 and Session
@@ -185,7 +185,11 @@ action-state, projection, undo/redo, and Session-V3 surfaces. Its exhaustive
 presentation only. See
 [`TEXT_SIZE_PRESETS.md`](../../docs/TEXT_SIZE_PRESETS.md).
 
-Alpha.13 does not yet provide format exclusions, block code, headings or
+`0.3.0-alpha.14` retains that exact ABI 5 surface. Its new Entry,
+Checkpoint, Frame, and tail V3 contracts live entirely in `breditor-core`;
+storage root/generation integration is intentionally deferred.
+
+Alpha.14 does not yet provide format exclusions, block code, headings or
 lists, rich paste, chord sequences, runtime keymap replacement, or runtime
 plugin loading. Those remain explicit future capabilities rather than ABI
 changes.

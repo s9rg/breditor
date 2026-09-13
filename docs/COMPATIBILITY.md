@@ -1,7 +1,11 @@
 # Breditor compatibility policy
 
+Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
+and tail V3 preserve typed properties through recovery and compaction. Storage
+Root and Storage Generation remain V1/V2. See [Local Log V3](LOCAL_LOG_V3.md).
+
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.13` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.14` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the
@@ -309,8 +313,9 @@ At the alpha.2 checkpoint, preservation remained deliberately incomplete.
 typed schemas, so typed paragraph breaks, paragraph-boundary deletion, cross-
 paragraph replacement, and structural plain-text insertion failed closed.
 Alpha.5 supersedes that operation restriction for the sealed paragraph shape.
-There is still no V3 local-log, frame, root, or storage-generation family, and
-no automatic codec generation detection, upgrade, downgrade, or mixed nesting.
+Alpha.14 adds V3 local-log entry, checkpoint, frame, and tail families.
+Storage Root and Storage Generation V3 remain deferred. There is no automatic
+codec generation detection, upgrade, downgrade, or mixed nesting.
 
 At alpha.2, Wasm ABI 3 was unchanged. Its bootstrap and browser descriptor could
 not declare or expose typed contracts, and the package-root profile path
@@ -637,13 +642,13 @@ visible ratios, and Text Size has no shortcut. See
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.13 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.14 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.13 source configuration is tested as an exactly matching browser,
+The alpha.14 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -660,7 +665,7 @@ an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
 form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7 through
-alpha.13:
+alpha.14:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

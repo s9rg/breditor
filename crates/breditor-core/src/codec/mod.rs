@@ -33,28 +33,39 @@ mod editor_value_preflight_v2;
 mod error;
 mod json_size;
 mod local_log_checkpoint_encoding_v2;
+mod local_log_checkpoint_encoding_v3;
 mod local_log_checkpoint_error;
 mod local_log_checkpoint_json;
 mod local_log_checkpoint_json_v2;
+mod local_log_checkpoint_json_v3;
 mod local_log_checkpoint_limits;
 mod local_log_checkpoint_tombstones_v1;
 mod local_log_checkpoint_v2_error;
+mod local_log_checkpoint_v3_error;
 mod local_log_entry_encoding_v2;
+mod local_log_entry_encoding_v3;
 mod local_log_entry_error;
 mod local_log_entry_json;
 mod local_log_entry_json_v2;
+mod local_log_entry_json_v3;
 mod local_log_entry_v2_error;
+mod local_log_entry_v3_error;
 mod local_log_frame_binding;
 mod local_log_frame_checksum;
 mod local_log_frame_codec;
 mod local_log_frame_codec_v2;
+mod local_log_frame_codec_v3;
 mod local_log_frame_error;
 mod local_log_frame_limits;
 mod local_log_frame_scan;
 mod local_log_frame_scan_v2;
+mod local_log_frame_scan_v3;
 mod local_log_frame_v2_error;
 #[cfg(test)]
 mod local_log_frame_v2_tests;
+mod local_log_frame_v3_error;
+#[cfg(test)]
+mod local_log_frame_v3_tests;
 #[cfg(test)]
 mod local_log_storage_append_adversarial_tests;
 mod local_log_storage_append_attempt_aborted;
@@ -302,24 +313,35 @@ mod local_log_storage_writer_fence_acquisition_transition_error;
 mod local_log_storage_writer_fence_adversarial_tests;
 mod local_log_tail_begin;
 mod local_log_tail_begin_v2;
+mod local_log_tail_begin_v3;
 mod local_log_tail_compaction;
 mod local_log_tail_compaction_outcome;
 mod local_log_tail_compaction_outcome_v2;
+mod local_log_tail_compaction_outcome_v3;
 mod local_log_tail_compaction_reauthorization;
 mod local_log_tail_compaction_reauthorization_v2;
+mod local_log_tail_compaction_reauthorization_v3;
 mod local_log_tail_compaction_v2;
+mod local_log_tail_compaction_v3;
 mod local_log_tail_cursor;
 mod local_log_tail_cursor_v2;
+mod local_log_tail_cursor_v3;
 mod local_log_tail_error;
 mod local_log_tail_error_v2;
+mod local_log_tail_error_v3;
 mod local_log_tail_failure;
 mod local_log_tail_failure_v2;
+mod local_log_tail_failure_v3;
 mod local_log_tail_observation;
 mod local_log_tail_observation_v2;
+mod local_log_tail_observation_v3;
 mod local_log_tail_step;
 mod local_log_tail_step_v2;
+mod local_log_tail_step_v3;
 #[cfg(test)]
 mod local_log_tail_v2_tests;
+#[cfg(test)]
+mod local_log_tail_v3_tests;
 mod operation_error;
 mod operation_json;
 mod operation_json_v2;
@@ -407,10 +429,14 @@ pub use local_log_checkpoint_json::{
 pub use local_log_checkpoint_json_v2::{
     LOCAL_LOG_CHECKPOINT_V2_FORMAT_VERSION, LocalLogCheckpointJsonCodecV2,
 };
+pub use local_log_checkpoint_json_v3::{
+    LOCAL_LOG_CHECKPOINT_V3_FORMAT_VERSION, LocalLogCheckpointJsonCodecV3,
+};
 pub use local_log_checkpoint_limits::{
     DEFAULT_LOCAL_LOG_CHECKPOINT_MAX_REPLAY_TOMBSTONES, LocalLogCheckpointLimits,
 };
 pub use local_log_checkpoint_v2_error::LocalLogCheckpointV2CodecError;
+pub use local_log_checkpoint_v3_error::LocalLogCheckpointV3CodecError;
 pub use local_log_entry_error::{
     LocalLogCommitEventKind, LocalLogEntryCodecError, LocalLogEntryRecordError,
     LocalLogEntryRecordErrorCode, LocalLogEntryRecordLocation,
@@ -419,13 +445,16 @@ pub use local_log_entry_json::{
     LOCAL_LOG_ENTRY_FORMAT, LOCAL_LOG_ENTRY_FORMAT_VERSION, LocalLogEntryJsonCodec,
 };
 pub use local_log_entry_json_v2::{LOCAL_LOG_ENTRY_V2_FORMAT_VERSION, LocalLogEntryJsonCodecV2};
+pub use local_log_entry_json_v3::{LOCAL_LOG_ENTRY_V3_FORMAT_VERSION, LocalLogEntryJsonCodecV3};
 pub use local_log_entry_v2_error::LocalLogEntryV2CodecError;
+pub use local_log_entry_v3_error::LocalLogEntryV3CodecError;
 pub use local_log_frame_binding::LocalLogFrameBinding;
 pub use local_log_frame_codec::{
     LOCAL_LOG_FRAME_FORMAT_VERSION, LOCAL_LOG_FRAME_HEADER_BYTES, LOCAL_LOG_FRAME_MAGIC,
     LocalLogFrameCodec,
 };
 pub use local_log_frame_codec_v2::{LOCAL_LOG_FRAME_V2_FORMAT_VERSION, LocalLogFrameCodecV2};
+pub use local_log_frame_codec_v3::{LOCAL_LOG_FRAME_V3_FORMAT_VERSION, LocalLogFrameCodecV3};
 pub use local_log_frame_error::{LocalLogFrameCodecError, LocalLogFrameErrorCode};
 pub use local_log_frame_limits::{DEFAULT_LOCAL_LOG_FRAME_MAX_PAYLOAD_BYTES, LocalLogFrameLimits};
 pub use local_log_frame_scan::{
@@ -434,7 +463,11 @@ pub use local_log_frame_scan::{
 pub use local_log_frame_scan_v2::{
     BorrowedLocalLogFrameV2, LocalLogFrameScanV2, LocalLogFrameTruncationV2,
 };
+pub use local_log_frame_scan_v3::{
+    BorrowedLocalLogFrameV3, LocalLogFrameScanV3, LocalLogFrameTruncationV3,
+};
 pub use local_log_frame_v2_error::LocalLogFrameV2CodecError;
+pub use local_log_frame_v3_error::LocalLogFrameV3CodecError;
 pub use local_log_storage_append_attempt_aborted::LocalLogStorageAppendAttemptAborted;
 pub use local_log_storage_append_head_acknowledged::LocalLogStorageAppendHeadAcknowledged;
 pub use local_log_storage_append_head_acknowledged_at_resolution::LocalLogStorageAppendHeadAcknowledgedAtResolution;
@@ -703,14 +736,19 @@ pub use local_log_storage_writer_fence_acquisition_transition_error::{
 };
 pub use local_log_tail_compaction_outcome::LocalLogTailCompactionOutcome;
 pub use local_log_tail_compaction_outcome_v2::LocalLogTailCompactionOutcomeV2;
+pub use local_log_tail_compaction_outcome_v3::LocalLogTailCompactionOutcomeV3;
 pub use local_log_tail_cursor::LocalLogTailCursor;
 pub use local_log_tail_cursor_v2::LocalLogTailCursorV2;
+pub use local_log_tail_cursor_v3::LocalLogTailCursorV3;
 pub use local_log_tail_error::{LocalLogTailError, LocalLogTailErrorCode};
 pub use local_log_tail_error_v2::LocalLogTailErrorV2;
+pub use local_log_tail_error_v3::LocalLogTailErrorV3;
 pub use local_log_tail_failure::LocalLogTailFailure;
 pub use local_log_tail_failure_v2::LocalLogTailFailureV2;
+pub use local_log_tail_failure_v3::LocalLogTailFailureV3;
 pub use local_log_tail_step::{LocalLogTailStatus, LocalLogTailStep};
 pub use local_log_tail_step_v2::{LocalLogTailStatusV2, LocalLogTailStepV2};
+pub use local_log_tail_step_v3::{LocalLogTailStatusV3, LocalLogTailStepV3};
 pub use operation_error::{
     OperationCodecError, OperationFragmentField, OperationOffsetField, OperationPathField,
     OperationRecordError, OperationRecordErrorCode, OperationRecordLocation,

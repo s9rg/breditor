@@ -2,7 +2,7 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.13` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.14` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
@@ -129,7 +129,7 @@ most 128 ASCII bytes, starts with a letter or digit, and thereafter permits
 letters, digits, `.`, `_`, `:`, and `-`.
 
 An initialized official module namespace is the supported configuration.
-The alpha.13 source path verifies Wasm ABI generation `5` and the exact matching
+The alpha.14 source path verifies Wasm ABI generation `5` and the exact matching
 crate/package version before it reads the generated engine factory. The
 supported root option rejects a bare structural factory, which has no module-
 level compatibility probe. Lower-level factory types remain available only
@@ -249,12 +249,12 @@ generations, and ABI 5 remain unchanged. See
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.13` packages:
+exactly matching `0.3.0-alpha.14` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.13 \
-  @breditor/wasm@0.3.0-alpha.13 \
-  @breditor/reference-highlight@0.3.0-alpha.13
+npm install @breditor/browser@0.3.0-alpha.14 \
+  @breditor/wasm@0.3.0-alpha.14 \
+  @breditor/reference-highlight@0.3.0-alpha.14
 ```
 
 Then import only the package roots and pass the exported data to the ordinary

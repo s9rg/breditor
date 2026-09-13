@@ -1,5 +1,10 @@
 //! Deterministic content kernel for the Breditor rich-text editor.
 //!
+//! Alpha.14 adds explicit property-preserving Local Log Entry, Checkpoint,
+//! Frame, and tail V3 codecs. Storage Root and Storage Generation remain V1/V2.
+//! V3 tail observation and compaction preserve typed replay values and return
+//! the unchanged cursor on failure. No new Wasm surface is introduced.
+//!
 //! The crate currently owns immutable document values, the minimal compiled
 //! proof schema, strict versioned document, singular-operation, exact-base
 //! transaction-request, contextual complete editor-state, replay-proved

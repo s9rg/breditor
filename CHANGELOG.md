@@ -4,6 +4,51 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.14 - 2026-09-13
+
+This unpublished source checkpoint advances Breditor's experimental Rust-only
+local-log semantic, framing, and active-tail graph to property-preserving V3.
+It changes no Document generation, browser API, Profile Bootstrap shape, schema
+fingerprint, generated Wasm member, or ABI 5 meaning.
+
+- Added explicit `LocalLogEntryJsonCodecV3` and
+  `LOCAL_LOG_ENTRY_V3_FORMAT_VERSION`. The canonical envelope retains the V2
+  nine-field order and `breditor/local-log-entry` format name, but requires
+  `formatVersion: 3`. Commit, undo, and redo events nest only exact Commit V3;
+  `closeHistoryGroup` and `clearHistory` retain the outer V3 schema binding
+  without inventing a commit payload.
+- Added explicit `LocalLogCheckpointJsonCodecV3` and
+  `LOCAL_LOG_CHECKPOINT_V3_FORMAT_VERSION`. Its canonical envelope retains the
+  V2 ten-field order, requires `formatVersion: 3`, and nests only exact Session
+  Checkpoint V3. Trusted session/log binding, chronological replay tombstones,
+  covered-frontier topology, genesis-empty-history validation, and independent
+  outer/nested resource limits retain the existing fail-closed laws.
+- Added `LocalLogFrameCodecV3` and its allocation-free borrowed scan types.
+  Frame V3 keeps the eight-byte magic, 28-byte big-endian header, zero flags,
+  CRC-32C coverage, and scan precedence; binary version `3` carries only exact
+  Local Log Entry V3 UTF-8 JSON.
+- Added the version-branded `LocalLogTailCursorV3`, step, status, failure,
+  error, and compaction-outcome family. It derives the V3 frame codec and
+  schema/session/generation binding from the owned semantic log, advances the
+  `u64` byte offset only with jointly successful frame and semantic admission,
+  returns the complete unchanged cursor on typed failure, and retains the
+  accepted-prefix length, old frame limits, exact durable binding, and fixed
+  Frame V3 generation across compaction.
+- Retained the wire-neutral local-log recovery, continuation, replay,
+  deduplication, history-control, sequence, tombstone, and cumulative
+  compaction semantics. Wire-generation mixing is rejected at the explicitly
+  selected entry, checkpoint, frame, and tail boundary; already-decoded runtime
+  values are not evidence of their source wire generation.
+- Kept Document V2 nested through Editor State, Commit, and Session Checkpoint
+  V3. Every V1 and V2 type, constant, error family, canonical byte sequence,
+  and nesting rule remains frozen. No codec sniffs, upgrades, downgrades,
+  converts, or falls back between generations.
+- Deliberately left Storage Root and Storage Generation at V1/V2. V3 storage
+  envelopes and matching selected-storage paths are planned for alpha.15;
+  adapter I/O, publication, and browser/Wasm integration need separate work. The
+  alpha.14 packages remain unpublished; registry examples apply only after a
+  separate maintainer publication.
+
 ## 0.3.0-alpha.13 - 2026-09-10
 
 This unpublished source checkpoint proves that Breditor's generic

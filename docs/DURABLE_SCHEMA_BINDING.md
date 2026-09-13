@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.13` checkpoint. Wasm ABI 5 and the browser explicitly select
+`0.3.0-alpha.14` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -66,7 +66,8 @@ They accept only the exact built-in `breditor/base@1` definition. V2 uses
 separate `*CodecV2` types and `*_V2_FORMAT_VERSION` constants. Property-aware
 Operation, Editor State, Transaction Request, Commit, and Session Checkpoint
 use separate `*CodecV3` types and V3 constants. Document remains V2, and the
-local-log/frame/storage graph has no V3 family.
+local-log entry/checkpoint/frame/tail graph has explicit V3 types. Storage
+Root and Storage Generation remain V1/V2.
 
 There is no context-sensitive "latest" encoder and no decoder that silently
 upgrades or downgrades any generation. A future decoder that accepts more than one
@@ -126,8 +127,9 @@ operation or editor-value payloads:
   entries and replay values.
 
 These five families advance together when their nested values require typed
-properties. The local-log entry/checkpoint/frame/root/storage generations stop
-at V2 and cannot wrap a Session Checkpoint V3. V1/V2 operation payloads retain
+properties. Alpha.14 adds Entry V3 nesting Commit V3, Checkpoint V3 nesting
+Session Checkpoint V3, and Frame V3 nesting Entry V3. Storage Root and Storage
+Generation stop at V2 and cannot wrap a Session Checkpoint V3. V1/V2 operation payloads retain
 their exact bytes and fail closed for any actual operation under a schema with
 a typed property contract, including an optional-only contract and empty
 property instances. V1 pending-format records also reject property-bearing
@@ -332,9 +334,9 @@ helper from being mistaken for persistence migration.
   form remains ephemeral browser presentation and stores only committed
   semantic properties through the existing Session V3 path. Alpha.8 hydration
   does not turn the observed or draft value into durable state.
-- The local-log entry, checkpoint, frame, root, and storage-generation families
-  have no V3 codec. Property-bearing Session Checkpoint V3 bytes cannot enter
-  the current V1/V2 local-log graph.
+- Alpha.14 provides explicit local-log entry, checkpoint, frame, and tail V3.
+  Storage Root and Storage Generation still have no V3 codec; V3 values cannot
+  enter their V1/V2 envelopes. See [Local Log V3](LOCAL_LOG_V3.md).
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

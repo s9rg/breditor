@@ -1,5 +1,9 @@
 # Rust data contract
 
+Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
+and tail V3 preserve typed properties through recovery and compaction. Storage
+Root and Storage Generation remain V1/V2. See [Local Log V3](LOCAL_LOG_V3.md).
+
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path. Document V2 and Session Checkpoint V2 are supported
 only through the exact same-version `0.2.x` package-root compiled-profile path; other formats
@@ -26,7 +30,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.13` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.14` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the

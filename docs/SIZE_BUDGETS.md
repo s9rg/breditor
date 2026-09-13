@@ -1,7 +1,13 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.13` exhaustive-Text-Size-preset checkpoint
+`0.3.0-alpha.14` Rust Local Log V3 checkpoint.
+
+Alpha.14 retains every alpha.13 ceiling. Its generated Wasm is 1,607,732
+bytes; the reference application is 857,056 raw and 223,235 gzip JavaScript
+bytes. The clean consumer gate also passes with browser, reference, and Wasm
+tarballs of 264,564, 32,083, and 521,617 bytes respectively. The new Rust-only
+local-log APIs do not require a larger browser payload budget.
 
 Run `npm run check:size`. The command first builds every workspace, then
 measures the actual generated package artifacts and the production React
