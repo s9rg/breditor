@@ -1,14 +1,15 @@
 # Breditor extension architecture
 
-Current alpha.21 addition: explicit session-checkpoint export and a paused-
-autosave backup download preserve typed state and Undo/Redo history without
-changing storage or its CAS token. Backups contain sensitive deleted history.
+Current alpha.22 addition: explicit session-backup startup and a recovery picker
+open an independent editor with autosave disabled. Rust validates the matching
+schema and replay history; the current editor and saved slot remain untouched.
+Recovered sessions can download another backup, including sensitive deleted history.
 See [Session backups](SESSION_BACKUPS.md).
 
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.21` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.22` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned

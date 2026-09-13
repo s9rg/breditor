@@ -3417,6 +3417,95 @@ describe("BreditorBrowserEditor", () => {
     expect(toolbarHost.childNodes).toHaveLength(0);
   });
 
+  it("opens an explicit backup without document fallback or persistence", async () => {
+    const host = mountHost();
+    const fixture = moduleFixture({
+      checkpoint: { lineage: LINEAGE, revision: 4, text: "recovered" },
+    });
+    const backup = checkpointJson(LINEAGE, 4);
+    const opened = await BreditorBrowserEditor.open({
+      host, label: "Recovered", wasm: fixture.module, keyboard: KEYBOARD,
+      initialSessionCheckpointJson: backup,
+    });
+    if (!opened.ok) throw new Error(opened.error.code);
+    expect(host.textContent).toBe("recovered");
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+    expect(fixture.fromSessionCheckpointJson).toHaveBeenCalledExactlyOnceWith(backup);
+    expect(opened.editor.getSnapshot().persistence.phase).toBe("disabled");
+    expect(opened.editor.getSnapshot().document).toEqual({ lineage: LINEAGE, revision: "4" });
+    opened.editor.dispose();
+    expect(host.childNodes).toHaveLength(0);
+  });
+
+  it.each(["document", "persistence"] as const)("rejects backup plus %s before touching factories or storage", async (mode) => {
+    const fixture = moduleFixture();
+    const host = mountHost();
+    const indexedDB = new IDBFactory();
+    const open = vi.spyOn(indexedDB, "open");
+    const invalid = {
+      host, label: "Recovered", wasm: fixture.module, keyboard: KEYBOARD,
+      initialSessionCheckpointJson: checkpointJson(LINEAGE, 0),
+      ...(mode === "document"
+        ? { initialDocument: { lineageId: LINEAGE, documentJson: "{}", historyCapacity: 100 } }
+        : { persistence: { indexedDB, crypto: digestFixture() } }),
+    };
+    // JavaScript callers must receive the same exclusion as TypeScript callers.
+    // @ts-expect-error A session source cannot also supply a document or persistence.
+    const result = await BreditorBrowserEditor.open(invalid);
+    expect(result).toMatchObject({ ok: false, error: { code: "browser_editor.invalid_options" } });
+    expect(open).not.toHaveBeenCalled();
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+    expect(fixture.fromSessionCheckpointJson).not.toHaveBeenCalled();
+    expect(host.childNodes).toHaveLength(0);
+  });
+
+  it.each([
+    { kind: "empty", backup: "" },
+    { kind: "unpaired surrogate", backup: "\ud800" },
+    { kind: "oversized", backup: "x".repeat(16_777_217) },
+  ])("rejects a $kind backup without a fallback", async ({ backup }) => {
+    const fixture = moduleFixture();
+    const host = mountHost();
+    const opened = await BreditorBrowserEditor.open({
+      host, label: "Recovered", wasm: fixture.module, keyboard: KEYBOARD,
+      initialSessionCheckpointJson: backup,
+    });
+    expect(opened.ok).toBe(false);
+    expect(fixture.fromDocumentJson).not.toHaveBeenCalled();
+    expect(fixture.fromSessionCheckpointJson).not.toHaveBeenCalled();
+    expect(host.childNodes).toHaveLength(0);
+  });
+
+  it("restores an explicit profile backup only against the supplied schema", async () => {
+    const fixture = profileModuleFixture();
+    const backup = profileCheckpointJson(LINEAGE, 0, "recovered profile", PROFILE_SCHEMA);
+    const opened = await BreditorBrowserEditor.open({
+      host: mountHost(), label: "Recovered", wasm: fixture.module, keyboard: KEYBOARD,
+      initialSessionCheckpointJson: backup,
+      semanticProfile: PROFILE_BOOTSTRAP,
+      rendering: PROFILE_RENDERING,
+    });
+    if (!opened.ok) throw new Error(opened.error.code);
+    expect(fixture.compilations).toHaveLength(1);
+    expect(fixture.compilations[0]?.createEngineFromDocumentJson).not.toHaveBeenCalled();
+    expect(fixture.compilations[0]?.createEngineFromSessionCheckpointJson).toHaveBeenCalledExactlyOnceWith(backup);
+    expect(opened.editor.getSnapshot().persistence.phase).toBe("disabled");
+    opened.editor.dispose();
+
+    const wrong = profileModuleFixture();
+    const host = mountHost();
+    const rejected = await BreditorBrowserEditor.open({
+      host, label: "Recovered", wasm: wrong.module, keyboard: KEYBOARD,
+      initialSessionCheckpointJson: profileCheckpointJson(LINEAGE, 0, "private", OTHER_PROFILE_SCHEMA),
+      semanticProfile: PROFILE_BOOTSTRAP,
+      rendering: PROFILE_RENDERING,
+    });
+    expect(rejected.ok).toBe(false);
+    expect(host.childNodes).toHaveLength(0);
+    expect(wrong.compilations[0]?.createEngineFromSessionCheckpointJson).not.toHaveBeenCalled();
+    expect(wrong.compilations[0]?.createEngineFromDocumentJson).not.toHaveBeenCalled();
+  });
+
   it("restores a verified stored checkpoint and never constructs the fresh document path", async () => {
     const indexedDB = new IDBFactory();
     const digest = digestFixture();
@@ -3773,7 +3862,7 @@ function mountHost(): HTMLDivElement {
 function options(
   host: HTMLElement,
   wasm: WasmEngineBootstrapModuleView,
-  overrides: Partial<BreditorBrowserEditorOptions> = {},
+  overrides: Partial<Extract<BreditorBrowserEditorOptions, { initialDocument: unknown }>> = {},
 ): BreditorBrowserEditorOptions {
   return {
     host,

@@ -2,7 +2,7 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.21` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.22` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
@@ -120,6 +120,11 @@ Spellcheck defaults to enabled. A custom `scheduleTask` must enqueue its
 callback for a later task, never invoke it inline, and return `void`; it is used
 for native composition settlement, deferred canonical repair, and keyboard-echo
 expiry.
+
+Explicit recovery instead supplies `initialSessionCheckpointJson`, no
+`initialDocument`, and no `persistence`. It restores the caller-selected
+profile/generation into a separate empty host, without reading or replacing a
+saved slot. See [Session backups](SESSION_BACKUPS.md) for privacy and limits.
 
 `initialDocument` is used only when persistence is disabled or the exact
 IndexedDB slot is empty. A valid stored session checkpoint takes precedence and
@@ -250,12 +255,12 @@ generations, and ABI 5 remain unchanged. See
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.21` packages:
+exactly matching `0.3.0-alpha.22` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.21 \
-  @breditor/wasm@0.3.0-alpha.21 \
-  @breditor/reference-highlight@0.3.0-alpha.21
+npm install @breditor/browser@0.3.0-alpha.22 \
+  @breditor/wasm@0.3.0-alpha.22 \
+  @breditor/reference-highlight@0.3.0-alpha.22
 ```
 
 Then import only the package roots and pass the exported data to the ordinary

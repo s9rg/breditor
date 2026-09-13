@@ -1,8 +1,9 @@
 # Rust data contract
 
-Current alpha.21 addition: explicit session-checkpoint export and a paused-
-autosave backup download preserve typed state and Undo/Redo history without
-changing storage or its CAS token. Backups contain sensitive deleted history.
+Current alpha.22 addition: explicit session-backup startup and a recovery picker
+open an independent editor with autosave disabled. Rust validates the matching
+schema and replay history; the current editor and saved slot remain untouched.
+Recovered sessions can download another backup, including sensitive deleted history.
 See [Session backups](SESSION_BACKUPS.md).
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
@@ -31,7 +32,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.21` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.22` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the

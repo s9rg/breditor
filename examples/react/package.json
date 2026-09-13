@@ -1,7 +1,7 @@
 {
   "name": "@breditor/example-react",
   "private": true,
-  "version": "0.3.0-alpha.21",
+  "version": "0.3.0-alpha.22",
   "type": "module",
   "scripts": {
     "build": "vite build",
@@ -10,9 +10,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@breditor/browser": "0.3.0-alpha.21",
-    "@breditor/reference-highlight": "0.3.0-alpha.21",
-    "@breditor/wasm": "0.3.0-alpha.21",
+    "@breditor/browser": "0.3.0-alpha.22",
+    "@breditor/reference-highlight": "0.3.0-alpha.22",
+    "@breditor/wasm": "0.3.0-alpha.22",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

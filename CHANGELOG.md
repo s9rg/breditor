@@ -4,6 +4,36 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.22 - 2026-09-13
+
+This unpublished checkpoint closes the explicit session-backup recovery loop.
+
+- Browser startup accepts `initialSessionCheckpointJson` as an exclusive
+  alternative to `initialDocument`. Imported sessions forbid persistence:
+  no saved-slot read, token acquisition, fallback, or implicit overwrite.
+- Restoration uses the existing profile/generation selection and Rust replay
+  validation. The options interface becomes a union; wrapper types should use
+  intersections instead of interface inheritance.
+- The React demo opens matching Showcase files in a separate editor, with
+  autosave disabled and a new-backup download action. Its close button requires
+  confirmation; failed reads/imports leave the current editor and storage alone.
+- File reads are bounded before allocation, reject invalid UTF-8, retain BOMs
+  for strict decoding, redact failures, and discard results after unmount.
+- Real-browser regressions cover typed redo recovery, re-export, cancelled
+  close, corrupted replay history, and the unchanged winning storage slot.
+- No durable-format or Wasm ABI change, automatic merge, schema migration,
+  encryption, authentication, or package publication.
+- See [Session backups](docs/SESSION_BACKUPS.md).
+
+Verification: 1,559 Rust tests, 1,219 TypeScript tests, 30 demo tests, strict
+lint/type/docs checks, clean package consumers, and unchanged production size
+budgets passed. The full 69-case browser matrix passed on a separate rerun.
+The first concurrent browser/demo run had one WebKit clipboard-selection
+failure: after a cut, native selection did not become coherent and the editor
+faulted. Ten isolated repetitions passed without code changes. This remains
+an unresolved intermittent failure, not a diagnosed or fixed regression;
+concurrent execution is an observation, not an established cause.
+
 ## 0.3.0-alpha.21 - 2026-09-13
 
 This unpublished checkpoint adds explicit full-session recovery exports and

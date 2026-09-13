@@ -934,11 +934,11 @@ test("an explicit session backup restores typed values and the redo frontier thr
   await root.getByRole("button", { name: "Link", exact: true }).click();
   await root.getByRole("button", { name: "Remove Link", exact: true }).click();
   await root.getByRole("button", { name: "Undo", exact: true }).click();
-  const proof = await page.evaluate((id) => {
+  const proof = await page.evaluate(async (id) => {
     const harness = window.__breditorHarness;
     if (harness === undefined) throw new Error("missing harness");
     const backup = harness.referenceFormattingBackup(id);
-    const restored = harness.restoreReferenceFormattingBackup(backup);
+    const restored = await harness.restoreReferenceFormattingBackup(backup);
     return { backup, restored };
   }, mounted.probeId);
   expect(proof.restored).toBe(proof.backup);

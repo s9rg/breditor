@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { BreditorEditor } from "./BreditorEditor.js";
+import { SessionBackupImporter } from "./SessionBackupImporter.js";
 import "./styles.css";
 
 const root = document.getElementById("root");
@@ -65,6 +66,8 @@ createRoot(root).render(
           </p>
         </aside>
       </section>
+
+      <SessionBackupImporter primaryModifier={primaryModifier} />
 
       <footer className="architecture-note">
         React owns the frame and empty mounts. Breditor owns the declarative

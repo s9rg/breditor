@@ -236,7 +236,7 @@ interface BreditorBrowserHarness {
   ): Promise<ReferenceFormattingMountResult>;
   referenceFormattingDocument(probeId: string): string;
   referenceFormattingBackup(probeId: string): string;
-  restoreReferenceFormattingBackup(checkpointJson: string): string;
+  restoreReferenceFormattingBackup(checkpointJson: string): Promise<string>;
   cleanupReferenceFormatting(probeId?: string): void;
   mountReferenceShowcase(): Promise<ReferenceShowcaseMountResult>;
   cleanupReferenceShowcase(probeId?: string): void;
@@ -356,25 +356,28 @@ async function start(): Promise<void> {
       if (!exported.ok) throw new Error("session backup failed");
       return exported.value;
     },
-    restoreReferenceFormattingBackup: (checkpointJson: string) => {
-      const compiled = breditorWasm.BreditorCompiledProfile.fromBootstrapJsonV2(REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON);
-      const profile = compiled.takeProfile();
-      compiled.free();
-      if (profile === undefined) throw new Error("profile compilation failed");
+    restoreReferenceFormattingBackup: async (checkpointJson: string) => {
+      const host = document.createElement("div");
+      requiredElement("fixture").append(host);
+      let restored: BreditorBrowserEditor | undefined;
       try {
-        const restored = profile.createEngineFromSessionCheckpointJsonV3(checkpointJson);
-        const engine = restored.takeEngine();
-        restored.free();
-        if (engine === undefined) throw new Error("backup restoration failed");
-        try {
-          const encoded = engine.sessionCheckpointJson();
-          try {
-            const json = encoded.takeValue();
-            if (json === undefined) throw new Error("restored checkpoint encoding failed");
-            return json;
-          } finally { encoded.free(); }
-        } finally { engine.free(); }
-      } finally { profile.free(); }
+        const opened = await openBreditorBrowserEditor({
+          host, label: "Restored formatting backup", wasm: breditorWasm,
+          initialSessionCheckpointJson: checkpointJson,
+          semanticProfile: { bootstrapJson: REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON, formatVersion: 2 },
+          rendering: REFERENCE_FORMATTING_RENDER_MANIFEST,
+          keyboard: { editing: "beforeinputPrimary", primaryModifier: "control", shortcuts: "enabled" },
+        });
+        if (!opened.ok) throw new Error(`backup restoration failed: ${opened.error.code}`);
+        restored = opened.editor;
+        if (restored.getSnapshot().persistence.phase !== "disabled") throw new Error("unexpected persistence");
+        const encoded = restored.exportContent("sessionCheckpointJson");
+        if (!encoded.ok) throw new Error("restored checkpoint encoding failed");
+        return encoded.value;
+      } finally {
+        restored?.dispose();
+        host.remove();
+      }
     },
     cleanupReferenceFormatting: (probeId?: string) =>
       cleanupReferenceFormatting(probeId),

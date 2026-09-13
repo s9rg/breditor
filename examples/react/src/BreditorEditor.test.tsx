@@ -174,6 +174,24 @@ afterEach(async () => {
 });
 
 describe("BreditorEditor lifecycle", () => {
+  it("opens backups without storage and retires the owner when the backup changes", async () => {
+    const first = fakeEditor();
+    const second = fakeEditor();
+    mocks.openEditor.mockResolvedValueOnce(successful(first)).mockResolvedValueOnce(successful(second));
+    const mounted = await render(<BreditorEditor label="Recovered" primaryModifier="control" initialSessionCheckpointJson="first backup" />);
+    await settle();
+    expect(mocks.openEditor.mock.calls[0]?.[0]).toMatchObject({ initialSessionCheckpointJson: "first backup" });
+    expect(mocks.openEditor.mock.calls[0]?.[0]).not.toHaveProperty("persistence");
+    expect(mocks.openEditor.mock.calls[0]?.[0]).not.toHaveProperty("initialDocument");
+    expect(mounted.container.textContent).toContain("Download session backup");
+    expect(mounted.container.textContent).toContain("Autosave is off.");
+    await act(async () => mounted.root.render(<BreditorEditor label="Recovered" primaryModifier="control" initialSessionCheckpointJson="second backup" />));
+    await settle();
+    expect(first.dispose).toHaveBeenCalledOnce();
+    expect(mocks.openEditor.mock.calls[1]?.[0]).toMatchObject({ initialSessionCheckpointJson: "second backup" });
+    expect(second.focus).toHaveBeenCalledOnce();
+  });
+
   it("passes the complete Text Size Showcase contract into empty runtime-owned mounts", async () => {
     const editor = fakeEditor();
     let mountsWereEmpty = false;

@@ -587,6 +587,40 @@ test("a conflicted tab exports its typed redo history without overwriting the wi
     expect(backup.cursor).toBeLessThan(backup.entries.length);
     expect(json).toContain('"example/rgb24"');
     expect(json).toContain(String(0x123456));
+    await page.getByLabel("Open session backup").setInputFiles({
+      name: "backup.json", mimeType: "application/json", buffer: Buffer.from(json),
+    });
+    const recovered = page.getByRole("region", { name: "Recovered Breditor session editor" });
+    await expect(recovered.locator(".editor-status")).toHaveText("Autosave is off.");
+    await expect(recovered.locator("span.breditor-text-color")).toHaveCount(0);
+    await recovered.getByRole("button", { name: "Redo", exact: true }).click();
+    await expect(recovered.locator("span.breditor-text-color")).toHaveAttribute("style", SELECTED_TEXT_COLOR_STYLE);
+    await expect(winner.editor.locator("strong")).toHaveText(TARGET_TEXT);
+    await expect(winner.editor.locator("span.breditor-text-color")).toHaveCount(0);
+    await recovered.getByRole("button", { name: "Undo", exact: true }).click();
+    const recoveredDownloadEvent = page.waitForEvent("download");
+    await recovered.getByRole("button", { name: "Download session backup", exact: true }).click();
+    const recoveredPath = await (await recoveredDownloadEvent).path();
+    if (recoveredPath === null) throw new Error("recovered backup has no local file");
+    const recoveredBackup = JSON.parse(await readFile(recoveredPath, "utf8"));
+    expect(recoveredBackup.entries).toEqual(backup.entries);
+    expect(recoveredBackup.cursor).toBe(backup.cursor);
+    page.once("dialog", (dialog) => dialog.dismiss());
+    await page.getByRole("button", { name: "Close recovered session" }).click();
+    await expect(recovered).toBeVisible();
+    page.once("dialog", (dialog) => dialog.accept());
+    await page.getByRole("button", { name: "Close recovered session" }).click();
+    await expect(recovered).toHaveCount(0);
+
+    // A structurally valid JSON file with an impossible replay frontier fails
+    // in Rust; neither the live winner nor its stored slot is replaced.
+    await page.getByLabel("Open session backup").setInputFiles({
+      name: "corrupt.json", mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ ...backup, cursor: backup.entries.length + 1 })),
+    });
+    await expect(recovered.getByRole("button", { name: "Retry editor" })).toBeVisible();
+    await expect(recovered.getByRole("textbox")).toHaveCount(0);
+    await expect(winner.editor.locator("strong")).toHaveText(TARGET_TEXT);
     await expect(loser.status).toHaveText("Autosave paused; changes are not saved.");
     await losingPage.getByRole("button", { name: "Redo", exact: true }).click();
     await expect(loser.editor.locator("span.breditor-text-color")).toHaveAttribute("style", SELECTED_TEXT_COLOR_STYLE);
@@ -597,6 +631,18 @@ test("a conflicted tab exports its typed redo history without overwriting the wi
     await expect(restored.editor.locator("strong")).toHaveText(TARGET_TEXT);
     await expect(restored.editor.locator("span.breditor-text-color")).toHaveCount(0);
   } finally { await losingPage.close(); }
+});
+
+test("backup file decoding rejects invalid UTF-8 without disturbing the live editor", async ({ page }) => {
+  const { editor, status } = await openDemo(page);
+  await page.getByLabel("Open session backup").setInputFiles({
+    name: "invalid.json", mimeType: "application/json", buffer: Buffer.from([0xff]),
+  });
+  await expect(page.getByText("Could not read this backup.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Recovered Breditor session editor" })).toHaveCount(0);
+  await expect(editor).toHaveText(SAMPLE_TEXT);
+  await expect(status).toHaveText("All changes saved.");
+  await expect(page.getByLabel("Open session backup")).toBeEnabled();
 });
 
 test("the React demo edits, formats, replays, persists, and remains accessible", async ({

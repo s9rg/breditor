@@ -1,7 +1,15 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.21` session-backup checkpoint.
+`0.3.0-alpha.22` session-recovery checkpoint.
+
+Alpha.22 retains every ceiling. Browser JavaScript measures 1,079,033 bytes
+and declarations 271,374 bytes. Fresh React JavaScript measures 861,364 raw /
+224,495 gzip bytes; its Wasm measures 1,607,552 raw / 450,505 gzip bytes.
+Final tarball dry-runs measure 265,875, 32,084, and 521,595 bytes for browser,
+reference, and Wasm respectively. Clean package consumers and all size gates
+pass. The application gzip budget has 505 bytes of headroom; future features
+need an explicit size review, not an automatic ceiling increase.
 
 Alpha.21 retains every ceiling. Browser JavaScript measures 1,078,641 bytes
 and declarations 270,904 bytes. Fresh React JavaScript measures 859,186 raw /

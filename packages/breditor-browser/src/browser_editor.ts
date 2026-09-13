@@ -101,6 +101,7 @@ import {
   type WasmBootstrappedEngineView,
   type WasmCompiledProfileBootstrapFactoryView,
   type WasmEngineBootstrapModuleView,
+  type WasmEngineBootstrapSource,
 } from "./wasm_engine_bootstrap.js";
 import type { BrowserDocumentJsonReadResult } from "./wasm_document_json.js";
 import type {
@@ -174,7 +175,7 @@ export interface BreditorBrowserEditorPersistenceOptions {
 }
 
 /** Complete construction policy for one framework-neutral browser editor. */
-export interface BreditorBrowserEditorOptions {
+interface BrowserEditorCommonOptions {
   /**
    * Connected, initially empty HTML `article`, `aside`, `div`, `footer`,
    * `header`, `main`, `nav`, or `section` used as the dedicated light-DOM host.
@@ -186,8 +187,6 @@ export interface BreditorBrowserEditorOptions {
    * Initialized, exactly version-paired official Wasm module namespace.
    */
   readonly wasm: BreditorBrowserWasmModule;
-  /** Used only when persistence is disabled or its exact slot is empty. */
-  readonly initialDocument: BreditorBrowserInitialDocument;
   /** Optional custom semantic profile; V2 bootstrap selects durable Session V3. */
   readonly semanticProfile?: BreditorBrowserSemanticProfileOptions;
   /** Exact callback-free render coverage for the selected semantic profile. */
@@ -196,7 +195,6 @@ export interface BreditorBrowserEditorOptions {
   readonly keyboardShortcuts?: KeyboardShortcutManifest;
   readonly keyboard: KeyboardTranslationPolicy;
   readonly toolbar?: BreditorBrowserToolbarOptions;
-  readonly persistence?: BreditorBrowserEditorPersistenceOptions;
   /** Optional task scheduler used by native composition settlement. */
   readonly scheduleTask?: (callback: () => void) => void;
   /** Cancels asynchronous startup. It does not dispose an opened editor. */
@@ -204,6 +202,25 @@ export interface BreditorBrowserEditorOptions {
   /** Defaults to true. */
   readonly spellcheck?: boolean;
 }
+
+/**
+ * Exactly one startup source. A backup is restored through the explicitly
+ * selected profile/generation, with no document fallback or storage access.
+ */
+export type BreditorBrowserEditorOptions = BrowserEditorCommonOptions & (
+  | Readonly<{
+      /** Fresh fallback, used only if the selected persistence slot is empty. */
+      initialDocument: BreditorBrowserInitialDocument;
+      initialSessionCheckpointJson?: never;
+      persistence?: BreditorBrowserEditorPersistenceOptions;
+    }>
+  | Readonly<{
+      initialDocument?: never;
+      /** Bounded canonical session JSON. Includes potentially deleted history. */
+      initialSessionCheckpointJson: string;
+      persistence?: never;
+    }>
+);
 
 /** Stable payload-redacted runtime failure. */
 export type BreditorBrowserEditorFaultReason =
@@ -388,7 +405,7 @@ interface NormalizedOptions {
   readonly host: HTMLElement;
   readonly label: string;
   readonly wasm: WasmEngineBootstrapModuleView;
-  readonly initialDocument: BreditorBrowserInitialDocument;
+  readonly initialSource: WasmEngineBootstrapSource;
   readonly semanticProfile: BreditorBrowserSemanticProfileOptions | undefined;
   readonly rendering: InlineFormatRenderManifest;
   readonly keyboardShortcuts: KeyboardShortcutManifest | undefined;
@@ -712,15 +729,7 @@ export class BreditorBrowserEditor {
                 ? {}
                 : { semanticProfile: normalized.semanticProfile }),
             })
-          : Object.freeze({
-              kind: "document" as const,
-              lineageId: normalized.initialDocument.lineageId,
-              documentJson: normalized.initialDocument.documentJson,
-              historyCapacity: normalized.initialDocument.historyCapacity,
-              ...(normalized.semanticProfile === undefined
-                ? {}
-                : { semanticProfile: normalized.semanticProfile }),
-            }),
+          : normalized.initialSource,
       );
       if (!bootstrap.ok) {
         return openFailure(
@@ -2092,6 +2101,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     const label = options.label;
     const wasm = options.wasm;
     const initial = options.initialDocument;
+    const checkpointJson = options.initialSessionCheckpointJson;
     const semanticProfile = options.semanticProfile;
     const normalizedSemanticProfile =
       semanticProfile === undefined
@@ -2114,7 +2124,11 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       label.trim().length < 1 ||
       !wellFormedUtf16(label) ||
       !objectLike(wasm) ||
-      !objectLike(initial) ||
+      (checkpointJson === undefined
+        ? !objectLike(initial)
+        : typeof checkpointJson !== "string" ||
+          initial !== undefined ||
+          persistence !== undefined) ||
       (rendering !== undefined && semanticProfile === undefined) ||
       (rendering !== undefined &&
         !isOwnedInlineFormatRenderManifest(rendering)) ||
@@ -2126,11 +2140,27 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
     ) {
       return null;
     }
-    const initialDocument = Object.freeze({
-      lineageId: initial.lineageId,
-      documentJson: initial.documentJson,
-      historyCapacity: initial.historyCapacity,
-    });
+    const profileSource =
+      normalizedSemanticProfile === undefined
+        ? {}
+        : { semanticProfile: normalizedSemanticProfile };
+    let initialSource: WasmEngineBootstrapSource;
+    if (checkpointJson !== undefined) {
+      initialSource = Object.freeze({
+        kind: "sessionCheckpoint",
+        checkpointJson,
+        ...profileSource,
+      });
+    } else {
+      if (initial === undefined) return null;
+      initialSource = Object.freeze({
+        kind: "document",
+        lineageId: initial.lineageId,
+        documentJson: initial.documentJson,
+        historyCapacity: initial.historyCapacity,
+        ...profileSource,
+      });
+    }
     let normalizedToolbar: NormalizedOptions["toolbar"];
     if (toolbar !== undefined) {
       if (
@@ -2171,7 +2201,7 @@ function normalizeOptions(value: unknown): NormalizedOptions | null {
       // The public high-level shape deliberately returns `unknown`; the
       // bootstrap below performs the complete generated-view validation.
       wasm: wasm as unknown as WasmEngineBootstrapModuleView,
-      initialDocument,
+      initialSource,
       semanticProfile: normalizedSemanticProfile,
       rendering: rendering ?? DEFAULT_INLINE_FORMAT_RENDER_MANIFEST,
       keyboardShortcuts,

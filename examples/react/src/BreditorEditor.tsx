@@ -59,6 +59,8 @@ function noSubscription(): () => void {
 export interface BreditorEditorProps {
   readonly label: string;
   readonly primaryModifier: "control" | "meta";
+  /** Explicit recovery source. This editor never attaches to autosave. */
+  readonly initialSessionCheckpointJson?: string;
 }
 
 export type BreditorNavigationFlushOutcome =
@@ -85,6 +87,7 @@ interface EditorConfiguration {
   readonly label: string;
   readonly primaryModifier: "control" | "meta";
   readonly startupAttempt: number;
+  readonly initialSessionCheckpointJson: string | undefined;
 }
 
 type EditorLifecycle =
@@ -107,11 +110,13 @@ function hasConfiguration(
   label: string,
   primaryModifier: "control" | "meta",
   startupAttempt: number,
+  initialSessionCheckpointJson: string | undefined,
 ): boolean {
   return (
     lifecycle.label === label &&
     lifecycle.primaryModifier === primaryModifier &&
-    lifecycle.startupAttempt === startupAttempt
+    lifecycle.startupAttempt === startupAttempt &&
+    lifecycle.initialSessionCheckpointJson === initialSessionCheckpointJson
   );
 }
 
@@ -227,7 +232,7 @@ export const BreditorEditor = forwardRef<
   BreditorEditorHandle,
   BreditorEditorProps
 >(function BreditorEditor(
-  { label, primaryModifier }: BreditorEditorProps,
+  { label, primaryModifier, initialSessionCheckpointJson }: BreditorEditorProps,
   ref,
 ): ReactElement {
   const [editorHost, setEditorHost] = useState<HTMLDivElement | null>(null);
@@ -241,6 +246,7 @@ export const BreditorEditor = forwardRef<
     label,
     primaryModifier,
     startupAttempt: 0,
+    initialSessionCheckpointJson,
   }));
   const generation = useRef(0);
   const activeEditor = useRef<BreditorBrowserEditor | undefined>(undefined);
@@ -358,7 +364,7 @@ export const BreditorEditor = forwardRef<
     setPersistenceRetryPending(false);
     setPersistenceRetryFailed(false);
     setBackupFeedback("");
-    setLifecycle({ phase: "starting", label, primaryModifier, startupAttempt });
+    setLifecycle({ phase: "starting", label, primaryModifier, startupAttempt, initialSessionCheckpointJson });
 
     const opening = ownershipLane.current.then(async () => {
       try {
@@ -371,11 +377,20 @@ export const BreditorEditor = forwardRef<
           host: editorHost,
           label,
           wasm: breditorWasm,
-          initialDocument: {
-            lineageId: REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
-            documentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
-            historyCapacity: 100,
-          },
+          ...(initialSessionCheckpointJson === undefined
+            ? {
+                initialDocument: {
+                  lineageId: REFERENCE_SIZE_SHOWCASE_LINEAGE_ID,
+                  documentJson: REFERENCE_SIZE_SHOWCASE_SAMPLE_DOCUMENT_JSON,
+                  historyCapacity: 100,
+                },
+                persistence: {
+                  indexedDB: window.indexedDB,
+                  crypto: window.crypto.subtle,
+                  scope: { kind: "slot" as const, name: DEMO_PERSISTENCE_SLOT },
+                },
+              }
+            : { initialSessionCheckpointJson }),
           semanticProfile: {
             bootstrapJson: REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
             formatVersion: 2,
@@ -392,11 +407,6 @@ export const BreditorEditor = forwardRef<
             host: toolbarHost,
             manifest: REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
           },
-          persistence: {
-            indexedDB: window.indexedDB,
-            crypto: window.crypto.subtle,
-            scope: { kind: "slot", name: DEMO_PERSISTENCE_SLOT },
-          },
           signal: abort.signal,
         });
         if (!result.ok) {
@@ -409,6 +419,7 @@ export const BreditorEditor = forwardRef<
               label,
               primaryModifier,
               startupAttempt,
+              initialSessionCheckpointJson,
               error: result.error,
             });
           }
@@ -425,6 +436,7 @@ export const BreditorEditor = forwardRef<
           label,
           primaryModifier,
           startupAttempt,
+          initialSessionCheckpointJson,
           editor: owned,
         });
         owned.focus();
@@ -444,6 +456,7 @@ export const BreditorEditor = forwardRef<
             label,
             primaryModifier,
             startupAttempt,
+            initialSessionCheckpointJson,
             error: {
               code: "browser_editor.setup_failed",
               message: "The Breditor example could not start the editor.",
@@ -476,13 +489,14 @@ export const BreditorEditor = forwardRef<
       }
       owned = undefined;
     };
-  }, [editorHost, label, primaryModifier, startupAttempt, toolbarHost]);
+  }, [editorHost, label, primaryModifier, startupAttempt, toolbarHost, initialSessionCheckpointJson]);
 
   const currentLifecycle = hasConfiguration(
     lifecycle,
     label,
     primaryModifier,
     startupAttempt,
+    initialSessionCheckpointJson,
   )
     ? lifecycle
     : undefined;
@@ -570,7 +584,7 @@ export const BreditorEditor = forwardRef<
           </dl>
         </details>
       ) : null}
-      {pausedPersistence !== undefined ? (
+      {pausedPersistence !== undefined || (initialSessionCheckpointJson !== undefined && editor !== undefined) ? (
         <div className="editor-details editor-details--warning">
           <p>Keep this editor open. A session backup includes formatting, selection,
             and Undo/Redo history, including deleted text. Store it privately.</p>
