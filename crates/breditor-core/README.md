@@ -1,9 +1,9 @@
 # breditor-core
 
-Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
-V3 embed property-preserving Local Log Checkpoint V3, with separately typed
-selected-storage normalization. No new I/O or Wasm path is included.
-See [Storage V3](../../docs/STORAGE_V3.md).
+Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
+AST and typed properties in a fresh session, with a separate prepared owner and
+a matching Storage Root V3 bridge. Source state stays intact; no write authority
+is granted. See [Schema admission V3](../../docs/SCHEMA_ADMISSION_V3.md).
 
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or
@@ -403,7 +403,7 @@ plus active-context limits, but deliberately carry no snapshot, ordering,
 selection, metadata, deduplication identity, or transaction boundary. The core
 stays platform-independent: it has no action-state subscription/delivery
 layer, presentation manifest, DOM or browser scheduler, structural operations
-beyond the sealed direct-root paragraph grammar, V3 schema-admission preparation,
+beyond the sealed direct-root paragraph grammar,
 log-storage I/O, checkpoint/log atomic replacement,
 storage-generation publication or initial scope provisioning, process-restart
 append reconstruction, or collaboration transform. Alpha.5 does propagate a

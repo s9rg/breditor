@@ -357,6 +357,12 @@ Storage I/O, publication, and
 browser/Wasm transport require further checkpoints. ABI 5 remains current and the
 packages remain unpublished.
 
+The `0.3.0-alpha.16` checkpoint adds explicit
+[V3 schema admission](docs/SCHEMA_ADMISSION_V3.md) and matching root preparation.
+It preserves the unchanged document under a compatible target schema while
+starting fresh session history; it leaves the source intact and grants no
+storage-write authority. The browser demo and Wasm ABI 5 are unchanged.
+
 The implementation includes:
 
 - immutable, structurally shared document values;

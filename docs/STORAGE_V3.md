@@ -50,9 +50,9 @@ guard representative cross-generation API boundaries.
 
 This checkpoint adds no disk or IndexedDB adapter, I/O protocol, head
 publication, writer acquisition, append queue, crash-atomic transaction,
-automatic migration, or Wasm transport. V3 schema-admission preparation is
-also deferred: the existing prepared admission owns V2 checkpoint bytes and
-must not be repackaged as a V3 proof.
+automatic migration, or Wasm transport. Alpha.16 adds a separate
+[V3 schema-admission preparation](SCHEMA_ADMISSION_V3.md). The existing V2
+prepared admission still must not be repackaged as a V3 proof.
 
 A canonical manifest is not proof of physical EOF, durable storage, shared
 causal history, or a current committed head. Trusted caller-supplied physical

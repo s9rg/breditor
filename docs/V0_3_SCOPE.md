@@ -1,9 +1,9 @@
 # Breditor `0.3.0` scope
 
-Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
-V3 embed property-preserving Local Log Checkpoint V3, with separately typed
-selected-storage normalization. No new I/O or Wasm path is included.
-See [Storage V3](STORAGE_V3.md).
+Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
+AST and typed properties in a fresh session, with a separate prepared owner and
+a matching Storage Root V3 bridge. Source state stays intact; no write authority
+is granted. See [Schema admission V3](SCHEMA_ADMISSION_V3.md).
 
 The preceding `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
 whose exhaustive Text Size presets use the existing generic integer typed-set
@@ -807,8 +807,8 @@ undefined.
   identities, nested or heterogeneous blocks, and arbitrary structural schemas
   still require separately specified operations.
 - V3 local-log and storage envelope families exist, including selected-storage
-  normalization. Their I/O integration and V3 schema-admission adapter remain
-  future work.
+  normalization. Alpha.16 adds explicit V3 schema-admission preparation;
+  their I/O integration remains future work.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
   support only `safeLinkV1`, `safeTextColorV1`, and
@@ -855,9 +855,10 @@ preserve source formatting
 on paste, or bypass the intent router.
 
 Alpha.14 versions the local-log graph around Session Checkpoint V3; alpha.15
-adds matching storage envelopes and selected-storage normalization. Subsequent
-checkpoints must explicitly version schema-admission preparation and the
-write-authority paths before offering V3 publication or append I/O. They must
+adds matching storage envelopes and selected-storage normalization. Alpha.16
+adds separate V3 schema-admission preparation. Subsequent checkpoints must
+explicitly version write-authority paths before offering V3 publication or
+append I/O. They must
 not place V3 bytes inside V1/V2 envelopes or treat normalized inspection data
 as writer authority. A
 future formatting checkpoint may add a property patch language, but it must not

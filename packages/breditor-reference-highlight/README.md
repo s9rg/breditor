@@ -15,7 +15,7 @@ The `0.3.0-alpha.13` `REFERENCE_SIZE_SHOWCASE_*` surface keeps all earlier
 values and adds one exhaustive three-step text-size extension, inert token
 renderer, native integer select, typed input helpers, and another distinct
 fingerprint-bound document family.
-The `0.3.0-alpha.15` package retains that exact reference surface while the
+The `0.3.0-alpha.16` package retains that exact reference surface while the
 Rust core advances its explicit property-preserving local-log V3 graph.
 
 The package exports inert profile data, exact durable schema fingerprints,
@@ -96,9 +96,9 @@ browser peer matters: browser manifests are owned by the module instance that
 checks them.
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.15 \
-  @breditor/wasm@0.3.0-alpha.15 \
-  @breditor/reference-highlight@0.3.0-alpha.15
+npm install @breditor/browser@0.3.0-alpha.16 \
+  @breditor/wasm@0.3.0-alpha.16 \
+  @breditor/reference-highlight@0.3.0-alpha.16
 ```
 
 ```ts

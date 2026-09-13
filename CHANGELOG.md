@@ -4,6 +4,28 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.16 - 2026-09-13
+
+This unpublished Rust-only checkpoint adds explicit V3 structural schema
+admission and a matching Storage Root V3 preparation bridge.
+
+- Added `SchemaAdmissionRequest::try_prepare_v3`, the non-Clone
+  `PreparedSchemaAdmissionV3` owner, and `SchemaAdmissionV3Error`. Existing V2
+  methods, prepared values, and stable error-code strings remain unchanged.
+- Admission preserves the unchanged document and typed properties while
+  starting a distinct revision-zero target session with empty history,
+  selection, pending formats, and replay frontier. The source remains intact.
+- Root preparation revalidates the target context, binding, exact canonical
+  checkpoint bytes and owned anchor, and independent resource policies.
+- Added typed-property and incompatible-domain tests, source preservation,
+  root-byte coupling, resource rejection, and compile-fail version isolation.
+- No storage writes, publication or writer authority, Wasm/API change, or demo
+  UI change is included. See [Schema admission V3](docs/SCHEMA_ADMISSION_V3.md).
+
+Release checks: 1,535 Rust tests, 1,197 TypeScript tests, strict lint/type/docs
+checks, clean package-consumer browser smoke tests, and unchanged size budgets
+passed.
+
 ## 0.3.0-alpha.15 - 2026-09-13
 
 This unpublished Rust-only checkpoint adds explicit Storage Root and Storage

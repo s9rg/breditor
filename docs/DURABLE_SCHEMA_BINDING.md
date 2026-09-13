@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.15` checkpoint. Wasm ABI 5 and the browser explicitly select
+`0.3.0-alpha.16` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 

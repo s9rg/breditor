@@ -216,6 +216,7 @@ mod local_log_storage_root_json_v3;
 mod local_log_storage_root_preparation_inputs;
 mod local_log_storage_root_prepare;
 mod local_log_storage_root_prepare_from_admission_v2;
+mod local_log_storage_root_prepare_from_admission_v3;
 mod local_log_storage_root_prepare_v2;
 mod local_log_storage_root_prepare_v3;
 mod local_log_storage_root_resolution;

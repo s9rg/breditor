@@ -3,6 +3,8 @@
 //! Alpha.14 adds explicit property-preserving Local Log Entry, Checkpoint,
 //! Frame, and tail V3 codecs. Alpha.15 adds Storage Root and Storage Generation
 //! V3 with explicit selected-storage normalization and opaque V3 policy types.
+//! Alpha.16 adds explicit V3 schema admission and matching root preparation;
+//! neither grants storage-write authority or mutates the source session.
 //! V3 tail observation and compaction preserve typed replay values and return
 //! the unchanged cursor on failure. No new Wasm surface is introduced.
 //!

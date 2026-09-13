@@ -1,14 +1,14 @@
 # Breditor extension architecture
 
-Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
-V3 embed property-preserving Local Log Checkpoint V3, with separately typed
-selected-storage normalization. No new I/O or Wasm path is included.
-See [Storage V3](STORAGE_V3.md).
+Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
+AST and typed properties in a fresh session, with a separate prepared owner and
+a matching Storage Root V3 bridge. Source state stays intact; no write authority
+is granted. See [Schema admission V3](SCHEMA_ADMISSION_V3.md).
 
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.15` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.16` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned

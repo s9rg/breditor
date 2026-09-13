@@ -1,53 +1,19 @@
 use thiserror::Error;
 
 use crate::{
-    codec::LocalLogCheckpointV2CodecError,
+    codec::LocalLogCheckpointV3CodecError,
     document::DocumentSchemaAdmissionError,
     local_log::LocalSessionId,
     schema::SchemaFingerprint,
     state::{EditorStateError, LineageId},
 };
 
-/// Stable machine-readable category for one structural-admission failure.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[non_exhaustive]
-pub enum SchemaAdmissionErrorCode {
-    /// The requested target has the same durable content meaning as the source.
-    UnchangedFingerprint,
-    /// The target reused the source editor-state lineage.
-    ReusedLineage,
-    /// The target reused the source durable local-session identity.
-    ReusedSession,
-    /// Source or target structural document validation failed.
-    Document,
-    /// The revision-zero target state could not be constructed.
-    TargetState,
-    /// A private empty-checkpoint invariant was unexpectedly rejected.
-    CheckpointInvariant,
-    /// Canonical encoding of the explicitly selected checkpoint generation failed.
-    CheckpointEncoding,
-}
-
-impl SchemaAdmissionErrorCode {
-    /// Returns the stable namespaced diagnostic code.
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::UnchangedFingerprint => "schema_admission.unchanged_fingerprint",
-            Self::ReusedLineage => "schema_admission.reused_lineage",
-            Self::ReusedSession => "schema_admission.reused_session",
-            Self::Document => "schema_admission.document",
-            Self::TargetState => "schema_admission.target_state",
-            Self::CheckpointInvariant => "schema_admission.checkpoint_invariant",
-            Self::CheckpointEncoding => "schema_admission.checkpoint_encoding",
-        }
-    }
-}
+use super::SchemaAdmissionErrorCode;
 
 /// Why an explicit structural schema admission could not be prepared.
 #[derive(Debug, Error)]
 #[non_exhaustive]
-pub enum SchemaAdmissionError {
+pub enum SchemaAdmissionV3Error {
     /// Admission is reserved for a change in durable content meaning.
     #[error("schema admission target reuses source fingerprint {fingerprint}")]
     UnchangedFingerprint {
@@ -75,12 +41,12 @@ pub enum SchemaAdmissionError {
     /// The core's freshly created empty checkpoint violated a private invariant.
     #[error("schema admission could not construct its empty target checkpoint")]
     CheckpointInvariant,
-    /// The complete target checkpoint could not be encoded canonically as V2.
+    /// The complete target checkpoint could not be encoded canonically as V3.
     #[error("schema admission checkpoint encoding failed: {0}")]
-    CheckpointEncoding(#[source] Box<LocalLogCheckpointV2CodecError>),
+    CheckpointEncoding(#[source] Box<LocalLogCheckpointV3CodecError>),
 }
 
-impl SchemaAdmissionError {
+impl SchemaAdmissionV3Error {
     /// Returns the stable machine-readable failure category.
     #[must_use]
     pub const fn code(&self) -> SchemaAdmissionErrorCode {

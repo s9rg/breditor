@@ -1,12 +1,12 @@
 # Breditor compatibility policy
 
-Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
-V3 embed property-preserving Local Log Checkpoint V3, with separately typed
-selected-storage normalization. No new I/O or Wasm path is included.
-See [Storage V3](STORAGE_V3.md).
+Current alpha.16 addition: explicit V3 schema admission preserves the unchanged
+AST and typed properties in a fresh session, with a separate prepared owner and
+a matching Storage Root V3 bridge. Source state stays intact; no write authority
+is granted. See [Schema admission V3](SCHEMA_ADMISSION_V3.md).
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.15` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.16` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the
@@ -643,13 +643,13 @@ visible ratios, and Text Size has no shortcut. See
 The supported official configuration uses exactly matching versions of
 `@breditor/browser` and `@breditor/wasm`. The stable `0.1.0` pair reports Wasm
 ABI `2`; every `0.2.x` pair reports ABI `3`; the alpha.4 through alpha.6 source
-pairs report ABI `4`; alpha.7 through alpha.15 report ABI `5`. Startup checks both
+pairs report ABI `4`; alpha.7 through alpha.16 report ABI `5`. Startup checks both
 the exact
 ABI string and exact embedded package version
 before reading the generated engine factory. ABI compatibility alone never
 makes mismatched official package versions a supported pair.
 
-The alpha.15 source configuration is tested as an exactly matching browser,
+The alpha.16 source configuration is tested as an exactly matching browser,
 Wasm, and reference-package set. It has not been published; this is not a
 registry-availability claim. The clean consumer gate first packs local
 workspace tarballs, then installs those artifacts in an isolated consumer. The
@@ -666,7 +666,7 @@ an HTTP(S) browser or browser bundler that resolves the adjacent generated Wasm
 asset, followed by the initialized namespace import containing `BreditorEngine`,
 `breditorWasmAbiVersion`, and `breditorVersion`. In other words, this documented
 form remains supported throughout `0.1.x`, `0.2.x`, and alpha.7 through
-alpha.15:
+alpha.16:
 
 ```ts
 import initializeWasm, * as breditorWasm from "@breditor/wasm";

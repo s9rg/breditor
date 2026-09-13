@@ -74,7 +74,7 @@ impl SchemaAdmissionRequest {
         self.target_history_capacity
     }
 
-    /// Returns the complete policy used to encode the prepared V2 checkpoint.
+    /// Returns the complete policy used to encode the explicitly selected checkpoint generation.
     #[must_use]
     pub const fn checkpoint_limits(&self) -> &LocalLogCheckpointLimits {
         &self.checkpoint_limits
