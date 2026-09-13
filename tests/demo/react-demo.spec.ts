@@ -31,6 +31,13 @@ async function openDemo(page: Page): Promise<{
   const status = shell.locator(".editor-status");
 
   await expect(shell).toHaveAttribute("aria-busy", "false");
+  const startupCodes = await shell.locator("details")
+    .filter({ has: page.getByText("Startup details", { exact: true }) })
+    .locator("code").allTextContents();
+  if (startupCodes.length !== 0) {
+    // Only the public redacted codes, never document or retained history data.
+    throw new Error(`demo startup failed: ${JSON.stringify(startupCodes)}`);
+  }
   await expect(editor).toHaveAttribute("contenteditable", "true");
   await expect(status).toHaveText("All changes saved.");
   return { editor, status };

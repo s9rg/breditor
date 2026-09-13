@@ -588,6 +588,41 @@ test("copy, cut, and paste use guarded synchronous clipboard semantics", async (
   await expect(page.locator("#editor strong")).toHaveCount(0);
 });
 
+test("repeated cuts and immediate caret moves retain a live editable session", async ({ page }) => {
+  // Keep native selectionchange tasks interleaved with repeated owned text-node
+  // replacements. This exercises the original WebKit failure within one owner
+  // lifetime instead of relying on a fresh page for every cut.
+  await page.evaluate(async () => {
+    const harness = window.__breditorHarness!;
+    for (let cycle = 0; cycle < 40; cycle += 1) {
+      await harness.select(0, harness.text().length);
+      harness.beforeInput("insertText", "Hello 🙂 world");
+      await harness.select(0, 5);
+      const cut = harness.clipboard("cut");
+      if (!cut.defaultPrevented || cut.plainText !== "Hello") {
+        throw new Error(`cut rejected at cycle ${cycle}`);
+      }
+      await harness.select(9, 9);
+      harness.beforeInput("insertText", "!");
+      const status = harness.snapshot().status;
+      if (status.phase !== "live" || harness.text() !== " 🙂 world!") {
+        throw new Error(`cut/caret cycle ${cycle}: ${JSON.stringify(status)}`);
+      }
+    }
+  });
+  await expect(page.getByRole("textbox")).toHaveText(" 🙂 world!");
+  const undo = page.getByRole("button", { name: "Undo", exact: true });
+  const redo = page.getByRole("button", { name: "Redo", exact: true });
+  await undo.click();
+  await expect(page.getByRole("textbox")).toHaveText(" 🙂 world");
+  await undo.click();
+  await expect(page.getByRole("textbox")).toHaveText("Hello 🙂 world");
+  await redo.click();
+  await expect(page.getByRole("textbox")).toHaveText(" 🙂 world");
+  await redo.click();
+  await expect(page.getByRole("textbox")).toHaveText(" 🙂 world!");
+});
+
 test("an explicit checkpoint survives a real page reload", async ({ page }) => {
   await select(page, 0, 0);
   const persistedText = "persisted across reload 🙂";

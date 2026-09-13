@@ -6,6 +6,17 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Added a 40-cycle cut/caret regression with subsequent Undo/Redo and explicit
+  redacted demo-startup diagnostics. Both current and pre-optimization selection
+  code passed 100 clipboard repetitions and 200 long-lived cut/caret cycles;
+  the original WebKit fault was not reproduced or declared fixed. A concurrent
+  demo run exposed a separate intermittent reload rejection:
+  `browser_editor.action_state_failed` / `action_state.invalid_wasm_view`.
+  Its trace is preserved; a common cause is unproven. See the browser-support
+  notes. This is investigation/test coverage, not a production fix.
+  Browser/demo typechecks, the expanded 78-case browser matrix, and a later
+  30-case demo recheck pass. Thirty additional diagnostic WebKit demo-sequence
+  cases also pass; these rechecks do not erase the observed reload failure.
 - Reconciled the property-aware milestone evidence with the current code and
   release gates in `docs/V0_3_SCOPE.md`. Corrected stale browser/Wasm package
   notes that attributed alpha.22 to native local-log work and incorrectly

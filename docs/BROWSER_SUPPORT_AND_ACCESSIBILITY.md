@@ -14,6 +14,30 @@ opens the public `@breditor/browser` runtime in every engine. A missing browser
 capability or browser executable is a test failure; the core matrix is never
 silently skipped.
 
+## Unresolved WebKit observations
+
+Two intermittent failures remain open; a green matrix is not a waiver:
+
+- The alpha.22 clipboard test committed a cut, then faulted at revision 4
+  during the following caret move. The original trace did not capture the
+  public fault reason. Current and pre-Range-preservation implementations each
+  passed 100 later clipboard repetitions and 200 cut/caret cycles across five
+  long-lived sessions. The earlier implementation still replaces exact native
+  Ranges, but the comparison did not reproduce the fault, so Range preservation
+  is not a proven fix.
+- Under concurrent browser-test load, the current React color demo once
+  rejected startup after reload with `browser_editor.action_state_failed` /
+  `action_state.invalid_wasm_view`. That trace is a distinct observation, not
+  proof that the clipboard fault has the same cause. Thirty subsequent targeted
+  color tests with temporary boundary diagnostics passed without reproducing it.
+
+The committed regression now performs 40 cut/caret cycles in one owner lifetime,
+then verifies two Undo and two Redo steps. Demo startup failures report only
+their public redacted error/cause codes. No production validation or recovery
+rule was relaxed, and no speculative repair was shipped for either observation.
+
+## Covered contracts
+
 The matrix covers the supported `0.1.0` base and `0.2.0` profile browser
 contracts:
 
