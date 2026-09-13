@@ -54,6 +54,11 @@ automatic migration, or Wasm transport. Alpha.16 adds a separate
 [V3 schema-admission preparation](SCHEMA_ADMISSION_V3.md). The existing V2
 prepared admission still must not be repackaged as a V3 proof.
 
+Alpha.17 and alpha.18 add a separate pure Rust
+[root publication lifecycle](ROOT_PUBLICATION_PLAN_V3.md): closed plans,
+one-shot uncertain request issuance, and correlated terminal host claims.
+That API still grants no current writer authority and performs no actual I/O.
+
 A canonical manifest is not proof of physical EOF, durable storage, shared
 causal history, or a current committed head. Trusted caller-supplied physical
 offsets remain host assertions. Frame checksums detect corruption, not hostile

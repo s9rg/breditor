@@ -219,8 +219,14 @@ mod local_log_storage_root_prepare_from_admission_v2;
 mod local_log_storage_root_prepare_from_admission_v3;
 mod local_log_storage_root_prepare_v2;
 mod local_log_storage_root_prepare_v3;
+mod local_log_storage_root_publication_attempt_v3;
+mod local_log_storage_root_publication_attestation_v3;
+mod local_log_storage_root_publication_begin_v3;
+mod local_log_storage_root_publication_observe_terminal_v3;
 mod local_log_storage_root_publication_plan_v3;
 mod local_log_storage_root_publication_prepare_v3;
+mod local_log_storage_root_publication_request_v3;
+mod local_log_storage_root_publication_terminal_v3;
 mod local_log_storage_root_resolution;
 mod local_log_storage_root_resolution_adapter_request;
 #[cfg(test)]
@@ -650,7 +656,13 @@ pub use local_log_storage_root_json_v3::{
     LOCAL_LOG_STORAGE_ROOT_V3_FORMAT_VERSION, LocalLogStorageRootJsonCodecV3,
 };
 pub use local_log_storage_root_preparation_inputs::LocalLogStorageRootPreparationInputs;
+pub use local_log_storage_root_publication_attempt_v3::LocalLogStorageRootPublicationAttemptV3;
+pub use local_log_storage_root_publication_attestation_v3::LocalLogStorageRootPublicationAttestationV3;
 pub use local_log_storage_root_publication_plan_v3::LocalLogStorageRootPublicationPlanV3;
+pub use local_log_storage_root_publication_request_v3::LocalLogStorageRootPublicationRequestV3;
+pub use local_log_storage_root_publication_terminal_v3::{
+    LocalLogStorageRootPublicationTerminalFailureV3, LocalLogStorageRootPublicationTerminalV3,
+};
 pub use local_log_storage_root_resolution::LocalLogStorageRootResolution;
 pub use local_log_storage_root_resolution_collision_reason::LocalLogStorageRootResolutionCollisionReason;
 pub use local_log_storage_root_resolution_evidence::LocalLogStorageRootResolutionEvidence;

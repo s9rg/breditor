@@ -6,7 +6,8 @@
 //! Alpha.16 adds explicit V3 schema admission and matching root preparation;
 //! neither grants storage-write authority or mutates the source session.
 //! Alpha.17 adds closed V3 root-publication plans with exact candidate and host
-//! incarnation identity, but no dispatch or writer-authority transition.
+//! incarnation identity. Alpha.18 adds one-shot uncertain request egress and
+//! exact host terminal correlation, but no resolution or writer authority.
 //! V3 tail observation and compaction preserve typed replay values and return
 //! the unchanged cursor on failure. No new Wasm surface is introduced.
 //!

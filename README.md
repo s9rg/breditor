@@ -365,8 +365,9 @@ storage-write authority. The browser demo and Wasm ABI 5 are unchanged.
 
 Alpha.17 adds [closed V3 root-publication plans](docs/ROOT_PUBLICATION_PLAN_V3.md),
 binding exact candidate bytes to host-selected database and scope incarnations.
-This is preparation only; dispatch, terminal handling, and writer ownership
-remain separate work.
+Alpha.18 adds one-shot request issuance from an uncertain owner and exact
+correlation of terminal host claims. Resolution, retries, writer ownership,
+and actual V3 storage I/O remain separate work. No demo or Wasm ABI change.
 
 The implementation includes:
 

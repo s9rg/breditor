@@ -1,9 +1,9 @@
 # breditor-core
 
-Current alpha.17 addition: closed V3 root-publication plans retain exact
-candidate bytes and complete host-incarnation bindings. There is no V3 dispatch,
-terminal handling, or writer-authority transition yet.
-See [Root publication preparation V3](../../docs/ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.18 addition: V3 root publication enters uncertainty before
+one-shot payload egress and accepts only exactly correlated terminal host
+claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
+See [Root publication lifecycle V3](../../docs/ROOT_PUBLICATION_PLAN_V3.md).
 
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or

@@ -4,6 +4,28 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.18 - 2026-09-13
+
+This unpublished Rust-only checkpoint adds the V3 root-publication dispatch
+lifecycle without enabling actual storage writes.
+
+- A closed plan enters a non-Clone uncertain owner before one-shot request
+  issuance exposes its exact payload, full binding, and fresh request identity.
+- V3-specific terminal claims require exact invocation/request correlation.
+  Rejections return the unchanged owner and unapplied claim; accepted outcomes
+  retain the plan and report the historical host-asserted category explicitly.
+- Completion is not currentness or writer authority. Timeouts, cancellation,
+  request success, and lost callbacks cannot clear uncertainty. Resolution,
+  retries, rotation publication, and actual V3 I/O remain deferred.
+- Added exact-egress, all terminal-category, pre/post-egress, crosswired-token,
+  lossless rejection, redaction, and compile-fail ownership/isolation tests.
+- No wire format, browser behavior, or Wasm ABI change. See
+  [Root publication lifecycle V3](docs/ROOT_PUBLICATION_PLAN_V3.md).
+
+Release checks: 1,551 Rust tests (including 131 compile-fail documentation
+tests), 1,197 TypeScript tests, strict lint/type/docs checks, clean tarball-only
+browser consumers, and unchanged size budgets passed.
+
 ## 0.3.0-alpha.17 - 2026-09-13
 
 This unpublished Rust-only checkpoint closes a checked Storage Root V3 into

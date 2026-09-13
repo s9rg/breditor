@@ -1,12 +1,12 @@
 # Breditor compatibility policy
 
-Current alpha.17 addition: closed V3 root-publication plans retain exact
-candidate bytes and complete host-incarnation bindings. There is no V3 dispatch,
-terminal handling, or writer-authority transition yet.
-See [Root publication preparation V3](ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.18 addition: V3 root publication enters uncertainty before
+one-shot payload egress and accepts only exactly correlated terminal host
+claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
+See [Root publication lifecycle V3](ROOT_PUBLICATION_PLAN_V3.md).
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.17` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.18` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the

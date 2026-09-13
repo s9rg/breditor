@@ -12,12 +12,12 @@ use super::{
 ///
 /// This non-Clone owner retains canonical candidate bytes and the complete V3
 /// binding, including host-supplied database and planned scope incarnations.
-/// It has no request, dispatch, terminal-evidence, writer, or I/O interface.
+/// It has no request, writer, or I/O interface. Consume it with `begin_attempt`
+/// before requesting a payload-bearing adapter view.
 /// Preparation neither reserves identities nor proves an empty/current scope.
 /// Equivalent plans can be prepared again from the original borrowed inputs.
 ///
-/// Raw document-bearing bytes are deliberately unavailable until a separately
-/// specified V3 dispatch lifecycle can account for uncertainty and retries.
+/// Raw document-bearing bytes are unavailable before entering uncertainty.
 /// The reconstructed validation checkpoint is not retained by this plan.
 /// Hiding payloads enforces API ordering, not secrecy: the original selection
 /// remains independently serializable.
@@ -35,7 +35,7 @@ use super::{
 #[must_use = "a root publication plan must be retained or deliberately discarded"]
 pub struct LocalLogStorageRootPublicationPlanV3 {
     binding: LocalLogStorageSelectedBindingV3,
-    candidate_json: Arc<str>,
+    pub(super) candidate_json: Arc<str>,
 }
 
 impl LocalLogStorageRootPublicationPlanV3 {

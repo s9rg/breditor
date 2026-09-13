@@ -1,9 +1,9 @@
 # Breditor `0.3.0` scope
 
-Current alpha.17 addition: closed V3 root-publication plans retain exact
-candidate bytes and complete host-incarnation bindings. There is no V3 dispatch,
-terminal handling, or writer-authority transition yet.
-See [Root publication preparation V3](ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.18 addition: V3 root publication enters uncertainty before
+one-shot payload egress and accepts only exactly correlated terminal host
+claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
+See [Root publication lifecycle V3](ROOT_PUBLICATION_PLAN_V3.md).
 
 The preceding `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
 whose exhaustive Text Size presets use the existing generic integer typed-set
@@ -856,9 +856,10 @@ on paste, or bypass the intent router.
 
 Alpha.14 versions the local-log graph around Session Checkpoint V3; alpha.15
 adds matching storage envelopes and selected-storage normalization. Alpha.16
-adds separate V3 schema-admission preparation. Subsequent checkpoints must
-complete the dispatch and uncertainty lifecycle around alpha.17's closed V3
-root-publication plans, then explicitly version write-authority paths before offering V3 publication or
+adds separate V3 schema-admission preparation. Alpha.17 closes root-publication
+plans and alpha.18 adds uncertain one-shot egress and terminal host correlation.
+Subsequent checkpoints must add authoritative uncertainty resolution and
+explicitly version write-authority paths before offering V3 publication or
 append I/O. They must
 not place V3 bytes inside V1/V2 envelopes or treat normalized inspection data
 as writer authority. A

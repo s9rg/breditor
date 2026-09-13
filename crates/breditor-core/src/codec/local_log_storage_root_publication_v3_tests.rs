@@ -1,5 +1,167 @@
 use super::*;
 use crate::codec::{LocalLogStorageAttemptPreparationError, LocalLogStorageRootPublicationPlanV3};
+use crate::codec::{
+    LocalLogStorageAttemptTerminalAttestationKind as TerminalKind,
+    LocalLogStorageAttemptTransitionError as TransitionError,
+    LocalLogStorageRootPublicationAttestationV3 as Attestation,
+};
+use crate::local_log::LocalLogStorageAttemptRequestId;
+
+fn publication_plan(
+    fixture: &StorageV3Fixture,
+) -> Result<LocalLogStorageRootPublicationPlanV3, Box<dyn std::error::Error>> {
+    let codec = fixture.root_codec();
+    Ok(codec.prepare_root_publication(
+        &fixture.database_incarnation_id,
+        &fixture.scope_incarnation_id,
+        &codec.decode_root(&fixture.encoded_root()?)?,
+    )?)
+}
+
+#[test]
+fn dispatch_is_exact_one_shot_and_redacted() -> TestResult {
+    let fixture = StorageV3Fixture::new()?;
+    let reference = publication_plan(&fixture)?;
+    let mut attempt = publication_plan(&fixture)?.begin_attempt();
+    let other = publication_plan(&fixture)?.begin_attempt();
+    assert_ne!(attempt.attempt_id(), other.attempt_id());
+    assert!(!attempt.request_issued());
+    assert!(attempt.plan().same_plan_as(&reference));
+    let attempt_id = attempt.attempt_id().clone();
+    let request_id = {
+        let request = attempt.adapter_request()?;
+        assert_eq!(request.candidate_json(), fixture.encoded_root()?);
+        assert_eq!(request.candidate_binding(), reference.candidate_binding());
+        assert_eq!(request.request_id().attempt_id(), &attempt_id);
+        assert!(!format!("{request:?}").contains("STORAGEV3PAYLOADSENTINEL"));
+        request.request_id().clone()
+    };
+    assert!(attempt.request_issued());
+    assert!(matches!(attempt.adapter_request(), Err(TransitionError::RequestAlreadyBorrowed)));
+    assert!(!format!("{attempt:?}").contains("STORAGEV3PAYLOADSENTINEL"));
+    let result =
+        attempt.observe_terminal_attestation(Attestation::publication_completed(&request_id))?;
+    assert_eq!(result.kind(), TerminalKind::PublicationCompleted);
+    assert_eq!(result.attempt_id(), &attempt_id);
+    assert_eq!(result.request_id(), Some(&request_id));
+    assert!(result.plan().same_plan_as(&reference));
+    assert!(!format!("{result:?}").contains("STORAGEV3PAYLOADSENTINEL"));
+    Ok(())
+}
+
+#[test]
+fn terminal_categories_retain_plan_and_pre_or_post_egress_correlation() -> TestResult {
+    let fixture = StorageV3Fixture::new()?;
+    let reference = publication_plan(&fixture)?;
+    for issued in [false, true] {
+        let mut attempt = publication_plan(&fixture)?.begin_attempt();
+        let request_id =
+            if issued { Some(attempt.adapter_request()?.request_id().clone()) } else { None };
+        let attestation = Attestation::not_attempted(attempt.attempt_id());
+        let result = attempt.observe_terminal_attestation(attestation)?;
+        assert_eq!(result.kind(), TerminalKind::NotAttempted);
+        assert_eq!(result.request_id(), request_id.as_ref());
+        assert!(result.plan().same_plan_as(&reference));
+    }
+    let mut attempt = publication_plan(&fixture)?.begin_attempt();
+    let id = attempt.adapter_request()?.request_id().clone();
+    let result = attempt.observe_terminal_attestation(Attestation::transaction_aborted(&id))?;
+    assert_eq!(result.kind(), TerminalKind::TransactionAborted);
+    assert_eq!(result.request_id(), Some(&id));
+    assert!(result.plan().same_plan_as(&reference));
+    Ok(())
+}
+
+#[test]
+fn crosswired_terminal_claim_returns_both_inputs_without_unlocking_request() -> TestResult {
+    let fixture = StorageV3Fixture::new()?;
+    let reference = publication_plan(&fixture)?;
+    for issued in [false, true] {
+        for kind in [
+            TerminalKind::PublicationCompleted,
+            TerminalKind::TransactionAborted,
+            TerminalKind::NotAttempted,
+        ] {
+            let mut first = publication_plan(&fixture)?.begin_attempt();
+            let first_id = first.attempt_id().clone();
+            if issued {
+                let _ = first.adapter_request()?;
+            }
+            let mut other = publication_plan(&fixture)?.begin_attempt();
+            let other_request = other.adapter_request()?.request_id().clone();
+            let claim = match kind {
+                TerminalKind::PublicationCompleted => {
+                    Attestation::publication_completed(&other_request)
+                }
+                TerminalKind::TransactionAborted => {
+                    Attestation::transaction_aborted(&other_request)
+                }
+                TerminalKind::NotAttempted => Attestation::not_attempted(other.attempt_id()),
+            };
+            let failure = first
+                .observe_terminal_attestation(claim)
+                .err()
+                .ok_or("accepted foreign attempt")?;
+            assert_eq!(failure.error(), TransitionError::AttemptIdMismatch);
+            assert!(!format!("{failure:?}").contains("STORAGEV3PAYLOADSENTINEL"));
+            let (mut first, claim, error) = failure.into_parts();
+            assert_eq!(error, TransitionError::AttemptIdMismatch);
+            assert_eq!(first.attempt_id(), &first_id);
+            assert_eq!(first.request_issued(), issued);
+            assert!(first.plan().same_plan_as(&reference));
+            if issued {
+                assert!(matches!(
+                    first.adapter_request(),
+                    Err(TransitionError::RequestAlreadyBorrowed)
+                ));
+            }
+            let result = other.observe_terminal_attestation(claim)?;
+            assert_eq!(result.kind(), kind);
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn internal_crosswired_request_tokens_cannot_clear_uncertainty() -> TestResult {
+    let fixture = StorageV3Fixture::new()?;
+    for issued in [false, true] {
+        let mut attempt = publication_plan(&fixture)?.begin_attempt();
+        let actual =
+            if issued { Some(attempt.adapter_request()?.request_id().clone()) } else { None };
+        // Private token factory simulates corruption impossible through the public API.
+        let wrong = LocalLogStorageAttemptRequestId::new(attempt.attempt_id());
+        for rollback in [false, true] {
+            let claim = if rollback {
+                Attestation::transaction_aborted(&wrong)
+            } else {
+                Attestation::publication_completed(&wrong)
+            };
+            let failure = attempt
+                .observe_terminal_attestation(claim)
+                .err()
+                .ok_or("accepted wrong request")?;
+            assert_eq!(
+                failure.error(),
+                if issued {
+                    TransitionError::RequestIdMismatch
+                } else {
+                    TransitionError::RequestNotIssued
+                }
+            );
+            let (retained, claim, _) = failure.into_parts();
+            assert_eq!(claim.request_id(), Some(&wrong));
+            assert_eq!(retained.request_issued(), issued);
+            attempt = retained;
+        }
+        let claim = match actual {
+            Some(id) => Attestation::publication_completed(&id),
+            None => Attestation::not_attempted(attempt.attempt_id()),
+        };
+        let _ = attempt.observe_terminal_attestation(claim)?;
+    }
+    Ok(())
+}
 
 #[test]
 fn preparation_retains_exact_v3_binding_and_hides_payloads() -> TestResult {
