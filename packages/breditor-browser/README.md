@@ -165,9 +165,14 @@ existing generic paths; Rust production code, generated Wasm members, durable
 generations, and ABI 5 are unchanged. See the normative
 [text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
 
-The unpublished `0.3.0-alpha.22` source package changes no browser or Wasm
-API. It advances the Rust-only durable local-log path through explicit Entry,
-Checkpoint, Frame, and tail V3 types while this package remains on ABI 5.
+The unpublished `0.3.0-alpha.22` source package adds explicit session-backup
+startup through `initialSessionCheckpointJson`. It is mutually exclusive with
+`initialDocument` and `persistence`: Rust restores the explicitly selected
+generation without a document fallback or storage access. The preceding
+alpha.21 adds `exportContent("sessionCheckpointJson")`, including Undo/Redo
+history and potentially deleted text. See [Session backups](../../docs/SESSION_BACKUPS.md).
+Wasm ABI 5 and durable generations remain unchanged. The earlier Rust-only
+local-log V3 work is separate from this browser recovery API.
 
 Lower-level renderer,
 queue, adapter, selection, clipboard, toolbar, and persistence contracts are

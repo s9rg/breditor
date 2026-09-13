@@ -185,9 +185,11 @@ action-state, projection, undo/redo, and Session-V3 surfaces. Its exhaustive
 presentation only. See
 [`TEXT_SIZE_PRESETS.md`](../../docs/TEXT_SIZE_PRESETS.md).
 
-`0.3.0-alpha.22` retains that exact ABI 5 surface. Its new Entry,
-Checkpoint, Frame, and tail V3 contracts live entirely in `breditor-core`;
-storage root/generation integration is intentionally deferred.
+`0.3.0-alpha.22` retains that exact ABI 5 surface. Browser session-backup
+export and restore use the existing explicit checkpoint getters and factories;
+they introduce no new Wasm member or durable generation. The earlier Entry,
+Checkpoint, Frame, tail, and storage-envelope V3 work lives in `breditor-core`;
+native storage I/O integration is separate, deferred work.
 
 Alpha.14 does not yet provide format exclusions, block code, headings or
 lists, rich paste, chord sequences, runtime keymap replacement, or runtime

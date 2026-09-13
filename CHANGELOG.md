@@ -6,6 +6,10 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Reconciled the property-aware milestone evidence with the current code and
+  release gates in `docs/V0_3_SCOPE.md`. Corrected stale browser/Wasm package
+  notes that attributed alpha.22 to native local-log work and incorrectly
+  denied its additive browser backup API. No runtime or version change.
 - Repeated selection installation now preserves an already coherent native
   Range when both directional DOM endpoints match exactly. Seam aliases still
   require installation, and canonical-DOM checks and one-use affinity receipts

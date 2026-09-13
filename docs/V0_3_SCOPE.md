@@ -1,5 +1,53 @@
 # Breditor `0.3.0` scope
 
+## Property-aware milestone verification
+
+The requested property-aware Rust-to-browser milestone is implemented through
+alpha.22 and the subsequent unversioned selection hardening. This is **not** a
+stable `0.3.0` release or a claim that every future editor capability is done.
+The following evidence was inspected against source checkpoint `c4bfe4e`:
+
+- Generic declarations and execution: `InlineFormatPropertyContractV1`, the
+  schema validator, profile-owned `InlineFormatSetSpecV1`, and the separately
+  documented `action/builtins/set_inline_format.rs` handler. Required/optional
+  Boolean, safe integer, and bounded Unicode string contracts are exercised by
+  `inline_format_property_contracts` and `typed_inline_format_safety_contracts`.
+- Exact Rust-owned history: `set_inline_format_history_contracts` checks
+  independently constructed expected documents, directional spatial endpoints,
+  affinities, complete-map replacement/removal, and every retained history
+  cursor. `typed_paragraph_structure_contracts` and
+  `typed_structural_action_contracts` cover property-preserving split/join and
+  root replacement; `checkpointed_editor_engine_v3_contracts`
+  verifies atomic rejection without changing state, observations, history, or
+  checkpoint bytes.
+- Durable compatible persistence: `session_checkpoint_json_v3.rs` requires
+  the exact generation and schema binding and replay-proves both directions.
+  Its tests reject mixed generations and forged replay. Browser bootstrap
+  chooses V1/V2/V3 explicitly; `indexeddb_session_checkpoint.ts` compares and
+  writes in one transaction. Demo tests reload a typed redo branch and restore
+  a losing tab's backup without overwriting the winning save.
+- Wasm and extension-driven UI: the ABI-5 generated-glue test executes typed
+  intents and reloads Session V3 through the public browser owner. The React
+  demo tests exercise Link's string/Boolean map, RGB24 integers, exhaustive
+  Size presets, stacked no-input formats, Clear Formatting, shortcuts,
+  structural editing, Undo/Redo, and persistence in three browser engines.
+- Verification: `npm run verify:release` passed all 17 stages for that source:
+  1,560 native Rust tests, 25 real Wasm-target tests, 1,222 TypeScript tests,
+  75 browser cases, 30 demo cases, and 9 verifier tests, plus strict lint,
+  documentation/type checks, ABI regeneration, reproducible packed consumers,
+  fresh demo build, unchanged size ceilings, and diff checks. No package was
+  published. Later documentation corrections do not change that tested code.
+
+One intermittent WebKit clipboard/selection fault remains unresolved. Exact
+native Range preservation has its own passing regression tests but is not a
+proven fix. The successful matrix is evidence for the tested paths, not a
+zero-defect or exhaustive browser-support guarantee. Native local-log I/O,
+nested block editing, collaboration, migration, rich paste, and arbitrary
+toolbar widgets remain the explicitly separate limitations below; browser
+Session-V3 persistence does not imply those capabilities.
+
+## Current checkpoint
+
 Current alpha.22 addition: explicit session-backup startup and a recovery picker
 open an independent editor with autosave disabled. Rust validates the matching
 schema and replay history; the current editor and saved slot remain untouched.
