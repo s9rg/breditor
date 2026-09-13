@@ -1,5 +1,10 @@
 # Browser release size budgets
 
+Unreleased exact-selection write elision retains all ceilings. Fresh browser
+JavaScript measures 1,079,528 bytes; fresh React JavaScript measures 861,510
+raw / 224,536 gzip bytes (41 gzip bytes above alpha.22). Application gzip
+headroom is now 464 bytes. Declarations and Wasm measurements are unchanged.
+
 Status: required release gate, verified for the unpublished
 `0.3.0-alpha.22` session-recovery checkpoint.
 

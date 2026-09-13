@@ -112,7 +112,12 @@ projection-only artifacts and never acquire fake AST paths.
 Programmatic installation reads the real document/selection/range through
 brand-checked native realm intrinsics, ignoring own or host-local prototype
 shadows. Writes are serialized per owner document and preserve anchor/focus
-direction. An exact caret
+direction. If the existing coherent range already has exactly the requested
+directional DOM nodes and offsets, installation preserves that native Range
+without calling a selection setter. Spatially equivalent seam aliases do not
+qualify. Canonical-DOM validation, capability checks, and the one-use exact
+affinity receipt still apply; this is not a bypass for incoherent or stale
+selection state. When installation requires a native write, an exact caret
 whose DOM anchor and focus are the same container and offset is installed with
 `Range`, `removeAllRanges`, and `addRange`; this avoids WebKit transiently
 exposing new anchor/focus fields with an old `getRangeAt(0)` after an owned DOM

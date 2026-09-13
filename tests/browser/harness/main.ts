@@ -195,6 +195,7 @@ interface ReferenceShowcaseProbe {
 }
 
 interface BreditorBrowserHarness {
+  probeExactSelectionWrites(): Promise<readonly boolean[]>;
   readonly phase: "ready";
   text(): string;
   html(): string;
@@ -339,6 +340,7 @@ async function start(): Promise<void> {
     probeDetachedToolbarButtonShadow: (mode: MutationShadowMode) =>
       probeDetachedToolbarButtonShadow(editor, mode),
     probeAdoptedEditorHost: () => probeAdoptedEditorHost(),
+    probeExactSelectionWrites: () => probeExactSelectionWrites(),
     probeReferenceHighlight: () => probeReferenceHighlight(),
     mountReferenceFormatting: (toolbarInShadow = false, initialHref?: string) =>
       mountReferenceFormatting(toolbarInShadow, initialHref),
@@ -912,6 +914,54 @@ async function probeEditorHost(
     opened.editor.dispose();
     return Object.freeze({ ok: true, code: undefined });
   } finally {
+    host.remove();
+  }
+}
+
+/** Uses the actual browser Selection/Range implementation, not a native mock. */
+async function probeExactSelectionWrites(): Promise<readonly boolean[]> {
+  const { BaseDocumentProjection, BaseRangeSelection, BreditorDomRenderer,
+    BreditorDomSelectionBridge } = await import("@breditor/browser/advanced");
+  const projection = BaseDocumentProjection.create({
+    schema: { name: "breditor/base", version: 1 },
+    snapshot: { lineage: "exact-selection-probe", revision: "0" },
+    paragraphs: [{ runs: [{ text: "A😀bold", strong: false }] }],
+  });
+  if (!projection.ok) throw new Error(projection.error.code);
+  const host = document.createElement("div");
+  document.body.append(host);
+  const renderer = new BreditorDomRenderer();
+  let renderedForRelease: Parameters<typeof renderer.release>[0] | undefined;
+  try {
+    const result = renderer.render(host, projection.value);
+    if (!result.ok) throw new Error(result.error.code);
+    const { rendered } = result.value;
+    renderedForRelease = rendered;
+    const bridge = new BreditorDomSelectionBridge();
+    const native = window.getSelection();
+    if (native === null) throw new Error("missing selection");
+    return [[1, 1], [1, 5], [5, 1]].map(([anchor, focus]) => {
+      const make = (affinity: "before" | "after") => BaseRangeSelection.create(
+        projection.value, { kind: "range",
+          anchor: { kind: "text", textPath: [0, 0], utf16Offset: anchor, affinity },
+          focus: { kind: "text", textPath: [0, 0], utf16Offset: focus, affinity },
+        });
+      const initial = make("before");
+      const requested = make("after");
+      if (!initial.ok || !requested.ok) throw new Error("invalid probe selection");
+      if (!bridge.write(rendered, initial.value).ok) return false;
+      bridge.read(rendered);
+      const range = native.getRangeAt(0);
+      if (!bridge.write(rendered, requested.value).ok) return false;
+      const echo = bridge.read(rendered);
+      const ordinary = bridge.read(rendered);
+      return native.getRangeAt(0) === range && native.anchorOffset === anchor &&
+        native.focusOffset === focus && echo.ok && echo.value.kind === "range" &&
+        echo.value.origin === "programmaticEcho" && echo.value.selection === requested.value &&
+        ordinary.ok && ordinary.value.kind === "range" && ordinary.value.origin === "dom";
+    });
+  } finally {
+    if (renderedForRelease !== undefined) renderer.release(renderedForRelease);
     host.remove();
   }
 }

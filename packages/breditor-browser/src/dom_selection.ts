@@ -395,48 +395,61 @@ export class BreditorDomSelectionBridge {
         this.#receipt = undefined;
         return selectionFailure("selection.backward_unsupported");
       }
-      try {
-        // A Range-installed exact caret avoids a WebKit race where
-        // setBaseAndExtent() updates anchor/focus immediately after an owned
-        // subtree replacement but getRangeAt(0) briefly retains the old range.
-        // Use the directional API for every non-identical endpoint so backward
-        // selections and semantically collapsed DOM aliases remain exact.
-        if (
-          anchor.node === focus.node &&
-          anchor.offset === focus.offset
-        ) {
-          installForwardRange(
-            requiredOwnerDocument(rendered.host),
-            domSelection,
-            anchor,
-            focus,
-          );
-        } else if (supportsSetBaseAndExtent) {
-          nativeSelectionSetBaseAndExtent(
-            domSelection,
-            anchor.node,
-            anchor.offset,
-            focus.node,
-            focus.offset,
-          );
-        } else {
-          installForwardRange(
-            requiredOwnerDocument(rendered.host),
-            domSelection,
-            anchor,
-            focus,
-          );
+      // Preserve an already coherent native range only when both directional
+      // DOM endpoints match exactly. Spatially equivalent seam aliases are not
+      // interchangeable here. Retain the canonical proof and affinity receipt.
+      let signature =
+        prior?.kind === "range" &&
+        prior.anchorNode === anchor.node &&
+        prior.anchorOffset === anchor.offset &&
+        prior.focusNode === focus.node &&
+        prior.focusOffset === focus.offset
+          ? installedSemanticSelectionSignature(rendered, domSelection, selection)
+          : null;
+      if (signature === null) {
+        try {
+          // A Range-installed exact caret avoids a WebKit race where
+          // setBaseAndExtent() updates anchor/focus immediately after an owned
+          // subtree replacement but getRangeAt(0) briefly retains the old range.
+          // Use the directional API for every non-identical endpoint so backward
+          // selections and semantically collapsed DOM aliases remain exact.
+          if (
+            anchor.node === focus.node &&
+            anchor.offset === focus.offset
+          ) {
+            installForwardRange(
+              requiredOwnerDocument(rendered.host),
+              domSelection,
+              anchor,
+              focus,
+            );
+          } else if (supportsSetBaseAndExtent) {
+            nativeSelectionSetBaseAndExtent(
+              domSelection,
+              anchor.node,
+              anchor.offset,
+              focus.node,
+              focus.offset,
+            );
+          } else {
+            installForwardRange(
+              requiredOwnerDocument(rendered.host),
+              domSelection,
+              anchor,
+              focus,
+            );
+          }
+        } catch {
+          rollbackDomSelection(rendered.host, domSelection, prior);
+          this.#receipt = undefined;
+          return selectionFailure("selection.dom_write_failed");
         }
-      } catch {
-        rollbackDomSelection(rendered.host, domSelection, prior);
-        this.#receipt = undefined;
-        return selectionFailure("selection.dom_write_failed");
+        signature = installedSemanticSelectionSignature(
+          rendered,
+          domSelection,
+          selection,
+        );
       }
-      const signature = installedSemanticSelectionSignature(
-        rendered,
-        domSelection,
-        selection,
-      );
       if (signature === null) {
         rollbackDomSelection(rendered.host, domSelection, prior);
         this.#receipt = undefined;

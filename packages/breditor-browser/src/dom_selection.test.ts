@@ -84,6 +84,44 @@ beforeEach(() => {
 });
 
 describe("BreditorDomSelectionBridge", () => {
+  it.each(["caret", "forward", "backward"] as const)(
+    "preserves an exact native %s range and refreshes its one-use affinity receipt",
+    (direction) => {
+      const host = document.createElement("div");
+      document.body.append(host);
+      const documentProjection = projection(0);
+      const { rendered } = render(new BreditorDomRenderer(), host, documentProjection);
+      const bridge = new BreditorDomSelectionBridge();
+      const start = {
+        kind: "text", textPath: [0, 0], utf16Offset: 1, affinity: "before",
+      } as const;
+      const end = {
+        kind: "text", textPath: [0, 1], utf16Offset: 2, affinity: "after",
+      } as const;
+      const anchor = direction === "backward" ? end : start;
+      const focus = direction === "caret" ? start : direction === "backward" ? start : end;
+      const initial = semanticSelection(documentProjection, anchor, focus);
+      expect(bridge.write(rendered, initial).ok).toBe(true);
+      selectionValue(bridge.read(rendered));
+      const browser = domSelection(host);
+      const nativeRange = browser.getRangeAt(0);
+      const requested = semanticSelection(documentProjection,
+        { ...anchor, affinity: "after" }, { ...focus, affinity: "before" });
+
+      expect(bridge.write(rendered, requested).ok).toBe(true);
+      expect(browser.getRangeAt(0)).toBe(nativeRange);
+      const echo = selectionValue(bridge.read(rendered));
+      expect(echo.kind).toBe("range");
+      if (echo.kind !== "range") throw new Error("missing range");
+      expect(echo.origin).toBe("programmaticEcho");
+      expect(echo.selection).toBe(requested);
+      const ordinary = selectionValue(bridge.read(rendered));
+      expect(ordinary.kind).toBe("range");
+      if (ordinary.kind !== "range") throw new Error("missing range");
+      expect(ordinary.origin).toBe("dom");
+    },
+  );
+
   it("requires one complete ownership witness for an incoherent native selection", () => {
     for (let mask = 0; mask < 16; mask += 1) {
       const anchorInside = (mask & 0b0001) !== 0;

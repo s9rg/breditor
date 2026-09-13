@@ -15,6 +15,12 @@ async function openEditor(page: Page): Promise<void> {
     .toHaveAttribute("contenteditable", "true");
 }
 
+test("exact repeated selection writes preserve native ranges and one-use receipts", async ({ page }) => {
+  await openEditor(page);
+  expect(await page.evaluate(() => window.__breditorHarness!.probeExactSelectionWrites()))
+    .toEqual([true, true, true]);
+});
+
 async function mountReferenceFormatting(
   page: Page,
   toolbarInShadow = false,

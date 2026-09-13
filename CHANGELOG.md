@@ -6,6 +6,17 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Repeated selection installation now preserves an already coherent native
+  Range when both directional DOM endpoints match exactly. Seam aliases still
+  require installation, and canonical-DOM checks and one-use affinity receipts
+  remain intact. New unit and Chromium/Firefox/WebKit tests verify caret,
+  forward, and backward Range identity and receipt consumption. This reduces
+  unnecessary native writes; it is not a confirmed fix for the intermittent
+  WebKit fault. Package versions and durable/ABI contracts are unchanged.
+  All 17 release gates passed: 1,560 native Rust tests, 25 Wasm-target tests,
+  1,222 TypeScript tests, 75 browser cases, 30 demo cases, and 9 gate-runner
+  tests, plus lint/docs/typechecks, ABI, packed consumers, and fresh sizes.
+  Demo JavaScript grows by 41 gzip bytes, retaining every existing ceiling.
 - Added `npm run verify:release`, one sequential fail-fast local gate covering
   native Rust, target-specific Wasm tests, ABI regeneration, TypeScript,
   clean packed consumers, a fresh demo build, size budgets, and both browser
@@ -30,8 +41,8 @@ its durable formats and Wasm transport.
   remains unproven; no production selection checks were weakened or changed.
 
 Verification: browser typechecking and the expanded 72-case browser matrix
-passed in Chromium, Firefox, and WebKit. This test-only checkpoint does not
-change package versions or production bundles.
+passed in Chromium, Firefox, and WebKit. That diagnostic-only checkpoint did
+not change package versions or production bundles.
 The Rust history follow-up passed 65 tests across 11 typed-format, structural,
 document, and V3 engine suites, plus formatting and strict lint checks for the
 changed test target. Its generated law checks 480 explicit checkpoint restores
