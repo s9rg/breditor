@@ -10,7 +10,7 @@ use breditor_core::{
         ActionRegistry, ActionValue,
         builtins::{SetInlineFormatAction, set_inline_format_input_contract},
     },
-    codec::DocumentJsonCodecV2,
+    codec::{DocumentJsonCodecV2, SessionCheckpointJsonCodecV3},
     document::{Document, Format, FormatSet, PropertyValue, TextFragment, TextRun},
     extension::{
         ExtensionId, ExtensionLimits, ExtensionManifest, ExtensionSet, ExtensionVersion,
@@ -19,7 +19,7 @@ use breditor_core::{
     },
     identity::QualifiedName,
     operation::{TextRange, TextSplice},
-    position::{Affinity, Point, TextOffset},
+    position::{Affinity, Point, TextOffset, compare_points},
     schema::{CompiledSchema, DocumentLimits, PersistedTypeRevision, SchemaId, SchemaVersion},
     selection::{RangeSelection, Selection},
     session::EditorSession,
@@ -29,6 +29,7 @@ use breditor_core::{
         TransactionMetadata,
     },
 };
+use proptest::{prelude::*, test_runner::Config};
 use serde_json::{Value, json};
 use support::{TestResult, path, test_error};
 
@@ -454,4 +455,170 @@ fn collapsed_pending_change_closes_an_open_content_merge_group() -> TestResult {
     let _ = apply(&mut session, &second)?;
     assert_eq!(session.undo_depth(), 2);
     Ok(())
+}
+
+/// Compare spatial endpoints independently of the action's chosen run aliases.
+fn assert_generated_range(
+    state: &EditorState,
+    text: &str,
+    backwards: bool,
+    affinity: Affinity,
+    end_affinity: Affinity,
+) -> TestResult {
+    let start = text_point(0, 1, 0, affinity)?;
+    let end = text_point(0, 1, u32::try_from(text.encode_utf16().count())?, end_affinity)?;
+    let (anchor, focus) = if backwards { (end, start) } else { (start, end) };
+    let Some(Selection::Range(range)) = state.selection() else {
+        return Err(test_error("generated range is missing").into());
+    };
+    assert_eq!(
+        compare_points(state.document(), range.anchor(), &anchor)?,
+        std::cmp::Ordering::Equal
+    );
+    assert_eq!(compare_points(state.document(), range.focus(), &focus)?, std::cmp::Ordering::Equal);
+    assert_eq!(range.anchor().affinity(), anchor.affinity());
+    assert_eq!(range.focus().affinity(), focus.affinity());
+    Ok(())
+}
+
+/// Exercise every retained cursor, not just a checkpoint at the history tip.
+/// Expected states are checked before encoding, then every restored session
+/// must independently traverse the complete undo and redo branches.
+#[allow(clippy::too_many_lines)]
+fn generated_typed_history_case(
+    text: &str,
+    backwards: bool,
+    after_affinity: bool,
+    end_after_affinity: bool,
+    first_value: &str,
+    second_value: &str,
+    label: &str,
+) -> TestResult {
+    let context = EditorContext::new(typed_schema()?, DocumentLimits::default());
+    let registry = registry()?;
+    let affinity = if after_affinity { Affinity::After } else { Affinity::Before };
+    let end_affinity = if end_after_affinity { Affinity::After } else { Affinity::Before };
+    let start = text_point(0, 0, 1, affinity)?;
+    let end = text_point(0, 0, u32::try_from(text.encode_utf16().count())? + 1, end_affinity)?;
+    let selection = if backwards { selected(end, start) } else { selected(start, end) };
+    let initial = state(
+        &context,
+        &[paragraph(&[plain(&format!("L{text}R"))])],
+        selection,
+        "generated-typed-history",
+    )?;
+    let mut expected = vec![initial.clone()];
+    let mut session = EditorSession::new(initial);
+    let first_href = format!("first:{first_value}");
+    let second_href = format!("second:{second_value}");
+    let document_codec = DocumentJsonCodecV2::new(context.schema().clone());
+
+    let first =
+        execute(&mut session, &registry, set_input(vec![(HREF, &first_href), (LABEL, label)])?)?;
+    let format = text_format(first.after().document(), 1)?
+        .ok_or_else(|| test_error("generated first format missing"))?;
+    assert_eq!(string_property(format, HREF), Some(first_href.as_str()));
+    assert_eq!(string_property(format, LABEL), Some(label));
+    assert_generated_range(first.after(), text, backwards, affinity, end_affinity)?;
+    assert_eq!(
+        first.after().document(),
+        &document_codec.decode(&document_json(
+            context.schema(),
+            &[paragraph(&[plain("L"), linked(text, &first_href, Some(label)), plain("R"),])]
+        ))?,
+    );
+    expected.push(first.after().clone());
+
+    let second = execute(&mut session, &registry, set_href_input(&second_href)?)?;
+    let format = text_format(second.after().document(), 1)?
+        .ok_or_else(|| test_error("generated replacement missing"))?;
+    assert_eq!(string_property(format, HREF), Some(second_href.as_str()));
+    assert_eq!(string_property(format, LABEL), None);
+    assert_generated_range(second.after(), text, backwards, affinity, end_affinity)?;
+    assert_eq!(
+        second.after().document(),
+        &document_codec.decode(&document_json(
+            context.schema(),
+            &[paragraph(&[plain("L"), linked(text, &second_href, None), plain("R"),])]
+        ))?,
+    );
+    expected.push(second.after().clone());
+    let removed = execute(&mut session, &registry, remove_input()?)?;
+    assert_eq!(removed.after().document(), expected[0].document());
+    assert_eq!(removed.after().selection(), expected[0].selection());
+    expected.push(removed.after().clone());
+    assert_eq!((session.undo_depth(), session.redo_depth()), (3, 0));
+
+    let codec = SessionCheckpointJsonCodecV3::new(context);
+    for cursor in (0..expected.len()).rev() {
+        let encoded = codec.encode(&session)?;
+        let mut restored = codec.decode(&encoded)?;
+        assert_eq!(codec.encode(&restored)?, encoded);
+        assert_values(restored.state(), &expected[cursor]);
+        assert_eq!(restored.undo_depth(), u32::try_from(cursor)?);
+        assert_eq!(restored.redo_depth(), u32::try_from(expected.len() - 1 - cursor)?);
+
+        for prior in (0..cursor).rev() {
+            let revision = restored.state().snapshot().revision();
+            let undo = history_commit(restored.undo()?, "generated restored undo")?;
+            assert_eq!(undo.base_revision(), revision);
+            assert!(undo.revision() > revision);
+            assert_values(undo.after(), &expected[prior]);
+        }
+        assert!(restored.undo()?.is_none());
+        for next in &expected[1..] {
+            let revision = restored.state().snapshot().revision();
+            let redo = history_commit(restored.redo()?, "generated restored redo")?;
+            assert_eq!(redo.base_revision(), revision);
+            assert!(redo.revision() > revision);
+            assert_values(redo.after(), next);
+        }
+        assert!(restored.redo()?.is_none());
+
+        if cursor > 0 {
+            history_commit(session.undo()?, "generated cursor undo")?;
+        }
+    }
+
+    // A collapsed pending edit at the history base must survive persistence
+    // without consuming the retained redo branch or becoming a content edit.
+    set_selection(&mut session, collapsed(text_point(0, 0, 1, affinity)?))?;
+    let pending =
+        execute(&mut session, &registry, set_input(vec![(HREF, &first_href), (LABEL, label)])?)?;
+    assert!(pending.forward_operations().is_empty());
+    assert_eq!(pending.after().document(), expected[0].document());
+    assert_eq!((session.undo_depth(), session.redo_depth()), (0, 3));
+    let boundary = session.state().clone();
+    let pending_format =
+        pending_link(&boundary)?.ok_or_else(|| test_error("generated pending format missing"))?;
+    assert_eq!(string_property(pending_format, HREF), Some(first_href.as_str()));
+    assert_eq!(string_property(pending_format, LABEL), Some(label));
+    let encoded = codec.encode(&session)?;
+    let mut restored = codec.decode(&encoded)?;
+    assert_eq!(codec.encode(&restored)?, encoded);
+    assert_values(restored.state(), &boundary);
+    assert_eq!((restored.undo_depth(), restored.redo_depth()), (0, 3));
+    let redo = history_commit(restored.redo()?, "generated pending redo")?;
+    assert_values(redo.after(), &expected[1]);
+    let undo = history_commit(restored.undo()?, "generated pending undo")?;
+    assert_values(undo.after(), &boundary);
+    Ok(())
+}
+
+proptest! {
+    #![proptest_config(Config { cases: 96, max_shrink_iters: 4_096, ..Config::default() })]
+
+    #[test]
+    fn typed_unicode_histories_restore_exactly_at_every_retained_cursor(
+        text in prop::collection::vec(prop::sample::select(vec!["a", "é", "e\u{301}", "💡", "界"]), 1..16),
+        backwards in any::<bool>(),
+        after_affinity in any::<bool>(),
+        end_after_affinity in any::<bool>(),
+        first in ".{0,16}",
+        second in ".{0,16}",
+        label in ".{0,16}",
+    ) {
+        generated_typed_history_case(&text.concat(), backwards, after_affinity, end_after_affinity, &first, &second, &label)
+            .map_err(|error| TestCaseError::fail(error.to_string()))?;
+    }
 }

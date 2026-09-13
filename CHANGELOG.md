@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Added a 96-case generated Rust history law for Unicode range formatting,
+  directional selections, endpoint affinities, complete property replacement,
+  optional-property removal, and exact V3 restoration at every retained cursor.
+  Expected documents are constructed independently of action execution. Each
+  restored cursor traverses both history branches with increasing revisions;
+  pending typing properties also round-trip without consuming a redo branch.
 - Browser-test selection timeouts now include expected/observed offsets and
   the public editor fault reason, without document or clipboard contents.
 - Added a deterministic unavailable-observation regression that verifies the
@@ -17,6 +23,11 @@ its durable formats and Wasm transport.
 Verification: browser typechecking and the expanded 72-case browser matrix
 passed in Chromium, Firefox, and WebKit. This test-only checkpoint does not
 change package versions or production bundles.
+The Rust history follow-up passed 65 tests across 11 typed-format, structural,
+document, and V3 engine suites, plus formatting and strict lint checks for the
+changed test target. Its generated law checks 480 explicit checkpoint restores
+per default 96-case run; this is stronger evidence, not an exhaustive proof or
+a fix for the separate intermittent WebKit fault.
 
 ## 0.3.0-alpha.22 - 2026-09-13
 
