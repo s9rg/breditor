@@ -89,6 +89,29 @@ impl LocalLogStorageRootSelection {
         }
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) fn from_parts_v3(
+        schema_binding: DurableSchemaBinding,
+        parts: LocalLogStorageRootSelectionParts,
+        active_frame: super::LocalLogStorageGenerationFrameV3,
+    ) -> Self {
+        Self {
+            schema_binding,
+            profile_id: parts.profile_id,
+            profile_version: parts.profile_version,
+            scope_id: parts.scope_id,
+            transaction_id: parts.transaction_id,
+            committed_head_id: parts.committed_head_id,
+            fence_id: parts.fence_id,
+            session_id: parts.session_id,
+            checkpoint_log_id: parts.checkpoint_log_id,
+            active_log_id: parts.active_log_id,
+            active_frame: LocalLogStorageGenerationFrameV1::new(active_frame.limits()),
+            active_frame_format_version: active_frame.format_version(),
+            checkpoint_json: parts.checkpoint_json,
+        }
+    }
+
     /// Returns the exact durable schema selector and fingerprint.
     #[must_use]
     pub const fn schema_binding(&self) -> &DurableSchemaBinding {
@@ -172,6 +195,15 @@ impl LocalLogStorageRootSelection {
     pub const fn active_frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
         if self.active_frame_format_version == 2 {
             Some(LocalLogStorageGenerationFrameV2::new(self.active_frame.limits()))
+        } else {
+            None
+        }
+    }
+
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn active_frame_v3(&self) -> Option<super::LocalLogStorageGenerationFrameV3> {
+        if self.active_frame_format_version == 3 {
+            Some(super::LocalLogStorageGenerationFrameV3::new(self.active_frame.limits()))
         } else {
             None
         }

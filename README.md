@@ -352,8 +352,8 @@ compaction laws while preserving typed properties through current state and
 both history directions. Document V2 remains the document nested by the V3
 state/session graph. V1 and V2 codecs and bytes stay frozen, selection is
 explicit, and mixed generations fail closed without sniffing or conversion.
-Storage Root and Storage Generation remain V1/V2. Matching V3 storage
-envelopes and selected-storage paths are planned next; I/O, publication, and
+Alpha.15 adds matching [V3 storage envelopes and selected-storage paths](docs/STORAGE_V3.md).
+Storage I/O, publication, and
 browser/Wasm transport require further checkpoints. ABI 5 remains current and the
 packages remain unpublished.
 
@@ -379,7 +379,7 @@ The implementation includes:
   nested document generation, property-aware operation/pending-format payloads,
   bounded preflight, exact replay, and no automatic generation detection or
   conversion; version-branded V3 tail observation and compaction retain that
-  graph, while Storage Root and Storage Generation remain V1/V2 only;
+  graph through explicit Storage Root and Storage Generation V3 envelopes;
 - strict versioned document JSON, singular guarded-operation records,
   exact-base atomic transaction-request records, and contextual complete
   editor-state checkpoints, self-contained replay-proved commit records, and
@@ -558,7 +558,8 @@ canonical compiled set-surface triple. Alpha.8 hydrates its pristine fields from
 exact uniform Rust state; drafts remain browser-local and the set operation
 still replaces the complete property map. Alpha.14 adds explicit Rust-only
 Local Log Entry, Checkpoint, Frame, and tail V3 families around Commit and
-Session Checkpoint V3, but no Storage Root or Storage Generation V3 exists.
+Session Checkpoint V3. Alpha.15 adds Storage Root and Storage Generation V3,
+including selected-storage normalization, without exposing storage I/O.
 Paste remains plain text and reconstructs no
 source Link properties, though target-context Link can be inherited; there is
 no arbitrary attribute or CSS mapping, fieldwise mixed hydration, optional or

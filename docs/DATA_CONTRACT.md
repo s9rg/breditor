@@ -1,8 +1,9 @@
 # Rust data contract
 
-Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
-and tail V3 preserve typed properties through recovery and compaction. Storage
-Root and Storage Generation remain V1/V2. See [Local Log V3](LOCAL_LOG_V3.md).
+Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
+V3 embed property-preserving Local Log Checkpoint V3, with separately typed
+selected-storage normalization. No new I/O or Wasm path is included.
+See [Storage V3](STORAGE_V3.md).
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path. Document V2 and Session Checkpoint V2 are supported
@@ -30,7 +31,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.14` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.15` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the
@@ -137,7 +138,7 @@ The implemented Rust slice owns:
   operations with closed exact content inverses;
 - property-preserving Operation, Editor State, Transaction Request, Commit,
   and Session Checkpoint V3 codecs with bounded preflight and replay, while
-  retaining Document V2 and leaving the local-log/storage graph at V1/V2;
+  retaining Document V2; alpha.14/15 extend the local-log/storage graph to V3;
 - the frozen, strict Operation V1 JSON codec that preserves every
   optimistic guard and validates statically knowable schema and resource laws;
 - the strict contextual Transaction Request V1 codec that binds ordered
@@ -4336,6 +4337,10 @@ grant writer authority. The browser IndexedDB implementation remains the
 separate V1 Session Checkpoint Profile and does not accept these records.
 
 ### Genesis local-log recovery
+
+The explicit V3 storage families added in alpha.15 follow the separate
+[Storage V3 contract](STORAGE_V3.md). They preserve typed checkpoint properties,
+reject mixed versions, and add no publication or writer authority.
 
 `LocalLogRecovery` is an all-or-nothing verifier and application boundary for
 one supplied, uncompacted generation prefix beginning at session-global

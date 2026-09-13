@@ -174,10 +174,52 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
         )
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn retired_v3(
+        log_id: LocalLogId,
+        session_id: LocalSessionId,
+        frame: super::LocalLogStorageGenerationFrameV3,
+        activated_fence_id: LocalLogStorageFenceId,
+        activated_by_head_id: LocalLogStorageHeadId,
+        retired_by_head_id: LocalLogStorageHeadId,
+    ) -> Self {
+        Self::rotation(
+            LocalLogStorageSelectedCheckpointGenerationState::Retired,
+            log_id,
+            session_id,
+            LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+            retired_by_head_id,
+        )
+    }
+
     pub(super) const fn reclaimed_v2(
         log_id: LocalLogId,
         session_id: LocalSessionId,
         frame: LocalLogStorageGenerationFrameV2,
+        activated_fence_id: LocalLogStorageFenceId,
+        activated_by_head_id: LocalLogStorageHeadId,
+        retired_by_head_id: LocalLogStorageHeadId,
+    ) -> Self {
+        Self::rotation(
+            LocalLogStorageSelectedCheckpointGenerationState::Reclaimed,
+            log_id,
+            session_id,
+            LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+            retired_by_head_id,
+        )
+    }
+
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn reclaimed_v3(
+        log_id: LocalLogId,
+        session_id: LocalSessionId,
+        frame: super::LocalLogStorageGenerationFrameV3,
         activated_fence_id: LocalLogStorageFenceId,
         activated_by_head_id: LocalLogStorageHeadId,
         retired_by_head_id: LocalLogStorageHeadId,
@@ -279,6 +321,18 @@ impl LocalLogStorageSelectedCheckpointGenerationBinding {
         }
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn frame_v3(&self) -> Option<super::LocalLogStorageGenerationFrameV3> {
+        match &self.facts {
+            LocalLogStorageSelectedCheckpointGenerationFacts::Rotation {
+                frame,
+                frame_format_version: 3,
+                ..
+            } => Some(super::LocalLogStorageGenerationFrameV3::new(frame.limits())),
+            _ => None,
+        }
+    }
+
     /// Returns the immutable fence that activated a retired or reclaimed generation.
     ///
     /// This is absent exactly for a checkpoint-only identity.
@@ -376,6 +430,24 @@ impl LocalLogStorageSelectedActiveGenerationBinding {
         }
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn new_v3(
+        log_id: LocalLogId,
+        session_id: LocalSessionId,
+        frame: super::LocalLogStorageGenerationFrameV3,
+        activated_fence_id: LocalLogStorageFenceId,
+        activated_by_head_id: LocalLogStorageHeadId,
+    ) -> Self {
+        Self {
+            log_id,
+            session_id,
+            frame: LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame_format_version: frame.format_version(),
+            activated_fence_id,
+            activated_by_head_id,
+        }
+    }
+
     /// Returns the active generation identity.
     #[must_use]
     pub const fn log_id(&self) -> &LocalLogId {
@@ -405,6 +477,15 @@ impl LocalLogStorageSelectedActiveGenerationBinding {
     pub const fn frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
         if self.frame_format_version == 2 {
             Some(LocalLogStorageGenerationFrameV2::new(self.frame.limits()))
+        } else {
+            None
+        }
+    }
+
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn frame_v3(&self) -> Option<super::LocalLogStorageGenerationFrameV3> {
+        if self.frame_format_version == 3 {
+            Some(super::LocalLogStorageGenerationFrameV3::new(self.frame.limits()))
         } else {
             None
         }

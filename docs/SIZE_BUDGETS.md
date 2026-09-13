@@ -1,7 +1,12 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.14` Rust Local Log V3 checkpoint.
+`0.3.0-alpha.15` Rust Storage V3 checkpoint.
+
+Alpha.15 retains every ceiling. Its generated Wasm is 1,607,692 bytes and
+450,471 gzip bytes; the reference application is 857,056 raw and 223,233 gzip
+JavaScript bytes. Clean consumer tarballs measure 264,565 bytes for browser,
+32,083 for reference, and 521,580 for Wasm. All release budgets pass.
 
 Alpha.14 retains every alpha.13 ceiling. Its generated Wasm is 1,607,732
 bytes; the reference application is 857,056 raw and 223,235 gzip JavaScript

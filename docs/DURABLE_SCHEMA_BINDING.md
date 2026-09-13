@@ -1,7 +1,7 @@
 # Durable schema binding contract
 
 Status: implemented in `0.2.0` and extended through the unpublished
-`0.3.0-alpha.14` checkpoint. Wasm ABI 5 and the browser explicitly select
+`0.3.0-alpha.15` checkpoint. Wasm ABI 5 and the browser explicitly select
 exact-base V1, Bootstrap-V1 profile V2, or Bootstrap-V2 profile V3 persistence.
 No path sniffs, silently converts, or falls back between record generations.
 
@@ -67,7 +67,8 @@ separate `*CodecV2` types and `*_V2_FORMAT_VERSION` constants. Property-aware
 Operation, Editor State, Transaction Request, Commit, and Session Checkpoint
 use separate `*CodecV3` types and V3 constants. Document remains V2, and the
 local-log entry/checkpoint/frame/tail graph has explicit V3 types. Storage
-Root and Storage Generation remain V1/V2.
+Root and Storage Generation also have explicit V3 codecs and selected-storage
+normalization as of alpha.15; their write protocols remain deferred.
 
 There is no context-sensitive "latest" encoder and no decoder that silently
 upgrades or downgrades any generation. A future decoder that accepts more than one
@@ -335,8 +336,9 @@ helper from being mistaken for persistence migration.
   semantic properties through the existing Session V3 path. Alpha.8 hydration
   does not turn the observed or draft value into durable state.
 - Alpha.14 provides explicit local-log entry, checkpoint, frame, and tail V3.
-  Storage Root and Storage Generation still have no V3 codec; V3 values cannot
-  enter their V1/V2 envelopes. See [Local Log V3](LOCAL_LOG_V3.md).
+  Alpha.15 extends this to Storage Root, Storage Generation, and selected-storage
+  normalization. V3 values still cannot enter V1/V2 envelopes.
+  See [Storage V3](STORAGE_V3.md).
 - Storage V2 has no public publication-attempt, terminal-resolution, writer-fence,
   or append-queue entrypoint in alpha.2. Checked candidates and normalized
   selections grant no I/O authority.

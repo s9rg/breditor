@@ -1,7 +1,8 @@
 //! Deterministic content kernel for the Breditor rich-text editor.
 //!
 //! Alpha.14 adds explicit property-preserving Local Log Entry, Checkpoint,
-//! Frame, and tail V3 codecs. Storage Root and Storage Generation remain V1/V2.
+//! Frame, and tail V3 codecs. Alpha.15 adds Storage Root and Storage Generation
+//! V3 with explicit selected-storage normalization and opaque V3 policy types.
 //! V3 tail observation and compaction preserve typed replay values and return
 //! the unchanged cursor on failure. No new Wasm surface is introduced.
 //!

@@ -4,6 +4,29 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.15 - 2026-09-13
+
+This unpublished Rust-only checkpoint adds explicit Storage Root and Storage
+Generation V3 codecs, preparation, selected-storage bindings, and normalized
+selection wrappers. They require Frame V3 policies and canonical Local Log
+Checkpoint V3 bytes, preserving typed formatting through recovery and history.
+
+- Each codec/action remains in its own named file. V1/V2 codecs and wire bytes
+  are unchanged; V3 opaque wrappers prevent legacy protocol projections.
+- Strict schema/receipt binding, canonical bytes, resource limits, generation
+  continuity, and known identity reuse checks apply to both ordinary and
+  selected rotation paths. Ordinary V3 rotations also reject reuse of the
+  previous manifest's activation-fence ID.
+- Added typed-property recovery, cross-generation, malformed-frame-policy,
+  exact-limit, canonical-shape, identity-reuse, and compile-fail API tests.
+- No new Wasm method or ABI change, browser UI change, storage I/O,
+  publication protocol, or V3 schema-admission adapter is included. See
+  [Storage V3](docs/STORAGE_V3.md) for the exact contract and limitations.
+
+Release checks: 1,524 Rust tests (including compile-fail documentation), 1,197
+TypeScript tests, strict lint/type/documentation checks, clean package-consumer
+browser smoke tests, and unchanged size budgets passed.
+
 ## 0.3.0-alpha.14 - 2026-09-13
 
 This unpublished source checkpoint advances Breditor's experimental Rust-only

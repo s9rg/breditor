@@ -105,6 +105,34 @@ impl LocalLogStorageGenerationManifest {
         }
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) fn from_parts_v3(
+        schema_binding: DurableSchemaBinding,
+        parts: LocalLogStorageGenerationManifestParts,
+        sealed_frame: super::LocalLogStorageGenerationFrameV3,
+        successor_frame: super::LocalLogStorageGenerationFrameV3,
+    ) -> Self {
+        Self {
+            schema_binding,
+            profile_id: parts.profile_id,
+            profile_version: parts.profile_version,
+            scope_id: parts.scope_id,
+            transaction_id: parts.transaction_id,
+            expected_head_id: parts.expected_head_id,
+            committed_head_id: parts.committed_head_id,
+            fence_id: parts.fence_id,
+            session_id: parts.session_id,
+            sealed_log_id: parts.sealed_log_id,
+            successor_log_id: parts.successor_log_id,
+            accepted_prefix_bytes: parts.accepted_prefix_bytes,
+            sealed_frame: LocalLogStorageGenerationFrameV1::new(sealed_frame.limits()),
+            sealed_frame_format_version: sealed_frame.format_version(),
+            successor_frame: LocalLogStorageGenerationFrameV1::new(successor_frame.limits()),
+            successor_frame_format_version: successor_frame.format_version(),
+            checkpoint_json: parts.checkpoint_json,
+        }
+    }
+
     /// Returns the exact durable schema selector and fingerprint.
     #[must_use]
     pub const fn schema_binding(&self) -> &DurableSchemaBinding {
@@ -209,6 +237,15 @@ impl LocalLogStorageGenerationManifest {
         }
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn sealed_frame_v3(&self) -> Option<super::LocalLogStorageGenerationFrameV3> {
+        if self.sealed_frame_format_version == 3 {
+            Some(super::LocalLogStorageGenerationFrameV3::new(self.sealed_frame.limits()))
+        } else {
+            None
+        }
+    }
+
     /// Returns successor payload limits through the legacy Frame V1 view.
     ///
     /// On V2 manifests this is a compatibility projection only. Use
@@ -230,6 +267,17 @@ impl LocalLogStorageGenerationManifest {
     pub const fn successor_frame_v2(&self) -> Option<LocalLogStorageGenerationFrameV2> {
         if self.successor_frame_format_version == 2 {
             Some(LocalLogStorageGenerationFrameV2::new(self.successor_frame.limits()))
+        } else {
+            None
+        }
+    }
+
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn successor_frame_v3(
+        &self,
+    ) -> Option<super::LocalLogStorageGenerationFrameV3> {
+        if self.successor_frame_format_version == 3 {
+            Some(super::LocalLogStorageGenerationFrameV3::new(self.successor_frame.limits()))
         } else {
             None
         }

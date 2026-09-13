@@ -1,8 +1,9 @@
 # Breditor `0.3.0` scope
 
-Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
-and tail V3 preserve typed properties through recovery and compaction. Storage
-Root and Storage Generation remain V1/V2. See [Local Log V3](LOCAL_LOG_V3.md).
+Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
+V3 embed property-preserving Local Log Checkpoint V3, with separately typed
+selected-storage normalization. No new I/O or Wasm path is included.
+See [Storage V3](STORAGE_V3.md).
 
 The preceding `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
 whose exhaustive Text Size presets use the existing generic integer typed-set
@@ -237,8 +238,8 @@ operation may still be valid; callers must select V3 whenever those values or
 replay recipes need preservation.
 
 At alpha.2, local-log V3 codecs were absent. Alpha.14 adds explicit Entry,
-Checkpoint, Frame, and tail V3 around this contract. Storage Root and Storage
-Generation V3 remain deferred; no V1/V2 envelope accepts V3 nested bytes.
+Checkpoint, Frame, and tail V3 around this contract. Alpha.15 adds Storage Root
+and Storage Generation V3; no V1/V2 envelope accepts V3 nested bytes.
 
 ## Alpha.3 Wasm ABI 4 and browser durable bridge
 
@@ -805,8 +806,9 @@ undefined.
   document/paragraph/text grammar. Element or paragraph properties, entity
   identities, nested or heterogeneous blocks, and arbitrary structural schemas
   still require separately specified operations.
-- V3 local-log entry, checkpoint, frame, and tail families exist. Storage Root
-  and Storage Generation V3 and their I/O integration remain future work.
+- V3 local-log and storage envelope families exist, including selected-storage
+  normalization. Their I/O integration and V3 schema-admission adapter remain
+  future work.
 - Wasm descriptors, browser projection, strict programmatic typed intent input,
   and browser Session V3 persistence support typed properties. DOM and copy
   support only `safeLinkV1`, `safeTextColorV1`, and
@@ -852,9 +854,12 @@ field vocabulary, but must not silently widen `safeLinkV1` or
 preserve source formatting
 on paste, or bypass the intent router.
 
-Alpha.14 versions the local-log graph around Session Checkpoint V3. The next
-checkpoint must extend the matching storage envelopes and selected-storage
-paths without placing V3 bytes inside V1/V2 envelopes. A
+Alpha.14 versions the local-log graph around Session Checkpoint V3; alpha.15
+adds matching storage envelopes and selected-storage normalization. Subsequent
+checkpoints must explicitly version schema-admission preparation and the
+write-authority paths before offering V3 publication or append I/O. They must
+not place V3 bytes inside V1/V2 envelopes or treat normalized inspection data
+as writer authority. A
 future formatting checkpoint may add a property patch language, but it must not
 reinterpret alpha.6 complete-map replacement. Link URL policy is explicit
 browser policy; it is not implied by the scalar property contract.

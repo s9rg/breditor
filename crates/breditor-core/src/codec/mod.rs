@@ -146,29 +146,39 @@ mod local_log_storage_generation_checkpoint_preflight;
 mod local_log_storage_generation_decode;
 mod local_log_storage_generation_decode_from_selected;
 mod local_log_storage_generation_decode_from_selected_v2;
+mod local_log_storage_generation_decode_from_selected_v3;
 mod local_log_storage_generation_decode_v2;
+mod local_log_storage_generation_decode_v3;
 mod local_log_storage_generation_encode;
 mod local_log_storage_generation_encode_from_selected;
 mod local_log_storage_generation_encode_v2;
+mod local_log_storage_generation_encode_v3;
 mod local_log_storage_generation_encoding_v2;
+mod local_log_storage_generation_encoding_v3;
 mod local_log_storage_generation_error;
 mod local_log_storage_generation_frame_v1;
 mod local_log_storage_generation_frame_v2;
+mod local_log_storage_generation_frame_v3;
 mod local_log_storage_generation_json;
 mod local_log_storage_generation_json_v2;
+mod local_log_storage_generation_json_v3;
 mod local_log_storage_generation_limits;
 mod local_log_storage_generation_manifest;
 mod local_log_storage_generation_manifest_v2;
+mod local_log_storage_generation_manifest_v3;
 mod local_log_storage_generation_preparation_inputs;
 mod local_log_storage_generation_prepare;
 mod local_log_storage_generation_prepare_from_selected;
 mod local_log_storage_generation_prepare_from_selected_v2;
+mod local_log_storage_generation_prepare_from_selected_v3;
 mod local_log_storage_generation_prepare_v2;
+mod local_log_storage_generation_prepare_v3;
 #[cfg(test)]
 mod local_log_storage_generation_selected_tests;
 #[cfg(test)]
 mod local_log_storage_generation_tests;
 mod local_log_storage_generation_v2_error;
+mod local_log_storage_generation_v3_error;
 mod local_log_storage_host_attested_committed;
 mod local_log_storage_issued_append_attempt;
 mod local_log_storage_issued_attempt;
@@ -193,16 +203,21 @@ mod local_log_storage_root_attempt_prepare;
 mod local_log_storage_root_binding;
 mod local_log_storage_root_decode;
 mod local_log_storage_root_decode_v2;
+mod local_log_storage_root_decode_v3;
 mod local_log_storage_root_encode;
 mod local_log_storage_root_encode_v2;
+mod local_log_storage_root_encode_v3;
 mod local_log_storage_root_encoding_v2;
+mod local_log_storage_root_encoding_v3;
 mod local_log_storage_root_error;
 mod local_log_storage_root_json;
 mod local_log_storage_root_json_v2;
+mod local_log_storage_root_json_v3;
 mod local_log_storage_root_preparation_inputs;
 mod local_log_storage_root_prepare;
 mod local_log_storage_root_prepare_from_admission_v2;
 mod local_log_storage_root_prepare_v2;
+mod local_log_storage_root_prepare_v3;
 mod local_log_storage_root_resolution;
 mod local_log_storage_root_resolution_adapter_request;
 #[cfg(test)]
@@ -226,9 +241,11 @@ mod local_log_storage_root_resolved;
 mod local_log_storage_root_retry_eligible_at_resolution;
 mod local_log_storage_root_selection;
 mod local_log_storage_root_selection_v2;
+mod local_log_storage_root_selection_v3;
 #[cfg(test)]
 mod local_log_storage_root_tests;
 mod local_log_storage_root_v2_error;
+mod local_log_storage_root_v3_error;
 mod local_log_storage_rotation_attempt_prepare;
 mod local_log_storage_rotation_resolution;
 mod local_log_storage_rotation_resolution_adapter_request;
@@ -257,19 +274,25 @@ mod local_log_storage_selected_binding_change;
 mod local_log_storage_selected_binding_compare_later;
 mod local_log_storage_selected_binding_observation_error;
 mod local_log_storage_selected_binding_v2;
+mod local_log_storage_selected_binding_v3;
 mod local_log_storage_selected_envelope_error;
 mod local_log_storage_selected_envelope_validate;
 mod local_log_storage_selected_generation_binding;
 mod local_log_storage_selected_generation_binding_v2;
+mod local_log_storage_selected_generation_binding_v3;
 mod local_log_storage_selected_json;
 mod local_log_storage_selected_json_v2;
+mod local_log_storage_selected_json_v3;
 mod local_log_storage_selected_root;
 mod local_log_storage_selected_root_error;
 mod local_log_storage_selected_root_normalize;
 mod local_log_storage_selected_root_normalize_v2;
+mod local_log_storage_selected_root_normalize_v3;
 mod local_log_storage_selected_root_v2;
+mod local_log_storage_selected_root_v3;
 mod local_log_storage_selected_rotation_normalize;
 mod local_log_storage_selected_rotation_normalize_v2;
+mod local_log_storage_selected_rotation_normalize_v3;
 #[cfg(test)]
 mod local_log_storage_selected_tests;
 mod local_log_storage_selection_kind;
@@ -291,6 +314,8 @@ mod local_log_storage_uncertain_writer_fence_acquisition_observe_terminal;
 mod local_log_storage_uncertain_writer_fence_acquisition_resubmit;
 #[cfg(test)]
 mod local_log_storage_v2_tests;
+#[cfg(test)]
+mod local_log_storage_v3_tests;
 mod local_log_storage_writer_fence_acquisition_aborted;
 mod local_log_storage_writer_fence_acquisition_aborted_resubmit;
 mod local_log_storage_writer_fence_acquisition_adapter_request;
@@ -561,12 +586,16 @@ pub use local_log_storage_generation_error::{
 };
 pub use local_log_storage_generation_frame_v1::LocalLogStorageGenerationFrameV1;
 pub use local_log_storage_generation_frame_v2::LocalLogStorageGenerationFrameV2;
+pub use local_log_storage_generation_frame_v3::LocalLogStorageGenerationFrameV3;
 pub use local_log_storage_generation_json::{
     LOCAL_LOG_STORAGE_GENERATION_FORMAT, LOCAL_LOG_STORAGE_GENERATION_FORMAT_VERSION,
     LocalLogStorageGenerationJsonCodec,
 };
 pub use local_log_storage_generation_json_v2::{
     LOCAL_LOG_STORAGE_GENERATION_V2_FORMAT_VERSION, LocalLogStorageGenerationJsonCodecV2,
+};
+pub use local_log_storage_generation_json_v3::{
+    LOCAL_LOG_STORAGE_GENERATION_V3_FORMAT_VERSION, LocalLogStorageGenerationJsonCodecV3,
 };
 pub use local_log_storage_generation_limits::{
     DEFAULT_LOCAL_LOG_STORAGE_GENERATION_MAX_CHECKPOINT_JSON_BYTES,
@@ -576,8 +605,10 @@ pub use local_log_storage_generation_limits::{
 pub use local_log_storage_generation_manifest::LocalLogStorageGenerationManifest;
 pub(crate) use local_log_storage_generation_manifest::LocalLogStorageGenerationManifestParts;
 pub use local_log_storage_generation_manifest_v2::LocalLogStorageGenerationManifestV2;
+pub use local_log_storage_generation_manifest_v3::LocalLogStorageGenerationManifestV3;
 pub use local_log_storage_generation_preparation_inputs::LocalLogStorageGenerationPreparationInputs;
 pub use local_log_storage_generation_v2_error::LocalLogStorageGenerationV2CodecError;
+pub use local_log_storage_generation_v3_error::LocalLogStorageGenerationV3CodecError;
 pub use local_log_storage_host_attested_committed::LocalLogStorageHostAttestedCommitted;
 pub use local_log_storage_mutation_fence_binding::LocalLogStorageMutationFenceBinding;
 pub use local_log_storage_mutation_fence_binding_observation_error::{
@@ -612,6 +643,9 @@ pub use local_log_storage_root_json::{
 pub use local_log_storage_root_json_v2::{
     LOCAL_LOG_STORAGE_ROOT_V2_FORMAT_VERSION, LocalLogStorageRootJsonCodecV2,
 };
+pub use local_log_storage_root_json_v3::{
+    LOCAL_LOG_STORAGE_ROOT_V3_FORMAT_VERSION, LocalLogStorageRootJsonCodecV3,
+};
 pub use local_log_storage_root_preparation_inputs::LocalLogStorageRootPreparationInputs;
 pub use local_log_storage_root_resolution::LocalLogStorageRootResolution;
 pub use local_log_storage_root_resolution_collision_reason::LocalLogStorageRootResolutionCollisionReason;
@@ -641,7 +675,9 @@ pub use local_log_storage_root_retry_eligible_at_resolution::LocalLogStorageRoot
 pub use local_log_storage_root_selection::LocalLogStorageRootSelection;
 pub(crate) use local_log_storage_root_selection::LocalLogStorageRootSelectionParts;
 pub use local_log_storage_root_selection_v2::LocalLogStorageRootSelectionV2;
+pub use local_log_storage_root_selection_v3::LocalLogStorageRootSelectionV3;
 pub use local_log_storage_root_v2_error::LocalLogStorageRootV2CodecError;
+pub use local_log_storage_root_v3_error::LocalLogStorageRootV3CodecError;
 pub use local_log_storage_rotation_resolution::LocalLogStorageRotationResolution;
 pub use local_log_storage_rotation_resolution_collision_reason::LocalLogStorageRotationResolutionCollisionReason;
 pub use local_log_storage_rotation_resolution_evidence::LocalLogStorageRotationResolutionEvidence;
@@ -684,6 +720,7 @@ pub use local_log_storage_selected_binding_observation_error::{
     LocalLogStorageSelectedBindingObservationErrorCode,
 };
 pub use local_log_storage_selected_binding_v2::LocalLogStorageSelectedBindingV2;
+pub use local_log_storage_selected_binding_v3::LocalLogStorageSelectedBindingV3;
 pub use local_log_storage_selected_envelope_error::{
     LocalLogStorageSelectedEnvelopeError, LocalLogStorageSelectedEnvelopeErrorCode,
 };
@@ -696,8 +733,13 @@ pub use local_log_storage_selected_generation_binding_v2::{
     LocalLogStorageSelectedActiveGenerationBindingV2,
     LocalLogStorageSelectedCheckpointGenerationBindingV2,
 };
+pub use local_log_storage_selected_generation_binding_v3::{
+    LocalLogStorageSelectedActiveGenerationBindingV3,
+    LocalLogStorageSelectedCheckpointGenerationBindingV3,
+};
 pub use local_log_storage_selected_json::LocalLogStorageSelectedJsonCodec;
 pub use local_log_storage_selected_json_v2::LocalLogStorageSelectedJsonCodecV2;
+pub use local_log_storage_selected_json_v3::LocalLogStorageSelectedJsonCodecV3;
 pub use local_log_storage_selected_root::LocalLogStorageSelectedRoot;
 pub use local_log_storage_selected_root_error::{
     LocalLogStorageSelectedRootError, LocalLogStorageSelectedRootErrorCode,
@@ -705,6 +747,7 @@ pub use local_log_storage_selected_root_error::{
     LocalLogStorageSelectedRootValueRole,
 };
 pub use local_log_storage_selected_root_v2::LocalLogStorageSelectedRootV2;
+pub use local_log_storage_selected_root_v3::LocalLogStorageSelectedRootV3;
 pub use local_log_storage_selection_kind::LocalLogStorageSelectionKind;
 pub use local_log_storage_selection_receipt_binding::{
     LocalLogStorageSelectionReceiptBinding, LocalLogStorageSelectionReceiptBindingError,

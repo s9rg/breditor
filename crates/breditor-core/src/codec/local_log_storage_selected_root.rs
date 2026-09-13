@@ -73,6 +73,18 @@ impl LocalLogStoragePredecessorRotationSealedGeneration {
         }
     }
 
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn new_v3(
+        log_id: LocalLogId,
+        frame: super::LocalLogStorageGenerationFrameV3,
+    ) -> Self {
+        Self {
+            log_id,
+            frame: LocalLogStorageGenerationFrameV1::new(frame.limits()),
+            frame_format_version: frame.format_version(),
+        }
+    }
+
     pub(super) const fn log_id(&self) -> &LocalLogId {
         &self.log_id
     }
@@ -241,6 +253,11 @@ impl LocalLogStorageSelectedRoot {
     #[must_use]
     pub const fn active_frame_v2(&self) -> Option<super::LocalLogStorageGenerationFrameV2> {
         self.binding.active_generation().frame_v2()
+    }
+
+    // Private V3 projection; never exposes the shared legacy representation.
+    pub(super) const fn active_frame_v3(&self) -> Option<super::LocalLogStorageGenerationFrameV3> {
+        self.binding.active_generation().frame_v3()
     }
 
     /// Returns the complete trusted current receipt for inspection.

@@ -1,13 +1,14 @@
 # Breditor extension architecture
 
-Current alpha.14 addition: explicit Rust Local Log Entry, Checkpoint, Frame,
-and tail V3 preserve typed properties through recovery and compaction. Storage
-Root and Storage Generation remain V1/V2. See [Local Log V3](LOCAL_LOG_V3.md).
+Current alpha.15 addition: explicit Rust Storage Root and Storage Generation
+V3 embed property-preserving Local Log Checkpoint V3, with separately typed
+selected-storage normalization. No new I/O or Wasm path is included.
+See [Storage V3](STORAGE_V3.md).
 
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.14` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.15` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned

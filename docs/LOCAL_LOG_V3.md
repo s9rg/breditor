@@ -72,9 +72,9 @@ empty input proves neither durable EOF nor storage freshness. A decoded
 checkpoint proves structure and trusted binding, not shared causal history
 between the session, frontier, and tombstones.
 
-Storage Root and Storage Generation remain V1/V2. Their preparation paths
-cannot accept the distinct V3 tail outcome. Matching V3 storage envelopes and
-selected-storage paths are the next checkpoint; publication, writer fencing,
+At alpha.14, Storage Root and Storage Generation remained V1/V2. Alpha.15 adds
+matching [V3 storage envelopes and selected-storage paths](STORAGE_V3.md).
+V1/V2 preparation still cannot accept a V3 tail outcome. Publication, writer fencing,
 append queues, and executable adapter I/O require their own integration work.
 Browser autosave continues to persist complete Session Checkpoint V3 through
 its existing IndexedDB profile. This Rust addition exposes no new Wasm method.

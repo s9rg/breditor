@@ -1,6 +1,6 @@
 # Breditor Wasm boundary
 
-Status: the unpublished `0.3.0-alpha.14` source checkpoint uses ABI generation
+Status: the unpublished `0.3.0-alpha.15` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while
 preserving the ABI-3-era V1/V2 entry points. Alpha.7 added only canonical
@@ -33,8 +33,8 @@ installs all three npm tarballs, resolves only package-root imports inside its
 own `node_modules`, initializes the real Wasm module, type-checks, bundles, and
 opens the reference profile in Chromium without workspace paths.
 
-After publication, `@breditor/browser@0.3.0-alpha.14` and
-`@breditor/wasm@0.3.0-alpha.14` must be installed as an exact-version pair. No
+After publication, `@breditor/browser@0.3.0-alpha.15` and
+`@breditor/wasm@0.3.0-alpha.15` must be installed as an exact-version pair. No
 alpha.14 package has been published at this checkpoint; repository development
 uses the local workspace/tarball smoke path. The generated raw
 classes and ownership handles documented below remain available for advanced
