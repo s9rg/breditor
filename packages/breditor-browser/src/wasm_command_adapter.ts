@@ -267,6 +267,7 @@ export interface WasmCoreCommit {
 
 /** Internal capability bundle used by the high-level owner without prototype lookup. */
 export interface WasmContentReadPorts {
+  readonly sessionCheckpointJson: WasmSessionCheckpointReadPort;
   readonly documentJson: WasmDocumentJsonReadPort;
   readonly plainText: ProjectionPlainTextReadPort;
 }
@@ -618,6 +619,7 @@ export class BreditorWasmCommandAdapter {
       this,
       Object.freeze({
         documentJson: this.#documentJsonReadPort,
+        sessionCheckpointJson: this.#sessionCheckpointReadPort,
         plainText: this.#plainTextReadPort,
       }),
     );

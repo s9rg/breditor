@@ -39,6 +39,10 @@ Small, Large, and Huge. Its renderer emits only a closed inert token; Normal is
 represented by removing the format. Text size deliberately has no shortcut.
 The demo also exercises local autosave and the explicit startup and persistence
 recovery paths.
+If autosave pauses, **Download session backup** preserves the current session
+and Undo/Redo history without retrying or overwriting storage. Backups include
+deleted text; keep them private. See [Session backups](docs/SESSION_BACKUPS.md)
+for restoration requirements and current UI limits.
 
 ```sh
 npm ci

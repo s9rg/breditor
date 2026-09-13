@@ -247,6 +247,8 @@ interface ModuleFixtureOptions {
   readonly onAction?: () => void;
   readonly onActionStateStatusRead?: () => void;
   readonly onDocumentJson?: () => void;
+  readonly onSessionCheckpoint?: () => void;
+  readonly checkpointJsonOverride?: string;
   readonly onEngineFree?: () => void;
   readonly onObservationFree?: () => void;
   readonly onProfileGenerationFree?: () => void;
@@ -1463,6 +1465,56 @@ describe("BreditorBrowserEditor", () => {
       }
     },
   );
+
+  it("exports a frozen session backup without changing persistence or reading DOM", async () => {
+    const host = mountHost();
+    const fixture = moduleFixture();
+    const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+    if (!opened.ok) throw new Error(opened.error.code);
+    const before = opened.editor.getSnapshot();
+    const backup = opened.editor.exportContent("sessionCheckpointJson");
+    if (!backup.ok) throw new Error(backup.error.code);
+    const exactFormat: "sessionCheckpointJson" = backup.format;
+    expect(exactFormat).toBe("sessionCheckpointJson");
+    expect(JSON.parse(backup.value)).toMatchObject({ format: "breditor/session-checkpoint", formatVersion: 1 });
+    expect(backup.utf8Bytes).toBe(new TextEncoder().encode(backup.value).length);
+    expect(backup.snapshot).toEqual(before.document);
+    expect(Object.isFrozen(backup)).toBe(true);
+    expect(Object.isFrozen(backup.snapshot)).toBe(true);
+    expect(opened.editor.getSnapshot()).toEqual(before);
+    host.textContent = "HOSTILE DOM TEXT";
+    expect(opened.editor.exportContent("sessionCheckpointJson")).toEqual(backup);
+    opened.editor.dispose();
+    expect(opened.editor.exportContent("sessionCheckpointJson")).toMatchObject({ ok: false, error: { code: "content_export.unavailable" } });
+  });
+
+  it("contains invalid checkpoint bytes and recursive or disposing backup getters", async () => {
+    for (const mode of ["invalid", "recursive", "dispose"] as const) {
+      const host = mountHost();
+      let editor: BreditorBrowserEditor | undefined;
+      let nested: unknown;
+      const fixture = moduleFixture({
+        ...(mode === "invalid" ? { checkpointJsonOverride: "PRIVATE INVALID BACKUP" } : {}),
+        onSessionCheckpoint: () => {
+          if (mode === "recursive") nested = editor?.exportContent("sessionCheckpointJson");
+          if (mode === "dispose") editor?.dispose();
+        },
+      });
+      const opened = await BreditorBrowserEditor.open(options(host, fixture.module));
+      if (!opened.ok) throw new Error(opened.error.code);
+      editor = opened.editor;
+      const result = editor.exportContent("sessionCheckpointJson");
+      if (mode === "recursive") {
+        expect(result.ok).toBe(true);
+        expect(nested).toMatchObject({ ok: false, error: { code: "content_export.busy" } });
+      } else {
+        expect(result).toMatchObject({ ok: false, error: { code: mode === "invalid" ? "content_export.invalid_wasm_view" : "content_export.unavailable" } });
+        expect(JSON.stringify(result)).not.toContain("PRIVATE INVALID BACKUP");
+      }
+      editor.dispose();
+      await settleMicrotasks();
+    }
+  });
 
   it("exports exact Document V1 and semantic plain text without trusting hostile DOM", async () => {
     const host = mountHost();
@@ -4517,7 +4569,12 @@ function engineFixture(
   );
   const engine: WasmBootstrappedEngineView = {
     actionStates,
-    sessionCheckpointJson: vi.fn(() => checkpointResult(lineage, revision)),
+    sessionCheckpointJson: vi.fn(() => {
+      config.onSessionCheckpoint?.();
+      return config.checkpointJsonOverride === undefined
+        ? checkpointResult(lineage, revision)
+        : stringResult(config.checkpointJsonOverride);
+    }),
     documentJson,
     clearSelection: vi.fn(() => unexpected("clearSelection")),
     setRangeSelection,

@@ -2,7 +2,7 @@
 
 Status: supported public `0.1.0` startup, lifecycle, and content-egress contract;
 extended in `0.2.0` by compiled property-free profiles and extended again by
-the unpublished `0.3.0-alpha.20` ABI-5 typed-profile, typed-intent, explicit
+the unpublished `0.3.0-alpha.21` ABI-5 typed-profile, typed-intent, explicit
 Session-V3 persistence, closed safe-Link presentation, and property-preserving
 paragraph-structure path plus one closed native typed Link form with exact
 current-property hydration, aggregate clear-inline-formatting, and an additive
@@ -250,12 +250,12 @@ generations, and ABI 5 remain unchanged. See
 
 `@breditor/reference-highlight` provides a complete callback-free profile from
 supported package roots. After a maintainer publishes this alpha, install the
-exactly matching `0.3.0-alpha.20` packages:
+exactly matching `0.3.0-alpha.21` packages:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.20 \
-  @breditor/wasm@0.3.0-alpha.20 \
-  @breditor/reference-highlight@0.3.0-alpha.20
+npm install @breditor/browser@0.3.0-alpha.21 \
+  @breditor/wasm@0.3.0-alpha.21 \
+  @breditor/reference-highlight@0.3.0-alpha.21
 ```
 
 Then import only the package roots and pass the exported data to the ordinary
@@ -715,7 +715,7 @@ operation.
 ## Explicit content egress
 
 `getSnapshot()` intentionally contains status and revision-correlated metadata,
-not document payloads. Applications explicitly request one of two bounded
+not document payloads. Applications explicitly request one of three bounded
 representations:
 
 ```ts
@@ -740,11 +740,14 @@ from the validated property-bearing semantic projection rather than DOM
 paragraphs with one LF, retains empty paragraphs, and does not append a
 synthetic LF after the final paragraph.
 
-The API does not export HTML, editor state, a session checkpoint, selection,
-pending formatting, undo/redo history, transaction records, or raw commands.
-Those distinctions matter: Document V1 or V2 is lossless document content,
-while the correspondingly selected Session Checkpoint V1, V2, or V3 is the
-private local-durability representation that can retain deleted text in
+Alpha.21 adds `exportContent("sessionCheckpointJson")` for explicit recovery.
+It exports the bootstrap-selected Session Checkpoint V1, V2, or V3, including
+selection, pending formats, Undo/Redo, and deleted historical text. It does not
+change storage or resolve an in-flight save. See [Session backups](SESSION_BACKUPS.md).
+The API still does not export HTML, standalone transaction records, or raw commands.
+Document V1/V2 and plain text remain history-free content exports; only an
+explicit session-checkpoint request exposes the private local-durability
+representation that can retain deleted text in
 history. There is no Document V3.
 
 Neither document generation embeds a snapshot. Correlation therefore uses

@@ -26,6 +26,7 @@ import {
   REFERENCE_SIZE_SHOWCASE_TOOLBAR_MANIFEST,
 } from "@breditor/reference-highlight";
 import initializeWasm, * as breditorWasm from "@breditor/wasm";
+import { downloadSessionBackup } from "./downloadSessionBackup";
 
 const DEMO_PERSISTENCE_SLOT = "breditor.react-reference-size-showcase.v1";
 
@@ -234,6 +235,7 @@ export const BreditorEditor = forwardRef<
   const [startupAttempt, setStartupAttempt] = useState(0);
   const [persistenceRetryPending, setPersistenceRetryPending] = useState(false);
   const [persistenceRetryFailed, setPersistenceRetryFailed] = useState(false);
+  const [backupFeedback, setBackupFeedback] = useState("");
   const [lifecycle, setLifecycle] = useState<EditorLifecycle>(() => ({
     phase: "starting",
     label,
@@ -252,6 +254,22 @@ export const BreditorEditor = forwardRef<
     setStartupAttempt((attempt) =>
       attempt === Number.MAX_SAFE_INTEGER ? 0 : attempt + 1,
     );
+  }, []);
+
+  const downloadBackup = useCallback(() => {
+    const target = activeEditor.current;
+    if (target === undefined) return;
+    try {
+      const exported = target.exportContent("sessionCheckpointJson");
+      if (activeEditor.current !== target) return;
+      setBackupFeedback(exported.ok && downloadSessionBackup(exported.value)
+        ? "Backup download requested. Confirm the file was saved; autosave status is unchanged."
+        : "Session backup is unavailable right now. Keep this editor open and try again.");
+    } catch {
+      if (activeEditor.current === target) {
+        setBackupFeedback("Session backup is unavailable right now. Keep this editor open and try again.");
+      }
+    }
   }, []);
 
   const retryPersistence = useCallback(() => {
@@ -339,6 +357,7 @@ export const BreditorEditor = forwardRef<
 
     setPersistenceRetryPending(false);
     setPersistenceRetryFailed(false);
+    setBackupFeedback("");
     setLifecycle({ phase: "starting", label, primaryModifier, startupAttempt });
 
     const opening = ownershipLane.current.then(async () => {
@@ -550,6 +569,16 @@ export const BreditorEditor = forwardRef<
             )}
           </dl>
         </details>
+      ) : null}
+      {pausedPersistence !== undefined ? (
+        <div className="editor-details editor-details--warning">
+          <p>Keep this editor open. A session backup includes formatting, selection,
+            and Undo/Redo history, including deleted text. Store it privately.</p>
+          <button className="editor-retry" type="button" onClick={downloadBackup}>
+            Download session backup
+          </button>
+          <p role="status">{backupFeedback}</p>
+        </div>
       ) : null}
       {pausedPersistence !== undefined ? (
         <details className="editor-details editor-details--warning">

@@ -235,6 +235,8 @@ interface BreditorBrowserHarness {
     initialHref?: string,
   ): Promise<ReferenceFormattingMountResult>;
   referenceFormattingDocument(probeId: string): string;
+  referenceFormattingBackup(probeId: string): string;
+  restoreReferenceFormattingBackup(checkpointJson: string): string;
   cleanupReferenceFormatting(probeId?: string): void;
   mountReferenceShowcase(): Promise<ReferenceShowcaseMountResult>;
   cleanupReferenceShowcase(probeId?: string): void;
@@ -346,6 +348,33 @@ async function start(): Promise<void> {
       const exported = probe.editor.exportContent("documentJson");
       if (!exported.ok) throw new Error("formatting export failed");
       return exported.value;
+    },
+    referenceFormattingBackup: (probeId: string) => {
+      const probe = referenceFormattingProbes.get(probeId);
+      if (probe === undefined) throw new Error("missing formatting probe");
+      const exported = probe.editor.exportContent("sessionCheckpointJson");
+      if (!exported.ok) throw new Error("session backup failed");
+      return exported.value;
+    },
+    restoreReferenceFormattingBackup: (checkpointJson: string) => {
+      const compiled = breditorWasm.BreditorCompiledProfile.fromBootstrapJsonV2(REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON);
+      const profile = compiled.takeProfile();
+      compiled.free();
+      if (profile === undefined) throw new Error("profile compilation failed");
+      try {
+        const restored = profile.createEngineFromSessionCheckpointJsonV3(checkpointJson);
+        const engine = restored.takeEngine();
+        restored.free();
+        if (engine === undefined) throw new Error("backup restoration failed");
+        try {
+          const encoded = engine.sessionCheckpointJson();
+          try {
+            const json = encoded.takeValue();
+            if (json === undefined) throw new Error("restored checkpoint encoding failed");
+            return json;
+          } finally { encoded.free(); }
+        } finally { engine.free(); }
+      } finally { profile.free(); }
     },
     cleanupReferenceFormatting: (probeId?: string) =>
       cleanupReferenceFormatting(probeId),

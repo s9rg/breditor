@@ -924,6 +924,32 @@ test("a line-break-bearing Link can be removed and exactly restored without inpu
   await expect(root.locator("a.breditor-link")).toHaveCount(0);
 });
 
+test("an explicit session backup restores typed values and the redo frontier through Rust", async ({ page }) => {
+  const mounted = await page.evaluate(async () => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("missing harness");
+    return harness.mountReferenceFormatting(false, "https://backup.example/\r\nprivate");
+  });
+  const root = page.locator(`[data-breditor-reference-formatting-probe="${mounted.probeId}"]`);
+  await root.getByRole("button", { name: "Link", exact: true }).click();
+  await root.getByRole("button", { name: "Remove Link", exact: true }).click();
+  await root.getByRole("button", { name: "Undo", exact: true }).click();
+  const proof = await page.evaluate((id) => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("missing harness");
+    const backup = harness.referenceFormattingBackup(id);
+    const restored = harness.restoreReferenceFormattingBackup(backup);
+    return { backup, restored };
+  }, mounted.probeId);
+  expect(proof.restored).toBe(proof.backup);
+  const checkpoint = JSON.parse(proof.backup);
+  expect(checkpoint.formatVersion).toBe(3);
+  expect(checkpoint.cursor).toBeLessThan(checkpoint.entries.length);
+  expect(proof.backup).toContain(JSON.stringify("https://backup.example/\r\nprivate"));
+  await root.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(root.locator("a.breditor-link")).toHaveCount(0);
+});
+
 test("the native Link toolbar works from an open ShadowRoot without browser URL admission", async ({
   page,
 }) => {

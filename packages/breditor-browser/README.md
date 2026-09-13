@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.20` source checkpoint.
+`0.2.0` extension surface, and the `0.3.0-alpha.21` source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -165,7 +165,7 @@ existing generic paths; Rust production code, generated Wasm members, durable
 generations, and ABI 5 are unchanged. See the normative
 [text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
 
-The unpublished `0.3.0-alpha.20` source package changes no browser or Wasm
+The unpublished `0.3.0-alpha.21` source package changes no browser or Wasm
 API. It advances the Rust-only durable local-log path through explicit Entry,
 Checkpoint, Frame, and tail V3 types while this package remains on ABI 5.
 
@@ -182,7 +182,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.20 @breditor/wasm@0.3.0-alpha.20
+npm install @breditor/browser@0.3.0-alpha.21 @breditor/wasm@0.3.0-alpha.21
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,
@@ -426,8 +426,10 @@ owned semantic projection, joins paragraphs with one LF, preserves empty
 paragraphs, strips every inline format, and adds no trailing LF after the final
 paragraph. Both successes are deeply frozen
 `{ ok: true, format, value, utf8Bytes, snapshot }` records. Export never adds
-content to `getSnapshot()`, reads mutable DOM text, or exposes an editor state,
-checkpoint, history, HTML, or raw-command API.
+content to `getSnapshot()` or reads mutable DOM text. Alpha.21 separately adds
+`sessionCheckpointJson` for explicit full-session backup, including sensitive
+deleted history. The existing two content formats do not gain history, and
+there is still no HTML or raw-command export.
 
 Composition, command delivery, checkpoint/action reads, and another content
 read return the stable `content_export.busy` result. Disposed editors and an
@@ -906,6 +908,14 @@ unavailable. Undo restores the exact original Rust-owned value.
 
 ## Session checkpoint persistence
 
+`editor.exportContent("sessionCheckpointJson")` explicitly exports a complete
+bounded session checkpoint, including selection, pending formats, Undo/Redo,
+and deleted historical text. It uses the bootstrap-selected V1/V2/V3 contract.
+Treat it as sensitive; the existing document/plain-text exports remain unchanged.
+It performs no storage I/O and can preserve in-memory state while autosave is
+paused. Busy reads fail benignly. Restore only with the matching profile and
+checkpoint generation; no browser import UI or storage replacement is implied.
+
 `IndexedDbSessionCheckpointStore` owns one exact database and one selected
 slot. Omitted binding preserves the legacy outer-V1 `"current"` record; an
 explicit binding uses an outer-V2 record carrying the slot, schema fingerprint,
@@ -1026,8 +1036,10 @@ backpressure; terminal adapter loss pauses autosave. See
   property map; there is no patch operation or arbitrary block support.
 - History is local and linear; collaboration, CRDT/OT rebasing, remote
   selections, and selective undo are absent.
-- Public content egress is mode-selected Document V1/V2 or semantic plain text.
-  There is no HTML serializer, editor-state/session-checkpoint export, streaming export,
+- Public content egress is mode-selected Document V1/V2, semantic plain text,
+  or an explicitly requested Session Checkpoint V1/V2/V3 backup.
+  Session checkpoints are available only through the explicit sensitive-backup
+  export. There is no HTML serializer, standalone editor-state export, streaming export,
   controlled-value callback, or implicit content payload in subscriptions.
 - DOM APIs do not provide an atomic transaction across several retained
   paragraphs. The renderer prepares and validates all replacement nodes first

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   initializeWasm: vi.fn(() => Promise.resolve()),
   openEditor: vi.fn(),
+  downloadBackup: vi.fn(() => true),
   profileBootstrapJson: '{"profile":"reference-size-showcase"}',
   renderManifest: Object.freeze({ recipes: Object.freeze([]) }),
   keyboardShortcutManifest: Object.freeze({ shortcuts: Object.freeze([]) }),
@@ -26,6 +27,7 @@ vi.mock("@breditor/wasm", () => ({
 vi.mock("@breditor/browser", () => ({
   openBreditorBrowserEditor: mocks.openEditor,
 }));
+vi.mock("./downloadSessionBackup", () => ({ downloadSessionBackup: mocks.downloadBackup }));
 
 vi.mock("@breditor/reference-highlight", () => ({
   REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON: mocks.profileBootstrapJson,
@@ -49,6 +51,7 @@ interface Deferred<T> {
 }
 
 interface FakeEditor {
+  readonly exportContent: ReturnType<typeof vi.fn>;
   readonly dispose: ReturnType<typeof vi.fn>;
   readonly focus: ReturnType<typeof vi.fn>;
   readonly getSnapshot: ReturnType<typeof vi.fn>;
@@ -84,6 +87,7 @@ function fakeEditor(
     persistence,
   });
   return {
+    exportContent: vi.fn(() => ({ ok: true, value: '{"backup":"sensitive history"}' })),
     dispose: vi.fn(),
     focus: vi.fn(() => true),
     flushPersistence: vi.fn(() => Promise.resolve({ status: "committed" })),
@@ -602,6 +606,27 @@ describe("BreditorEditor lifecycle", () => {
 
     expect(retryButton?.disabled).toBe(false);
     expect(editor.retryPersistence).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers an explicit private session backup without retrying or clearing paused persistence", async () => {
+    const editor = fakeEditor("{}", { phase: "paused", dirty: true, failure: { code: "session_checkpoint_autosave.save_failed", causeCode: "session_checkpoint.conflict" } });
+    mocks.openEditor.mockResolvedValue(successful(editor));
+    const mounted = await render(<BreditorEditor label="Backup recovery" primaryModifier="control" />);
+    await settle();
+    const button = Array.from(mounted.container.querySelectorAll("button")).find((button) => button.textContent === "Download session backup");
+    expect(button).toBeDefined();
+    expect(mounted.container.textContent).toContain("including deleted text");
+    await act(async () => button?.click());
+    expect(editor.exportContent).toHaveBeenCalledWith("sessionCheckpointJson");
+    expect(mocks.downloadBackup).toHaveBeenCalledWith('{"backup":"sensitive history"}');
+    expect(editor.retryPersistence).not.toHaveBeenCalled();
+    expect(mounted.container.textContent).toContain("autosave status is unchanged");
+    expect(mounted.container.textContent).toContain("Autosave paused");
+    editor.exportContent.mockReturnValue({ ok: false, error: { code: "content_export.busy" } });
+    mocks.downloadBackup.mockClear();
+    await act(async () => button?.click());
+    expect(mocks.downloadBackup).not.toHaveBeenCalled();
+    expect(mounted.container.textContent).toContain("Keep this editor open and try again");
   });
 
   it("exposes a bounded controlled-navigation flush without disposing", async () => {

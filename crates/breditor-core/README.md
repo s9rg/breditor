@@ -1,9 +1,9 @@
 # breditor-core
 
-Current alpha.20 addition: validated Link maps that cannot fit a single-line
-input open a removal-only toolbar form. Stored values are never normalized;
-Remove and Undo use the unchanged Rust-owned semantics.
-See [Typed toolbar controls](../../docs/TYPED_TOOLBAR_CONTROLS.md).
+Current alpha.21 addition: explicit session-checkpoint export and a paused-
+autosave backup download preserve typed state and Undo/Redo history without
+changing storage or its CAS token. Backups contain sensitive deleted history.
+See [Session backups](../../docs/SESSION_BACKUPS.md).
 
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or

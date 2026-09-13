@@ -87,6 +87,7 @@ import {
 import { toolbarManifestMatchesProfileDescriptor } from "./toolbar_profile_contract.js";
 import type { BrowserActionStateSnapshot } from "./wasm_action_state_adapter.js";
 import type { BrowserProjectionPlainTextResult } from "./projection_plain_text.js";
+import type { BrowserSessionCheckpointReadResult } from "./wasm_session_checkpoint.js";
 import {
   BreditorWasmCommandAdapter,
   contentReadPortsForAdapter,
@@ -317,8 +318,8 @@ export type BreditorBrowserEditorOpenResult =
 export type BreditorBrowserEditorPersistenceResult =
   SessionCheckpointAutosaveFlushResult | Readonly<{ status: "disabled" }>;
 
-/** Explicit public content representations. No editor state is implied. */
-export type BreditorBrowserContentFormat = "documentJson" | "plainText";
+/** Explicit exports. Only sessionCheckpointJson includes editor state/history. */
+export type BreditorBrowserContentFormat = "documentJson" | "plainText" | "sessionCheckpointJson";
 
 /** Snapshot-correlated, bounded content copied out of the Rust-owned session. */
 export interface BreditorBrowserContentExport<
@@ -539,6 +540,7 @@ export class BreditorBrowserEditor {
   readonly #profileDescriptor: BrowserCompiledProfileDescriptor;
   readonly #readDocumentJson: BreditorWasmCommandAdapter["documentJsonReadPort"]["read"];
   readonly #readPlainText: BreditorWasmCommandAdapter["plainTextReadPort"]["read"];
+  readonly #readSessionCheckpoint: WasmContentReadPorts["sessionCheckpointJson"]["read"];
   readonly #selectionBridge: BreditorDomSelectionBridge;
   readonly #actionStore: BreditorActionStateStore;
   readonly #queue: BreditorCommandQueue<WasmCommandSequenceOutcome>;
@@ -582,6 +584,7 @@ export class BreditorBrowserEditor {
     this.#profileDescriptor = resources.profileDescriptor;
     this.#readDocumentJson = resources.contentReadPorts.documentJson.read;
     this.#readPlainText = resources.contentReadPorts.plainText.read;
+    this.#readSessionCheckpoint = resources.contentReadPorts.sessionCheckpointJson.read;
     this.#selectionBridge = resources.selectionBridge;
     this.#actionStore = resources.actionStore;
     this.#queue = resources.queue;
@@ -1238,12 +1241,16 @@ export class BreditorBrowserEditor {
   }
 
   /**
-   * Copies authoritative content without exposing engine state or Wasm handles.
+   * Copies authoritative data without exposing live engine owners or Wasm handles.
    *
    * `documentJson` is the lossless canonical Document V1 or profile-bound V2
    * record selected at bootstrap. `plainText` joins semantic paragraphs with
    * LF and strips formatting; it never reads mutable DOM text. Busy
    * composition/delivery/read leases fail benignly.
+   * `sessionCheckpointJson` explicitly exports the bounded V1/V2/V3 session
+   * selected at bootstrap, including selection, pending formats, Undo/Redo,
+   * and deleted historical text. Treat backups as sensitive. It does not save,
+   * change CAS tokens, resolve a pending write, or resume paused persistence.
    */
   exportContent(
     format: "documentJson",
@@ -1252,12 +1259,15 @@ export class BreditorBrowserEditor {
     format: "plainText",
   ): BreditorBrowserContentExportResult<"plainText">;
   exportContent(
+    format: "sessionCheckpointJson",
+  ): BreditorBrowserContentExportResult<"sessionCheckpointJson">;
+  exportContent(
     format: BreditorBrowserContentFormat,
   ): BreditorBrowserContentExportResult;
   exportContent(
     format: BreditorBrowserContentFormat,
   ): BreditorBrowserContentExportResult {
-    if (format !== "documentJson" && format !== "plainText") {
+    if (format !== "documentJson" && format !== "plainText" && format !== "sessionCheckpointJson") {
       return contentFailure(INVALID_CONTENT_FORMAT);
     }
     if (this.#status.phase === "disposed") {
@@ -1282,7 +1292,9 @@ export class BreditorBrowserEditor {
     const result =
       format === "documentJson"
         ? this.#readDocumentJson()
-        : this.#readPlainText();
+        : format === "sessionCheckpointJson"
+          ? this.#readSessionCheckpoint()
+          : this.#readPlainText();
     if (result === undefined) {
       return this.#isDisposed()
         ? contentFailure(CONTENT_UNAVAILABLE)
@@ -1306,6 +1318,9 @@ export class BreditorBrowserEditor {
       return contentFailure(CONTENT_UNAVAILABLE);
     }
 
+    if (format === "sessionCheckpointJson") {
+      return contentExportFromSessionCheckpoint(result as BrowserSessionCheckpointReadResult, before, after);
+    }
     return format === "documentJson"
       ? contentExportFromDocumentJson(
           result as BrowserDocumentJsonReadResult,
@@ -1811,6 +1826,29 @@ export function openBreditorBrowserEditor(
   options: BreditorBrowserEditorOptions,
 ): Promise<BreditorBrowserEditorOpenResult> {
   return BreditorBrowserEditor.open(options);
+}
+
+function contentExportFromSessionCheckpoint(
+  result: BrowserSessionCheckpointReadResult,
+  before: BreditorBrowserDocumentSnapshot,
+  after: BreditorBrowserDocumentSnapshot,
+): BreditorBrowserContentExportResult<"sessionCheckpointJson"> {
+  if (!result.ok) {
+    return contentFailure(result.error.kind === "core"
+      ? CONTENT_CORE_REJECTED
+      : result.error.kind === "lifecycle" ? CONTENT_UNAVAILABLE : INVALID_CONTENT_WASM_VIEW);
+  }
+  const exported = result.checkpoint;
+  if (!snapshotsMatch(before, after) || !snapshotsMatch(exported.snapshot, before)) {
+    return contentFailure(INVALID_CONTENT_WASM_VIEW);
+  }
+  return Object.freeze({
+    ok: true,
+    format: "sessionCheckpointJson",
+    value: exported.checkpointJson,
+    utf8Bytes: exported.checkpointUtf8Bytes,
+    snapshot: exported.snapshot,
+  });
 }
 
 function contentExportFromDocumentJson(

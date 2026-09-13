@@ -1,7 +1,14 @@
 # Browser release size budgets
 
 Status: required release gate, verified for the unpublished
-`0.3.0-alpha.20` removal-only toolbar checkpoint.
+`0.3.0-alpha.21` session-backup checkpoint.
+
+Alpha.21 retains every ceiling. Browser JavaScript measures 1,078,641 bytes
+and declarations 270,904 bytes. Fresh React JavaScript measures 859,186 raw /
+223,836 gzip bytes; its Wasm measures 1,607,552 raw / 450,505 gzip bytes.
+Final tarball dry-runs after documentation updates measure 265,365, 32,085,
+and 521,594 bytes for browser, reference, and Wasm respectively. Clean package
+consumers and all size gates pass.
 
 Alpha.20 retains every ceiling. Browser JavaScript measures 1,077,469 bytes
 and declarations 270,367 bytes. Freshly rebuilt React JavaScript measures

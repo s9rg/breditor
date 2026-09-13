@@ -4,6 +4,28 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.21 - 2026-09-13
+
+This unpublished checkpoint adds explicit full-session recovery exports and
+a paused-autosave backup download in the React demo.
+
+- `exportContent("sessionCheckpointJson")` reads bounded V1/V2/V3 bytes through
+  the existing private checkpoint lease, preserving typed state and exact
+  Undo/Redo history. Existing document/plain-text exports remain unchanged.
+- Export does not change persistence, tokens, or history. Busy, malformed, and
+  reentrantly disposed captures fail without exposing provisional payloads.
+- The demo discloses deleted-history contents, requests a local JSON download,
+  cleans up temporary resources, and leaves the original persistence failure
+  intact. A download request is not proof that a file was saved.
+- Added real multi-tab conflict/download and typed checkpoint restoration
+  regressions, alongside boundary and UI tests. No new import UI, automatic
+  merge, storage replacement, durable format, or Wasm ABI.
+- See [Session backups](docs/SESSION_BACKUPS.md).
+
+Release checks: 1,559 Rust tests, 1,203 TypeScript tests, 69 browser and 27
+React demo tests across Chromium/Firefox/WebKit, strict lint/type/docs checks,
+clean package consumers, and fresh production size budgets passed.
+
 ## 0.3.0-alpha.20 - 2026-09-13
 
 This unpublished browser checkpoint makes valid but single-line-unrepresentable

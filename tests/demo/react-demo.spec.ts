@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const EDITOR_LABEL = "Breditor showcase document";
@@ -555,6 +556,48 @@ async function expectUniformShowcaseTree(
       })),
     );
 }
+
+test("a conflicted tab exports its typed redo history without overwriting the winning save", async ({ page, context }) => {
+  const winner = await openDemo(page);
+  const losingPage = await context.newPage();
+  try {
+    const loser = await openDemo(losingPage);
+    await selectEditorText(winner.editor, TARGET_START, SAMPLE_TEXT.length);
+    await page.getByRole("button", { name: "Bold", exact: true }).click();
+    await expect(winner.status).toHaveText("All changes saved.");
+    await selectEditorText(loser.editor, TARGET_START, SAMPLE_TEXT.length);
+    await losingPage.getByRole("button", { name: "Text color", exact: true }).click();
+    await losingPage.locator('input[type="color"][name="example/rgb24"]').fill(SELECTED_TEXT_COLOR);
+    await losingPage.getByRole("button", { name: "Apply color", exact: true }).click();
+    await expect(loser.status).toHaveText("Autosave paused; changes are not saved.");
+    await losingPage.getByText("Autosave details", { exact: true }).click();
+    await expect(losingPage.getByText("session_checkpoint.conflict", { exact: true })).toBeVisible();
+    await losingPage.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(loser.editor.locator("span.breditor-text-color")).toHaveCount(0);
+    const downloadEvent = losingPage.waitForEvent("download");
+    await losingPage.getByRole("button", { name: "Download session backup", exact: true }).click();
+    const download = await downloadEvent;
+    expect(download.suggestedFilename()).toBe("breditor-session-backup.json");
+    const path = await download.path();
+    if (path === null) throw new Error("backup download has no local file");
+    const json = await readFile(path, "utf8");
+    const backup = JSON.parse(json);
+    expect(backup.format).toBe("breditor/session-checkpoint");
+    expect(backup.formatVersion).toBe(3);
+    expect(backup.cursor).toBeLessThan(backup.entries.length);
+    expect(json).toContain('"example/rgb24"');
+    expect(json).toContain(String(0x123456));
+    await expect(loser.status).toHaveText("Autosave paused; changes are not saved.");
+    await losingPage.getByRole("button", { name: "Redo", exact: true }).click();
+    await expect(loser.editor.locator("span.breditor-text-color")).toHaveAttribute("style", SELECTED_TEXT_COLOR_STYLE);
+    await losingPage.getByRole("button", { name: "Retry saving", exact: true }).click();
+    await expect(loser.status).toHaveText("Autosave remains paused; the retry did not complete.");
+    await page.reload();
+    const restored = await openDemo(page);
+    await expect(restored.editor.locator("strong")).toHaveText(TARGET_TEXT);
+    await expect(restored.editor.locator("span.breditor-text-color")).toHaveCount(0);
+  } finally { await losingPage.close(); }
+});
 
 test("the React demo edits, formats, replays, persists, and remains accessible", async ({
   page,

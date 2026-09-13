@@ -1,9 +1,9 @@
 # Breditor `0.3.0` scope
 
-Current alpha.20 addition: validated Link maps that cannot fit a single-line
-input open a removal-only toolbar form. Stored values are never normalized;
-Remove and Undo use the unchanged Rust-owned semantics.
-See [Typed toolbar controls](TYPED_TOOLBAR_CONTROLS.md).
+Current alpha.21 addition: explicit session-checkpoint export and a paused-
+autosave backup download preserve typed state and Undo/Redo history without
+changing storage or its CAS token. Backups contain sensitive deleted history.
+See [Session backups](SESSION_BACKUPS.md).
 
 The preceding `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
 whose exhaustive Text Size presets use the existing generic integer typed-set

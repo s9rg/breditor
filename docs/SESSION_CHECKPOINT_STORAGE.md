@@ -3,7 +3,7 @@
 Status: supported by the optional public `0.1.0` autosave path; the exact
 `"current"` V1 record remains the stable `0.1.x` profile. Version `0.2.0`
 retains the explicit profile-bound V2 outer record and scoped slots without
-changing the legacy bytes. The unpublished `0.3.0-alpha.20` source state uses
+changing the legacy bytes. The unpublished `0.3.0-alpha.21` source state uses
 the existing Bootstrap-V2 path to store Session Checkpoint V3 in that unchanged
 outer-V2 record. Direct store/
 autosave assembly remains an advanced integration surface.
@@ -266,6 +266,11 @@ automatically retried.
 it. A compare-and-swap conflict therefore requires a fresh load and an explicit
 product-level keep, replace, or merge decision, followed by construction of a
 new coordinator with the newly loaded token.
+
+Alpha.21 adds an explicit [session backup export](SESSION_BACKUPS.md) and a
+paused-autosave download action in the React demo. Export includes current
+typed state and Undo/Redo history but changes no token, dirty epoch, or storage
+record. It is not a conflict-resolution or pending-write completion signal.
 
 ## Autosave coordinator
 
