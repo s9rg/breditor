@@ -1,12 +1,12 @@
 # Breditor compatibility policy
 
-Current alpha.18 addition: V3 root publication enters uncertainty before
-one-shot payload egress and accepts only exactly correlated terminal host
-claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
-See [Root publication lifecycle V3](ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.19 addition: observational V3 root readback correlates a
+completed host read with the exact candidate bytes, complete binding, and
+head-index result. It grants no retry or writer authority and performs no I/O.
+See [Root readback V3](ROOT_READBACK_V3.md).
 
 Status: active for the supported `0.1.x` base and `0.2.x` extension surfaces;
-the unpublished `0.3.0-alpha.18` source checkpoint retains the explicitly
+the unpublished `0.3.0-alpha.19` source checkpoint retains the explicitly
 selected typed-profile, browser command, Session-V3, and closed safe-Link paths,
 uses process-local ABI 5, retains exact current-property observation and
 pristine hydration and the multi-extension Showcase profile, and adds the

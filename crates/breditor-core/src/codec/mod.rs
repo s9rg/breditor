@@ -227,6 +227,12 @@ mod local_log_storage_root_publication_plan_v3;
 mod local_log_storage_root_publication_prepare_v3;
 mod local_log_storage_root_publication_request_v3;
 mod local_log_storage_root_publication_terminal_v3;
+mod local_log_storage_root_readback_begin_v3;
+mod local_log_storage_root_readback_evidence_v3;
+mod local_log_storage_root_readback_observe_v3;
+mod local_log_storage_root_readback_request_v3;
+mod local_log_storage_root_readback_result_v3;
+mod local_log_storage_root_readback_v3;
 mod local_log_storage_root_resolution;
 mod local_log_storage_root_resolution_adapter_request;
 #[cfg(test)]
@@ -663,6 +669,13 @@ pub use local_log_storage_root_publication_request_v3::LocalLogStorageRootPublic
 pub use local_log_storage_root_publication_terminal_v3::{
     LocalLogStorageRootPublicationTerminalFailureV3, LocalLogStorageRootPublicationTerminalV3,
 };
+pub use local_log_storage_root_readback_evidence_v3::LocalLogStorageRootReadbackEvidenceV3;
+pub use local_log_storage_root_readback_request_v3::LocalLogStorageRootReadbackRequestV3;
+pub use local_log_storage_root_readback_result_v3::{
+    LocalLogStorageRootReadbackErrorV3, LocalLogStorageRootReadbackFailureV3,
+    LocalLogStorageRootReadbackMatchV3,
+};
+pub use local_log_storage_root_readback_v3::LocalLogStorageRootReadbackV3;
 pub use local_log_storage_root_resolution::LocalLogStorageRootResolution;
 pub use local_log_storage_root_resolution_collision_reason::LocalLogStorageRootResolutionCollisionReason;
 pub use local_log_storage_root_resolution_evidence::LocalLogStorageRootResolutionEvidence;

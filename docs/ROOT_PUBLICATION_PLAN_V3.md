@@ -71,7 +71,9 @@ legacy owners. There is no public conversion into a legacy lifecycle.
 
 ## Deliberate boundary
 
-There is no uncertainty-resolution, retry, rotation-publication,
+Alpha.19 adds [exact-current observational readback](ROOT_READBACK_V3.md),
+preserving source provenance without granting retry or writer authority.
+There is no complete uncertainty-resolution, retry, rotation-publication,
 writer-acquisition, or I/O API yet. Payload egress does not specify the full
 adapter transaction/read-set/write-set contract. Actual V3 writes remain
 disabled; the next checkpoint must specify authoritative readback and

@@ -1,9 +1,9 @@
 # breditor-core
 
-Current alpha.18 addition: V3 root publication enters uncertainty before
-one-shot payload egress and accepts only exactly correlated terminal host
-claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
-See [Root publication lifecycle V3](../../docs/ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.19 addition: observational V3 root readback correlates a
+completed host read with the exact candidate bytes, complete binding, and
+head-index result. It grants no retry or writer authority and performs no I/O.
+See [Root readback V3](../../docs/ROOT_READBACK_V3.md).
 
 `breditor-core` is the platform-independent deterministic content kernel for
 Breditor. It contains no DOM, framework, async-runtime, clock, random-number, or

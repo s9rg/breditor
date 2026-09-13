@@ -1,14 +1,14 @@
 # Breditor extension architecture
 
-Current alpha.18 addition: V3 root publication enters uncertainty before
-one-shot payload egress and accepts only exactly correlated terminal host
-claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
-See [Root publication lifecycle V3](ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.19 addition: observational V3 root readback correlates a
+completed host read with the exact candidate bytes, complete binding, and
+head-index result. It grants no retry or writer authority and performs no I/O.
+See [Root readback V3](ROOT_READBACK_V3.md).
 
 Status: the `0.1.1` through `0.2.0` compiler, engine,
 Wasm, profile-aware browser, supported intent/toolbar, reference-package,
 consumer-proof, release-audit, and final shippability checkpoints passed.
-The unpublished `0.3.0-alpha.18` checkpoint retains alpha.4's first closed
+The unpublished `0.3.0-alpha.19` checkpoint retains alpha.4's first closed
 property-driven presentation and makes the sealed paragraph-structure
 operations preserve typed inline-format properties, then uses that operation
 contract for cross-paragraph typed set/remove. It adds one closed browser-owned

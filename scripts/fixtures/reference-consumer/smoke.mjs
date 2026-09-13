@@ -91,7 +91,7 @@ assert.equal(typeof openBreditorBrowserEditor, "function");
 assert.equal(typeof initializeWasm, "function");
 assert.equal(typeof breditorWasmAbiVersion, "function");
 assert.equal(typeof breditorVersion, "function");
-assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.18");
+assert.equal(BREDITOR_BROWSER_PACKAGE_VERSION, "0.3.0-alpha.19");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatKind, "example/highlight");
 assert.equal(REFERENCE_HIGHLIGHT_IDS.formatRevision, 7);
 assert.equal(
@@ -493,7 +493,7 @@ const referenceEntry = resolveInsideConsumer("@breditor/reference-highlight");
 
 initSync({ module: readFileSync(fileURLToPath(wasmUrl)) });
 assert.equal(breditorWasmAbiVersion(), "5");
-assert.equal(breditorVersion(), "0.3.0-alpha.18");
+assert.equal(breditorVersion(), "0.3.0-alpha.19");
 const sizeProfileResult = BreditorCompiledProfile.fromBootstrapJsonV2(
   REFERENCE_SIZE_SHOWCASE_PROFILE_BOOTSTRAP_JSON,
 );

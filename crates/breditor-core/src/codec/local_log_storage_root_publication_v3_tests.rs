@@ -7,6 +7,9 @@ use crate::codec::{
 };
 use crate::local_log::LocalLogStorageAttemptRequestId;
 
+#[path = "local_log_storage_root_readback_v3_tests.rs"]
+mod readback;
+
 fn publication_plan(
     fixture: &StorageV3Fixture,
 ) -> Result<LocalLogStorageRootPublicationPlanV3, Box<dyn std::error::Error>> {

@@ -1,9 +1,9 @@
 # Breditor `0.3.0` scope
 
-Current alpha.18 addition: V3 root publication enters uncertainty before
-one-shot payload egress and accepts only exactly correlated terminal host
-claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
-See [Root publication lifecycle V3](ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.19 addition: observational V3 root readback correlates a
+completed host read with the exact candidate bytes, complete binding, and
+head-index result. It grants no retry or writer authority and performs no I/O.
+See [Root readback V3](ROOT_READBACK_V3.md).
 
 The preceding `0.3.0-alpha.13` source checkpoint adds a separate Size Showcase
 whose exhaustive Text Size presets use the existing generic integer typed-set
@@ -858,7 +858,8 @@ Alpha.14 versions the local-log graph around Session Checkpoint V3; alpha.15
 adds matching storage envelopes and selected-storage normalization. Alpha.16
 adds separate V3 schema-admission preparation. Alpha.17 closes root-publication
 plans and alpha.18 adds uncertain one-shot egress and terminal host correlation.
-Subsequent checkpoints must add authoritative uncertainty resolution and
+Alpha.19 adds exact-current observational readback without retry authority.
+Subsequent checkpoints must complete authoritative uncertainty resolution and
 explicitly version write-authority paths before offering V3 publication or
 append I/O. They must
 not place V3 bytes inside V1/V2 envelopes or treat normalized inspection data

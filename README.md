@@ -367,7 +367,10 @@ Alpha.17 adds [closed V3 root-publication plans](docs/ROOT_PUBLICATION_PLAN_V3.m
 binding exact candidate bytes to host-selected database and scope incarnations.
 Alpha.18 adds one-shot request issuance from an uncertain owner and exact
 correlation of terminal host claims. Resolution, retries, writer ownership,
-and actual V3 storage I/O remain separate work. No demo or Wasm ABI change.
+and actual V3 storage I/O remain separate work. Alpha.19 adds narrowly scoped
+[V3 root readback](docs/ROOT_READBACK_V3.md): an exact selected candidate at a
+host-attested read snapshot, preserving original publication provenance without
+granting retry or writer authority. No demo or Wasm ABI change.
 
 The implementation includes:
 

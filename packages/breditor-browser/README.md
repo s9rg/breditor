@@ -21,7 +21,7 @@ all-or-nothing lifetime. A React Strict Mode reference lives in the repository's
 `examples/react` workspace, but the product API remains framework-neutral.
 
 The package root is the supported ESM entry point for the `0.1.x` base, the
-`0.2.0` extension surface, and the `0.3.0-alpha.18` source checkpoint.
+`0.2.0` extension surface, and the `0.3.0-alpha.19` source checkpoint.
 Clean npm tarballs are install-, import-, type-check-, production-bundle-, and
 real-browser tested without workspace links.
 Declaration maps are intentionally omitted because the corresponding
@@ -165,7 +165,7 @@ existing generic paths; Rust production code, generated Wasm members, durable
 generations, and ABI 5 are unchanged. See the normative
 [text-size preset contract](../../docs/TEXT_SIZE_PRESETS.md).
 
-The unpublished `0.3.0-alpha.18` source package changes no browser or Wasm
+The unpublished `0.3.0-alpha.19` source package changes no browser or Wasm
 API. It advances the Rust-only durable local-log path through explicit Entry,
 Checkpoint, Frame, and tail V3 types while this package remains on ABI 5.
 
@@ -182,7 +182,7 @@ This repository does not publish packages automatically. After a maintainer
 publishes the release, install the matching registry packages with:
 
 ```sh
-npm install @breditor/browser@0.3.0-alpha.18 @breditor/wasm@0.3.0-alpha.18
+npm install @breditor/browser@0.3.0-alpha.19 @breditor/wasm@0.3.0-alpha.19
 ```
 
 Initialize the matching `@breditor/wasm` package once, then pass connected,

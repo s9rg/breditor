@@ -4,6 +4,22 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## 0.3.0-alpha.19 - 2026-09-13
+
+This unpublished Rust-only checkpoint adds exact-current V3 root readback.
+
+- Uncertain and terminal publication owners can begin a one-shot observational
+  probe while preserving the exact plan and original publication provenance.
+- V3-specific host read evidence must match the issued probe, candidate head
+  index, complete normalized binding, and canonical bytes. Rejections preserve
+  both inputs. A match is historical observation, not a publication receipt.
+- No absence/supersession inference, retry, writer grant, storage I/O, or new
+  browser/Wasm API. See [Root readback V3](docs/ROOT_READBACK_V3.md).
+
+Release checks: 1,559 Rust tests (including 136 compile-fail documentation
+tests), 1,197 TypeScript tests, strict lint/type/docs checks, clean tarball-only
+browser consumers, and unchanged size budgets passed.
+
 ## 0.3.0-alpha.18 - 2026-09-13
 
 This unpublished Rust-only checkpoint adds the V3 root-publication dispatch

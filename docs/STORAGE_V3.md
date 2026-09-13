@@ -58,6 +58,9 @@ Alpha.17 and alpha.18 add a separate pure Rust
 [root publication lifecycle](ROOT_PUBLICATION_PLAN_V3.md): closed plans,
 one-shot uncertain request issuance, and correlated terminal host claims.
 That API still grants no current writer authority and performs no actual I/O.
+Alpha.19 adds [exact-current root readback](ROOT_READBACK_V3.md), a narrow
+host-attested snapshot observation that preserves publication provenance.
+It is not a complete resolver and grants no retry or writer authority.
 
 A canonical manifest is not proof of physical EOF, durable storage, shared
 causal history, or a current committed head. Trusted caller-supplied physical

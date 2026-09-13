@@ -1,9 +1,9 @@
 # Rust data contract
 
-Current alpha.18 addition: V3 root publication enters uncertainty before
-one-shot payload egress and accepts only exactly correlated terminal host
-claims. Resolution, retries, writer authority, and actual V3 I/O remain deferred.
-See [Root publication lifecycle V3](ROOT_PUBLICATION_PLAN_V3.md).
+Current alpha.19 addition: observational V3 root readback correlates a
+completed host read with the exact candidate bytes, complete binding, and
+head-index result. It grants no retry or writer authority and performs no I/O.
+See [Root readback V3](ROOT_READBACK_V3.md).
 
 Status: Document V1, Base Schema V1, and Session Checkpoint V1 are supported on
 the `0.1.x` browser path. Document V2 and Session Checkpoint V2 are supported
@@ -31,7 +31,7 @@ Transaction Request, Commit, and Session Checkpoint V3 codecs. These V3 state
 families retain Document V2. At that alpha.2 checkpoint, Wasm ABI 3 and the
 browser path remained property-free.
 
-The unpublished `0.3.0-alpha.18` source checkpoint retains the alpha.3 typed
+The unpublished `0.3.0-alpha.19` source checkpoint retains the alpha.3 typed
 transport through the separately selected Wasm ABI 5 Profile Bootstrap V2 path. Its
 profile factories explicitly select Document V2 plus Session, Editor State,
 and Commit V3; typed action and intent JSON, descriptors, projections, and the

@@ -8,6 +8,8 @@
 //! Alpha.17 adds closed V3 root-publication plans with exact candidate and host
 //! incarnation identity. Alpha.18 adds one-shot uncertain request egress and
 //! exact host terminal correlation, but no resolution or writer authority.
+//! Alpha.19 adds exact-current observational V3 root readback, retaining source
+//! provenance without retry, writer, or storage-I/O authority.
 //! V3 tail observation and compaction preserve typed replay values and return
 //! the unchanged cursor on failure. No new Wasm surface is introduced.
 //!
