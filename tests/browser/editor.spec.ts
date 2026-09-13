@@ -502,6 +502,37 @@ test("Bold, Undo, and Redo share the toolbar command history", async ({ page }) 
   await expect(bold).toHaveAttribute("aria-pressed", "mixed");
 });
 
+test("selection timeout diagnostics retain structural state without document text", async ({ page }) => {
+  await select(page, 0, 0);
+  await insert(page, "PRIVATE CLIPBOARD FIXTURE");
+  const message = await page.evaluate(async () => {
+    const harness = window.__breditorHarness;
+    if (harness === undefined) throw new Error("missing harness");
+    const original = window.getSelection;
+    // Simulate an unavailable observation in the test helper only. The editor
+    // uses its independently captured native selection API, not this override.
+    window.getSelection = () => ({
+      anchorNode: null,
+      focusNode: null,
+      rangeCount: 0,
+      setBaseAndExtent: () => {},
+    } as unknown as Selection);
+    try {
+      await harness.select(0, 0);
+      return "unexpected success";
+    } catch (error) {
+      return error instanceof Error ? error.message : "unexpected error";
+    } finally {
+      window.getSelection = original;
+    }
+  });
+  expect(message).toContain('"expected":{"anchorOffset":0,"focusOffset":0}');
+  expect(message).toContain('"actual":null');
+  expect(message).toContain('"status":{"phase":"live"}');
+  expect(message).not.toContain("PRIVATE");
+  await expect(page.getByRole("textbox")).toHaveText("PRIVATE CLIPBOARD FIXTURE");
+});
+
 test("copy, cut, and paste use guarded synchronous clipboard semantics", async ({
   page,
 }) => {

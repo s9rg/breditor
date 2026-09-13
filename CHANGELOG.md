@@ -4,6 +4,20 @@ This file records user-visible Breditor changes. Breditor uses semantic
 versions for the supported browser package surface and explicit versions for
 its durable formats and Wasm transport.
 
+## Unreleased
+
+- Browser-test selection timeouts now include expected/observed offsets and
+  the public editor fault reason, without document or clipboard contents.
+- Added a deterministic unavailable-observation regression that verifies the
+  diagnostic shape, content redaction, and unchanged live editor.
+- The alpha.22 WebKit clipboard fault did not recur in 40 additional targeted
+  repetitions (partially overlapping a passing 30-case demo run). The cause
+  remains unproven; no production selection checks were weakened or changed.
+
+Verification: browser typechecking and the expanded 72-case browser matrix
+passed in Chromium, Firefox, and WebKit. This test-only checkpoint does not
+change package versions or production bundles.
+
 ## 0.3.0-alpha.22 - 2026-09-13
 
 This unpublished checkpoint closes the explicit session-backup recovery loop.

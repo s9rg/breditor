@@ -1455,7 +1455,16 @@ async function waitForCoherentSelection(
       // Native selection state is still settling; retry on the next task.
     }
   }
-  throw new Error("browser selection did not become coherent");
+  // Keep failure evidence structural: never dump document or clipboard text.
+  // A timeout alone hid whether WebKit was still settling or the runtime had
+  // already faulted while processing the preceding native selection event.
+  let actual: ReturnType<typeof selectionSnapshot> | null = null;
+  try { actual = selectionSnapshot(); } catch { /* Incoherent native range. */ }
+  throw new Error(`browser selection did not become coherent: ${JSON.stringify({
+    expected: { anchorOffset: expectedAnchorOffset, focusOffset: expectedFocusOffset },
+    actual,
+    status: window.__breditorHarness?.snapshot().status,
+  })}`);
 }
 
 function selectionSnapshot(): Readonly<{
