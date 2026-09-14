@@ -2,7 +2,7 @@ use breditor_core::action::{
     ActionActivation, ActionStateCacheUpdate, ActionStateEntry, ActionStateId, ActionStateOutcome,
     ObservedAvailability, ResolvedActionState,
 };
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::prelude::{JsValue, wasm_bindgen};
 
 use crate::{
     BreditorProfileGeneration, BreditorStringResult,
@@ -42,6 +42,14 @@ impl BreditorActionStateSnapshot {
             ActionStateOutcome::Resolved(resolved) => Some(resolved),
             ActionStateOutcome::Unhandled(_) | ActionStateOutcome::Fault(_) => None,
         }
+    }
+
+    /// Returns the optional nonzero contract version to native Rust callers.
+    #[must_use]
+    pub fn entry_value_contract_version(&self, index: u32) -> Option<u32> {
+        self.resolved(index)
+            .and_then(|resolved| resolved.indicator().value().contract())
+            .map(|contract| contract.version().get())
     }
 }
 
@@ -152,11 +160,14 @@ impl BreditorActionStateSnapshot {
 
     /// Returns the nonzero value-contract version when the entry supports values.
     #[must_use]
-    #[wasm_bindgen(js_name = entryValueContractVersion)]
-    pub fn entry_value_contract_version(&self, index: u32) -> Option<u32> {
-        self.resolved(index)
-            .and_then(|resolved| resolved.indicator().value().contract())
-            .map(|contract| contract.version().get())
+    #[wasm_bindgen(js_name = entryValueContractVersion, unchecked_return_type = "number | undefined")]
+    pub fn entry_value_contract_version_js(&self, index: u32) -> JsValue {
+        // Keep the public number | undefined contract, but do not transport it
+        // as wasm-bindgen's f64 MAX_SAFE_INTEGER absence sentinel. The WebKit
+        // warm-restore regression observes a false sentinel on this path with
+        // FTL enabled. An explicit JS value preserves absence without retries,
+        // inferred versions, or relaxed browser validation.
+        self.entry_value_contract_version(index).map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Separately encodes one bounded uniform action value.

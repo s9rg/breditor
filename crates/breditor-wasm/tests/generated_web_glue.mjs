@@ -816,6 +816,26 @@ assert.equal(
 );
 assert.equal(typedUnsetState.value.contract.version, 1);
 
+// The optional-number transport must preserve real versions and absence while
+// alternating typed, unsupported, and out-of-range entries. Browser stress
+// coverage additionally warms WebKit with repeated checkpoint restorations.
+const versionRead = typedEngine.actionStates(typedSelected);
+const versionSnapshot = versionRead.takeSnapshot();
+try {
+  assert.ok(versionSnapshot);
+  for (let iteration = 0; iteration < 1_000; iteration += 1) {
+    for (let index = 0; index < versionSnapshot.entryCount; index += 1) {
+      assert.equal(versionSnapshot.entryValueContractVersion(index),
+        versionSnapshot.entryValueContractName(index) === undefined ? undefined : 1);
+    }
+    assert.equal(versionSnapshot.entryValueContractVersion(versionSnapshot.entryCount), undefined);
+    assert.equal(versionSnapshot.entryValueContractVersion(0xffff_ffff), undefined);
+  }
+} finally {
+  versionSnapshot?.free();
+  versionRead.free();
+}
+
 const duplicateTypedIntent = typedEngine.executeTypedIntentJson(
   typedSelected,
   "example/set-link-intent",

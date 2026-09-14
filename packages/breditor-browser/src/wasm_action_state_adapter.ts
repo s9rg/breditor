@@ -951,7 +951,7 @@ function copyActionValue(
       : INVALID_ACTION_VALUE;
   }
   if (typeof value === "string") {
-    const bytes = utf8Length(value);
+    const bytes = utf8Length(value, MAX_ACTION_VALUE_TEXT_BYTES - budget.textBytes);
     if (bytes === null) return INVALID_ACTION_VALUE;
     budget.textBytes += bytes;
     return budget.textBytes <= MAX_ACTION_VALUE_TEXT_BYTES
@@ -982,7 +982,7 @@ function copyActionValue(
     ) {
       return INVALID_ACTION_VALUE;
     }
-    const keyBytes = utf8Length(key);
+    const keyBytes = utf8Length(key, MAX_ACTION_VALUE_TEXT_BYTES - budget.textBytes);
     if (keyBytes === null) return INVALID_ACTION_VALUE;
     budget.textBytes += keyBytes;
     if (budget.textBytes > MAX_ACTION_VALUE_TEXT_BYTES) return INVALID_ACTION_VALUE;
@@ -1255,9 +1255,11 @@ function isActionValueKey(value: string): boolean {
   );
 }
 
+// Every scan uses its caller's actual contract budget. A MAX_SAFE_INTEGER
+// default is unnecessary and triggered a false limit rejection in WebKit FTL.
 function utf8Length(
   value: string,
-  maximum: number = Number.MAX_SAFE_INTEGER,
+  maximum: number,
 ): number | null {
   let bytes = 0;
   for (let index = 0; index < value.length; index += 1) {
@@ -1268,7 +1270,9 @@ function utf8Length(
       bytes += 2;
     } else if (code >= 0xd800 && code <= 0xdbff) {
       const low = value.charCodeAt(index + 1);
-      if (low < 0xdc00 || low > 0xdfff) return null;
+      // charCodeAt returns NaN after a terminal high surrogate. Require a
+      // positively valid low surrogate rather than only rejecting its range.
+      if (!(low >= 0xdc00 && low <= 0xdfff)) return null;
       bytes += 4;
       index += 1;
     } else if (code >= 0xdc00 && code <= 0xdfff) {

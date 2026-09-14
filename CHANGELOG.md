@@ -6,6 +6,28 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Mitigated the reproducible WebKit action-state version rejection by returning
+  an explicit JavaScript number/undefined from Rust instead of an optional-u32
+  f64 sentinel. The public getter and native Rust accessor retain their contracts;
+  there are no retries, inferred versions, JIT overrides, or relaxed validation.
+  Added a three-engine 1,000-restore / 3,000-read regression checking exact RGB24
+  state and retained redo, plus generated-glue absent/present numeric checks.
+  Action-value UTF-8 scans now use their actual remaining budget, avoiding a
+  separately observed false rejection against a MAX_SAFE_INTEGER default;
+  exact/over-limit Unicode and key-budget tests preserve the existing limits.
+  Also reject terminal unpaired UTF-16 high surrogates at that boundary.
+  The older clipboard/caret fault remains unproven as the same cause.
+  See `docs/WEBKIT_ACTION_STATE_REGRESSION.md` for the before/after evidence.
+  The runtime implementation passed all 17 release gates: 1,560 native Rust tests, 25 Wasm-target tests,
+  1,232 TypeScript tests, 81 browser cases, 30 demo cases, and 9 verifier tests,
+  with unchanged ABI signatures and size ceilings. Nothing was published.
+  A subsequent stress run exposed a missed transient autosave-status assertion;
+  demo tests now observe dirty-to-saved publication from before the action,
+  with positive/negative observer tests and unchanged reload/history checks.
+  All six observer checks and demo typechecking pass. The final 36-case demo
+  rerun remains incomplete because of host-load navigation/click timeouts;
+  the investigation notes retain those failures and the earlier passing gates.
+
 - Added a 40-cycle cut/caret regression with subsequent Undo/Redo and explicit
   redacted demo-startup diagnostics. Both current and pre-optimization selection
   code passed 100 clipboard repetitions and 200 long-lived cut/caret cycles;

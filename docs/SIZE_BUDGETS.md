@@ -1,9 +1,16 @@
 # Browser release size budgets
 
-Unreleased exact-selection write elision retains all ceilings. Fresh browser
-JavaScript measures 1,079,528 bytes; fresh React JavaScript measures 861,510
+Unreleased WebKit boundary fixes retain all ceilings. Fresh browser JavaScript
+measures 1,079,603 bytes; fresh React JavaScript measures 861,573 raw / 224,550
+gzip bytes, retaining 450 gzip bytes of application headroom. Wasm measures
+1,607,645 raw / 450,601 gzip bytes; generated glue is 52,608 bytes. Browser
+declarations remain 271,374 bytes. Clean-consumer tarballs measure 266,067,
+32,084, and 521,779 bytes for browser, reference, and Wasm respectively.
+
+The preceding exact-selection write elision retained all ceilings. Browser
+JavaScript measured 1,079,528 bytes; fresh React JavaScript measured 861,510
 raw / 224,536 gzip bytes (41 gzip bytes above alpha.22). Application gzip
-headroom is now 464 bytes. Declarations and Wasm measurements are unchanged.
+headroom was 464 bytes. Declarations and Wasm measurements were unchanged.
 
 Status: required release gate, verified for the unpublished
 `0.3.0-alpha.22` session-recovery checkpoint.

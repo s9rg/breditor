@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expectAutosavedAction } from "./autosave_observation";
 
 const EDITOR_LABEL = "Breditor showcase document";
 const SAMPLE_TEXT = "Breditor showcase";
@@ -756,13 +757,10 @@ test("the React demo edits, formats, replays, persists, and remains accessible",
   await expect(editor.locator("strong")).toHaveText(TARGET_TEXT);
 
   await selectEditorText(editor, SAMPLE_TEXT.length, SAMPLE_TEXT.length);
-  await page.keyboard.type(APPENDED_TEXT, { delay: 25 });
-  await expect(editor).toHaveText(SAMPLE_TEXT + APPENDED_TEXT);
-
-  // Observe a dirty state before accepting the final idle state, so this
-  // assertion cannot pass merely because the initial document was idle.
-  await expect(status).not.toHaveText("All changes saved.");
-  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+  await expectAutosavedAction(status, async () => {
+    await page.keyboard.type(APPENDED_TEXT, { delay: 25 });
+    await expect(editor).toHaveText(SAMPLE_TEXT + APPENDED_TEXT);
+  });
 
   await page.reload();
   const restored = await openDemo(page);
@@ -1335,15 +1333,15 @@ test("Text size maps a native preset select through Rust-owned history and persi
 
   // Persist Huge with Reset available as redo, proving the typed property and
   // both history branches survive the checkpoint boundary.
-  await undo.click();
-  await expect(status).not.toHaveText("All changes saved.");
-  await expect(sizedText).toHaveAttribute(
-    "data-breditor-integer-token",
-    "huge",
-  );
-  await expect(sizeSelect).toHaveValue("2");
-  await expect(redo).toHaveAttribute("aria-disabled", "false");
-  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+  await expectAutosavedAction(status, async () => {
+    await undo.click();
+    await expect(sizedText).toHaveAttribute(
+      "data-breditor-integer-token",
+      "huge",
+    );
+    await expect(sizeSelect).toHaveValue("2");
+    await expect(redo).toHaveAttribute("aria-disabled", "false");
+  });
 
   await page.reload();
   const restored = await openDemo(page);
@@ -1462,14 +1460,14 @@ test("Text color applies an exact RGB24 value through Rust-owned history and per
   ).toBeVisible();
 
   // Persist the restored color while keeping its removal as the redo branch.
-  await undo.click();
-  await expect(status).not.toHaveText("All changes saved.");
-  await expect(coloredText).toHaveAttribute(
-    "style",
-    SELECTED_TEXT_COLOR_STYLE,
-  );
-  await expect(redo).toHaveAttribute("aria-disabled", "false");
-  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+  await expectAutosavedAction(status, async () => {
+    await undo.click();
+    await expect(coloredText).toHaveAttribute(
+      "style",
+      SELECTED_TEXT_COLOR_STYLE,
+    );
+    await expect(redo).toHaveAttribute("aria-disabled", "false");
+  });
 
   await page.reload();
   const restored = await openDemo(page);
@@ -1538,19 +1536,16 @@ test("safe Link survives structural editing and persisted undo/redo history", as
   // Leave the cursor before the join so autosave has both an undo and a redo
   // branch to restore, rather than persisting only the current document.
   await expect(undo).toHaveAttribute("aria-disabled", "false");
-  await undo.click();
-  // Observe the dirty publication before DOM/property assertions consume the
-  // short autosave window; otherwise a slow CI worker can already be idle.
-  await expect(status).not.toHaveText("All changes saved.");
-  await expectSafelyLinkedParagraphs(editor, [
-    FIRST_WORD,
-    " first",
-    `second${TARGET_TEXT}`,
-  ]);
-  await expect(undo).toHaveAttribute("aria-disabled", "false");
-  await expect(redo).toHaveAttribute("aria-disabled", "false");
-
-  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+  await expectAutosavedAction(status, async () => {
+    await undo.click();
+    await expectSafelyLinkedParagraphs(editor, [
+      FIRST_WORD,
+      " first",
+      `second${TARGET_TEXT}`,
+    ]);
+    await expect(undo).toHaveAttribute("aria-disabled", "false");
+    await expect(redo).toHaveAttribute("aria-disabled", "false");
+  });
 
   await page.reload();
   const restored = await openDemo(page);
@@ -1657,14 +1652,14 @@ test("cross-paragraph Link changes preserve Highlight and a persisted redo branc
   await redo.click();
   await expectHighlightedLinkLayout(editor, removedLayout);
 
-  // Persist the linked document with removal available as redo. Observe the
-  // dirty edge first so a slow assertion cannot miss the short autosave delay.
-  await undo.click();
-  await expect(status).not.toHaveText("All changes saved.");
-  await expectHighlightedLinkLayout(editor, linkedLayout);
-  await expect(undo).toHaveAttribute("aria-disabled", "false");
-  await expect(redo).toHaveAttribute("aria-disabled", "false");
-  await expect(status).toHaveText("All changes saved.", { timeout: 10_000 });
+  // Persist the linked document with removal available as redo. Retain the
+  // dirty-to-saved edge from before dispatch, independently of test RPC delay.
+  await expectAutosavedAction(status, async () => {
+    await undo.click();
+    await expectHighlightedLinkLayout(editor, linkedLayout);
+    await expect(undo).toHaveAttribute("aria-disabled", "false");
+    await expect(redo).toHaveAttribute("aria-disabled", "false");
+  });
 
   await page.reload();
   const restored = await openDemo(page);

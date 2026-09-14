@@ -1,5 +1,11 @@
 # Breditor Wasm boundary
 
+Post-alpha.22 transport fix: the action-state contract-version export uses an
+explicit JavaScript number/undefined value instead of the optional-u32 f64
+sentinel. Its public signature and semantics, native Rust accessor, ABI 5,
+and all durable generations are unchanged. See the
+[WebKit regression evidence](WEBKIT_ACTION_STATE_REGRESSION.md).
+
 Status: the unpublished `0.3.0-alpha.22` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while

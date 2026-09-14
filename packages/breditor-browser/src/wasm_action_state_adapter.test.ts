@@ -856,6 +856,10 @@ describe("Wasm action-state adapter", () => {
       { uniformJson: " 1" },
       { uniformJson: "1.5" },
       { uniformJson: "-0" },
+      { uniformJson: JSON.stringify("\ud800") },
+      { uniformJson: JSON.stringify("\ud800x") },
+      { uniformJson: JSON.stringify("\udc00") },
+      { uniformJson: JSON.stringify(["\ud800"]) },
       { uniformJson: deep },
       { uniformJson: `"${"x".repeat(65_537)}"` },
       { contractName: undefined } as unknown as Readonly<Partial<FakeEntry>>,
@@ -881,6 +885,35 @@ describe("Wasm action-state adapter", () => {
       ).toBe(false);
       expect(snapshot.values.every((value) => value.freeCalls === 1)).toBe(true);
     }
+  });
+
+  it.each([
+    ["ASCII at the limit", "x".repeat(65_536), true],
+    ["ASCII beyond the limit", "x".repeat(65_537), false],
+    ["BMP at the limit", "é".repeat(32_768), true],
+    ["BMP beyond the limit", "é".repeat(32_769), false],
+    ["non-BMP at the limit", "🙂".repeat(16_384), true],
+    ["non-BMP beyond the limit", `${"🙂".repeat(16_384)}x`, false],
+    ["object keys included at the limit", { a: "x".repeat(65_535) }, true],
+    ["object keys included beyond the limit", { a: "x".repeat(65_536) }, false],
+    ["empty text with exhausted budget", ["x".repeat(65_536), ""], true],
+    ["nonempty text with exhausted budget", ["x".repeat(65_536), "a"], false],
+  ] as const)("enforces the remaining UTF-8 budget: %s", (_label, value, accepted) => {
+    const entry: FakeEntry = {
+      id: "breditor/control-value",
+      status: "enabled",
+      activation: "active",
+      valueStatus: "uniform",
+      contractName: "breditor/value",
+      contractVersion: 1,
+      uniformJson: JSON.stringify(value),
+    };
+    const snapshot = new FakeSnapshot([entry], [entry.id]);
+    const result = new FakeResult("full", snapshot);
+    expect(consumeWasmActionStates(EXPECTED, result).ok).toBe(accepted);
+    expect(result.freeCalls).toBe(1);
+    expect(snapshot.freeCalls).toBe(1);
+    expect(snapshot.values.every((owned) => owned.freeCalls === 1)).toBe(true);
   });
 
   it("rejects an oversized hostile value before scanning its contents", () => {

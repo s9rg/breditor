@@ -38,6 +38,10 @@ The following evidence was inspected against source checkpoint `c4bfe4e`:
   fresh demo build, unchanged size ceilings, and diff checks. No package was
   published. Later documentation corrections do not change that tested code.
 
+The post-milestone [WebKit action-state boundary mitigation](WEBKIT_ACTION_STATE_REGRESSION.md)
+adds a repeated restore regression and passes all 17 release gates without
+changing the document/history formats or ABI 5.
+
 One intermittent WebKit clipboard/selection fault remains unresolved. Exact
 native Range preservation has its own passing regression tests but is not a
 proven fix. The successful matrix is evidence for the tested paths, not a

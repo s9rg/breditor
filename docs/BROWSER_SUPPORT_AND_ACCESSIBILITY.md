@@ -14,9 +14,9 @@ opens the public `@breditor/browser` runtime in every engine. A missing browser
 capability or browser executable is a test failure; the core matrix is never
 silently skipped.
 
-## Unresolved WebKit observations
+## WebKit fault investigation
 
-Two intermittent failures remain open; a green matrix is not a waiver:
+The two observations have different evidence; a green matrix is not a waiver:
 
 - The alpha.22 clipboard test committed a cut, then faulted at revision 4
   during the following caret move. The original trace did not capture the
@@ -28,13 +28,22 @@ Two intermittent failures remain open; a green matrix is not a waiver:
 - Under concurrent browser-test load, the current React color demo once
   rejected startup after reload with `browser_editor.action_state_failed` /
   `action_state.invalid_wasm_view`. That trace is a distinct observation, not
-  proof that the clipboard fault has the same cause. Thirty subsequent targeted
-  color tests with temporary boundary diagnostics passed without reproducing it.
+  proof that the clipboard fault has the same cause. The later investigation
+  reproduced its action-state rejection in a no-DOM checkpoint-restore loop:
+  the optional numeric version getter transiently returned an absence sentinel
+  with WebKit's FTL tier enabled. Returning an explicit JavaScript value from
+  that Rust export mitigates the reproduced failure without changing the
+  public signature or relaxing validation. A longer run caught a second false
+  rejection against the UTF-8 scanner's MAX_SAFE_INTEGER default; scans now
+  require their actual contract/remaining byte budget. The 1,000-restore / 3,000-read
+  regression now runs in all three engines. See
+  [the reproduction and mitigation evidence](WEBKIT_ACTION_STATE_REGRESSION.md).
 
 The committed regression now performs 40 cut/caret cycles in one owner lifetime,
 then verifies two Undo and two Redo steps. Demo startup failures report only
 their public redacted error/cause codes. No production validation or recovery
-rule was relaxed, and no speculative repair was shipped for either observation.
+rule was relaxed. The original clipboard observation remains unresolved; the
+action-state mitigation has its own repeatable before/after evidence.
 
 ## Covered contracts
 
