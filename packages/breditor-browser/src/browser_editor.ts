@@ -34,6 +34,7 @@ import {
   type InlineFormatRenderManifest,
 } from "./inline_format_render_manifest.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
+import { clearOwnedNativeSelection } from "./dom_selection_cleanup.js";
 import {
   IndexedDbSessionCheckpointStore,
   MAX_SESSION_CHECKPOINT_SLOT_ASCII_BYTES,
@@ -2709,6 +2710,7 @@ function restoreHostAttributesIfUnchanged(
 }
 
 function quiesceFaultedHost(host: HTMLElement): void {
+  clearOwnedNativeSelection(host);
   try {
     nativeSetAttribute(host, "contenteditable", "false");
   } catch {

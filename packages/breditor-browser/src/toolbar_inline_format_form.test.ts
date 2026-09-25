@@ -18,6 +18,28 @@ beforeEach(() => {
 });
 
 describe("BreditorToolbar inline-format forms", () => {
+  it.each(["owned", "foreign", "crossHost"] as const)(
+    "handles %s selection without clearing outside the disposed form boundary",
+    (mode) => {
+      const host = mountHost();
+      const outside = mountHost();
+      outside.textContent = "external selection";
+      const toolbar = new BreditorToolbar(host, linkManifest(), new TestStateStore([inactiveLinkState()]), {
+        dispatch: () => toolbarCommandDispatchResult("completed"),
+      });
+      launcherButton(host).click();
+      const label = linkInput(host).parentElement!;
+      const foreign = outside.firstChild!;
+      const selection = document.getSelection()!;
+      selection.setBaseAndExtent(mode === "foreign" ? foreign : label, 0,
+        mode === "owned" ? label : foreign, 1);
+      toolbar.dispose();
+      expect(host.childNodes).toHaveLength(0);
+      expect(selection.rangeCount).toBe(mode === "owned" ? 0 : 1);
+      if (mode !== "owned") expect(selection.focusNode).toBe(foreign);
+    },
+  );
+
   it("renders RGB24 only as an explicitly declared labeled native color input", () => {
     const host = mountHost();
     const toolbar = new BreditorToolbar(

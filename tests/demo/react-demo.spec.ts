@@ -641,6 +641,79 @@ test("a conflicted tab exports its typed redo history without overwriting the wi
   } finally { await losingPage.close(); }
 });
 
+test("a runtime fault exposes a Rust-owned backup with intact typed undo and redo history", async ({ page, context }) => {
+  const { editor, status } = await openDemo(page);
+  await selectEditorText(editor, 0, SAMPLE_TEXT.length);
+  await page.getByRole("button", { name: "Link", exact: true }).click();
+  await page.getByRole("textbox", { name: "Link URL", exact: true }).fill("https://recovery.example/committed");
+  await expectAutosavedAction(status, async () => {
+    await page.getByRole("button", { name: "Apply Link", exact: true }).click();
+    await expect(editor.locator("a.breditor-link")).toHaveAttribute("href", "https://recovery.example/committed");
+  });
+  await expectAutosavedAction(status, async () => {
+    await page.getByRole("button", { name: "Bold", exact: true }).click();
+    await expect(editor.locator("strong")).toHaveText(SAMPLE_TEXT);
+  });
+  await expectAutosavedAction(status, async () => {
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    await expect(editor.locator("strong")).toHaveCount(0);
+  });
+
+  // Deliberately fail canonical-DOM admission during one synchronous toolbar
+  // dispatch. This tests containment, not the unknown cause of the natural
+  // WebKit failure. The rejected Undo must never be replayed automatically.
+  await page.getByRole("button", { name: "Undo", exact: true }).evaluate((button) => {
+    const host = button.closest(".editor-shell")?.querySelector("[data-breditor-editor-root]");
+    if (host === null || host === undefined) throw new Error("editor host missing");
+    host.append(host.ownerDocument.createTextNode("DOM-only uncommitted text"));
+    (button as HTMLButtonElement).click();
+  });
+  await expect(status).toHaveText("Editor state: faulted (toolbarDispatchFailed).");
+  await expect(editor).toHaveAttribute("contenteditable", "false");
+  await expect(editor).toHaveAttribute("aria-disabled", "true");
+  await expect(page.getByRole("button", { name: "Retry editor", exact: true })).toHaveCount(0);
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download session backup", exact: true }).click();
+  const path = await (await downloadEvent).path();
+  if (path === null) throw new Error("fault backup download missing");
+  const json = await readFile(path, "utf8");
+  expect(json).not.toContain("DOM-only uncommitted text");
+  const backup = JSON.parse(json);
+  expect(backup.cursor).toBeLessThan(backup.entries.length);
+  await page.getByLabel("Open session backup").setInputFiles({
+    name: "fault-backup.json", mimeType: "application/json", buffer: Buffer.from(json),
+  });
+  const recovered = page.getByRole("region", { name: "Recovered Breditor session editor" });
+  await expect(recovered.locator(".editor-status")).toHaveText("Autosave is off.");
+  await expect(recovered.getByRole("textbox")).toHaveText(SAMPLE_TEXT);
+  await expect(recovered.locator("a.breditor-link")).toHaveAttribute("href", "https://recovery.example/committed");
+  const roundTripEvent = page.waitForEvent("download");
+  await recovered.getByRole("button", { name: "Download session backup", exact: true }).click();
+  const roundTripPath = await (await roundTripEvent).path();
+  if (roundTripPath === null) throw new Error("recovered checkpoint download missing");
+  expect(await readFile(roundTripPath, "utf8")).toBe(json);
+  await recovered.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(recovered.locator("strong")).toHaveText(SAMPLE_TEXT);
+  await recovered.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(recovered.locator("strong")).toHaveCount(0);
+  await recovered.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(recovered.locator("a.breditor-link")).toHaveAttribute("href", REFERENCE_LINK_URL);
+  await recovered.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(recovered.locator("a.breditor-link")).toHaveAttribute("href", "https://recovery.example/committed");
+  await recovered.getByRole("button", { name: "Redo", exact: true }).click();
+  await expect(recovered.locator("strong")).toHaveText(SAMPLE_TEXT);
+  await expect(status).toHaveText("Editor state: faulted (toolbarDispatchFailed).");
+  await expect(editor).toHaveAttribute("contenteditable", "false");
+
+  // Recovery is independent: its edits never overwrite the original saved slot.
+  const freshPage = await context.newPage();
+  try {
+    const fresh = await openDemo(freshPage);
+    await expect(fresh.editor.locator("a.breditor-link")).toHaveAttribute("href", "https://recovery.example/committed");
+    await expect(fresh.editor.locator("strong")).toHaveCount(0);
+  } finally { await freshPage.close(); }
+});
+
 test("backup file decoding rejects invalid UTF-8 without disturbing the live editor", async ({ page }) => {
   const { editor, status } = await openDemo(page);
   await page.getByLabel("Open session backup").setInputFiles({

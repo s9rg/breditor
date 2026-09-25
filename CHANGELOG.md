@@ -6,6 +6,21 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Runtime faults now expose session-backup download in the React demo regardless
+  of autosave state, without restarting the owner or retrying commands. Fixed a
+  reproducible WebKit recovery blocker by clearing a toolbar form's wholly owned
+  native selection before removal; foreign/cross-host selections remain intact.
+  Added fault-injection recovery and teardown regressions. This contains an
+  exportable session; it does not explain the original intermittent Undo or
+  clipboard trigger or guarantee recovery when validated export is unavailable.
+  See `docs/WEBKIT_FAULT_RECOVERY.md`.
+  Native/Wasm/unit/type/package/ABI/size gates passed and the browser recheck
+  passed 84 cases. The full verifier is not green: an earlier browser run and an
+  independent demo run captured intermittent WebKit bootstrap rejection. The
+  demo run passed 38/39 cases, including recovery in all three engines; failures
+  and negative controls remain documented rather than waived by later passes.
+  The final recovery-only matrix passed nine cases (three per browser).
+
 - Extended explicit number/undefined transport to the three compiled-profile
   contract-version getters after an isolated WebKit descriptor-read regression
   exposed a missing present version. Native Rust accessors and public JavaScript

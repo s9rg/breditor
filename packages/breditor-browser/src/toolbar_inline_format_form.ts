@@ -2,6 +2,7 @@ import {
   createToolbarInlineFormatFormRemoveInputJson,
   createToolbarInlineFormatFormSetInputJson,
 } from "./toolbar_inline_format_form_input.js";
+import { clearOwnedNativeSelection } from "./dom_selection_cleanup.js";
 import type {
   ToolbarInlineFormatFormDeclaration,
   ToolbarInlineFormatFormFieldDeclaration,
@@ -490,6 +491,7 @@ export class BreditorToolbarInlineFormatForm {
     if (this.#disposed) return;
     bestEffort(() => this.#clearDraft());
     this.#disposed = true;
+    clearOwnedNativeSelection(this.#panel);
     for (const record of this.#fields) {
       bestEffort(() =>
         nativeRemoveEventListener(record.input, "input", record.onInput),

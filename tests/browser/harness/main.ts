@@ -549,7 +549,7 @@ async function mountReferenceFormatting(
       },
     });
     if (!opened.ok) {
-      throw new Error(`reference formatting open failed: ${opened.error.code}`);
+      throw new Error(`reference formatting open failed: ${opened.error.code} / ${opened.error.causeCode ?? "none"}`);
     }
     editor = opened.editor;
     await selectAllTextInHost(host);

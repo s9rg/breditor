@@ -1405,6 +1405,45 @@ describe("BreditorBrowserEditor", () => {
     expect(fixture.fromSessionCheckpointJson).not.toHaveBeenCalled();
   });
 
+  it.each(["range", "caret", "outside", "crossHost"] as const)(
+    "clears only a wholly owned %s selection when faulting without trusting own shadows",
+    async (mode) => {
+      const host = mountHost();
+      const toolbarHost = mountHost();
+      const outside = mountHost();
+      outside.textContent = "foreign";
+      const fixture = moduleFixture({ enableAction: true, actionThrows: true });
+      const opened = await BreditorBrowserEditor.open(
+        options(host, fixture.module, { toolbar: { host: toolbarHost, manifest: TOOLBAR_MANIFEST } }),
+      );
+      if (!opened.ok) throw new Error(opened.error.code);
+      const text = document.createTreeWalker(host, NodeFilter.SHOW_TEXT).nextNode();
+      const foreign = outside.firstChild;
+      const selection = document.getSelection();
+      if (text === null || foreign === null || selection === null) throw new Error("selection fixture missing");
+      selection.setBaseAndExtent(mode === "outside" ? foreign : text, 0,
+        mode === "outside" || mode === "crossHost" ? foreign : text, mode === "caret" ? 0 : 1);
+      const range = selection.getRangeAt(0);
+      const shadow = vi.fn(() => { throw new Error("own selection shadow must not run"); });
+      Object.defineProperty(selection, "removeAllRanges", { configurable: true, value: shadow });
+      try {
+        (toolbarHost.querySelector("button") as HTMLButtonElement).click();
+        expect(opened.editor.getStatus()).toEqual({ phase: "faulted", reason: "toolbarDispatchFailed" });
+        expect(shadow).not.toHaveBeenCalled();
+        if (mode === "range" || mode === "caret") {
+          expect(selection.rangeCount).toBe(0);
+        } else {
+          expect(selection.rangeCount).toBe(1);
+          expect(selection.getRangeAt(0)).toBe(range);
+          expect(selection.focusNode).toBe(foreign);
+        }
+      } finally {
+        Reflect.deleteProperty(selection, "removeAllRanges");
+        opened.editor.dispose();
+      }
+    },
+  );
+
   it.each(["noOp", "throw"] as const)(
     "uses native focus proofs despite %s own focus and document shadows",
     async (mode) => {

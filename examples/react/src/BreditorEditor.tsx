@@ -514,6 +514,7 @@ export const BreditorEditor = forwardRef<
     [editor],
   );
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const runtimeFaulted = snapshot?.status.phase === "faulted";
   const pausedPersistence =
     snapshot?.persistence.phase === "paused"
       ? snapshot.persistence
@@ -584,8 +585,10 @@ export const BreditorEditor = forwardRef<
           </dl>
         </details>
       ) : null}
-      {pausedPersistence !== undefined || (initialSessionCheckpointJson !== undefined && editor !== undefined) ? (
+      {runtimeFaulted || pausedPersistence !== undefined || (initialSessionCheckpointJson !== undefined && editor !== undefined) ? (
         <div className="editor-details editor-details--warning">
+          {runtimeFaulted ? <p>Editing stopped. Download a backup before reloading,
+            then use Recover a session backup to continue in a separate editor.</p> : null}
           <p>Keep this editor open. A session backup includes formatting, selection,
             and Undo/Redo history, including deleted text. Store it privately.</p>
           <button className="editor-retry" type="button" onClick={downloadBackup}>

@@ -585,6 +585,40 @@ describe("BreditorEditor lifecycle", () => {
     );
   });
 
+  it.each(["idle", "disabled", "scheduled"])("offers fault recovery independently of %s persistence without restarting", async (phase) => {
+    const editor = fakeEditor("{}", { phase, dirty: phase === "scheduled" });
+    editor.getSnapshot.mockReturnValue(Object.freeze({
+      document: Object.freeze({ documentJson: "{}" }),
+      actionState: Object.freeze({ status: "fresh", lastError: undefined }),
+      persistence: Object.freeze({ phase, dirty: phase === "scheduled" }),
+      status: Object.freeze({ phase: "faulted", reason: "toolbarDispatchFailed" }),
+    }));
+    mocks.openEditor.mockResolvedValue(successful(editor));
+    const mounted = await render(view("Fault recovery"));
+    await settle();
+    const button = Array.from(mounted.container.querySelectorAll("button"))
+      .find((item) => item.textContent === "Download session backup");
+    expect(button).toBeDefined();
+    expect(mounted.container.textContent).toContain("Editing stopped.");
+    expect(mounted.container.textContent).not.toContain("Retry editor");
+    await act(async () => button?.click());
+    expect(editor.exportContent).toHaveBeenCalledWith("sessionCheckpointJson");
+    expect(mocks.downloadBackup).toHaveBeenCalledWith('{"backup":"sensitive history"}');
+    expect(status(mounted.container)).toBe("Editor state: faulted (toolbarDispatchFailed).");
+
+    // A terminal Wasm boundary failure may make even validated export unavailable.
+    // Do not claim success, dispose the owner, or fall back to scraping its DOM.
+    editor.exportContent.mockReturnValue({ ok: false, error: { code: "content_export.unavailable" } });
+    mocks.downloadBackup.mockClear();
+    await act(async () => button?.click());
+    expect(mocks.downloadBackup).not.toHaveBeenCalled();
+    expect(mounted.container.textContent).toContain("Session backup is unavailable right now");
+    expect(editor.dispose).not.toHaveBeenCalled();
+    expect(editor.retryPersistence).not.toHaveBeenCalled();
+    expect(editor.flushPersistence).not.toHaveBeenCalled();
+    expect(mocks.openEditor).toHaveBeenCalledTimes(1);
+  });
+
   it("offers one bounded persistence retry while autosave is paused", async () => {
     const retry = deferred<unknown>();
     const editor = fakeEditor(undefined, {

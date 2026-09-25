@@ -64,6 +64,13 @@ host; this API does not replace an existing live editor.
 
 ## Recovery picker and limits
 
+Runtime faults now expose the same backup action even if autosave was not
+paused. The original editor stays disabled; export does not retry its failed
+command. Open the downloaded checkpoint in the separate recovery editor. If
+validated export is unavailable, the UI says so and keeps the owner alive rather
+than scraping DOM or restarting it. See [fault containment and the WebKit
+recovery fix](WEBKIT_FAULT_RECOVERY.md) for the tested boundary and limitations.
+
 Restoration requires the matching schema/profile and explicit checkpoint
 generation. The existing compiled-profile Wasm restoration factory
 replay-validates every retained entry; it does not reevaluate extension intent

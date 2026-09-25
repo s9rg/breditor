@@ -52,6 +52,12 @@ their public redacted error/cause codes. No production validation or recovery
 rule was relaxed. The original clipboard observation remains unresolved; the
 action-state mitigation has its own repeatable before/after evidence.
 
+Runtime faults now expose the demo's explicit backup recovery path. A separately
+reproduced WebKit selection inconsistency on removal of a focused Link form is
+fixed with ownership-scoped native selection cleanup; a negative control restores
+the failure. This enables recovery of exportable sessions, not automatic retries
+or guaranteed recovery from every fault. See [fault containment](WEBKIT_FAULT_RECOVERY.md).
+
 ## Covered contracts
 
 The matrix covers the supported `0.1.0` base and `0.2.0` profile browser
