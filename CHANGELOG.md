@@ -6,6 +6,18 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Extended explicit number/undefined transport to the three compiled-profile
+  contract-version getters after an isolated WebKit descriptor-read regression
+  exposed a missing present version. Native Rust accessors and public JavaScript
+  signatures remain unchanged. Added a 1,000-read-per-engine descriptor test and
+  warm present/absent generated-glue checks. This does not establish resolution
+  of the separate Link Undo fault or the observed property-sentinel rejection.
+  All 17 release gates pass: 1,560 native Rust tests, 25 Wasm-target tests,
+  1,232 TypeScript tests, 84 browser cases, 36 demo cases, and 9 verifier tests;
+  all 227 ABI signatures and size ceilings are unchanged. Nothing published.
+  A subsequent uninstrumented WebKit stress run passed all 120 cases (ten demo
+  repetitions), with normal optimization settings and zero retries.
+
 - Mitigated the reproducible WebKit action-state version rejection by returning
   an explicit JavaScript number/undefined from Rust instead of an optional-u32
   f64 sentinel. The public getter and native Rust accessor retain their contracts;
@@ -24,9 +36,14 @@ its durable formats and Wasm transport.
   A subsequent stress run exposed a missed transient autosave-status assertion;
   demo tests now observe dirty-to-saved publication from before the action,
   with positive/negative observer tests and unchanged reload/history checks.
-  All six observer checks and demo typechecking pass. The final 36-case demo
-  rerun remains incomplete because of host-load navigation/click timeouts;
-  the investigation notes retain those failures and the earlier passing gates.
+  All six observer checks and demo typechecking pass. On September 24, the
+  complete updated 36-case demo matrix passed across all three engines under
+  unchanged standard timeouts and zero retries after host load recovered;
+  the investigation notes retain the earlier host-load failures and passing gates.
+  Before the descriptor mitigation, longer WebKit stress failed: a runtime `toolbarDispatchFailed` after
+  Link Undo followed 64 passing cases, and a separate diagnostic run rejected
+  a profile descriptor at startup after 118 passing cases. Their causes remain
+  under investigation; the ordinary matrix pass is not a claim of resolution.
 
 - Added a 40-cycle cut/caret regression with subsequent Undo/Redo and explicit
   redacted demo-startup diagnostics. Both current and pre-optimization selection

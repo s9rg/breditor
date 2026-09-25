@@ -9,7 +9,7 @@ use breditor_core::{
     },
     transaction::ReplayDirection,
 };
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::prelude::{JsValue, wasm_bindgen};
 
 use crate::BreditorProfileGeneration;
 
@@ -23,6 +23,30 @@ pub struct BreditorCompiledProfileDescriptor {
 }
 
 impl BreditorCompiledProfileDescriptor {
+    /// Returns a typed intent's optional input-contract version to native Rust.
+    #[must_use]
+    pub fn intent_input_contract_version(&self, index: u32) -> Option<u32> {
+        self.intent(index)
+            .and_then(CompiledProfileIntentDescriptor::input_contract)
+            .map(|contract| contract.version().get())
+    }
+
+    /// Returns an intent's optional state-value contract version to native Rust.
+    #[must_use]
+    pub fn intent_value_contract_version(&self, index: u32) -> Option<u32> {
+        self.intent(index)
+            .and_then(|descriptor| descriptor.state_contract().value_contract())
+            .map(|contract| contract.version().get())
+    }
+
+    /// Returns one action-state optional value-contract version to native Rust.
+    #[must_use]
+    pub fn action_state_value_contract_version(&self, index: u32) -> Option<u32> {
+        self.action_state(index)
+            .and_then(|descriptor| descriptor.contract().value_contract())
+            .map(|contract| contract.version().get())
+    }
+
     pub(crate) const fn new(inner: CompiledProfileDescriptor) -> Self {
         Self { inner }
     }
@@ -297,11 +321,9 @@ impl BreditorCompiledProfileDescriptor {
 
     /// Returns the nonzero input-contract version for a typed intent.
     #[must_use]
-    #[wasm_bindgen(js_name = intentInputContractVersion)]
-    pub fn intent_input_contract_version(&self, index: u32) -> Option<u32> {
-        self.intent(index)
-            .and_then(CompiledProfileIntentDescriptor::input_contract)
-            .map(|contract| contract.version().get())
+    #[wasm_bindgen(js_name = intentInputContractVersion, unchecked_return_type = "number | undefined")]
+    pub fn intent_input_contract_version_js(&self, index: u32) -> JsValue {
+        self.intent_input_contract_version(index).map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns one intent's activation shape contract.
@@ -327,11 +349,9 @@ impl BreditorCompiledProfileDescriptor {
 
     /// Returns one intent's optional state-value contract version.
     #[must_use]
-    #[wasm_bindgen(js_name = intentValueContractVersion)]
-    pub fn intent_value_contract_version(&self, index: u32) -> Option<u32> {
-        self.intent(index)
-            .and_then(|descriptor| descriptor.state_contract().value_contract())
-            .map(|contract| contract.version().get())
+    #[wasm_bindgen(js_name = intentValueContractVersion, unchecked_return_type = "number | undefined")]
+    pub fn intent_value_contract_version_js(&self, index: u32) -> JsValue {
+        self.intent_value_contract_version(index).map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the number of observable action-state entries.
@@ -429,11 +449,15 @@ impl BreditorCompiledProfileDescriptor {
 
     /// Returns one action-state optional value-contract version.
     #[must_use]
-    #[wasm_bindgen(js_name = actionStateValueContractVersion)]
-    pub fn action_state_value_contract_version(&self, index: u32) -> Option<u32> {
-        self.action_state(index)
-            .and_then(|descriptor| descriptor.contract().value_contract())
-            .map(|contract| contract.version().get())
+    #[wasm_bindgen(
+        js_name = actionStateValueContractVersion,
+        unchecked_return_type = "number | undefined"
+    )]
+    pub fn action_state_value_contract_version_js(&self, index: u32) -> JsValue {
+        // As with action-state snapshots, avoid the optional-u32 f64 sentinel:
+        // repeated real descriptor reads in WebKit lost a present version here.
+        // Explicit JS absence retains the contract without retries or inference.
+        self.action_state_value_contract_version(index).map_or(JsValue::UNDEFINED, JsValue::from)
     }
 }
 

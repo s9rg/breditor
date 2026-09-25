@@ -126,7 +126,75 @@ navigation and an ordinary Apply click before reaching the changed persistence
 assertions (2 passed, 2 timeout failures, 8 not run); the loop stopped before
 Firefox/Chromium. Further stress was stopped rather than altering unrelated
 host processes or weakening the existing limits. The final 36-case demo rerun
-is still required on a normally responsive machine.
+was still required on a normally responsive machine.
+
+On September 24, 2026, with host load back near 5, the complete updated demo
+matrix passed: 36 cases across Chromium, Firefox, and WebKit in 1.4 minutes.
+This run used the unchanged standard navigation, action, test, and suite limits,
+zero retries, and normal browser optimization settings. It closes the pending
+post-observer-correction matrix check without reclassifying the earlier failures.
+
+### September 24 stress failures
+
+The subsequent uninstrumented WebKit stress run did **not** pass: 64 cases
+passed, case 65 failed, and 55 did not run. In the main demo sequence, applying
+the normalized Link succeeded, but the first Undo left that Link unchanged.
+The trace captured `Editor state: faulted (toolbarDispatchFailed).` and an
+inert, disabled editor. This is a runtime fault, not the transient autosave
+assertion race or a navigation timeout. The trace is preserved locally at
+`/tmp/breditor-webkit-undo-dispatch-failure-20260924.zip`.
+
+A separate run with temporary payload-redacted dispatch/action-state branch
+diagnostics passed 118 cases, then failed startup in case 119 with
+`browser_editor.engine_bootstrap_failed` /
+`engine_bootstrap.invalid_profile_descriptor`; one case did not run. Its trace
+is preserved locally at
+`/tmp/breditor-webkit-profile-descriptor-failure-20260924.zip`.
+These traces alone do not establish the underlying rejecting getter. The
+standard 36-case pass does not close either intermittent failure.
+
+Further redacted branch diagnostics reproduced the startup failure in the
+out-of-range property sentinel check. A subsequent getter-level diagnostic run
+passed 30 focused main-demo repetitions without identifying the unexpected
+sentinel value. One earlier diagnostic attempt was intentionally interrupted
+because it also logged normal thenable checks; it is not passing evidence.
+
+The new `profile-descriptor.spec.ts` fixture removes React, DOM editing, and
+checkpoint restoration. It repeatedly consumes 1,000 independently owned real
+Wasm descriptors from one Size Showcase profile, requires strict validation
+(including out-of-range sentinels), and compares their full decoded contents.
+Chromium and Firefox passed; uninstrumented WebKit rejected zero-based read 402.
+Redacted diagnostics reproduced failures at 481 and 580 in the action-state
+value-contract check. The latter captured a tracked activation and a valid
+32-character contract name with an **undefined version**.
+
+Changing only `actionStateValueContractVersion` to explicit JavaScript values
+was insufficient: uninstrumented WebKit rejected read 737; diagnostics then
+rejected a typed input contract at read 690. All three descriptor contract-version
+exports (`actionStateValueContractVersion`, `intentInputContractVersion`, and
+`intentValueContractVersion`) now use explicit number/undefined transport,
+retaining the native `Option<u32>` accessors and public JavaScript signatures.
+Three uninstrumented WebKit repetitions then passed (3,000 descriptor reads).
+Generated-glue tests also alternate present, untyped, and out-of-range versions.
+The initial property-sentinel symptom and Link Undo fault are not thereby proven
+fixed. No other descriptor numeric getters, validation limits, or JIT settings
+were changed.
+
+With the three-getter mitigation, the complete release verifier passed all
+17 gates: 1,560 native Rust tests, 25 Wasm-target tests, 1,232 TypeScript tests,
+84 browser cases (including the new descriptor fixture in each engine),
+36 demo cases, and 9 verifier tests. All 227 reviewed signatures and ABI 5
+remain unchanged; clean package consumers, independent-path reproducibility,
+and fresh production size checks passed without increasing a ceiling. This is
+evidence for the descriptor mitigation, not proof that the independent Undo or
+property-sentinel observations are resolved.
+
+The final uninstrumented WebKit run against the freshly release-verified
+artifacts passed all 120 cases (ten complete demo repetitions) in 4.4 minutes.
+It used normal optimization settings, zero retries, unchanged per-test limits,
+and the separate five-minute stress-suite budget. No diagnostic transforms or
+JIT overrides were present. The captured Undo and property-sentinel failures
+remain historical evidence requiring causal explanation, not erased failures.
 
 ## Remaining uncertainty
 
@@ -135,6 +203,6 @@ unproven whether it shares this transport failure. The 40-cycle cut/caret
 regression and subsequent undo/redo checks remain enabled; do not label the
 older observation fixed merely because later runs are green.
 
-Other optional numeric getters were not changed speculatively. The regression
+Other optional numeric getters remain unchanged. The regression
 and complete browser/demo gates remain the evidence for this narrow mitigation,
 not a guarantee against every browser optimizer defect or every input method.

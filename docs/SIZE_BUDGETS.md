@@ -1,11 +1,11 @@
 # Browser release size budgets
 
 Unreleased WebKit boundary fixes retain all ceilings. Fresh browser JavaScript
-measures 1,079,603 bytes; fresh React JavaScript measures 861,573 raw / 224,550
-gzip bytes, retaining 450 gzip bytes of application headroom. Wasm measures
-1,607,645 raw / 450,601 gzip bytes; generated glue is 52,608 bytes. Browser
+measures 1,079,603 bytes; fresh React JavaScript measures 861,504 raw / 224,551
+gzip bytes, retaining 449 gzip bytes of application headroom. Wasm measures
+1,607,696 raw / 450,626 gzip bytes; generated glue is 52,536 bytes. Browser
 declarations remain 271,374 bytes. Clean-consumer tarballs measure 266,067,
-32,084, and 521,779 bytes for browser, reference, and Wasm respectively.
+32,084, and 521,821 bytes for browser, reference, and Wasm respectively.
 
 The preceding exact-selection write elision retained all ceilings. Browser
 JavaScript measured 1,079,528 bytes; fresh React JavaScript measured 861,510

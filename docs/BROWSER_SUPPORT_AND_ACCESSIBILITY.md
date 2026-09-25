@@ -16,7 +16,7 @@ silently skipped.
 
 ## WebKit fault investigation
 
-The two observations have different evidence; a green matrix is not a waiver:
+The observations have different evidence; a green matrix is not a waiver:
 
 - The alpha.22 clipboard test committed a cut, then faulted at revision 4
   during the following caret move. The original trace did not capture the
@@ -38,6 +38,13 @@ The two observations have different evidence; a green matrix is not a waiver:
   require their actual contract/remaining byte budget. The 1,000-restore / 3,000-read
   regression now runs in all three engines. See
   [the reproduction and mitigation evidence](WEBKIT_ACTION_STATE_REGRESSION.md).
+- September 24 demo stress captured `toolbarDispatchFailed` on Link Undo and,
+  in a separate run, `engine_bootstrap.invalid_profile_descriptor` at startup.
+  A new descriptor-only loop reproduced a missing action-state contract version;
+  explicit number/undefined transport now also covers the descriptor's three
+  contract-version getters. The 1,000-descriptor regression checks all properties
+  and absence sentinels without DOM or React. The earlier property-sentinel
+  rejection and Link Undo fault are not proven resolved by this mitigation.
 
 The committed regression now performs 40 cut/caret cycles in one owner lifetime,
 then verifies two Undo and two Redo steps. Demo startup failures report only

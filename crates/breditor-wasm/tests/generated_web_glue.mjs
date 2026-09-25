@@ -710,6 +710,20 @@ assert.equal(
   "breditor/set-inline-format-input",
 );
 assert.equal(typedDescriptorView.actionStateValueContractVersion(4), 1);
+// Descriptor contract versions retain exact present/absent values after warm
+// mixed reads. These exports use explicit JS values, not optional-u32 sentinels.
+for (let iteration = 0; iteration < 1_000; iteration += 1) {
+  for (const [getter, present] of [
+    ["intentInputContractVersion", 2],
+    ["intentValueContractVersion", 2],
+    ["actionStateValueContractVersion", 4],
+  ]) {
+    assert.equal(typedDescriptorView[getter](present), 1);
+    assert.equal(typedDescriptorView[getter](0), undefined);
+    assert.equal(typedDescriptorView[getter](0xffff_ffff), undefined);
+    assert.equal(typedDescriptorView[getter](present), 1);
+  }
+}
 assert.equal(typedDescriptorView.inlineFormatSetFormatKind(1), undefined);
 assert.equal(typedDescriptorView.inlineFormatSetIntentId(1), undefined);
 assert.equal(typedDescriptorView.inlineFormatSetActionStateId(1), undefined);

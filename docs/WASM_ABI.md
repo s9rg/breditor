@@ -1,8 +1,9 @@
 # Breditor Wasm boundary
 
-Post-alpha.22 transport fix: the action-state contract-version export uses an
-explicit JavaScript number/undefined value instead of the optional-u32 f64
-sentinel. Its public signature and semantics, native Rust accessor, ABI 5,
+Post-alpha.22 transport fixes: the action-state snapshot contract-version export
+and the descriptor's three intent/action-state contract-version exports use
+explicit JavaScript number/undefined values instead of optional-u32 f64
+sentinels. Their public signatures and semantics, native Rust accessors, ABI 5,
 and all durable generations are unchanged. See the
 [WebKit regression evidence](WEBKIT_ACTION_STATE_REGRESSION.md).
 
