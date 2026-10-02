@@ -1,0 +1,774 @@
+{
+  "date": "2026-09-28",
+  "status": "Reproduced in unmodified engine; root cause and proper fix remain unresolved",
+  "productionChangesThisCheckpoint": false,
+  "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+  "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+  "native": {
+    "path": "/tmp/breditor-rootcause-native-20260928.jsonl",
+    "sha256": "d83878e4dc17b76a0c1d5cf04c79b3be497ce1b77cecf19e8b2c5b66f540cb18",
+    "runs": [
+      {
+        "batch": 1,
+        "tier": "no-jit",
+        "scenario": "probe",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0
+        }
+      },
+      {
+        "batch": 2,
+        "tier": "no-jit",
+        "scenario": "probe",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0
+        }
+      },
+      {
+        "batch": 3,
+        "tier": "no-jit",
+        "scenario": "probe",
+        "outcome": "native-stop-needs-inspection",
+        "operands": [
+          2048,
+          2048
+        ],
+        "capture": {
+          "stopped": true,
+          "exited": false,
+          "exitStatus": -1,
+          "breakpointHits": 1,
+          "breakpointStop": true,
+          "fileAddress": "0x112cf60",
+          "module": "JavaScriptCore",
+          "registers": {
+            "x0": "0x40a2000000000000",
+            "x1": "0x000000016fdfc9e0",
+            "x2": "0xfffe000000000800",
+            "x8": "0x0000000000000000",
+            "x9": "0x40a0000000000000",
+            "d0": "0",
+            "d1": "2048",
+            "d2": "NaN",
+            "cpsr": "0x80001000",
+            "fpcr": "0x00000000",
+            "fpsr": "0x00000011",
+            "pc": "0x0000000103c0cf60"
+          },
+          "stack": [
+            "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+            "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+          ]
+        }
+      }
+    ]
+  },
+  "replay": {
+    "path": "/tmp/breditor-rootcause-replay-baseline-20260928.jsonl",
+    "sha256": "4ee73b3e8e6602e56015ae0325e2610b64dc7e50f5bb8f922f2289c9725d056e",
+    "runs": [
+      {
+        "batch": 1,
+        "tier": "baseline",
+        "scenario": "probe-replay",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0
+        }
+      },
+      {
+        "batch": 2,
+        "tier": "baseline",
+        "scenario": "probe-replay",
+        "outcome": "native-stop-needs-inspection",
+        "operands": [
+          2048,
+          2048
+        ],
+        "capture": {
+          "stopped": true,
+          "exited": false,
+          "exitStatus": -1,
+          "breakpointHits": 1,
+          "breakpointStop": true,
+          "fileAddress": "0x112cf60",
+          "module": "JavaScriptCore",
+          "registers": {
+            "x0": "0x40a2000000000000",
+            "x1": "0x000000016fdfc9b0",
+            "x2": "0xfffe000000000800",
+            "x3": "0x00000001010b9700",
+            "x4": "0xfffe000000000800",
+            "x8": "0xfffc000000000800",
+            "x9": "0xfffdffffffffffff",
+            "d0": "2048",
+            "d1": "NaN",
+            "d2": "NaN",
+            "cpsr": "0x60001000",
+            "fpcr": "0x00000000",
+            "fpsr": "0x00000013",
+            "pc": "0x0000000103c0cf60"
+          },
+          "guardStop": false,
+          "stack": [
+            "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+            null,
+            null,
+            null
+          ],
+          "replay": {
+            "outcome": "reached-true-return",
+            "codeHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e0020601e2174611ee7030054",
+            "callFrameHex": "03000000010000004825030101000000000000000000a240000800000000feff",
+            "steps": [
+              {
+                "fileAddress": "0x112ce80",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "NaN",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce80"
+                }
+              },
+              {
+                "fileAddress": "0x112ce84",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "0",
+                  "d1": "NaN",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce84"
+                }
+              },
+              {
+                "fileAddress": "0x112ce88",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "0",
+                  "d1": "NaN",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce88"
+                }
+              },
+              {
+                "fileAddress": "0x112ce8c",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0x40a0000000000000",
+                  "d0": "0",
+                  "d1": "NaN",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce8c"
+                }
+              },
+              {
+                "fileAddress": "0x112ce90",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0x40a0000000000000",
+                  "d0": "0",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce90"
+                }
+              },
+              {
+                "fileAddress": "0x112ce94",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "0",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce94"
+                }
+              },
+              {
+                "fileAddress": "0x112ce98",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "0",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x00001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce98"
+                }
+              },
+              {
+                "fileAddress": "0x112ce9c",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x00001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce9c"
+                }
+              },
+              {
+                "fileAddress": "0x112cea0",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffe000000000000",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x00001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cea0"
+                }
+              },
+              {
+                "fileAddress": "0x112cea4",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x00001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cea4"
+                }
+              },
+              {
+                "fileAddress": "0x112cea8",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x00001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cea8"
+                }
+              },
+              {
+                "fileAddress": "0x112ceac",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x20001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ceac"
+                }
+              },
+              {
+                "fileAddress": "0x112ceb0",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x20001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ceb0"
+                }
+              },
+              {
+                "fileAddress": "0x112ceb4",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ceb4"
+                }
+              },
+              {
+                "fileAddress": "0x112ceb8",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ceb8"
+                }
+              },
+              {
+                "fileAddress": "0x112cf34",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0xfffc000000000800",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cf34"
+                }
+              },
+              {
+                "fileAddress": "0x112cf38",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0x40a0000000000000",
+                  "x9": "0xfffdffffffffffff",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cf38"
+                }
+              },
+              {
+                "fileAddress": "0x112cf3c",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0x40a0000000000000",
+                  "x9": "0x40a0000000000000",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cf3c"
+                }
+              },
+              {
+                "fileAddress": "0x112cf40",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0x40a0000000000000",
+                  "x9": "0x40a0000000000000",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cf40"
+                }
+              },
+              {
+                "fileAddress": "0x112cf44",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0x40a0000000000000",
+                  "x9": "0x40a0000000000000",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0cf44"
+                }
+              },
+              {
+                "fileAddress": "0x112ce64",
+                "registers": {
+                  "x0": "0x40a2000000000000",
+                  "x1": "0x000000016fdfc9b0",
+                  "x2": "0xfffe000000000800",
+                  "x3": "0x00000001010b9700",
+                  "x4": "0xfffe000000000800",
+                  "x8": "0x40a0000000000000",
+                  "x9": "0x40a0000000000000",
+                  "d0": "2048",
+                  "d1": "2048",
+                  "d2": "NaN",
+                  "cpsr": "0x60001000",
+                  "fpcr": "0x00000000",
+                  "fpsr": "0x00000013",
+                  "pc": "0x0000000103c0ce64"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "guardControl": {
+    "path": "/tmp/breditor-rootcause-guard-flags-control-20260928.jsonl",
+    "sha256": "51b92fa926ad8de9c971f0c5990953f2cb1ff1d09b1d55219efd864f1b54770c",
+    "runs": [
+      {
+        "batch": 1,
+        "tier": "no-jit",
+        "scenario": "guard-control",
+        "outcome": "guard-control-confirmed",
+        "operands": [
+          2048,
+          2048
+        ],
+        "capture": {
+          "stopped": true,
+          "exited": false,
+          "exitStatus": -1,
+          "breakpointHits": 1,
+          "guard": {
+            "site": "0x103c0ce9c",
+            "address": "0x1000f8000",
+            "trap": "0x1000f801c",
+            "secondTrap": "0x1000f8050",
+            "control": true,
+            "originalHex": "4100621e4800088b0201679e5f0009eb218c621e",
+            "payloadHex": "0a423bd51f0009ebc8000054030080d22400669e7f0004eb40000054a07d21d44100621e4800088b0201679e5f0009eb2500669e4600669e07423bd5218c621e2800669ea580869abf0008eb40000054c07d21d45000005800021fd6b0cec00301000000",
+            "patchHex": "5000005800021fd600800f0001000000"
+          },
+          "breakpointStop": true,
+          "fileAddress": "0x1000f801c",
+          "module": null,
+          "registers": {
+            "x0": "0x40a2000000000000",
+            "x1": "0x000000016fdfdb10",
+            "x2": "0xfffe000000000800",
+            "x3": "0x0000000000000000",
+            "x4": "0x40a0000000000000",
+            "x5": "0x000000016fdfdb20",
+            "x6": "0x0000000117101600",
+            "x7": "0x000000016fdfd770",
+            "x8": "0xfffe000000000000",
+            "x9": "0xfffdffffffffffff",
+            "x10": "0x0000000000000000",
+            "d0": "2048",
+            "d1": "2048",
+            "d2": "1.0284412065282638E+63",
+            "cpsr": "0x80001000",
+            "fpcr": "0x00000000",
+            "fpsr": "0x00000011",
+            "pc": "0x00000001000f801c"
+          },
+          "guardStop": true,
+          "guardPhase": "first",
+          "stack": [
+            null
+          ]
+        }
+      }
+    ]
+  },
+  "guardBaseline": {
+    "path": "/tmp/breditor-rootcause-guard-flags-baseline-20260928.jsonl",
+    "sha256": "a844471698552686b651fbe5edca6ddab680598a3eee5e917dce59ecfa93a806",
+    "runs": [
+      {
+        "batch": 1,
+        "tier": "baseline",
+        "scenario": "probe-guard",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0,
+          "guard": {
+            "site": "0x103c0ce9c",
+            "address": "0x1000f8000",
+            "trap": "0x1000f801c",
+            "secondTrap": "0x1000f8050",
+            "control": false,
+            "originalHex": "4100621e4800088b0201679e5f0009eb218c621e",
+            "payloadHex": "0a423bd51f0009ebc80000540300669e2400669e7f0004eb40000054a07d21d44100621e4800088b0201679e5f0009eb2500669e4600669e07423bd5218c621e2800669ea580869abf0008eb40000054c07d21d45000005800021fd6b0cec00301000000",
+            "patchHex": "5000005800021fd600800f0001000000"
+          }
+        }
+      },
+      {
+        "batch": 2,
+        "tier": "baseline",
+        "scenario": "probe-guard",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0,
+          "guard": {
+            "site": "0x103c0ce9c",
+            "address": "0x1000f8000",
+            "trap": "0x1000f801c",
+            "secondTrap": "0x1000f8050",
+            "control": false,
+            "originalHex": "4100621e4800088b0201679e5f0009eb218c621e",
+            "payloadHex": "0a423bd51f0009ebc80000540300669e2400669e7f0004eb40000054a07d21d44100621e4800088b0201679e5f0009eb2500669e4600669e07423bd5218c621e2800669ea580869abf0008eb40000054c07d21d45000005800021fd6b0cec00301000000",
+            "patchHex": "5000005800021fd600800f0001000000"
+          }
+        }
+      },
+      {
+        "batch": 3,
+        "tier": "baseline",
+        "scenario": "probe-guard",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0,
+          "guard": {
+            "site": "0x103c0ce9c",
+            "address": "0x1000f8000",
+            "trap": "0x1000f801c",
+            "secondTrap": "0x1000f8050",
+            "control": false,
+            "originalHex": "4100621e4800088b0201679e5f0009eb218c621e",
+            "payloadHex": "0a423bd51f0009ebc80000540300669e2400669e7f0004eb40000054a07d21d44100621e4800088b0201679e5f0009eb2500669e4600669e07423bd5218c621e2800669ea580869abf0008eb40000054c07d21d45000005800021fd6b0cec00301000000",
+            "patchHex": "5000005800021fd600800f0001000000"
+          }
+        }
+      },
+      {
+        "batch": 4,
+        "tier": "baseline",
+        "scenario": "probe-guard",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0,
+          "guard": {
+            "site": "0x103c0ce9c",
+            "address": "0x1000f8000",
+            "trap": "0x1000f801c",
+            "secondTrap": "0x1000f8050",
+            "control": false,
+            "originalHex": "4100621e4800088b0201679e5f0009eb218c621e",
+            "payloadHex": "0a423bd51f0009ebc80000540300669e2400669e7f0004eb40000054a07d21d44100621e4800088b0201679e5f0009eb2500669e4600669e07423bd5218c621e2800669ea580869abf0008eb40000054c07d21d45000005800021fd6b0cec00301000000",
+            "patchHex": "5000005800021fd600800f0001000000"
+          }
+        }
+      },
+      {
+        "batch": 5,
+        "tier": "baseline",
+        "scenario": "probe-guard",
+        "outcome": "probe-passed-no-native-stop",
+        "capture": {
+          "stopped": false,
+          "exited": true,
+          "exitStatus": 0,
+          "breakpointHits": 0,
+          "guard": {
+            "site": "0x103c0ce9c",
+            "address": "0x1000f8000",
+            "trap": "0x1000f801c",
+            "secondTrap": "0x1000f8050",
+            "control": false,
+            "originalHex": "4100621e4800088b0201679e5f0009eb218c621e",
+            "payloadHex": "0a423bd51f0009ebc80000540300669e2400669e7f0004eb40000054a07d21d44100621e4800088b0201679e5f0009eb2500669e4600669e07423bd5218c621e2800669ea580869abf0008eb40000054c07d21d45000005800021fd6b0cec00301000000",
+            "patchHex": "5000005800021fd600800f0001000000"
+          }
+        }
+      }
+    ]
+  },
+  "otherControls": {
+    "directEngineFunction": {
+      "iterations": 20000,
+      "pauseEvery": 10,
+      "pauseMs": 4,
+      "cases": 5,
+      "outcome": "passed",
+      "usesJSVM": false
+    },
+    "nativeAssembly": [
+      {
+        "variant": "fcsel",
+        "iterations": 20000,
+        "pauseEvery": 10,
+        "outcome": "passed"
+      },
+      {
+        "variant": "branch",
+        "iterations": 20000,
+        "pauseEvery": 10,
+        "outcome": "passed"
+      }
+    ],
+    "smallerJS": {
+      "singleModeCompletedPasses": 6,
+      "tupleModeCompletedPasses": 5,
+      "iterationsPerRun": 10000,
+      "jit": false,
+      "outcome": "No reproduction; these are controls, not a replacement failing repro"
+    },
+    "noJitReplay": {
+      "completedPasses": 10,
+      "failures": 0
+    },
+    "firstGuardOnly": {
+      "completedPasses": 3,
+      "failures": 0
+    }
+  },
+  "verification": {
+    "diagnosticTests": 81,
+    "diagnosticTestFiles": 18,
+    "clangWarningsAsErrors": "passed",
+    "guardDisassembly": "Checked against generated payload",
+    "diffCheck": "passed"
+  },
+  "limitations": [
+    "First original capture: inputs both 2048, d0=0 and d1=2048.",
+    "Second original capture: inputs both 2048, d0=2048 and d1=NaN; unchanged inputs replay correctly under single-stepping.",
+    "Guarded results alter timing and code layout, including relocating the second fcsel. They are not fix qualification.",
+    "Exploratory two-guard batch changed helper source after run 4; excluded from clean control totals. Future batches now reject helper or runner drift.",
+    "Initial RWX allocation failed; final diagnostic uses RX allocation and debugger memory writes only, without changing system protections.",
+    "An unregistered deliberate trap initially stopped LLDB before capture; final registered-trap control captured correctly.",
+    "No engine library files, installed browsers, or security settings changed. Child-only guarded memory changes end with that process.",
+    "Smaller JS controls and direct native calls did not reproduce; execution context still matters.",
+    "No evidence here establishes an exact WebKit source defect, platform defect, or that every historical clipboard failure shares this cause.",
+    "Full raw logs remain temporary; decisive register captures and replay steps are preserved in this record."
+  ]
+}

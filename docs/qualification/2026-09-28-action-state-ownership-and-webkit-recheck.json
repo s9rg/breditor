@@ -1,0 +1,483 @@
+{
+  "format": "breditor/action-state-ownership-and-webkit-recheck",
+  "date": "2026-09-28",
+  "baseCommit": "64fcee8529fc0784759cf347729de87e79b97853",
+  "workingTreeDirty": true,
+  "allRemainingIssuesFixed": false,
+  "fixes": [
+    {
+      "issue": "Reentrant action-state reads could consume/free the same result, snapshot, nested string or error twice.",
+      "reproduction": {
+        "initialTests": 61,
+        "failed": 10,
+        "passed": 51
+      },
+      "change": "Reserve the outer result before protected-list and expected metadata; reserve nested handles before accessors and retain all reservations through cleanup. Share ownership with document/checkpoint readers. Independent nested reads remain supported.",
+      "finalRegressionAndControlCases": 20,
+      "helperReuse": "Replace the identical local UTF-8 scanner with the existing wellFormedUtf8Length helper; actual per-call byte budgets and unpaired-surrogate rejection are unchanged."
+    },
+    {
+      "issue": "Link and clipboard diagnostic hosts recursively discovered an unrelated virtual-module fixture, breaking Vite dependency pre-bundling.",
+      "reproduction": {
+        "configurationTests": 5,
+        "failed": 2,
+        "passed": 3,
+        "liveLinkHost": "Failed to run dependency scan: virtual:breditor-property-validator"
+      },
+      "change": "Inherit ordinary browser-harness entry discovery while preserving each diagnostic host's plugins.",
+      "finalConfigurationTests": 5
+    }
+  ],
+  "verification": {
+    "browserRuntimeTests": 1345,
+    "diagnosticToolTests": 170,
+    "workspaceTypechecks": "passed",
+    "browserHarnessTypecheck": "passed",
+    "demoMatrix": {
+      "passed": 39,
+      "failed": 0,
+      "retries": 0
+    },
+    "finalInstrumentedWebkit": {
+      "passed": 10,
+      "failed": 0,
+      "retries": 0,
+      "formattedClipboardCycles": 300,
+      "linkHistoryCycles": 1500,
+      "dependencyScanErrors": 0
+    },
+    "sizeBudgets": "passed without increasing limits",
+    "referenceApplicationGzipBytes": 224989,
+    "referenceApplicationGzipLimit": 225000,
+    "browserEmittedJavaScriptBytes": 1084049,
+    "browserEmittedJavaScriptLimit": 1085000,
+    "fullReleaseVerifierRerun": false,
+    "nativeRustTestsRerun": false,
+    "nativeSafariRerun": false,
+    "browserMatrix": {
+      "passed": 159,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/action-owner-browser-20260928"
+    }
+  },
+  "webkit": {
+    "numericalFaultFixed": false,
+    "normal": {
+      "passed": 5,
+      "failed": 0,
+      "probe": "staged",
+      "iterationsPerAttempt": 10000,
+      "checksPerCompletedAttempt": 150000
+    },
+    "noJit": {
+      "passed": 3,
+      "failed": 2,
+      "playwrightVersion": "1.62.1",
+      "browserVersion": "26.5",
+      "sources": [
+        {
+          "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+          "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+        },
+        {
+          "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+          "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+          "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "numeric-failure",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "failure": {
+            "iteration": 9931,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          }
+        },
+        {
+          "attempt": 2,
+          "outcome": "passed",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 3,
+          "outcome": "passed",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 4,
+          "outcome": "passed",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 5,
+          "outcome": "numeric-failure",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "failure": {
+            "iteration": 481,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "engineInstrumentation": "None; no debugger, native patch, developer VM, installed setting changes, Rust or Wasm in the numerical repro.",
+    "numericalReproductionCommand": "node scripts/compare-webkit-build.mjs /Users/s/code/breditor/node_modules/playwright/index.mjs /Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js no-jit 5",
+    "endpointFaultFixed": false,
+    "endpointRecheckBeforeChanges": {
+      "instrumentedCasesPassed": 40,
+      "failed": 0,
+      "formattedClipboardCycles": 1200,
+      "linkHistoryCycles": 6000
+    },
+    "interpretation": "The numerical failure remains independently reproducible (array slot four is zero while the selected source local reads 2048). Its underlying engine/host cause and connection to the historical selection-endpoint failure are unproven. Passing editor runs do not establish a causal fix.",
+    "historicalEndpointEvidence": "docs/qualification/2026-09-28-selection-reentry-and-endpoint-rejection.json"
+  },
+  "limits": [
+    "Active reservations protect overlapping reads, not reuse after free or arbitrary aliases in every other adapter.",
+    "Browser clipboard/composition fixtures are controlled events, not exhaustive OS clipboard or native IME qualification.",
+    "No assertions relaxed, retries enabled, Rust ABI/durable-format changes, version bump, commit, push or publication.",
+    "The current source adds documentation after the runtime build; the tested emitted adapter hash is retained separately."
+  ],
+  "files": [
+    {
+      "path": "packages/breditor-browser/src/wasm_action_state_adapter.ts",
+      "sha256": "e8c58eebcb97c582a9a717511bfd8c25087e57276190b8bd4f8ce25197b637c7"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_action_state_adapter.test.ts",
+      "sha256": "1730a26067e97a25061e7555ace9f87118ed37006d9c220631ed5a8414d03169"
+    },
+    {
+      "path": "packages/breditor-browser/src/active_wasm_string_handles.ts",
+      "sha256": "3e4b4a47166220d3ec42d4e000874a9c826c7ea6211876150fcb3ee5c5f11870"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_action_state_adapter.js",
+      "sha256": "f11a8dd821c974c265ff748ca51d2f21af80661aa47c622a3609766bbce973b0"
+    },
+    {
+      "path": "vite.link-diagnostics.config.ts",
+      "sha256": "0e727959770376fedb99f0d273a59835522d4b12dc2318996c64c6b185addbc5"
+    },
+    {
+      "path": "vite.clipboard-boundary.config.ts",
+      "sha256": "911af5742751b803a2c0d35f03adc47e5f034d812f5554be77dade0a89994bbc"
+    },
+    {
+      "path": "tests/browser/diagnostics/browser_vite_config.test.ts",
+      "sha256": "37d83638caeb9b1bdeebd23acc0a1a57a613a8bc833394d0750f9c1e49727b89"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-before-20260928.log",
+      "sha256": "d6aa3b41656df85439aa716d8be53a75da0d5d7f4c5da1018558cd7b01f6f35e"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-unit-final-20260928.log",
+      "sha256": "324b3c7211c40bd7eaecc679aa9bf47079c5c609095bbd91baf27b44c1e580aa"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-types-final-20260928.log",
+      "sha256": "b993615c320728e2d503d2c59bfb85d9199621c34865c7842c210640d6abfab6"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-size-20260928.log",
+      "sha256": "6dda3214a95ce84edf358b86d3eb483f2006b5f1b545dd1c2d2b9fc0debc69b2"
+    },
+    {
+      "path": "/tmp/breditor-diagnostic-scan-before-20260928.log",
+      "sha256": "b6e971707b319046a0148cd1a96c97f668c19926b41421e093d3f0e03e9be306"
+    },
+    {
+      "path": "/tmp/breditor-diagnostic-scan-after-20260928.log",
+      "sha256": "bd4b59103509654edf925ca3e14ce0db816bc044302bed35c9a00b1875eba9e4"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-link-final-20260928.log",
+      "sha256": "77875d604c48b4151993f8101b076bbc45b3825233b92a2bdc8d2c1f61f13106"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-demo-20260928.log",
+      "sha256": "d0381d445c38e7af69f1a773b8d4a1e2ab2a5079e10096018dbfc921010b5bb2"
+    },
+    {
+      "path": "/tmp/breditor-link-current-repro-20260928.log",
+      "sha256": "d7b11b47751de3509964188dbb114e94f125cfb6eee0a69eea45f8e13ba3ff60"
+    },
+    {
+      "path": "/tmp/breditor-range-current-normal-20260928.log",
+      "sha256": "f1fc7fe2f4c7c84b5f2e55528ccab7e3f8c8dcad8aa9e3cbbe6f610c1aa38aa5"
+    },
+    {
+      "path": "/tmp/breditor-range-current-nojit-20260928.jsonl",
+      "sha256": "58cc7f262916cd651fae40176a95dd45cc0ba27356ca3a816c37662319b7ebb9"
+    },
+    {
+      "path": "/tmp/breditor-action-owner-browser-20260928.log",
+      "sha256": "faf347243d778767dcf1d3eebf0a7ee68dd95a9818d4db6089ba920fa2780b76"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "format": "breditor/native-selection-stress-observation",
+  "version": 1,
+  "observation": "Second separately started 20-batch run of the same preserved generic-getter asset, read from installed Safari's visible accessibility tree. Bounded candidate result only.",
+  "batchesPlanned": 20,
+  "restoresPerBatch": 10000,
+  "readsPerRestore": 3,
+  "freshPageBetweenBatches": true,
+  "freshBrowserProcessBetweenBatches": false,
+  "active": false,
+  "outcome": "passed",
+  "passed": 20,
+  "current": 20,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+  "bundleSha256": "7f619b5583e111dd6b42c3d7a6f84acc7ac443810cb733362b7f84a36d1b88fc",
+  "candidate": "generic-getter-callsite"
+}

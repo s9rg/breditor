@@ -10,5 +10,5 @@
     "stripInternal": false,
     "types": ["node", "@playwright/test"]
   },
-  "include": ["./**/*.ts", "../../playwright.demo.config.ts"]
+  "include": ["./**/*.ts", "../../playwright.demo.config.ts", "../../playwright.demo-stress.config.ts"]
 }

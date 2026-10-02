@@ -1,0 +1,882 @@
+{
+  "format": "breditor/native-selection-branch-experiment",
+  "date": "2026-09-28",
+  "conclusion": "The complete repeated batch passes 10/10 with the branch-selection candidate. NOT a verified fix: allocation-only and relocated-original controls also passed earlier. Original batch aborted after three recorded passes because a documentation-comment edit changed a pinned controller hash; the fourth attempt is unqualified and six were not run. The comment was reverted before starting the complete repeat.",
+  "runs": [
+    {
+      "name": "select-branch",
+      "logs": [
+        {
+          "path": "/tmp/breditor-browser-array-select-branch-20260928.jsonl",
+          "sha256": "329e5b85a4a61afd58c00daa64a66ebd0a89fb7ea7f277781a6e8cd4e27aa06c"
+        },
+        {
+          "path": "/tmp/breditor-browser-array-select-branch-20260928.stderr",
+          "sha256": "b04f2f0a9b83e6aeba0b6782834f22cf22ab074295ad079cdc636f47eaa4b3ae"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "92429",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 92429,
+              "site": "0x110188130",
+              "address": "0x108b48000",
+              "trap": null,
+              "patchHex": "b4ff2616",
+              "payloadHex": "480000542040601e4b00d915",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 2,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "92532",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 92532,
+              "site": "0x10dcbc130",
+              "address": "0x10667c000",
+              "trap": null,
+              "patchHex": "b4ff2616",
+              "payloadHex": "480000542040601e4b00d915",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 3,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "92811",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 92811,
+              "site": "0x10d368130",
+              "address": "0x105d28000",
+              "trap": null,
+              "patchHex": "b4ff2616",
+              "payloadHex": "480000542040601e4b00d915",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "select-branch-b",
+      "logs": [
+        {
+          "path": "/tmp/breditor-browser-array-select-branch-b-20260928.jsonl",
+          "sha256": "eced6d1bc87c0b92064deb7689000ab1107685e99e8e50283d85588a28f9c358"
+        },
+        {
+          "path": "/tmp/breditor-browser-array-select-branch-b-20260928.stderr",
+          "sha256": "0c1d8df5c36088aefaeb13d80a71f20c9d6689ebebe17ec451cd2adcc5bdc13a"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "94004",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 94004,
+              "site": "0x10f9f8130",
+              "address": "0x1083b8000",
+              "trap": null,
+              "patchHex": "b4ff2616",
+              "payloadHex": "480000542040601e4b00d915",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 2,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "94283",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 94283,
+              "site": "0x10d85c130",
+              "address": "0x105fac000",
+              "trap": null,
+              "patchHex": "b43f1d16",
+              "payloadHex": "480000542040601e4bc0e215",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 3,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "94552",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 94552,
+              "site": "0x10bbe8130",
+              "address": "0x1045a8000",
+              "trap": null,
+              "patchHex": "b4ff2616",
+              "payloadHex": "480000542040601e4b00d915",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 4,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "94606",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 94606,
+              "site": "0x10e0cc130",
+              "address": "0x106910000",
+              "trap": null,
+              "patchHex": "b40f2116",
+              "payloadHex": "480000542040601e4bf0de15",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 5,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "94766",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 94766,
+              "site": "0x10bb24130",
+              "address": "0x104274000",
+              "trap": null,
+              "patchHex": "b43f1d16",
+              "payloadHex": "480000542040601e4bc0e215",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 6,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "95049",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 95049,
+              "site": "0x10b68c130",
+              "address": "0x103ddc000",
+              "trap": null,
+              "patchHex": "b43f1d16",
+              "payloadHex": "480000542040601e4bc0e215",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 7,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "95125",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 95125,
+              "site": "0x1101b8130",
+              "address": "0x1089f4000",
+              "trap": null,
+              "patchHex": "b4ef2016",
+              "payloadHex": "480000542040601e4b10df15",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 8,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "95399",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 95399,
+              "site": "0x10e264130",
+              "address": "0x1069b4000",
+              "trap": null,
+              "patchHex": "b43f1d16",
+              "payloadHex": "480000542040601e4bc0e215",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 9,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "95669",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 95669,
+              "site": "0x110014130",
+              "address": "0x108764000",
+              "trap": null,
+              "patchHex": "b43f1d16",
+              "payloadHex": "480000542040601e4bc0e215",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 10,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "4719f7e8794617c4cc1864b82e76478592530706ba23bb681ec4c07e16c7e7ef"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "9638a78afb3988b3f4e928ca8098a2b8a3f8fe96e92622cae2cbf390936d731d"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "select-branch",
+          "pid": "95952",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "placement": "select-branch",
+              "pid": 95952,
+              "site": "0x10df94130",
+              "address": "0x106954000",
+              "trap": null,
+              "patchHex": "b4ff2616",
+              "payloadHex": "480000542040601e4b00d915",
+              "originalHex": "008c611e0020601e66000054005922fcc0035fd6",
+              "checkKind": "selection-candidate-not-a-guard"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    }
+  ]
+}

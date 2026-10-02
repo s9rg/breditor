@@ -23,6 +23,12 @@ pub struct BreditorCompiledProfileDescriptor {
 }
 
 impl BreditorCompiledProfileDescriptor {
+    /// Returns one admitted inline-format persisted revision to native Rust.
+    #[must_use]
+    pub fn format_revision(&self, index: u32) -> Option<u32> {
+        self.inline_format(index).map(|descriptor| descriptor.revision().get())
+    }
+
     /// Returns a typed intent's optional input-contract version to native Rust.
     #[must_use]
     pub fn intent_input_contract_version(&self, index: u32) -> Option<u32> {
@@ -128,9 +134,11 @@ impl BreditorCompiledProfileDescriptor {
 
     /// Returns one admitted inline-format persisted revision.
     #[must_use]
-    #[wasm_bindgen(js_name = formatRevision)]
-    pub fn format_revision(&self, index: u32) -> Option<u32> {
-        self.inline_format(index).map(|descriptor| descriptor.revision().get())
+    #[wasm_bindgen(js_name = formatRevision, unchecked_return_type = "number | undefined")]
+    pub fn format_revision_js(&self, index: u32) -> JsValue {
+        // Explicit JS values avoid the optional-u32 floating-point sentinel
+        // transport; invalid indices remain absent rather than becoming zero.
+        self.format_revision(index).map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the number of declared properties for one admitted format.

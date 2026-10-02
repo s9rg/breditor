@@ -1,0 +1,57 @@
+{
+  "format": "breditor/checkpoint-store-close",
+  "date": "2026-09-28",
+  "bug": "Closing a checkpoint store did not settle callers waiting for its database open. A blocked request could leave single or concurrent loads pending indefinitely after disposal.",
+  "before": {
+    "targetedTests": 50,
+    "failed": 2,
+    "passed": 48,
+    "observations": "After close and eight microtask turns, neither the one-load nor three-load fixture had settled any callers. Releasing the held native success event allowed cleanup."
+  },
+  "fix": [
+    "Settle the owner's shared pending open on explicit close, without claiming to cancel the platform request.",
+    "Retain terminal handlers to abort late upgrades and close late connections, including closure during schema validation.",
+    "Suppress closed-owner blocked-progress notifications and release the cancellation closure after open settlement.",
+    "Preserve transaction completion semantics for writes already dispatched."
+  ],
+  "verification": {
+    "newUnitTests": 4,
+    "browserRuntimeTests": 1248,
+    "browserRuntimeFiles": 50,
+    "typecheck": "passed (runtime, unit tests and browser tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224985,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 6,
+      "failed": 0,
+      "retries": 0,
+      "scenarios": [
+        "Real database deletion blocked by a retained connection; two loads queued behind it settle on owner close before unblock; late upgrade aborts with AbortError.",
+        "Normal checkpoint save, real page reload, Undo and Redo."
+      ],
+      "output": "target/playwright-store-close-20260928"
+    }
+  },
+  "limits": [
+    "The browser probe creates and deletes only its own database in a fresh isolated test context.",
+    "Native open requests cannot be canceled. Native resource cleanup still waits for a platform event; only owner-side open waiters are settled immediately.",
+    "Pending digest operations and already-dispatched transaction behavior are unchanged; no write timeout was introduced.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/indexeddb_session_checkpoint.ts", "sha256": "85d7e418db71417a562ee090d2603e5501952210dbe431d47b25a7fae3a32ad5"},
+    {"path": "packages/breditor-browser/src/indexeddb_session_checkpoint.test.ts", "sha256": "1bf9d1b75d405f5e0897bf148be8f7652d938ac100ebc613b5c0bca6eb31e8ac"},
+    {"path": "tests/browser/checkpoint-close.spec.ts", "sha256": "14b12f68de4002e44390805e8cf056ff7b40ca24f55958fe79d333b4ca24948a"},
+    {"path": "tests/browser/harness/checkpoint_close_probe.ts", "sha256": "e38331799c94b434775ee9f0e5b76893cc3357fe43f3310ed1daaebfe5ee918b"},
+    {"path": "/tmp/breditor-store-close-before-20260928.log", "sha256": "aaa2a5b6ffc7a161a9494fa85c19a1b1c992eacfe52162d8ba7488cba2eca60b"},
+    {"path": "/tmp/breditor-store-close-full-20260928.log", "sha256": "5d7bafe8d1c640bba089c773802130b27f7199946b13d1fcafe15e8b2c0cfd7f"},
+    {"path": "/tmp/breditor-store-close-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-store-close-build-final-20260928.log", "sha256": "dc77b63462f77d2d50c26d6d67bbc588e538d3f02e43b51c90614dfbfd8b4f48"},
+    {"path": "/tmp/breditor-store-close-browser-20260928.log", "sha256": "6ae9712be846285548acd73a24de0c605f2aed4927ebcd77bd404182df9274de"},
+    {"path": "/tmp/breditor-store-close-browser-types-20260928.log", "sha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2"}
+  ]
+}

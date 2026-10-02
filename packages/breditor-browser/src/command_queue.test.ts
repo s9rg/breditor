@@ -56,6 +56,49 @@ function request(detail: string): EditorCommandRequest {
 }
 
 describe("BreditorCommandQueue", () => {
+  it.each(["absent", "changed", "invalid", "throws"])(
+    "captures the observer option once (%s getter case)",
+    (later) => {
+      const first = vi.fn();
+      const replacement = vi.fn();
+      const executor = vi.fn(() => "committed");
+      let reads = 0;
+      const queue = new BreditorCommandQueue(executor, {
+        get observer() {
+          reads += 1;
+          // Include explicit undefined from JavaScript callers even though
+          // exactOptionalPropertyTypes asks typed callers to omit the field.
+          if (reads === 1) return later === "absent" ? undefined as unknown as typeof first : first;
+          if (later === "throws") throw new Error("observer should be captured once");
+          if (later === "invalid" && reads > 2) return 0 as unknown as typeof first;
+          return replacement;
+        },
+      });
+      expect(queue.submit(request("one"))).toEqual({
+        status: "completed", sequence: 1n, result: "committed",
+      });
+      expect(executor).toHaveBeenCalledOnce();
+      expect(first).toHaveBeenCalledTimes(later === "absent" ? 0 : 1);
+      expect(replacement).not.toHaveBeenCalled();
+      expect(reads).toBe(1);
+      expect(queue.failure).toBeUndefined();
+      queue.dispose();
+    },
+  );
+
+  it("rejects an invalid first observer value without rereading a later valid one", () => {
+    const executor = vi.fn(() => "committed");
+    let reads = 0;
+    expect(() => new BreditorCommandQueue(executor, {
+      get observer() {
+        reads += 1;
+        return reads === 1 ? 0 as unknown as () => void : () => {};
+      },
+    })).toThrow("command queue observer must be a function");
+    expect(reads).toBe(1);
+    expect(executor).not.toHaveBeenCalled();
+  });
+
   it("opens the intrinsic lease port only for the constructor-captured executor", () => {
     const executor = (item: EditorCommandRequest): string => item.source.detail;
     const queue = new BreditorCommandQueue(executor);
@@ -184,6 +227,124 @@ describe("BreditorCommandQueue", () => {
     });
     expect(calls).toBe(0);
     expect(() => new BreditorCommandQueue(() => {}, { capacity: 0 })).toThrow(RangeError);
+  });
+
+  it.each(["disposed", "leased", "failed"])("rechecks %s state after request inspection", (state) => {
+    const executor = vi.fn((item: EditorCommandRequest) => {
+      if (item.source.detail === "inner-failure") throw new Error("execution failed");
+      return item.source.detail;
+    });
+    const queue = new BreditorCommandQueue(executor);
+    const port = openCommandQueueLeasePort(queue, executor)!;
+    let lease: CommandQueueLease | undefined;
+    let inspected = false;
+    const item = new Proxy(request("outer"), {
+      ownKeys(target) {
+        if (!inspected) {
+          inspected = true;
+          if (state === "disposed") queue.dispose();
+          if (state === "leased") lease = port.acquireLease();
+          if (state === "failed") queue.submit(request("inner-failure"));
+        }
+        return Reflect.ownKeys(target);
+      },
+    });
+    expect(queue.submit(item)).toEqual({ status: "rejected", reason: state });
+    expect(executor).toHaveBeenCalledTimes(state === "failed" ? 1 : 0);
+    expect(queue.pendingCount).toBe(0);
+    if (state === "leased") {
+      expect(lease).toBeDefined();
+      expect(port.releaseLease(lease!)).toBe(true);
+      expect(queue.submit(request("after-release"))).toEqual({
+        status: "completed", sequence: 1n, result: "after-release",
+      });
+    }
+    queue.dispose();
+  });
+
+  it("uses its private pending count for capacity admission", () => {
+    let nested: unknown;
+    const executor = vi.fn((item: EditorCommandRequest) => {
+      if (item.source.detail === "head") nested = queue.submit(request("nested"));
+      return item.source.detail;
+    });
+    const queue = new BreditorCommandQueue(executor, { capacity: 1 });
+    const shadow = vi.fn(() => 0);
+    Object.defineProperty(queue, "pendingCount", { get: shadow });
+    expect(queue.submit(request("head")).status).toBe("completed");
+    expect(nested).toEqual({ status: "rejected", reason: "capacity" });
+    expect(executor).toHaveBeenCalledOnce();
+    expect(shadow).not.toHaveBeenCalled();
+    queue.dispose();
+  });
+
+  it("preserves admission order after a request-inspection callback completes nested work", () => {
+    const calls: string[] = [];
+    const queue = new BreditorCommandQueue((item) => {
+      calls.push(item.source.detail);
+      return item.source.detail;
+    });
+    let inspected = false;
+    const outer = new Proxy(request("outer"), {
+      ownKeys(target) {
+        if (!inspected) {
+          inspected = true;
+          expect(queue.submit(request("inner"))).toEqual({
+            status: "completed", sequence: 1n, result: "inner",
+          });
+        }
+        return Reflect.ownKeys(target);
+      },
+    });
+    expect(queue.submit(outer)).toEqual({
+      status: "completed", sequence: 2n, result: "outer",
+    });
+    expect(calls).toEqual(["inner", "outer"]);
+    expect(queue.pendingCount).toBe(0);
+    expect(queue.failure).toBeUndefined();
+    queue.dispose();
+  });
+
+  it.each([
+    [false, "executor"], [false, "observer"],
+    [true, "executor"], [true, "observer"],
+  ] as const)("contains rejected %s-leased %s promises while keeping fail-stop semantics", async (leased, source) => {
+    const rejected = Promise.reject(new Error("async hook failed"));
+    // Permit a clean before-fix assertion rather than an unrelated test-runner error.
+    void rejected.catch(() => {});
+    const then = vi.spyOn(rejected, "then");
+    let queue: BreditorCommandQueue<unknown>;
+    let executions = 0;
+    let observations = 0;
+    // Plain functions: vi.fn itself observes returned promises and would mask
+    // the missing queue rejection handler that this regression exercises.
+    const executor = () => {
+      executions += 1;
+      if (!leased) expect(queue.submit(request("follower")).status).toBe("queued");
+      return source === "executor" ? rejected : "done";
+    };
+    const observer = () => {
+      observations += 1;
+      return source === "observer" ? rejected : undefined;
+    };
+    queue = new BreditorCommandQueue<unknown>(executor, { observer });
+    const port = openCommandQueueLeasePort(queue, executor)!;
+    const lease = leased ? port.acquireLease()! : undefined;
+    const result = lease === undefined
+      ? queue.submit(request("head"))
+      : port.submitLeased(lease, request("head"));
+    expect(then).toHaveBeenCalled();
+    expect(result).toEqual({
+      status: "failed",
+      failure: { code: `command_queue.${source}_threw`, sequence: 1n },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(executions).toBe(1);
+    expect(observations).toBe(source === "observer" ? 1 : 0);
+    expect(queue.pendingCount).toBe(leased ? 0 : 1);
+    if (lease !== undefined) expect(port.releaseLease(lease)).toBe(true);
+    expect(queue.submit(request("later"))).toEqual({ status: "rejected", reason: "failed" });
+    queue.dispose();
   });
 
   it("leases only a healthy idle queue and releases one exact capability once", () => {

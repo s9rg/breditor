@@ -1,0 +1,49 @@
+{
+  "status": "reproduced_unresolved",
+  "environment": { "platform": "darwin", "architecture": "arm64", "playwright": "1.62.1" },
+  "scope": "Headless bundled engines; not newly tested in installed Safari",
+  "tinyModule": { "bytes": 48, "rust": false, "wasmBindgen": false, "imports": 0, "memories": 0, "function": "(param i32 i32 i32) (result f64) f64.const 2048" },
+  "finalBuildSha256": "13ccf24403e427e862da2ffe49213f3884d580114098277666b1b2c46eca9337",
+  "normalWebkit": {
+    "passedCases": 1,
+    "failedCases": 1,
+    "notRun": 8,
+    "mode": "tiny-wasm",
+    "iteration": 3351,
+    "propertyIndex": 0,
+    "mismatchMask": 16,
+    "trace": "/tmp/breditor-tiny-wasm-fresh-arrays-failure-20260926.zip",
+    "traceSha256": "ac4253f8f2a9a263315eaa6eac7d93da471ea17dfcbe2e6b8b298a9439dae687",
+    "comparisonAttachment": {
+      "stage": "descriptor:isolateComparison:1",
+      "counters": {
+        "field": "4", "actual": "2048", "expected": "2048",
+        "actualType": "1", "expectedType": "1",
+        "objectIsRecheck": "1", "strictEqualRecheck": "1",
+        "actualHigh": "1084227584", "actualLow": "0",
+        "expectedHigh": "1084227584", "expectedLow": "0"
+      }
+    }
+  },
+  "finalControls": {
+    "chromiumAndFirefox": { "passedCases": 8, "casesPerModePerEngine": 2 },
+    "webkitNoJit": { "passedCases": 10, "casesPerMode": 5, "useJitFalseLogged": true },
+    "modes": ["javascript", "tiny-wasm"],
+    "iterationsPerCase": 10000,
+    "propertyTuplesPerCase": 20000,
+    "actualArraysIndependentOfExpected": true
+  },
+  "earlierControls": {
+    "normalTinyFirstFailureIteration": 1871,
+    "normalTinyIndependentFailureIteration": 131,
+    "dfgFtlDisabled": { "failed": true, "iteration": 3521, "sameEqualBitReport": true },
+    "wasmJitDisabledOnly": { "outcome": "inconclusive", "reason": "two navigation timeouts before probe execution" }
+  },
+  "inference": "Rust is not required for this reproduced comparison fault; JavaScriptCore/Wasm execution or numeric representation is implicated, but the exact component is not established.",
+  "limits": [
+    "Cold rechecks do not reveal the original machine-level operands or instruction.",
+    "No proof that every historical clipboard, selection and startup fault has this same cause.",
+    "Altered-JIT runs are hypothesis controls, not release qualification or production workarounds.",
+    "No production runtime, data contract or validation was changed."
+  ]
+}

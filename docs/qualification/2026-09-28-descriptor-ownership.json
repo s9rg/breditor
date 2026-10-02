@@ -1,0 +1,153 @@
+{
+  "format": "breditor/descriptor-ownership",
+  "date": "2026-09-28",
+  "baseCommit": "64fcee8529fc0784759cf347729de87e79b97853",
+  "workingTreeDirty": true,
+  "fixes": [
+    {
+      "issue": "Profile-descriptor reads could reenter either consumption entry and consume/free the same active descriptor twice.",
+      "change": "Both entries share one guarded implementation. Reserve before protected metadata and getters; retain through cleanup and final generation validation."
+    },
+    {
+      "issue": "The captured-cleanup entry evaluated the view's then accessor as a default argument before checking whether the caller protected that handle.",
+      "change": "Inspect then only after ownership admission, inside the active reservation."
+    }
+  ],
+  "reproduction": {
+    "testFile": "packages/breditor-browser/src/wasm_profile_descriptor.test.ts",
+    "initialTests": 31,
+    "failed": 12,
+    "passed": 19,
+    "phases": [
+      "protected metadata",
+      "free getter",
+      "then getter",
+      "schema read",
+      "cleanup",
+      "final generation check"
+    ],
+    "finalNewRegressionAndControlCases": 15,
+    "controls": [
+      "Independent nested descriptors",
+      "Reservation release after rejected metadata",
+      "Public array-only protected-handle contract",
+      "Internal Set and already-captured cleanup contract"
+    ]
+  },
+  "consolidation": {
+    "files": [
+      "packages/breditor-browser/src/projection_plain_text.ts",
+      "packages/breditor-browser/src/editor_command.ts"
+    ],
+    "change": "Reuse the existing wellFormedUtf8Length scanner. Keep actual caller limits, empty-string rules, UTF-16 limits, exact UTF-8 counts and unpaired-surrogate rejection.",
+    "plainTextUnicodeControls": 5,
+    "commandBoundaryControls": "Exact/over-limit four-byte astral and three-byte BMP strings added to the existing command-admission test.",
+    "initialApplicationGzipBytes": 225074,
+    "finalApplicationGzipBytes": 224911,
+    "limit": 225000
+  },
+  "verification": {
+    "browserRuntimeTests": 1365,
+    "diagnosticToolTests": 170,
+    "workspaceTypes": "passed",
+    "browserHarnessTypes": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "browserEmittedJavaScriptBytes": 1083183,
+    "browserEmittedJavaScriptLimit": 1085000,
+    "browserDeclarationsBytes": 274698,
+    "browserDeclarationsLimit": 276000,
+    "demoMatrix": {
+      "passed": 39,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/descriptor-owner-demo-20260928"
+    },
+    "fullReleaseVerifierRerun": false,
+    "nativeRustTestsRerun": false,
+    "nativeSafariRerun": false,
+    "standaloneWebkitNumericProbeRerun": false,
+    "browserMatrix": {
+      "passed": 159,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/descriptor-owner-browser-20260928"
+    }
+  },
+  "knownOpen": {
+    "webKitNumericFault": "Not fixed; the previous checkpoint still has two debugger-free no-JIT numerical counterexamples.",
+    "webKitSelectionEndpointFault": "No causal fix established. Passing editor suites do not erase its historical failure.",
+    "priorEvidence": "docs/qualification/2026-09-28-action-state-ownership-and-webkit-recheck.json"
+  },
+  "limits": [
+    "The descriptor guard is local to overlapping descriptor reads, not a global cross-adapter reservation or permission to reuse freed handles.",
+    "Controlled browser events are not exhaustive OS clipboard or native IME qualification.",
+    "No Rust implementation, Wasm ABI, durable format, package version or size limit changed.",
+    "No commit, push or publication. Pre-existing unrelated changes preserved."
+  ],
+  "files": [
+    {
+      "path": "packages/breditor-browser/src/wasm_profile_descriptor.ts",
+      "sha256": "9fe9ec9e3c9a16dbc08fa9f7f7f42a825c85e2f66f620740e103f3370545d959"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_profile_descriptor.test.ts",
+      "sha256": "6027b56ea5232660100c4b658db2d590969870d64fd2662b4079b8552a362701"
+    },
+    {
+      "path": "packages/breditor-browser/src/projection_plain_text.ts",
+      "sha256": "b7eeee7da1ec5932fa7514e1c85405bacee6fb17779b72a4588d6a2cb01fe568"
+    },
+    {
+      "path": "packages/breditor-browser/src/projection_plain_text.test.ts",
+      "sha256": "5af8e07b028ec361dacad3610221a753222508475616e8b814a3e82bc62fd811"
+    },
+    {
+      "path": "packages/breditor-browser/src/editor_command.ts",
+      "sha256": "cfe3027fafb56133ef33789aec34073098d10c86714f12a430db575a025e3c9a"
+    },
+    {
+      "path": "packages/breditor-browser/src/editor_command.test.ts",
+      "sha256": "d50344a048c85d5c3fb6ca1b009dc48b4177c2783f402518b59bd6b032daecc1"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_profile_descriptor.js",
+      "sha256": "767bb9f0032fc639f2a4e82ebb5ed41f4271f4af9d067432e5c55081a73aeb1d"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-before-20260928.log",
+      "sha256": "26c60038b9fc897361e5db70a4855c0b024810b5a97655c521416c8ef66c39a1"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-unit-final-20260928.log",
+      "sha256": "0b9c4becd67b1eaeca4ac8ccc85135a52990948e9caf7b0a38686119b6c36877"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-types-final-20260928.log",
+      "sha256": "b993615c320728e2d503d2c59bfb85d9199621c34865c7842c210640d6abfab6"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-diagnostics-20260928.log",
+      "sha256": "f9aa52e5ee7276282abd1adcc205eafbe0de3cb9f37b00a74b90686265f84fb5"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-size-initial-20260928.log",
+      "sha256": "a0e2d3efb70159e4631f4b3c1f2326787d37c6df2d714416d58966e3b21dc020"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-size-final-20260928.log",
+      "sha256": "772d3540b9fabc56f640689173cfbfc2024fde3bad568b2ea1f20f8eab455f6a"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-browser-20260928.log",
+      "sha256": "738198e417e42d4a409f58430b00be9cd27fb400ae9f90f5e39dc1620c452aac"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-demo-20260928.log",
+      "sha256": "8586a461066bf2a77eaf7604f0af78bd4ec5a4a1a2b7eb189f880741167a35f8"
+    },
+    {
+      "path": "/tmp/breditor-descriptor-owner-diagnostics-final-20260928.log",
+      "sha256": "40e9946a50c1730cfb3e0ae343f510410f97dfc561bab0c19eb3a935f4d1cebd"
+    }
+  ]
+}

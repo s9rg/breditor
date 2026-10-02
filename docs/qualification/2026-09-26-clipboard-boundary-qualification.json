@@ -1,0 +1,83 @@
+{
+  "status": "Candidate passes bounded interactive and native Safari checks; remains opt-in, not a complete WebKit fix",
+  "localDate": "2026-09-26",
+  "productionSourceChangedThisCheckpoint": false,
+  "candidate": "Same four-site exact decimal round-trip boundary transform as full-consumer qualification; not the reduced SameValue experiment",
+  "configs": ["vite.clipboard-boundary.config.ts", "playwright.clipboard-boundary.config.ts"],
+  "oracle": {
+    "assertionsChanged": false,
+    "casesPerEngine": 21,
+    "includes": ["Unicode and backward/cross-paragraph ranges", "rejected paste preserving selection and redo", "five optional or stale event-echo schedules", "cut and immediate caret movement", "60-cycle formatted clipboard/Link/history lifecycle", "300-cycle warm Link/history/checkpoint lifecycle", "manual recorder contracts and browser-dispatched typing"],
+    "automatedClipboard": "controlled events, not OS clipboard evidence",
+    "normalEngineSettings": true,
+    "retries": 0,
+    "workers": 1,
+    "maxFailures": 1,
+    "caseTimeoutMs": 30000,
+    "suiteTimeoutMs": 480000
+  },
+  "automatedRuns": [
+    { "variant": "original", "engines": { "webkit": 21 }, "passed": 21, "failed": 0, "skipped": 0, "flaky": 0, "durationMs": 26380.964, "report": "/tmp/breditor-clipboard-original-a-20260926.json", "sha256": "3b6f932dca45ab79600099890962ad4c3b00f3ad523203b429358c786e67506b" },
+    { "variant": "normalized", "engines": { "webkit": 21 }, "passed": 21, "failed": 0, "skipped": 0, "flaky": 0, "durationMs": 26685.315, "report": "/tmp/breditor-clipboard-normalized-a-20260926.json", "sha256": "22bfb868fb81b57d21d9c1dba8f3a82f68cd80564c74db900a27a9eb6511f6b4" },
+    { "variant": "normalized", "engines": { "webkit": 63 }, "repeatEach": 3, "passed": 63, "failed": 0, "skipped": 0, "flaky": 0, "durationMs": 107054.532, "report": "/tmp/breditor-clipboard-normalized-stress-20260926.json", "sha256": "428021c34a02044ea4420e1ba040a2b5bebecf8cca34b37e06c7d4b744dbdd38" },
+    { "variant": "normalized", "engines": { "chromium": 21, "firefox": 21 }, "passed": 42, "failed": 0, "skipped": 0, "flaky": 0, "durationMs": 59778.082, "report": "/tmp/breditor-clipboard-other-engines-20260926.json", "sha256": "0c10221ecb2e134cc733e6f952a555662986aa3f4bdee7041c8b4f3ba4912db2" }
+  ],
+  "nativeSafari": {
+    "version": "26.6.2",
+    "url": "http://127.0.0.1:4206/manual-clipboard.html",
+    "variant": "normalized",
+    "method": "Native Safari UI keyboard shortcuts, toolbar controls, accessibility tree and screenshot inspection",
+    "report": "docs/qualification/2026-09-26-safari-normalized-clipboard.json",
+    "reportSha256": "8c1a6feef5ec9f4182ad35392ccd5698070aa3ed28086dcf846f3a6a77dec0dc",
+    "outcome": "operator-confirmed",
+    "owner": "live",
+    "firstFault": null,
+    "trustedClipboardEvents": { "copy": 2, "cut": 1, "paste": 1 },
+    "pendingEvents": 0,
+    "droppedEvents": 0,
+    "observedChecks": [
+      "Keyboard-selected Breditor prefix copies to plain scratch field",
+      "Cut removes prefix and copied text remains available in scratch",
+      "Two right-arrow moves after cut and typing ! keep owner live",
+      "Undo/redo reverses and restores typing and cut separately, exactly once",
+      "Paste at paragraph end inserts one Breditor; undo restores original",
+      "Link URL edit, undo and redo keep form and rendered link target synchronized; yellow Highlight remains"
+    ],
+    "initialAttempt": "AX-selected Copy produced a handled trusted event but no visible scratch paste; excluded as behavioral proof. Subsequent visible keyboard selection and scratch paste verified Copy. Both copy events remain in the recorder.",
+    "clipboardSideEffect": "Only fixture sample text used; system clipboard now contains Breditor. Prior clipboard contents were not read or restored."
+  },
+  "artifacts": {
+    "sameWasmSha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+    "sameCssSha256": "4f9e74d11a019e92286c0ac940748967f0f42836289df2b831a92ca4436138da",
+    "originalDirectory": "target/clipboard-boundary-original/assets",
+    "originalJs": {
+      "advanced--2r4_Pzt.js": "a6697a84ea14159c64a84ee769d29ca20e9417036097f98693904109883556e3",
+      "breditor_wasm-BmPv164S.js": "e75c26677bbaf115009adcc9dea78c4958796a72c014e38e89da1ae8ea1850c5",
+      "dom_selection-CVKb-eKz.js": "160c454f9fe46a873e843d692dc60418e7d8dcf3a86d68e0eb7c10c46fe2b1a7",
+      "index-BNaM6vdh.js": "263384b102802cb130b4cf26882ae3fefa3ab80b37dc1308c0128fc3428391a1",
+      "manual-BTBwqDvO.js": "cdbb841888566c022db692b58f247e275ac4cc3b79b3979af86ce3963dd3e908"
+    },
+    "candidateDirectory": "target/clipboard-boundary-normalized/assets",
+    "candidateJs": {
+      "advanced-C-moM_xA.js": "80635b433a8685a7f2a92a213c06a0de220ba1994a7b4df5849d6fad1cb795fa",
+      "breditor_wasm-BolgLL6U.js": "97cb4899f170cdaf41dcb1226ee20d8a2caa955247de03541ac90f13118307b6",
+      "dom_selection-Brkpw_Ag.js": "bb97a7266adbb63143f7903ee480a88383e5169c13b7224bb19bf09f44955cde",
+      "index-Czyd27Zw.js": "8d26209c08cdec0b5c1dd25ad833b0b583b1b3a01cd84018faac2b7f61108fc0",
+      "manual-CVByeSmt.js": "8a9ac592c16eb2a30f76032ec0501a764005aa8056cbeb68ece9b6b8d2774191"
+    },
+    "transformedSources": {
+      "wasm_profile_descriptor.js": "a3cd6f9357d3cc481a4d8080717d3e921cae77590db59708a4a1ec63515ec3d9",
+      "wasm_selection_adapter.js": "ce4874987a34661dbf0e6371868f04e6115e4620d9306de029b96c16208f2a0d"
+    }
+  },
+  "verification": { "browserTypecheck": "passed", "workspaceTests": 1278, "diagnosticTests": 73, "unitTotal": 1351 },
+  "limits": [
+    "The interactive original control also passed; this checkpoint does not demonstrate an interactive failure-to-success transition.",
+    "Earlier full-restore original failure remains recorded separately in 2026-09-26-full-boundary-qualification.json.",
+    "Native checklist is one bounded operator-confirmed run, not platform certification or a long soak.",
+    "No candidate native Chrome, physical iOS, or IME/composition qualification in this checkpoint.",
+    "Multi-entry interactive JS differs from the isolated restore bundle; source transform and Wasm match, bundle hashes are recorded separately.",
+    "Some tests overlapped native work; elapsed times are not isolated performance measurements.",
+    "Conversion cost, longer native stress and the full release verifier remain before production adoption."
+  ]
+}

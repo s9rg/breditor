@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { consumeWasmSessionCheckpoint } from "./wasm_session_checkpoint.js";
 
 import {
   MAX_BROWSER_DOCUMENT_JSON_BYTES,
@@ -281,6 +282,128 @@ class FakeStringResult implements WasmDocumentJsonStringResultView {
 }
 
 describe("Wasm Document V1 export boundary", () => {
+  it.each(["free getter", "status", "error", "takeValue", "cleanup", "expected", "protected list", "contract"])(
+    "rejects overlapping ownership during %s inspection",
+    (stage) => {
+      let nested: ReturnType<typeof consumeWasmDocumentJson> | undefined;
+      let entered = false;
+      const enter = () => {
+        if (entered) return;
+        entered = true;
+        nested = consumeWasmDocumentJson(EXPECTED, view);
+      };
+      const free = vi.fn(() => { if (stage === "cleanup") enter(); });
+      const takeValue = vi.fn(() => {
+        if (stage === "takeValue") enter();
+        return documentJson([paragraph([])]);
+      });
+      const view: WasmDocumentJsonStringResultView = {
+        get status() { if (stage === "status") enter(); return "value" as const; },
+        get error() { if (stage === "error") enter(); return undefined; },
+        get free() { if (stage === "free getter") enter(); return free; },
+        takeValue,
+      };
+      const expected = {
+        get lineage() { if (stage === "expected") enter(); return EXPECTED.lineage; },
+        revision: EXPECTED.revision,
+      };
+      const protectedHandles = new Proxy<unknown[]>([], {
+        getOwnPropertyDescriptor(target, property) {
+          if (stage === "protected list") enter();
+          return Reflect.getOwnPropertyDescriptor(target, property);
+        },
+      });
+      const contract: WasmDurableJsonContract = {
+        get mode() { if (stage === "contract") enter(); return "v1" as const; },
+      };
+      expect(consumeWasmDocumentJson(expected, view, protectedHandles, contract).ok).toBe(true);
+      expect(free).toHaveBeenCalledOnce();
+      expect(takeValue).toHaveBeenCalledOnce();
+      expect(nested).toMatchObject({ ok: false, error: { code: "document_json.invalid_wasm_view" } });
+    },
+  );
+
+  it.each(["free getter", "code", "cleanup"])(
+    "does not consume a shared document error twice during %s reentry",
+    (stage) => {
+      let nested: ReturnType<typeof consumeWasmDocumentJson> | undefined;
+      let entered = false;
+      const enter = () => {
+        if (entered) return;
+        entered = true;
+        nested = consumeWasmDocumentJson(EXPECTED, second);
+      };
+      const free = vi.fn(() => { if (stage === "cleanup") enter(); });
+      const error: WasmDocumentJsonErrorView = {
+        get code() { if (stage === "code") enter(); return "codec.document_encoding_failed"; },
+        message: "document rejected",
+        get free() { if (stage === "free getter") enter(); return free; },
+      };
+      const first = new FakeStringResult("error", undefined, error);
+      const second = new FakeStringResult("error", undefined, error);
+      expect(consumeWasmDocumentJson(EXPECTED, first)).toMatchObject({ ok: false, error: { kind: "core" } });
+      expect(free).toHaveBeenCalledOnce();
+      expect(first.freeCalls).toBe(1);
+      expect(second.freeCalls).toBe(1);
+      expect(nested).toMatchObject({ ok: false, error: { kind: "boundary" } });
+    },
+  );
+
+  it.each([
+    ["document to checkpoint", "result", consumeWasmDocumentJson, consumeWasmSessionCheckpoint],
+    ["document to checkpoint", "error", consumeWasmDocumentJson, consumeWasmSessionCheckpoint],
+    ["checkpoint to document", "result", consumeWasmSessionCheckpoint, consumeWasmDocumentJson],
+    ["checkpoint to document", "error", consumeWasmSessionCheckpoint, consumeWasmDocumentJson],
+  ] as const)("rejects shared ownership across %s readers for a shared %s", (_name, alias, outer, inner) => {
+      let nested: ReturnType<typeof inner> | undefined;
+      let entered = false;
+      const enter = () => {
+        if (entered) return;
+        entered = true;
+        nested = inner(EXPECTED, alias === "result" ? first : second);
+      };
+      const error = new FakeError();
+      if (alias === "error") {
+        Object.defineProperty(error, "code", { get() {
+          enter();
+          return "codec.document_encoding_failed";
+        } });
+      }
+      const first = new FakeStringResult("error", undefined, error);
+      const second = new FakeStringResult("error", undefined, error);
+      if (alias === "result") {
+        Object.defineProperty(first, "status", { get() { enter(); return "error"; } });
+      }
+      expect(outer(EXPECTED, first)).toMatchObject({ ok: false, error: { kind: "core" } });
+      expect(first.freeCalls).toBe(1);
+      expect(error.freeCalls).toBe(1);
+      expect(second.freeCalls).toBe(alias === "error" ? 1 : 0);
+      expect(nested).toMatchObject({ ok: false, error: { kind: "boundary" } });
+  });
+
+  it("allows independent nested document reads", () => {
+    const second = new FakeStringResult("value", documentJson([paragraph([])]));
+    const first = new FakeStringResult("value", documentJson([paragraph([])]));
+    Object.defineProperty(first, "status", { get() {
+      expect(consumeWasmDocumentJson(EXPECTED, second).ok).toBe(true);
+      return "value";
+    } });
+    first.takeValue = () => documentJson([paragraph([])]);
+    expect(consumeWasmDocumentJson(EXPECTED, first).ok).toBe(true);
+    expect(first.freeCalls).toBe(1);
+    expect(second.freeCalls).toBe(1);
+  });
+
+  it("releases an untouched result after protected-list capture fails", () => {
+    const view = new FakeStringResult("value", documentJson([paragraph([])]));
+    const array = Proxy.revocable<unknown[]>([], {});
+    array.revoke();
+    expect(consumeWasmDocumentJson(EXPECTED, view, array.proxy).ok).toBe(false);
+    expect(view.freeCalls).toBe(0);
+    expect(consumeWasmDocumentJson(EXPECTED, view).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+
   it("copies exact canonical Unicode bytes, correlates the snapshot, and deep-freezes", () => {
     const json = documentJson([
       paragraph([run("A💡", false), run("強", true)]),

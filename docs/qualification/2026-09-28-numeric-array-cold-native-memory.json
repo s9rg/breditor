@@ -1,0 +1,495 @@
+{
+  "format": "breditor/numeric-array-cold-native-memory",
+  "date": "2026-09-28",
+  "fixed": false,
+  "productionChanged": false,
+  "diagnosticTests": 155,
+  "browserTypecheck": "passed",
+  "sourceReferences": [
+    {
+      "url": "https://raw.githubusercontent.com/WebKit/WebKit/main/Source/JavaScriptCore/tools/JSDollarVM.cpp",
+      "scope": "Current upstream API semantics for value/indexingMode/getpid only, not a matched binary revision. Availability confirmed in the actual browser."
+    }
+  ],
+  "currentSources": [
+    {
+      "path": "tests/browser/harness/numeric_transfer_memory_capture_probe.ts",
+      "sha256": "9b99127df43503ff78b02cf20847cdb8b4c9cdb1efa912b44c8723f829681072"
+    },
+    {
+      "path": "tests/browser/diagnostics/webkit_array_memory.test.ts",
+      "sha256": "5185d51d6636f39f12e9fce57f8ff0c2b44e094d3117752bbd22dde8e74ebf33"
+    },
+    {
+      "path": "tests/browser/diagnostics/webkit_array_capture.test.ts",
+      "sha256": "e6f181a0cb244c17d80f4ac2aae35504be7fcc916953ff4293320129898eccbc"
+    }
+  ],
+  "runs": [
+    {
+      "path": "/tmp/breditor-browser-array-cold-control-20260928.jsonl",
+      "sha256": "95365dbf79acdffa1dfc86b501d061414b0eb36d225f78b0bedfffa5abb0ed90",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-cold-control-20260928.stderr",
+        "sha256": "dbb9656dc778a90841ed941c5db0c1c706dcff632b57ca405a3ef81b462b5c93"
+      },
+      "engineObservations": {
+        "useJitFalse": 4,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 4
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "control",
+          "pid": "2873",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-memory-capture-20260928/numeric_transfer_memory_capture_probe.js",
+              "sha256": "7092bdc920bfda12d2882a796b9815242fd46b088e5ab1fd745aef390522b015"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/capture-webkit-array-memory.mjs",
+              "sha256": "95d8a6b5a448e41a37fbc39d9b860d72375cd971f209ddb11212a24d7c91600f"
+            }
+          ],
+          "outcome": "control-confirmed",
+          "memory": {
+            "pointerMatches": true,
+            "headerHex": "c02c0201072e080088aa111601000000",
+            "slotsHex": "000000000000a0400000000000000000000000000000a040000000000000a040000000000000a040"
+          },
+          "bits": [
+            "40a0000000000000",
+            "0000000000000000",
+            "40a0000000000000",
+            "40a0000000000000",
+            "40a0000000000000"
+          ],
+          "evidence": {
+            "nativeDescription": "Object: 0x1163d42b0 with butterfly 0x11611aa88(base=0x11611aa80) (Structure 0x301022cc0:[0x1022cc0/16919744, Array, (0/0, 0/0){}, ArrayWithDouble, Unknown, Proto:0x1163d4170, Leaf]), StructureID: 16919744",
+            "storage": "ArrayWithDouble"
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 2873\nProcess 2873 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) script import json; p = lldb.debugger.GetSelectedTarget().GetProcess(); e = lldb.SBError(); h = p.ReadMemory(0x1163d42b0, 16, e); ok = e.Success() and len(h) == 16 and int.from_bytes(h[8:16], 'little') == 0x11611aa88; b = p.ReadMemory(0x11611aa88, 40, e) if ok else b''; print('BREDITOR_COLD_MEMORY=' + json.dumps({'pointerMatches': ok, 'headerHex': h.hex(), 'slotsHex': b.hex() if e.Success() else None}))\nBREDITOR_COLD_MEMORY={\"pointerMatches\": true, \"headerHex\": \"c02c0201072e080088aa111601000000\", \"slotsHex\": \"000000000000a0400000000000000000000000000000a040000000000000a040000000000000a040\"}\n(lldb) process detach\nProcess 2873 detached\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "path": "/tmp/breditor-browser-array-cold-probe-20260928.jsonl",
+      "sha256": "4cf6e316019eb9ef18e44065b95290fd1e7e3ac8dcf4ad266a8ee5db4424a37e",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-cold-probe-20260928.stderr",
+        "sha256": "de89e6b664f70af2e7c0d887ed591384fc94c06a85be90e6ee7735f5731714eb"
+      },
+      "engineObservations": {
+        "useJitFalse": 4,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 4
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "probe",
+          "pid": "3990",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-memory-capture-20260928/numeric_transfer_memory_capture_probe.js",
+              "sha256": "7092bdc920bfda12d2882a796b9815242fd46b088e5ab1fd745aef390522b015"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/capture-webkit-array-memory.mjs",
+              "sha256": "95d8a6b5a448e41a37fbc39d9b860d72375cd971f209ddb11212a24d7c91600f"
+            }
+          ],
+          "outcome": "stored-zero-confirmed",
+          "memory": {
+            "pointerMatches": true,
+            "headerHex": "50b30201072e0801c881e31201000000",
+            "slotsHex": "000000000000a040000000000000a040000000000000a040000000000000a0400000000000000000"
+          },
+          "bits": [
+            "40a0000000000000",
+            "40a0000000000000",
+            "40a0000000000000",
+            "40a0000000000000",
+            "0000000000000000"
+          ],
+          "evidence": {
+            "iteration": 9231,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "storage": "ArrayWithDouble",
+            "nativeDescription": "Object: 0x112c56b70 with butterfly 0x112e381c8(base=0x112e381c0) (Structure 0x30102b350:[0x102b350/16954192, Array, (0/0, 0/0){}, ArrayWithDouble, Unknown, Proto:0x112c54180, Leaf]), StructureID: 16954192",
+            "retained": true,
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 3990\nProcess 3990 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) script import json; p = lldb.debugger.GetSelectedTarget().GetProcess(); e = lldb.SBError(); h = p.ReadMemory(0x112c56b70, 16, e); ok = e.Success() and len(h) == 16 and int.from_bytes(h[8:16], 'little') == 0x112e381c8; b = p.ReadMemory(0x112e381c8, 40, e) if ok else b''; print('BREDITOR_COLD_MEMORY=' + json.dumps({'pointerMatches': ok, 'headerHex': h.hex(), 'slotsHex': b.hex() if e.Success() else None}))\nBREDITOR_COLD_MEMORY={\"pointerMatches\": true, \"headerHex\": \"50b30201072e0801c881e31201000000\", \"slotsHex\": \"000000000000a040000000000000a040000000000000a040000000000000a0400000000000000000\"}\n(lldb) process detach\nProcess 3990 detached\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "path": "/tmp/breditor-browser-array-cold-probe-b-20260928.jsonl",
+      "sha256": "6baedb91074389cd0f72d1f66d416ef7bc942d8c3b991f250b955af7c32103f3",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-cold-probe-b-20260928.stderr",
+        "sha256": "0de7e651666dbdfb70c6807bae7e14b612ad987a04bf6096fcc0c3c77f7a9f91"
+      },
+      "engineObservations": {
+        "useJitFalse": 12,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 12
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "probe",
+          "pid": "5432",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-memory-capture-20260928/numeric_transfer_memory_capture_probe.js",
+              "sha256": "7092bdc920bfda12d2882a796b9815242fd46b088e5ab1fd745aef390522b015"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/capture-webkit-array-memory.mjs",
+              "sha256": "95d8a6b5a448e41a37fbc39d9b860d72375cd971f209ddb11212a24d7c91600f"
+            }
+          ],
+          "outcome": "probe-passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 2,
+          "variant": "probe",
+          "pid": "5711",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-memory-capture-20260928/numeric_transfer_memory_capture_probe.js",
+              "sha256": "7092bdc920bfda12d2882a796b9815242fd46b088e5ab1fd745aef390522b015"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/capture-webkit-array-memory.mjs",
+              "sha256": "95d8a6b5a448e41a37fbc39d9b860d72375cd971f209ddb11212a24d7c91600f"
+            }
+          ],
+          "outcome": "probe-passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 3,
+          "variant": "probe",
+          "pid": "5749",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-memory-capture-20260928/numeric_transfer_memory_capture_probe.js",
+              "sha256": "7092bdc920bfda12d2882a796b9815242fd46b088e5ab1fd745aef390522b015"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/capture-webkit-array-memory.mjs",
+              "sha256": "95d8a6b5a448e41a37fbc39d9b860d72375cd971f209ddb11212a24d7c91600f"
+            }
+          ],
+          "outcome": "stored-zero-confirmed",
+          "memory": {
+            "pointerMatches": true,
+            "headerHex": "50b30201072e080158d7c41401000000",
+            "slotsHex": "000000000000a040000000000000a040000000000000a040000000000000a0400000000000000000"
+          },
+          "bits": [
+            "40a0000000000000",
+            "40a0000000000000",
+            "40a0000000000000",
+            "40a0000000000000",
+            "0000000000000000"
+          ],
+          "evidence": {
+            "iteration": 2941,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "storage": "ArrayWithDouble",
+            "nativeDescription": "Object: 0x114c55db0 with butterfly 0x114c4d758(base=0x114c4d750) (Structure 0x30102b350:[0x102b350/16954192, Array, (0/0, 0/0){}, ArrayWithDouble, Unknown, Proto:0x114c54180, Leaf]), StructureID: 16954192",
+            "retained": true,
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 5749\nProcess 5749 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) script import json; p = lldb.debugger.GetSelectedTarget().GetProcess(); e = lldb.SBError(); h = p.ReadMemory(0x114c55db0, 16, e); ok = e.Success() and len(h) == 16 and int.from_bytes(h[8:16], 'little') == 0x114c4d758; b = p.ReadMemory(0x114c4d758, 40, e) if ok else b''; print('BREDITOR_COLD_MEMORY=' + json.dumps({'pointerMatches': ok, 'headerHex': h.hex(), 'slotsHex': b.hex() if e.Success() else None}))\nBREDITOR_COLD_MEMORY={\"pointerMatches\": true, \"headerHex\": \"50b30201072e080158d7c41401000000\", \"slotsHex\": \"000000000000a040000000000000a040000000000000a040000000000000a0400000000000000000\"}\n(lldb) process detach\nProcess 5749 detached\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "controlConfirmed": 1,
+    "probePassed": 2,
+    "storedZeroConfirmed": 2,
+    "notRun": 16
+  },
+  "conclusions": [
+    "Two independent cold-only runs reproduce the numerical fault with no debugger attached during execution. First batch stopped on attempt 1 (iteration 9231); second stopped on attempt 3 (iteration 2941) after two clean 150000-check completions. Each had a maximum budget of ten attempts; 16 unattempted runs are not counted as passes.",
+    "Both failures affect slot 4, with all five staged locals later reading 2048 and source values unchanged. The actual retained array has ArrayWithDouble storage.",
+    "After rejection, LLDB attaches to the PID obtained from the controller's own fresh page. It reads the array's 16-byte object header and checks its butterfly pointer matches the cold native description before reading exactly 40 bytes (five double slots). It then detaches cleanly.",
+    "Both raw memory reads contain four 2048 doubles (40a0000000000000) and positive zero (0000000000000000) in slot 4. All five raw slots agree with the earlier JavaScript snapshots. This rules out a JavaScript-only display/read artifact for these failures: zero is present in the array's actual storage.",
+    "The initial control deliberately constructs a synthetic array containing zero in slot 1; all five raw bytes match. It is not a real bug occurrence.",
+    "The memory-capture module adds only cold failure payload fields to the storage-capture variant: native description and strong retention of the private failed array. Source-equivalence tests enforce that scope. Code layout may still change.",
+    "No engine instructions, installed files or user settings are changed by cold capture. Developer VM is enabled only in disposable local test browsers; all observed JIT startup flags are false.",
+    "This does not identify the first corrupting instruction, establish the ultimate engine/OS/CPU cause, or prove the original editor false-comparison failure has the same cause. No production fix is claimed."
+  ]
+}

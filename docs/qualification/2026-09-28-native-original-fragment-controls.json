@@ -1,0 +1,81 @@
+{
+  "date": "2026-09-28",
+  "format": "breditor/native-original-fragment-controls",
+  "conclusion": "Original unmodified WebKit 2336 finite-number conversion/store fragment passes 300 million checks across none/yield/sleep controls and 1 million checks with 4ms sleeps every ten rounds. No JS/interpreter/array allocation is exercised. Passing does not qualify browser execution or establish a root cause.",
+  "sources": [
+    {
+      "path": "tests/browser/diagnostics/native_engine_array_fragment.c",
+      "sha256": "767aba1356e139d74aa05f030f78ecccdb670e2b38e7bcc409430cfbe94dc5d0"
+    },
+    {
+      "path": "tests/browser/diagnostics/native_engine_array_fragment.S",
+      "sha256": "83aa742a5e22daac3ea363a6d596afe15ea8538159f710d38c3db3327fe52a5a"
+    },
+    {
+      "path": "target/native-engine-array-fragment-20260928",
+      "sha256": "998234cddab6ddce1adf464642d9d591608dd9e0e871d01c599c20289eede968"
+    },
+    {
+      "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+      "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+    },
+    {
+      "path": "/tmp/breditor-native-engine-fragment-pinned-20260928.jsonl",
+      "sha256": "71272e9318a6aa807b87eb5b8be9da10e7bb55281fe1a633528b4b1df44ce121"
+    },
+    {
+      "path": "/tmp/breditor-native-engine-fragment-pinned-20260928.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "runs": [
+    {
+      "format": "breditor/native-engine-fragment",
+      "outcome": "passed",
+      "scheduling": "none",
+      "rounds": "10000000",
+      "checks": "100000000",
+      "fragmentOffset": "0xf7c118",
+      "fragmentAddress": "0x10ceac118"
+    },
+    {
+      "format": "breditor/native-engine-fragment",
+      "outcome": "passed",
+      "scheduling": "yield",
+      "rounds": "10000000",
+      "checks": "100000000",
+      "fragmentOffset": "0xf7c118",
+      "fragmentAddress": "0x10cdcc118"
+    },
+    {
+      "format": "breditor/native-engine-fragment",
+      "outcome": "passed",
+      "scheduling": "sleep",
+      "rounds": "10000000",
+      "checks": "100000000",
+      "fragmentOffset": "0xf7c118",
+      "fragmentAddress": "0x108eb8118"
+    },
+    {
+      "format": "breditor/native-engine-fragment",
+      "outcome": "passed",
+      "scheduling": "timer",
+      "rounds": "100000",
+      "checks": "1000000",
+      "fragmentOffset": "0xf7c118",
+      "fragmentAddress": "0x10b034118"
+    }
+  ],
+  "negativeChecks": {
+    "zeroBudget": 2,
+    "timerBudgetAbove100000": 2,
+    "unknownSchedule": 2,
+    "wrongFramework": 2
+  },
+  "limitations": [
+    "Only ten fixed finite synthetic inputs; NaN fallback is deliberately unreachable.",
+    "Same instruction offset in original framework, different process and randomized load addresses.",
+    "nanosleep scheduling is not the browser event loop.",
+    "No framework writes or engine instruction relocation."
+  ]
+}

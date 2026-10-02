@@ -12,6 +12,7 @@ import {
   BreditorCompositionController,
   type CompositionControllerDisposition,
   type CompositionControllerNotification,
+  type CompositionControllerOptions,
 } from "./composition_controller.js";
 import {
   BreditorDomRenderer,
@@ -327,6 +328,75 @@ beforeEach(() => {
 });
 
 describe("BreditorCompositionController", () => {
+  it.each([
+    ["beforeinput", false], ["beforeinput", true], ["beforeinput", "throw"],
+    ["input", false], ["input", true], ["input", "throw"],
+  ] as const)("routes active %s from private phase with an active=%s shadow", (type, shadow) => {
+    const fixture = setup(selection(1));
+    start(fixture);
+    const read = vi.fn(() => {
+      if (shadow === "throw") throw new Error("public activity getter");
+      return shadow;
+    });
+    Object.defineProperty(fixture.controller, "active", { get: read });
+    const event = inputEvent(type, "insertFromPaste", "x", false, fixture.paragraph, []);
+    try {
+      const result = type === "beforeinput"
+        ? fixture.controller.handleBeforeInput(event)
+        : fixture.controller.handleInput(event);
+      expect(result).toEqual({ kind: "recoveryRequired", reason: "unexpectedMutation" });
+      expect(fixture.controller.phase).toBe("quarantined");
+      expect(event.defaultPrevented).toBe(type === "beforeinput");
+      expect(read).not.toHaveBeenCalled();
+      fixture.scheduler.runAll();
+      expect(fixture.controller.phase).toBe("idle");
+      expect(fixture.adapter.state).toBe("live");
+    } finally {
+      fixture.controller.dispose();
+    }
+  });
+
+  it("quarantines malformed input even when public activity is shadowed false", () => {
+    const fixture = setup(selection(1));
+    start(fixture);
+    Object.defineProperty(fixture.controller, "active", { value: false });
+    try {
+      expect(fixture.controller.handleInput(null)).toEqual({ kind: "recoveryRequired", reason: "invalidEvent" });
+      expect(fixture.controller.phase).toBe("quarantined");
+      fixture.scheduler.runAll();
+      expect(fixture.controller.phase).toBe("idle");
+    } finally {
+      fixture.controller.dispose();
+    }
+  });
+
+  it.each(["throw", "fake success", "dispose"] as const)("scheduled recovery ignores a public recover override (%s)", (mode) => {
+    const fixture = setup(selection(1));
+    start(fixture);
+    const shadow = vi.fn(() => {
+      if (mode === "throw") throw new Error("public recovery override");
+      if (mode === "dispose") return fixture.controller.dispose();
+      return { kind: "recovered" };
+    });
+    Object.defineProperty(fixture.controller, "recover", { value: shadow });
+    const malformed = inputEvent("beforeinput", "insertCompositionText", "x", true, fixture.paragraph, []);
+    try {
+      expect(fixture.controller.handleBeforeInput(malformed).kind).toBe("recoveryRequired");
+      expect(fixture.controller.phase).toBe("quarantined");
+      expect(() => fixture.scheduler.runAll()).not.toThrow();
+      expect(shadow).not.toHaveBeenCalled();
+      expect(fixture.controller.phase).toBe("idle");
+      expect(fixture.adapter.state).toBe("live");
+      expect(fixture.terminals).toMatchObject([{ kind: "recovered", resume: {} }]);
+      const port = openCommandQueueLeasePort(fixture.queue, fixture.adapter.commandExecutor);
+      const lease = port?.acquireLease();
+      expect(lease).toBeDefined();
+      if (lease !== undefined) expect(port?.releaseLease(lease)).toBe(true);
+    } finally {
+      fixture.controller.dispose();
+    }
+  });
+
   it("accepts W3C update-before-beforeinput order and commits Korean Unicode through one adapter delivery", () => {
     const fixture = setup(selection(1));
     expect(start(fixture).kind).toBe("native");
@@ -710,6 +780,59 @@ describe("BreditorCompositionController", () => {
     expect(adapter.state).toBe("live");
   });
 
+  it.each(["foreign", "undefined", "throw"] as const)("retains the validated executor instead of a third %s read", (third) => {
+    const adapter = new FakeAdapter(selection(1).projection);
+    const executor = adapter.commandExecutor;
+    const queue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(executor);
+    let reads = 0;
+    Object.defineProperty(adapter, "commandExecutor", { get() {
+      reads += 1;
+      if (reads <= 2) return executor;
+      if (third === "throw") throw new Error("third executor read");
+      return third === "undefined" ? undefined : (request: EditorCommandRequest) => executor(request);
+    } });
+    const controller = new BreditorCompositionController(queue, adapter as unknown as BreditorWasmCommandAdapter);
+    try {
+      expect(reads).toBe(2);
+      expect(controller.phase).toBe("idle");
+    } finally {
+      controller.dispose();
+    }
+  });
+
+  it("does not bind a queue executor substituted after adapter validation", () => {
+    const adapter = new FakeAdapter(selection(1).projection);
+    const executor = adapter.commandExecutor;
+    const other = (request: EditorCommandRequest) => executor(request);
+    const queue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(other);
+    let reads = 0;
+    Object.defineProperty(adapter, "commandExecutor", { get() {
+      reads += 1;
+      return reads <= 2 ? executor : other;
+    } });
+    expect(() => new BreditorCompositionController(queue, adapter as unknown as BreditorWasmCommandAdapter))
+      .toThrow(/must own the adapter executor/u);
+    expect(reads).toBe(2);
+    const port = openCommandQueueLeasePort(queue, other);
+    const lease = port?.acquireLease();
+    expect(lease).toBeDefined();
+    if (lease !== undefined) expect(port?.releaseLease(lease)).toBe(true);
+  });
+
+  it("still rejects an executor that changes during the stability check", () => {
+    const adapter = new FakeAdapter(selection(1).projection);
+    const executor = adapter.commandExecutor;
+    const queue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(executor);
+    let reads = 0;
+    Object.defineProperty(adapter, "commandExecutor", { get() {
+      reads += 1;
+      return reads === 1 ? executor : undefined;
+    } });
+    expect(() => new BreditorCompositionController(queue, adapter as unknown as BreditorWasmCommandAdapter))
+      .toThrow(/composition adapter is invalid/u);
+    expect(reads).toBe(2);
+  });
+
   it("rejects a foreign executor despite hostile own-property queue proofs", () => {
     const selected = selection(1);
     const adapter = new FakeAdapter(selected.projection);
@@ -1070,6 +1193,54 @@ describe("BreditorCompositionController", () => {
     expect(controller.recover().kind).toBe("recovered");
   });
 
+  it.each([true, false])("ignores retained callbacks from a throwing scheduler (recovery throws: %s)", (recoveryThrows) => {
+    const documentSelection = selection(1);
+    const adapter = new FakeAdapter(documentSelection.projection);
+    adapter.selectionBridge.write(adapter.rendered, documentSelection);
+    const queue = new BreditorCommandQueue<WasmCommandSequenceOutcome>(adapter.commandExecutor);
+    const callbacks: Array<() => void> = [];
+    const notifications: CompositionControllerNotification[] = [];
+    const controller = new BreditorCompositionController(
+      queue,
+      adapter as unknown as BreditorWasmCommandAdapter,
+      {
+        scheduleTask(callback) {
+          callbacks.push(callback);
+          if (callbacks.length === 1 || recoveryThrows) throw new Error("scheduler failed after retaining callback");
+        },
+        onSettlement: (result) => notifications.push(result),
+      },
+    );
+    const paragraph = adapter.host.firstElementChild as HTMLParagraphElement;
+    controller.handleCompositionEvent(compositionEvent("compositionstart", "", paragraph));
+    controller.handleBeforeInput(inputEvent(
+      "beforeinput", "insertCompositionText", "x", true, paragraph,
+      [domRange(paragraph, 1, 1)],
+    ));
+    paragraph.textContent = "axbc";
+    expect(controller.handleCompositionEvent(compositionEvent("compositionend", "x", paragraph)))
+      .toEqual({ kind: "recoveryRequired", reason: "uncertain" });
+    expect(callbacks).toHaveLength(2);
+    callbacks[0]!();
+    expect(controller.phase).toBe("quarantined");
+    callbacks[1]!();
+    callbacks[1]!(); // Delivery must also remain one-shot.
+    expect(adapter.requests).toHaveLength(0);
+    if (recoveryThrows) {
+      expect(controller.phase).toBe("quarantined");
+      expect(adapter.state).toBe("composition");
+      expect(notifications).toHaveLength(0);
+      expect(queue.submit({} as EditorCommandRequest)).toMatchObject({ status: "rejected", reason: "leased" });
+      expect(controller.recover().kind).toBe("recovered");
+    } else {
+      expect(controller.phase).toBe("idle");
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0]?.kind).toBe("recovered");
+    }
+    expect(adapter.host.textContent).toBe("abc");
+    expect(controller.dispose()).toEqual({ kind: "disposed" });
+  });
+
   it("retains quarantine and the queue lease until failed disposal can recover", () => {
     const fixture = setup(selection(1));
     start(fixture);
@@ -1092,11 +1263,99 @@ describe("BreditorCompositionController", () => {
     expect(fixture.controller.recover().kind).toBe("recovered");
     expect(fixture.controller.phase).toBe("idle");
   });
+
+  it.each(["promise", "fulfilled promise", "thenable", "throwing getter"])(
+    "rejects a %s scheduler result and revokes retained settlement/recovery callbacks",
+    async (kind) => {
+      const callbacks: Array<() => void> = [];
+      const rejected = Promise.reject(new Error("async scheduling failed"));
+      // Keep the pre-fix regression run from leaking a test-owned rejection.
+      void rejected.catch(() => {});
+      const then = vi.fn((_resolve: unknown, reject: (reason: unknown) => void) => {
+        reject(new Error("thenable scheduling failed"));
+      });
+      const fixture = setup(selection(1), undefined, {
+        scheduleTask(callback) {
+          callbacks.push(callback);
+          if (kind === "promise") return rejected;
+          if (kind === "fulfilled promise") return Promise.resolve();
+          if (kind === "thenable") return { then };
+          return { get then(): never { throw new Error("cannot read then"); } };
+        },
+      });
+      start(fixture);
+      beforeInput(fixture, "insertCompositionText", "x", targetRange(fixture, 1, 1));
+      fixture.paragraph.textContent = "axbc";
+      expect(end(fixture, "x")).toEqual({ kind: "recoveryRequired", reason: "uncertain" });
+      expect(callbacks).toHaveLength(2);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      for (const callback of callbacks) { callback(); callback(); }
+      expect(fixture.controller.phase).toBe("quarantined");
+      expect(fixture.adapter.requests).toHaveLength(0);
+      expect(fixture.terminals).toHaveLength(0);
+      expect(fixture.queue.submit({} as EditorCommandRequest)).toMatchObject({ status: "rejected", reason: "leased" });
+      if (kind === "thenable") expect(then).toHaveBeenCalledTimes(2);
+      expect(fixture.controller.recover().kind).toBe("recovered");
+      expect(fixture.adapter.host.textContent).toBe("abc");
+      fixture.controller.dispose();
+    },
+  );
+
+  it.each([false, true])("contains rejected async observers without rewriting lifecycle results (recovery: %s)", async (recovery) => {
+    const rejected = Promise.reject(new Error("async observer failed"));
+    void rejected.catch(() => {});
+    const then = vi.spyOn(rejected, "then");
+    const observed: CompositionControllerNotification[] = [];
+    const fixture = setup(selection(1), undefined, {
+      onSettlement(result) {
+        observed.push(result);
+        return rejected;
+      },
+    });
+    start(fixture);
+    beforeInput(fixture, "insertCompositionText", "x", targetRange(fixture, 1, 1));
+    fixture.paragraph.textContent = "axbc";
+    if (recovery) {
+      // A conflicting mutation must recover, not commit a candidate.
+      fixture.paragraph.textContent = "unrelated mutation";
+    }
+    end(fixture, "x");
+    fixture.scheduler.runAll();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(then).toHaveBeenCalled();
+    expect(observed.map((result) => result.kind)).toEqual(
+      recovery ? ["recoveryRequired", "recovered"] : ["settled"],
+    );
+    expect(fixture.controller.phase).toBe("idle");
+    expect(fixture.adapter.requests).toHaveLength(recovery ? 0 : 1);
+    expect(fixture.queue.failure).toBeUndefined();
+    fixture.controller.dispose();
+  });
+
+  it.each([undefined, 7, { timer: 7 }])("accepts non-thenable scheduler handles (%j)", (handle) => {
+    const tasks = new TaskScheduler();
+    const fixture = setup(selection(1), undefined, {
+      scheduleTask(callback) {
+        tasks.schedule(callback);
+        return handle;
+      },
+    });
+    start(fixture);
+    beforeInput(fixture, "insertCompositionText", "x", targetRange(fixture, 1, 1));
+    fixture.paragraph.textContent = "axbc";
+    expect(end(fixture, "x").kind).toBe("scheduled");
+    tasks.runAll();
+    expect(fixture.terminals[0]?.kind).toBe("settled");
+    expect(fixture.controller.phase).toBe("idle");
+    expect(fixture.adapter.requests).toHaveLength(1);
+    fixture.controller.dispose();
+  });
 });
 
 function setup(
   initialSelection: BaseRangeSelection,
   observer?: () => void,
+  options?: CompositionControllerOptions,
 ): Fixture {
   const adapter = new FakeAdapter(initialSelection.projection);
   if (!adapter.selectionBridge.write(adapter.rendered, initialSelection).ok) {
@@ -1106,12 +1365,13 @@ function setup(
     adapter.commandExecutor,
     observer === undefined ? {} : { observer },
   );
-  return assembleFixture(adapter, queue);
+  return assembleFixture(adapter, queue, options);
 }
 
 function assembleFixture(
   adapter: FakeAdapter,
   queue: BreditorCommandQueue<WasmCommandSequenceOutcome>,
+  options?: CompositionControllerOptions,
 ): Fixture {
   const scheduler = new TaskScheduler();
   const terminals: CompositionControllerNotification[] = [];
@@ -1121,6 +1381,7 @@ function assembleFixture(
     {
       scheduleTask: scheduler.schedule,
       onSettlement: (terminal) => terminals.push(terminal),
+      ...options,
     },
   );
   const paragraph = adapter.host.firstElementChild;

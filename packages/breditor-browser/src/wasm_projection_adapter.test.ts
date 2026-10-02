@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { consumeSemanticProjectionUpdateWithCleanup } from "./wasm_projection_adapter.js";
 
 import {
   type BrowserCompiledProfileDescriptor,
@@ -907,6 +908,35 @@ describe("Wasm semantic projection adapter", () => {
     expect(updateView.freeCalls).toBe(1);
   });
 
+  it.each(["projection", "update"])("rejects a generation invalidated by %s cleanup", (phase) => {
+    let live = true;
+    const generation: WasmProfileGenerationView = {
+      matches(other) { return live && other === generation; },
+      free: vi.fn(),
+    };
+    const makeView = (revision: string) => {
+      const view = new FakeProjectionView(revision, [[]]);
+      view.matchesProfileGeneration = (other) => other === generation;
+      return view;
+    };
+    const view = makeView("1");
+    if (phase === "projection") {
+      view.free = () => { view.freeCalls += 1; live = false; };
+      expect(consumeSemanticProjectionRaw(view, generation, TEST_SCHEMA_FINGERPRINT))
+        .toMatchObject({ ok: false, error: { code: "projection.invalid_shape" } });
+    } else {
+      const base = valueOf(consumeSemanticProjectionRaw(makeView("0"), generation, TEST_SCHEMA_FINGERPRINT));
+      const update = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: view });
+      update.matchesProfileGeneration = (other) => other === generation;
+      update.free = () => { update.freeCalls += 1; live = false; };
+      expect(consumeSemanticProjectionUpdateRaw(base, update, generation, TEST_SCHEMA_FINGERPRINT))
+        .toMatchObject({ ok: false, error: { code: "projection.invalid_update" } });
+      expect(update.freeCalls).toBe(1);
+    }
+    expect(view.freeCalls).toBe(1);
+    expect(generation.free).not.toHaveBeenCalled();
+  });
+
   it("rejects an owned descriptor minted by a different live generation", () => {
     const foreignGeneration: WasmProfileGenerationView = {
       matches(other) { return other === foreignGeneration; },
@@ -984,6 +1014,123 @@ describe("Wasm semantic projection adapter", () => {
     expect(consumeSemanticProjection(view).ok).toBe(true);
     expect(nested).toMatchObject({ ok: false });
     expect(view.freeCalls).toBe(1);
+  });
+
+  it.each((["public", "captured"] as const).flatMap((entry) =>
+    ["valid", "invalid", "throwing cleanup"].map((scenario) => [entry, scenario] as const),
+  ))("retains the child reservation during %s update cleanup (%s)", (entry, scenario) => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const child = new FakeProjectionView("1", [[]]);
+    if (scenario === "invalid") Object.defineProperty(child, "schemaVersion", { value: 0 });
+    const outer = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: child });
+    const nestedUpdate = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: child });
+    const nested: boolean[] = [];
+    const cleanup = () => {
+      outer.freeCalls++;
+      nested.push(consumeSemanticProjection(child).ok);
+      nested.push(consumeSemanticProjectionUpdate(base, nestedUpdate).ok);
+      if (scenario === "throwing cleanup") throw new Error("cleanup failed");
+    };
+    outer.free = cleanup;
+    const result = entry === "public" ? consumeSemanticProjectionUpdate(base, outer)
+      : consumeSemanticProjectionUpdateWithCleanup(base, outer, cleanup, TEST_PROFILE_GENERATION, TEST_SCHEMA_FINGERPRINT);
+    expect(result.ok).toBe(scenario === "valid");
+    expect(nested).toEqual([false, false]);
+    expect(outer.freeCalls).toBe(1);
+    expect(nestedUpdate.freeCalls).toBe(1);
+    expect(child.freeCalls).toBe(1);
+  });
+
+  it.each(["free getter", "schema read", "child cleanup"])("does not acquire another consumer's active child during %s", (phase) => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const child = new FakeProjectionView("1", [[]]);
+    const nested = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: child });
+    let entered = false;
+    let accepted: boolean | undefined;
+    const reenter = () => {
+      if (entered) return;
+      entered = true;
+      accepted = consumeSemanticProjectionUpdate(base, nested).ok;
+    };
+    if (phase === "free getter") Object.defineProperty(child, "free", { get() { reenter(); return FakeProjectionView.prototype.free; } });
+    if (phase === "schema read") Object.defineProperty(child, "schemaName", { get() { reenter(); return "breditor/base"; } });
+    if (phase === "child cleanup") child.free = () => { child.freeCalls++; reenter(); };
+    expect(consumeSemanticProjection(child).ok).toBe(true);
+    expect(accepted).toBe(false);
+    expect(child.freeCalls).toBe(1);
+    expect(nested.freeCalls).toBe(1);
+  });
+
+  it("permits an independent projection read during parent cleanup", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const child = new FakeProjectionView("1", [[]]);
+    const independent = new FakeProjectionView("2", [[]]);
+    const outer = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: child });
+    let accepted = false;
+    outer.free = () => { outer.freeCalls++; accepted = consumeSemanticProjection(independent).ok; };
+    expect(consumeSemanticProjectionUpdate(base, outer).ok).toBe(true);
+    expect(accepted).toBe(true);
+    expect(child.freeCalls).toBe(1);
+    expect(independent.freeCalls).toBe(1);
+    expect(outer.freeCalls).toBe(1);
+  });
+
+  it("keeps independent nested update ownership separate", () => {
+    const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
+    const child = new FakeProjectionView("1", [[]]);
+    const otherChild = new FakeProjectionView("1", [[]]);
+    const outer = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: child });
+    const inner = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: otherChild });
+    let accepted = false;
+    let aliasAccepted: boolean | undefined;
+    outer.free = () => {
+      outer.freeCalls++;
+      accepted = consumeSemanticProjectionUpdate(base, inner).ok;
+      aliasAccepted = consumeSemanticProjection(child).ok;
+    };
+    expect(consumeSemanticProjectionUpdate(base, outer).ok).toBe(true);
+    expect(accepted).toBe(true);
+    expect(aliasAccepted).toBe(false);
+    expect(child.freeCalls).toBe(1);
+    expect(otherChild.freeCalls).toBe(1);
+    expect(inner.freeCalls).toBe(1);
+    expect(outer.freeCalls).toBe(1);
+  });
+
+  it.each(["public", "captured"] as const)("retains the child through the %s update's final generation check", (entry) => {
+    let cleaned = false;
+    let entered = false;
+    let accepted: boolean | undefined;
+    let child: FakeProjectionView;
+    const generation: WasmProfileGenerationView = {
+      matches(other) {
+        if (cleaned && !entered) {
+          entered = true;
+          accepted = consumeSemanticProjectionRaw(child, generation, TEST_SCHEMA_FINGERPRINT).ok;
+        }
+        return other === generation;
+      },
+      free: vi.fn(),
+    };
+    const makeView = (revision: string) => {
+      const view = new FakeProjectionView(revision, [[]]);
+      view.matchesProfileGeneration = (other) => other === generation;
+      return view;
+    };
+    const base = valueOf(consumeSemanticProjectionRaw(makeView("0"), generation, TEST_SCHEMA_FINGERPRINT));
+    child = makeView("1");
+    const outer = new FakeUpdateView({ baseRevision: "0", resultRevision: "1", impact: "root", projection: child });
+    outer.matchesProfileGeneration = (other) => other === generation;
+    const cleanup = () => { outer.freeCalls++; cleaned = true; };
+    outer.free = cleanup;
+    const result = entry === "public"
+      ? consumeSemanticProjectionUpdateRaw(base, outer, generation, TEST_SCHEMA_FINGERPRINT)
+      : consumeSemanticProjectionUpdateWithCleanup(base, outer, cleanup, generation, TEST_SCHEMA_FINGERPRINT);
+    expect(result.ok).toBe(true);
+    expect(accepted).toBe(false);
+    expect(outer.freeCalls).toBe(1);
+    expect(child.freeCalls).toBe(1);
+    expect(generation.free).not.toHaveBeenCalled();
   });
 
   it("contains thenables returned by generated scalar methods", async () => {

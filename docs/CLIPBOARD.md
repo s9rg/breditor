@@ -140,6 +140,21 @@ current atomic paste action accepts at most 65,536 UTF-16 code units and 65,536
 UTF-8 bytes. Breditor can therefore copy or cut a selection that it cannot paste
 back as one action; undo remains the recovery path for an oversized cut.
 
+Paste also preflights the existing Rust source-paragraph ceiling of 10,000
+before submitting anything to the command queue. CRLF counts as one boundary;
+bare CR and LF each count as one, while U+2028/U+2029 remain text. The plain and
+HTML paths share this counter. Exceeding this ceiling is an `invalidPlainText`
+or `invalidHtml` cancellation, not an uncertain command: it leaves content and
+redo history intact and never falls back from advertised plain text to HTML.
+The Rust core still authoritatively checks its input and resulting document
+limits; this admission check neither expands those limits nor splits a paste
+into partial edits.
+
+An identical normalized replacement can be selection-only. For example,
+pasting CRLF over one selected paragraph boundary leaves content unchanged,
+collapses the selection, and creates no standalone content-history entry. Its
+existing redo branch remains available until a subsequent content edit.
+
 ## Paste representation policy
 
 Advertised `text/plain` is authoritative. If it is present, Breditor reads only

@@ -7,6 +7,7 @@ import {
   isOwnedBaseRangeSelection,
   type BaseRangeSelection,
 } from "./selection.js";
+import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
 
 /** Maximum UTF-16 code units admitted for one browser-originated string command. */
 export const MAX_BROWSER_COMMAND_TEXT_UTF16 = 65_536;
@@ -502,27 +503,7 @@ function boundedWellFormedUtf8String(
   if (typeof value !== "string" || value.length === 0 || value.length > maximumUtf16) {
     return false;
   }
-  let utf8Bytes = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    const first = value.charCodeAt(index);
-    let codePoint = first;
-    if (first >= 0xd800 && first <= 0xdbff) {
-      const second = value.charCodeAt(index + 1);
-      if (!(second >= 0xdc00 && second <= 0xdfff)) {
-        return false;
-      }
-      codePoint = 0x10000 + ((first - 0xd800) << 10) + (second - 0xdc00);
-      index += 1;
-    } else if (first >= 0xdc00 && first <= 0xdfff) {
-      return false;
-    }
-    utf8Bytes +=
-      codePoint <= 0x7f ? 1 : codePoint <= 0x7ff ? 2 : codePoint <= 0xffff ? 3 : 4;
-    if (utf8Bytes > maximumUtf8) {
-      return false;
-    }
-  }
-  return true;
+  return wellFormedUtf8Length(value, maximumUtf8) !== null;
 }
 
 /** Runtime check used at the queue and Wasm boundaries. */

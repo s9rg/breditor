@@ -321,6 +321,26 @@ assert.equal(profileResult.status, "taken");
 assert.equal(profileResult.takeProfile(), undefined);
 profileResult.free();
 
+// Explicit JsValue transport must retain the complete unsigned revision range,
+// not only the small revisions used by the reference profiles.
+const maxRevisionBootstrap = JSON.parse(PROFILE_BOOTSTRAP_JSON);
+maxRevisionBootstrap.extensions[0].inlineFormats[0].revision = 0xffff_ffff;
+const maxRevisionResult = api.BreditorCompiledProfile.fromBootstrapJson(
+  JSON.stringify(maxRevisionBootstrap),
+);
+assert.equal(maxRevisionResult.status, "profile");
+const maxRevisionProfile = maxRevisionResult.takeProfile();
+maxRevisionResult.free();
+assert.ok(maxRevisionProfile instanceof api.BreditorCompiledProfile);
+const maxRevisionDescriptor = maxRevisionProfile.descriptor();
+maxRevisionProfile.free();
+try {
+  assert.equal(maxRevisionDescriptor.formatRevision(1), 0xffff_ffff);
+  assert.equal(maxRevisionDescriptor.formatRevision(2), undefined);
+} finally {
+  maxRevisionDescriptor.free();
+}
+
 const profileGeneration = profile.generation();
 const profileGenerationCopy = profile.generation();
 assert.ok(profileGeneration.matches(profileGenerationCopy));
@@ -338,6 +358,8 @@ assert.equal(profileDescriptor.formatRevision(0), 1);
 assert.equal(profileDescriptor.formatKind(1), "example/highlight");
 assert.equal(profileDescriptor.formatRevision(1), 7);
 assert.equal(profileDescriptor.formatKind(2), undefined);
+assert.equal(profileDescriptor.formatRevision(2), undefined);
+assert.equal(profileDescriptor.formatRevision(0xffff_ffff), undefined);
 assert.equal(profileDescriptor.intentCount, 3);
 assert.equal(profileDescriptor.intentId(0), "breditor/clear-inline-formatting");
 assert.equal(profileDescriptor.intentInputKind(0), "none");
@@ -655,6 +677,14 @@ profileDescriptor.free();
 profile.free();
 assert.equal(retainedProfileDescriptor.schemaName, "example/editor");
 assert.equal(retainedProfileDescriptor.formatKind(1), "example/highlight");
+// Mix valid and absent numeric reads after the originating profile is freed.
+// This is a boundary/lifetime contract check, not a WebKit stress substitute.
+for (let read = 0; read < 512; read += 1) {
+  assert.equal(retainedProfileDescriptor.formatRevision(2), undefined);
+  assert.equal(retainedProfileDescriptor.formatRevision(0), 1);
+  assert.equal(retainedProfileDescriptor.formatRevision(0xffff_ffff), undefined);
+  assert.equal(retainedProfileDescriptor.formatRevision(1), 7);
+}
 retainedProfileDescriptor.free();
 assert.ok(profileEngine.matchesProfileGeneration(profileGeneration));
 assert.ok(
@@ -1745,6 +1775,52 @@ movedObservation.free();
 echoObservation.free();
 clearObservation.free();
 selectionEngine.free();
+
+// Selection coordinates retain zero/present/absent values under mixed reads.
+// Keep snapshots alive independently of later engine mutations and disposal.
+{
+  const factory = api.BreditorEngine.fromSessionCheckpointJson(SELECTED_CHECKPOINT_JSON);
+  const engine = factory.takeEngine();
+  factory.free();
+  let observation = engine.observation();
+  const views = [];
+  const read = () => {
+    const result = engine.selection(observation);
+    try {
+      const selection = result.takeSelection();
+      assert.ok(selection instanceof api.BreditorSelection);
+      views.push(selection);
+    } finally { result.free(); }
+  };
+  const advance = (result) => {
+    try {
+      assert.equal(result.status, "committed");
+      const next = result.observation();
+      assert.ok(next instanceof api.BreditorObservation);
+      observation.free();
+      observation = next;
+    } finally { result.free(); }
+  };
+  read();
+  advance(engine.setRangeSelection(observation, "children", 1, 0, "before", "children", 1, 0, "after"));
+  read();
+  advance(engine.clearSelection(observation));
+  read();
+  observation.free();
+  engine.free();
+  try {
+    for (let iteration = 0; iteration < 512; iteration += 1) {
+      for (const [index, view] of views.entries()) {
+        const node = index === 0 ? 2 : index === 1 ? 1 : undefined;
+        const offset = index === 0 ? 1 : index === 1 ? 0 : undefined;
+        assert.equal(view.anchorNodeIndex, node);
+        assert.equal(view.focusNodeIndex, node);
+        assert.equal(view.anchorOffset, offset);
+        assert.equal(view.focusOffset, offset);
+      }
+    }
+  } finally { for (const view of views) view.free(); }
+}
 
 const projectionFactory = api.BreditorEngine.fromSessionCheckpointJson(
   SELECTED_CHECKPOINT_JSON,

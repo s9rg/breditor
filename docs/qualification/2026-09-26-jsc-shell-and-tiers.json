@@ -1,0 +1,96 @@
+{
+  "status": "standalone timing-sensitive reproduction; exact engine cause and production fix unresolved",
+  "productionRuntimeChanged": false,
+  "environment": {
+    "architecture": "arm64",
+    "macOS": "26.6.2",
+    "macOSBuild": "25G83",
+    "playwrightWebkitRevision": "2336",
+    "jscBinary": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+    "loadedFramework": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+    "linkageEvidence": "/tmp/breditor-jsc-shell-linkage-20260926.log"
+  },
+  "bundle": {
+    "variant": "js-cold-minimal",
+    "path": "target/property-transport/js-cold-minimal/assets/index-a-Ao9ALN.js",
+    "bytes": 4480,
+    "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+    "staticImports": 0,
+    "dynamicImports": 0,
+    "wasmAssets": 0
+  },
+  "browser": {
+    "configuration": "playwright.number-tiers.config.ts",
+    "iterationsPerCase": 10000,
+    "tuplesPerCompletedCase": 20000,
+    "retries": 0,
+    "timeoutMs": 30000,
+    "matrixRunsConcurrent": true,
+    "optionsConfirmedInStartupDumps": true,
+    "runs": [
+      { "mode": "normal", "passed": 8, "failed": 2, "failureIterations": [2721, 571] },
+      { "mode": "no-ftl", "passed": 9, "failed": 1, "failureIterations": [861] },
+      { "mode": "baseline", "passed": 8, "failed": 2, "failureIterations": [5761, 681] },
+      { "mode": "no-jit", "passed": 5, "failed": 5, "failureIterations": [8141, 3331, 7961, 9461, 8641] }
+    ],
+    "independentRun": { "mode": "no-jit", "passed": 4, "failed": 1, "failureIterations": [7131], "otherBrowserMatrixJobs": false },
+    "firstNoJitFailure": {
+      "iteration": 8141,
+      "mismatchMask": 16,
+      "actual": 2048,
+      "expected": 2048,
+      "actualHigh": 1084227584,
+      "actualLow": 0,
+      "expectedHigh": 1084227584,
+      "expectedLow": 0,
+      "objectIsColdRecheck": true,
+      "strictEqualColdRecheck": true
+    },
+    "preservedTraces": [
+      { "path": "/tmp/breditor-cold-minimal-no-jit-20260926.zip", "sha256": "80f2b946a3709eb2d2ca52d2e9c3ec10a74eacca587eb8060fd8e97bd9c34a45" },
+      { "path": "/tmp/breditor-cold-minimal-no-jit-independent-20260926.zip", "sha256": "b64bbaf14c26f2197d9ca0643edd860f51fd53fdd64eb751924e822e8a7bb813" }
+    ]
+  },
+  "standaloneShell": {
+    "runner": "tests/browser/diagnostics/jsc_number_runner.js",
+    "runnerSha256": "62d50c306c5bf664f90bc8406563960433382372521831d8516dbdc182a5c8e0",
+    "command": "scripts/run-jsc-number-repro.mjs",
+    "freshProcessPerCase": true,
+    "moduleBytesUnmodified": true,
+    "usesBrowserOrPlaywrightTransport": false,
+    "domShim": "Only skip Vite preload polyfill; window aliases globalThis",
+    "zeroDelayRuns": [
+      { "mode": "normal", "passed": 10, "failed": 0 },
+      { "mode": "no-ftl", "passed": 10, "failed": 0 },
+      { "mode": "baseline", "passed": 10, "failed": 0 },
+      { "mode": "no-jit", "passed": 10, "failed": 0 }
+    ],
+    "pacedRuns": [
+      { "mode": "normal", "minimumDelayMs": 4, "passed": 8, "failed": 2, "failureIterations": [51, 2851] },
+      { "mode": "no-jit", "minimumDelayMs": 4, "passed": 10, "failed": 0 },
+      { "mode": "normal", "minimumDelayMs": 4, "passed": 5, "failed": 0, "independent": true },
+      { "mode": "baseline", "minimumDelayMs": 4, "passed": 5, "failed": 0 }
+    ],
+    "pacedFailureCaptures": [
+      { "batch": 4, "iteration": 51, "field": 4, "mismatchMask": 16, "actual": 2048, "expected": 2048, "actualHigh": 1084227584, "actualLow": 0, "expectedHigh": 1084227584, "expectedLow": 0, "objectIsColdRecheck": true, "strictEqualColdRecheck": true },
+      { "batch": 8, "iteration": 2851, "field": 4, "mismatchMask": 16, "actual": 2048, "expected": 2048, "actualHigh": 1084227584, "actualLow": 0, "expectedHigh": 1084227584, "expectedLow": 0, "objectIsColdRecheck": true, "strictEqualColdRecheck": true }
+    ],
+    "logs": [
+      { "path": "/tmp/breditor-jsc-unpaced-20260926.jsonl", "sha256": "d02130e73c41ffba9c1d2f5eb9dd1f098800724c8bda31c73889555246cddf0d" },
+      { "path": "/tmp/breditor-jsc-paced-20260926.jsonl", "sha256": "09ed50c66d76734be34c4e7798dec494bc40bfc3af54243c1bf36b588bfb992b" },
+      { "path": "/tmp/breditor-jsc-runner-independent-20260926.jsonl", "sha256": "6532587d41adb0314d79851bfbbf790c44470c928734552ff69455ab1900165f" },
+      { "path": "/tmp/breditor-jsc-baseline-paced-20260926.jsonl", "sha256": "a3ca24790cd039a433796b1083c0237b41cb09cc91af0fd54c329edc1620c447" }
+    ],
+    "pilotExcluded": "An initial 40 zero-delay shell processes also passed; the recorded matrix above is the independent rerun using the checked-in outcome-aware command."
+  },
+  "verification": { "workspaceUnitTestsPassed": 1278, "diagnosticTestsPassed": 53, "totalUnitTestsPassed": 1331, "browserTypecheck": "passed" },
+  "limitations": [
+    "The 4 ms host delay approximates pacing, not browser timer-nesting rules.",
+    "Cold value capture does not identify the faulty instruction or prove Object.is itself is wrong.",
+    "JIT startup option dumps do not identify the machine-code tier at the exact failing instruction.",
+    "Short passing shell controls do not override JIT-disabled browser failures.",
+    "These are bounded diagnostic samples, not failure-rate estimates or release qualification.",
+    "The connection to each historical native editor and clipboard failure remains unproven.",
+    "No production workaround, validation relaxation, or dependency substitution was shipped."
+  ]
+}

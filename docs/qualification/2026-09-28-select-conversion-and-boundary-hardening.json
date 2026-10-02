@@ -1,0 +1,3359 @@
+{
+  "date": "2026-09-28",
+  "status": "Breditor boundary hardened; underlying engine/platform cause unresolved",
+  "host": {
+    "chip": "Apple M1 Pro",
+    "macOS": "26.6.2 (25G83)",
+    "safari": "26.6.2",
+    "playwright": "1.62.1",
+    "webkitRevision": 2336
+  },
+  "scope": "Native instruction changes affect disposable LLDB children only. Pure-JavaScript reproduction does not require Rust or Wasm. FCSEL observations do not establish hardware, OS or engine responsibility.",
+  "sources": [
+    {
+      "path": "scripts/debug-jsc-number-repro.mjs",
+      "sha256": "2bcc39e51ffb59475c8300d2b10f1c8416ffc63a879631fbf64d19d3aae3b4b5"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_native_select_patch.py",
+      "sha256": "6b059ba659697c19e1fdea17e220031255ad7c82b90680aa1a38ae2c7373786c"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_native_capture.py",
+      "sha256": "8249b2e9985e77ea81513faf55e8eab890ea196a63d7cb707483d33b60c2f117"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_select_conformance.js",
+      "sha256": "18e6d351356b0aeb07627ffe59317c514963d06259da56c7de8685a6adc68cf3"
+    },
+    {
+      "path": "packages/breditor-browser/src/normalize_wasm_boundary_number.ts",
+      "sha256": "1cd6f7f2c55e6061134e2bd593c799a446a4eaa2d513e68e90833ceef605f43e"
+    }
+  ],
+  "experiments": [
+    {
+      "name": "select-pairs",
+      "sourceSha256": "001cbcc1937455df4256d2be3985e2e2c7a7bc27d6a87b5dcd33ff206da7c63b",
+      "observations": [
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-swap",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "swap",
+              "changedInstructions": 2,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-swap",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "swap",
+              "changedInstructions": 2,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-swap",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "swap",
+              "changedInstructions": 2,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-swap",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "swap",
+              "changedInstructions": 2,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-swap",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "swap",
+              "changedInstructions": 2,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        }
+      ]
+    },
+    {
+      "name": "conversion-triples",
+      "sourceSha256": "9ee3b956c1fe07b59c19c25c6f658b830e5b467823399eef4e2e5f44f96a7223",
+      "observations": [
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-control",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "control",
+              "changedInstructions": 0,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ]
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        }
+      ]
+    },
+    {
+      "name": "conversion-pairs-b",
+      "sourceSha256": "e1d0a644a03d557d7a2ed5843097b76ff784ce81dbde028310239d47fccf7b90",
+      "observations": [
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-relocated",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "relocated",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-branch",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "ef1c790dba635b24ec28e30cdac835abf1ec64e1fd7d01b4144993ea3dc07480",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "instructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "address": 4357934744,
+                  "originalHex": "008c611e",
+                  "replacementHex": "209c601e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "address": 4357934764,
+                  "originalHex": "218c621e",
+                  "replacementHex": "419c611e"
+                }
+              ],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        }
+      ]
+    },
+    {
+      "name": "conversion-snapshot-before-after",
+      "sourceSha256": "45d6e1ba3c71614798a159896a1151383430d9b50b9f74b2196c3e41b377eddf",
+      "observations": [
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-select-snapshot",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "8249b2e9985e77ea81513faf55e8eab890ea196a63d7cb707483d33b60c2f117",
+          "selectHelperSha256": "6b059ba659697c19e1fdea17e220031255ad7c82b90680aa1a38ae2c7373786c",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "selectPatch": {
+              "variant": "snapshot",
+              "changedInstructions": 4,
+              "verifiedSelectInstructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "originalHex": "008c611e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "originalHex": "218c621e"
+                }
+              ],
+              "writes": [],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "0000621e0500669ec8ffffd20900088b2101679e4900e0921f0009eb2400669e07423bd5008c611e0b423bd50c00669e2d00669e4100621e4800088b0201679e5f0009eb2600669e218c621e0e423bd52f00669e5100669e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            },
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x40a0000000000000",
+              "x5": "0x0000000000000000",
+              "x6": "0x40a0000000000000",
+              "x7": "0x0000000000000000",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "x11": "0x0000000000000000",
+              "x12": "0x0000000000000000",
+              "x13": "0x40a0000000000000",
+              "x14": "0x0000000020000000",
+              "x15": "0x40a0000000000000",
+              "x17": "0xfffc000000000800",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0,
+          "analysis": {
+            "originalInstructionAddress": "0x112ce98",
+            "condition": "hi",
+            "conditionWasTrue": false,
+            "flagsBefore": "0x0000000000000000",
+            "flagsAfter": "0x0000000000000000",
+            "flagsUnchanged": true,
+            "doubleSourceUnchanged": true,
+            "integerCandidateBits": "0x0000000000000000",
+            "doubleCandidateBits": "0x40a0000000000000",
+            "expectedBits": "0x40a0000000000000",
+            "actualBits": "0x0000000000000000",
+            "resultMatchesCondition": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "branch-conformance",
+      "sourceSha256": "252d26a54b43cda0f13b727cf1090548870dc89866db6d9cc03badc43824589a",
+      "observations": [
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "select-branch-conformance",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "8249b2e9985e77ea81513faf55e8eab890ea196a63d7cb707483d33b60c2f117",
+          "selectHelperSha256": "6b059ba659697c19e1fdea17e220031255ad7c82b90680aa1a38ae2c7373786c",
+          "conformanceSha256": "86b4766809af2c45cc07ad521fffdaf6496dda0426f6467e18bddd00f01653ba",
+          "outcome": "select-branch-conformance-confirmed",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0,
+            "selectPatch": {
+              "variant": "branch",
+              "changedInstructions": 4,
+              "verifiedSelectInstructions": [
+                {
+                  "fileAddress": "0x112ce98",
+                  "originalHex": "008c611e"
+                },
+                {
+                  "fileAddress": "0x112ceac",
+                  "originalHex": "218c621e"
+                }
+              ],
+              "writes": [],
+              "relocation": {
+                "site": "0x103c0ce80",
+                "address": "0x1000f8000",
+                "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+                "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+                "patchHex": "5000005800021fd600800f0001000000"
+              }
+            }
+          },
+          "report": {
+            "outcome": "passed",
+            "checks": 1300,
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          },
+          "processStatus": 0
+        }
+      ]
+    },
+    {
+      "name": "no-gc",
+      "sourceSha256": "96d6d8c36bfb370922a6c98cf93eea0a3141e057c109dcd0f7bb02e26750e7b3",
+      "observations": [
+        {
+          "mode": "no-jit-no-gc",
+          "batch": 1,
+          "comparison": "original",
+          "minimumDelay": 4,
+          "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "executedSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "status": 0,
+          "signal": null,
+          "passed": false,
+          "report": {
+            "outcome": "failed",
+            "error": "Error: property isolation rejected at 9281/0; input mismatch mask 16",
+            "diagnostic": {
+              "format": "breditor/startup-rejections",
+              "version": 1,
+              "limit": 16,
+              "omitted": 0,
+              "events": [
+                {
+                  "stage": "descriptor:isolateProperty:1",
+                  "counters": {
+                    "kindTag": "3",
+                    "stringMinimum": "1",
+                    "stringMaximum": "2048",
+                    "integerMinimumType": "0",
+                    "integerMaximumType": "0",
+                    "stringMinimumType": "1",
+                    "stringMaximumType": "1",
+                    "iteration": "9281",
+                    "propertyIndex": "0",
+                    "mismatchMask": "16"
+                  }
+                },
+                {
+                  "stage": "descriptor:isolateComparison:1",
+                  "counters": {
+                    "field": "4",
+                    "actual": "2048",
+                    "expected": "2048",
+                    "actualType": "1",
+                    "expectedType": "1",
+                    "objectIsRecheck": "1",
+                    "strictEqualRecheck": "1",
+                    "actualHigh": "1084227584",
+                    "actualLow": "0",
+                    "expectedHigh": "1084227584",
+                    "expectedLow": "0"
+                  }
+                }
+              ]
+            },
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            }
+          },
+          "options": "Modified JSC options:\n   dumpOptions=1 (default: 0)\n   useJIT=false (default: true)\n   useGC=false (default: true)\n"
+        },
+        {
+          "mode": "no-jit-no-gc",
+          "batch": 2,
+          "comparison": "original",
+          "minimumDelay": 4,
+          "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "executedSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "status": 0,
+          "signal": null,
+          "passed": true,
+          "report": {
+            "outcome": "passed",
+            "result": {
+              "mode": "tiny-wasm",
+              "iterations": 10000,
+              "reads": 20000
+            },
+            "diagnostic": {
+              "format": "breditor/startup-rejections",
+              "version": 1,
+              "limit": 16,
+              "omitted": 0,
+              "events": []
+            },
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            }
+          },
+          "options": "Modified JSC options:\n   dumpOptions=1 (default: 0)\n   useJIT=false (default: true)\n   useGC=false (default: true)\n"
+        },
+        {
+          "mode": "no-jit-no-gc",
+          "batch": 3,
+          "comparison": "original",
+          "minimumDelay": 4,
+          "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "executedSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "status": 0,
+          "signal": null,
+          "passed": true,
+          "report": {
+            "outcome": "passed",
+            "result": {
+              "mode": "tiny-wasm",
+              "iterations": 10000,
+              "reads": 20000
+            },
+            "diagnostic": {
+              "format": "breditor/startup-rejections",
+              "version": 1,
+              "limit": 16,
+              "omitted": 0,
+              "events": []
+            },
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            }
+          },
+          "options": "Modified JSC options:\n   dumpOptions=1 (default: 0)\n   useJIT=false (default: true)\n   useGC=false (default: true)\n"
+        },
+        {
+          "mode": "no-jit-no-gc",
+          "batch": 4,
+          "comparison": "original",
+          "minimumDelay": 4,
+          "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "executedSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "status": 0,
+          "signal": null,
+          "passed": true,
+          "report": {
+            "outcome": "passed",
+            "result": {
+              "mode": "tiny-wasm",
+              "iterations": 10000,
+              "reads": 20000
+            },
+            "diagnostic": {
+              "format": "breditor/startup-rejections",
+              "version": 1,
+              "limit": 16,
+              "omitted": 0,
+              "events": []
+            },
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            }
+          },
+          "options": "Modified JSC options:\n   dumpOptions=1 (default: 0)\n   useJIT=false (default: true)\n   useGC=false (default: true)\n"
+        },
+        {
+          "mode": "no-jit-no-gc",
+          "batch": 5,
+          "comparison": "original",
+          "minimumDelay": 4,
+          "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "executedSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "status": 0,
+          "signal": null,
+          "passed": false,
+          "report": {
+            "outcome": "failed",
+            "error": "Error: property isolation rejected at 3711/0; input mismatch mask 16",
+            "diagnostic": {
+              "format": "breditor/startup-rejections",
+              "version": 1,
+              "limit": 16,
+              "omitted": 0,
+              "events": [
+                {
+                  "stage": "descriptor:isolateProperty:1",
+                  "counters": {
+                    "kindTag": "3",
+                    "stringMinimum": "1",
+                    "stringMaximum": "2048",
+                    "integerMinimumType": "0",
+                    "integerMaximumType": "0",
+                    "stringMinimumType": "1",
+                    "stringMaximumType": "1",
+                    "iteration": "3711",
+                    "propertyIndex": "0",
+                    "mismatchMask": "16"
+                  }
+                },
+                {
+                  "stage": "descriptor:isolateComparison:1",
+                  "counters": {
+                    "field": "4",
+                    "actual": "2048",
+                    "expected": "2048",
+                    "actualType": "1",
+                    "expectedType": "1",
+                    "objectIsRecheck": "1",
+                    "strictEqualRecheck": "1",
+                    "actualHigh": "1084227584",
+                    "actualLow": "0",
+                    "expectedHigh": "1084227584",
+                    "expectedLow": "0"
+                  }
+                }
+              ]
+            },
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0,
+              "useConcurrentGC": 1,
+              "usePollingTraps": 1,
+              "useMachForExceptions": 1,
+              "useGC": 0
+            }
+          },
+          "options": "Modified JSC options:\n   dumpOptions=1 (default: 0)\n   useJIT=false (default: true)\n   useGC=false (default: true)\n"
+        },
+        {
+          "summary": {
+            "mode": "no-jit-no-gc",
+            "comparison": "original",
+            "minimumDelay": 4,
+            "passed": 3,
+            "failed": 2,
+            "total": 5
+          }
+        }
+      ]
+    },
+    {
+      "name": "unconditional",
+      "sourceSha256": "c953aa27ca17c6e5ebf57712674c9a03e113e4127c26e4ca24f658773d2aca60",
+      "observations": [
+        {
+          "batch": 1,
+          "tier": "no-jit",
+          "scenario": "probe-unconditional",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 2,
+          "tier": "no-jit",
+          "scenario": "probe-unconditional",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "probe-passed-no-native-stop",
+          "capture": {
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0,
+            "breakpointHits": 0
+          },
+          "probe": {
+            "passed": true,
+            "report": {
+              "outcome": "passed",
+              "result": {
+                "mode": "tiny-wasm",
+                "iterations": 10000,
+                "reads": 20000
+              },
+              "diagnostic": {
+                "format": "breditor/startup-rejections",
+                "version": 1,
+                "limit": 16,
+                "omitted": 0,
+                "events": []
+              },
+              "initialEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              },
+              "finalEngineOptions": {
+                "useJIT": 0,
+                "useDFGJIT": 0,
+                "useFTLJIT": 0,
+                "useConcurrentGC": 1,
+                "usePollingTraps": 1,
+                "useMachForExceptions": 1,
+                "useGC": 1
+              }
+            }
+          },
+          "processStatus": 0
+        },
+        {
+          "batch": 3,
+          "tier": "no-jit",
+          "scenario": "probe-unconditional",
+          "watchdogSeconds": 30,
+          "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+          "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+          "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+          "captureSha256": "64d3b543eab1611be0268e5cda6d048c61d7bdcc8510ab1c0488e65f65f3cd80",
+          "selectHelperSha256": "df5150f054ff13b1ac754ba598c43d12118303f6ad72a49bd3141cafa724b779",
+          "outcome": "native-stop-needs-inspection",
+          "operands": [
+            2048,
+            2048
+          ],
+          "capture": {
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "breakpointHits": 1,
+            "breakpointStop": true,
+            "fileAddress": "0x112cf60",
+            "module": "JavaScriptCore",
+            "registers": {
+              "x0": "0x40a2000000000000",
+              "x1": "0x000000016fdfc9e0",
+              "x2": "0xfffe000000000800",
+              "x3": "0x000000016fdfc9e0",
+              "x4": "0x0000000000000050",
+              "x5": "0x00000001041bd9e4",
+              "x6": "0x000000011800ba68",
+              "x7": "0xfffe000000000003",
+              "x8": "0x0000000000000000",
+              "x9": "0x40a0000000000000",
+              "x10": "0x00000000676e6972",
+              "d0": "0",
+              "d1": "2048",
+              "d2": "NaN",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000103c0cf60"
+            },
+            "guardStop": false,
+            "stack": [
+              "JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)",
+              "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"
+            ]
+          },
+          "processStatus": 0
+        }
+      ]
+    }
+  ],
+  "qualification": {
+    "release": {
+      "gates": 17,
+      "passed": true,
+      "logSha256": "179f3cab5853fcc708f6ae2ba1b76949724bfdb5e643d06587e4af8bd1548818"
+    },
+    "automated": [
+      {
+        "name": "zero-runtime-restores",
+        "sha256": "4d995411ba41877e171add6e9bf4fd440ce14434166d45dc9ccd7743fc483424",
+        "stats": {
+          "startTime": "2026-09-28T14:09:55.434Z",
+          "duration": 53451.386,
+          "expected": 5,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      },
+      {
+        "name": "zero-runtime-matrix",
+        "sha256": "6a938c0a16c45036f3797d5f1c0a9a58724aca4a24bf382731d5ec9486101dba",
+        "stats": {
+          "startTime": "2026-09-28T14:09:59.890Z",
+          "duration": 152747.06399999998,
+          "expected": 153,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      }
+    ],
+    "nativeSafari": {
+      "method": "Visible native Safari runner; final JSON visually inspected",
+      "batches": 5,
+      "restores": 50000,
+      "selectionReads": 150000,
+      "passed": 5,
+      "outcome": "passed",
+      "bundleSha256": "54174f1ec9c26826560e8f74f99b7d292b12036197b8c12151b07b744768c4ad",
+      "limitations": "No new native clipboard qualification in this checkpoint; screenshot not persisted."
+    },
+    "productionChange": "Remove incoming numeric zero comparison from private normalizer; inspect sign byte after decimal conversion to preserve both zero signs. Four capture sites and strict validation unchanged."
+  }
+}

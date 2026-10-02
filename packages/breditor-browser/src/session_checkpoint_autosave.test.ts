@@ -149,6 +149,93 @@ function coordinator(
 }
 
 describe("BreditorSessionCheckpointAutosave", () => {
+  it.each([
+    ["markDirty", "method"], ["markDirty", "getter"],
+    ["flush", "method"], ["flush", "getter"],
+    ["dispose", "method"], ["dispose", "getter"],
+  ] as const)("keeps %s independent of a throwing public status %s", async (operation, kind) => {
+    const capture = new SequenceCapture([checkpoint("{}")]);
+    const save = new ControlledSavePort();
+    const { autosave, scheduler } = coordinator(capture, save);
+    if (operation !== "markDirty") autosave.markDirty();
+    const shadow = vi.fn(() => { throw new Error("public status is observational"); });
+    Object.defineProperty(autosave, "getStatus", {
+      configurable: true,
+      ...(kind === "getter" ? { get: shadow } : { value: shadow }),
+    });
+    let flushed: ReturnType<typeof autosave.flush> | undefined;
+    try {
+      expect(() => {
+        if (operation === "flush") flushed = autosave.flush();
+        else autosave[operation]();
+      }).not.toThrow();
+      expect(shadow).not.toHaveBeenCalled();
+      if (operation === "flush") {
+        expect(save.calls).toHaveLength(1);
+        save.pending[0]?.resolve({ ok: true, token: token(1) });
+        await expect(flushed).resolves.toEqual({ status: "committed" });
+      } else {
+        expect(scheduler.tasks.size).toBe(operation === "markDirty" ? 1 : 0);
+      }
+    } finally {
+      Reflect.deleteProperty(autosave, "getStatus");
+      autosave.dispose();
+      await drainMicrotasks();
+    }
+  });
+
+  it.each(["idle", "disposed"] as const)("notifies canonical status despite a public %s shadow", async (phase) => {
+    const save = new ControlledSavePort();
+    const { autosave } = coordinator(new SequenceCapture([checkpoint("{}")]), save);
+    const shadow = vi.fn(() => Object.freeze({ phase, dirty: false }));
+    Object.defineProperty(autosave, "getStatus", { configurable: true, value: shadow });
+    const statuses: unknown[] = [];
+    autosave.observeStatus((status) => { statuses.push(status); });
+    try {
+      await drainMicrotasks();
+      autosave.markDirty();
+      await drainMicrotasks();
+      const flushed = autosave.flush();
+      await drainMicrotasks();
+      save.pending[0]?.resolve({ ok: true, token: token(1) });
+      await expect(flushed).resolves.toEqual({ status: "committed" });
+      await drainMicrotasks();
+      autosave.dispose();
+      await drainMicrotasks();
+      expect(statuses).toEqual([
+        { phase: "idle", dirty: false },
+        { phase: "scheduled", dirty: true },
+        { phase: "saving", dirty: true },
+        { phase: "idle", dirty: false },
+        { phase: "disposed", dirty: false },
+      ]);
+      expect(shadow).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(autosave, "getStatus");
+      autosave.dispose();
+      await drainMicrotasks();
+    }
+  });
+
+  it("does not execute reentrant public status overrides while scheduling", () => {
+    const { autosave, scheduler } = coordinator(new SequenceCapture([checkpoint("{}")]), new ControlledSavePort());
+    const shadow = vi.fn(() => {
+      autosave.dispose();
+      return { phase: "idle", dirty: false };
+    });
+    Object.defineProperty(autosave, "getStatus", { configurable: true, value: shadow });
+    try {
+      autosave.markDirty();
+      expect(shadow).not.toHaveBeenCalled();
+      expect(BreditorSessionCheckpointAutosave.prototype.getStatus.call(autosave))
+        .toEqual({ phase: "scheduled", dirty: true });
+      expect(scheduler.tasks.size).toBe(1);
+    } finally {
+      Reflect.deleteProperty(autosave, "getStatus");
+      autosave.dispose();
+    }
+  });
+
   it("uses one trailing timer and captures only when that timer fires", () => {
     const capture = new SequenceCapture([checkpoint('{"revision":1}')]);
     const save = new ControlledSavePort();

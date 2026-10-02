@@ -10,5 +10,32 @@
     "stripInternal": false,
     "types": ["node", "@playwright/test"]
   },
-  "include": ["./**/*.ts", "../../playwright.config.ts"]
+  "include": ["./**/*.ts", "../../playwright.config.ts", "../../playwright.clipboard-stress.config.ts", "../../playwright.selection-stress.config.ts", "../../playwright.selection-production-stress.config.ts", "../../playwright.startup-diagnostics.config.ts", "../../playwright.property-isolation.config.ts", "../../playwright.property-no-jit.config.ts", "../../playwright.property-baseline-jit.config.ts", "../../playwright.property-wasm-interpreter.config.ts", "../../playwright.number-transport.config.ts", "../../vite.selection-stress.config.ts", "../../vite.startup-diagnostics.config.ts", "../../vite.property-isolation.config.ts", "../../vite.number-transport.config.ts"],
+  "files": [
+    "../../vite.browser.config.ts",
+    "../../playwright.numeric-range-static.config.ts",
+    "../../playwright.numeric-range-repro.config.ts",
+    "../../playwright.durable-contract-repro.config.ts",
+    "../../playwright.endpoint-repro.config.ts",
+    "../../playwright.numeric-return-repro.config.ts",
+    "../../playwright.link-diagnostics.config.ts",
+    "../../vite.link-diagnostics.config.ts",
+    "../../playwright.property-transport.config.ts",
+    "../../playwright.property-transport-no-jit.config.ts",
+    "../../vite.property-transport.config.ts",
+    "../../playwright.numeric-normalization.config.ts",
+    "../../vite.numeric-normalization.config.ts",
+    "../../playwright.native-number.config.ts",
+    "../../playwright.number-tiers.config.ts",
+    "../../playwright.comparison-capture.config.ts",
+    "../../playwright.boundary-qualification.config.ts",
+    "../../playwright.clipboard-boundary.config.ts",
+    "../../vite.clipboard-boundary.config.ts",
+    "../../playwright.boundary-cost.config.ts",
+    "../../vite.boundary-cost.config.ts",
+    "../../playwright.boundary-matrix.config.ts",
+    "../../vite.boundary-matrix.config.ts",
+    "../../vite.boundary-original.config.ts"
+  ],
+  "exclude": ["./diagnostics/**/*.test.ts"]
 }

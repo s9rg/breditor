@@ -231,6 +231,29 @@ unusable; discard it rather than attempting recovery. The framework-neutral
 TypeScript facade keeps command-path raw handles behind its checked lifecycle
 API.
 
+The browser action-state consumer reserves its result before inspecting caller
+metadata, then reserves each snapshot, string result and cloned error before
+reading its accessors. Reservations remain active through the whole cleanup
+pass and are shared with document/checkpoint string readers. Reentrant calls
+cannot consume or free these active aliases; independent nested reads remain
+supported. These synchronous guards do not authorize reuse after a handle has
+been freed, and do not change the generated Rust/Wasm ABI.
+
+Profile-descriptor consumers likewise reject overlapping reads of the same
+descriptor, including calls between the public and captured-cleanup entry
+points. The reservation begins before protected-handle metadata or `then`
+inspection and ends only after cleanup and final generation validation.
+Caller-owned protected descriptors are not inspected or released. Independent
+nested descriptor reads remain supported; no cross-adapter or post-free reuse
+guarantee is implied by this descriptor-local guard.
+
+A projection update retains its taken child's reservation through the parent's
+cleanup and final generation check, even after the child itself has been freed.
+Neither a direct projection read nor another update may acquire that active
+alias. Independent nested projections and updates remain supported. The adapter
+releases both reservations when the enclosing update returns or throws; these
+synchronous guards do not authorize later reuse of an already-freed handle.
+
 ## Engine construction
 
 `BreditorCompiledProfile.fromBootstrapJson(profileJson)` strictly decodes the
@@ -686,6 +709,23 @@ property lookup, moves with an adopted observation or nested semantic view.
 Aliases of a protected owner are rejected without inspecting or freeing them;
 all other claimed handles are released exactly once even when a sibling getter
 mutates or removes their public `free` property.
+
+Successful action-state, selection, projection, and projection-update reads
+also require the caller-owned profile generation to remain live **after** all
+owned-handle cleanup. Initial correlation alone is insufficient: a generated
+getter or destructor can invalidate that generation while the read is in
+progress. Such a read returns its existing boundary-failure code, publishes no
+successful value, and still releases every captured owned handle exactly once.
+The adapter never frees the caller's generation. This is browser admission
+hardening; it changes neither the Rust transport nor a durable format.
+
+Selection consumption also claims the view identity before reading `free`,
+`then`, correlation methods, or scalar getters. A synchronous nested attempt to
+consume that same view rejects without reading it or invoking its cleanup.
+The public entry and the command adapter's captured-cleanup entry share this
+guard, which remains active through cleanup and the final generation check.
+Distinct views may be consumed independently. This is an in-progress ownership
+guard, not permission to reuse a freed Wasm handle.
 
 Caller-owned arrays used to enumerate protected handles are copied through at
 most 64 dense own data descriptors. Sparse arrays, indexed or length accessors,

@@ -1,0 +1,107 @@
+{
+  "format": "breditor/projection-child-ownership",
+  "date": "2026-10-01",
+  "baseCommit": "64fcee8529fc0784759cf347729de87e79b97853",
+  "workingTreeDirty": true,
+  "issue": "An update released its child's active-consumption reservation before parent cleanup/final generation admission. Reentrant code could consume and free the already-consumed child again.",
+  "reproduction": {
+    "tests": 38,
+    "failed": 6,
+    "passed": 32,
+    "log": "/tmp/breditor-projection-child-before-20261001.log",
+    "cases": "Public and captured-cleanup update entries, each with valid child, invalid child, and throwing parent cleanup."
+  },
+  "change": "Represent active projection consumption as parent-to-child ownership. Reserve the child before its getters and retain it through parent cleanup and final admission. Release both reservations in the outer finally. Reject active aliases without touching their cleanup.",
+  "regressionAndControlCases": 13,
+  "controls": [
+    "Another update cannot acquire a child active in a standalone read during free-getter, schema-read or child cleanup callbacks.",
+    "Independent projection reads and nested updates remain supported.",
+    "The child stays reserved through final generation checks for both update entry points.",
+    "Child and parent cleanup remain exactly once when validation fails or parent cleanup throws."
+  ],
+  "verification": {
+    "browserRuntimeTests": 1378,
+    "diagnosticToolTests": 170,
+    "workspaceTypechecks": "passed",
+    "browserHarnessTypecheck": "passed",
+    "finalRuntimeAndTestTypecheck": "passed",
+    "sizeBudgets": "all passed without changes to limits",
+    "referenceApplicationGzipBytes": 224950,
+    "referenceApplicationGzipLimit": 225000,
+    "browserEmittedJavaScriptBytes": 1083626,
+    "browserEmittedJavaScriptLimit": 1085000,
+    "demoMatrix": {
+      "passed": 39,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/projection-child-demo-20261001"
+    },
+    "fullReleaseVerifierRerun": false,
+    "nativeRustTestsRerun": false,
+    "nativeSafariRerun": false,
+    "standaloneNumericProbeRerun": false,
+    "browserMatrix": {
+      "passed": 159,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/projection-child-browser-20261001"
+    }
+  },
+  "knownOpen": {
+    "webkitNumericFault": "Not fixed by this adapter ownership change; historical debugger-free counterexamples remain valid.",
+    "webkitSelectionEndpointFault": "No causal fix established; connection to the numerical fault remains unproven.",
+    "evidence": "docs/qualification/2026-09-28-action-state-ownership-and-webkit-recheck.json"
+  },
+  "limits": [
+    "Reservations cover synchronous overlapping projection/update consumers, not later reuse after free or arbitrary cross-adapter aliases.",
+    "Controlled browser events do not establish exhaustive native OS clipboard or IME support.",
+    "No Rust implementation, Wasm ABI, durable format, package version or size limit changed.",
+    "No commit, push or publication; unrelated existing worktree changes preserved."
+  ],
+  "files": [
+    {
+      "path": "packages/breditor-browser/src/wasm_projection_adapter.ts",
+      "sha256": "36055b7500b7821a665b52c6cd6effc4f3ab6e0521eb66dfc9f95c7052dcc934"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_projection_adapter.test.ts",
+      "sha256": "c82881812b5195d8aff28cb731740e84bf8799202cdd3ae677578160660e7c09"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_projection_adapter.js",
+      "sha256": "007d17eb7ce31ddf43d57b24362167c2873916e38cd3530e364da33481426c55"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-before-20261001.log",
+      "sha256": "72cead4b963b2050d06d5bd21215932ab28aa0d08e0d7c44033797d0c1b6c9f5"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-unit-final-20261001.log",
+      "sha256": "f3707cf168b20ef1b6087bbe1050c527b5e0fa0376aea80061e02dc9c52e4061"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-types-20261001.log",
+      "sha256": "b993615c320728e2d503d2c59bfb85d9199621c34865c7842c210640d6abfab6"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-types-final-20261001.log",
+      "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-diagnostics-20261001.log",
+      "sha256": "6c767c96308744e6aa6c46a437dc0056b657f3ff2bc481767f2d68847f840e1e"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-size-20261001.log",
+      "sha256": "288146338ffc90b25f70d94038262fa256142f13deda1ff7a88b2e41a69f347d"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-demo-20261001.log",
+      "sha256": "024f4e4ba9aeaa01bda5dec17dd243f62b94858eacedc7e91ee342759d0978e5"
+    },
+    {
+      "path": "/tmp/breditor-projection-child-browser-20261001.log",
+      "sha256": "9d33221ab132cfd49f102fb025577714f582aad6198e756c0c8a9f333f7e8705"
+    }
+  ]
+}

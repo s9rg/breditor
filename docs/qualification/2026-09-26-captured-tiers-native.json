@@ -1,0 +1,70 @@
+{
+  "status": "captured failure reproduced without optimizing tiers; live native inspection denied by macOS",
+  "productionRuntimeChanged": false,
+  "systemSecurityChanged": false,
+  "playwrightWebkitRevision": "2336",
+  "capturedModuleSha256": "5c3a807f10be6723bd4be5dfe3df758e81d64f144410993a17a48c45770fa855",
+  "originalModuleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+  "browser": {
+    "retries": 0,
+    "timeoutMs": 30000,
+    "iterationsPerCase": 10000,
+    "runs": [
+      { "comparison": "captured", "tier": "normal", "passed": 10, "failed": 0 },
+      { "comparison": "captured", "tier": "baseline", "passed": 9, "failed": 1, "failureIteration": 7371 },
+      { "comparison": "captured", "tier": "no-jit", "passed": 10, "failed": 0 },
+      { "comparison": "captured", "tier": "baseline", "logJIT": true, "passed": 4, "failed": 1, "failureIteration": 6171 },
+      { "comparison": "original", "tier": "no-jit", "logJIT": true, "passed": 10, "failed": 0 }
+    ],
+    "baselineLoggedCompilation": { "generatedEntries": 1242, "baselineEntries": 89, "dfgEntries": 0, "ftlEntries": 0, "objectIsStubEntries": 5 },
+    "noJitLoggedCompilation": { "generatedEntries": 0 },
+    "bothBaselineCaptures": { "field": 4, "actual": 2048, "expected": 2048, "equal": false, "maskBefore": 0, "maskAfter": 16, "strictEqual": true, "objectIsAgain": true },
+    "traces": [
+      { "path": "/tmp/breditor-captured-baseline-7371-20260926.zip", "sha256": "e9cb92801162cdf9b6d050898b7227466336b8d4b2474b6514cd40e140b3dc7c" },
+      { "path": "/tmp/breditor-captured-baseline-logged-6171-20260926.zip", "sha256": "869ad86dc3487be6f49972db85ae97995d32d72ba8840a2b5687d54d709abcc0" }
+    ],
+    "logs": [
+      { "path": "/tmp/breditor-captured-baseline-jit-log-20260926.log", "sha256": "4062bce025a536f0944bf1a869b064ada0ba41554cacd8206a9e4909ba0da2b5" },
+      { "path": "/tmp/breditor-original-no-jit-log-20260926.log", "sha256": "42fd4b624bbf132dea23c84621ec5f3da29b06f3b3379bc8919579b1ededecce" }
+    ]
+  },
+  "standalone": {
+    "comparison": "captured",
+    "minimumTimerDelayMs": 4,
+    "runs": [
+      { "tier": "normal", "passed": 5, "failed": 0, "initialAndFinalOptions": { "useJIT": 1, "useDFGJIT": 1, "useFTLJIT": 1 } },
+      { "tier": "no-jit", "passed": 5, "failed": 0, "initialAndFinalOptions": { "useJIT": 0, "useDFGJIT": 0, "useFTLJIT": 0 } }
+    ],
+    "logs": [
+      { "path": "/tmp/breditor-shell-effective-normal-20260926.jsonl", "sha256": "885d7c58f8b47f3cddbac32422c320cea2a932e5a38db1ebc4c01abb6d8d3118" },
+      { "path": "/tmp/breditor-shell-effective-no-jit-20260926.jsonl", "sha256": "5600211217d22f98ef1be490df924ccb139066195ce454d4d5c73cfe637e6ec3" }
+    ]
+  },
+  "nativeInspection": {
+    "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+    "architecture": "arm64",
+    "function": "JSC::objectConstructorIs",
+    "fileAddress": "0x112ce24",
+    "conditionalBreakpointAddress": "0x112cf60",
+    "disassembly": "/tmp/breditor-object-is-native-disassembly-20260926.log",
+    "disassemblySha256": "63fbdb312ffee65ea33cf3a88d26f68974432926bfe0c9a6fda7da8b468c2558",
+    "liveProbeExecuted": false,
+    "launchError": "attach failed (Not allowed to attach to process...)",
+    "debuggerLog": "/tmp/breditor-native-object-is-debugger-corrected-20260926.log",
+    "debuggerLogSha256": "1f59d9515d1ded8d2e772016c287ef965d4be3a6659e6cff68dc7dd4bcff0fb9",
+    "developerModeEnabled": false,
+    "shellSignature": "adhoc",
+    "shellGetTaskAllowEntitlement": false,
+    "exactAuthorizationSubsystem": "not established",
+    "earlierExcludedAttempt": "LLDB settings argument parsing failed before launch",
+    "existingApplicationsAttached": false
+  },
+  "verification": { "workspaceTestsPassed": 1278, "diagnosticTestsPassed": 59, "totalTestsPassed": 1337, "browserTypecheck": "passed" },
+  "limits": [
+    "Passing current no-JIT cases do not invalidate earlier no-JIT failures.",
+    "Baseline-only reproduction does not identify the caller, specialized stub, native helper or representation as the exact cause.",
+    "No native breakpoint was observed; static disassembly is not an instruction-level failure capture.",
+    "Changing system debugger authorization or executable signing requires separate user approval.",
+    "No production workaround or renewed native Safari/editor qualification was performed."
+  ]
+}

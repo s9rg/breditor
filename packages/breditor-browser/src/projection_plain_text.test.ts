@@ -7,6 +7,18 @@ import {
 } from "./projection_plain_text.js";
 
 describe("semantic plain-text export", () => {
+  it.each(["ASCII", "é", "漢", "💡", "aé漢💡"])("retains exact UTF-8 bytes for %s across paragraph boundaries", (text) => {
+    const projection = ownedProjection([
+      { runs: [{ text, strong: false }] },
+      { runs: [] },
+      { runs: [{ text, strong: true }] },
+    ]);
+    const expected = `${text}\n\n${text}`;
+    expect(projectPlainText(projection)).toMatchObject({ ok: true, content: {
+      text: expected, utf8Bytes: new TextEncoder().encode(expected).byteLength,
+    } });
+  });
+
   it("joins paragraphs with LF, preserves empties, strips strong, and adds no synthetic final LF", () => {
     const projection = ownedProjection([
       { runs: [{ text: "A", strong: false }, { text: "💡", strong: true }] },

@@ -121,6 +121,15 @@ callback for a later task, never invoke it inline, and return `void`; it is used
 for native composition settlement, deferred canonical repair, and keyboard-echo
 expiry.
 
+Composition scheduling rejects promise/thenable returns immediately, even an
+already fulfilled promise. Invalid or throwing schedulers revoke their retained
+callbacks; they cannot later settle or recover that composition. If recovery
+scheduling also fails, the controller keeps the DOM/queue lease quarantined until
+explicit recovery or disposal succeeds. Non-thenable timer handles are tolerated,
+but integrations should use the documented `void` signature. Advanced composition
+`onSettlement` observers are not awaited: synchronous errors and asynchronous
+rejections are contained without changing the completed lifecycle result.
+
 Explicit recovery instead supplies `initialSessionCheckpointJson`, no
 `initialDocument`, and no `persistence`. It restores the caller-selected
 profile/generation into a separate empty host, without reading or replacing a
@@ -506,6 +515,16 @@ repaired from the Rust projection immediately. An unrecoverable render or
 selection failure removes the listeners and faults the editor. Executor or
 queue-observer uncertainty also faults closed, and the router never replays the
 head command.
+
+Deferred repair applies the same synchronous scheduling contract as composition:
+an inline callback, thrown error, promise/thenable return, or unreadable `then`
+property faults the router with `reconciliationFailed`. Retained callbacks are
+invalidated; a failed scheduler must not leave the router reporting a live
+pending repair. Canonical restoration itself holds the event-dispatch guard,
+including task-driven repair and repair performed before routing the next event.
+Reentrant editing events fault with `eventDispatchFailed` without submitting a
+command, and a fault or disposal during restoration cannot report repair success.
+Successful restoration releases the guard so subsequent edits can proceed.
 
 Nested form controls and nested editing hosts retain their native behavior.
 Event admission is limited to the connected light-DOM host; it does not use a

@@ -96,6 +96,93 @@ class FakeStringResult implements WasmSessionCheckpointStringResultView {
 }
 
 describe("Wasm session-checkpoint adapter", () => {
+  it.each(["free getter", "status", "error", "takeValue", "cleanup", "expected", "protected list"])(
+    "rejects overlapping ownership when %s reenters the same result",
+    (stage) => {
+      let nested: ReturnType<typeof consumeWasmSessionCheckpoint> | undefined;
+      let entered = false;
+      const enter = () => {
+        if (entered) return;
+        entered = true;
+        nested = consumeWasmSessionCheckpoint(EXPECTED, view);
+      };
+      const free = vi.fn(() => { if (stage === "cleanup") enter(); });
+      const takeValue = vi.fn(() => {
+        if (stage === "takeValue") enter();
+        return checkpointJson();
+      });
+      const view: WasmSessionCheckpointStringResultView = {
+        get status() { if (stage === "status") enter(); return "value" as const; },
+        get error() { if (stage === "error") enter(); return undefined; },
+        get free() { if (stage === "free getter") enter(); return free; },
+        takeValue,
+      };
+      const expected = {
+        get lineage() { if (stage === "expected") enter(); return EXPECTED.lineage; },
+        revision: EXPECTED.revision,
+      };
+      const protectedHandles = new Proxy<unknown[]>([], {
+        getOwnPropertyDescriptor(target, property) {
+          if (stage === "protected list") enter();
+          return Reflect.getOwnPropertyDescriptor(target, property);
+        },
+      });
+      expect(consumeWasmSessionCheckpoint(expected, view, protectedHandles).ok).toBe(true);
+      expect(nested).toMatchObject({ ok: false, error: { code: "session_checkpoint.invalid_wasm_view" } });
+      expect(free).toHaveBeenCalledOnce();
+      expect(takeValue).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["free getter", "code", "cleanup"])("does not consume a shared error twice during %s reentry", (stage) => {
+    let nested: ReturnType<typeof consumeWasmSessionCheckpoint> | undefined;
+    let entered = false;
+    const enter = () => {
+      if (entered) return;
+      entered = true;
+      nested = consumeWasmSessionCheckpoint(EXPECTED, second);
+    };
+    const free = vi.fn(() => { if (stage === "cleanup") enter(); });
+    const error: WasmSessionCheckpointErrorView = {
+      get code() { if (stage === "code") enter(); return "codec.invalid_session_checkpoint"; },
+      message: "checkpoint rejected",
+      get free() { if (stage === "free getter") enter(); return free; },
+    };
+    const first = new FakeStringResult("error", undefined, error);
+    const second = new FakeStringResult("error", undefined, error);
+    expect(consumeWasmSessionCheckpoint(EXPECTED, first)).toMatchObject({
+      ok: false, error: { kind: "core", code: error.code },
+    });
+    expect(nested).toMatchObject({ ok: false, error: { kind: "boundary" } });
+    expect(free).toHaveBeenCalledOnce();
+    expect(first.freeCalls).toBe(1);
+    expect(second.freeCalls).toBe(1);
+  });
+
+  it("allows nested independent checkpoint results", () => {
+    const second = new FakeStringResult("value", checkpointJson());
+    const first = new FakeStringResult("value", checkpointJson());
+    Object.defineProperty(first, "status", { get() {
+      expect(consumeWasmSessionCheckpoint(EXPECTED, second).ok).toBe(true);
+      return "value";
+    } });
+    // FakeStringResult.takeValue also reads status, so use a fixed method here.
+    first.takeValue = () => checkpointJson();
+    expect(consumeWasmSessionCheckpoint(EXPECTED, first).ok).toBe(true);
+    expect(first.freeCalls).toBe(1);
+    expect(second.freeCalls).toBe(1);
+  });
+
+  it("releases the guard when protected-handle capture rejects without taking ownership", () => {
+    const view = new FakeStringResult("value", checkpointJson());
+    const array = Proxy.revocable<unknown[]>([], {});
+    array.revoke();
+    expect(consumeWasmSessionCheckpoint(EXPECTED, view, array.proxy).ok).toBe(false);
+    expect(view.freeCalls).toBe(0);
+    expect(consumeWasmSessionCheckpoint(EXPECTED, view).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+
   it("copies an exact snapshot-bound UTF-8 checkpoint and frees its result", () => {
     const json = checkpointJson("💡");
     const view = new FakeStringResult("value", json);

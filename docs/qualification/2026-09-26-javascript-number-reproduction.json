@@ -1,0 +1,106 @@
+{
+  "status": "reproduced without Wasm; exact engine cause unresolved",
+  "productionRuntimeChanged": false,
+  "nativeSafariTestedThisFollowUp": false,
+  "upstreamIssueFiled": false,
+  "retries": 0,
+  "assemblerAudit": {
+    "tool": "wabt",
+    "version": "1.0.39",
+    "projectDependencyChanged": false,
+    "constantModule": {
+      "bytes": 48,
+      "matchesHandwrittenByteForByte": true,
+      "sha256": "1b5bb035a97a13ef52fa43803386b313896896dd4ee15a8ffaaefb1e60833892"
+    },
+    "memoryModule": {
+      "bytes": 65,
+      "matchesFixtureByteForByte": true,
+      "sha256": "070aa7235ed7e5c4a7fdfd7a29c37a0ab48b948b6309a3ef8cfef3107b389f23"
+    },
+    "nodeCallsPassedPerModule": 100000,
+    "interpreterResultPerModule": "f64:2048",
+    "auditFile": "/tmp/breditor-independent-module-audit-20260926.json"
+  },
+  "firstBatch": {
+    "casesPerVariant": 5,
+    "passed": { "f64": 5, "js-call": 5, "js-dataview": 5, "wasm-memory": 5 },
+    "interpretation": "No variant reproduced, including known-failing reference; inconclusive."
+  },
+  "extendedSourceControls": {
+    "casesPerVariant": 10,
+    "tuplesPerPassingCase": 20000,
+    "variantsRunConcurrently": true,
+    "f64": { "passed": 9, "failed": 1, "failureIteration": 1171 },
+    "wasm-memory": { "passed": 9, "failed": 1, "failureIteration": 2601 },
+    "js-dataview": {
+      "passed": 9,
+      "failed": 1,
+      "failureIteration": 2366,
+      "entryJavascriptSha256": "1c81711b57206f7b049a7b2c90281b94684dacfdeec3e2f98cab626e58b1b6f6",
+      "entryWebAssemblyIdentifierCount": 0,
+      "traceNetworkPaths": ["/", "/assets/index-DjkyTD9d.js"],
+      "report": {
+        "propertyIndex": 0,
+        "field": 4,
+        "mismatchMask": 16,
+        "actual": 2048,
+        "expected": 2048,
+        "actualHigh": 1084227584,
+        "actualLow": 0,
+        "expectedHigh": 1084227584,
+        "expectedLow": 0,
+        "objectIsRecheck": true,
+        "strictEqualRecheck": true
+      },
+      "trace": "/tmp/breditor-js-dataview-equal-bits-20260926.zip",
+      "traceSha256": "c84425e8b23601ce67879f530e459c8ccb3b0167941a33c71a53a34f2a56512a"
+    }
+  },
+  "dataViewFollowUps": {
+    "chromiumAndFirefox": { "passed": 10, "failed": 0, "casesPerEngine": 5 },
+    "allJitOffWebkit": { "passed": 5, "failed": 0, "useJitFalseConfirmedInLauncherOutput": true },
+    "strictEqualityWebkit": {
+      "passed": 10,
+      "failed": 0,
+      "entryJavascriptSha256": "d8770acaee1bfd537304d7bb8ed6af3422a9903c5632b198bb9ca68da615b292"
+    },
+    "validatorRemovedWebkit": {
+      "passed": 8,
+      "failed": 2,
+      "failureIterations": [441, 341],
+      "entryJavascriptSha256": "37bdf950ac887c2e2e420091c608ffc4ac5295e4f02ebd2ff248c1886a8bbe40",
+      "firstTrace": "/tmp/breditor-js-no-validator-equal-bits-20260926.zip",
+      "firstTraceSha256": "569075407472487207cfa5f3ec08eacc80ede9a90196d7280aa43afdaad7d1bc"
+    },
+    "validatorRemovedIndependentRun": {
+      "passed": 4,
+      "failed": 1,
+      "failureIteration": 356,
+      "trace": "/tmp/breditor-js-no-validator-independent-20260926.zip",
+      "traceSha256": "b9b5b5982953d1d7a123b2f5d4f95d95a541f8231c805833df04e8cb55c1a972"
+    },
+    "standaloneReduction": {
+      "initialPassed": 10,
+      "initialFailed": 0,
+      "independentPassed": 20,
+      "independentFailed": 0,
+      "javascriptBytes": 3785,
+      "entryJavascriptSha256": "7aaa27f86821b522d2cbb4cf1e489b123f06654e05407c26e6ca2ac59dcfaa8d",
+      "wasmAssets": 0,
+      "interpretation": "Further reduction also removes unexecuted Wasm branch; thirty cases across two runs did not reproduce while the larger validator-free control failed independently."
+    }
+  },
+  "limits": [
+    "Cold numeric rechecks are not machine-level snapshots of the original hot comparison.",
+    "Cannot yet distinguish array load, numeric representation, equality or branch/mask compilation.",
+    "Passing altered code shape does not prove a fix or identify the faulty operation.",
+    "The connection to every prior editor startup, selection and clipboard fault is not established."
+  ],
+  "verification": {
+    "unitTestsPassed": 1320,
+    "diagnosticUnitTestsIncluded": 42,
+    "browserTypecheck": "passed",
+    "releaseVerifier": "not rerun"
+  }
+}

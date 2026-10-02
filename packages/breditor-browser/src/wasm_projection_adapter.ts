@@ -26,7 +26,9 @@ const PROJECTION_PROFILE_GENERATIONS = new WeakMap<
   BaseDocumentProjection,
   WasmProfileGenerationView
 >();
-const ACTIVE_GENERATED_CONSUMPTIONS = new WeakSet<object>();
+// Updates retain their consumed child through parent cleanup/final admission.
+// A standalone projection has no child. Entries are released only by the owner.
+const ACTIVE_GENERATED_CONSUMPTIONS = new WeakMap<object, object | undefined>();
 const MAX_PROJECTED_PROPERTIES_PER_FORMAT = 32;
 const MAX_PROJECTED_PROPERTY_VALUES = 10_000;
 const MAX_PROJECTED_PROPERTY_STRING_BYTES = 65_536;
@@ -207,11 +209,11 @@ export function consumeSemanticProjection(
   if (identity === null || ACTIVE_GENERATED_CONSUMPTIONS.has(identity)) {
     return projectionFailure("projection.invalid_shape");
   }
-  ACTIVE_GENERATED_CONSUMPTIONS.add(identity);
+  ACTIVE_GENERATED_CONSUMPTIONS.set(identity, undefined);
   try {
     return consumeSemanticProjectionUnlocked(view, generation, expectedProfile);
   } finally {
-    ACTIVE_GENERATED_CONSUMPTIONS.delete(identity);
+    releaseGeneratedConsumption(identity);
   }
 }
 
@@ -242,7 +244,10 @@ function consumeSemanticProjectionUnlocked(
       result = projectionFailure("projection.invalid_shape");
     }
   }
-  return result;
+  // Validate after cleanup too: foreign destructors may retire the generation.
+  return result.ok && !wasmProfileGenerationIsLive(generation)
+    ? projectionFailure("projection.invalid_shape")
+    : result;
 }
 
 /**
@@ -265,7 +270,7 @@ export function consumeSemanticProjectionUpdate(
   if (identity === null || ACTIVE_GENERATED_CONSUMPTIONS.has(identity)) {
     return projectionFailure("projection.invalid_update");
   }
-  ACTIVE_GENERATED_CONSUMPTIONS.add(identity);
+  ACTIVE_GENERATED_CONSUMPTIONS.set(identity, undefined);
   try {
     return consumeSemanticProjectionUpdateUnlocked(
       base,
@@ -275,7 +280,7 @@ export function consumeSemanticProjectionUpdate(
       protectedHandles,
     );
   } finally {
-    ACTIVE_GENERATED_CONSUMPTIONS.delete(identity);
+    releaseGeneratedConsumption(identity);
   }
 }
 
@@ -319,7 +324,7 @@ export function consumeSemanticProjectionUpdateWithCleanup(
   if (identity === null || ACTIVE_GENERATED_CONSUMPTIONS.has(identity)) {
     return projectionFailure("projection.invalid_update");
   }
-  ACTIVE_GENERATED_CONSUMPTIONS.add(identity);
+  ACTIVE_GENERATED_CONSUMPTIONS.set(identity, undefined);
   try {
     return consumeSemanticProjectionUpdateWithCleanupUnlocked(
       base,
@@ -330,7 +335,7 @@ export function consumeSemanticProjectionUpdateWithCleanup(
       protectedHandles,
     );
   } finally {
-    ACTIVE_GENERATED_CONSUMPTIONS.delete(identity);
+    releaseGeneratedConsumption(identity);
   }
 }
 
@@ -355,6 +360,12 @@ function consumeSemanticProjectionUpdateWithCleanupUnlocked(
     protectedSet,
     containGeneratedThenable(view),
   );
+}
+
+function releaseGeneratedConsumption(identity: object): void {
+  const child = ACTIVE_GENERATED_CONSUMPTIONS.get(identity);
+  if (child !== undefined) ACTIVE_GENERATED_CONSUMPTIONS.delete(child);
+  ACTIVE_GENERATED_CONSUMPTIONS.delete(identity);
 }
 
 function objectIdentity(value: unknown): object | null {
@@ -419,7 +430,10 @@ function consumeClaimedSemanticProjectionUpdate(
       result = projectionFailure("projection.invalid_update");
     }
   }
-  return result;
+  // Nested projection validation precedes the outer update's cleanup.
+  return result.ok && !wasmProfileGenerationIsLive(generation)
+    ? projectionFailure("projection.invalid_update")
+    : result;
 }
 
 function runGeneratedCleanup(cleanup: () => unknown): boolean {
@@ -979,13 +993,15 @@ function readProfiledSemanticProjectionUpdate(
   // `takeProjection` crosses a second generated-handle boundary. A hostile or
   // corrupted wrapper must not smuggle an outer owner into the projection
   // consumer, whose normal contract is to free the value it receives.
-  if (
-    (resultView as unknown) === view ||
-    protectedHandles.has(resultView)
-  ) {
+  const child = objectIdentity(resultView);
+  if (child === null || protectedHandles.has(child) || ACTIVE_GENERATED_CONSUMPTIONS.has(child)) {
     return projectionFailure("projection.invalid_update");
   }
-  const projectionResult = consumeSemanticProjection(
+  // Claim before the child's first getter. Keep this claim after its own free:
+  // parent cleanup and final generation checks can still reenter the adapter.
+  ACTIVE_GENERATED_CONSUMPTIONS.set(child, undefined);
+  ACTIVE_GENERATED_CONSUMPTIONS.set(view, child);
+  const projectionResult = consumeSemanticProjectionUnlocked(
     resultView,
     generation,
     expectedProfile,

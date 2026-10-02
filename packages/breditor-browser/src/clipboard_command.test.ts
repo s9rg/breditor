@@ -130,10 +130,38 @@ describe("clipboard engine command factories", () => {
     ["empty", ""],
     ["unpaired surrogate", "\ud800"],
     ["oversized", "x".repeat(MAX_BROWSER_COMMAND_TEXT_UTF16 + 1)],
-  ])("rejects %s paste text before constructing a request", (_label, pastedText) => {
+  ])("rejects %s paste text before exposing a request", (_label, pastedText) => {
     expect(() =>
       pasteInsertRequest(fixture.delivery, fixture.selection, pastedText),
     ).toThrow(RangeError);
+  });
+
+  it.each(["\n", "\r", "\r\n"])("enforces the exact source-paragraph ceiling for %j", (separator) => {
+    const admitted = separator.repeat(9_999);
+    expect(pasteInsertRequest(fixture.delivery, fixture.selection, admitted).command).toMatchObject({
+      input: { kind: "string", value: admitted },
+    });
+    expect(() => pasteInsertRequest(fixture.delivery, fixture.selection, separator.repeat(10_000)))
+      .toThrow("clipboard paste exceeds the source paragraph limit");
+  });
+
+  it("counts mixed CR/LF normalization without treating Unicode separators as paragraphs", () => {
+    const admitted = "\r\n".repeat(9_997) + "\r\n\r";
+    expect(pasteInsertRequest(fixture.delivery, fixture.selection, admitted).command).toMatchObject({
+      input: { kind: "string", value: admitted },
+    });
+    expect(() => pasteInsertRequest(fixture.delivery, fixture.selection, admitted + "\r")).toThrow(RangeError);
+    const unicode = "\u2028\u2029".repeat(10_000);
+    expect(pasteInsertRequest(fixture.delivery, fixture.selection, unicode).command).toMatchObject({
+      input: { kind: "string", value: unicode },
+    });
+  });
+
+  it("never inspects a foreign value while counting paragraphs", () => {
+    let reads = 0;
+    const value = { get length() { reads++; throw new Error("unexpected property read"); } };
+    expect(() => pasteInsertRequest(fixture.delivery, fixture.selection, value as unknown as string)).toThrow(RangeError);
+    expect(reads).toBe(0);
   });
 
   it("rejects forged delivery tokens and accessor-backed selections", () => {

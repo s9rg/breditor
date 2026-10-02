@@ -1,0 +1,76 @@
+{
+  "scope": "Automated optimized WebKit diagnostic; not native clipboard qualification",
+  "status": "unresolved",
+  "productionChanged": false,
+  "cases": [
+    {
+      "name": "profile property validator rejection",
+      "log": "/tmp/breditor-startup-diagnostics-final-20260925.log",
+      "trace": "/tmp/breditor-startup-property-branch-20260925.zip",
+      "traceSha256": "fc0f83f8b1cfe943ab6733dc7e14785b115b9c008b09b9c05dcc9248674aeb62",
+      "javascriptSha256": "97614ea4a42b6cd56c6d36fe392293c7512d047e2d255a880c9d3a129e759bb6",
+      "passedCases": 0,
+      "failedCase": 1,
+      "notRun": 19,
+      "restoreIteration": 22,
+      "error": "engine_bootstrap.invalid_profile_descriptor",
+      "attachment": {
+        "format": "breditor/startup-rejections",
+        "version": 1,
+        "limit": 16,
+        "omitted": 0,
+        "events": [
+          { "stage": "descriptor:readFormatProperties:218", "counters": {} },
+          { "stage": "descriptor:readFormats:195", "counters": {} },
+          { "stage": "descriptor:readDescriptor:128", "counters": {} }
+        ]
+      }
+    },
+    {
+      "name": "selection rejection with generic getter capture still present",
+      "log": "/tmp/breditor-startup-property-capture-20260925.log",
+      "trace": "/tmp/breditor-startup-property-selection-failure-20260925.zip",
+      "traceSha256": "bfa0bb7d1bc6e50e11d75835499cb6bc36c594166925bd677cf6dca37beece13",
+      "javascriptSha256": "16402aa0a709b2d793759a8dd3d3939e2d2a51d1843de4b69fd19a48efa04b3b",
+      "passedCases": 5,
+      "failedCase": 6,
+      "notRun": 14,
+      "restoreIteration": 113,
+      "selectionRead": 1,
+      "error": "selection.invalid_wasm_view",
+      "attachment": {
+        "format": "breditor/startup-rejections",
+        "version": 1,
+        "limit": 16,
+        "omitted": 0,
+        "events": []
+      }
+    },
+    {
+      "name": "second independent selection rejection in the unchanged property diagnostic",
+      "log": "/tmp/breditor-startup-property-capture-second-20260925.log",
+      "trace": "/tmp/breditor-startup-property-selection-second-failure-20260925.zip",
+      "traceSha256": "1e79e8cd0b1d770130e16b51a006979063a4ef8d42ddbd3ab2e0bf101e8f6143",
+      "javascriptSha256": "16402aa0a709b2d793759a8dd3d3939e2d2a51d1843de4b69fd19a48efa04b3b",
+      "passedCases": 10,
+      "failedCase": 11,
+      "notRun": 9,
+      "restoreIteration": 66,
+      "selectionRead": 1,
+      "error": "selection.invalid_wasm_view",
+      "attachment": {
+        "format": "breditor/startup-rejections",
+        "version": 1,
+        "limit": 16,
+        "omitted": 0,
+        "events": []
+      }
+    }
+  ],
+  "limitations": [
+    "Instrumentation can affect optimization and timing.",
+    "The captured branch identifies a rejecting validator, not the underlying cause.",
+    "No getter rereads, document text, checkpoint payloads or clipboard contents were captured.",
+    "Green diagnostic or ordinary checks cannot waive these counterexamples."
+  ]
+}

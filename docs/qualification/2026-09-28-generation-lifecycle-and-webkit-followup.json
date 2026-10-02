@@ -1,0 +1,1883 @@
+{
+  "date": "2026-09-28",
+  "status": "not release-qualified: intermittent WebKit failures remain",
+  "productionChange": "Reject successful reads if their profile generation becomes invalid during reading or cleanup; recheck only after freeing captured handles, without freeing caller generation.",
+  "regressions": {
+    "previouslyFailed": 7,
+    "nowPass": 7,
+    "boundaries": [
+      "action state (read, snapshot cleanup, result cleanup)",
+      "selection (read, cleanup)",
+      "projection cleanup",
+      "projection-update cleanup"
+    ],
+    "targetedAdapterTests": 111
+  },
+  "sources": [
+    {
+      "path": "packages/breditor-browser/src/wasm_action_state_adapter.ts",
+      "sha256": "2626e03d0f5f247fe0390cc5f6c4379d458f18ce270c8fde6739e913b5ff92ff"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_selection_adapter.ts",
+      "sha256": "7f74a68efed6fc098f5917192b5a1bee3b983ee4e9dcdef63a5005975155db32"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_projection_adapter.ts",
+      "sha256": "193e4c2ef264279e84558f0a5c4b1f91d44011be62481fd4c182e11cdd9875e4"
+    },
+    {
+      "path": "packages/breditor-browser/src/normalize_wasm_boundary_number.ts",
+      "sha256": "1cd6f7f2c55e6061134e2bd593c799a446a4eaa2d513e68e90833ceef605f43e"
+    }
+  ],
+  "release": {
+    "passedGates": 14,
+    "failedGate": "browser-matrix",
+    "browserPassed": 152,
+    "browserFailed": 1,
+    "remainingGatesNotRun": [
+      "demo-matrix",
+      "diff-whitespace"
+    ],
+    "logSha256": "1828e2bb9942cbba54e8a4baf849b4b33927e6da607f60b53228f769f8dbaf4e",
+    "failure": "Link cycle=0 stage=undo status={phase:faulted,reason:toolbarDispatchFailed}",
+    "preservedTrace": "target/lifecycle-release-failure-QjIWwI/link-history-webkit/trace.zip",
+    "traceSha256": "b663ea29e64fbf49a61f4405d32b0af00782290eee28f02b5790282ecb8cd91a",
+    "demoJavascriptGzipBytes": 224918,
+    "demoJavascriptGzipLimit": 225000
+  },
+  "nativeSafari": {
+    "method": "Visible UI final report inspected; screenshot not saved",
+    "bundleSha256": "17be978cae9fd2e74b09a96628516d7435e81325f414a90fd3af19ae56e746e2",
+    "wasmSha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+    "runnerSha256": "2d27e8b9260b47f6076b90f34e82356cf1436cc201f30789d22aa3deff12a174",
+    "plannedBatches": 5,
+    "passed": 5,
+    "active": false,
+    "outcome": "passed",
+    "restores": 50000,
+    "selectionReads": 150000,
+    "clipboardTested": false
+  },
+  "experiments": [
+    {
+      "name": "link-history-current",
+      "sourceSha256": "fbd420a461de7abd790a2d3265dcf77377e322ac70fcfcf562cc3c6b7aaa0c8f",
+      "stats": {
+        "startTime": "2026-09-28T14:33:03.509Z",
+        "duration": 106508.022,
+        "expected": 20,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "diagnosticMaps": []
+    },
+    {
+      "name": "link-diagnostics",
+      "sourceSha256": "c09e59668ab9ffa7dffeb4cefe63f7c554fa3211c13ec3eaae8d8edaa7e149d6",
+      "stats": {
+        "startTime": "2026-09-28T14:35:32.491Z",
+        "duration": 2008.723,
+        "expected": 0,
+        "skipped": 101,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "repeated checkpoint restores retain coherent typed action states",
+          "project": "webkit",
+          "errors": [
+            "Error: page.evaluate: TypeError: Importing a module script failed.\n\n  4 |   test.setTimeout(60_000);\n  5 |   await page.goto(\"/\");\n> 6 |   const result = await page.evaluate(async () => {\n    |                             ^\n  7 |     const url = \"/action_state_restore_probe.ts\";\n  8 |     const probe = await import(url) as typeof import(\"./harness/action_state_restore_probe\");\n  9 |     return probe.probeRestoredActionStates(1_000);\n    at /Users/s/code/breditor/tests/browser/action-state-restore.spec.ts:6:29"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics/action-state-restore-repea-9422c-oherent-typed-action-states-webkit/test-failed-1.png",
+              "sha256": "a69bf7681683591db8840c47ac5d1734525c06d9b36e9ab01d2924864a9fa0d5"
+            },
+            {
+              "name": "error-context",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics/action-state-restore-repea-9422c-oherent-typed-action-states-webkit/error-context.md",
+              "sha256": "bb58f281f73df95b6f7f22f3cf9ddab7ca5cc501219bd8fe3f8c1da379eec262"
+            },
+            {
+              "name": "trace",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics/action-state-restore-repea-9422c-oherent-typed-action-states-webkit/trace.zip",
+              "sha256": "3ef7f27a7ed9b898b27d29e0ae7212a7ec03354d0040838d3d614129b72429f3"
+            }
+          ]
+        }
+      ],
+      "diagnosticMaps": []
+    },
+    {
+      "name": "link-diagnostics-v2",
+      "sourceSha256": "4733300c2791d0489b0ff3ec14e3849be8477c9ebdcbb45d3dceda307b924a09",
+      "stats": {
+        "startTime": "2026-09-28T14:37:03.695Z",
+        "duration": 4178.83,
+        "expected": 1,
+        "skipped": 100,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "clipboard crossParagraph forward ranges retain Unicode, empty paragraphs and atomic history",
+          "project": "webkit",
+          "errors": [
+            "Error: page.evaluate: Error: clipboard boundary scenario=crossParagraph backward=false stage=replacement and typing history check=owner faulted status={\"phase\":\"faulted\",\"reason\":\"toolbarDispatchFailed\"} revision=17\n\n  11 |   for (const scenario of [\"crossParagraph\", \"crossParagraphHtml\", \"boundaryOnly\"] as const) {\n  12 |     test(`clipboard ${scenario} ${backward ? \"backward\" : \"forward\"} ranges retain Unicode, empty paragraphs and atomic history`, async ({ page }) => {\n> 13 |       await page.evaluate(clipboardBoundaryProbe, { scenario, backward });\n     |                  ^\n  14 |     });\n  15 |   }\n  16 | }\n    at /Users/s/code/breditor/tests/browser/clipboard-boundary.spec.ts:13:18"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics-v2/clipboard-boundary-clipboa-bb7c2-ragraphs-and-atomic-history-webkit/test-failed-1.png",
+              "sha256": "bdbf803eee1c8d5c2670a813c4bd701a7502c699639fc182f2f79ccadb74cb48"
+            },
+            {
+              "name": "error-context",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics-v2/clipboard-boundary-clipboa-bb7c2-ragraphs-and-atomic-history-webkit/error-context.md",
+              "sha256": "40adcc66a1a4d1ad92f788f12bcc98e489fb358ca7e7c39ba37a2e8827ce7717"
+            },
+            {
+              "name": "trace",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics-v2/clipboard-boundary-clipboa-bb7c2-ragraphs-and-atomic-history-webkit/trace.zip",
+              "sha256": "883a576ce7ef15575f19057c910c222090b32c798f996020ab1277f8389f7577"
+            }
+          ]
+        }
+      ],
+      "diagnosticMaps": []
+    },
+    {
+      "name": "link-diagnostics-v3",
+      "sourceSha256": "b7f49b280418bc3764021e2ec0a511b6757211df3e31a0394d6499be6533bc6e",
+      "stats": {
+        "startTime": "2026-09-28T14:37:57.032Z",
+        "duration": 123889.90199999999,
+        "expected": 102,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": [],
+      "diagnosticMaps": [
+        {
+          "modules": {
+            "wasm_projection_adapter": {
+              "sourceSha256": "77df1446ff2dc029940a1d68247f26b68e4cf7b7e5d5428fa8ca4dc7ee3cbf02",
+              "sites": [
+                {
+                  "stage": "wasm_projection_adapter:throw:108",
+                  "line": 108
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:112",
+                  "line": 112
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:115",
+                  "line": 115
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:660",
+                  "line": 660
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:667",
+                  "line": 667
+                }
+              ]
+            },
+            "wasm_command_adapter": {
+              "sourceSha256": "d5d15596440f78fa263574ba0928c0678ac885fd4bd5bc57d46be23ec45c3421",
+              "sites": [
+                {
+                  "stage": "wasm_command_adapter:throw:56",
+                  "line": 56
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:63",
+                  "line": 63
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:68",
+                  "line": 68
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:72",
+                  "line": 72
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:81",
+                  "line": 81
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:95",
+                  "line": 95
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:161",
+                  "line": 161
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:164",
+                  "line": 164
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:167",
+                  "line": 167
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:192",
+                  "line": 192
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:345",
+                  "line": 345
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:366",
+                  "line": 366
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:382",
+                  "line": 382
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:421",
+                  "line": 421
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:438",
+                  "line": 438
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:501",
+                  "line": 501
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:505",
+                  "line": 505
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:509",
+                  "line": 509
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:523",
+                  "line": 523
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:572",
+                  "line": 572
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:597",
+                  "line": 597
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:605",
+                  "line": 605
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:617",
+                  "line": 617
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:627",
+                  "line": 627
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:668",
+                  "line": 668
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:673",
+                  "line": 673
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:691",
+                  "line": 691
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:705",
+                  "line": 705
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:720",
+                  "line": 720
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:721",
+                  "line": 721
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:750",
+                  "line": 750
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:754",
+                  "line": 754
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:772",
+                  "line": 772
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:784",
+                  "line": 784
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:787",
+                  "line": 787
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:791",
+                  "line": 791
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:807",
+                  "line": 807
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:809",
+                  "line": 809
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:812",
+                  "line": 812
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:815",
+                  "line": 815
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:818",
+                  "line": 818
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:833",
+                  "line": 833
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:837",
+                  "line": 837
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:842",
+                  "line": 842
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:847",
+                  "line": 847
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:876",
+                  "line": 876
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:894",
+                  "line": 894
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:899",
+                  "line": 899
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:903",
+                  "line": 903
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:927",
+                  "line": 927
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:931",
+                  "line": 931
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:939",
+                  "line": 939
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:949",
+                  "line": 949
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:964",
+                  "line": 964
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:965",
+                  "line": 965
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1006",
+                  "line": 1006
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1010",
+                  "line": 1010
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1029",
+                  "line": 1029
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1048",
+                  "line": 1048
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1051",
+                  "line": 1051
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1055",
+                  "line": 1055
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1070",
+                  "line": 1070
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1072",
+                  "line": 1072
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1080",
+                  "line": 1080
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1099",
+                  "line": 1099
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1104",
+                  "line": 1104
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1135",
+                  "line": 1135
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1162",
+                  "line": 1162
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1172",
+                  "line": 1172
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1176",
+                  "line": 1176
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1199",
+                  "line": 1199
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1203",
+                  "line": 1203
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1211",
+                  "line": 1211
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1218",
+                  "line": 1218
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1223",
+                  "line": 1223
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1251",
+                  "line": 1251
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1284",
+                  "line": 1284
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1292",
+                  "line": 1292
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1305",
+                  "line": 1305
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1311",
+                  "line": 1311
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1316",
+                  "line": 1316
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1321",
+                  "line": 1321
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1325",
+                  "line": 1325
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1331",
+                  "line": 1331
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1336",
+                  "line": 1336
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1341",
+                  "line": 1341
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1362",
+                  "line": 1362
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1369",
+                  "line": 1369
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1393",
+                  "line": 1393
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1418",
+                  "line": 1418
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1429",
+                  "line": 1429
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1454",
+                  "line": 1454
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1783",
+                  "line": 1783
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1787",
+                  "line": 1787
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1790",
+                  "line": 1790
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1793",
+                  "line": 1793
+                }
+              ]
+            },
+            "wasm_action_state_adapter": {
+              "sourceSha256": "dbe75fdc511bbac5ff8c42841fcc0b070fbb27c1fcd08f5361da814ecb7ef0df",
+              "sites": [
+                {
+                  "stage": "wasm_action_state_adapter:throw:687",
+                  "line": 687
+                },
+                {
+                  "stage": "wasm_action_state_adapter:throw:699",
+                  "line": 699
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "link-diagnostics-v4",
+      "sourceSha256": "88bddb3680655027c8d83c19d4562c7517101a03879b8d2cd40438f97da7ac60",
+      "stats": {
+        "startTime": "2026-09-28T14:41:36.370Z",
+        "duration": 131546.60199999998,
+        "expected": 101,
+        "skipped": 153,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "restored selection coordinates retain presence, zero offsets, and direction",
+          "project": "webkit",
+          "errors": [
+            "Error: page.evaluate: Error: selection rejected at 9/0: selection.invalid_wasm_view\n\n  17 |   let result;\n  18 |   try {\n> 19 |     result = await page.evaluate(async ({ iterations, production }) => {\n     |                         ^\n  20 |       if (production) {\n  21 |         const fixture = window as unknown as {\n  22 |           breditorSelectionProbe: typeof import(\"./harness/selection_restore_probe\").probeRestoredSelections;\n    at /Users/s/code/breditor/tests/browser/selection-restore.spec.ts:19:25"
+          ],
+          "attachments": [
+            {
+              "name": "screenshot",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics-v4/selection-restore-restored-6f93c--zero-offsets-and-direction-webkit-repeat1/test-failed-1.png",
+              "sha256": "86ee917dcec56f42a8d84f6bc8d8cecb3c9183eac6f4d45b09aaa88987ad8677"
+            },
+            {
+              "name": "error-context",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics-v4/selection-restore-restored-6f93c--zero-offsets-and-direction-webkit-repeat1/error-context.md",
+              "sha256": "3b3f5274677bc36fe938aec64bae84415c79ae839b8cddd1cb51ca9b672f9c70"
+            },
+            {
+              "name": "trace",
+              "path": "/Users/s/code/breditor/target/playwright-link-diagnostics-v4/selection-restore-restored-6f93c--zero-offsets-and-direction-webkit-repeat1/trace.zip",
+              "sha256": "c0443c44e9daad506c607baa75e6e4b6cd385cf1dcf5835584519550070a9b7f"
+            }
+          ]
+        }
+      ],
+      "diagnosticMaps": [
+        {
+          "modules": {
+            "browser_editor": {
+              "sourceSha256": "58f4b42fd1f5099087660441f1d60f96aeb06c768bdda38eb6c910cd6eaa36ed",
+              "sites": [
+                {
+                  "stage": "browser_editor:throw:132",
+                  "line": 132
+                },
+                {
+                  "stage": "browser_editor:throw:470",
+                  "line": 470
+                },
+                {
+                  "stage": "browser_editor:throw:477",
+                  "line": 477
+                },
+                {
+                  "stage": "browser_editor:throw:534",
+                  "line": 534
+                },
+                {
+                  "stage": "browser_editor:throw:549",
+                  "line": 549
+                },
+                {
+                  "stage": "browser_editor:throw:634",
+                  "line": 634
+                },
+                {
+                  "stage": "browser_editor:throw:641",
+                  "line": 641
+                },
+                {
+                  "stage": "browser_editor:throw:781",
+                  "line": 781
+                },
+                {
+                  "stage": "browser_editor:throw:790",
+                  "line": 790
+                },
+                {
+                  "stage": "browser_editor:failure:809",
+                  "line": 809
+                },
+                {
+                  "stage": "browser_editor:failure:823",
+                  "line": 823
+                },
+                {
+                  "stage": "browser_editor:failure:827",
+                  "line": 827
+                },
+                {
+                  "stage": "browser_editor:failure:834",
+                  "line": 834
+                },
+                {
+                  "stage": "browser_editor:failure:840",
+                  "line": 840
+                },
+                {
+                  "stage": "browser_editor:failure:843",
+                  "line": 843
+                },
+                {
+                  "stage": "browser_editor:failure:865",
+                  "line": 865
+                },
+                {
+                  "stage": "browser_editor:failure:870",
+                  "line": 870
+                },
+                {
+                  "stage": "browser_editor:failure:878",
+                  "line": 878
+                },
+                {
+                  "stage": "browser_editor:failure:889",
+                  "line": 889
+                }
+              ]
+            },
+            "wasm_projection_adapter": {
+              "sourceSha256": "77df1446ff2dc029940a1d68247f26b68e4cf7b7e5d5428fa8ca4dc7ee3cbf02",
+              "sites": [
+                {
+                  "stage": "wasm_projection_adapter:throw:108",
+                  "line": 108
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:112",
+                  "line": 112
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:115",
+                  "line": 115
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:660",
+                  "line": 660
+                },
+                {
+                  "stage": "wasm_projection_adapter:throw:667",
+                  "line": 667
+                }
+              ]
+            },
+            "wasm_command_adapter": {
+              "sourceSha256": "d5d15596440f78fa263574ba0928c0678ac885fd4bd5bc57d46be23ec45c3421",
+              "sites": [
+                {
+                  "stage": "wasm_command_adapter:throw:56",
+                  "line": 56
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:63",
+                  "line": 63
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:68",
+                  "line": 68
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:72",
+                  "line": 72
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:81",
+                  "line": 81
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:95",
+                  "line": 95
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:161",
+                  "line": 161
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:164",
+                  "line": 164
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:167",
+                  "line": 167
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:192",
+                  "line": 192
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:345",
+                  "line": 345
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:366",
+                  "line": 366
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:382",
+                  "line": 382
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:421",
+                  "line": 421
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:438",
+                  "line": 438
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:501",
+                  "line": 501
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:505",
+                  "line": 505
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:509",
+                  "line": 509
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:523",
+                  "line": 523
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:572",
+                  "line": 572
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:597",
+                  "line": 597
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:605",
+                  "line": 605
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:617",
+                  "line": 617
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:627",
+                  "line": 627
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:668",
+                  "line": 668
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:673",
+                  "line": 673
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:691",
+                  "line": 691
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:705",
+                  "line": 705
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:720",
+                  "line": 720
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:721",
+                  "line": 721
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:750",
+                  "line": 750
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:754",
+                  "line": 754
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:772",
+                  "line": 772
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:784",
+                  "line": 784
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:787",
+                  "line": 787
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:791",
+                  "line": 791
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:807",
+                  "line": 807
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:809",
+                  "line": 809
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:812",
+                  "line": 812
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:815",
+                  "line": 815
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:818",
+                  "line": 818
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:833",
+                  "line": 833
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:837",
+                  "line": 837
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:842",
+                  "line": 842
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:847",
+                  "line": 847
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:876",
+                  "line": 876
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:894",
+                  "line": 894
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:899",
+                  "line": 899
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:903",
+                  "line": 903
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:927",
+                  "line": 927
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:931",
+                  "line": 931
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:939",
+                  "line": 939
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:949",
+                  "line": 949
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:964",
+                  "line": 964
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:965",
+                  "line": 965
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1006",
+                  "line": 1006
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1010",
+                  "line": 1010
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1029",
+                  "line": 1029
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1048",
+                  "line": 1048
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1051",
+                  "line": 1051
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1055",
+                  "line": 1055
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1070",
+                  "line": 1070
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1072",
+                  "line": 1072
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1080",
+                  "line": 1080
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1099",
+                  "line": 1099
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1104",
+                  "line": 1104
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1135",
+                  "line": 1135
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1162",
+                  "line": 1162
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1172",
+                  "line": 1172
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1176",
+                  "line": 1176
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1199",
+                  "line": 1199
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1203",
+                  "line": 1203
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1211",
+                  "line": 1211
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1218",
+                  "line": 1218
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1223",
+                  "line": 1223
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1251",
+                  "line": 1251
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1284",
+                  "line": 1284
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1292",
+                  "line": 1292
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1305",
+                  "line": 1305
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1311",
+                  "line": 1311
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1316",
+                  "line": 1316
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1321",
+                  "line": 1321
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1325",
+                  "line": 1325
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1331",
+                  "line": 1331
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1336",
+                  "line": 1336
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1341",
+                  "line": 1341
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1362",
+                  "line": 1362
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1369",
+                  "line": 1369
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1393",
+                  "line": 1393
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1418",
+                  "line": 1418
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1429",
+                  "line": 1429
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1454",
+                  "line": 1454
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1783",
+                  "line": 1783
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1787",
+                  "line": 1787
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1790",
+                  "line": 1790
+                },
+                {
+                  "stage": "wasm_command_adapter:throw:1793",
+                  "line": 1793
+                }
+              ]
+            },
+            "wasm_action_state_adapter": {
+              "sourceSha256": "dbe75fdc511bbac5ff8c42841fcc0b070fbb27c1fcd08f5361da814ecb7ef0df",
+              "sites": [
+                {
+                  "stage": "wasm_action_state_adapter:throw:687",
+                  "line": 687
+                },
+                {
+                  "stage": "wasm_action_state_adapter:throw:699",
+                  "line": 699
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "finalNativeBranchConformance": {
+    "batch": 1,
+    "tier": "no-jit",
+    "scenario": "select-branch-conformance",
+    "watchdogSeconds": 30,
+    "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+    "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+    "runnerSha256": "6ea6d90dc094e4bffebda4f2b07850a2567d8e681aa12265b6c09c7ad6b182e1",
+    "captureSha256": "8249b2e9985e77ea81513faf55e8eab890ea196a63d7cb707483d33b60c2f117",
+    "selectHelperSha256": "6b059ba659697c19e1fdea17e220031255ad7c82b90680aa1a38ae2c7373786c",
+    "conformanceSha256": "18e6d351356b0aeb07627ffe59317c514963d06259da56c7de8685a6adc68cf3",
+    "outcome": "select-branch-conformance-confirmed",
+    "capture": {
+      "stopped": false,
+      "exited": true,
+      "exitStatus": 0,
+      "breakpointHits": 0,
+      "selectPatch": {
+        "variant": "branch",
+        "changedInstructions": 4,
+        "verifiedSelectInstructions": [
+          {
+            "fileAddress": "0x112ce98",
+            "originalHex": "008c611e"
+          },
+          {
+            "fileAddress": "0x112ceac",
+            "originalHex": "218c621e"
+          }
+        ],
+        "writes": [],
+        "relocation": {
+          "site": "0x103c0ce80",
+          "address": "0x1000f8000",
+          "originalHex": "0000621ec8ffffd20900088b2101679e4900e0921f0009eb008c611e4100621e4800088b0201679e5f0009eb218c621e",
+          "payloadHex": "c8ffffd24900e0921f0009eb880000540300088b6000679e020000140000621e5f0009eb880000544300088b6100679e020000144100621e5000005800021fd6b0cec00301000000",
+          "patchHex": "5000005800021fd600800f0001000000"
+        }
+      }
+    },
+    "report": {
+      "outcome": "passed",
+      "checks": 1300,
+      "initialEngineOptions": {
+        "useJIT": 0,
+        "useDFGJIT": 0,
+        "useFTLJIT": 0
+      },
+      "finalEngineOptions": {
+        "useJIT": 0,
+        "useDFGJIT": 0,
+        "useFTLJIT": 0
+      }
+    },
+    "processStatus": 0
+  },
+  "historicalCaptureReclassification": {
+    "checked": 40,
+    "changedOutcomes": 0
+  },
+  "expandedDiagnostics": {
+    "name": "link-diagnostics-v5",
+    "stats": {
+      "startTime": "2026-09-28T14:45:26.026Z",
+      "duration": 176923.14500000002,
+      "expected": 153,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "logSha256": "fba7b13c4ebf589ec9d411e05902e6d317b9d48a1d3fdfc78972a70dd8163b25",
+    "diagnosticMaps": [
+      {
+        "modules": {
+          "browser_editor": {
+            "sourceSha256": "58f4b42fd1f5099087660441f1d60f96aeb06c768bdda38eb6c910cd6eaa36ed",
+            "sites": [
+              {
+                "stage": "browser_editor:throw:132",
+                "line": 132
+              },
+              {
+                "stage": "browser_editor:throw:470",
+                "line": 470
+              },
+              {
+                "stage": "browser_editor:throw:477",
+                "line": 477
+              },
+              {
+                "stage": "browser_editor:throw:534",
+                "line": 534
+              },
+              {
+                "stage": "browser_editor:throw:549",
+                "line": 549
+              },
+              {
+                "stage": "browser_editor:throw:634",
+                "line": 634
+              },
+              {
+                "stage": "browser_editor:throw:641",
+                "line": 641
+              },
+              {
+                "stage": "browser_editor:throw:781",
+                "line": 781
+              },
+              {
+                "stage": "browser_editor:throw:790",
+                "line": 790
+              },
+              {
+                "stage": "browser_editor:failure:809",
+                "line": 809
+              },
+              {
+                "stage": "browser_editor:failure:823",
+                "line": 823
+              },
+              {
+                "stage": "browser_editor:failure:827",
+                "line": 827
+              },
+              {
+                "stage": "browser_editor:failure:834",
+                "line": 834
+              },
+              {
+                "stage": "browser_editor:failure:840",
+                "line": 840
+              },
+              {
+                "stage": "browser_editor:failure:843",
+                "line": 843
+              },
+              {
+                "stage": "browser_editor:failure:865",
+                "line": 865
+              },
+              {
+                "stage": "browser_editor:failure:870",
+                "line": 870
+              },
+              {
+                "stage": "browser_editor:failure:878",
+                "line": 878
+              },
+              {
+                "stage": "browser_editor:failure:889",
+                "line": 889
+              }
+            ]
+          },
+          "wasm_command_adapter": {
+            "sourceSha256": "d5d15596440f78fa263574ba0928c0678ac885fd4bd5bc57d46be23ec45c3421",
+            "sites": [
+              {
+                "stage": "wasm_command_adapter:throw:56",
+                "line": 56
+              },
+              {
+                "stage": "wasm_command_adapter:throw:63",
+                "line": 63
+              },
+              {
+                "stage": "wasm_command_adapter:throw:68",
+                "line": 68
+              },
+              {
+                "stage": "wasm_command_adapter:throw:72",
+                "line": 72
+              },
+              {
+                "stage": "wasm_command_adapter:throw:81",
+                "line": 81
+              },
+              {
+                "stage": "wasm_command_adapter:throw:95",
+                "line": 95
+              },
+              {
+                "stage": "wasm_command_adapter:throw:161",
+                "line": 161
+              },
+              {
+                "stage": "wasm_command_adapter:throw:164",
+                "line": 164
+              },
+              {
+                "stage": "wasm_command_adapter:throw:167",
+                "line": 167
+              },
+              {
+                "stage": "wasm_command_adapter:throw:192",
+                "line": 192
+              },
+              {
+                "stage": "wasm_command_adapter:throw:345",
+                "line": 345
+              },
+              {
+                "stage": "wasm_command_adapter:throw:366",
+                "line": 366
+              },
+              {
+                "stage": "wasm_command_adapter:throw:382",
+                "line": 382
+              },
+              {
+                "stage": "wasm_command_adapter:throw:421",
+                "line": 421
+              },
+              {
+                "stage": "wasm_command_adapter:throw:438",
+                "line": 438
+              },
+              {
+                "stage": "wasm_command_adapter:throw:501",
+                "line": 501
+              },
+              {
+                "stage": "wasm_command_adapter:throw:505",
+                "line": 505
+              },
+              {
+                "stage": "wasm_command_adapter:throw:509",
+                "line": 509
+              },
+              {
+                "stage": "wasm_command_adapter:throw:523",
+                "line": 523
+              },
+              {
+                "stage": "wasm_command_adapter:throw:572",
+                "line": 572
+              },
+              {
+                "stage": "wasm_command_adapter:throw:597",
+                "line": 597
+              },
+              {
+                "stage": "wasm_command_adapter:throw:605",
+                "line": 605
+              },
+              {
+                "stage": "wasm_command_adapter:throw:617",
+                "line": 617
+              },
+              {
+                "stage": "wasm_command_adapter:throw:627",
+                "line": 627
+              },
+              {
+                "stage": "wasm_command_adapter:throw:668",
+                "line": 668
+              },
+              {
+                "stage": "wasm_command_adapter:throw:673",
+                "line": 673
+              },
+              {
+                "stage": "wasm_command_adapter:throw:691",
+                "line": 691
+              },
+              {
+                "stage": "wasm_command_adapter:throw:705",
+                "line": 705
+              },
+              {
+                "stage": "wasm_command_adapter:throw:720",
+                "line": 720
+              },
+              {
+                "stage": "wasm_command_adapter:throw:721",
+                "line": 721
+              },
+              {
+                "stage": "wasm_command_adapter:throw:750",
+                "line": 750
+              },
+              {
+                "stage": "wasm_command_adapter:throw:754",
+                "line": 754
+              },
+              {
+                "stage": "wasm_command_adapter:throw:772",
+                "line": 772
+              },
+              {
+                "stage": "wasm_command_adapter:throw:784",
+                "line": 784
+              },
+              {
+                "stage": "wasm_command_adapter:throw:787",
+                "line": 787
+              },
+              {
+                "stage": "wasm_command_adapter:throw:791",
+                "line": 791
+              },
+              {
+                "stage": "wasm_command_adapter:throw:807",
+                "line": 807
+              },
+              {
+                "stage": "wasm_command_adapter:throw:809",
+                "line": 809
+              },
+              {
+                "stage": "wasm_command_adapter:throw:812",
+                "line": 812
+              },
+              {
+                "stage": "wasm_command_adapter:throw:815",
+                "line": 815
+              },
+              {
+                "stage": "wasm_command_adapter:throw:818",
+                "line": 818
+              },
+              {
+                "stage": "wasm_command_adapter:throw:833",
+                "line": 833
+              },
+              {
+                "stage": "wasm_command_adapter:throw:837",
+                "line": 837
+              },
+              {
+                "stage": "wasm_command_adapter:throw:842",
+                "line": 842
+              },
+              {
+                "stage": "wasm_command_adapter:throw:847",
+                "line": 847
+              },
+              {
+                "stage": "wasm_command_adapter:throw:876",
+                "line": 876
+              },
+              {
+                "stage": "wasm_command_adapter:throw:894",
+                "line": 894
+              },
+              {
+                "stage": "wasm_command_adapter:throw:899",
+                "line": 899
+              },
+              {
+                "stage": "wasm_command_adapter:throw:903",
+                "line": 903
+              },
+              {
+                "stage": "wasm_command_adapter:throw:927",
+                "line": 927
+              },
+              {
+                "stage": "wasm_command_adapter:throw:931",
+                "line": 931
+              },
+              {
+                "stage": "wasm_command_adapter:throw:939",
+                "line": 939
+              },
+              {
+                "stage": "wasm_command_adapter:throw:949",
+                "line": 949
+              },
+              {
+                "stage": "wasm_command_adapter:throw:964",
+                "line": 964
+              },
+              {
+                "stage": "wasm_command_adapter:throw:965",
+                "line": 965
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1006",
+                "line": 1006
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1010",
+                "line": 1010
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1029",
+                "line": 1029
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1048",
+                "line": 1048
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1051",
+                "line": 1051
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1055",
+                "line": 1055
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1070",
+                "line": 1070
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1072",
+                "line": 1072
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1080",
+                "line": 1080
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1099",
+                "line": 1099
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1104",
+                "line": 1104
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1135",
+                "line": 1135
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1162",
+                "line": 1162
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1172",
+                "line": 1172
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1176",
+                "line": 1176
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1199",
+                "line": 1199
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1203",
+                "line": 1203
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1211",
+                "line": 1211
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1218",
+                "line": 1218
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1223",
+                "line": 1223
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1251",
+                "line": 1251
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1284",
+                "line": 1284
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1292",
+                "line": 1292
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1305",
+                "line": 1305
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1311",
+                "line": 1311
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1316",
+                "line": 1316
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1321",
+                "line": 1321
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1325",
+                "line": 1325
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1331",
+                "line": 1331
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1336",
+                "line": 1336
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1341",
+                "line": 1341
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1362",
+                "line": 1362
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1369",
+                "line": 1369
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1393",
+                "line": 1393
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1418",
+                "line": 1418
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1429",
+                "line": 1429
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1454",
+                "line": 1454
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1783",
+                "line": 1783
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1787",
+                "line": 1787
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1790",
+                "line": 1790
+              },
+              {
+                "stage": "wasm_command_adapter:throw:1793",
+                "line": 1793
+              }
+            ]
+          },
+          "wasm_projection_adapter": {
+            "sourceSha256": "77df1446ff2dc029940a1d68247f26b68e4cf7b7e5d5428fa8ca4dc7ee3cbf02",
+            "sites": [
+              {
+                "stage": "wasm_projection_adapter:throw:108",
+                "line": 108
+              },
+              {
+                "stage": "wasm_projection_adapter:throw:112",
+                "line": 112
+              },
+              {
+                "stage": "wasm_projection_adapter:throw:115",
+                "line": 115
+              },
+              {
+                "stage": "wasm_projection_adapter:throw:660",
+                "line": 660
+              },
+              {
+                "stage": "wasm_projection_adapter:throw:667",
+                "line": 667
+              }
+            ]
+          },
+          "wasm_action_state_adapter": {
+            "sourceSha256": "dbe75fdc511bbac5ff8c42841fcc0b070fbb27c1fcd08f5361da814ecb7ef0df",
+            "sites": [
+              {
+                "stage": "wasm_action_state_adapter:throw:687",
+                "line": 687
+              },
+              {
+                "stage": "wasm_action_state_adapter:throw:699",
+                "line": 699
+              }
+            ]
+          },
+          "wasm_selection_adapter": {
+            "sourceSha256": "4fd155c7c13875305097021b725ea34ce31f94a9028d6a6966f77931bb9f24a5",
+            "sites": [
+              {
+                "stage": "wasm_selection_adapter:failure:14",
+                "line": 14
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:19",
+                "line": 19
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:32",
+                "line": 32
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:35",
+                "line": 35
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:39",
+                "line": 39
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:43",
+                "line": 43
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:108",
+                "line": 108
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:114",
+                "line": 114
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:132",
+                "line": 132
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:137",
+                "line": 137
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:142",
+                "line": 142
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:154",
+                "line": 154
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:159",
+                "line": 159
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:164",
+                "line": 164
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:169",
+                "line": 169
+              },
+              {
+                "stage": "wasm_selection_adapter:failure:177",
+                "line": 177
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "sources": [
+      {
+        "path": "scripts/debug-jsc-number-repro.mjs",
+        "sha256": "ba3a0fe22d8dfeff09586d0e36aca5e071221cfd1526f3b99a4511557566a7ba"
+      },
+      {
+        "path": "tests/browser/diagnostics/link_fault_instrumentation.ts",
+        "sha256": "b5787d4cb463aeb2e40c9292b38fc1cac63706c7f63ab83de7d6916b3ceeb4d4"
+      },
+      {
+        "path": "tests/browser/diagnostics/link_fault_recorder.ts",
+        "sha256": "c03374e30f3705dd5cd36ba34609eb808d9c1d2d5d8076f03ea93d5245161298"
+      },
+      {
+        "path": "tests/browser/diagnostics/link_fault_instrumentation.test.ts",
+        "sha256": "390e0e3dbefa30ec2cf116a873b23061e6785148b79db8380593825e55111f94"
+      },
+      {
+        "path": "tests/browser/link-history-lifecycle.spec.ts",
+        "sha256": "b77a4567ec51330abc629bc73757b72f386bb14642424d595868f26cfa5f2061"
+      },
+      {
+        "path": "vite.link-diagnostics.config.ts",
+        "sha256": "db38da254f18f60dbc081ac1f0b67d3a7d8d2b63659d102ace0ab4f3c747fc46"
+      },
+      {
+        "path": "playwright.link-diagnostics.config.ts",
+        "sha256": "86afebcd03d386d10948048c9fedb3e51455c3e38e2836f524b20d8b5bd7681d"
+      }
+    ]
+  },
+  "additionalVerification": {
+    "browserUnitTestsPassed": 1199,
+    "referenceUnitTestsPassed": 57,
+    "demoUnitTestsPassed": 33,
+    "diagnosticTestsPassed": 91,
+    "browserTestTypecheck": "passed",
+    "diffWhitespace": "passed",
+    "runs": [
+      {
+        "name": "lifecycle-minified-restores",
+        "stats": {
+          "startTime": "2026-09-28T14:49:45.270Z",
+          "duration": 50895.272000000004,
+          "expected": 5,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "logSha256": "766446e0ebc3a165006c44ec13f50b01c97453d27ffd95f42a9a20bde2edb1f2"
+      },
+      {
+        "name": "lifecycle-demo",
+        "stats": {
+          "startTime": "2026-09-28T14:49:49.532Z",
+          "duration": 88241.419,
+          "expected": 39,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "logSha256": "78bbaffd8a134a04b10475f2eb9240f1023cc5b4704b108fa5cf9bb52eb8cf13"
+      }
+    ],
+    "minifiedFixtureSha256": "17be978cae9fd2e74b09a96628516d7435e81325f414a90fd3af19ae56e746e2",
+    "previousMinifiedFixtureArchive": "target/pre-lifecycle-5A3czD/selection-runtime-production",
+    "releaseGateRemainsFailed": true
+  },
+  "limitations": [
+    "The first diagnostic setup run failed to instrument a module with no throw statements; excluded as fixture error.",
+    "Passing isolated or instrumented runs do not erase the uninstrumented release failure.",
+    "Selection rejection during v4 remains unlocalized; v5 adds static selection-failure sites but its 153 passing cases do not capture the rejecting branch.",
+    "Native FCSEL evidence does not prove a common cause for these editor failures or identify hardware/OS responsibility."
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "format": "breditor/store-private-lifecycle",
+  "date": "2026-09-28",
+  "bug": "Checkpoint load/save decisions consulted the overridable public closed getter instead of private terminal state. A false shadow allowed load publication after closure and digest work after closure; true or throwing shadows could reject live operations or throw instead of returning a typed failure.",
+  "before": {
+    "targetedTests": 64,
+    "failed": 12,
+    "passed": 52,
+    "observations": "Four scenarios were tested against false, true and throwing own-property status getters: live empty load, live save, closed save, and closure during load digest. All twelve failed behavior or no-public-read assertions."
+  },
+  "fix": [
+    "Use private terminal state at empty-load publication, verified-load publication and save admission.",
+    "Preserve the existing connection failure code at those sites and the outcome semantics of writes already dispatched."
+  ],
+  "verification": {
+    "newUnitTests": 12,
+    "browserRuntimeTests": 1301,
+    "browserRuntimeFiles": 51,
+    "typecheck": "passed (runtime, unit tests and browser tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224923,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 12,
+      "failed": 0,
+      "retries": 0,
+      "scenarios": [
+        "Closure during real Web Crypto digest returns a connection failure despite a false public status getter; a subsequent save does no additional digest work and neither operation invokes the getter.",
+        "Closing a store releases loads queued behind blocked database deletion.",
+        "An explicit checkpoint survives real page reload with Undo/Redo.",
+        "A full session backup restores typed values and the redo frontier through Rust."
+      ],
+      "output": "target/playwright-store-private-lifecycle-20260928"
+    }
+  },
+  "limits": [
+    "This is lifecycle robustness for integrations, not isolation from arbitrary same-origin code.",
+    "Closing a store still cannot cancel native digest or already-dispatched IndexedDB work. Load publication waits for digest settlement, then rejects a closed owner.",
+    "No durable format, Rust implementation, package version or release budget changed.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/indexeddb_session_checkpoint.ts", "sha256": "8a93c3ed197d5552f923e11a24d5ff419ed2564a261349c3949c768534e52c92"},
+    {"path": "packages/breditor-browser/src/indexeddb_session_checkpoint.test.ts", "sha256": "2a390fe09a7e1cb2097e19d5202e4f96854dec1773e94b522077ffa6d73466a2"},
+    {"path": "tests/browser/checkpoint-close.spec.ts", "sha256": "16c3b77212daa0071dc72cb9ee2142a65ce58490f5036ac206309a75ba9774e3"},
+    {"path": "tests/browser/harness/checkpoint_lifecycle_probe.ts", "sha256": "c2d9cbdb477254c766208fe6edd0f85cc9d07a6920e848d15f3650532523e338"},
+    {"path": "/tmp/breditor-store-private-lifecycle-before-20260928.log", "sha256": "808d7184384f6c15de67bc76aaa96b2a164626bfa551168b70a95228ac5a0d0a"},
+    {"path": "/tmp/breditor-store-private-lifecycle-full-20260928.log", "sha256": "6dfb847bed8f7be6253657fdb2b7a948470246f5fe5580af85ee6dab72deaa2a"},
+    {"path": "/tmp/breditor-store-private-lifecycle-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-store-private-lifecycle-build-20260928.log", "sha256": "4028f11f3987dd25248a54a68447d4438fd9f7a7b2590760f201d1b9d9da6a9b"},
+    {"path": "/tmp/breditor-store-private-lifecycle-browser-types-20260928.log", "sha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2"},
+    {"path": "/tmp/breditor-store-private-lifecycle-browser-20260928.log", "sha256": "a875b8a57f11ac2bb182082fdd0a0c3fc64fc58e9bfaddfee06740d9b13b08d7"}
+  ]
+}

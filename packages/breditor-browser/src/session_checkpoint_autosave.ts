@@ -291,6 +291,11 @@ export class BreditorSessionCheckpointAutosave<TToken> {
 
   /** Current immutable, payload-redacted state. */
   getStatus(): SessionCheckpointAutosaveStatus {
+    return this.#snapshotStatus();
+  }
+
+  /** Internal transitions must not execute an overridable observation method. */
+  #snapshotStatus(): SessionCheckpointAutosaveStatus {
     const dirty = this.#dirtyEpoch > this.#committedEpoch;
     switch (this.#phase) {
       case "idle":
@@ -826,7 +831,7 @@ export class BreditorSessionCheckpointAutosave<TToken> {
   }
 
   #queueStatusTransition(): void {
-    const fingerprint = statusFingerprint(this.getStatus());
+    const fingerprint = statusFingerprint(this.#snapshotStatus());
     if (fingerprint === this.#statusFingerprint) return;
     this.#statusFingerprint = fingerprint;
     this.#statusRevision += 1n;
@@ -835,7 +840,7 @@ export class BreditorSessionCheckpointAutosave<TToken> {
 
   #deliverStatusNotification(): void {
     this.#statusNotificationScheduled = false;
-    const status = this.getStatus();
+    const status = this.#snapshotStatus();
     const revision = this.#statusRevision;
     const observers = Array.from(this.#statusObservers.entries());
     for (const [token, registration] of observers) {

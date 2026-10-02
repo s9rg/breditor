@@ -1,0 +1,75 @@
+{
+  "status": "false source-level comparison result captured; exact engine cause and production fix unresolved",
+  "productionRuntimeChanged": false,
+  "playwrightWebkitRevision": "2336",
+  "originalSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+  "variants": [
+    { "name": "original", "bytes": 4480, "sha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b" },
+    { "name": "captured", "bytes": 4913, "sha256": "5c3a807f10be6723bd4be5dfe3df758e81d64f144410993a17a48c45770fa855" },
+    { "name": "strict", "bytes": 4904, "sha256": "4a833cd866cb5a851ecffeab9a55cadab528e407589a03126829cd6e86aac977" },
+    { "name": "same-value-js", "bytes": 4985, "sha256": "d0a02edf7ddc170c28056b59129eb0707dac6847c7fd0f798ca97e8e93d76e2e" },
+    { "name": "result-only", "bytes": 4594, "sha256": "c8be3e9856c4e1b767d6c9f9166b39cea2c536e4b7e2d8dcaff651b13c71ed59" }
+  ],
+  "browser": {
+    "config": "playwright.comparison-capture.config.ts",
+    "moduleDelivery": "Intercept exactly one known module URL; original control also routed without changing bytes",
+    "iterationsPerCase": 10000,
+    "tuplesPerCompletedCase": 20000,
+    "workersPerRun": 1,
+    "retries": 0,
+    "timeoutMs": 30000,
+    "webkit": [
+      { "comparison": "original", "passed": 8, "failed": 2, "failureIterations": [2841, 421] },
+      { "comparison": "captured", "passed": 8, "failed": 2, "failureIterations": [368, 3781] },
+      { "comparison": "strict", "passed": 10, "failed": 0 },
+      { "comparison": "same-value-js", "passed": 10, "failed": 0 },
+      { "comparison": "result-only", "passed": 9, "failed": 1, "failureIterations": [1711] },
+      { "comparison": "captured", "independent": true, "passed": 4, "failed": 1, "failureIterations": [3621] }
+    ],
+    "chromium": { "comparison": "captured", "passed": 3, "failed": 0 },
+    "firefox": { "comparison": "captured", "passed": 3, "failed": 0 },
+    "excludedAttempt": "First cross-engine invocation collided with an active diagnostic server on port 4231 before any test ran; rerun after server exit passed all six cases."
+  },
+  "captures": [
+    { "iteration": 368, "propertyIndex": 0, "field": 4, "actual": 2048, "expected": 2048, "equal": false, "maskBefore": 0, "maskAfter": 16, "strictEqual": true, "objectIsAgain": true, "actualType": "number", "expectedType": "number" },
+    { "iteration": 3781, "propertyIndex": 0, "field": 4, "actual": 2048, "expected": 2048, "equal": false, "maskBefore": 0, "maskAfter": 16, "strictEqual": true, "objectIsAgain": true, "actualType": "number", "expectedType": "number" },
+    { "iteration": 3621, "propertyIndex": 0, "field": 4, "actual": 2048, "expected": 2048, "equal": false, "maskBefore": 0, "maskAfter": 16, "strictEqual": true, "objectIsAgain": true, "actualType": "number", "expectedType": "number" }
+  ],
+  "resultOnlyCapture": { "iteration": 1711, "lastComparisonResult": false, "lastField": 4, "maskAfter": 16 },
+  "coldDiagnosticInCapturedFailures": { "actualHigh": 1084227584, "actualLow": 0, "expectedHigh": 1084227584, "expectedLow": 0, "objectIsRecheck": true, "strictEqualRecheck": true },
+  "standaloneShell": {
+    "minimumDelayMs": 4,
+    "mode": "normal",
+    "runs": [
+      { "comparison": "original", "passed": 10, "failed": 0 },
+      { "comparison": "captured", "passed": 10, "failed": 0 },
+      { "comparison": "strict", "passed": 10, "failed": 0 },
+      { "comparison": "same-value-js", "passed": 10, "failed": 0 }
+    ],
+    "interpretation": "This round cannot distinguish variants because the original passed too; earlier standalone failures remain valid.",
+    "loggingControl": {
+      "outcome": "passed",
+      "flags": ["--logJIT=true", "--logGC=1"],
+      "observed": ["DFG compilation of comparison function", "BadType OSR exit in comparison function", "garbage collections"],
+      "causalAttribution": "none; these events were present in a passing run",
+      "log": "/tmp/breditor-jsc-compilation-log-20260926.log",
+      "sha256": "59cc24af2ab9cb880c4a2591f3a0e964e3caa8fc767cf0d0bfea81ec6b4e659d"
+    }
+  },
+  "preservedTraces": [
+    { "path": "/tmp/breditor-comparison-original-control-20260926.zip", "sha256": "71173dfe119ad02d51b0d387b547c52bcdff38d3583b4ef062d61811b599ea6f" },
+    { "path": "/tmp/breditor-captured-comparison-first-20260926.zip", "sha256": "6ab6fbd3c342b29fdc5a561d89820161df410768a1156f29048f1843092da518" },
+    { "path": "/tmp/breditor-captured-comparison-second-20260926.zip", "sha256": "581ff4bb0930d7de74c0b97655f2cfe07ada97d00a7973576d3dcedfedd88300" },
+    { "path": "/tmp/breditor-captured-comparison-independent-20260926.zip", "sha256": "cc35a4276848e52a2adfe9d3a72470b5ab88627ad0958df1ee15c26dd61ddc65" },
+    { "path": "/tmp/breditor-result-only-comparison-20260926.zip", "sha256": "6f1eac450ef8b3c71f507b473daecba8f932bcd46de2249093982b5efdab1caa" }
+  ],
+  "verification": { "workspaceUnitTestsPassed": 1278, "diagnosticTestsPassed": 57, "totalUnitTestsPassed": 1335, "browserTypecheck": "passed" },
+  "limitations": [
+    "Capturing source-level locals does not expose the machine representation at the exact comparison instruction.",
+    "Instrumentation, routing and source shape can alter optimization and timing.",
+    "Passing strict and explicit-SameValue controls do not establish a production fix.",
+    "Current upstream source was inspected for guidance, not assumed identical to installed revision 2336.",
+    "No new native Safari/editor/clipboard qualification was performed this turn.",
+    "JIT-disabled browser failures from the previous control remain unresolved."
+  ]
+}

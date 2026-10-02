@@ -1,4 +1,5 @@
 import type { AstPath } from "./ast_path.js";
+import { normalizeWasmBoundaryNumber } from "./normalize_wasm_boundary_number.js";
 import { type BaseDocumentProjection, isOwnedProjection } from "./projection.js";
 import {
   BaseRangeSelection,
@@ -19,6 +20,20 @@ import {
   type WasmProfileCorrelatedView,
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
+
+// Capture the generated getters through one generic call site, in contract
+// order. Each value remains untrusted; all existing validation runs afterward.
+// Do not substitute retries or later getter reads for a rejected snapshot.
+// Bounded WebKit evidence and remaining faults: docs/WEBKIT_CLIPBOARD_INVESTIGATION.md.
+const selectionSnapshotFields = Object.freeze([
+  "snapshotLineage", "snapshotRevision", "kind",
+  "anchorPointKind", "anchorNodeIndex", "anchorOffset", "anchorAffinity",
+  "focusPointKind", "focusNodeIndex", "focusOffset", "focusAffinity", "rangeOrder",
+] as const);
+
+// Claim before touching any foreign getter, including `free` and `then`.
+// Nested consumers must neither inspect nor free the active owner's view.
+const ACTIVE_SELECTION_CONSUMPTIONS = new WeakSet<object>();
 
 /** Point kinds exposed by the scalar Wasm selection boundary. */
 export type SemanticSelectionPointKind = "text" | "children";
@@ -76,50 +91,51 @@ export function consumeSemanticSelection(
   view: SemanticSelectionView,
   generation: WasmProfileGenerationView,
 ): BrowserSelectionResult<BaseEditorSelection> {
-  if ((view as unknown) === generation) {
-    return selectionFailure("selection.invalid_wasm_view");
-  }
-  const cleanup = snapshotGeneratedCleanup(view);
-  const asynchronous = containGeneratedThenable(view);
-  if (cleanup === null) {
-    return selectionFailure("selection.invalid_wasm_view");
-  }
-  return consumeSemanticSelectionWithCleanup(
-    projection,
-    view,
-    cleanup,
-    generation,
-    asynchronous,
-  );
+  return consumeSemanticSelectionWithCleanup(projection, view, undefined, generation);
 }
 
-/** Consumes a selection using cleanup captured by its outer owner. @internal */
+/** Consumes a selection with optional cleanup captured by its outer owner. @internal */
 export function consumeSemanticSelectionWithCleanup(
   projection: BaseDocumentProjection,
   view: SemanticSelectionView,
-  cleanup: () => unknown,
+  cleanup: (() => unknown) | undefined,
   generation: WasmProfileGenerationView,
-  asynchronous = containGeneratedThenable(view),
+  asynchronous?: boolean,
 ): BrowserSelectionResult<BaseEditorSelection> {
-  let result: BrowserSelectionResult<BaseEditorSelection> = selectionFailure(
-    "selection.invalid_wasm_view",
-  );
-  try {
-    result = !asynchronous &&
-      isOwnedProjection(projection) &&
-      wasmProfileGenerationIsLive(generation) &&
-      projectionMatchesProfileGeneration(projection, generation) &&
-      wasmViewMatchesProfileGeneration(view, generation)
-      ? readSemanticSelection(projection, view)
-      : selectionFailure("selection.invalid_wasm_view");
-  } catch {
-    result = selectionFailure("selection.invalid_wasm_view");
-  } finally {
-    if (!runGeneratedCleanup(cleanup)) {
-      result = selectionFailure("selection.invalid_wasm_view");
-    }
+  if (((typeof view !== "object" || view === null) && typeof view !== "function") ||
+      (view as unknown) === generation || ACTIVE_SELECTION_CONSUMPTIONS.has(view)) {
+    return selectionFailure("selection.invalid_wasm_view");
   }
-  return result;
+  ACTIVE_SELECTION_CONSUMPTIONS.add(view);
+  try {
+    const capturedCleanup = cleanup ?? snapshotGeneratedCleanup(view);
+    const capturedAsynchronous = asynchronous ?? containGeneratedThenable(view);
+    if (capturedCleanup === null) return selectionFailure("selection.invalid_wasm_view");
+    let result: BrowserSelectionResult<BaseEditorSelection> = selectionFailure(
+      "selection.invalid_wasm_view",
+    );
+    try {
+      result = !capturedAsynchronous &&
+        isOwnedProjection(projection) &&
+        wasmProfileGenerationIsLive(generation) &&
+        projectionMatchesProfileGeneration(projection, generation) &&
+        wasmViewMatchesProfileGeneration(view, generation)
+        ? readSemanticSelection(projection, view)
+        : selectionFailure("selection.invalid_wasm_view");
+    } catch {
+      result = selectionFailure("selection.invalid_wasm_view");
+    } finally {
+      if (!runGeneratedCleanup(capturedCleanup)) {
+        result = selectionFailure("selection.invalid_wasm_view");
+      }
+    }
+    // Generated reads and cleanup can invalidate the caller-owned generation.
+    return result.ok && !wasmProfileGenerationIsLive(generation)
+      ? selectionFailure("selection.invalid_wasm_view")
+      : result;
+  } finally {
+    ACTIVE_SELECTION_CONSUMPTIONS.delete(view);
+  }
 }
 
 function runGeneratedCleanup(cleanup: () => unknown): boolean {
@@ -133,10 +149,8 @@ function runGeneratedCleanup(cleanup: () => unknown): boolean {
   }
 }
 
-function snapshotGeneratedCleanup(value: unknown): (() => unknown) | null {
-  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
-    return null;
-  }
+/** Called only after the guarded entry has proved object identity. */
+function snapshotGeneratedCleanup(value: SemanticSelectionView): (() => unknown) | null {
   try {
     const free = (value as { free?: unknown }).free;
     if (typeof free !== "function") return null;
@@ -230,18 +244,11 @@ function readSemanticSelection(
   if (!isSemanticSelectionView(view)) {
     return selectionFailure("selection.invalid_wasm_view");
   }
-  const snapshotLineage = view.snapshotLineage;
-  const snapshotRevision = view.snapshotRevision;
-  const kind = view.kind;
-  const anchorPointKind = view.anchorPointKind;
-  const anchorNodeIndex = view.anchorNodeIndex;
-  const anchorOffset = view.anchorOffset;
-  const anchorAffinity = view.anchorAffinity;
-  const focusPointKind = view.focusPointKind;
-  const focusNodeIndex = view.focusNodeIndex;
-  const focusOffset = view.focusOffset;
-  const focusAffinity = view.focusAffinity;
-  const rangeOrder = view.rangeOrder;
+  const [
+    snapshotLineage, snapshotRevision, kind,
+    anchorPointKind, anchorNodeIndex, anchorOffset, anchorAffinity,
+    focusPointKind, focusNodeIndex, focusOffset, focusAffinity, rangeOrder,
+  ] = selectionSnapshotFields.map((field) => normalizeWasmBoundaryNumber(Reflect.get(view, field)));
 
   if (
     snapshotLineage !== projection.snapshot.lineage ||

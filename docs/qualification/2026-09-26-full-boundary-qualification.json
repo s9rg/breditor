@@ -1,0 +1,69 @@
+{
+  "status": "candidate passed bounded full-editor and native tests; unchanged control reproduced profile admission rejection; not a complete WebKit fix",
+  "productionSourceChanged": false,
+  "candidate": "exact decimal round-trip of captured numeric boundary values; zero and non-numbers returned unchanged",
+  "notTheSameValueExperiment": true,
+  "artifacts": {
+    "originalJs": "target/selection-stress-production/assets/index-DdrAhJe1.js",
+    "originalJsSha256": "7f619b5583e111dd6b42c3d7a6f84acc7ac443810cb733362b7f84a36d1b88fc",
+    "candidateJs": "target/numeric-normalization/assets/index-9wntxiC2.js",
+    "candidateJsSha256": "81c75327df04135e535b22f379037f8f288ab501558aca3aa13fda6d3a1b71ac",
+    "sameWasmSha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+    "candidateMatchesEarlierPreservedBuild": true,
+    "hashesRecheckedAfterControlFailure": true,
+    "transformedSites": { "descriptor": ["readScalar return", "invoke return", "invoke2 return"], "selection": ["single Reflect.get capture"] }
+  },
+  "oracle": { "restoresPerCompletedCase": 10000, "selectionReadsPerCompletedCase": 30000, "checks": ["real Rust/Wasm startup and descriptor admission", "absent selection", "forward selection", "collapsed selection", "backward selection", "zero offsets", "exact independently expected coordinates"] },
+  "automatedWebkit": {
+    "normalEngineSettings": true, "retries": 0, "caseTimeoutMs": 30000, "suiteTimeoutMs": 480000, "workers": 1,
+    "runs": [
+      { "variant": "original", "batch": "a", "passed": 5, "failed": 0, "notRun": 0, "durationMs": 57119.379, "report": "/tmp/breditor-boundary-original-a-20260926.json", "sha256": "aa516bc238a36dcf5863f5b8ac6ea4d5848719c6d30634fcfdc13124da11edab" },
+      { "variant": "normalized", "batch": "a", "passed": 5, "failed": 0, "notRun": 0, "durationMs": 54538.938, "report": "/tmp/breditor-boundary-normalized-a-20260926.json", "sha256": "9ce659b8ec2fdb09de1f8063002a310720779a562a83555aa793997ec2bceb83" },
+      { "variant": "original", "batch": "b", "passed": 5, "failed": 0, "notRun": 0, "durationMs": 53583.899, "report": "/tmp/breditor-boundary-original-b-20260926.json", "sha256": "a503cc5567b39648cfadcd196cf075519865ba024e7891e1befee4fd4609af92" },
+      { "variant": "normalized", "batch": "b", "passed": 5, "failed": 0, "notRun": 0, "durationMs": 56449.376, "report": "/tmp/breditor-boundary-normalized-b-20260926.json", "sha256": "a5fb0d24791f5441a8eae578ba57261ae92884f352cbebc5d6eda408b8dd81fe" },
+      { "variant": "original", "batch": "c", "passed": 7, "failed": 1, "notRun": 2, "durationMs": 90493.535, "report": "/tmp/breditor-boundary-original-c-20260926.json", "sha256": "655516d54e7082f1ba109fc298f06920cfe2f5d9ff16cfff41905fe322b8a7d7" },
+      { "variant": "normalized", "batch": "c", "passed": 5, "failed": 0, "notRun": 0, "durationMs": 56188.775, "report": "/tmp/breditor-boundary-normalized-c-20260926.json", "sha256": "7a7be4b2f7f34170c3a78436a1a339879c77c574b5641202003b7ce70b424b8e", "afterFreshControlFailure": true }
+    ],
+    "freshControlFailure": {
+      "case": 8, "restoreIterationZeroBased": 8351,
+      "error": "engine_bootstrap.invalid_profile_descriptor",
+      "notATimeout": true,
+      "runnerGlobalError": "Expected maxFailures=1 early-stop notice, not a separate engine failure",
+      "trace": "target/playwright-boundary-original-c-20260926/selection-restore-restored-6f93c--zero-offsets-and-direction-webkit-repeat7/trace.zip",
+      "traceSha256": "2bfe71c0bd7d088c9bfe8e14373b21eb17692fe28cc0da1655c7d084a92df852"
+    }
+  },
+  "nativeSafari": {
+    "version": "26.6.2",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+    "url": "http://127.0.0.1:4203/",
+    "method": "visible start button, fresh page per batch, accessibility text and screenshot verification of completion and hashes",
+    "perBatchDeadlineMs": 30000,
+    "runs": [
+      { "variant": "normalized", "run": 1, "passed": 5, "failed": 0, "outcome": "passed", "active": false, "current": 5, "runnerSha256": "ed0c6af5dd3809b0da5df133fa9d1f5c954596ba63a52dd9165339a3e5513925" },
+      { "variant": "normalized", "run": 2, "passed": 5, "failed": 0, "outcome": "passed", "active": false, "current": 5, "runnerSha256": "2d27e8b9260b47f6076b90f34e82356cf1436cc201f30789d22aa3deff12a174" },
+      { "variant": "original", "run": 1, "passed": 5, "failed": 0, "outcome": "passed", "active": false, "current": 5, "runnerSha256": "2d27e8b9260b47f6076b90f34e82356cf1436cc201f30789d22aa3deff12a174" }
+    ],
+    "candidateCompletedRestores": 100000,
+    "candidateCompletedSelectionReads": 300000,
+    "runnerChangeBetweenCandidateRuns": "Reject malformed over-limit active saved progress and expose runner hash; probe and Wasm unchanged",
+    "limits": ["No trusted clipboard or DOM/caret qualification", "The native control passed; the fresh failure was in Playwright WebKit", "Some automated and native runs overlapped; durations are not isolated performance benchmarks"]
+  },
+  "contracts": {
+    "candidateRuntimeTests": 1188,
+    "candidateConfig": "vitest.boundary-candidate.config.ts",
+    "bothBoundaryTransformsRequired": true,
+    "log": "/tmp/breditor-boundary-candidate-contracts-20260926.log",
+    "logSha256": "aac04aaa584c4d77f83a6f415fb34ba8818e97e4e0d92781834f16ef9994c01a",
+    "additionalNumericSamples": 10000,
+    "nativeRunnerTests": ["explicit start", "exact result counts", "five-batch cap", "interruption and malformed-result failure", "malformed/over-limit saved state", "30-second watchdog without retry"]
+  },
+  "candidateCompletedThisCheckpoint": { "automatedWebkitCases": 15, "nativeSafariCases": 10, "restores": 250000, "selectionReads": 750000, "runtimeFailures": 0, "timeouts": 0 },
+  "verification": { "unchangedWorkspaceTestsPassed": 1278, "diagnosticTestsPassed": 73, "standardTestsTotal": 1351, "candidateRuntimeTestsAdditional": 1188, "browserTypecheck": "passed", "syntaxChecks": "passed", "diffCheck": "passed" },
+  "limits": [
+    "This is an unpublished opt-in candidate, not a production runtime change or complete WebKit repair.",
+    "The fresh profile rejection does not identify its precise native instruction or prove it shares every earlier fault's cause.",
+    "Counts include only completed cases; the failed partial case and two unexecuted original cases are not passes.",
+    "Longer native stress, isolated conversion-cost measurement, and clipboard/DOM-restoration qualification remain."
+  ]
+}

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { consumeWasmDocumentJson } from "./wasm_document_json.js";
+import { consumeWasmSessionCheckpoint } from "./wasm_session_checkpoint.js";
 
 import {
   MAX_BROWSER_ACTION_STATE_ENTRIES,
@@ -166,6 +168,148 @@ class FakeResult implements WasmActionStatesResultView {
 }
 
 const EXPECTED = Object.freeze({ lineage: "action-state-tests", revision: "7" });
+
+describe("action-state consumption ownership", () => {
+  it.each(["free getter", "code", "cleanup"])("reserves cloned errors before %s", (phase) => {
+    const error = new FakeError();
+    const outer = new FakeResult("error", undefined, error);
+    const inner = new FakeResult("error", undefined, error);
+    const nested: boolean[] = [];
+    let entered = false;
+    const reenter = () => {
+      if (entered) return;
+      entered = true;
+      nested.push(consumeWasmActionStates(EXPECTED, inner).ok);
+    };
+    if (phase === "free getter") Object.defineProperty(error, "free", { get() { reenter(); return FakeError.prototype.free; } });
+    if (phase === "code") Object.defineProperty(error, "code", { get() { reenter(); return "breditor_wasm.action_state"; } });
+    if (phase === "cleanup") error.free = () => { reenter(); error.freeCalls++; };
+    expect(consumeWasmActionStates(EXPECTED, outer)).toMatchObject({ ok: false, error: { kind: "core" } });
+    expect(nested).toEqual([false]);
+    expect(error.freeCalls).toBe(1);
+    expect(outer.freeCalls).toBe(1);
+    expect(inner.freeCalls).toBe(1);
+  });
+
+  it.each(["action state", "document", "checkpoint"])("prevents a nested %s read from stealing an active string", (reader) => {
+    const entry = statelessEntry("breditor/control");
+    const shared = new FakeStringResult("absent");
+    const snapshot = new FakeSnapshot([entry], [entry.id]);
+    snapshot.entryUniformValueJson = (index) => index === 0 ? shared : new FakeStringResult("absent");
+    const otherSnapshot = new FakeSnapshot([entry], [entry.id]);
+    otherSnapshot.entryUniformValueJson = (index) => index === 0 ? shared : new FakeStringResult("absent");
+    const inner = new FakeResult("full", otherSnapshot);
+    const nested: boolean[] = [];
+    let entered = false;
+    Object.defineProperty(shared, "free", { get() {
+      if (!entered) {
+        entered = true;
+        nested.push(reader === "action state" ? consumeWasmActionStates(EXPECTED, inner).ok
+          : reader === "document" ? consumeWasmDocumentJson(EXPECTED, shared).ok
+          : consumeWasmSessionCheckpoint(EXPECTED, shared).ok);
+      }
+      return FakeStringResult.prototype.free;
+    } });
+    expect(consumeWasmActionStates(EXPECTED, new FakeResult("full", snapshot)).ok).toBe(true);
+    expect(nested).toEqual([false]);
+    expect(shared.freeCalls).toBe(1);
+    expect(shared.takeCalls).toBe(1);
+  });
+
+  it.each(["document", "checkpoint"])("does not acquire an error owned by the %s reader", (reader) => {
+    const error = new FakeError();
+    const outer = new FakeStringResult("error", undefined, error);
+    const inner = new FakeResult("error", undefined, error);
+    let entered = false;
+    Object.defineProperty(error, "code", { get() {
+      if (!entered) {
+        entered = true;
+        expect(consumeWasmActionStates(EXPECTED, inner)).toMatchObject({ ok: false, error: { kind: "boundary" } });
+      }
+      return "breditor_wasm.action_state";
+    } });
+    const result = reader === "document" ? consumeWasmDocumentJson(EXPECTED, outer) : consumeWasmSessionCheckpoint(EXPECTED, outer);
+    expect(result).toMatchObject({ ok: false, error: { kind: "core" } });
+    expect(entered).toBe(true);
+    expect(error.freeCalls).toBe(1);
+    expect(inner.freeCalls).toBe(1);
+  });
+
+  it.each(["protected list", "expected", "free getter", "then getter", "status", "cleanup"])(
+    "rejects reentry into the active result from %s",
+    (phase) => {
+      const snapshot = new FakeSnapshot([], []);
+      const view = new FakeResult("full", snapshot);
+      const nested: boolean[] = [];
+      let entered = false;
+      const reenter = () => {
+        if (entered) return;
+        entered = true;
+        nested.push(consumeWasmActionStates(EXPECTED, view).ok);
+      };
+      let expected = EXPECTED;
+      let protectedHandles: readonly unknown[] = [];
+      if (phase === "protected list") protectedHandles = new Proxy([], {
+        getOwnPropertyDescriptor(target, key) { reenter(); return Reflect.getOwnPropertyDescriptor(target, key); },
+      });
+      if (phase === "expected") expected = { get lineage() { reenter(); return EXPECTED.lineage; }, revision: EXPECTED.revision };
+      if (phase === "free getter") Object.defineProperty(view, "free", { get() { reenter(); return FakeResult.prototype.free; } });
+      if (phase === "then getter") Object.defineProperty(view, "then", { get() { reenter(); return undefined; } });
+      if (phase === "status") Object.defineProperty(view, "status", { get() { reenter(); return "full"; } });
+      if (phase === "cleanup") view.free = () => { reenter(); view.freeCalls++; };
+      expect(consumeWasmActionStates(expected, view, protectedHandles).ok).toBe(true);
+      expect(nested).toEqual([false]);
+      expect(view.freeCalls).toBe(1);
+      expect(view.takeCalls).toBe(1);
+      expect(snapshot.freeCalls).toBe(1);
+    },
+  );
+
+  it.each(["free getter", "read", "snapshot cleanup", "result cleanup"])(
+    "reserves a shared snapshot through %s",
+    (phase) => {
+      const snapshot = new FakeSnapshot([], []);
+      const outer = new FakeResult("full", snapshot);
+      const inner = new FakeResult("full", snapshot);
+      const nested: boolean[] = [];
+      let entered = false;
+      const reenter = () => {
+        if (entered) return;
+        entered = true;
+        nested.push(consumeWasmActionStates(EXPECTED, inner).ok);
+      };
+      if (phase === "free getter") Object.defineProperty(snapshot, "free", { get() { reenter(); return FakeSnapshot.prototype.free; } });
+      if (phase === "read") Object.defineProperty(snapshot, "entryCount", { get() { reenter(); return 0; } });
+      if (phase === "snapshot cleanup") snapshot.free = () => { reenter(); snapshot.freeCalls++; };
+      if (phase === "result cleanup") outer.free = () => { reenter(); outer.freeCalls++; };
+      expect(consumeWasmActionStates(EXPECTED, outer).ok).toBe(true);
+      expect(nested).toEqual([false]);
+      expect(snapshot.freeCalls).toBe(1);
+      expect(outer.freeCalls).toBe(1);
+      expect(inner.freeCalls).toBe(1);
+    },
+  );
+
+  it("allows independent nested consumption", () => {
+    const outer = new FakeResult("full", new FakeSnapshot([], []));
+    const inner = new FakeResult("full", new FakeSnapshot([], []));
+    let nested = false;
+    Object.defineProperty(outer, "status", { get() { nested = consumeWasmActionStates(EXPECTED, inner).ok; return "full"; } });
+    expect(consumeWasmActionStates(EXPECTED, outer).ok).toBe(true);
+    expect(nested).toBe(true);
+    expect(outer.freeCalls).toBe(1);
+    expect(inner.freeCalls).toBe(1);
+  });
+
+  it("releases the reservation when protected metadata rejects before ownership transfer", () => {
+    const view = new FakeResult("full", new FakeSnapshot([], []));
+    const malformed = new Proxy([], { getOwnPropertyDescriptor() { throw new Error("invalid metadata"); } });
+    expect(consumeWasmActionStates(EXPECTED, view, malformed).ok).toBe(false);
+    expect(view.freeCalls).toBe(0);
+    expect(consumeWasmActionStates(EXPECTED, view).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+});
 
 function consumeWasmActionStates(
   expected: Parameters<typeof consumeWasmActionStatesRaw>[0],
@@ -460,6 +604,36 @@ describe("Wasm action-state adapter", () => {
     expect(resultView.freeCalls).toBe(1);
     expect(snapshot.freeCalls).toBe(0);
   });
+
+  it.each(["read", "snapshot cleanup", "result cleanup"])(
+    "rejects a profile generation invalidated during %s without leaking handles",
+    (phase) => {
+      let live = true;
+      const generation: WasmProfileGenerationView = {
+        matches(other) { return live && other === generation; },
+        free: vi.fn(() => { live = false; }),
+      };
+      const snapshot = new FakeSnapshot([], []);
+      const resultView = new FakeResult("full", snapshot);
+      snapshot.matchesProfileGeneration = (other) => other === generation;
+      resultView.matchesProfileGeneration = (other) => other === generation;
+      if (phase === "read") {
+        snapshot.changedId = () => { live = false; return undefined; };
+      } else if (phase === "snapshot cleanup") {
+        snapshot.free = () => { snapshot.freeCalls += 1; live = false; };
+      } else {
+        resultView.free = () => { resultView.freeCalls += 1; live = false; };
+      }
+
+      expect(consumeWasmActionStatesRaw(EXPECTED, resultView, generation))
+        .toMatchObject({ ok: false, error: { code: "action_state.invalid_wasm_view" } });
+      expect(snapshot.freeCalls).toBe(1);
+      expect(resultView.freeCalls).toBe(1);
+      expect(snapshot.values).toHaveLength(1);
+      expect(snapshot.values[0]?.freeCalls).toBe(1);
+      expect(generation.free).not.toHaveBeenCalled();
+    },
+  );
 
   it("copies a complete typed snapshot, freezes it deeply, and frees every handle", () => {
     const entries: FakeEntry[] = [

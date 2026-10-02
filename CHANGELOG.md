@@ -6,6 +6,365 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Gate the browser npm tarball against an exact reviewed file allowlist, keeping
+  test fixtures and optional diagnostics outside published artifacts. Preserve
+  the standalone numerical repro as a portable, hash-checked JavaScript fixture.
+  Safari/WebKit remains experimental after a fresh normal-JIT counterexample;
+  no engine repair or blanket platform certification is claimed.
+
+- Keep a projection update's child reserved until parent cleanup and final
+  generation admission finish. Reentrant callbacks can no longer consume/free
+  that already-consumed child again through either projection entry point.
+  Thirteen regression/control cases cover public and captured cleanup, invalid
+  children, cleanup failures, active aliases and independent nested updates.
+
+- Reserve profile descriptors across both consumption entry points, including
+  protected metadata, generated accessors, cleanup and final generation checks.
+  Nested same-view reads no longer duplicate consumption/cleanup, and protected
+  views are rejected before reading `then`. Fifteen regression/control cases
+  preserve independent nesting and captured-cleanup semantics.
+
+- Reuse the existing exact UTF-8 scanner for plain-text export and command
+  admission, preserving UTF-16/UTF-8 limits and malformed-surrogate rejection.
+  This removes duplicate code while keeping the descriptor fix within the
+  unchanged release size budgets.
+
+- Prevent overlapping action-state reads from consuming or freeing active
+  results, snapshots, nested strings or cloned errors twice. Reservations span
+  metadata/accessor inspection and the whole cleanup pass, and are shared with
+  document/checkpoint readers. Twenty regression/control cases cover reentry,
+  cross-reader aliases and independent nested reads. Reuse the identical UTF-8
+  scanner to retain the existing bundle-size limits.
+
+- Apply ordinary entry discovery to the Link and clipboard diagnostic hosts
+  too. Their own plugins are retained; unrelated virtual-module fixtures no
+  longer break dependency pre-bundling.
+
+- Limit ordinary browser-harness dependency discovery to its three supported
+  entry pages. Recursive scanning previously included an opt-in diagnostic
+  page whose virtual module requires a separate plugin, disabling Vite
+  pre-bundling for the ordinary server. Diagnostic builds stay separate.
+
+- Bind composition's queue to the executor already checked during adapter
+  validation. A third accessor read could previously substitute another
+  executor or reject a valid adapter. Four failing regressions reproduce both
+  directions; a fifth preserves rejection of unstable validation reads.
+
+- Route composition input and scheduled recovery through private controller
+  state and implementation. Overridden public `active`/`recover` members can
+  no longer bypass quarantine, interrupt recovery or fabricate recovery success
+  while retaining the editing lease. Ten regressions cover activity shadows,
+  malformed input, recovery overrides and successful lease release.
+
+- Isolate autosave transitions and observer delivery from public `getStatus()`
+  overrides. Private snapshots prevent overridden status code from interrupting
+  dirty/flush/dispose operations, suppressing lifecycle notifications or falsely
+  removing listeners. Nine regressions cover throwing methods/accessors,
+  fabricated states and reentrant disposal.
+
+- Keep checkpoint-store lifecycle decisions in private state rather than the
+  overridable public `closed` getter. Shadowed status can no longer publish a
+  load after closure, trigger digest work after closure, or reject a live
+  operation. Twelve regressions cover false, true and throwing status getters;
+  a native IndexedDB/Web Crypto probe covers closure during digest.
+
+- Prevent duplicate consumption/cleanup during reentrant document JSON export,
+  including shared result/error handles passed between document and checkpoint
+  readers. Both readers now share active ownership reservations; seventeen
+  regression/control tests cover accessors, metadata, cleanup and cross-reader
+  aliases. No public format or generated Wasm contract changes.
+
+- Prevent overlapping checkpoint reads from consuming or freeing the same Wasm
+  result/error handle twice. Reservations cover getter inspection, capture and
+  cleanup while allowing independent nested reads. Twelve regression/control
+  cases cover ownership; a shared UTF-8 validator removes three duplicated
+  implementations without changing durable formats or release size limits.
+
+- Release pending database-open callers when a checkpoint store closes instead
+  of leaving loads hung behind blocked IndexedDB requests. Late upgrades are
+  aborted, late handles closed, and closed-owner progress callbacks suppressed.
+  Four unit regressions and a real blocked-open browser test cover shutdown;
+  already-dispatched write semantics remain unchanged.
+
+- Capture the command-queue observer option exactly once. Accessor-backed
+  configuration could previously validate one callback and store another, or
+  defer an invalid callback failure until after a command committed. Five
+  regressions cover changing, absent, invalid and throwing subsequent reads.
+
+- Revalidate command-queue lifecycle after request inspection so disposal,
+  failure or a newly acquired lease cannot admit stale work. Enforce capacity
+  from private state and contain rejected executor/observer promises while
+  preserving fail-stop and no-retry behavior. Nine regressions cover these
+  paths, leased delivery and valid nested admission order.
+
+- Fix deferred DOM repair accepting invalid async scheduler results while
+  reporting a live editor. Failed scheduling now faults and revokes callbacks.
+  Also block reentrant editing commands during repair, including task-driven
+  recovery. Eleven regressions cover scheduling failures, callback revocation,
+  nested commands and successful post-repair editing.
+
+- Reject async/thenable IME scheduler results and revoke retained callbacks,
+  preventing silent scheduling failure from leaving composition in `ending`.
+  Contain asynchronous settlement/recovery observer rejections without changing
+  the completed result. Nine new regressions cover these hooks and accepted
+  timer handles; shared rejection handling also removes duplicated runtime code.
+
+- Invalidate retained IME settlement/recovery callbacks when a custom scheduler
+  throws. Previously, a rejected recovery callback could still restore the DOM
+  and release the composition queue lease later. Regression tests prove the
+  failure and preserve independently successful, one-shot recovery scheduling.
+
+- Prevent reentrant selection-view consumption from transferring ownership
+  twice. The old build accepts both consumers and invokes cleanup twice; the
+  guarded public and captured-cleanup entries reject the nested consumer.
+  Nine regressions cover getter/destructor reentry, independent views and
+  guard release. This independently reproduced bug is not yet linked to the
+  intermittent WebKit fault.
+
+- Reject stale action-state, selection, projection, and projection-update
+  reads when a getter or destructor invalidates their profile generation.
+  Admission now rechecks liveness after cleanup while preserving exactly-once
+  disposal and caller-owned generation handles. Seven regressions reproduce
+  the old acceptance bug and cover the fix. Native diagnostic classification
+  also rejects stopped captures from a missing or different experiment.
+
+- Latest full release qualification remains blocked by an intermittent WebKit
+  Link/Undo failure (152/153 browser cases pass). Ordered diagnostic runs also
+  capture clipboard-history and selection-restore rejections. Preserved the
+  first failures and added opt-in, payload-free exception/rejection-site
+  recording; passing isolated runs do not reclassify these failures as fixed.
+
+- Hardened boundary-number normalization so incoming zero is not compared
+  before conversion, while preserving both zero signs and strict validation.
+  All 17 release gates, an additional 153-case minified browser matrix, and
+  50,000 restores each in automated WebKit and native Safari pass. Native
+  diagnostics now bracket an incorrect FCSEL result; a child-only branch
+  experiment passes bounded controls, but the installed engine is not fixed.
+
+- Integrated the exact-value numeric-boundary mitigation into the browser
+  runtime at the four qualified capture sites, preserving validation, signed
+  zero, non-number identity, getter receiver/once-only reads and cleanup.
+  All 17 release gates, rebuilt-runtime browser and native Safari checks pass;
+  the underlying
+  JavaScriptCore fault remains unresolved. Frozen comparison builds are
+  protected against accidental rebuilding or double normalization.
+
+- Measured isolated numeric-normalization cost, extended native Safari stress
+  by 150,000 restores, and passed all 153 existing browser tests against the
+  opt-in minified candidate. Added a full-matrix fixture with guarded compiled
+  probe exports. Results support scoped runtime integration next, not a claim
+  that the underlying WebKit fault is fixed; production remains unchanged.
+
+- Extended the opt-in numeric boundary candidate to the real interactive and
+  native clipboard fixtures. It passes 84 WebKit and 21 each Chromium/Firefox
+  cases, plus a bounded native Safari Copy/Cut/Paste, caret, history and Link
+  checklist. Original interactive controls also pass; this is added coverage,
+  not proof of a complete WebKit fix or a production runtime change.
+
+- Added paired full-editor boundary qualification, an opt-in run of all 1,188
+  browser-runtime contracts against the normalization candidate, IEEE-754
+  preservation coverage, and a bounded visible native Safari runner. Candidate
+  passes are qualification evidence only; production remains unchanged and the
+  intermittent WebKit/editor faults are not declared fixed.
+
+- Added native-only conversion controls and effective-option-checked engine
+  context experiments. The reduced fault still occurs with concurrent GC or
+  Mach exception handling disabled; neither is a fix. Added an explicitly
+  slower early-breakpoint diagnostic without relaxing normal test timeouts,
+  plus host hashes to prevent mixed shell-run evidence. Production unchanged.
+
+- Added hash-pinned native debugger diagnostics and verified controls. Native
+  captures show equal encoded inputs but unequal comparison registers in
+  JavaScriptCore, including through its JIT-disabled interpreter. Developer
+  debugging was enabled with user approval; only diagnostic children were
+  launched. Exact cause remains unresolved; production behavior is unchanged.
+
+- Reproduced captured numeric comparison failures in baseline-only WebKit,
+  including compilation-logged evidence with no DFG/FTL entries. Diagnostic
+  runner now verifies effective standalone compiler options before and after
+  execution; tier runs use separate ports and output directories. Native
+  debugger launch was initially denied by macOS; later authorized captures
+  are described above.
+
+- Added hash-pinned comparison captures that reproduce a false Object.is
+  result before mismatch reporting, including an independent browser rerun.
+  Added strict/SameValue controls and a smaller boolean-only capture; all remain
+  opt-in diagnostics, with no production comparison or validation changes.
+
+- Reproduced the unchanged small numeric case in standalone JavaScriptCore
+  with a paced host timer, removing browser/Playwright transport from the
+  required path. Added isolated compiler-tier controls and a bounded shell
+  runner that checks explicit outcomes rather than JSC's zero exit code.
+  Browser JIT-disabled failures rule out treating earlier short passes as a
+  reliable fix. Production behavior and validation are unchanged.
+
+- Reduced the numeric comparison fault to a dependency-free 4,480-byte JS
+  bundle by preserving a cold branch. Added a bounded visible native runner:
+  installed Safari passes two ten-batch DataView runs, while Playwright WebKit
+  fails the same click/reload workflow. This narrows execution and engine-build
+  differences without claiming a production fix or relaxing validation.
+
+- Independently audited the tiny Wasm fixture with WABT and reproduced the same
+  inconsistent numeric comparison without Wasm, using JavaScript DataView,
+  including with the property validator removed. Chromium/Firefox and a
+  diagnostic all-JIT-off WebKit control pass. This broadens the investigation
+  to JavaScript execution; it does not establish the exact engine bug or fix
+  production startup/selection/clipboard reliability.
+
+- Added isolated f64/i32/conversion controls and an opt-in full-consumer numeric
+  normalization experiment. The unchanged f64 control still fails; a smaller
+  comparison-only reduction masks the fault. Experimental conversions preserve
+  existing validation and once-only reads, but are not production fixes.
+
+- Expanded boundary diagnostics to selection lookup and action-state contracts,
+  then isolated a numeric comparison failure in a 48-byte Rust-free Wasm module.
+  Added independently expected inputs, exact floating-point evidence, repeated
+  engine controls and explicitly non-qualifying JIT experiments. Normal WebKit
+  still reproduces the fault; production code and validation remain unchanged.
+
+- Added an opt-in startup rejection recorder with bounded, payload-free
+  metadata, emitted-source mappings, Playwright failure attachments and unit
+  coverage. It captured a profile-property value-type rejection; a refined
+  diagnostic also reproduced selection failure despite the generic-getter
+  workaround. Both WebKit issues remain open. Normal production JavaScript and
+  Wasm stay byte-identical; this debugging addition is not a runtime fix.
+
+- Capture Wasm selection snapshot fields through one ordered generic getter
+  call site, retaining strict validation, once-only reads and cleanup. Two
+  independent 20-run WebKit and two 20-batch native Safari runs pass. A third
+  run still fails at bootstrap request admission, so this remains a provisional
+  selection mitigation, not a complete WebKit fix. Added inherited-getter
+  receiver coverage alongside malformed-value and Unicode boundary tests.
+  All 17 ordinary release gates pass (1,278 TypeScript tests, 153 browser and
+  39 demo cases); ABI and size ceilings are unchanged. A fresh unchanged
+  baseline control still reproduces its selection rejection.
+
+- Expanded selection boundary tests for malformed numeric/enumerated values,
+  exact tree mapping, Unicode boundaries, and once-only ordered getter reads
+  with guaranteed cleanup. Native Safari diagnostics narrowed a sustained
+  failure to a tree lookup falling through on captured index 2 despite an
+  existing target. Failed runtime candidates were removed; the WebKit issue
+  remains open. Installed Chrome completed the native clipboard checklist.
+
+- Renewed WebKit investigation reproduced a current production selection
+  rejection after 27 passing stress runs, at restore 113/read 1 of run 28.
+  The no-DOM probe failed with `selection.invalid_wasm_view`; the trace is
+  preserved. A diagnostic variant passed 20 runs without locating the exact
+  rejecting check. The issue remains open; bounded native smoke does not
+  supersede this failure; that investigation pass did not change the runtime.
+
+- Recorded a bounded native UI clipboard pass in installed Safari 26.6.2:
+  Copy/Cut/Paste, immediate caret/typing, Undo/Redo and Link history, with a live
+  owner and a redacted report. iOS 26.5 Simulator also completed the bounded
+  checklist using native menus and hardware keys, including independent
+  clipboard sentinels and a separate redacted report. Physical-device and
+  soft-keyboard qualification remain pending. This is not a blanket WebKit fix.
+
+- Fixed an oversized-paragraph paste fault reproduced in Chromium, Firefox and
+  WebKit. Plain paste now preflights Rust's existing 10,000-paragraph source
+  ceiling using the HTML path's shared CRLF/CR/LF counter, before queue dispatch.
+  Invalid input cancels without faulting the owner or losing the redo branch.
+  Added cross-paragraph, reversed-range, Unicode, empty-paragraph, HTML fallback,
+  line-ending, and rejected-paste history regressions. Identical replacements
+  retain the documented selection-only/no-content-history behavior.
+  All 17 release gates pass (153 browser / 39 demo cases), followed by 160/160
+  WebKit clipboard stress cases with no retries. Production budgets and ABI
+  remain unchanged; that automated run alone did not qualify native Safari/iOS
+  system clipboard behavior. Subsequent bounded native results are noted above.
+
+- Added `demo:clipboard`, a disposable native clipboard qualification fixture
+  with the real ReferenceFormatting editor and no synthetic input shim. Bounded
+  reports retain redacted event ordering and sticky owner faults, distinguish
+  synthetic events from operator evidence, and explicitly flag incomplete or
+  truncated runs. Automated safety checks do not qualify real Safari/iOS
+  clipboard support; the fixture never accesses the system clipboard on its own.
+  All 17 release gates pass with the expanded 132-case browser and 39-case demo
+  matrices; ABI and production size ceilings remain unchanged.
+
+- Added a combined formatted clipboard/Link/caret/history regression, including
+  canonical document restoration and a checkpoint with retained redo history.
+  Added `test:demo:stress` and `test:clipboard:stress` with normal optimization,
+  no retries, separate traces, and first-failure stopping. Direct follow-up
+  passes 45 mixed React and 90 clipboard/Link WebKit cases, including at least
+  1,600 cut/caret and 3,600 Link history cycles. Controlled clipboard events do
+  not qualify real Safari/iOS system clipboard behavior; no runtime workaround
+  or validation policy changed in this follow-up.
+  The expanded ordinary three-engine browser matrix passes all 117 cases;
+  browser/demo test and configuration typechecking pass.
+
+- Mitigated a captured WebKit startup rejection of numeric schema version 1
+  with a contract-equivalent positive-u32 check; coercion, fractions, zero, and
+  overflow remain rejected. Added raw descriptor lifetime coverage and 44
+  malformed-value admission cases. All 17 release gates pass, including 114
+  browser and 39 demo cases. Twenty maintained, uninstrumented production
+  stress runs pass 200,000 restores / 600,000 selection reads. Original native
+  clipboard/caret and separate DOM-restoration faults remain unqualified;
+  this is a targeted mitigation, not a blanket WebKit resolution.
+
+- Narrowed a production WebKit startup rejection to an absent required format
+  revision. The `formatRevision` Rust export now uses explicit JavaScript
+  number/undefined transport, preserving native accessors and public types.
+  Added retained-descriptor and maximum-u32 revision glue checks, plus
+  `npm run test:selection:stress:production` for a normally minified consumer.
+  The patched production stress run still rejected startup after six passes;
+  this is not a complete WebKit fix. See the investigation notes for exact
+  failing branches and preserved traces.
+  The earlier full release verification passes through all 111 browser cases, then fails
+  the demo gate (38/39): WebKit again rejects the profile descriptor at startup.
+  ABI, package reproducibility, and size budgets pass; that run did not clear the release.
+
+- Added `npm run test:selection:stress`: a fresh-build, ten-repetition WebKit
+  reproduction using the maintained selection oracle at 10,000 restores per
+  case, with standard timeouts and no retries. Its first run reproduced the
+  remaining startup rejection after eight passing cases. A production-minified
+  consumer reproduced it independently. Added 80 malformed-coordinate admission
+  checks; all 11 selection-adapter unit tests pass. Optimizer/code-shape controls
+  and the failed compression-disabled variant are documented without changing
+  production validation or claiming the WebKit issue is resolved.
+
+- Follow-up verification reproduced selection rejection in the patched WebKit
+  build and a separate profile-descriptor bootstrap rejection. The previous
+  transport mitigation is not a complete fix; earlier green release/stress
+  runs remain historical results. Added a separate raw Rust/Wasm selection
+  getter regression to distinguish transport reads from browser validation.
+  Preserved failing traces and valid-field rejection diagnostics in
+  `docs/WEBKIT_CLIPBOARD_INVESTIGATION.md`; no runtime validation was weakened.
+
+- Mitigated a reproduced WebKit selection-coordinate transport failure: four
+  Rust/Wasm numeric selection getters now return explicit number/undefined
+  values while retaining native Rust accessors and public JavaScript types.
+  The exact pre-fix build fails the no-DOM restore probe; the patched build
+  passes 30,000 restores / 90,000 reads. Added three-engine restore coverage
+  and generated-glue present/zero/absent snapshot checks. No validation,
+  recovery policy, ABI version, or size ceiling was relaxed. The separately
+  captured post-Link DOM restoration fault and original clipboard/caret
+  observations are not yet proven resolved. See
+  `docs/WEBKIT_CLIPBOARD_INVESTIGATION.md`.
+  All 17 release gates pass: 1,560 native Rust tests, 25 Wasm-target tests,
+  1,242 TypeScript tests, 108 browser cases, 39 demo cases, and nine verifier
+  tests, with all 227 ABI signatures and size ceilings unchanged. Nothing
+  published.
+
+- Added a warm Link lifecycle regression covering raw form hydration, normalized
+  rendering, bounded undo history, and byte-exact checkpoint restoration with a
+  retained redo branch (300 cycles per engine). All three targeted cases pass.
+  The complete uninstrumented browser matrix passes 105 cases; browser-test
+  typechecking passes.
+  Further WebKit stress captured a distinct `queueUncertain` runtime fault after
+  formatted history replay and a caret move, before typing. Its trace and
+  unresolved status are retained in the clipboard investigation; no production
+  workaround or automatic command replay was added.
+
+- Expanded clipboard regressions across five optional/delayed/stale input-event
+  schedules, both selection directions, exactly-once Undo/Redo, and continued
+  typing. Added structural failure diagnostics and 1,000 fresh alternating
+  typed-profile owner lifetimes per engine with canonical export checks.
+  This is investigation coverage, not a claimed fix for the intermittent WebKit
+  clipboard, Undo, or startup faults. No production behavior or ABI changed.
+  Final uninstrumented matrices passed 102 browser and 39 demo cases; browser
+  typechecking passed. Earlier intermittent failures remain open.
+  See `docs/WEBKIT_CLIPBOARD_INVESTIGATION.md`.
+
 - Runtime faults now expose session-backup download in the React demo regardless
   of autosave state, without restarting the owner or retrying commands. Fixed a
   reproducible WebKit recovery blocker by clearing a toolbar form's wholly owned

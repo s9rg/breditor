@@ -1,0 +1,20 @@
+{
+  "format": "breditor/manual-clipboard-evidence",
+  "formatVersion": 1,
+  "outcome": "operator-confirmed",
+  "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+  "owner": { "phase": "live", "reason": null, "revision": "37" },
+  "firstFault": null,
+  "observedEvents": 4,
+  "pendingEvents": 0,
+  "droppedEvents": 0,
+  "trustedClipboardEvents": { "copy": 1, "cut": 1, "paste": 1 },
+  "operatorChecks": { "copy": true, "cut": true, "paste": true, "caret": true, "history": true, "formatting": true },
+  "events": [
+    { "sequence": 1, "kind": "copy", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": { "phase": "live", "reason": null, "revision": "10" }, "after": { "phase": "live", "reason": null, "revision": "10" } },
+    { "sequence": 2, "kind": "cut", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": { "phase": "live", "reason": null, "revision": "20" }, "after": { "phase": "live", "reason": null, "revision": "21" } },
+    { "sequence": 3, "kind": "beforeinput", "trusted": true, "inputType": "insertText", "defaultPrevented": true, "settled": true, "before": { "phase": "live", "reason": null, "revision": "23" }, "after": { "phase": "live", "reason": null, "revision": "24" } },
+    { "sequence": 4, "kind": "paste", "trusted": true, "inputType": null, "defaultPrevented": true, "settled": true, "before": { "phase": "live", "reason": null, "revision": "31" }, "after": { "phase": "live", "reason": null, "revision": "32" } }
+  ],
+  "environment": { "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15", "platform": "MacIntel" }
+}

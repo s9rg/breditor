@@ -1,0 +1,204 @@
+{
+  "status": "Four-site runtime mitigation integrated and qualified: all 17 release gates, minified browser matrix, automated/native restores and native Safari clipboard checklist passed; underlying JavaScriptCore defect unresolved",
+  "productionSourceChanged": true,
+  "sourceChange": {
+    "helper": "packages/breditor-browser/src/normalize_wasm_boundary_number.ts",
+    "descriptorSites": [
+      "readScalar captured return",
+      "invoke captured return",
+      "invoke2 captured return"
+    ],
+    "selectionSite": "single Reflect.get capture in selectionSnapshotFields.map",
+    "validatorsChangedThisCheckpoint": false,
+    "gettersRetried": false,
+    "rustOrWasmAbiChangedThisCheckpoint": false,
+    "publicEntrypointExportsAdded": false
+  },
+  "preservation": {
+    "snapshot": "target/boundary-preintegration-v93i3r",
+    "originalJsSha256": "7f619b5583e111dd6b42c3d7a6f84acc7ac443810cb733362b7f84a36d1b88fc",
+    "candidateJsSha256": "81c75327df04135e535b22f379037f8f288ab501558aca3aa13fda6d3a1b71ac",
+    "legacyBuildGuards": "Three actual build attempts rejected during config resolution, before output cleanup; original/candidate/clipboard-original entry hashes unchanged",
+    "newRuntimeOutputsSeparate": true,
+    "doubleNormalizationRejected": true
+  },
+  "automated": {
+    "normalEngineSettings": true,
+    "retries": 0,
+    "workers": 1,
+    "restoreCases": 5,
+    "restoresPerCase": 10000,
+    "selectionReadsPerCase": 30000,
+    "restoreCaseDeadlineMs": 30000,
+    "fullMatrixCases": 153,
+    "reports": [
+      {
+        "path": "/tmp/breditor-integrated-restore-a-20260926.json",
+        "sha256": "87146aad4083500ae168189fee54570d1ba0fec2bb3f5ed3c109eed0f214e931",
+        "stats": {
+          "startTime": "2026-09-27T01:50:01.527Z",
+          "duration": 52158.146,
+          "expected": 5,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "errors": []
+      },
+      {
+        "path": "/tmp/breditor-integrated-matrix-20260926.json",
+        "sha256": "1efc3ef839e85fa967fbb1fce532d84e46e5536f9f48aa30e6df1b444b85e651",
+        "stats": {
+          "startTime": "2026-09-27T01:50:54.243Z",
+          "duration": 167457.34,
+          "expected": 153,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "errors": []
+      }
+    ],
+    "artifacts": {
+      "target/selection-runtime-production/assets/breditor_wasm_bg-CPkoTgEM.wasm": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+      "target/selection-runtime-production/assets/index-WKkIHzZb.js": "465e19e9586ca245e99497295b2f345111d39786aded311e89ab8c7e6bf5233b",
+      "target/selection-runtime-production/index.html": "b5439aed560ab31fa84f3e32246a1c6e0090fc918d969232f07a0b7a26f06149",
+      "target/boundary-matrix-runtime/assets/advanced-BvRk9kiK.js": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "target/boundary-matrix-runtime/assets/advanced-x30l8dZH.js": "bafde1b07471f62f3be8d6c3938e94e3ab890747555d103a44490646ffd928ac",
+      "target/boundary-matrix-runtime/assets/breditor_wasm-CI1y1LP-.js": "9466cb667b44d3f8148650c9b284ffd318f341e183578e7160dcc36d9c0ff7a0",
+      "target/boundary-matrix-runtime/assets/breditor_wasm_bg-CPkoTgEM.wasm": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+      "target/boundary-matrix-runtime/assets/dom_selection-CoLwotNl.js": "de4809d7496d3d20b9e0ac661ab2064bb311f3937a2715e305ef081e98578167",
+      "target/boundary-matrix-runtime/assets/formatting_documents-BrmYJuAx.js": "df386e049395cdc07546b3e730ff17f3c88edf49073b6f8665ba2b1ad1648baa",
+      "target/boundary-matrix-runtime/assets/formatting_presentation-ClqZKw2l.js": "c25eaba6a2a24dee7cc25bc582d5df42f2ceac0365961da3ab8034c44aa2d27b",
+      "target/boundary-matrix-runtime/assets/index-CXaoKH_P.js": "8df354375c8152a7e36d5c20eff06f900958c3cd3d81947d85e3d4ade18db1b8",
+      "target/boundary-matrix-runtime/assets/manual-CrBMQ9Jl.js": "d92b52405ba40da77ee318f7571098f428b1c655e61c5a123fbfe48f7a218acf",
+      "target/boundary-matrix-runtime/assets/showcase_documents-YDXKdJNi.js": "56c008fc1d06f79f8905ad5803d84d932b3b4216e6e7cb9ffa9a435598caee8d",
+      "target/boundary-matrix-runtime/assets/showcase_presentation-hHnV1PpK.js": "78746cb10f1246dc5ac83771c47e9e1abbda7c9d141e2a8a25ae261738b65381",
+      "target/boundary-matrix-runtime/assets/showcase_profile-Cwnr5REb.js": "1191f6d2e786b33a07036d3a0c9c7fd4a8f4ec43aa4e1df474dd79dac944d7c7",
+      "target/boundary-matrix-runtime/assets/size_showcase_documents-C2CLh7Ig.js": "96b92d4fa1111b72ded034cc239d2f83d286ca10a904fecaa587c4de7971a7cb",
+      "target/boundary-matrix-runtime/assets/size_showcase_profile-BbVm3D8O.js": "43bd2c57f81404e346cb65027482b54e338c4792dc362284b5d26c3960cd9a5a",
+      "target/boundary-matrix-runtime/assets/styles-BKwVg2wd.js": "418c206484b89b68ef5f067277831e583fc9193a62aadf4de269acaaeb12a85f",
+      "target/boundary-matrix-runtime/assets/styles-Dld6ta9_.css": "4f9e74d11a019e92286c0ac940748967f0f42836289df2b831a92ca4436138da",
+      "target/boundary-matrix-runtime/assets/wasm_action_state_adapter-BMGBaAZ1.js": "576b1eba6122a14f34da389453a4f4fb4abc2e4dcdf7512f7b25397f2c6da16e",
+      "target/boundary-matrix-runtime/assets/wasm_engine_bootstrap-DF-8nrD_.js": "3265875e463f22fdd50e51e7ca629b5a2096b2ba7fedda4aab32922ab84482d7",
+      "target/boundary-matrix-runtime/index.html": "a81346fadc9c7cd0e02b89227e09e509df274276c034a91d1f35f1ed9efd38fc",
+      "target/boundary-matrix-runtime/manual-clipboard.html": "939a1debac9e45599815a88a48d832561e975d57e482d40430c646ce3f781292",
+      "target/boundary-matrix-runtime/probes/action_state_restore_probe.js": "2f73021a302abb17660619b6536c0a551195084e43bf577920c1402af946e0c1",
+      "target/boundary-matrix-runtime/probes/profile_descriptor_probe.js": "9e5a135b753b75822f360294f7645b4369e194be771903ea18c2f1418c0ddbb6",
+      "target/boundary-matrix-runtime/probes/profile_descriptor_raw_probe.js": "a090e91f8b3eec3d7619a2de14f41ab53f8cc400aaa667d233d1bd0af1ff1c9a",
+      "target/boundary-matrix-runtime/probes/profile_owner_lifecycle_probe.js": "c9df064a9fd4785c5344e6558f8e727d3fece32695922a1d9b042b89ea1b70d2",
+      "target/boundary-matrix-runtime/probes/selection_raw_restore_probe.js": "c51765dc91ba45338c0243d43985aaaf3c7f697ba9a312fe802260f28c924317",
+      "target/boundary-matrix-runtime/probes/selection_restore_probe.js": "e9ed3565b7f7a1e049fb425a839a148342781e20d30c67d0dd54a225578f22ef",
+      "packages/breditor-browser/dist/normalize_wasm_boundary_number.js": "90f5086e6595b1a9f0dd613b85a69ea289ecebb5fcfd9d1b680c400f12aa53df",
+      "packages/breditor-browser/dist/wasm_profile_descriptor.js": "0309de916d3a519273a7f434c98f81eff9e005c237fc433d03ecccf7c4e7fe39",
+      "packages/breditor-browser/dist/wasm_selection_adapter.js": "0f58ad826a8fc2c653a773d9ea45d6015cda1f3a4611d4912fd807f55eb5a6f4"
+    }
+  },
+  "nativeSafari": {
+    "version": "26.6.2",
+    "restore": {
+      "url": "http://127.0.0.1:4214/",
+      "variant": "runtime",
+      "bundleSha256": "465e19e9586ca245e99497295b2f345111d39786aded311e89ab8c7e6bf5233b",
+      "wasmSha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+      "runnerSha256": "2d27e8b9260b47f6076b90f34e82356cf1436cc201f30789d22aa3deff12a174",
+      "method": "Visible Start action; exact terminal counts, hashes and passed status verified in native screenshot because AX report truncates.",
+      "active": false,
+      "outcome": "passed",
+      "passed": 5,
+      "current": 5,
+      "completedRestores": 50000,
+      "completedSelectionReads": 150000,
+      "perBatchDeadlineMs": 30000
+    },
+    "clipboard": {
+      "url": "http://127.0.0.1:4215/manual-clipboard.html",
+      "artifactDirectory": "target/boundary-matrix-runtime",
+      "report": "docs/qualification/2026-09-26-safari-integrated-clipboard.json",
+      "reportSha256": "99d913bcd6deb6e0e26dd061d167bc73df448089a11bdb779a0be580279e0495",
+      "method": "Native Safari keyboard shortcuts, toolbar controls, AX and screenshot inspection; checks marked only after observations",
+      "outcome": "operator-confirmed",
+      "phase": "live",
+      "firstFault": null,
+      "observedEvents": 4,
+      "pendingEvents": 0,
+      "droppedEvents": 0,
+      "trustedClipboardEvents": {
+        "copy": 1,
+        "cut": 1,
+        "paste": 1
+      },
+      "observations": [
+        "Keyboard-selected fixture prefix Copy verified in scratch",
+        "Cut removed prefix once; scratch paste retained expected prefix",
+        "Two immediate right-arrow moves and ! typing after cut stayed live",
+        "Each Undo/Redo separately reverted/reapplied cut and typing once",
+        "Paste appended the prefix once; Undo restored original sample",
+        "Link apply/Undo/Redo synchronized URL form and rendered target; yellow Highlight survived"
+      ],
+      "clipboardSideEffect": "Only fixture sample Breditor copied/cut; previous clipboard contents not read or restored"
+    }
+  },
+  "limits": [
+    "The engine fault remains unresolved; mitigation success is bounded evidence, not a JavaScriptCore fix.",
+    "Native evidence covers one installed Safari build, not physical iOS or every native input path.",
+    "Some test/tooling jobs overlapped; durations are not performance benchmarks.",
+    "Earlier candidate results are not relabeled as integration results; integrated JS has a distinct hash.",
+    "The demo has only 198 bytes of compressed-JavaScript budget headroom. No size limit was raised.",
+    "Preserved comparison binaries and snapshot live under ignored target paths; cleaning target removes them. Records retain hashes/results, not a Git-backed binary archive."
+  ],
+  "releaseVerifier": {
+    "status": "passed",
+    "log": "/tmp/breditor-integrated-release-20260926.log",
+    "logSha256": "702917e87c99e061682f4d6a4a1f968e16ebf8564c6016c9ebd29585a79fcae3",
+    "gates": [
+      "gate-tests",
+      "rust-format",
+      "rust-lint",
+      "rust-tests",
+      "rust-docs",
+      "wasm-target-tests",
+      "typescript-tests",
+      "typescript-types",
+      "browser-test-types",
+      "demo-test-types",
+      "package-consumers",
+      "wasm-abi",
+      "demo-production",
+      "production-size",
+      "browser-matrix",
+      "demo-matrix",
+      "diff-whitespace"
+    ],
+    "ordinaryBrowserCases": 153,
+    "demoCases": 39,
+    "workspaceUnitTests": 1281,
+    "diagnosticUnitTests": 78,
+    "totalUnitTests": 1359,
+    "wasmAbiSignaturesUnchanged": 227,
+    "wasmAbiGeneration": 5,
+    "publishes": false
+  },
+  "postGateChecks": {
+    "qualifiedArtifactsStillMatch": true,
+    "packageAdaptersMatchPreGateMinifiedInputs": true,
+    "finalTwoAdapterPreservationGuardTests": "78 diagnostic tests and browser typechecking passed; three actual legacy builds rejected without altering control hashes"
+  },
+  "sizeBudgets": {
+    "allPassed": true,
+    "browserJavaScript": {
+      "bytes": 1081659,
+      "maximum": 1085000
+    },
+    "browserDeclarations": {
+      "bytes": 273038,
+      "maximum": 276000
+    },
+    "demoJavaScriptGzip": {
+      "bytes": 224802,
+      "maximum": 225000,
+      "remaining": 198
+    },
+    "wasmBytes": 1607514
+  }
+}

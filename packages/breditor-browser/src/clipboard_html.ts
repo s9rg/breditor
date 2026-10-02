@@ -16,6 +16,7 @@ import {
   type InlineFormatRenderAttribute,
 } from "./inline_format_render_attributes.js";
 import type { InlineFormatRenderRecipe } from "./inline_format_render_manifest.js";
+import { MAX_PLAIN_TEXT_PARAGRAPHS, normalizedParagraphCount } from "./plain_text_paragraph_count.js";
 
 /** Maximum UTF-16 code units read from one `text/html` clipboard item. */
 export const MAX_CLIPBOARD_HTML_SOURCE_UTF16 = 2 * 1024 * 1024;
@@ -37,7 +38,7 @@ export const MAX_CLIPBOARD_HTML_PROFILE_DEPTH =
   MAX_CLIPBOARD_HTML_FORMATS_PER_RUN + 2;
 
 /** Maximum source blocks and normalized plain-text paragraphs. */
-export const MAX_CLIPBOARD_HTML_PARAGRAPHS = 10_000;
+export const MAX_CLIPBOARD_HTML_PARAGRAPHS = MAX_PLAIN_TEXT_PARAGRAPHS;
 
 /** Stable, payload-redacted HTML clipboard failures. */
 export type ClipboardHtmlErrorCode =
@@ -636,20 +637,6 @@ function validText(node: TextNode): boolean {
 function consumeNodes(budget: AdmissionBudget, count: number): boolean {
   budget.nodes += count;
   return budget.nodes <= MAX_CLIPBOARD_HTML_NODES;
-}
-
-function normalizedParagraphCount(value: string): number {
-  let count = 1;
-  for (let index = 0; index < value.length; index += 1) {
-    const current = value.charCodeAt(index);
-    if (current === 0x0d) {
-      count += 1;
-      if (value.charCodeAt(index + 1) === 0x0a) index += 1;
-    } else if (current === 0x0a) {
-      count += 1;
-    }
-  }
-  return count;
 }
 
 function characterCount(value: string, codeUnit: number): number {

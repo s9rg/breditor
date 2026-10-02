@@ -236,6 +236,7 @@ interface BreditorBrowserHarness {
     initialHref?: string,
   ): Promise<ReferenceFormattingMountResult>;
   referenceFormattingDocument(probeId: string): string;
+  referenceFormattingSnapshot(probeId: string): BreditorBrowserEditorSnapshot;
   referenceFormattingBackup(probeId: string): string;
   restoreReferenceFormattingBackup(checkpointJson: string): Promise<string>;
   cleanupReferenceFormatting(probeId?: string): void;
@@ -348,14 +349,19 @@ async function start(): Promise<void> {
       const probe = referenceFormattingProbes.get(probeId);
       if (probe === undefined) throw new Error("missing formatting probe");
       const exported = probe.editor.exportContent("documentJson");
-      if (!exported.ok) throw new Error("formatting export failed");
+      if (!exported.ok) throw new Error(`formatting export failed: ${exported.error.code}`);
       return exported.value;
+    },
+    referenceFormattingSnapshot: (probeId: string) => {
+      const probe = referenceFormattingProbes.get(probeId);
+      if (probe === undefined) throw new Error("missing formatting probe");
+      return probe.editor.getSnapshot();
     },
     referenceFormattingBackup: (probeId: string) => {
       const probe = referenceFormattingProbes.get(probeId);
       if (probe === undefined) throw new Error("missing formatting probe");
       const exported = probe.editor.exportContent("sessionCheckpointJson");
-      if (!exported.ok) throw new Error("session backup failed");
+      if (!exported.ok) throw new Error(`session backup failed: ${exported.error.code}`);
       return exported.value;
     },
     restoreReferenceFormattingBackup: async (checkpointJson: string) => {

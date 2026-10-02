@@ -5,6 +5,7 @@ import {
   BreditorBrowserEventRouter,
   MAX_BROWSER_EVENT_ROUTER_SUBSCRIBERS,
   type BrowserEventRouterStatus,
+  type BrowserEventRouterOptions,
 } from "./browser_event_router.js";
 import { BreditorClipboardController } from "./clipboard_controller.js";
 import { BreditorCommandQueue } from "./command_queue.js";
@@ -879,6 +880,95 @@ describe("BreditorBrowserEventRouter", () => {
     expect(fixture.adapter.requests).toHaveLength(0);
   });
 
+  it.each(["rejected promise", "fulfilled promise", "thenable", "throwing getter", "throw", "inline", "inline promise"])(
+    "faults when the deferred repair scheduler returns %s and ignores retained callbacks",
+    async (kind) => {
+      const callbacks: Array<() => void> = [];
+      const fixture = setup((callback) => {
+        callbacks.push(callback);
+        if (kind === "inline" || kind === "inline promise") {
+          callback();
+          return kind === "inline promise" ? Promise.reject(new Error("inline scheduler failed")) : undefined;
+        }
+        if (kind === "throw") throw new Error("scheduling failed");
+        if (kind === "rejected promise") return Promise.reject(new Error("async scheduling failed"));
+        if (kind === "fulfilled promise") return Promise.resolve();
+        if (kind === "throwing getter") {
+          return { get then(): never { throw new Error("cannot read then"); } };
+        }
+        return { then(_resolve: unknown, reject: (reason: unknown) => void) {
+          reject(new Error("thenable scheduling failed"));
+        } };
+      });
+      const statuses: BrowserEventRouterStatus[] = [];
+      fixture.router.subscribe((status) => statuses.push(status));
+      fixture.adapter.host.dispatchEvent(new InputEvent("beforeinput", {
+        bubbles: true, cancelable: false, inputType: "insertText", data: "x",
+      }));
+      expect(fixture.router.status).toEqual({ kind: "faulted", reason: "reconciliationFailed" });
+      expect(statuses).toEqual([fixture.router.status]);
+      expect(callbacks).toHaveLength(1);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fixture.adapter.host.firstElementChild?.append("native-drift");
+      callbacks[0]!();
+      callbacks[0]!();
+      fixture.adapter.host.dispatchEvent(inputEvent("input", "insertText", "x"));
+      fixture.adapter.host.dispatchEvent(keyEvent("b", "KeyB", { ctrlKey: true }));
+      expect(fixture.adapter.restoreCalls).toBe(0);
+      expect(fixture.adapter.requests).toHaveLength(0);
+      expect(statuses).toHaveLength(1);
+      fixture.router.dispose();
+    },
+  );
+
+  it.each(["task", "input"])("blocks reentrant commands during deferred DOM repair via %s", (trigger) => {
+    const fixture = setup();
+    fixture.adapter.host.dispatchEvent(new InputEvent("beforeinput", {
+      bubbles: true, cancelable: false, inputType: "insertText", data: "x",
+    }));
+    fixture.adapter.host.firstElementChild?.append("native-drift");
+    const restore = fixture.adapter.restoreCanonicalRender.bind(fixture.adapter);
+    vi.spyOn(fixture.adapter, "restoreCanonicalRender").mockImplementation(() => {
+      const result = restore();
+      installDomSelection(fixture.adapter.host, 1);
+      fixture.adapter.host.dispatchEvent(keyEvent("b", "KeyB", { ctrlKey: true }));
+      return result;
+    });
+
+    if (trigger === "task") fixture.scheduler.runAll();
+    else fixture.adapter.host.dispatchEvent(inputEvent("input", "insertText", "x"));
+
+    expect(fixture.adapter.requests).toHaveLength(0);
+    expect(fixture.router.status).toEqual({ kind: "faulted", reason: "eventDispatchFailed" });
+    expect(fixture.adapter.restoreCalls).toBe(1);
+    fixture.scheduler.runAll();
+    expect(fixture.adapter.restoreCalls).toBe(1);
+    fixture.router.dispose();
+  });
+
+  it.each(["task", "input"])("releases the repair guard and admits the next command after %s repair", (trigger) => {
+    const fixture = setup();
+    fixture.adapter.host.dispatchEvent(new InputEvent("beforeinput", {
+      bubbles: true, cancelable: false, inputType: "insertText", data: "x",
+    }));
+    fixture.adapter.host.firstElementChild?.append("native-drift");
+    const callback = fixture.scheduler.tasks[0]!.callback;
+    if (trigger === "task") fixture.scheduler.runAll();
+    else fixture.adapter.host.dispatchEvent(inputEvent("input", "insertText", "x"));
+    callback();
+    callback();
+    expect(fixture.adapter.restoreCalls).toBe(1);
+    expect(fixture.adapter.rendered.validateCanonicalDom()).toBe(true);
+    expect(fixture.router.status).toEqual({ kind: "live" });
+    installDomSelection(fixture.adapter.host, 1);
+    fixture.adapter.host.dispatchEvent(keyEvent("b", "KeyB", { ctrlKey: true }));
+    expect(fixture.adapter.requests).toHaveLength(1);
+    expect(fixture.router.status).toEqual({ kind: "live" });
+    fixture.scheduler.runAll();
+    expect(fixture.adapter.restoreCalls).toBe(1);
+    fixture.router.dispose();
+  });
+
   it("reports queue uncertainty and never attempts a replay", () => {
     const fixture = setup();
     installDomSelection(fixture.adapter.host, 1);
@@ -1098,7 +1188,7 @@ describe("BreditorBrowserEventRouter", () => {
   });
 });
 
-function setup(): Fixture {
+function setup(scheduleTask?: BrowserEventRouterOptions["scheduleTask"]): Fixture {
   const adapter = new FakeAdapter(projection());
   const selection = BaseRangeSelection.create(adapter.projection, {
     kind: "range",
@@ -1115,7 +1205,7 @@ function setup(): Fixture {
   const router = new BreditorBrowserEventRouter(
     queue,
     adapter as unknown as BreditorWasmCommandAdapter,
-    options(scheduler),
+    { ...options(scheduler), ...(scheduleTask === undefined ? {} : { scheduleTask }) },
   );
   return { adapter, queue, router, scheduler };
 }

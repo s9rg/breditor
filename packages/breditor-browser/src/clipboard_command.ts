@@ -6,6 +6,7 @@ import {
   type EditorSelectionSync,
   type EngineCommandRequest,
 } from "./editor_command.js";
+import { MAX_PLAIN_TEXT_PARAGRAPHS, normalizedParagraphCount } from "./plain_text_paragraph_count.js";
 
 /**
  * Creates the exact deletion admitted only after a cut write has succeeded.
@@ -31,14 +32,15 @@ export function cutDeleteRequest(
  *
  * Reading DataTransfer data and reducing HTML to plain text happen before this
  * pure boundary. Empty, oversized, or ill-formed strings are rejected by the
- * shared browser command-text contract.
+ * shared browser command-text contract. The normalized source-paragraph count
+ * must also fit Rust's plain-text input contract before dispatch can occur.
  */
 export function pasteInsertRequest(
   delivery: EditorDeliveryToken,
   selection: EditorSelectionSync,
   text: string,
 ): EngineCommandRequest {
-  return stringActionRequest(
+  const request = stringActionRequest(
     delivery,
     selection,
     Object.freeze({ kind: "clipboard", detail: "paste" }),
@@ -46,4 +48,10 @@ export function pasteInsertRequest(
     text,
     "closeBefore",
   );
+  // The generic factory has already rejected foreign, malformed and oversized
+  // values, so counting cannot invoke coercion hooks or scan unbounded input.
+  if (normalizedParagraphCount(text) > MAX_PLAIN_TEXT_PARAGRAPHS) {
+    throw new RangeError("clipboard paste exceeds the source paragraph limit");
+  }
+  return request;
 }

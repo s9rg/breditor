@@ -1,0 +1,380 @@
+{
+  "date": "2026-10-01",
+  "format": "breditor/consolidation-qualification",
+  "baseCommit": "64fcee8529fc0784759cf347729de87e79b97853",
+  "version": "0.3.0-alpha.22",
+  "scope": "Accumulated dirty-worktree fixes, not the clean base commit alone. No push or publication.",
+  "release": {
+    "command": "npm run verify:release",
+    "exitCode": 0,
+    "gatesPassed": 17,
+    "rustAndDocTests": 1560,
+    "wasmTargetTests": 25,
+    "browserRuntimeTests": 1378,
+    "otherPackageTests": 90,
+    "diagnosticTests": 170,
+    "browserCases": 159,
+    "demoCases": 39,
+    "retries": 0,
+    "applicationGzipBytes": 224950,
+    "applicationGzipLimit": 225000,
+    "browserTarballBytes": 269061,
+    "browserTarballLimit": 270000
+  },
+  "additionalLongDocumentQualification": {
+    "paragraphs": 250,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "passed": 3,
+    "retries": 0,
+    "covers": "Unicode, backward selection, whole-document Bold, exact Undo/Redo, persisted redo and real reload",
+    "typecheck": "passed",
+    "runLogSha256": "fee91ba64f4c69af8775f6e6200d0d34d2e4645175427305411b5f52b92c892c",
+    "typecheckLogSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2",
+    "initialSetupFailure": "The first command omitted node_modules/.bin from PATH; Vite failed to launch before tests ran. Corrected PATH; no test retry policy changed.",
+    "scope": "Added after the 17-gate baseline. This is correctness coverage, not a latency benchmark or native-clipboard test."
+  },
+  "packageIsolation": {
+    "exactBrowserAllowlistFiles": 137,
+    "additionalPackageConsumerGate": "passed after adding the allowlist; no runtime changes",
+    "testAndDiagnosticFilesShipped": false
+  },
+  "native": {
+    "method": "Native app controls and keyboard shortcuts through computer use; not injected ClipboardEvents. Only disposable fixture text.",
+    "os": {
+      "version": "26.6.2",
+      "build": "25G83"
+    },
+    "url": "http://127.0.0.1:4186/manual-clipboard.html",
+    "safari": {
+      "version": "26.6.2",
+      "build": "21624.5.1.11.3",
+      "outcome": "operator-confirmed",
+      "revision": "59",
+      "events": 6,
+      "copy": 2,
+      "cut": 2,
+      "paste": 1,
+      "firstFault": null,
+      "pending": 0,
+      "dropped": 0,
+      "checks": [
+        "independent Copy sentinel replacement",
+        "independent Cut sentinel replacement and one deletion",
+        "immediate caret movement and typing near emoji",
+        "separate Cut and typing Undo/Redo",
+        "single native Paste insertion",
+        "Link changed/original/changed URL and retained Highlight"
+      ],
+      "numericProbe": {
+        "runs": 5,
+        "passed": 5,
+        "iterationsPerRun": 10000,
+        "checksPerRun": 150000
+      }
+    },
+    "chrome": {
+      "installedVersion": "154.0.8037.93",
+      "runningUserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "outcome": "operator-confirmed",
+      "revision": "58",
+      "events": 6,
+      "copy": 2,
+      "cut": 2,
+      "paste": 1,
+      "firstFault": null,
+      "pending": 0,
+      "dropped": 0,
+      "sameSixChecksAsSafari": true,
+      "numericProbe": {
+        "runs": 5,
+        "passed": 5,
+        "iterationsPerRun": 10000,
+        "checksPerRun": 150000
+      }
+    },
+    "simulator": {
+      "device": "iPhone 17 Pro",
+      "os": "iOS 26.5",
+      "outcome": "incomplete",
+      "observations": [
+        "real editor loaded live",
+        "hardware-keyboard selection handles appeared",
+        "native Cut removed a prefix; native Undo restored it"
+      ],
+      "limits": "Requested eight-key selection and punctuation insertion were not reliably delivered by automation. No complete clipboard, touch-selection or soft-keyboard pass is claimed. Other Tempo QA simulator windows were left untouched."
+    },
+    "abandonedSetup": "An initial Safari Command-Home key sequence navigated away from the fixture. A fresh fixture was loaded before the recorded checklist. No pass is attributed to that abandoned setup.",
+    "systemClipboardAfterChecks": "Breditor"
+  },
+  "artifacts": [
+    {
+      "path": "packages/breditor-browser/dist/wasm_projection_adapter.js",
+      "sha256": "007d17eb7ce31ddf43d57b24362167c2873916e38cd3530e364da33481426c55"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_selection_adapter.js",
+      "sha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_profile_descriptor.js",
+      "sha256": "767bb9f0032fc639f2a4e82ebb5ed41f4271f4af9d067432e5c55081a73aeb1d"
+    },
+    {
+      "path": "packages/breditor-wasm/dist/breditor_wasm_bg.wasm",
+      "sha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41"
+    },
+    {
+      "path": "tests/browser/harness/manual_clipboard.ts",
+      "sha256": "c8524a23c5a3a52e068fcd926c582c56c0b1e157330343d6f06889990f04bc80"
+    },
+    {
+      "path": "/tmp/breditor-native-range-20261001.mjs",
+      "sha256": "83c83a115f011941f94acd2a000f91d24ae014e0939424d793cdcfa12a04bce0"
+    },
+    {
+      "path": "/tmp/breditor-release-consolidation-20261001.log",
+      "sha256": "dc8f468926e0a626bcda3e0c8a7a7c60d545debbaf4620539c1fc16aa27d656e"
+    },
+    {
+      "path": "/tmp/breditor-package-allowlist-20261001.log",
+      "sha256": "546cfee8c36462588401c2c2d53a9405c1376408dafb0d4291ac3a7f7057d2ec"
+    },
+    {
+      "path": "/tmp/breditor-webkit-normal-20261001.jsonl",
+      "sha256": "e02e82270a613a56507c52b38672b3ceb4df919a6ebedd301bff3d8d4fb577b3"
+    },
+    {
+      "path": "/tmp/breditor-webkit-normal-20261001.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "numerical": {
+    "mode": "normal",
+    "playwrightVersion": "1.63.0",
+    "browserVersion": "26.6",
+    "executable": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/browsers/webkit-2359/pw_run.sh",
+    "sources": [
+      {
+        "path": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/node_modules/playwright/index.mjs",
+        "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+      },
+      {
+        "path": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/node_modules/playwright/package.json",
+        "sha256": "8bc2ddebe8d9b051b9ecb87d62c6c63877e59d08617f32c3215681ca8bb70998"
+      },
+      {
+        "path": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/browsers/webkit-2359/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+        "sha256": "3b7a36e9dcfd9b0892e8996c60ac3c7ffbd577102c58fb7de61c2d96c0f1b107"
+      },
+      {
+        "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+        "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+      },
+      {
+        "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+        "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+      }
+    ],
+    "runs": [
+      {
+        "attempt": 1,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 2,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 3,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 4,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 5,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 6,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 7,
+        "outcome": "numeric-failure",
+        "failure": {
+          "iteration": 2001,
+          "representation": 4,
+          "original": false,
+          "captured": {
+            "accepted": false,
+            "type": true,
+            "integer": true,
+            "lower": false
+          },
+          "upper": true,
+          "value": {
+            "decimal": "0",
+            "bits": "0000000000000000"
+          },
+          "maximum": {
+            "decimal": "4294967295",
+            "bits": "41efffffffe00000"
+          },
+          "recheck": {
+            "accepted": false,
+            "type": true,
+            "integer": true,
+            "lower": false
+          },
+          "staged": {
+            "literal": {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            "typed": {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            "parsed": {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            "converted": {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            "selected": {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            }
+          },
+          "sourceIndex": {
+            "decimal": "1",
+            "bits": "3ff0000000000000"
+          },
+          "values": [
+            {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            {
+              "decimal": "2048",
+              "bits": "40a0000000000000"
+            },
+            {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            }
+          ],
+          "sources": {
+            "literal": [
+              {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            ],
+            "parsed": [
+              {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            ],
+            "typed": [
+              {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            ],
+            "frozen": {
+              "revision": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "maximum": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            }
+          }
+        }
+      },
+      {
+        "attempt": 8,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 9,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      },
+      {
+        "attempt": 10,
+        "outcome": "passed",
+        "result": {
+          "iterations": "10000",
+          "checks": "150000"
+        }
+      }
+    ]
+  },
+  "unresolved": [
+    "Standalone numerical fault: WebKit 2359 normal mode, attempt 7, iteration 2001, array slot 4 is zero while source local selected is 2048.",
+    "Historical selection-endpoint rejection; these passing matrices do not prove its cause or repair.",
+    "No accessible second computer, no physical-device run, and no configured native CJK IME.",
+    "Headings and lists are not implemented; existing Link functionality is already qualified."
+  ],
+  "inference": "The numerical reduction excludes Rust, Wasm and the editor, but does not determine the ultimate engine, operating-system or hardware cause."
+}

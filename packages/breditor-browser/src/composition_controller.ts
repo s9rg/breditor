@@ -6,6 +6,7 @@ import {
   type CommandQueueLeasedSubmission,
 } from "./command_queue.js";
 import type { CompositionDeliveryToken } from "./composition_delivery_token.js";
+import { containAsyncRejection } from "./contain_async_rejection.js";
 import {
   classifyCompositionEvidence,
   compositionInputType,
@@ -120,7 +121,9 @@ export type CompositionControllerDisposition =
 
 /** Scheduling and observation hooks; neither receives native event payloads. */
 export interface CompositionControllerOptions {
+  /** Enqueue a later task synchronously; promise/thenable returns are invalid. */
   readonly scheduleTask?: (callback: () => void) => void;
+  /** Observational only; thrown errors and async rejections are contained. */
   readonly onSettlement?: (result: CompositionControllerNotification) => void;
 }
 
@@ -213,8 +216,9 @@ export class BreditorCompositionController {
     }
     const surface = adapter as AdapterSurface;
     let adapterValid = false;
+    let executor: AdapterSurface["commandExecutor"] | undefined;
     try {
-      const executor = surface.commandExecutor;
+      executor = surface.commandExecutor;
       adapterValid =
         typeof executor === "function" &&
         surface.commandExecutor === executor &&
@@ -232,10 +236,10 @@ export class BreditorCompositionController {
     } catch {
       adapterValid = false;
     }
-    if (!adapterValid) {
+    if (!adapterValid || executor === undefined) {
       throw new TypeError("composition adapter is invalid");
     }
-    const queuePort = openCommandQueueLeasePort(queue, surface.commandExecutor);
+    const queuePort = openCommandQueueLeasePort(queue, executor);
     if (queuePort === undefined) {
       throw new TypeError("composition queue must own the adapter executor");
     }
@@ -264,6 +268,10 @@ export class BreditorCompositionController {
 
   /** True while any composition or recovery lease still excludes normal work. */
   get active(): boolean {
+    return this.#isActive();
+  }
+
+  #isActive(): boolean {
     return this.#state.phase !== "idle" && this.#state.phase !== "disposed";
   }
 
@@ -344,7 +352,7 @@ export class BreditorCompositionController {
     if (base === null || base.type !== "beforeinput") {
       return this.#invalidEvent(false);
     }
-    if (this.active) {
+    if (this.#isActive()) {
       const admission = this.#admitActiveTarget(base.target);
       if (admission !== null) return admission;
     }
@@ -356,9 +364,9 @@ export class BreditorCompositionController {
     const inputType = compositionInputType(snapshot.value.inputType);
     const quirk =
       isCompositionInputQuirk(snapshot.value.inputType) &&
-      (this.active || snapshot.value.isComposing);
+      (this.#isActive() || snapshot.value.isComposing);
     if (inputType === null && !quirk) {
-      if (!this.active) {
+      if (!this.#isActive()) {
         this.#invalidateLateInputForOwnedIdleTarget(base.target);
         return ignored("notComposition");
       }
@@ -408,7 +416,7 @@ export class BreditorCompositionController {
     if (this.#state.phase === "disposed") return recovery("disposed");
     const base = readDomEventBase(event);
     if (base === null || base.type !== "input") return this.#invalidEvent(false);
-    if (this.active) {
+    if (this.#isActive()) {
       const admission = this.#admitActiveTarget(base.target);
       if (admission !== null) return admission;
     }
@@ -420,9 +428,9 @@ export class BreditorCompositionController {
     const standardInputType = compositionInputType(snapshot.value.inputType);
     const quirk =
       isCompositionInputQuirk(snapshot.value.inputType) &&
-      (this.active || snapshot.value.isComposing || this.#lateInput !== undefined);
+      (this.#isActive() || snapshot.value.isComposing || this.#lateInput !== undefined);
     if (standardInputType === null && !quirk) {
-      return this.active
+      return this.#isActive()
         ? this.#quarantine("unexpectedMutation")
         : ignored("notComposition");
     }
@@ -494,6 +502,11 @@ export class BreditorCompositionController {
 
   /** Attempts canonical restoration, releases the exact queue lease, and exits quarantine. */
   recover(): CompositionControllerDisposition {
+    return this.#recover();
+  }
+
+  /** Scheduled recovery must use the same implementation, not a public override. */
+  #recover(): CompositionControllerDisposition {
     if (this.#state.phase === "disposed") return recovery("disposed");
     if (this.#state.phase !== "quarantined") return ignored("inactive");
     const active = this.#active;
@@ -816,7 +829,7 @@ export class BreditorCompositionController {
   }
 
   #invalidEvent(invalidText: boolean): CompositionControllerDisposition {
-    return this.active
+    return this.#isActive()
       ? this.#quarantine(invalidText ? "invalidText" : "invalidEvent")
       : recovery(invalidText ? "invalidText" : "invalidEvent");
   }
@@ -868,7 +881,7 @@ export class BreditorCompositionController {
       ) {
         return;
       }
-      const result = this.recover();
+      const result = this.#recover();
       if (result.kind === "recovered" || result.kind === "recoveryRequired") {
         this.#notify(result);
       }
@@ -922,7 +935,7 @@ export class BreditorCompositionController {
     let invoked = false;
     let synchronous = false;
     try {
-      this.#scheduleTask(() => {
+      const returned: unknown = this.#scheduleTask(() => {
         if (invoked) return;
         invoked = true;
         if (scheduling) {
@@ -931,7 +944,16 @@ export class BreditorCompositionController {
         }
         callback();
       });
+      if (containAsyncRejection(returned)) {
+        invoked = true;
+        scheduling = false;
+        return false;
+      }
     } catch {
+      // A scheduler may retain the callback before throwing. Revoke that
+      // delivery as well as reporting failure; it must not later recover a
+      // quarantined composition or release its queue lease.
+      invoked = true;
       scheduling = false;
       return false;
     }
@@ -941,7 +963,7 @@ export class BreditorCompositionController {
 
   #notify(result: CompositionControllerNotification): void {
     try {
-      this.#onSettlement?.(result);
+      containAsyncRejection(this.#onSettlement?.(result));
     } catch {
       // Observer failure cannot rewrite an already completed lifecycle result.
     }

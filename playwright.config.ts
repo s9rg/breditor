@@ -4,7 +4,7 @@ const PORT = 4_173;
 
 export default defineConfig({
   testDir: "./tests/browser",
-  testIgnore: "**/harness/**",
+  testIgnore: ["**/harness/**", "**/diagnostics/**"],
   outputDir: "./target/playwright-results",
   globalTimeout: 8 * 60_000,
   timeout: 30_000,
@@ -38,7 +38,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      "vite tests/browser/harness --host 127.0.0.1 --port 4173 --strictPort --force",
+      "vite --config vite.browser.config.ts --host 127.0.0.1 --port 4173 --strictPort --force",
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: false,
     timeout: 30_000,

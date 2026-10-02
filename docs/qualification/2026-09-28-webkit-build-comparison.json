@@ -1,0 +1,927 @@
+{
+  "date": "2026-09-28",
+  "format": "breditor/webkit-build-comparison",
+  "conclusion": "The identical pinned JS-only staged probe fails on both WebKit 2336 and isolated stable WebKit 2359. No dependency upgrade or production fix adopted. No debugger, developer VM, Rust, Wasm, or editor DOM involved. Native-memory confirmation belongs to separate old-engine cold captures; this comparison records JS failures.",
+  "runs": [
+    {
+      "name": "old-a",
+      "logs": [
+        {
+          "path": "/tmp/breditor-webkit-upgrade-old-a-20260928.jsonl",
+          "sha256": "ac5e33ee7d020733b8f01240b452dbbfb2a82af47acb83ef7fc01a7e2632c928"
+        },
+        {
+          "path": "/tmp/breditor-webkit-upgrade-old-a-20260928.stderr",
+          "sha256": "f5ec0c064f79e0eb3c69e2d78eca606ca451609ba23ca1481f1ae6cdbba8ff70"
+        }
+      ],
+      "effectiveJitFalseObservations": 20,
+      "sources": [
+        {
+          "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+          "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+        },
+        {
+          "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+          "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+          "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+        }
+      ],
+      "playwrightVersion": "1.62.1",
+      "browserVersion": "26.5",
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 2,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 3,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 4,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 5,
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 5811,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "new-a",
+      "logs": [
+        {
+          "path": "/tmp/breditor-webkit-upgrade-new-a-20260928.jsonl",
+          "sha256": "10813fe82250bd2511d0df35957b05c32f9ac5c70c523bbc2686a1c1ead137a2"
+        },
+        {
+          "path": "/tmp/breditor-webkit-upgrade-new-a-20260928.stderr",
+          "sha256": "45c75148227904e1f39441113124ecf3f2381cb5b9f065cbf9640929ffac992e"
+        }
+      ],
+      "effectiveJitFalseObservations": 40,
+      "sources": [
+        {
+          "path": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/node_modules/playwright/index.mjs",
+          "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+        },
+        {
+          "path": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/node_modules/playwright/package.json",
+          "sha256": "8bc2ddebe8d9b051b9ecb87d62c6c63877e59d08617f32c3215681ca8bb70998"
+        },
+        {
+          "path": "/tmp/breditor-webkit-upgrade-20260928.XgaR5h/browsers/webkit-2359/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "3b7a36e9dcfd9b0892e8996c60ac3c7ffbd577102c58fb7de61c2d96c0f1b107"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+          "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+        }
+      ],
+      "playwrightVersion": "1.63.0",
+      "browserVersion": "26.6",
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 2,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 3,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 4,
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 371,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 5,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 6,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 7,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 8,
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 8611,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 9,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 10,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "old-b",
+      "logs": [
+        {
+          "path": "/tmp/breditor-webkit-upgrade-old-b-20260928.jsonl",
+          "sha256": "1c1e0e1c95b4b0cb1f2b402a10b70f1844f4a6bc55d3b195cab83ed93b01f86a"
+        },
+        {
+          "path": "/tmp/breditor-webkit-upgrade-old-b-20260928.stderr",
+          "sha256": "bd60b92e40d30e24e555156b239311ce8fea158c91eb45b3f100fbf48af1f1b0"
+        }
+      ],
+      "effectiveJitFalseObservations": 20,
+      "sources": [
+        {
+          "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+          "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+        },
+        {
+          "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+          "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+          "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+        }
+      ],
+      "playwrightVersion": "1.62.1",
+      "browserVersion": "26.5",
+      "attempts": [
+        {
+          "attempt": 1,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 2,
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 4831,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 3,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 4,
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "attempt": 5,
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 2361,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        }
+      ]
+    }
+  ]
+}

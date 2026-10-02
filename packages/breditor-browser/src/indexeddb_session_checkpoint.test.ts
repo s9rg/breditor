@@ -240,6 +240,83 @@ async function seedProfileRecord(
 }
 
 describe("IndexedDbSessionCheckpointStore", () => {
+  describe.each([false, true, "throw"] as const)("shadowed closed status: %s", (shadow) => {
+    function shadowClosed(store: IndexedDbSessionCheckpointStore): ReturnType<typeof vi.fn> {
+      const read = vi.fn(() => {
+        if (shadow === "throw") throw new Error("observational status getter");
+        return shadow;
+      });
+      Object.defineProperty(store, "closed", { get: read });
+      return read;
+    }
+
+    it("loads an empty live store without consulting public status", async () => {
+      const { store } = createStore();
+      const read = shadowClosed(store);
+      try {
+        await expect(store.load()).resolves.toMatchObject({ ok: true, status: "empty" });
+        expect(read).not.toHaveBeenCalled();
+      } finally {
+        store.close();
+      }
+    });
+
+    it("saves a live store without consulting public status", async () => {
+      const { store } = createStore();
+      try {
+        const loaded = await store.load();
+        if (!loaded.ok) throw new Error(loaded.error.code);
+        const read = shadowClosed(store);
+        await expect(store.save(loaded.token, "{}")).resolves.toMatchObject({ ok: true, status: "saved" });
+        expect(read).not.toHaveBeenCalled();
+      } finally {
+        store.close();
+      }
+    });
+
+    it("does not digest a save after the owner closes", async () => {
+      const { store, digest } = createStore();
+      try {
+        const loaded = await store.load();
+        if (!loaded.ok) throw new Error(loaded.error.code);
+        const read = shadowClosed(store);
+        store.close();
+        await expect(store.save(loaded.token, "{}")).resolves.toMatchObject({
+          ok: false, error: { code: "session_checkpoint.connection" },
+        });
+        expect(digest.calls).toBe(0);
+        expect(read).not.toHaveBeenCalled();
+      } finally {
+        store.close();
+      }
+    });
+
+    it("does not publish a loaded checkpoint after closure during its digest", async () => {
+      const digest = digestFixture();
+      let closeDuringDigest = false;
+      const store = new IndexedDbSessionCheckpointStore({
+        indexedDB: new IDBFactory(),
+        crypto: { digest(algorithm, data) {
+          if (closeDuringDigest) store.close();
+          return digest.crypto.digest(algorithm, data);
+        } },
+      });
+      try {
+        const empty = await store.load();
+        if (!empty.ok) throw new Error(empty.error.code);
+        expect((await store.save(empty.token, "{}")).ok).toBe(true);
+        const read = shadowClosed(store);
+        closeDuringDigest = true;
+        await expect(store.load()).resolves.toMatchObject({
+          ok: false, error: { code: "session_checkpoint.connection" },
+        });
+        expect(read).not.toHaveBeenCalled();
+      } finally {
+        store.close();
+      }
+    });
+  });
+
   it("creates only the exact out-of-line single-store schema and loads an empty token", async () => {
     const { factory, store } = createStore();
     const loaded = await store.load();
@@ -1151,6 +1228,95 @@ describe("IndexedDbSessionCheckpointStore", () => {
       ok: false,
       error: { code: "session_checkpoint.connection" },
     });
+  });
+
+  it.each([[1, false], [3, false], [1, true]] as const)("settles %i loads on close and cleans up the late handle (validating: %s)", async (count, validating) => {
+    const factory = new IDBFactory();
+    const database = await openDatabase(factory, 1, (opened) => {
+      opened.createObjectStore(SESSION_CHECKPOINT_OBJECT_STORE_NAME);
+    });
+    let validation: Promise<void> | undefined;
+    const transaction = database.transaction.bind(database);
+    const transactionSpy = vi.spyOn(database, "transaction").mockImplementation((...args) => {
+      const active = transaction(...args);
+      validation = new Promise((resolve) => {
+        active.addEventListener("complete", () => resolve());
+        active.addEventListener("abort", () => resolve());
+      });
+      return active;
+    });
+    // Hold open completion to model a blocked browser request deterministically.
+    // The late success still supplies a real fake-indexeddb connection.
+    const request = { result: database } as IDBOpenDBRequest;
+    const open = vi.fn(() => request);
+    const proxy = new Proxy(factory, {
+      get(target, property, receiver) {
+        return property === "open" ? open : Reflect.get(target, property, receiver);
+      },
+    });
+    const store = createStore(proxy).store;
+    const results: unknown[] = [];
+    const loads = Array.from({ length: count }, () => store.load().then((result) => {
+      results.push(result);
+      return result;
+    }));
+    try {
+      expect(open).toHaveBeenCalledOnce();
+      if (validating) {
+        request.onsuccess?.(new Event("success"));
+        expect(validation).toBeDefined();
+      }
+      store.close();
+      store.close();
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      expect(results).toHaveLength(count);
+      for (const result of results) {
+        expect(result).toMatchObject({ ok: false, error: { code: "session_checkpoint.connection" } });
+      }
+      request.onsuccess?.(new Event("success"));
+      await validation;
+      for (let index = 0; index < 8; index += 1) await Promise.resolve();
+      expect(() => database.transaction(SESSION_CHECKPOINT_OBJECT_STORE_NAME)).toThrow();
+      await expect(store.load()).resolves.toMatchObject({
+        ok: false, error: { code: "session_checkpoint.connection" },
+      });
+      expect(open).toHaveBeenCalledOnce();
+    } finally {
+      // Also releases the original implementation's unresolved loads on failure.
+      request.onsuccess?.(new Event("success"));
+      await Promise.all(loads);
+      store.close();
+      transactionSpy.mockRestore();
+      database.close();
+    }
+  });
+
+  it("aborts a late upgrade and suppresses blocked notifications after close", async () => {
+    const createObjectStore = vi.fn();
+    const abort = vi.fn();
+    const blocked = vi.fn();
+    const request = {
+      result: { createObjectStore },
+      transaction: { abort },
+    } as unknown as IDBOpenDBRequest;
+    const factory = new Proxy(new IDBFactory(), {
+      get(target, property, receiver) {
+        return property === "open" ? () => request : Reflect.get(target, property, receiver);
+      },
+    });
+    const store = createStore(factory, digestFixture(), blocked).store;
+    const load = store.load();
+    store.close();
+    await expect(load).resolves.toMatchObject({
+      ok: false, error: { code: "session_checkpoint.connection" },
+    });
+    const upgrade = new Event("upgradeneeded");
+    Object.defineProperty(upgrade, "oldVersion", { value: 0 });
+    request.onupgradeneeded?.(upgrade as IDBVersionChangeEvent);
+    request.onblocked?.(new Event("blocked") as IDBVersionChangeEvent);
+    expect(abort).toHaveBeenCalledOnce();
+    expect(createObjectStore).not.toHaveBeenCalled();
+    expect(blocked).not.toHaveBeenCalled();
   });
 
   it("prefers a causal transaction quota error over induced request aborts", async () => {

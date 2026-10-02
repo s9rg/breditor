@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Breditor · manual clipboard qualification</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      #fixture { width: min(58rem, calc(100% - 2rem)); }
+      #toolbar > [role="toolbar"] { flex-wrap: wrap; }
+      li { margin-block: .75rem; }
+      label { display: block; margin-block: .75rem; }
+      textarea { width: 100%; min-height: 7rem; padding: .75rem; font: inherit; }
+      #report { min-height: 18rem; font-family: monospace; font-size: .85rem; }
+      #capture-report { min-height: 2.75rem; margin-block: 1rem; }
+      fieldset { margin-block: 1rem; }
+      #status { font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <main id="fixture">
+      <h1>Manual clipboard qualification</h1>
+      <p>Disposable editor, real Rust/Wasm core. Nothing is saved. Use only this
+        sample and non-sensitive test text. Copy and Cut performed by you will
+        replace your system clipboard. This page never calls clipboard APIs on its own.</p>
+      <p>The report contains bounded event metadata, owner status and revision,
+        browser identification, and self-reported checks—not text, HTML, URLs,
+        clipboard contents, or document/history exports. Inspect before sharing.</p>
+      <p id="status" role="status">Starting editor…</p>
+      <div id="toolbar"></div>
+      <div id="editor"></div>
+      <ol>
+        <li>Select <strong>Breditor</strong> in the editor. Use the browser's native
+          Copy command. Paste into the scratch area below (or a separate app) and verify the exact text.</li>
+        <li>Select <strong>Breditor</strong> again and use native Cut. Verify it is
+          deleted exactly once and can be pasted correctly outside the editor.</li>
+        <li>Immediately move the editor caret after the emoji and type <strong>!</strong>.
+          Verify the caret, text and editor remain usable.</li>
+        <li>Use toolbar Undo twice, then Redo twice. Verify the cut and typing each
+          replay once. Undo twice again to restore the original sample.</li>
+        <li>Place the caret at the end and use native Paste. Verify one insertion
+          of <strong>Breditor</strong>, without duplicated text. Undo it.</li>
+        <li>Select the original sample, use Link to change its URL to
+          <strong>https://example.test/changed</strong>, and Apply Link. Undo and
+          Redo. Verify the Link form reflects each value and Highlight survives.</li>
+      </ol>
+      <label for="scratch">Scratch area — excluded from the report</label>
+      <textarea id="scratch" autocomplete="off" spellcheck="false"></textarea>
+      <fieldset id="checks" disabled>
+        <legend>Your observations (manual, not inferred from events)</legend>
+        <label><input type="checkbox" data-check="copy" /> Copy produced the exact selected text outside the editor.</label>
+        <label><input type="checkbox" data-check="cut" /> Cut removed the selection exactly once and copied the expected text.</label>
+        <label><input type="checkbox" data-check="caret" /> Immediate caret movement and typing worked.</label>
+        <label><input type="checkbox" data-check="history" /> Undo/Redo replayed each cut and typing action once.</label>
+        <label><input type="checkbox" data-check="paste" /> Native Paste inserted exactly once.</label>
+        <label><input type="checkbox" data-check="formatting" /> Link apply/Undo/Redo worked and Highlight survived.</label>
+      </fieldset>
+      <p>“Operator-confirmed” requires every check and browser-dispatched Copy,
+        Cut and Paste events in the editor, without observed faults or truncated
+        recording. This is evidence for one run, not automatic browser certification.</p>
+      <p id="counts">No events recorded.</p>
+      <button id="capture-report" type="button">Capture redacted report</button>
+      <label for="report">Report snapshot (capture again after further testing)</label>
+      <textarea id="report" readonly spellcheck="false"></textarea>
+      <p>Reports are available even for incomplete or failed runs. Capture before
+        reloading: reload discards this sample, checklist and recording, but does not change your clipboard.</p>
+    </main>
+    <script type="module" src="./manual_clipboard.ts"></script>
+  </body>
+</html>

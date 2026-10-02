@@ -1,0 +1,2650 @@
+{
+  "status": "Cost measured, longer native stress and all 153 candidate browser cases passed; production unchanged; see 2026-09-26-boundary-full-matrix.json",
+  "candidate": "exact decimal round-trip at the same four numeric boundary sites",
+  "benchmark": {
+    "report": "/tmp/breditor-boundary-cost-clean-20260926.json",
+    "reportSha256": "33cca868a3ef169a8fa40cfe62db02146ff49d90d63c39cf79915662ea31ef45",
+    "artifact": "target/boundary-cost/assets/index-DxZmuRkB.js",
+    "artifactSha256": "c9d239075cb6fbf2408dd85d9c38e6f05165ffdcc654a904235f700be9e6776d",
+    "protocol": "Two workloads; one million values per arm per sample; two warmups per arm; nine alternating-order paired samples per workload; three independent pages per engine. No concurrent build, browser stress, or native probe during the clean run.",
+    "limitations": [
+      "Isolated Float64Array read/conversion/checksum cost, not Rust/Wasm transport or editor latency.",
+      "Timing depends on source shape, JIT, timer resolution and host activity; no statistical confidence interval or timing pass threshold.",
+      "Firefox common-integer page medians vary 8–19 ns, so a single scalar would hide variability.",
+      "An earlier nine-case run overlapped build/tooling work and is not used for performance conclusions.",
+      "A benchmark authoring syntax error was fixed before measurements; it was not an engine fault."
+    ],
+    "stats": {
+      "startTime": "2026-09-27T01:39:53.875Z",
+      "duration": 27353.832000000002,
+      "expected": 9,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "errors": [],
+    "runs": [
+      {
+        "engine": "chromium",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Safari/537.36",
+          "timeOrigin": 1790473195427.8,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.700000047683716,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.299999952316284
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.700000047683716,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.299999952316284
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.099999904632568,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.599999904632568
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.599999904632568,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.100000143051147,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.500000238418579
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.6000001430511475,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.3999998569488525
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.599999904632568,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.099999904632568,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.5
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.6000001430511475,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.200000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.599999904632568
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.700000047683716,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.099999904632568,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.3999998569488525
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.099999904632568,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.599999904632568
+                }
+              ],
+              "baselineMedianMs": 6.6000001430511475,
+              "candidateMedianMs": 12.099999904632568,
+              "pairedDeltaMedianNsPerValue": 5.5
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.1000001430511475,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.5,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.39999985694885
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 49.19999980926514,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 43.19999980926514
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.099999904632568,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.299999952316284,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.200000047683716
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.099999904632568,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.60000014305115,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.50000023841858
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.1000001430511475,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.299999952316284,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.19999980926514
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 41,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 35
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.1000001430511475,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 37.69999980926514,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 31.59999966621399
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.10000014305115,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.10000014305115
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 37.59999990463257,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 31.59999990463257
+                }
+              ],
+              "baselineMedianMs": 6.099999904632568,
+              "candidateMedianMs": 38.299999952316284,
+              "pairedDeltaMedianNsPerValue": 32.200000047683716
+            }
+          ]
+        }
+      },
+      {
+        "engine": "chromium",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Safari/537.36",
+          "timeOrigin": 1790473197623.1,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.400000095367432,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.200000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.799999952316284
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.400000095367432,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.099999904632568,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.699999809265137
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.299999952316284,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.799999952316284
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.3999998569488525,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.6000001430511475
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.6000001430511475,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.3999998569488525
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.099999904632568,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.599999904632568
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.400000095367432,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.299999952316284,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.8999998569488525
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.299999952316284,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.200000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.900000095367432
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.100000143051147,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.6000001430511475
+                }
+              ],
+              "baselineMedianMs": 6.400000095367432,
+              "candidateMedianMs": 12.100000143051147,
+              "pairedDeltaMedianNsPerValue": 5.699999809265137
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.1000001430511475,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.59999990463257,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.49999976158142
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 41.90000009536743,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 35.90000009536743
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.200000047683716,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.200000047683716
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.5,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.5
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.099999904632568,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.200000047683716,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.10000014305115
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40.5,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 34.5
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 37.299999952316284,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 31.299999952316284
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 37.700000047683716,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 31.700000047683716
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.099999904632568,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 37.799999952316284,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 31.700000047683716
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 39.200000047683716,
+              "pairedDeltaMedianNsPerValue": 33.10000014305115
+            }
+          ]
+        }
+      },
+      {
+        "engine": "chromium",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Safari/537.36",
+          "timeOrigin": 1790473199104.9,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.400000095367432,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.300000190734863,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.900000095367432
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.199999809265137,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.699999809265137
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.400000095367432,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.200000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.799999952316284
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.200000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.700000047683716
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.599999904632568,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.5,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.900000095367432
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.8999998569488525,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.300000190734863,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.400000333786011
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.200000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.700000047683716
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.3999998569488525,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.700000047683716,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 6.300000190734863
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.6000001430511475,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 12.400000095367432,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5.799999952316284
+                }
+              ],
+              "baselineMedianMs": 6.5,
+              "candidateMedianMs": 12.300000190734863,
+              "pairedDeltaMedianNsPerValue": 5.799999952316284
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.199999809265137,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.799999952316284,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.60000014305115
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.300000190734863,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40.59999990463257,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 34.299999713897705
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.199999809265137,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.60000014305115,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.40000033378601
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6.099999904632568,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.700000047683716,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33.60000014305115
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.200000047683716,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39.200000047683716,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 33
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40.90000009536743,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 34.90000009536743
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.5,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.5
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5.900000095367432,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38.09999990463257,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 32.19999980926514
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6.1000001430511475,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 31.899999856948853
+                }
+              ],
+              "baselineMedianMs": 6.1000001430511475,
+              "candidateMedianMs": 39.60000014305115,
+              "pairedDeltaMedianNsPerValue": 33.40000033378601
+            }
+          ]
+        }
+      },
+      {
+        "engine": "firefox",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0",
+          "timeOrigin": 1790473202404,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 24,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 25,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 27,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 21
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 24,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 29,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 21
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 21
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 25,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 26,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 23,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 25,
+              "pairedDeltaMedianNsPerValue": 19
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 83,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 77
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 85,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 78
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 84,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 78
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 82,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 76
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 106,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 101
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 131,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 126
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 80,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 74
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 80,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 75
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 81,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 75
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 83,
+              "pairedDeltaMedianNsPerValue": 77
+            }
+          ]
+        }
+      },
+      {
+        "engine": "firefox",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0",
+          "timeOrigin": 1790473207090,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 9
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 13,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 6
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 9
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 8
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 8
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 13,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 6
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 9
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 13,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 7
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 15,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 9
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 14,
+              "pairedDeltaMedianNsPerValue": 8
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 78,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 72
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 78,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 72
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 79,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 74
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 80,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 74
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 80,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 75
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 87,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 81
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 81,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 75
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 88,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 82
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 92,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 86
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 80,
+              "pairedDeltaMedianNsPerValue": 75
+            }
+          ]
+        }
+      },
+      {
+        "engine": "firefox",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0",
+          "timeOrigin": 1790473211718,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 8
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 21,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 14
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 15,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 9
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 20,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 11
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 16,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 8
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 10,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 15,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 5
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 8
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 14,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 8
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 21,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 15
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 15,
+              "pairedDeltaMedianNsPerValue": 8
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 103,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 96
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 87,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 80
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 98,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 90
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 7,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 120,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 113
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 96,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 90
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 101,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 96
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 101,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 95
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 86,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 80
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 93,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 87
+                }
+              ],
+              "baselineMedianMs": 6,
+              "candidateMedianMs": 98,
+              "pairedDeltaMedianNsPerValue": 90
+            }
+          ]
+        }
+      },
+      {
+        "engine": "webkit",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+          "timeOrigin": 1790473215831,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 25,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 22,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 17
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 27,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 24,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 23,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 22,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 14
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 27,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 27,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                }
+              ],
+              "baselineMedianMs": 8,
+              "candidateMedianMs": 25,
+              "pairedDeltaMedianNsPerValue": 19
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 44,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 39
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 43,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 38
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 45,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 40
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 47,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 46
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 39
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 38
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 37
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 37
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 35,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 34
+                }
+              ],
+              "baselineMedianMs": 1,
+              "candidateMedianMs": 40,
+              "pairedDeltaMedianNsPerValue": 38
+            }
+          ]
+        }
+      },
+      {
+        "engine": "webkit",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+          "timeOrigin": 1790473217879,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 26,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 23,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 25,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 23,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 17
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 23,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 15
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 27,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                }
+              ],
+              "baselineMedianMs": 8,
+              "candidateMedianMs": 26,
+              "pairedDeltaMedianNsPerValue": 19
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 43,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 38
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 44,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 38
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 57,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 51
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 49,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 48
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 42,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 41
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 41,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 40
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 41,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 40
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 46,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 45
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 39
+                }
+              ],
+              "baselineMedianMs": 1,
+              "candidateMedianMs": 43,
+              "pairedDeltaMedianNsPerValue": 40
+            }
+          ]
+        }
+      },
+      {
+        "engine": "webkit",
+        "status": "passed",
+        "report": {
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+          "timeOrigin": 1790473220143,
+          "workloads": [
+            {
+              "name": "commonIntegers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256,
+                512,
+                1024,
+                2048,
+                4096,
+                65535
+              ],
+              "expectedChecksum": 4608062500,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 26,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 21
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 22,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 17
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 24,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 22,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 17
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 23,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 15
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 19
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 9,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 27,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 18
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 8,
+                    "checksum": 4608062500
+                  },
+                  "candidate": {
+                    "elapsedMs": 28,
+                    "checksum": 4608062500
+                  },
+                  "deltaNsPerValue": 20
+                }
+              ],
+              "baselineMedianMs": 8,
+              "candidateMedianMs": 26,
+              "pairedDeltaMedianNsPerValue": 18
+            },
+            {
+              "name": "mixedNumbers",
+              "iterations": 1000000,
+              "samples": 9,
+              "warmupsPerArm": 2,
+              "input": [
+                0,
+                0,
+                1,
+                -1,
+                2048,
+                1.5,
+                0.1,
+                0.3333333333333333,
+                -0.1,
+                100.25,
+                65535,
+                4294967295,
+                9.313225746154785e-10,
+                -9.313225746154785e-10,
+                2048.0000000000005,
+                123456.789
+              ],
+              "expectedChecksum": 268447530304405.9,
+              "pairs": [
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 44,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 39
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 6,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 43,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 37
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 5,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 47,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 42
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 47,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 46
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 39
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 40,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 39
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 38
+                },
+                {
+                  "candidateFirst": true,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 39,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 38
+                },
+                {
+                  "candidateFirst": false,
+                  "baseline": {
+                    "elapsedMs": 1,
+                    "checksum": 268447530304405.9
+                  },
+                  "candidate": {
+                    "elapsedMs": 38,
+                    "checksum": 268447530304405.9
+                  },
+                  "deltaNsPerValue": 37
+                }
+              ],
+              "baselineMedianMs": 1,
+              "candidateMedianMs": 40,
+              "pairedDeltaMedianNsPerValue": 39
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "nativeSafari": {
+    "url": "http://127.0.0.1:4208/",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+    "bundleSha256": "81c75327df04135e535b22f379037f8f288ab501558aca3aa13fda6d3a1b71ac",
+    "wasmSha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+    "runnerSha256": "2d27e8b9260b47f6076b90f34e82356cf1436cc201f30789d22aa3deff12a174",
+    "method": "Three visible Start actions; final outcome/current/passed/hash fields verified from screenshots because native AX text truncates the report.",
+    "runs": [
+      {
+        "run": 1,
+        "active": false,
+        "outcome": "passed",
+        "passed": 5,
+        "current": 5
+      },
+      {
+        "run": 2,
+        "active": false,
+        "outcome": "passed",
+        "passed": 5,
+        "current": 5
+      },
+      {
+        "run": 3,
+        "active": false,
+        "outcome": "passed",
+        "passed": 5,
+        "current": 5
+      }
+    ],
+    "restoresPerBatch": 10000,
+    "readsPerBatch": 30000,
+    "caseDeadlineMs": 30000,
+    "completedRestores": 150000,
+    "completedSelectionReads": 450000,
+    "noClipboardOrDOMStress": true,
+    "limits": [
+      "Bounded fresh-page startup/selection checks, not an hours-long same-owner soak.",
+      "Some native batches overlapped automated matrix/tooling work; native durations were not used as performance evidence.",
+      "Original-control and native-clipboard evidence are retained separately from this checkpoint."
+    ]
+  },
+  "fixtureChanges": [
+    "Added optional validated loopback port to native server; prior server and probe bytes preserved.",
+    "Full-matrix fixture compiles six dynamically imported probes, preserves their exports, verifies expected exports at build, and redirects exact .ts test URLs to the compiled modules.",
+    "No test assertions, production runtime sources, Rust ABI or validators changed."
+  ]
+}

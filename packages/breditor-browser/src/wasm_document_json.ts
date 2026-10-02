@@ -6,6 +6,8 @@ import {
   snapshotOwnDataArray,
   snapshotProtectedHandleArray,
 } from "./protected_handle_snapshot.js";
+import { wellFormedUtf8Length } from "./well_formed_utf8_length.js";
+import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
 
 /** Maximum UTF-8 bytes admitted by the browser Document V1 export boundary. */
 export const MAX_BROWSER_DOCUMENT_JSON_BYTES = 16_777_216;
@@ -181,6 +183,7 @@ interface OwnedHandle {
 }
 
 interface HandleRegistry {
+  readonly root: object;
   readonly handles: OwnedHandle[];
   readonly seen: Set<object>;
   invalid: boolean;
@@ -193,6 +196,9 @@ interface HandleRegistry {
  * cleanup methods have been captured. Generated values are hostile: accessors
  * may throw, handles may alias protected owners, and sync methods may return
  * thenables. No generated handle or unvalidated payload crosses this edge.
+ * Overlapping document/checkpoint reads cannot acquire an already-active result
+ * or cloned error, including during cleanup. Independent nested reads remain
+ * valid. This does not permit callers to reuse an already-freed handle.
  */
 export function consumeWasmDocumentJson(
   expected: WasmDocumentJsonExpectedSnapshot,
@@ -200,20 +206,30 @@ export function consumeWasmDocumentJson(
   protectedHandles: readonly unknown[] = [],
   contract: WasmDurableJsonContract = LEGACY_V1_CONTRACT,
 ): BrowserDocumentJsonReadResult {
-  const registry: HandleRegistry = { handles: [], seen: new Set(), invalid: false };
-  let protectedSet: ReadonlySet<object>;
-  try {
-    protectedSet = objectSet(protectedHandles);
-  } catch {
+  if (!objectLike(view) || ACTIVE_WASM_STRING_HANDLES.has(view)) {
     return boundaryFailure();
   }
-  let provisional: BrowserDocumentJsonReadResult = boundaryFailure();
+  ACTIVE_WASM_STRING_HANDLES.add(view);
+  const registry: HandleRegistry = { root: view, handles: [], seen: new Set(), invalid: false };
   try {
-    provisional = readDocument(expected, view, registry, protectedSet, contract);
-  } catch {
-    provisional = boundaryFailure();
+    let protectedSet: ReadonlySet<object>;
+    try {
+      protectedSet = objectSet(protectedHandles);
+    } catch {
+      return boundaryFailure();
+    }
+    let provisional: BrowserDocumentJsonReadResult = boundaryFailure();
+    try {
+      provisional = readDocument(expected, view, registry, protectedSet, contract);
+    } catch {
+      provisional = boundaryFailure();
+    }
+    return freeHandles(registry) ? boundaryFailure() : provisional;
+  } finally {
+    // Destructors can reenter either string reader too.
+    for (const handle of registry.seen) ACTIVE_WASM_STRING_HANDLES.delete(handle);
+    ACTIVE_WASM_STRING_HANDLES.delete(view);
   }
-  return freeHandles(registry) ? boundaryFailure() : provisional;
 }
 
 /** Whether a handle-free result was minted by this module. @internal */
@@ -894,10 +910,16 @@ function captureHandle(
   value: unknown,
   protectedHandles: ReadonlySet<object>,
 ): value is object {
-  if (!objectLike(value) || protectedHandles.has(value) || registry.seen.has(value)) {
+  if (
+    !objectLike(value) || protectedHandles.has(value) || registry.seen.has(value) ||
+    (value !== registry.root && ACTIVE_WASM_STRING_HANDLES.has(value))
+  ) {
     registry.invalid = true;
     return false;
   }
+  // Reserve before reading cleanup, since a getter can start another read.
+  registry.seen.add(value);
+  ACTIVE_WASM_STRING_HANDLES.add(value);
   let free: unknown;
   try {
     free = (value as { free?: unknown }).free;
@@ -912,7 +934,6 @@ function captureHandle(
     registry.invalid = true;
     return false;
   }
-  registry.seen.add(value);
   registry.handles.push({ value, free: () => Reflect.apply(free, value, []) });
   const freeIsThenable = valueIsThenable(free);
   const handleIsThenable = containThenable(value);
@@ -998,22 +1019,4 @@ function isStableCode(value: string): boolean {
     value.length <= 128 &&
     /^[a-z][a-z0-9._-]*(?:\/[a-z][a-z0-9._-]*)?$/u.test(value)
   );
-}
-
-function wellFormedUtf8Length(value: string, maximum: number): number | null {
-  let bytes = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    const first = value.charCodeAt(index);
-    if (first <= 0x7f) bytes += 1;
-    else if (first <= 0x7ff) bytes += 2;
-    else if (first >= 0xd800 && first <= 0xdbff) {
-      const second = value.charCodeAt(index + 1);
-      if (!(second >= 0xdc00 && second <= 0xdfff)) return null;
-      bytes += 4;
-      index += 1;
-    } else if (first >= 0xdc00 && first <= 0xdfff) return null;
-    else bytes += 3;
-    if (bytes > maximum) return null;
-  }
-  return bytes;
 }

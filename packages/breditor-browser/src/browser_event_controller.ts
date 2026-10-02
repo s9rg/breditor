@@ -1,4 +1,5 @@
 import { translateBeforeInput } from "./beforeinput.js";
+import { containAsyncRejection } from "./contain_async_rejection.js";
 import { type CommandQueueSubmission, BreditorCommandQueue } from "./command_queue.js";
 import { mapDomTargetRange } from "./dom_target_range.js";
 import { BreditorDomSelectionBridge } from "./dom_selection.js";
@@ -1208,24 +1209,4 @@ function admissionFailure<TResult>(
   disposition: BrowserEventDisposition<TResult>,
 ): EventAdmission<TResult> {
   return Object.freeze({ ok: false, owned, preserveReceipts, disposition });
-}
-
-function containAsyncRejection(value: unknown): boolean {
-  if (
-    (typeof value !== "object" || value === null) &&
-    typeof value !== "function"
-  ) {
-    return false;
-  }
-  try {
-    const then = (value as Readonly<{ then?: unknown }>).then;
-    if (typeof then === "function") {
-      void Promise.resolve(value).catch(() => {});
-      return true;
-    }
-    return false;
-  } catch {
-    // A hostile thenable is an invalid scheduler result and is contained.
-    return true;
-  }
 }

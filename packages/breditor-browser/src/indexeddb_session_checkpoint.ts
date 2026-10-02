@@ -226,6 +226,7 @@ export class IndexedDbSessionCheckpointStore {
   readonly #owner = Object.freeze({});
   #database: IDBDatabase | undefined;
   #opening: Promise<ConnectionResult> | undefined;
+  #cancelOpening: (() => void) | undefined;
   #terminalError: IndexedDbSessionCheckpointError | undefined;
 
   constructor(options: IndexedDbSessionCheckpointStoreOptions) {
@@ -272,11 +273,14 @@ export class IndexedDbSessionCheckpointStore {
     return this.#terminalError !== undefined;
   }
 
-  /** Permanently closes this owner. Outstanding writes retain IndexedDB semantics. */
+  /** Releases open waiters on close. Already dispatched writes retain IndexedDB semantics. */
   close(): void {
     if (this.#terminalError === undefined) {
       this.#terminalError = error("session_checkpoint.connection");
     }
+    const cancelOpening = this.#cancelOpening;
+    this.#cancelOpening = undefined;
+    cancelOpening?.();
     const database = this.#database;
     this.#database = undefined;
     try {
@@ -298,7 +302,7 @@ export class IndexedDbSessionCheckpointStore {
     }
     if (!raw.ok) return failure(raw.error);
     if (raw.count === 0 && raw.value === undefined) {
-      if (this.closed) return failure(error("session_checkpoint.connection"));
+      if (this.#terminalError !== undefined) return failure(error("session_checkpoint.connection"));
       return Object.freeze({
         ok: true,
         status: "empty",
@@ -318,7 +322,7 @@ export class IndexedDbSessionCheckpointStore {
     if (digest.hex !== record.checkpointSha256) {
       return failure(error("session_checkpoint.corrupt"));
     }
-    if (this.closed) return failure(error("session_checkpoint.connection"));
+    if (this.#terminalError !== undefined) return failure(error("session_checkpoint.connection"));
     return Object.freeze({
       ok: true,
       status: "loaded",
@@ -342,7 +346,7 @@ export class IndexedDbSessionCheckpointStore {
     ) {
       return failure(error("session_checkpoint.invalid_token"));
     }
-    if (this.closed) return failure(error("session_checkpoint.connection"));
+    if (this.#terminalError !== undefined) return failure(error("session_checkpoint.connection"));
     const encoded = encodeCheckpoint(checkpointJson);
     if (!encoded.ok) return failure(encoded.error);
     const priorGeneration =
@@ -440,10 +444,13 @@ export class IndexedDbSessionCheckpointStore {
     try {
       result = await pending;
     } catch {
-      if (this.#opening === pending) this.#opening = undefined;
       return failure(error("session_checkpoint.connection"));
+    } finally {
+      if (this.#opening === pending) {
+        this.#opening = undefined;
+        this.#cancelOpening = undefined;
+      }
     }
-    if (this.#opening === pending) this.#opening = undefined;
     if (!result.ok) {
       if (
         result.error.code === "session_checkpoint.version_unsupported" ||
@@ -463,6 +470,9 @@ export class IndexedDbSessionCheckpointStore {
 
   #open(): Promise<ConnectionResult> {
     return new Promise((resolve) => {
+      // IndexedDB cannot cancel an open request. Settle our waiters on close,
+      // and keep the handlers below alive to abort/close any late native result.
+      this.#cancelOpening = () => resolve(failure(error("session_checkpoint.connection")));
       let request: IDBOpenDBRequest;
       let upgradeError: IndexedDbSessionCheckpointError | undefined;
       let setupError: IndexedDbSessionCheckpointError | undefined;
@@ -477,8 +487,9 @@ export class IndexedDbSessionCheckpointStore {
       }
       const onUpgrade = (event: Event): void => {
         try {
-          if (setupError !== undefined) {
-            upgradeError = setupError;
+          const stopped = this.#terminalError ?? setupError;
+          if (stopped !== undefined) {
+            upgradeError = stopped;
             abort(request.transaction);
             return;
           }
@@ -509,9 +520,10 @@ export class IndexedDbSessionCheckpointStore {
         try {
           const openedDatabase = request.result;
           database = openedDatabase;
-          if (setupError !== undefined) {
+          const stopped = this.#terminalError ?? setupError;
+          if (stopped !== undefined) {
             safeClose(openedDatabase);
-            resolve(failure(setupError));
+            resolve(failure(stopped));
             return;
           }
           openedDatabase.onversionchange = () => {
@@ -525,9 +537,10 @@ export class IndexedDbSessionCheckpointStore {
           Reflect.apply(PROMISE_THEN, validation, [
             (schemaError: IndexedDbSessionCheckpointError | undefined) => {
               try {
-                if (schemaError !== undefined) {
+                const stopped = this.#terminalError ?? schemaError;
+                if (stopped !== undefined) {
                   safeClose(openedDatabase);
-                  resolve(failure(schemaError));
+                  resolve(failure(stopped));
                   return;
                 }
                 resolve(Object.freeze({ ok: true, database: openedDatabase }));
@@ -547,6 +560,7 @@ export class IndexedDbSessionCheckpointStore {
         }
       };
       const onBlocked = (): void => {
+        if (this.#terminalError !== undefined) return;
         try {
           containAsyncRejection(this.#onBlocked?.());
         } catch {

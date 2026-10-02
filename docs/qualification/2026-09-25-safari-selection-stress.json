@@ -1,0 +1,18 @@
+{
+  "format": "breditor/native-selection-stress-observation",
+  "version": 1,
+  "observation": "Read from installed Safari's visible accessibility tree after the bounded probe stopped on failure.",
+  "batchesPlanned": 20,
+  "restoresPerBatch": 10000,
+  "readsPerRestore": 3,
+  "freshPageBetweenBatches": true,
+  "freshBrowserProcessBetweenBatches": false,
+  "active": false,
+  "outcome": "failed",
+  "passed": 9,
+  "current": 10,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+  "bundleSha256": "91010df8ffa528af5961604122c6d0090282dd362a91c67154fac86626e2dcc4",
+  "error": "Error: selection rejected at 7082/2: selection.invalid_wasm_view",
+  "stack": "fo@http://127.0.0.1:4186/assets/index-B__trXRI.js:1:131774"
+}

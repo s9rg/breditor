@@ -1,0 +1,591 @@
+{
+  "format": "breditor/webkit-focused-export-investigation",
+  "date": "2026-09-28",
+  "fixed": false,
+  "productionChanged": false,
+  "runs": [
+    {
+      "name": "endpoint-focused",
+      "path": "/tmp/breditor-webkit-endpoint-focused-20260928.json",
+      "sha256": "08d2cbaa7f724f1a937efc0aed53ca995af706f960f41b02b2bc378e61ff0618",
+      "stats": {
+        "startTime": "2026-09-28T15:16:58.316Z",
+        "duration": 369603.436,
+        "expected": 97,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=2 stage=copy/cut status={\"phase\":\"live\"} selection={\"count\":1,\"anchor\":{\"type\":3,\"connected\":true,\"owned\":true,\"offset\":0},\"focus\":{\"type\":3,\"connected\":true,\"owned\":true,\"offset\":5}}: Error: formatting export failed",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-endpoint-focused-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat8/trace.zip",
+            "sha256": "eb7321692533b2c8387ea520a708c4a617f722e976a8dbf06a939684943bca84"
+          },
+          "breadcrumbs": [],
+          "nonfiniteReturn": false
+        },
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=2 stage=copy/cut status={\"phase\":\"live\"} selection={\"count\":1,\"anchor\":{\"type\":3,\"connected\":true,\"owned\":true,\"offset\":0},\"focus\":{\"type\":3,\"connected\":true,\"owned\":true,\"offset\":5}}: Error: formatting export failed",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-endpoint-focused-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat64/trace.zip",
+            "sha256": "ac402158b0ee04131ace10dc6e003ecd236963582c853df0dbdf7529d365f3cc"
+          },
+          "breadcrumbs": [],
+          "nonfiniteReturn": false
+        },
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m60\u001b[39m\nReceived: \u001b[31mNaN\u001b[39m",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-endpoint-focused-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat79/trace.zip",
+            "sha256": "90a8b035fca5f6183eb18dbac8e4140a23e35b10206bb3376ba0f0b93c3daba1"
+          },
+          "breadcrumbs": [],
+          "nonfiniteReturn": true
+        }
+      ]
+    },
+    {
+      "name": "endpoint-expanded",
+      "path": "/tmp/breditor-webkit-endpoint-expanded-20260928.json",
+      "sha256": "5cfd2c8a7d0aa741061521fe5789d281194164cbb62accbfbc8fc26123759d43",
+      "stats": {
+        "startTime": "2026-09-28T15:29:27.390Z",
+        "duration": 97895.955,
+        "expected": 23,
+        "skipped": 76,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=60 stage=retained redo checkpoint status={\"phase\":\"live\"} selection={\"count\":0,\"anchor\":{\"owned\":false,\"offset\":0},\"focus\":{\"owned\":false,\"offset\":0}}: Error: session backup failed",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-endpoint-expanded-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat23/trace.zip",
+            "sha256": "1d257d51dcd364e1e2995b5e7baf2940c940668c362f641ae6e18b02ce942419"
+          },
+          "breadcrumbs": [
+            "BREDITOR_LINK_THROW=browser_editor:failure:1036"
+          ],
+          "nonfiniteReturn": false
+        }
+      ]
+    },
+    {
+      "name": "session-trace",
+      "path": "/tmp/breditor-webkit-session-trace-20260928.json",
+      "sha256": "758ff72199c7ea98c6b8e27eae0f74b7f5f62689282bd7b7cb694b713b6fc73a",
+      "stats": {
+        "startTime": "2026-09-28T16:06:28.203Z",
+        "duration": 30039.195,
+        "expected": 8,
+        "skipped": 91,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=1 stage=history after cut/caret status={\"phase\":\"live\"} selection={\"count\":0,\"anchor\":{\"owned\":false,\"offset\":0},\"focus\":{\"owned\":false,\"offset\":0}}: Error: formatting export failed: content_export.invalid_wasm_view",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-session-trace-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat8/trace.zip",
+            "sha256": "be0e4781f22a6731735ee5a4a64ce955fb8d4f6bd28f29ba20f5ea6c08ddc399"
+          },
+          "breadcrumbs": [
+            "BREDITOR_LINK_THROW=wasm_document_json:result:278",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:85",
+            "BREDITOR_LINK_THROW=wasm_document_json:failure:175",
+            "BREDITOR_LINK_THROW=browser_editor:failure:1057"
+          ],
+          "nonfiniteReturn": false
+        }
+      ]
+    },
+    {
+      "name": "endpoint-isolation",
+      "path": "/tmp/breditor-webkit-endpoint-isolation-20260928.json",
+      "sha256": "9160955fa53a29ca2088ed5dbbebac622186fc5421805a8140bff638120f5954",
+      "stats": {
+        "startTime": "2026-09-28T15:24:46.729Z",
+        "duration": 202024.952,
+        "expected": 20,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": []
+    },
+    {
+      "name": "numeric-return",
+      "path": "/tmp/breditor-webkit-numeric-return-20260928.json",
+      "sha256": "8f9760a411103b1e7b2973005a17f4542d8cc54fc2dee29eab37dda8ee3561dc",
+      "stats": {
+        "startTime": "2026-09-28T15:28:44.049Z",
+        "duration": 17256.444,
+        "expected": 10,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": []
+    },
+    {
+      "name": "durable-contract",
+      "path": "/tmp/breditor-webkit-durable-contract-20260928.json",
+      "sha256": "f6b09c9682e569ee178198d4c2c2e0fce0a36ef511aabbd3bf17acd88394200a",
+      "stats": {
+        "startTime": "2026-09-28T16:11:02.634Z",
+        "duration": 45956.278,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "failures": []
+    },
+    {
+      "name": "numeric-guard-trace",
+      "path": "/tmp/breditor-webkit-numeric-guard-trace-20260928.json",
+      "sha256": "cdf01605826c55f50557096f7aa85ac8c779b5e76d585372eed86dbf588d2b79",
+      "stats": {
+        "startTime": "2026-09-28T16:13:14.468Z",
+        "duration": 13436.416,
+        "expected": 3,
+        "skipped": 96,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=1 stage=history after cut/caret status={\"phase\":\"faulted\",\"reason\":\"toolbarDispatchFailed\"} selection={\"count\":0,\"anchor\":{\"owned\":false,\"offset\":0},\"focus\":{\"owned\":false,\"offset\":0}}: Error: owner faulted",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-guard-trace-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat3/trace.zip",
+            "sha256": "5b7842bfa8e2b68906c39e873664cc06a3f7838ea92a76f06999fd93ed022be7"
+          },
+          "breadcrumbs": [
+            "BREDITOR_LINK_THROW=wasm_command_adapter:throw:1218",
+            "BREDITOR_LINK_THROW=wasm_command_adapter:throw:572",
+            "BREDITOR_LINK_THROW=browser_editor:failure:870"
+          ],
+          "nonfiniteReturn": false
+        }
+      ]
+    },
+    {
+      "name": "complete-trace",
+      "path": "/tmp/breditor-webkit-complete-trace-20260928.json",
+      "sha256": "c9ac129952cc1fa3633b0d725906d4a549e91f3d82de118c03cb7d7feba365ef",
+      "stats": {
+        "startTime": "2026-09-28T16:15:41.068Z",
+        "duration": 398158.87899999996,
+        "expected": 99,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=2 stage=Link undo/redo status={\"phase\":\"live\"} selection={\"count\":0,\"anchor\":{\"owned\":false,\"offset\":0},\"focus\":{\"owned\":false,\"offset\":0}}: Error: formatting export failed: content_export.invalid_wasm_view",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-complete-trace-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat80/trace.zip",
+            "sha256": "320d4c3216492210dbf3b79c469c3527e4968ac2f529620197155a9a8da3bfd2"
+          },
+          "breadcrumbs": [
+            "BREDITOR_NUMERIC_PREDICATE={\"stage\":\"wasm_document_json:numeric:555\",\"originalResult\":false,\"value\":{\"type\":\"number\",\"decimal\":\"2048\",\"bits\":\"40a0000000000000\",\"recheck\":{\"safeInteger\":true,\"nonnegative\":true,\"withinU32\":true}}}",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:361",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:317",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:278",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:85",
+            "BREDITOR_LINK_THROW=wasm_document_json:failure:175",
+            "BREDITOR_LINK_THROW=browser_editor:failure:1057"
+          ],
+          "nonfiniteReturn": false
+        }
+      ],
+      "diagnosticSources": [
+        {
+          "path": "tests/browser/diagnostics/link_fault_instrumentation.ts",
+          "sha256": "66bdc474a33d3c2eaab213fe69c9ff8bb336e86fa1487042fe2347cba281faba"
+        },
+        {
+          "path": "tests/browser/diagnostics/content_fault_instrumentation.ts",
+          "sha256": "35db789a0775edf0bd8473245cedfbf093262873964098cd371b1ce216489287"
+        },
+        {
+          "path": "tests/browser/diagnostics/link_fault_recorder.ts",
+          "sha256": "0adc68ec78734a53b2c375fcf22e4913da5b86da7bd1c103e6ceffce5d881fc2"
+        },
+        {
+          "path": "tests/browser/formatted-clipboard-lifecycle.spec.ts",
+          "sha256": "5d1828a49d91207d5e58f249d28072f98db6af8fd8877c117fa912f727766813"
+        },
+        {
+          "path": "tests/browser/harness/main.ts",
+          "sha256": "86a48f2c10ae74f971fac1c401fa9b2ab2fbda3172a591c9f14dc26e4e4daf69"
+        },
+        {
+          "path": "vite.link-diagnostics.config.ts",
+          "sha256": "4320fa72bb8e6052ae455399cb290dd848ba1bf425fa40a109874708b448dc4b"
+        },
+        {
+          "path": "playwright.link-diagnostics.config.ts",
+          "sha256": "86afebcd03d386d10948048c9fedb3e51455c3e38e2836f524b20d8b5bd7681d"
+        }
+      ]
+    },
+    {
+      "name": "operand-trace",
+      "path": "/tmp/breditor-webkit-operand-trace-20260928.json",
+      "sha256": "b77d6429f5d27c370b2a4afdc35900cf5453cb6da162de2eb5bb3b471b3236b8",
+      "stats": {
+        "startTime": "2026-09-28T16:23:02.823Z",
+        "duration": 284667.761,
+        "expected": 71,
+        "skipped": 28,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: formatted clipboard cycle=3 stage=Link undo/redo status={\"phase\":\"live\"} selection={\"count\":0,\"anchor\":{\"owned\":false,\"offset\":0},\"focus\":{\"owned\":false,\"offset\":0}}: Error: formatting export failed: content_export.invalid_wasm_view",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-operand-trace-20260928/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat71/trace.zip",
+            "sha256": "3774c3b98f5302381f199d2bc3a4bec136e60dab9d3fa158ae171f28e25fc10d"
+          },
+          "breadcrumbs": [
+            "BREDITOR_NUMERIC_PREDICATE={\"stage\":\"wasm_document_json:numeric:549:operand:3\",\"originalResult\":false,\"value\":{\"type\":\"number\",\"decimal\":\"1\",\"bits\":\"3ff0000000000000\",\"recheck\":{\"safeInteger\":true,\"nonnegative\":true,\"withinU32\":true}}}",
+            "BREDITOR_NUMERIC_PREDICATE={\"stage\":\"wasm_document_json:numeric:549\",\"originalResult\":false,\"value\":{\"type\":\"number\",\"decimal\":\"1\",\"bits\":\"3ff0000000000000\",\"recheck\":{\"safeInteger\":true,\"nonnegative\":true,\"withinU32\":true}}}",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:302",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:278",
+            "BREDITOR_LINK_THROW=wasm_document_json:result:85",
+            "BREDITOR_LINK_THROW=wasm_document_json:failure:175",
+            "BREDITOR_LINK_THROW=browser_editor:failure:1057"
+          ]
+        }
+      ],
+      "diagnosticSources": [
+        {
+          "path": "tests/browser/diagnostics/link_fault_instrumentation.ts",
+          "sha256": "66bdc474a33d3c2eaab213fe69c9ff8bb336e86fa1487042fe2347cba281faba"
+        },
+        {
+          "path": "tests/browser/diagnostics/content_fault_instrumentation.ts",
+          "sha256": "fe15e9c3d51e6ce8dec59989aa52b69b1bec3756061558c2032511a480e59a27"
+        },
+        {
+          "path": "tests/browser/diagnostics/link_fault_recorder.ts",
+          "sha256": "bfa744116f89b7fe457aa9cbcdf24573b3176bec646f1d15563b168784fb2d45"
+        },
+        {
+          "path": "tests/browser/formatted-clipboard-lifecycle.spec.ts",
+          "sha256": "5d1828a49d91207d5e58f249d28072f98db6af8fd8877c117fa912f727766813"
+        },
+        {
+          "path": "tests/browser/harness/main.ts",
+          "sha256": "86a48f2c10ae74f971fac1c401fa9b2ab2fbda3172a591c9f14dc26e4e4daf69"
+        },
+        {
+          "path": "vite.link-diagnostics.config.ts",
+          "sha256": "4320fa72bb8e6052ae455399cb290dd848ba1bf425fa40a109874708b448dc4b"
+        },
+        {
+          "path": "playwright.link-diagnostics.config.ts",
+          "sha256": "86afebcd03d386d10948048c9fedb3e51455c3e38e2836f524b20d8b5bd7681d"
+        }
+      ],
+      "originalRejectedExpression": {
+        "stage": "wasm_document_json:numeric:549:operand:3",
+        "expression": "value <= 4_294_967_295",
+        "capturedValue": {
+          "decimal": "1",
+          "bits": "3ff0000000000000"
+        },
+        "precedingConditions": [
+          "typeof value === number",
+          "Number.isInteger(value)",
+          "value >= 1"
+        ]
+      }
+    },
+    {
+      "name": "numeric-range",
+      "path": "/tmp/breditor-webkit-numeric-range-20260928.json",
+      "sha256": "0e14c599b2f3ccee4dce53bf1b201c50033ffd2b6c38c9882759947729da3dd5",
+      "stats": {
+        "startTime": "2026-09-28T16:29:03.407Z",
+        "duration": 57633.811,
+        "expected": 5,
+        "skipped": 0,
+        "unexpected": 5,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":2191,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-range-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat1/trace.zip",
+            "sha256": "cecc3abce3c51b04b6ce03ed1799ba509f69ea7042a53eb282948efd224d6784"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":2191,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}"
+          ],
+          "requestUrls": [
+            "http://127.0.0.1:4216/selection-endpoint.html",
+            "http://127.0.0.1:4216/@vite/client",
+            "http://127.0.0.1:4216/@fs/Users/s/code/breditor/node_modules/vite/dist/client/env.mjs",
+            "http://127.0.0.1:4216/numeric_range_probe.ts",
+            "ws://127.0.0.1:4216/"
+          ]
+        },
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":1851,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-range-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat2/trace.zip",
+            "sha256": "719e760337f9e91d25d3ed5c04620e4cb9921c834c3549ed06f563f7106af379"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":1851,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}"
+          ],
+          "requestUrls": [
+            "http://127.0.0.1:4216/selection-endpoint.html",
+            "http://127.0.0.1:4216/@vite/client",
+            "http://127.0.0.1:4216/@fs/Users/s/code/breditor/node_modules/vite/dist/client/env.mjs",
+            "http://127.0.0.1:4216/numeric_range_probe.ts",
+            "ws://127.0.0.1:4216/"
+          ]
+        },
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":671,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-range-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat3/trace.zip",
+            "sha256": "b37b74e24ce109b6f7e1d0db1d0c628af2b488107c390e71ec03f918c78471df"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":671,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}"
+          ],
+          "requestUrls": [
+            "http://127.0.0.1:4216/selection-endpoint.html",
+            "http://127.0.0.1:4216/@vite/client",
+            "http://127.0.0.1:4216/@fs/Users/s/code/breditor/node_modules/vite/dist/client/env.mjs",
+            "http://127.0.0.1:4216/numeric_range_probe.ts",
+            "ws://127.0.0.1:4216/"
+          ]
+        },
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":671,\"representation\":1,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-range-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat8/trace.zip",
+            "sha256": "296fa1c96d21fc6f59eb08e729d754365c8dcfbb0647d42b4aa71d7f4c6043b9"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":671,\"representation\":1,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}"
+          ],
+          "requestUrls": [
+            "http://127.0.0.1:4216/selection-endpoint.html",
+            "http://127.0.0.1:4216/@vite/client",
+            "http://127.0.0.1:4216/@fs/Users/s/code/breditor/node_modules/vite/dist/client/env.mjs",
+            "http://127.0.0.1:4216/numeric_range_probe.ts",
+            "ws://127.0.0.1:4216/"
+          ]
+        },
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":251,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-range-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat9/trace.zip",
+            "sha256": "64602f1ba242565be1bc727b95a45854903fd6a0b32e54962dcb2b7f7c2e02f6"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":251,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false}}"
+          ],
+          "requestUrls": [
+            "http://127.0.0.1:4216/selection-endpoint.html",
+            "http://127.0.0.1:4216/@vite/client",
+            "http://127.0.0.1:4216/@fs/Users/s/code/breditor/node_modules/vite/dist/client/env.mjs",
+            "http://127.0.0.1:4216/numeric_range_probe.ts",
+            "ws://127.0.0.1:4216/"
+          ]
+        }
+      ],
+      "diagnosticSources": [
+        {
+          "path": "tests/browser/harness/numeric_range_probe.ts",
+          "sha256": "fc6c93e9207bc8b2c18e7f114fd395f3e99c8d8e0e70d79322a067c39f2c835d"
+        },
+        {
+          "path": "tests/browser/diagnostics/numeric-range-repro.spec.ts",
+          "sha256": "f1f4b7735c0f7c8883b8a0e5d262482eea440cd8c1ee85d70708411504d0cfd7"
+        },
+        {
+          "path": "playwright.numeric-range-repro.config.ts",
+          "sha256": "a0dad95b622a0ab0089aa1b3ec6a24dc5185714e7f8737c084a177305bafcfc7"
+        }
+      ]
+    },
+    {
+      "name": "numeric-range-cross-browser",
+      "path": "/tmp/breditor-numeric-range-cross-browser-20260928.json",
+      "sha256": "160b11e5218a6e87469ffdc4d121b75b1bec8682e89dcc189322eb1266a1e5df",
+      "stats": {
+        "startTime": "2026-09-28T16:31:11.084Z",
+        "duration": 111637.01299999999,
+        "expected": 15,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "projects": {
+        "chromium": {
+          "passed": 5,
+          "failed": 0
+        },
+        "firefox": {
+          "passed": 5,
+          "failed": 0
+        },
+        "webkit": {
+          "passed": 5,
+          "failed": 0
+        }
+      },
+      "failures": [],
+      "diagnosticSources": [
+        {
+          "path": "tests/browser/harness/numeric_range_probe.ts",
+          "sha256": "fc6c93e9207bc8b2c18e7f114fd395f3e99c8d8e0e70d79322a067c39f2c835d"
+        },
+        {
+          "path": "tests/browser/diagnostics/numeric-range-repro.spec.ts",
+          "sha256": "f1f4b7735c0f7c8883b8a0e5d262482eea440cd8c1ee85d70708411504d0cfd7"
+        },
+        {
+          "path": "playwright.numeric-range-repro.config.ts",
+          "sha256": "a0dad95b622a0ab0089aa1b3ec6a24dc5185714e7f8737c084a177305bafcfc7"
+        }
+      ]
+    },
+    {
+      "name": "numeric-origin",
+      "path": "/tmp/breditor-webkit-numeric-origin-20260928.json",
+      "sha256": "0e557d906898efc2487b94b37e65de777ff33156f83a5c7461eaab4754e6c377",
+      "stats": {
+        "startTime": "2026-09-28T16:34:13.479Z",
+        "duration": 78943.42199999999,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 2,
+        "flaky": 0
+      },
+      "failures": [
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":161,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-origin-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat7/trace.zip",
+            "sha256": "44b08dc522dc069399a56a9c48f048534a6994ea35e2e137e6ea1ed6b0c4d20c"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":161,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}"
+          ]
+        },
+        {
+          "title": "positive integer bounds hold without Rust, Wasm or an editor",
+          "status": "failed",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":941,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "trace": {
+            "path": "/Users/s/code/breditor/target/webkit-numeric-origin-20260928/diagnostics-numeric-range--17c0c-hout-Rust-Wasm-or-an-editor-webkit-repeat9/trace.zip",
+            "sha256": "02946e3b8472f1a42fedf2513be93dc9dea9fb27dda4461a5548ad8181e3eec2"
+          },
+          "breadcrumbs": [
+            "BREDITOR_RANGE_REJECTION={\"iteration\":941,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}"
+          ]
+        }
+      ],
+      "diagnosticSources": [
+        {
+          "path": "tests/browser/harness/numeric_range_probe.ts",
+          "sha256": "22b6830f6aa0e4218deb684331e0b6c6f81fd19860fb58dfb5c22d1e43323020"
+        },
+        {
+          "path": "tests/browser/diagnostics/numeric-range-repro.spec.ts",
+          "sha256": "f1f4b7735c0f7c8883b8a0e5d262482eea440cd8c1ee85d70708411504d0cfd7"
+        },
+        {
+          "path": "playwright.numeric-range-repro.config.ts",
+          "sha256": "a0dad95b622a0ab0089aa1b3ec6a24dc5185714e7f8737c084a177305bafcfc7"
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": "packages/breditor-browser/dist/wasm_selection_adapter.js",
+      "sha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_document_json.js",
+      "sha256": "5f5d987019180cf89e4350202b52990937e9a7fdf97684ceb371142ed2000e93"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_session_checkpoint.js",
+      "sha256": "1ef2d9b29319f2ebbf300a3c5dfc4a482d8b6814f4b3e2e4dc96b3ffc5640ef6"
+    },
+    {
+      "path": "node_modules/playwright-core/lib/coreBundle.js",
+      "sha256": "9393fa79e1c67c74edc26b610d65a4f7ed73d345a762465cc88340a33a2454ac"
+    }
+  ],
+  "interpretation": {
+    "focused": "97/100 passes; two export rejections after Copy at cycle 2 and one NaN loop-count result. No selection endpoint rejection in this batch.",
+    "expanded": "One backup rejection on attempt 24; earlier successful attempts are not a fix.",
+    "sessionTrace": "On attempt 9, document export rejects at resolveWasmDurableJsonContract format loop; not yet distinguished malformed format versus ordering.",
+    "controls": "100000 JS-only selections; 100000 real Wasm restores / 300000 selection reads; 64000 numeric values through blank-page browser transport; 150000 JS-only format-contract resolutions all pass.",
+    "serializerHypothesis": "Installed Playwright classifies NaN using Object.is(value, NaN). NaN transport result may relate to known native comparison fault but no causal connection established.",
+    "limitations": [
+      "Diagnostic code shape changed between batches; do not compare rates as controlled estimates.",
+      "Stopped batches retain all failures and unrun counts; no retries.",
+      "No production validation, size budgets, or deadlines relaxed.",
+      "No native Safari rerun in this investigation.",
+      "The operand capture logs immediately after a false leaf; code shape and timing differ from the combined-predicate capture. The independent native Number.isInteger disassembly was read only; no native runtime trace links it to this failure.",
+      "All five numeric-range failed traces request only the blank HTML host, Vite development client, and numeric probe module; no Breditor runtime or Wasm requests. Local WebSocket query tokens omitted from saved request URLs."
+    ],
+    "completeTrace": "99/100 passes. Attempt 81 rejects isU32 in document export for a captured decimal 2048 / bits 40a0000000000000; later integer/range rechecks pass. Original combined predicate false captured; original individual operand not yet known. Recheck uses Number.isSafeInteger whereas original uses Number.isInteger.",
+    "numericGuardTrace": "Attempt 4 rejects projection-update consumption; the adapter-specific failure branch was not yet instrumented. Not assumed to share the export rejection cause.",
+    "operandTrace": "Attempt 72 rejects the original upper bound value <= 4_294_967_295 in isPositiveU32; local captured as 1 / bits 3ff0000000000000. Earlier original AND operands succeeded; immediate upper-bound recheck succeeds. Actual failing comparison identified, not its engine-level cause, not a verified fix.",
+    "numericRange": "JavaScript-only reduction: 5 passes, 5 failures in 10 attempts. Four fail at frozen-property representation, one at typed-array representation, all on odd iterations. Value later captured as positive zero, so lower-bound rejection is correct for that captured value. Unexpected zero production/storage is not yet localized; this is NOT the same observed false-upper-bound symptom.",
+    "numericRangeCrossBrowser": "Unchanged reduced source passes 5 Chromium, 5 Firefox and 5 WebKit attempts in a subsequent batch. WebKit passing rerun does not erase its earlier 5/10 failures or establish a fix; no rate stability claimed.",
+    "numericOrigin": "8 passes and 2 failures with added cold-path source snapshots. At iterations 161 and 941, index is 1, frozen source fields later read 1/2048, and values[4] plus consumed local contain positive zero. Other temporary values contain 2048. Narrows unexpected-value introduction to selected source-to-temporary-value path, not lower-bound validation; exact machine operation unresolved. No proof of shared cause with editor false upper-bound capture."
+  },
+  "verification": {
+    "diagnosticUnitTests": 104,
+    "browserTypecheck": "passed",
+    "whitespace": "passed",
+    "productionChangedDuringFollowup": false
+  }
+}

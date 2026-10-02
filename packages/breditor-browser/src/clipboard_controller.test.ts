@@ -474,6 +474,24 @@ describe("BreditorClipboardController", () => {
     expect(fixture.adapter.requests).toEqual([]);
   });
 
+  it.each(["\n", "\r", "\r\n"])("blocks too many %j paragraphs before queue submission and keeps the lease usable", (separator) => {
+    const fixture = setup(2);
+    const transfer = dataTransfer({
+      types: ["text/plain", "text/html"],
+      values: { "text/plain": separator.repeat(10_000), "text/html": "<p>must not fall back</p>" },
+    });
+    expect(fixture.controller.handlePaste(clipboardEvent("paste", fixture.target, transfer))).toMatchObject({
+      kind: "blocked", operation: "paste", defaultPrevented: true, reason: "invalidPlainText",
+      partial: { clipboard: "readAttempted", cancellation: "confirmed", command: "notAttempted" },
+    });
+    expect(transfer.calls).toEqual(["get:text/plain"]);
+    expect(fixture.adapter.requests).toEqual([]);
+    expect(fixture.queue.failure).toBeUndefined();
+    const valid = dataTransfer({ types: ["text/plain"], values: { "text/plain": "ok" } });
+    expect(fixture.controller.handlePaste(clipboardEvent("paste", fixture.target, valid))).toMatchObject({ kind: "handled", operation: "paste" });
+    expect(fixture.adapter.requests).toHaveLength(1);
+  });
+
   it("sanitizes supported HTML only when plain text was not advertised", () => {
     const fixture = setup(2);
     const transfer = dataTransfer({

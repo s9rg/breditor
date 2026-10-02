@@ -124,6 +124,17 @@ fi
 tar -tzf "${wasm_tarball}" package/dist/breditor_wasm_bg.wasm >/dev/null ||
   fail "the Wasm tarball does not contain its module"
 
+# The browser package now has the same exact file-set gate as Wasm/reference.
+# In particular, optional diagnostics, test fixtures and developer scripts must
+# never leak into dist or the tarball through an expanded build/pack glob.
+readonly browser_package_allowlist="${script_directory}/fixtures/browser-package-files.txt"
+[[ -f "${browser_package_allowlist}" ]] || fail "missing browser package file allowlist"
+readonly browser_package_listing="${smoke_directory}/browser-package-files.txt"
+tar -tzf "${browser_tarball}" | LC_ALL=C sort > "${browser_package_listing}"
+if ! diff -u -- "${browser_package_allowlist}" "${browser_package_listing}"; then
+  fail "the browser tarball file set differs from the reviewed allowlist"
+fi
+
 readonly wasm_package_allowlist="${script_directory}/fixtures/wasm-package-files.txt"
 [[ -f "${wasm_package_allowlist}" ]] ||
   fail "missing Wasm package file allowlist"

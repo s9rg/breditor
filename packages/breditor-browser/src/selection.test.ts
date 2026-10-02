@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { isUnicodeScalarBoundary } from "./selection.js";
 
 import {
   BaseDocumentProjection,
@@ -40,6 +41,44 @@ function selectionValue<T>(result: BrowserSelectionResult<T>): T {
 }
 
 describe("BaseRangeSelection", () => {
+  it("rejects malformed numeric paths and offsets without coercion at either endpoint", () => {
+    const coerce = vi.fn(() => { throw new Error("must not coerce a selection scalar"); });
+    const invalid: readonly unknown[] = [
+      undefined, null, false, true, "0", "1", 0n, Symbol("coordinate"),
+      NaN, Infinity, -Infinity, -1, -0.5, Number.MIN_VALUE, 0.5,
+      4_294_967_295.5, 4_294_967_296, Number.MAX_SAFE_INTEGER,
+      new Number(0), {}, [], () => 0, { [Symbol.toPrimitive]: coerce },
+    ];
+    const documentProjection = projection();
+    const valid = { kind: "children", parentPath: [0], childIndex: 0, affinity: "after" };
+    for (const value of invalid) {
+      const malformed = [
+        { kind: "text", textPath: [value, 0], utf16Offset: 0, affinity: "before" },
+        { kind: "text", textPath: [0, value], utf16Offset: 0, affinity: "before" },
+        { kind: "text", textPath: [0, 0], utf16Offset: value, affinity: "before" },
+        { kind: "children", parentPath: [value], childIndex: 0, affinity: "before" },
+        { kind: "children", parentPath: [0], childIndex: value, affinity: "before" },
+      ];
+      for (const point of malformed) {
+        for (const endpoint of ["anchor", "focus"] as const) {
+          expect(BaseRangeSelection.create(documentProjection, {
+            kind: "range", anchor: valid, focus: valid, [endpoint]: point,
+          }).ok).toBe(false);
+        }
+      }
+    }
+    expect(coerce).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -0])("admits zero paths and offsets %s without losing presence", (zero) => {
+    const result = BaseRangeSelection.create(projection(), {
+      kind: "range",
+      anchor: { kind: "text", textPath: [zero, zero], utf16Offset: zero, affinity: "before" },
+      focus: { kind: "children", parentPath: [zero], childIndex: zero, affinity: "after" },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.order).toBe("collapsed");
+  });
   it("owns deeply immutable endpoints and preserves directional anchor/focus", () => {
     const documentProjection = projection();
     const anchorPath = [0, 1];
@@ -219,5 +258,26 @@ describe("BaseRangeSelection", () => {
     if (!split.ok) {
       expect(split.error.code).toBe("selection.invalid_utf16_boundary");
     }
+  });
+});
+
+describe("Unicode scalar boundary admission", () => {
+  it("rejects malformed offsets without coercion and preserves scalar boundaries", () => {
+    const coerce = vi.fn(() => { throw new Error("must not coerce an offset"); });
+    for (const offset of [
+      undefined, null, false, true, "0", 0n, Symbol("offset"), NaN, Infinity,
+      -Infinity, -1, -0.5, Number.MIN_VALUE, 0.5, 5, 4_294_967_295,
+      4_294_967_296, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1,
+      new Number(0), { [Symbol.toPrimitive]: coerce },
+    ]) {
+      expect(isUnicodeScalarBoundary("A😀Z", offset as number)).toBe(false);
+    }
+    for (const offset of [0, -0, 1, 3, 4]) {
+      expect(isUnicodeScalarBoundary("A😀Z", offset)).toBe(true);
+    }
+    expect(isUnicodeScalarBoundary("A😀Z", 2)).toBe(false);
+    expect(isUnicodeScalarBoundary("", 0)).toBe(true);
+    expect(isUnicodeScalarBoundary("", -0)).toBe(true);
+    expect(coerce).not.toHaveBeenCalled();
   });
 });

@@ -461,6 +461,13 @@ payload-free `content_export.core_rejected` error. Applications needing the
 official granular Rust code must call the generated low-level Wasm API directly
 and assume responsibility for its handles and lifecycle.
 
+The low-level document and checkpoint string readers share synchronous handle
+reservations. Reentrant calls cannot consume an active result or cloned error
+again, even from a cleanup callback; independent nested reads remain valid.
+This guard spans the two readers in one loaded module graph, not arbitrary
+adapters or separately loaded package copies. It does not permit reuse of a
+previously freed generated handle.
+
 ## Boundary
 
 The Rust/Wasm adapter supplies a flattened, typed semantic projection. The
@@ -653,6 +660,12 @@ echoes, while `input` is only a postcondition and never executes a second
 command. A composition can reserve a completely idle queue for one
 never-queued settlement. Ordinary event, toolbar, API, observer, and reentrant
 submissions reject while the exact lease remains active.
+Admission rechecks disposal, failure and lease ownership after request inspection,
+before allocating a sequence or retaining work. Capacity uses private queue
+state, not overridable public status getters. Executors and delivery observers
+must remain synchronous: promise/thenable returns fail-stop the queue, and their
+rejections are consumed without retrying a command. This cannot cancel async work
+already started by an invalid callback.
 The package-root `executeIntent()` and `executeIntentJson()` methods use a
 separate immediate queue lease: they succeed only when the queue and adapter can
 complete the full request synchronously now. They never append behind an active

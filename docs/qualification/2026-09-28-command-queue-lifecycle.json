@@ -1,0 +1,59 @@
+{
+  "format": "breditor/command-queue-lifecycle",
+  "date": "2026-09-28",
+  "bugs": [
+    "Ordinary request inspection could dispose, lease or fail the queue before admission, without admission rechecking that state.",
+    "Capacity enforcement called an overridable public pendingCount getter instead of reading authoritative private state.",
+    "Promise-returning executors and observers failed the queue but their rejections were not consumed, for both ordinary and leased delivery."
+  ],
+  "before": {
+    "targetedTests": 23,
+    "failed": 8,
+    "passed": 15,
+    "observations": [
+      "Disposed and newly leased queues executed the outer request instead of rejecting it.",
+      "A newly failed queue retained an extra outer request instead of rejecting admission.",
+      "A replaced pendingCount getter allowed nested work past capacity one.",
+      "Four executor/observer and ordinary/leased combinations failed to install a rejection handler."
+    ],
+    "testMethod": "Promise tests use plain callback functions because vi.fn observes returned promises and would mask missing queue rejection handling. A test-owned rejection handler prevents pre-fix unhandled errors; a synchronous then spy verifies the queue installs its own handler."
+  },
+  "fix": [
+    "Recheck disposal, active lease and failure after canonical request inspection, before sequence assignment or payload retention.",
+    "Use private pending length and drain state for the capacity bound.",
+    "Reuse shared rejection containment at all four callback return sites, preserving terminal failure, quarantined followers and no replay."
+  ],
+  "verification": {
+    "newTests": 9,
+    "browserRuntimeTests": 1239,
+    "browserRuntimeFiles": 50,
+    "typecheck": "passed (production and test sources); corrected a test-only generic inference error",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224949,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "suite": "tests/browser/editor.spec.ts",
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 78,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/playwright-queue-lifecycle-20260928"
+    }
+  },
+  "limits": [
+    "Async callbacks remain unsupported. Consuming their rejections does not cancel work already started by an invalid callback.",
+    "Request inspection reentrancy and replaced getter regressions use controlled unit-test inputs.",
+    "The separate intermittent WebKit numeric fault remains unresolved; native instrumentation remained paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/command_queue.ts", "sha256": "70cbd7df9affb14adab548da5f7e27f4338e289fcaf2e8b69b7bb46e6159793c"},
+    {"path": "packages/breditor-browser/src/command_queue.test.ts", "sha256": "301adaad01f1d6a19af6cbe09fd7bedf557313766fc0b9c08a725ac5c1bfeaed"},
+    {"path": "/tmp/breditor-queue-lifecycle-reproduced-20260928.log", "sha256": "3d0ae41b03326a0e8dfdc1140eb9a58c1a90f7f1779716842fdb2a6c07a3b137"},
+    {"path": "/tmp/breditor-queue-lifecycle-full-final-20260928.log", "sha256": "9b4fe80128effeea4b0e2ca4341c433fd23115d77d2b134f508f76cbff5f7d5c"},
+    {"path": "/tmp/breditor-queue-lifecycle-types-fixed-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-queue-lifecycle-build-20260928.log", "sha256": "e8a5b7e3d7bbae21443c54a5e4adab83d60ed5f7785075dd7c2448b41ad47e09"},
+    {"path": "/tmp/breditor-queue-lifecycle-browser-20260928.log", "sha256": "1e88b132b11e54e908ebc3584fe03e12029cc07edb51f8246d7a2dccc417eef5"}
+  ]
+}

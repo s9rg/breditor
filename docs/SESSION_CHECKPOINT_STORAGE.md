@@ -55,6 +55,12 @@ formats, undo, redo, and history merge behavior. JavaScript owns IndexedDB
 connections, transactions, storage generation, byte counting, and digest
 verification. IndexedDB records and handles never cross into Rust.
 
+The store's public `closed` getter is observational. Load admission, publication
+after integrity verification, and save admission use private lifecycle state,
+so overriding the public getter cannot change persistence decisions. A close
+during a load's digest prevents publication when that digest settles. This
+does not cancel the digest or change an already-dispatched write's outcome.
+
 ## Exact database shape
 
 The physical database version remains 1 and has exactly one object store:
@@ -188,7 +194,11 @@ An open request's `blocked` event is progress, not proof of failure. A host can
 observe it while the request remains pending. Every connection closes and
 invalidates itself on `versionchange`; an abnormal database `close` event also
 makes that connection terminal. Explicit close refuses new work while already
-created transactions settle through their own terminal events.
+created transactions settle through their own terminal events. Callers waiting
+for this owner's database open (including schema validation) promptly receive
+`session_checkpoint.connection` on close. The underlying open cannot be
+canceled: late upgrades are aborted, late connections are closed, and no further
+blocked-progress notifications are delivered for the closed owner.
 
 ## Load and compare-and-swap token
 
@@ -309,6 +319,12 @@ provided one, its stable payload-free `causeCode` such as
 surface a paused state. It must not automatically retry conflicts or other
 persistent failures from the notification callback.
 
+Transitions and listener delivery sample the coordinator's private state, not
+its overridable public `getStatus()` method. A host override cannot suppress
+notifications, fabricate a disposal event or interrupt persistence bookkeeping.
+The public method still returns the same immutable, payload-redacted status;
+notification coalescing and listener-driven lifecycle actions are unchanged.
+
 `flush()` targets the dirty epoch visible to that call and settles only when
 that epoch is committed or a relevant attempt fails. It does not convert an
 unknown transaction into success. Disposal cancels future scheduling but does
@@ -334,6 +350,17 @@ exclusive engine read/delivery or while native composition owns temporary DOM.
 Uncommitted IME DOM is never serialized as editor state. Faulted/disposed
 adapters and thrown checkpoint invocations return explicit failures, causing
 autosave to pause instead of polling forever.
+
+The checkpoint-result reader reserves each result before inspecting caller
+metadata and each cloned error before reading its cleanup method. A synchronous
+callback cannot transfer an active handle to another checkpoint or document
+read, even during cleanup; that nested read returns its reader-specific
+`invalid_wasm_view` boundary error without freeing the active handle.
+Independent nested results remain supported. Reservations are shared by these
+two readers within one loaded module graph and end after cleanup. Callers must
+still honor generated-handle ownership: do not reuse freed handles or pass one
+handle between unrelated adapters. No checkpoint bytes or storage versions
+change.
 
 Composition or an exclusive adapter lease can keep capture temporarily
 unavailable beyond the nominal 2 s scheduling bound. The coordinator retries
@@ -390,7 +417,9 @@ not treated as reliable storage completion.
   pending indefinitely. The profile deliberately has no timeout: declaring an
   in-flight write failed while it can still commit would forfeit exact CAS-token
   ownership. `close()` cannot cancel an open request or transaction already
-  issued to the platform.
+  issued to the platform. It does release callers waiting on the owner's open;
+  cleanup of the native request still waits for a platform event. It does not
+  impose a timeout or change the outcome of an already-dispatched write.
 - SHA-256 detects accidental mismatch only. This profile provides neither
   confidentiality nor protection from malicious same-origin code.
 - A complete checkpoint includes undo and redo history. Text removed from the

@@ -1,0 +1,68 @@
+{
+  "format": "breditor/manual-clipboard-evidence",
+  "formatVersion": 1,
+  "outcome": "operator-confirmed",
+  "qualification": "Not automatic certification. Trusted events can also originate from browser automation; checklist observations are self-reported.",
+  "owner": { "phase": "live", "reason": null, "revision": "41" },
+  "firstFault": null,
+  "observedEvents": 7,
+  "pendingEvents": 0,
+  "droppedEvents": 0,
+  "trustedClipboardEvents": { "copy": 2, "cut": 2, "paste": 2 },
+  "operatorChecks": {
+    "copy": true,
+    "cut": true,
+    "paste": true,
+    "caret": true,
+    "history": true,
+    "formatting": true
+  },
+  "events": [
+    {
+      "sequence": 1, "kind": "copy", "trusted": true,
+      "inputType": null, "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "2" },
+      "after": { "phase": "live", "reason": null, "revision": "2" }
+    },
+    {
+      "sequence": 2, "kind": "cut", "trusted": true,
+      "inputType": null, "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "4" },
+      "after": { "phase": "live", "reason": null, "revision": "5" }
+    },
+    {
+      "sequence": 3, "kind": "beforeinput", "trusted": true,
+      "inputType": "insertText", "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "7" },
+      "after": { "phase": "live", "reason": null, "revision": "8" }
+    },
+    {
+      "sequence": 4, "kind": "paste", "trusted": true,
+      "inputType": null, "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "19" },
+      "after": { "phase": "live", "reason": null, "revision": "20" }
+    },
+    {
+      "sequence": 5, "kind": "copy", "trusted": true,
+      "inputType": null, "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "26" },
+      "after": { "phase": "live", "reason": null, "revision": "26" }
+    },
+    {
+      "sequence": 6, "kind": "cut", "trusted": true,
+      "inputType": null, "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "29" },
+      "after": { "phase": "live", "reason": null, "revision": "30" }
+    },
+    {
+      "sequence": 7, "kind": "paste", "trusted": true,
+      "inputType": null, "defaultPrevented": true, "settled": true,
+      "before": { "phase": "live", "reason": null, "revision": "39" },
+      "after": { "phase": "live", "reason": null, "revision": "40" }
+    }
+  ],
+  "environment": {
+    "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Mobile/15E148 Safari/604.1",
+    "platform": "iPhone"
+  }
+}

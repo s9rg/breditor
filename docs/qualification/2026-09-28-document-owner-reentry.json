@@ -1,0 +1,53 @@
+{
+  "format": "breditor/document-owner-reentry",
+  "date": "2026-09-28",
+  "bug": "Document export allowed reentrant consumption of its active result or error, causing duplicate cleanup. The checkpoint-only reservation did not protect aliases crossing between document and checkpoint readers.",
+  "before": {
+    "targetedTests": 37,
+    "failed": 15,
+    "passed": 22,
+    "observations": "Cleanup counters reached two instead of one for eight document-result inspection stages, three shared-error stages, and result/error aliases in both cross-reader directions."
+  },
+  "fix": [
+    "Reserve document results before caller metadata inspection and cloned errors before their cleanup getters.",
+    "Share active identity reservations with the checkpoint reader, rejecting overlapping ownership without freeing the active handle.",
+    "Keep reservations through cleanup and release them in finally; preserve independent nested reads and caller ownership when protected-list capture fails."
+  ],
+  "verification": {
+    "newRegressionAndControlTests": 17,
+    "browserRuntimeTests": 1289,
+    "browserRuntimeFiles": 51,
+    "typecheck": "passed (runtime and unit tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224927,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 78,
+      "failed": 0,
+      "retries": 0,
+      "scope": "Complete editor.spec.ts: editing, selections, IME, clipboard, document export, checkpoints, history, toolbars, formatting and automated accessibility checks.",
+      "output": "target/playwright-document-owner-20260928"
+    }
+  },
+  "limits": [
+    "Reservations cover the document and checkpoint readers within one loaded module graph, not unrelated adapters or separately loaded package copies.",
+    "This is not a persistent consumed-handle registry; callers must not reuse already-freed generated handles.",
+    "Synthetic unit handles reproduce reentry; the real-browser suite checks normal integration behavior.",
+    "No durable format, generated Wasm contract, Rust implementation, package version or size limit changed.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/wasm_document_json.ts", "sha256": "f574cce69e7bda25011c861fa6df543125a4f52be18f0e989a033a0306ca9a77"},
+    {"path": "packages/breditor-browser/src/wasm_document_json.test.ts", "sha256": "e6598509fcb08f3b9f5c99fd936782481f7ad029bdb061c8e4191a75e2fe36f8"},
+    {"path": "packages/breditor-browser/src/wasm_session_checkpoint.ts", "sha256": "a32d460dacf31165772923bec4c7097abe11975e187f842ba669d8716830df29"},
+    {"path": "packages/breditor-browser/src/active_wasm_string_handles.ts", "sha256": "0cc2d69380a83b01b9b77b39e3a1168bfa1173db1a7f88f83ca5e82b1d3eefde"},
+    {"path": "/tmp/breditor-document-owner-before-20260928.log", "sha256": "155ec2854cea790cbe4e0a43cc32ab546f917883b9e05d6eeb5cf432fd873f74"},
+    {"path": "/tmp/breditor-document-owner-full-20260928.log", "sha256": "aaec67390942be554423561977d0c0d7be8d60e10b0b0a33d5d845ee1d8e6645"},
+    {"path": "/tmp/breditor-document-owner-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-document-owner-build-20260928.log", "sha256": "b08ee018978093d9c91e44fa364d550c77f946ac1012605db1d61d24accdf5ee"},
+    {"path": "/tmp/breditor-document-owner-browser-20260928.log", "sha256": "2e6ab48fd9a3099c5aef8c4d3b1a9f369e29cb5a0e976db7a5d99dfd30627327"}
+  ]
+}

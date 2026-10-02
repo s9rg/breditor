@@ -1,0 +1,100 @@
+{
+  "status": "diagnostic-only",
+  "runtimeFixQualified": false,
+  "nativeSafariTested": false,
+  "productionRuntimeChanged": false,
+  "retries": 0,
+  "engineSettings": "normal JIT unless explicitly identified as historical control",
+  "comparisonOnlyReduction": {
+    "javascriptSha256": "19882ccf497e54cd32d53aa829e48c88ea04ae5254904d679e36242cb5867420",
+    "webkit": { "passed": 25, "failed": 0 },
+    "chromiumAndFirefox": { "passed": 20, "failed": 0 },
+    "comparisonsPerCase": 100000,
+    "interpretation": "Raw f64 control also passes; reduction masks failure and does not qualify conversions."
+  },
+  "unchangedPositiveControl": {
+    "passed": 1,
+    "failed": 1,
+    "notRun": 3,
+    "failureIteration": 3531,
+    "trace": "/tmp/breditor-property-positive-control-failure-20260926.zip",
+    "traceSha256": "af1b32ac3f086b27105f33e7359cc3e786fb59ca907caa0d0fbeca4f0fc7f60a"
+  },
+  "propertyFixtureTransportMatrix": {
+    "tuplesPerPassingCase": 20000,
+    "variantsLaunchedConcurrently": true,
+    "workersPerVariant": 1,
+    "f64": {
+      "passed": 4,
+      "failed": 1,
+      "javascriptSha256": "13ccf24403e427e862da2ffe49213f3884d580114098277666b1b2c46eca9337",
+      "failure": {
+        "case": 4,
+        "iteration": 541,
+        "propertyIndex": 0,
+        "mismatchMask": 16,
+        "actual": 2048,
+        "expected": 2048,
+        "actualHigh": 1084227584,
+        "actualLow": 0,
+        "expectedHigh": 1084227584,
+        "expectedLow": 0,
+        "objectIsRecheck": true,
+        "strictEqualRecheck": true,
+        "trace": "/tmp/breditor-property-transport-f64-failure-20260926.zip",
+        "traceSha256": "436217c721219e9647c8644f6ef2f582bcde375111eed4f53793707ca8e94c46"
+      }
+    },
+    "i32": {
+      "passed": 5,
+      "failed": 0,
+      "javascriptSha256": "d3ab29f1ce2cb2baebfdd507a674d84eddde860d585eee66d67a073461dc120d"
+    },
+    "u32": {
+      "passed": 5,
+      "failed": 0,
+      "javascriptSha256": "78c813fdcc40ded1a7ef101e3b9dc7ce3155a88b754a2c35782a25585532fef2"
+    },
+    "text": {
+      "passed": 5,
+      "failed": 0,
+      "javascriptSha256": "f07dc54bcc36be291a63370011fe11c7f6b9571374b00c12db3bc843e867f626"
+    }
+  },
+  "fullConsumerCandidate": {
+    "status": "experimental; initial suite timeout retained, four-case WebKit follow-up passed",
+    "initialRun": {
+      "passed": 16,
+      "notCompleted": 4,
+      "suiteErrors": ["480-second suite deadline", "suite teardown timeout"],
+      "runtimeRejectionReported": false,
+      "exitCode": 1
+    },
+    "webkitFollowUp": {
+      "passed": 4,
+      "failed": 0,
+      "seconds": 44.6,
+      "log": "/tmp/breditor-numeric-normalization-candidate-batch2-20260926.log"
+    },
+    "completedWebkitCasesAcrossAttempts": 20,
+    "completedWebkitRestoresAcrossAttempts": 200000,
+    "completedWebkitSelectionReadsAcrossAttempts": 600000,
+    "chromiumAndFirefox": {
+      "passed": 4,
+      "failed": 0,
+      "casesPerEngine": 2,
+      "seconds": 50.5,
+      "log": "/tmp/breditor-numeric-normalization-other-engines-20260926.log"
+    },
+    "javascriptSha256": "81c75327df04135e535b22f379037f8f288ab501558aca3aa13fda6d3a1b71ac",
+    "wasmSha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+    "command": "npm run test:number:candidate",
+    "log": "/tmp/breditor-numeric-normalization-candidate-20260926.log"
+  },
+  "toolingVerification": {
+    "workspaceTestsPassed": 1278,
+    "diagnosticTestsPassed": 37,
+    "browserTypecheck": "passed",
+    "fullReleaseVerifier": "not rerun"
+  }
+}

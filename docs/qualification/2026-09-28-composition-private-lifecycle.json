@@ -1,0 +1,54 @@
+{
+  "format": "breditor/composition-private-lifecycle",
+  "date": "2026-09-28",
+  "bug": "Composition event routing consulted the public active getter and scheduled recovery invoked the public recover method. Shadows could skip quarantine, throw from event/task handling or fabricate recovery without restoring/releasing the editing lease.",
+  "before": {
+    "targetedTests": 49,
+    "failed": 10,
+    "passed": 39,
+    "observations": "Six active input/beforeinput cases failed routing or no-public-read assertions; malformed input failed to quarantine with a false activity shadow; three recovery overrides threw, faked success or disposed during the scheduled task."
+  },
+  "fix": [
+    "Internal input admission and invalid-event handling use private phase through isActive; the public getter delegates to the same predicate.",
+    "Scheduled and manual recovery share a private implementation, so scheduled tasks cannot invoke public overrides."
+  ],
+  "verification": {
+    "newRegressionTests": 10,
+    "browserRuntimeTests": 1320,
+    "browserRuntimeFiles": 51,
+    "typecheck": "passed (runtime and unit tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224925,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 9,
+      "failed": 0,
+      "retries": 0,
+      "scenarios": [
+        "Native keyboard typing, Backspace and Delete use the semantic command path.",
+        "Synthetic composition settles DOM into one Unicode commit, with exact Undo and Redo.",
+        "Bold, Undo and Redo share toolbar command history."
+      ],
+      "output": "target/playwright-composition-private-20260928"
+    }
+  },
+  "limits": [
+    "Unit tests reproduce public-member overrides on controller instances. Browser tests check normal integration behavior, not real operating-system IME input.",
+    "This protects the controller's internal paths, not arbitrary calls to shadowed public members by integrations.",
+    "Recovery failure still retains quarantine and the queue lease; no semantic command retry was introduced.",
+    "No durable format, Rust implementation, public signature, package version or size limit changed.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/composition_controller.ts", "sha256": "7e6825be76c1aebe2059f8cde860d3fd809086ae673a14a577ea5f0772af1ece"},
+    {"path": "packages/breditor-browser/src/composition_controller.test.ts", "sha256": "c2e78fa10bdbd3fcdeb02c73f79f1f6ac9e30e669eae283164bac4511cd7feaf"},
+    {"path": "/tmp/breditor-composition-private-before-20260928.log", "sha256": "d4c118cb170a3355c2e1a7baf9ba38be2002440fc52b509dbd4f6a1b9f731b39"},
+    {"path": "/tmp/breditor-composition-private-full-20260928.log", "sha256": "8f28910a5983453bb2a84eb3e60207a70e6b2234c65769da18179065c9e740f9"},
+    {"path": "/tmp/breditor-composition-private-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-composition-private-build-20260928.log", "sha256": "fc65382c2789238f8668be2832032696af8667e7ccdbd0c1ae7a4373978ebe3b"},
+    {"path": "/tmp/breditor-composition-private-browser-20260928.log", "sha256": "3abefea9242b2cf8c4f1e27d8ec7c75448b6bf78049f8f7b5b773934ba83cb53"}
+  ]
+}

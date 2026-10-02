@@ -16,6 +16,96 @@ import {
 const FINGERPRINT =
   "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
+describe("descriptor consumption ownership", () => {
+  it.each((["public", "captured"] as const).flatMap((entry) =>
+    ["protected metadata", "free getter", "then getter", "schema read", "cleanup", "final generation check"]
+      // The captured entry intentionally never reads the view's free getter.
+      .filter((phase) => entry !== "captured" || phase !== "free getter")
+      .map((phase) => [entry, phase] as const),
+  ))("guards the %s entry during %s", (entry, phase) => {
+      const generation = new Generation();
+      const view = new Descriptor(generation);
+      const nested: boolean[] = [];
+      let entered = false;
+      let cleaned = false;
+      const reenter = () => {
+        if (entered) return;
+        entered = true;
+        nested.push(consumeWasmCompiledProfileDescriptor(generation, view).ok);
+        nested.push(consumeWasmCompiledProfileDescriptorWithCleanup(generation, view, () => { view.freeCalls++; }).ok);
+      };
+      const cleanup = () => { if (phase === "cleanup") reenter(); view.freeCalls++; cleaned = true; };
+      view.free = cleanup;
+      let protectedHandles: readonly unknown[] = [];
+      if (phase === "protected metadata") protectedHandles = new Proxy([], {
+        getOwnPropertyDescriptor(target, key) { reenter(); return Reflect.getOwnPropertyDescriptor(target, key); },
+      });
+      if (phase === "free getter") Object.defineProperty(view, "free", { get() { reenter(); return cleanup; } });
+      if (phase === "then getter") Object.defineProperty(view, "then", { get() { reenter(); return undefined; } });
+      if (phase === "schema read") Object.defineProperty(view, "schemaName", { get() { reenter(); return "example/document"; } });
+      if (phase === "final generation check") generation.matches = (other) => {
+        if (cleaned) reenter();
+        return other === generation;
+      };
+      const result = entry === "public" ? consumeWasmCompiledProfileDescriptor(generation, view, protectedHandles)
+        : consumeWasmCompiledProfileDescriptorWithCleanup(generation, view, cleanup, protectedHandles);
+      expect(result.ok, phase).toBe(true);
+      expect(nested, phase).toEqual([false, false]);
+      expect(view.freeCalls, phase).toBe(1);
+      expect(generation.freeCalls, phase).toBe(0);
+  });
+
+  it("does not inspect a caller-owned protected view's then accessor", () => {
+    const generation = new Generation();
+    const view = new Descriptor(generation);
+    const thenRead = vi.fn(() => undefined);
+    Object.defineProperty(view, "then", { get: thenRead });
+    const cleanup = vi.fn();
+    expect(consumeWasmCompiledProfileDescriptorWithCleanup(generation, view, cleanup, [view]).ok).toBe(false);
+    expect(thenRead).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
+  });
+
+  it("allows independent nested descriptors", () => {
+    const generation = new Generation();
+    const outer = new Descriptor(generation);
+    const inner = new Descriptor(generation);
+    let nested = false;
+    Object.defineProperty(outer, "schemaName", { get() {
+      nested = consumeWasmCompiledProfileDescriptor(generation, inner).ok;
+      return "example/document";
+    } });
+    expect(consumeWasmCompiledProfileDescriptor(generation, outer).ok).toBe(true);
+    expect(nested).toBe(true);
+    expect(outer.freeCalls).toBe(1);
+    expect(inner.freeCalls).toBe(1);
+  });
+
+  it("preserves the public array-only contract and internal captured-cleanup contract", () => {
+    const generation = new Generation();
+    const publicView = new Descriptor(generation);
+    expect(consumeWasmCompiledProfileDescriptor(generation, publicView, new Set() as never).ok).toBe(false);
+    expect(publicView.freeCalls).toBe(0);
+    const capturedView = new Descriptor(generation);
+    const freeRead = vi.fn(() => { throw new Error("already captured"); });
+    Object.defineProperty(capturedView, "free", { get: freeRead });
+    const cleanup = vi.fn();
+    expect(consumeWasmCompiledProfileDescriptorWithCleanup(generation, capturedView, cleanup, new Set()).ok).toBe(true);
+    expect(freeRead).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("releases a rejected metadata reservation without taking ownership", () => {
+    const generation = new Generation();
+    const view = new Descriptor(generation);
+    const malformed = new Proxy([], { getOwnPropertyDescriptor() { throw new Error("invalid metadata"); } });
+    expect(consumeWasmCompiledProfileDescriptor(generation, view, malformed).ok).toBe(false);
+    expect(view.freeCalls).toBe(0);
+    expect(consumeWasmCompiledProfileDescriptor(generation, view).ok).toBe(true);
+    expect(view.freeCalls).toBe(1);
+  });
+});
+
 class Generation implements WasmProfileGenerationView {
   freeCalls = 0;
 
@@ -475,6 +565,49 @@ describe("compiled Wasm profile descriptor boundary", () => {
     ).toBe(true);
     expect(view.freeCalls).toBe(1);
     expect(generation.freeCalls).toBe(0);
+  });
+
+  it("rejects malformed required u32 metadata without coercion and releases each view once", () => {
+    const coerce = vi.fn(() => 1);
+    const invalid: readonly unknown[] = [
+      undefined, null, false, true, "1", "", 1n, Symbol("revision"),
+      NaN, Infinity, -Infinity, -1, -0, 0, 1.5, 0x1_0000_0000,
+      Number.MAX_SAFE_INTEGER, new Number(1), {}, [], () => 1,
+      { [Symbol.toPrimitive]: coerce },
+    ];
+    for (const field of ["schemaVersion", "formatRevision"] as const) {
+      for (const value of invalid) {
+        const generation = new Generation();
+        const view = new Descriptor(generation);
+        Object.defineProperty(view, field, {
+          value: field === "schemaVersion" ? value
+            : (index: number) => index === 0 ? value : index === 1 ? 1 : undefined,
+        });
+        expect(consumeWasmCompiledProfileDescriptor(generation, view).ok).toBe(false);
+        expect(view.freeCalls).toBe(1);
+        expect(generation.freeCalls).toBe(0);
+      }
+    }
+    expect(coerce).not.toHaveBeenCalled();
+  });
+
+  it("preserves the full positive-u32 range in required schema and format revisions", () => {
+    for (const field of ["schemaVersion", "formatRevision"] as const) {
+      for (const value of [1, 2, 0x7fff_ffff, 0x8000_0000, 0xffff_ffff]) {
+        const generation = new Generation();
+        const view = new Descriptor(generation);
+        Object.defineProperty(view, field, {
+          value: field === "schemaVersion" ? value
+            : (index: number) => index === 0 ? value : index === 1 ? 1 : undefined,
+        });
+        const result = consumeWasmCompiledProfileDescriptor(generation, view);
+        if (!result.ok) throw new Error(`${field} rejected ${value}`);
+        expect(field === "schemaVersion" ? result.descriptor.schema.version
+          : result.descriptor.formats[0]?.revision).toBe(value);
+        expect(view.freeCalls).toBe(1);
+        expect(generation.freeCalls).toBe(0);
+      }
+    }
   });
 
   it("retains an opaque symmetric generation correlation in a private sidecar", () => {

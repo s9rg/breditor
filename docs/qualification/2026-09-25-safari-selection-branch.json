@@ -1,0 +1,20 @@
+{
+  "format": "breditor/native-selection-stress-observation",
+  "version": 1,
+  "observation": "Read from installed Safari's visible accessibility tree after the rejection-only labelled probe stopped on failure.",
+  "batchesPlanned": 20,
+  "restoresPerBatch": 10000,
+  "readsPerRestore": 3,
+  "freshPageBetweenBatches": true,
+  "freshBrowserProcessBetweenBatches": false,
+  "active": false,
+  "outcome": "failed",
+  "passed": 3,
+  "current": 4,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+  "bundleSha256": "b53d6f6c2ccdc846bfbc6a9afd2877f5a1315957caaeb3dd2dde161470f4fa1b",
+  "diagnosticBranchLabels": true,
+  "error": "Error: selection rejected at 6089/0: selection.invalid_wasm_vieJ",
+  "branch": "readSemanticSelection: anchor === null || focus === null after readPoint",
+  "stack": "fo@http://127.0.0.1:4186/assets/index-BVrbdtFQ.js:1:131774"
+}

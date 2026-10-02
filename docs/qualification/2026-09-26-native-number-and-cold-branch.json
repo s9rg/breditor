@@ -1,0 +1,90 @@
+{
+  "status": "reduced comparison fault reproduced; runtime fix not established",
+  "productionRuntimeChanged": false,
+  "environment": {
+    "architecture": "arm64",
+    "macOS": "26.6.2",
+    "macOSBuild": "25G83",
+    "safariVersion": "26.6.2",
+    "safariBundleVersion": "21624.5.1.11.3",
+    "playwrightWebkitRevision": "2336",
+    "playwrightWebkitVersionLabel": "26.5",
+    "versionCaution": "These product labels are not an ordering of exact WebKit source commits."
+  },
+  "nativeSafari": {
+    "observation": "Results read from Safari accessibility tree after clicking Start; no JavaScript injection or clipboard access.",
+    "runnerSha256": "c2fa66eff66cfda347a8abbd6d86c0ec73439d9d1379b40aa7816bb881f6aad0",
+    "validatorFreeDataView": {
+      "bundleSha256": "37bdf950ac887c2e2e420091c608ffc4ac5295e4f02ebd2ff248c1886a8bbe40",
+      "runs": [{ "passed": 10, "failed": 0 }, { "passed": 10, "failed": 0 }],
+      "totalIterationsCompleted": 200000,
+      "totalTuplesCompleted": 400000
+    },
+    "coldMinimal": {
+      "status": "passed",
+      "bundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+      "passed": 10,
+      "failed": 0,
+      "iterationsCompleted": 100000,
+      "tuplesCompleted": 200000
+    }
+  },
+  "sameVisibleRunnerInPlaywrightWebkit": {
+    "passed": 3,
+    "failed": 1,
+    "notRun": 6,
+    "failureBatch": 4,
+    "failureIteration": 5225,
+    "mismatchMask": 16,
+    "equalBitColdRecheck": true,
+    "trace": "/tmp/breditor-native-wrapper-webkit-failure-20260926.zip",
+    "traceSha256": "b3152716b2671a822f8403c640ca3bb69c1f45fa7a55c10aaa100ad82a6fb1a4",
+    "initialHarnessAttempt": "Timed out at inherited five-second action wait. Corrected batch observation to 25 seconds inside unchanged 30-second per-test budget. Initial attempt is not runtime evidence."
+  },
+  "standaloneColdBranch": {
+    "passed": 8,
+    "failed": 2,
+    "failureIterations": [461, 3571],
+    "javascriptSha256": "3f04f92b4b4609d0d6320af98d83b67f87f0950b46c12808527734fc444d8eef",
+    "imports": 0,
+    "wasmAssets": 0,
+    "trace": "/tmp/breditor-js-cold-branch-failure-20260926.zip",
+    "traceSha256": "80e031d729212e22a5546b6918b62c7a9735b9bca09964a9b442afcfc468d292"
+  },
+  "standaloneColdMinimal": {
+    "passed": 5,
+    "failed": 5,
+    "failureIterations": [3241, 2441, 2141, 1021, 3071],
+    "javascriptBytes": 4480,
+    "javascriptSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+    "imports": 0,
+    "wasmAssets": 0,
+    "editorProfileData": false,
+    "trace": "/tmp/breditor-js-cold-minimal-failure-20260926.zip",
+    "traceSha256": "c0ed058935fa3d0f7b862b5f0bafe231cc685ba510cef55d3438eaa2bef9938d",
+    "preservedBuild": "/tmp/breditor-js-cold-minimal-build-20260926",
+    "firstFailureReport": {
+      "field": 4,
+      "actual": 2048,
+      "expected": 2048,
+      "actualHigh": 1084227584,
+      "actualLow": 0,
+      "expectedHigh": 1084227584,
+      "expectedLow": 0,
+      "objectIsRecheck": true,
+      "strictEqualRecheck": true
+    }
+  },
+  "verification": {
+    "unitTestsPassed": 1325,
+    "diagnosticTestsIncluded": 47,
+    "browserTypecheck": "passed",
+    "fullReleaseVerifier": "not rerun"
+  },
+  "limits": [
+    "Cold reports do not capture machine operands at the original failing comparison.",
+    "Passing native reduced probes do not supersede earlier native editor selection failures.",
+    "No exact compiler pass or engine patch has been identified.",
+    "No production validation or release gate was weakened."
+  ]
+}

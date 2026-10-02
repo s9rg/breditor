@@ -1,0 +1,61 @@
+{
+  "format": "breditor/checkpoint-owner-reentry",
+  "date": "2026-09-28",
+  "bug": "A reentrant checkpoint reader could accept a result or cloned error already owned by an active read. Per-call cleanup registries did not prevent overlapping ownership.",
+  "before": {
+    "targetedTests": 39,
+    "failed": 10,
+    "passed": 29,
+    "observations": "Nested reads were accepted instead of returning a boundary failure at seven root-result and three shared-error reentry points."
+  },
+  "fix": [
+    "Reserve the root result before inspecting caller metadata, and reserve cloned errors before reading their cleanup methods.",
+    "Reject overlapping acquisition through this module without reading or freeing the active handle; retain reservations through cleanup and release them in finally.",
+    "Allow independent nested reads and release reservations when invalid protected-owner metadata leaves ownership with the caller.",
+    "Consolidate three identical UTF-8 length validators into one internal helper, preserving encoding and byte-limit semantics without increasing release budgets."
+  ],
+  "verification": {
+    "newOwnershipTests": 12,
+    "newUtf8Tests": 12,
+    "browserRuntimeTests": 1272,
+    "browserRuntimeFiles": 51,
+    "typecheck": "passed (runtime and unit tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224934,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 9,
+      "failed": 0,
+      "retries": 0,
+      "scenarios": [
+        "Closing a checkpoint store settles loads queued behind a blocked database deletion.",
+        "An explicit checkpoint survives a real page reload, including Undo and Redo.",
+        "An explicit session backup restores typed values and the redo frontier through Rust."
+      ],
+      "output": "target/playwright-checkpoint-owner-20260928"
+    }
+  },
+  "limits": [
+    "Reservations protect overlapping calls within the checkpoint reader module, not unrelated adapters or separately loaded module instances.",
+    "They are not a persistent consumed-handle registry: callers must still never reuse a freed generated handle.",
+    "Browser integration verifies normal persistence behavior; synthetic unit handles reproduce getter/destructor reentry.",
+    "No durable format, Rust implementation, package version or size limit changed.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/wasm_session_checkpoint.ts", "sha256": "43503a5e9398f7c7dcc600a86c1fcf91bcf0abdf8ab8f2ee094c41d609547530"},
+    {"path": "packages/breditor-browser/src/wasm_session_checkpoint.test.ts", "sha256": "9423a472d46113c8fe69ae76b59c1572354347e45ae361a0141dd34fa6952276"},
+    {"path": "packages/breditor-browser/src/wasm_document_json.ts", "sha256": "466908b1458fa546eae6523030a1ae7b3b27e6af2befd54594ead0857ba50631"},
+    {"path": "packages/breditor-browser/src/wasm_engine_bootstrap.ts", "sha256": "c1e1c97b0b2e7ac4d8b07129cdfcef712079f65ab2a029fdd1d14f4b01abdb5a"},
+    {"path": "packages/breditor-browser/src/well_formed_utf8_length.ts", "sha256": "fba98ed5ec7058aaf7b6a10ac4db66506a9c79db5f8fe50f328e269b8a6eea15"},
+    {"path": "packages/breditor-browser/src/well_formed_utf8_length.test.ts", "sha256": "ce5fea86ccf7c63dfe2cfddcfd219d3bb6b184587ab50edd2caa1b3568ae8348"},
+    {"path": "/tmp/breditor-checkpoint-owner-before-20260928.log", "sha256": "13fb56a96f38b8fab59712555a4b0cb776779ee2bf29924ec41109336eb0776f"},
+    {"path": "/tmp/breditor-checkpoint-owner-full-20260928.log", "sha256": "1c7c4774f623d9f78aa45c3beb4400194f00b7baf87555354bfd4ec6ed0f0a00"},
+    {"path": "/tmp/breditor-checkpoint-owner-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-checkpoint-owner-build-final-20260928.log", "sha256": "3452c85c214ea451d988576b66c938c7a409ef33161671202df9f9259cd9a324"},
+    {"path": "/tmp/breditor-checkpoint-owner-browser-20260928.log", "sha256": "04a6f0836aff5a9d2446e77e0eb4bc3d4d8d3b13cb204fa53a2da0133ad936c9"}
+  ]
+}

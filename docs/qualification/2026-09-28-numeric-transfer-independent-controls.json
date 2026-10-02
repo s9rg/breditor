@@ -1,0 +1,1696 @@
+{
+  "format": "breditor/numeric-transfer-independent-controls",
+  "date": "2026-09-28",
+  "fixed": false,
+  "productionChanged": false,
+  "sources": [
+    {
+      "path": "scripts/debug-jsc-array-repro.mjs",
+      "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+    },
+    {
+      "path": "scripts/run-jsc-range-repro.mjs",
+      "sha256": "607c80391afbd0ee20128279ec7a3be831b9b962d20818740914f568fd7b3bfb"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_range_runner.js",
+      "sha256": "95e0acde161a5d4ed602a3f1303d81b89dc3e0380c45edc21c5699bffd2e5c5e"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_range_runner.test.ts",
+      "sha256": "fd0437fc8f3a266340262aa4e966d8477e403e1e07bcb81549cf2fb0a82d4bc1"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_array_capture.test.ts",
+      "sha256": "1eee2032afcdee7bbc29b09dce8408fd849e19cdc5fb1568238042dc276d9c59"
+    },
+    {
+      "path": "tests/browser/diagnostics/native_numeric_select.c",
+      "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+    },
+    {
+      "path": "tests/browser/diagnostics/native_numeric_select.S",
+      "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+    },
+    {
+      "path": "scripts/serve-range-repro.mjs",
+      "sha256": "659451008cdad09e2075211a486354ac0b001015b7c88ab5d4a51933c8ff7e8c"
+    },
+    {
+      "path": "playwright.numeric-range-static.config.ts",
+      "sha256": "373277ed1d79b93fc9d96c43a14c3b6fc4dbdb2752d7af49d1a786e2c525ee03"
+    },
+    {
+      "path": "tests/browser/diagnostics/numeric-range-static.spec.ts",
+      "sha256": "1b26571629c7ca1facc808bf5d26406cc4eccf264e30e3b89758b0a51d764161"
+    }
+  ],
+  "longStandaloneRuns": [
+    {
+      "name": "unmodified",
+      "path": "/tmp/breditor-array-long-unmodified-20260928.jsonl",
+      "sha256": "546d6b317a3b266c65e67594459134bd83303ee1432c7cbb4889d329b05c7809",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "95e0acde161a5d4ed602a3f1303d81b89dc3e0380c45edc21c5699bffd2e5c5e"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 2,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 3,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 4,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 5,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 6,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 7,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 8,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 9,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 10,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        }
+      ],
+      "summary": {
+        "mode": "no-jit",
+        "minimumTimerDelay": "0",
+        "iterations": "100000",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      }
+    },
+    {
+      "name": "baseline",
+      "path": "/tmp/breditor-array-long-baseline-20260928.jsonl",
+      "sha256": "353391934fdd08dd546bae49ce0689bb4b921c7d7e9ad192a0c6ecac25362cdb",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "95e0acde161a5d4ed602a3f1303d81b89dc3e0380c45edc21c5699bffd2e5c5e"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "02cddfa7b10b568bcd8e93b251b31b807e5d1811a25b7167b4c1f89c180d46a6"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 2,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 3,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 4,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 5,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 6,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 7,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 8,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 9,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 10,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "baseline-passed",
+          "variant": "baseline",
+          "placement": null,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "guarded",
+      "path": "/tmp/breditor-array-long-guarded-20260928.jsonl",
+      "sha256": "c29542d6207d694993f8f15e64995669ed8edf023567c2150428ff37aecf9ba2",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "95e0acde161a5d4ed602a3f1303d81b89dc3e0380c45edc21c5699bffd2e5c5e"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "02cddfa7b10b568bcd8e93b251b31b807e5d1811a25b7167b4c1f89c180d46a6"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 2,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 3,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 4,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 5,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 6,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 7,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 8,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 9,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 10,
+          "iterations": "100000",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "variant": "probe",
+          "placement": "post-store",
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "100000",
+              "checks": "1500000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "nativeControl": {
+    "path": "/tmp/breditor-native-select-controls-20260928.jsonl",
+    "sha256": "c77a543e9bed83db6436b6fe1e0dab1ccb769ad1e33595d5feb3593f9420e0d9",
+    "runs": [
+      {
+        "variant": "fcsel",
+        "scheduling": "none",
+        "sources": [
+          {
+            "path": "/Users/s/code/breditor/target/native-numeric-select-20260928",
+            "sha256": "1721f69e8232935c95b7e9b75b65a721318ff8be58930fc9a25c3d3594b792aa"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.c",
+            "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.S",
+            "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+          }
+        ],
+        "passed": true,
+        "report": {
+          "format": "breditor/native-numeric-select",
+          "outcome": "passed",
+          "variant": "fcsel",
+          "scheduling": "none",
+          "rounds": "10000000",
+          "checks": "100000000"
+        },
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      {
+        "variant": "branch",
+        "scheduling": "none",
+        "sources": [
+          {
+            "path": "/Users/s/code/breditor/target/native-numeric-select-20260928",
+            "sha256": "1721f69e8232935c95b7e9b75b65a721318ff8be58930fc9a25c3d3594b792aa"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.c",
+            "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.S",
+            "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+          }
+        ],
+        "passed": true,
+        "report": {
+          "format": "breditor/native-numeric-select",
+          "outcome": "passed",
+          "variant": "branch",
+          "scheduling": "none",
+          "rounds": "10000000",
+          "checks": "100000000"
+        },
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      {
+        "variant": "fcsel",
+        "scheduling": "yield",
+        "sources": [
+          {
+            "path": "/Users/s/code/breditor/target/native-numeric-select-20260928",
+            "sha256": "1721f69e8232935c95b7e9b75b65a721318ff8be58930fc9a25c3d3594b792aa"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.c",
+            "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.S",
+            "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+          }
+        ],
+        "passed": true,
+        "report": {
+          "format": "breditor/native-numeric-select",
+          "outcome": "passed",
+          "variant": "fcsel",
+          "scheduling": "yield",
+          "rounds": "10000000",
+          "checks": "100000000"
+        },
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      {
+        "variant": "branch",
+        "scheduling": "yield",
+        "sources": [
+          {
+            "path": "/Users/s/code/breditor/target/native-numeric-select-20260928",
+            "sha256": "1721f69e8232935c95b7e9b75b65a721318ff8be58930fc9a25c3d3594b792aa"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.c",
+            "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.S",
+            "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+          }
+        ],
+        "passed": true,
+        "report": {
+          "format": "breditor/native-numeric-select",
+          "outcome": "passed",
+          "variant": "branch",
+          "scheduling": "yield",
+          "rounds": "10000000",
+          "checks": "100000000"
+        },
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      {
+        "variant": "fcsel",
+        "scheduling": "sleep",
+        "sources": [
+          {
+            "path": "/Users/s/code/breditor/target/native-numeric-select-20260928",
+            "sha256": "1721f69e8232935c95b7e9b75b65a721318ff8be58930fc9a25c3d3594b792aa"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.c",
+            "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.S",
+            "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+          }
+        ],
+        "passed": true,
+        "report": {
+          "format": "breditor/native-numeric-select",
+          "outcome": "passed",
+          "variant": "fcsel",
+          "scheduling": "sleep",
+          "rounds": "10000000",
+          "checks": "100000000"
+        },
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      },
+      {
+        "variant": "branch",
+        "scheduling": "sleep",
+        "sources": [
+          {
+            "path": "/Users/s/code/breditor/target/native-numeric-select-20260928",
+            "sha256": "1721f69e8232935c95b7e9b75b65a721318ff8be58930fc9a25c3d3594b792aa"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.c",
+            "sha256": "bbd2a113ca66e73e867e47ad0e5564509a34ac6b078612977b701444692b7b9c"
+          },
+          {
+            "path": "tests/browser/diagnostics/native_numeric_select.S",
+            "sha256": "43edc2574ea82c6b7fb0d44c5299218c020bfe2905813f4a0bf48c7a03c02e0b"
+          }
+        ],
+        "passed": true,
+        "report": {
+          "format": "breditor/native-numeric-select",
+          "outcome": "passed",
+          "variant": "branch",
+          "scheduling": "sleep",
+          "rounds": "10000000",
+          "checks": "100000000"
+        },
+        "status": 0,
+        "signal": null,
+        "stderr": ""
+      }
+    ],
+    "disassembly": "0000000100000848 <_breditor_numeric_select_fcsel>:\n100000848:     \tmov\tx3, x0\n10000084c:     \tscvtf\td0, w3\n100000850:     \tmov\tx9, #-0x2000000000000   ; =-562949953421312\n100000854:     \tadd\tx9, x3, x9\n100000858:     \tfmov\td1, x9\n10000085c:     \tmov\tx9, #-0x2000000000001   ; =-562949953421313\n100000860:     \tcmp\tx3, x9\n100000864:     \tfcsel\td0, d0, d1, hi\n100000868:     \tfmov\tx0, d0\n10000086c:     \tret\n\n0000000100000870 <_breditor_numeric_select_branch>:\n100000870:     \tmov\tx3, x0\n100000874:     \tscvtf\td0, w3\n100000878:     \tmov\tx9, #-0x2000000000000   ; =-562949953421312\n10000087c:     \tadd\tx9, x3, x9\n100000880:     \tfmov\td1, x9\n100000884:     \tmov\tx9, #-0x2000000000001   ; =-562949953421313\n100000888:     \tcmp\tx3, x9\n10000088c:     \tb.hi\t0x100000894 <_breditor_numeric_select_branch+0x24>\n100000890:     \tfmov\td0, d1\n100000894:     \tfmov\tx0, d0\n100000898:     \tret\n\n"
+  },
+  "browserRecheck": {
+    "path": "/tmp/breditor-range-staged-recheck-20260928.json",
+    "sha256": "4055c69925a4d2002a0a75865b036f21a7ec33e767e7487202aee7c1f7b17e52",
+    "stats": {
+      "startTime": "2026-09-28T18:19:31.868Z",
+      "duration": 82860.99100000001,
+      "expected": 8,
+      "skipped": 0,
+      "unexpected": 2,
+      "flaky": 0
+    },
+    "metadata": {
+      "numericRangeJscMode": "no-jit",
+      "numericRangeVariant": "staged",
+      "actualWorkers": 1
+    },
+    "engineObservations": {
+      "useJitFalse": 40,
+      "useJitTrue": 0
+    },
+    "attempts": [
+      {
+        "attempt": 1,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8767,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 2,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8400,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 3,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8418,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 4,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8658,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 5,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8462,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 6,
+        "results": [
+          {
+            "status": "failed",
+            "retry": 0,
+            "duration": 7220,
+            "failure": {
+              "iteration": 8481,
+              "representation": 4,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "staged": {
+                "literal": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "typed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "parsed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "converted": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "selected": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            },
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": [
+              {
+                "path": "/Users/s/code/breditor/target/range-staged-recheck-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat5/trace.zip",
+                "sha256": "f67267b661d0be2bb260151e2bf30a27fc2069704296f6b43cbe206be6cebcdc"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "attempt": 7,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8389,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 8,
+        "results": [
+          {
+            "status": "failed",
+            "retry": 0,
+            "duration": 1191,
+            "failure": {
+              "iteration": 781,
+              "representation": 4,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "staged": {
+                "literal": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "typed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "parsed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "converted": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "selected": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            },
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": [
+              {
+                "path": "/Users/s/code/breditor/target/range-staged-recheck-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat7/trace.zip",
+                "sha256": "f59d01eb5fac297bc71e1129810c3ae25bfb64e265c7374f5cbce3f4eb8510f5"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "attempt": 9,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8395,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      },
+      {
+        "attempt": 10,
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0,
+            "duration": 8447,
+            "host": [
+              {
+                "variant": "staged",
+                "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+                "urls": [
+                  "/",
+                  "/probe.js"
+                ]
+              }
+            ],
+            "trace": []
+          }
+        ]
+      }
+    ]
+  },
+  "verification": {
+    "diagnosticTests": 123,
+    "diagnosticFiles": 22,
+    "browserTypecheck": "passed",
+    "clangWarningsAsErrors": "passed",
+    "nativeInvalidArgumentsRejected": 4,
+    "nativeTenCaseSmokeRunsPassed": 2,
+    "whitespace": "passed"
+  },
+  "conclusions": [
+    "Ten longer attempts per standalone mode complete 100000 iterations and 1500000 checks each. No failures appear unmodified, under unpatched LLDB, or with the post-store guard. These samples do not isolate an instrumentation effect.",
+    "A separate arm64 C/assembly executable performs 100 million selections per run across FCSEL versus branch and none/yield/sleep schedules; all six runs pass. This is a relocated, synthetic sequence, not proof of correct execution at the engine site or a complete hardware test.",
+    "The unchanged staged static browser case fails 2/10, at attempts 6 and 8, iterations 8481 and 781, slot 4. Staged/source values reread 2048, consumed array slot is +0, lower-bound rejection is correct for that zero. Both failures occur immediately after a timer yield.",
+    "Every browser attempt verifies the same efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9 probe hash and requests only / and /probe.js. Browser startup observations remain JIT-disabled.",
+    "Read-only LLInt disassembly shows the numeric fast path for op_lesseq decodes with explicit branches and FMOV/SCVTF then FCMP/CSET, without FCSEL. Its numeric slow path does use FCSEL. This does not identify which path or tier executed the original editor false comparison.",
+    "No native array-conversion fault has been captured, no production fix is validated, and the array-zero and original false-comparison symptoms are not proven to share a cause."
+  ]
+}

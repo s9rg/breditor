@@ -1,0 +1,1532 @@
+{
+  "format": "breditor/numeric-array-browser-native-guards",
+  "date": "2026-09-28",
+  "fixed": false,
+  "productionChanged": false,
+  "sequence": [
+    "native-control",
+    "conversion-control",
+    "conversion-probe",
+    "attached-baseline",
+    "conversion-probe-b"
+  ],
+  "runs": [
+    {
+      "name": "native-control",
+      "path": "/tmp/breditor-browser-array-native-control-20260928.jsonl",
+      "sha256": "52d4ef7a4edfdf3747996bb47838ef789efa43cb3f02b8a37e62984586cd1e71",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-native-control-20260928.stderr",
+        "sha256": "0ef9ab3e0bd9229f8ffd3cadacfe219a6488b6679e5f2956c5d6eedf3a8eb96b"
+      },
+      "engineObservations": {
+        "useJitFalse": 4,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 4
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "e1a196bf020dd0b5227c0d9d1a8bb843e19d58ac50e8b1095ef0065e35ee561a"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "control",
+          "pid": "81164",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "debugger-error",
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 81164\nProcess 81164 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 81164 resuming\nProcess 81164 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010dbd0074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10dbd0074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10dbd0078 <+4>:  and    w9, w8, #0xf\n    0x10dbd007c <+8>:  ldr    x1, [x1]\n    0x10dbd0080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install control post-store\n",
+            "stderr": "error: Guard allocation is outside direct-branch range\n",
+            "status": 1,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "conversion-control",
+      "path": "/tmp/breditor-browser-array-conversion-control-20260928.jsonl",
+      "sha256": "718b24cd7d497a4119ac357293136f8e0dccde5f57518c9caeb4991890732f25",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-conversion-control-20260928.stderr",
+        "sha256": "16e6e4144f0f01acf97c95a583d054f841aea9c53b17872cdad9de72029292e8"
+      },
+      "engineObservations": {
+        "useJitFalse": 4,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 4
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "control",
+          "placement": "post-conversion",
+          "pid": "83016",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "control-confirmed",
+          "capture": {
+            "guard": {
+              "variant": "control",
+              "pid": 83016,
+              "placement": "post-conversion",
+              "site": "0x10b428134",
+              "address": "0x100230000",
+              "trap": "0x10023001c",
+              "patchHex": "5000005800021fd60000230001000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a0080d22b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481420b01000000"
+            },
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "guardStop": true,
+            "registers": {
+              "x0": "0x00000001123d4220",
+              "x1": "0x0000000112400000",
+              "x2": "0x0000000000000004",
+              "x3": "0x3ff2000000000000",
+              "x8": "0x0000000112398258",
+              "x9": "0xfffdffffffffffff",
+              "x10": "0x0000000000000000",
+              "x11": "0x3ff0000000000000",
+              "x12": "0x0000000000000000",
+              "d0": "1",
+              "d1": "1",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000015",
+              "pc": "0x000000010023001c"
+            },
+            "stack": [
+              null,
+              "llint_slow_path_new_array",
+              "llint_op_new_array",
+              "llint_op_new_array"
+            ]
+          },
+          "probe": {
+            "error": "Error: page.evaluate: Target page, context or browser has been closed"
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 83016\nProcess 83016 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 83016 resuming\nProcess 83016 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010b428074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10b428074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10b428078 <+4>:  and    w9, w8, #0xf\n    0x10b42807c <+8>:  ldr    x1, [x1]\n    0x10b428080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install control post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"control\", \"pid\": 83016, \"placement\": \"post-conversion\", \"site\": \"0x10b428134\", \"address\": \"0x100230000\", \"trap\": \"0x10023001c\", \"patchHex\": \"5000005800021fd60000230001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a0080d22b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481420b01000000\"}\n(lldb) continue\nProcess 83016 resuming\nProcess 83016 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 2.1\n    frame #0: 0x000000010023001c \n->  0x10023001c: brk    #0xbec\n    0x100230020: fcmp   d0, d0\n    0x100230024: b.vs   0x100230030\n    0x100230028: str    d0, [x8, w2, uxtw #3]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-capture\nProcess 83016 exited with status = 9 (0x00000009) killed\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"control\", \"pid\": 83016, \"placement\": \"post-conversion\", \"site\": \"0x10b428134\", \"address\": \"0x100230000\", \"trap\": \"0x10023001c\", \"patchHex\": \"5000005800021fd60000230001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a0080d22b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481420b01000000\"}, \"stopped\": true, \"exited\": false, \"exitStatus\": -1, \"guardStop\": true, \"registers\": {\"x0\": \"0x00000001123d4220\", \"x1\": \"0x0000000112400000\", \"x2\": \"0x0000000000000004\", \"x3\": \"0x3ff2000000000000\", \"x8\": \"0x0000000112398258\", \"x9\": \"0xfffdffffffffffff\", \"x10\": \"0x0000000000000000\", \"x11\": \"0x3ff0000000000000\", \"x12\": \"0x0000000000000000\", \"d0\": \"1\", \"d1\": \"1\", \"cpsr\": \"0x80001000\", \"fpcr\": \"0x00000000\", \"fpsr\": \"0x00000015\", \"pc\": \"0x000000010023001c\"}, \"stack\": [null, \"llint_slow_path_new_array\", \"llint_op_new_array\", \"llint_op_new_array\"]}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "conversion-probe",
+      "path": "/tmp/breditor-browser-array-conversion-probe-20260928.jsonl",
+      "sha256": "16daf0adb3624e2ef89dbdeb035e2a46a4424cd811780290b21e831bf63765d1",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-conversion-probe-20260928.stderr",
+        "sha256": "5af8e4fe38b89428c6c3b48e5aa3f7376f011a225b88b2b334e468bda4947f6f"
+      },
+      "engineObservations": {
+        "useJitFalse": 32,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 32
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "83971",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 83971,
+              "placement": "post-conversion",
+              "site": "0x10db30134",
+              "address": "0x102948000",
+              "trap": "0x10294801c",
+              "patchHex": "5000005800021fd60080940201000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64401b30d01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 83971\nProcess 83971 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 83971 resuming\nProcess 83971 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010db30074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10db30074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10db30078 <+4>:  and    w9, w8, #0xf\n    0x10db3007c <+8>:  ldr    x1, [x1]\n    0x10db30080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 83971, \"placement\": \"post-conversion\", \"site\": \"0x10db30134\", \"address\": \"0x102948000\", \"trap\": \"0x10294801c\", \"patchHex\": \"5000005800021fd60080940201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64401b30d01000000\"}\n(lldb) continue\nProcess 83971 resuming\nProcess 83971 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 83971, \"placement\": \"post-conversion\", \"site\": \"0x10db30134\", \"address\": \"0x102948000\", \"trap\": \"0x10294801c\", \"patchHex\": \"5000005800021fd60080940201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64401b30d01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 2,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "84735",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 84735,
+              "placement": "post-conversion",
+              "site": "0x10db68134",
+              "address": "0x102a14000",
+              "trap": "0x102a1401c",
+              "patchHex": "5000005800021fd60040a10201000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481b60d01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 84735\nProcess 84735 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 84735 resuming\nProcess 84735 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010db68074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10db68074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10db68078 <+4>:  and    w9, w8, #0xf\n    0x10db6807c <+8>:  ldr    x1, [x1]\n    0x10db68080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 84735, \"placement\": \"post-conversion\", \"site\": \"0x10db68134\", \"address\": \"0x102a14000\", \"trap\": \"0x102a1401c\", \"patchHex\": \"5000005800021fd60040a10201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481b60d01000000\"}\n(lldb) continue\nProcess 84735 resuming\nProcess 84735 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 84735, \"placement\": \"post-conversion\", \"site\": \"0x10db68134\", \"address\": \"0x102a14000\", \"trap\": \"0x102a1401c\", \"patchHex\": \"5000005800021fd60040a10201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481b60d01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 3,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "85441",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 85441,
+              "placement": "post-conversion",
+              "site": "0x10bb9c134",
+              "address": "0x1010e0000",
+              "trap": "0x1010e001c",
+              "patchHex": "5000005800021fd600000e0101000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1b90b01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 85441\nProcess 85441 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 85441 resuming\nProcess 85441 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010bb9c074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10bb9c074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10bb9c078 <+4>:  and    w9, w8, #0xf\n    0x10bb9c07c <+8>:  ldr    x1, [x1]\n    0x10bb9c080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 85441, \"placement\": \"post-conversion\", \"site\": \"0x10bb9c134\", \"address\": \"0x1010e0000\", \"trap\": \"0x1010e001c\", \"patchHex\": \"5000005800021fd600000e0101000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1b90b01000000\"}\n(lldb) continue\nProcess 85441 resuming\nProcess 85441 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 85441, \"placement\": \"post-conversion\", \"site\": \"0x10bb9c134\", \"address\": \"0x1010e0000\", \"trap\": \"0x1010e001c\", \"patchHex\": \"5000005800021fd600000e0101000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1b90b01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 4,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "85948",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 85948,
+              "placement": "post-conversion",
+              "site": "0x10f8e4134",
+              "address": "0x104704000",
+              "trap": "0x10470401c",
+              "patchHex": "5000005800021fd60040700401000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644418e0f01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 85948\nProcess 85948 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 85948 resuming\nProcess 85948 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010f8e4074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10f8e4074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10f8e4078 <+4>:  and    w9, w8, #0xf\n    0x10f8e407c <+8>:  ldr    x1, [x1]\n    0x10f8e4080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 85948, \"placement\": \"post-conversion\", \"site\": \"0x10f8e4134\", \"address\": \"0x104704000\", \"trap\": \"0x10470401c\", \"patchHex\": \"5000005800021fd60040700401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644418e0f01000000\"}\n(lldb) continue\nProcess 85948 resuming\nProcess 85948 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 85948, \"placement\": \"post-conversion\", \"site\": \"0x10f8e4134\", \"address\": \"0x104704000\", \"trap\": \"0x10470401c\", \"patchHex\": \"5000005800021fd60040700401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644418e0f01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 5,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "86652",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 86652,
+              "placement": "post-conversion",
+              "site": "0x10bf2c134",
+              "address": "0x100f08000",
+              "trap": "0x100f0801c",
+              "patchHex": "5000005800021fd60080f00001000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1f20b01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 86652\nProcess 86652 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 86652 resuming\nProcess 86652 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010bf2c074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10bf2c074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10bf2c078 <+4>:  and    w9, w8, #0xf\n    0x10bf2c07c <+8>:  ldr    x1, [x1]\n    0x10bf2c080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 86652, \"placement\": \"post-conversion\", \"site\": \"0x10bf2c134\", \"address\": \"0x100f08000\", \"trap\": \"0x100f0801c\", \"patchHex\": \"5000005800021fd60080f00001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1f20b01000000\"}\n(lldb) continue\nProcess 86652 resuming\nProcess 86652 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 86652, \"placement\": \"post-conversion\", \"site\": \"0x10bf2c134\", \"address\": \"0x100f08000\", \"trap\": \"0x100f0801c\", \"patchHex\": \"5000005800021fd60080f00001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1f20b01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 6,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "86714",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 86714,
+              "placement": "post-conversion",
+              "site": "0x10b5b8134",
+              "address": "0x1002fc000",
+              "trap": "0x1002fc01c",
+              "patchHex": "5000005800021fd600c02f0001000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644815b0b01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 86714\nProcess 86714 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 86714 resuming\nProcess 86714 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010b5b8074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10b5b8074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10b5b8078 <+4>:  and    w9, w8, #0xf\n    0x10b5b807c <+8>:  ldr    x1, [x1]\n    0x10b5b8080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 86714, \"placement\": \"post-conversion\", \"site\": \"0x10b5b8134\", \"address\": \"0x1002fc000\", \"trap\": \"0x1002fc01c\", \"patchHex\": \"5000005800021fd600c02f0001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644815b0b01000000\"}\n(lldb) continue\nProcess 86714 resuming\nProcess 86714 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 86714, \"placement\": \"post-conversion\", \"site\": \"0x10b5b8134\", \"address\": \"0x1002fc000\", \"trap\": \"0x1002fc01c\", \"patchHex\": \"5000005800021fd600c02f0001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644815b0b01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 7,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "87405",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 87405,
+              "placement": "post-conversion",
+              "site": "0x10b654134",
+              "address": "0x100684000",
+              "trap": "0x10068401c",
+              "patchHex": "5000005800021fd60040680001000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441650b01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 87405\nProcess 87405 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 87405 resuming\nProcess 87405 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010b654074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10b654074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10b654078 <+4>:  and    w9, w8, #0xf\n    0x10b65407c <+8>:  ldr    x1, [x1]\n    0x10b654080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 87405, \"placement\": \"post-conversion\", \"site\": \"0x10b654134\", \"address\": \"0x100684000\", \"trap\": \"0x10068401c\", \"patchHex\": \"5000005800021fd60040680001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441650b01000000\"}\n(lldb) continue\nProcess 87405 resuming\nProcess 87405 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 87405, \"placement\": \"post-conversion\", \"site\": \"0x10b654134\", \"address\": \"0x100684000\", \"trap\": \"0x10068401c\", \"patchHex\": \"5000005800021fd60040680001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441650b01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 8,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "87467",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-debugger-transport-error",
+          "transportError": "Error: Browser close timeout",
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 87467\nProcess 87467 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 87467 resuming\nProcess 87467 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010dc44074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10dc44074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10dc44078 <+4>:  and    w9, w8, #0xf\n    0x10dc4407c <+8>:  ldr    x1, [x1]\n    0x10dc44080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 87467, \"placement\": \"post-conversion\", \"site\": \"0x10dc44134\", \"address\": \"0x102cac000\", \"trap\": \"0x102cac01c\", \"patchHex\": \"5000005800021fd600c0ca0201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441c40d01000000\"}\n(lldb) continue\n",
+            "stderr": "",
+            "status": null,
+            "signal": "SIGKILL"
+          }
+        }
+      ]
+    },
+    {
+      "name": "attached-baseline",
+      "path": "/tmp/breditor-browser-array-attached-baseline-20260928.jsonl",
+      "sha256": "ca766f1514fb1c815f38c818df30104fdb908625f544a0c22ac3d05b539e9891",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-attached-baseline-20260928.stderr",
+        "sha256": "53edbfd4fa3fcdca3835cb96453fbbfc37454e6ad2295e6dc570d556f8190b15"
+      },
+      "engineObservations": {
+        "useJitFalse": 16,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 16
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "baseline",
+          "placement": null,
+          "pid": "89687",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-baseline-passed",
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 89687\nProcess 89687 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 89687 resuming\nProcess 89687 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": null, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 2,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "baseline",
+          "placement": null,
+          "pid": "90722",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-baseline-passed",
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 90722\nProcess 90722 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 90722 resuming\nProcess 90722 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": null, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 3,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "baseline",
+          "placement": null,
+          "pid": "91608",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-baseline-passed",
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 91608\nProcess 91608 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 91608 resuming\nProcess 91608 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": null, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 4,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "baseline",
+          "placement": null,
+          "pid": "92159",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-baseline-failed",
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":7101,\"representation\":1,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"typed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"parsed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"converted\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"selected\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}"
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 92159\nProcess 92159 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 92159 resuming\nProcess 92159 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": null, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "name": "conversion-probe-b",
+      "path": "/tmp/breditor-browser-array-conversion-probe-b-20260928.jsonl",
+      "sha256": "6fd143ce3f941a61e4598e0957da19a409130cd69bb62474fe8bb3b7461d9b87",
+      "stderr": {
+        "path": "/tmp/breditor-browser-array-conversion-probe-b-20260928.stderr",
+        "sha256": "b973042eb56b611ed82c4cd49bf76f3abaa589e55efa8590e4a714e9afd6408a"
+      },
+      "engineObservations": {
+        "useJitFalse": 40,
+        "useJitTrue": 0,
+        "useDollarVmTrue": 40
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "94778",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 94778,
+              "placement": "post-conversion",
+              "site": "0x10d978134",
+              "address": "0x1028b0000",
+              "trap": "0x1028b001c",
+              "patchHex": "5000005800021fd600008b0201000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481970d01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 94778\nProcess 94778 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 94778 resuming\nProcess 94778 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010d978074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10d978074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10d978078 <+4>:  and    w9, w8, #0xf\n    0x10d97807c <+8>:  ldr    x1, [x1]\n    0x10d978080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 94778, \"placement\": \"post-conversion\", \"site\": \"0x10d978134\", \"address\": \"0x1028b0000\", \"trap\": \"0x1028b001c\", \"patchHex\": \"5000005800021fd600008b0201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481970d01000000\"}\n(lldb) continue\nProcess 94778 resuming\nProcess 94778 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 94778, \"placement\": \"post-conversion\", \"site\": \"0x10d978134\", \"address\": \"0x1028b0000\", \"trap\": \"0x1028b001c\", \"patchHex\": \"5000005800021fd600008b0201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481970d01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 2,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "94836",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 94836,
+              "placement": "post-conversion",
+              "site": "0x10fe3c134",
+              "address": "0x104cd0000",
+              "trap": "0x104cd001c",
+              "patchHex": "5000005800021fd60000cd0401000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1e30f01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 94836\nProcess 94836 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 94836 resuming\nProcess 94836 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010fe3c074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10fe3c074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10fe3c078 <+4>:  and    w9, w8, #0xf\n    0x10fe3c07c <+8>:  ldr    x1, [x1]\n    0x10fe3c080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 94836, \"placement\": \"post-conversion\", \"site\": \"0x10fe3c134\", \"address\": \"0x104cd0000\", \"trap\": \"0x104cd001c\", \"patchHex\": \"5000005800021fd60000cd0401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1e30f01000000\"}\n(lldb) continue\nProcess 94836 resuming\nProcess 94836 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 94836, \"placement\": \"post-conversion\", \"site\": \"0x10fe3c134\", \"address\": \"0x104cd0000\", \"trap\": \"0x104cd001c\", \"patchHex\": \"5000005800021fd60000cd0401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1e30f01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 3,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "94925",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 94925,
+              "placement": "post-conversion",
+              "site": "0x1103fc134",
+              "address": "0x10595c000",
+              "trap": "0x10595c01c",
+              "patchHex": "5000005800021fd600c0950501000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c13f1001000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 94925\nProcess 94925 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 94925 resuming\nProcess 94925 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x00000001103fc074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x1103fc074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x1103fc078 <+4>:  and    w9, w8, #0xf\n    0x1103fc07c <+8>:  ldr    x1, [x1]\n    0x1103fc080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 94925, \"placement\": \"post-conversion\", \"site\": \"0x1103fc134\", \"address\": \"0x10595c000\", \"trap\": \"0x10595c01c\", \"patchHex\": \"5000005800021fd600c0950501000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c13f1001000000\"}\n(lldb) continue\nProcess 94925 resuming\nProcess 94925 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 94925, \"placement\": \"post-conversion\", \"site\": \"0x1103fc134\", \"address\": \"0x10595c000\", \"trap\": \"0x10595c01c\", \"patchHex\": \"5000005800021fd600c0950501000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c13f1001000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 4,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "95189",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 95189,
+              "placement": "post-conversion",
+              "site": "0x10fd90134",
+              "address": "0x104e04000",
+              "trap": "0x104e0401c",
+              "patchHex": "5000005800021fd60040e00401000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64401d90f01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 95189\nProcess 95189 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 95189 resuming\nProcess 95189 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010fd90074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10fd90074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10fd90078 <+4>:  and    w9, w8, #0xf\n    0x10fd9007c <+8>:  ldr    x1, [x1]\n    0x10fd90080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 95189, \"placement\": \"post-conversion\", \"site\": \"0x10fd90134\", \"address\": \"0x104e04000\", \"trap\": \"0x104e0401c\", \"patchHex\": \"5000005800021fd60040e00401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64401d90f01000000\"}\n(lldb) continue\nProcess 95189 resuming\nProcess 95189 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 95189, \"placement\": \"post-conversion\", \"site\": \"0x10fd90134\", \"address\": \"0x104e04000\", \"trap\": \"0x104e0401c\", \"patchHex\": \"5000005800021fd60040e00401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64401d90f01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 5,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "95688",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 95688,
+              "placement": "post-conversion",
+              "site": "0x10b378134",
+              "address": "0x100394000",
+              "trap": "0x10039401c",
+              "patchHex": "5000005800021fd60040390001000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481370b01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 95688\nProcess 95688 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 95688 resuming\nProcess 95688 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010b378074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10b378074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10b378078 <+4>:  and    w9, w8, #0xf\n    0x10b37807c <+8>:  ldr    x1, [x1]\n    0x10b378080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 95688, \"placement\": \"post-conversion\", \"site\": \"0x10b378134\", \"address\": \"0x100394000\", \"trap\": \"0x10039401c\", \"patchHex\": \"5000005800021fd60040390001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481370b01000000\"}\n(lldb) continue\nProcess 95688 resuming\nProcess 95688 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 95688, \"placement\": \"post-conversion\", \"site\": \"0x10b378134\", \"address\": \"0x100394000\", \"trap\": \"0x10039401c\", \"patchHex\": \"5000005800021fd60040390001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481370b01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 6,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "96190",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 96190,
+              "placement": "post-conversion",
+              "site": "0x10dbd8134",
+              "address": "0x103108000",
+              "trap": "0x10310801c",
+              "patchHex": "5000005800021fd60080100301000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481bd0d01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 96190\nProcess 96190 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 96190 resuming\nProcess 96190 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010dbd8074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10dbd8074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10dbd8078 <+4>:  and    w9, w8, #0xf\n    0x10dbd807c <+8>:  ldr    x1, [x1]\n    0x10dbd8080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 96190, \"placement\": \"post-conversion\", \"site\": \"0x10dbd8134\", \"address\": \"0x103108000\", \"trap\": \"0x10310801c\", \"patchHex\": \"5000005800021fd60080100301000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481bd0d01000000\"}\n(lldb) continue\nProcess 96190 resuming\nProcess 96190 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 96190, \"placement\": \"post-conversion\", \"site\": \"0x10dbd8134\", \"address\": \"0x103108000\", \"trap\": \"0x10310801c\", \"patchHex\": \"5000005800021fd60080100301000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481bd0d01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 7,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "96487",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 96487,
+              "placement": "post-conversion",
+              "site": "0x10c434134",
+              "address": "0x101950000",
+              "trap": "0x10195001c",
+              "patchHex": "5000005800021fd60000950101000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441430c01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 96487\nProcess 96487 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 96487 resuming\nProcess 96487 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010c434074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10c434074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10c434078 <+4>:  and    w9, w8, #0xf\n    0x10c43407c <+8>:  ldr    x1, [x1]\n    0x10c434080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 96487, \"placement\": \"post-conversion\", \"site\": \"0x10c434134\", \"address\": \"0x101950000\", \"trap\": \"0x10195001c\", \"patchHex\": \"5000005800021fd60000950101000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441430c01000000\"}\n(lldb) continue\nProcess 96487 resuming\nProcess 96487 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 96487, \"placement\": \"post-conversion\", \"site\": \"0x10c434134\", \"address\": \"0x101950000\", \"trap\": \"0x10195001c\", \"patchHex\": \"5000005800021fd60000950101000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64441430c01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 8,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "97370",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 97370,
+              "placement": "post-conversion",
+              "site": "0x10fb28134",
+              "address": "0x1049a8000",
+              "trap": "0x1049a801c",
+              "patchHex": "5000005800021fd600809a0401000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481b20f01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 97370\nProcess 97370 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 97370 resuming\nProcess 97370 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010fb28074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10fb28074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10fb28078 <+4>:  and    w9, w8, #0xf\n    0x10fb2807c <+8>:  ldr    x1, [x1]\n    0x10fb28080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 97370, \"placement\": \"post-conversion\", \"site\": \"0x10fb28134\", \"address\": \"0x1049a8000\", \"trap\": \"0x1049a801c\", \"patchHex\": \"5000005800021fd600809a0401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481b20f01000000\"}\n(lldb) continue\nProcess 97370 resuming\nProcess 97370 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 97370, \"placement\": \"post-conversion\", \"site\": \"0x10fb28134\", \"address\": \"0x1049a8000\", \"trap\": \"0x1049a801c\", \"patchHex\": \"5000005800021fd600809a0401000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481b20f01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 9,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "97443",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 97443,
+              "placement": "post-conversion",
+              "site": "0x10b7d8134",
+              "address": "0x1007fc000",
+              "trap": "0x1007fc01c",
+              "patchHex": "5000005800021fd600c07f0001000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644817d0b01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 97443\nProcess 97443 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 97443 resuming\nProcess 97443 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010b7d8074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10b7d8074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10b7d8078 <+4>:  and    w9, w8, #0xf\n    0x10b7d807c <+8>:  ldr    x1, [x1]\n    0x10b7d8080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 97443, \"placement\": \"post-conversion\", \"site\": \"0x10b7d8134\", \"address\": \"0x1007fc000\", \"trap\": \"0x1007fc01c\", \"patchHex\": \"5000005800021fd600c07f0001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644817d0b01000000\"}\n(lldb) continue\nProcess 97443 resuming\nProcess 97443 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 97443, \"placement\": \"post-conversion\", \"site\": \"0x10b7d8134\", \"address\": \"0x1007fc000\", \"trap\": \"0x1007fc01c\", \"patchHex\": \"5000005800021fd600c07f0001000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644817d0b01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 10,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "aa2bed4ffcab2cb624b6af67a32caac7692ee7d36d5f77d1c95546d375409a1c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "8c663f21c64ed9f017bb481c086d30bc40675871e112ef1de2134aa6c1bb575e"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-conversion",
+          "pid": "97740",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 97740,
+              "placement": "post-conversion",
+              "site": "0x10d808134",
+              "address": "0x1027cc000",
+              "trap": "0x1027cc01c",
+              "patchHex": "5000005800021fd600c07c0201000000",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481800d01000000"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stdout": "(lldb) process attach --pid 97740\nProcess 97740 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGSTOP\n    frame #0: 0x000000018ab9fc34 libsystem_kernel.dylib`mach_msg2_trap + 8\nlibsystem_kernel.dylib`mach_msg2_trap:\n->  0x18ab9fc34 <+8>: ret    \n\nlibsystem_kernel.dylib`macx_swapon:\n    0x18ab9fc38 <+0>: mov    x16, #-0x30               ; =-48 \n    0x18ab9fc3c <+4>: svc    #0x80\n    0x18ab9fc40 <+8>: ret    \nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\nExecutable binary set to \"/Users/s/Library/Caches/ms-playwright/webkit-2336/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent.Development\".\nArchitecture set to: arm64-apple-macosx-.\n(lldb) image list -f JavaScriptCore\n[  0] /Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore\n(lldb) command script import \"/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py\"\n(lldb) script t = lldb.debugger.GetSelectedTarget(); m = t.FindModule(lldb.SBFileSpec('JavaScriptCore')); t.BreakpointCreateByAddress(m.ResolveFileAddress(0xf7c074).GetLoadAddress(t))\nSBBreakpoint: id = 1, address = JavaScriptCore[0x0000000000f7c074], locations = 1\n(lldb) script print('BREDITOR_BROWSER_READY', flush=True)\nBREDITOR_BROWSER_READY\n(lldb) continue\nProcess 97740 resuming\nProcess 97740 stopped\n* thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1\n    frame #0: 0x000000010d808074 JavaScriptCore`JSC::JSObject::initializeIndex(JSC::ObjectInitializationScope&, unsigned int, JSC::JSValue)\nJavaScriptCore`JSC::JSObject::initializeIndex:\n->  0x10d808074 <+0>:  ldrb   w8, [x0, #0x4]\n    0x10d808078 <+4>:  and    w9, w8, #0xf\n    0x10d80807c <+8>:  ldr    x1, [x1]\n    0x10d808080 <+12>: ldr    x8, [x0, #0x8]\nTarget 0: (com.apple.WebKit.WebContent.Development) stopped.\n(lldb) breditor-array-install probe post-conversion\nBREDITOR_ARRAY_GUARD={\"variant\": \"probe\", \"pid\": 97740, \"placement\": \"post-conversion\", \"site\": \"0x10d808134\", \"address\": \"0x1027cc000\", \"trap\": \"0x1027cc01c\", \"patchHex\": \"5000005800021fd600c07c0201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481800d01000000\"}\n(lldb) continue\nProcess 97740 resuming\nProcess 97740 exited with status = 0 (0x00000000)\n(lldb) breditor-array-capture\nBREDITOR_ARRAY_CAPTURE={\"guard\": {\"variant\": \"probe\", \"pid\": 97740, \"placement\": \"post-conversion\", \"site\": \"0x10d808134\", \"address\": \"0x1027cc000\", \"trap\": \"0x1027cc01c\", \"patchHex\": \"5000005800021fd600c07c0201000000\", \"originalHex\": \"0020601e66000054005922fcc0035fd6\", \"selectHex\": \"008c611e\", \"payloadHex\": \"0c423bd50a00669e2b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd64481800d01000000\"}, \"stopped\": false, \"exited\": true, \"exitStatus\": 0}\n",
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    }
+  ],
+  "conclusions": [
+    "Post-store control could not install: AllocateMemory returned an address outside the direct branch's +/-128 MiB range. It is a debugger error, not fault evidence.",
+    "Explicit post-conversion control successfully stopped at the intended new_array path. Only diagnostic x10 was forced to zero; actual d0/d1 were both 1. This is deliberate control evidence, not a numerical fault.",
+    "First post-conversion probe batch: seven clean 10000-iteration/150000-check completions; eighth completed counters but browser-close timed out and LLDB was killed. Remaining two were not run. Both owned processes were verified absent afterwards.",
+    "Unmodified debugger-attached baseline: three clean passes, then a real numeric failure at iteration 7101, slot 1, with staged 2048 but array/local positive zero. Native child exited normally, guard null. Remaining six were not run. Debugger attachment alone does not prevent reproduction.",
+    "Second post-conversion probe batch: ten clean completions and no native mismatch. In total 17 clean guarded passes, one transport error, no native mismatch captured. This is not a fix or engine qualification.",
+    "Both guard variants preserve FCSEL at its original address. Post-conversion relocates the subsequent comparison and store and changes timing; the effect cannot be separated from a fault-path change using these passes.",
+    "All recorded startup JIT observations are false, developer VM observations true. Only disposable local diagnostic processes are attached or patched; installed files and user browsers remain unchanged."
+  ]
+}

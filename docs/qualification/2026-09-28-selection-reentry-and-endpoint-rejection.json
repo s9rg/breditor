@@ -1,0 +1,152 @@
+{
+  "format": "breditor/selection-reentry-and-endpoint-investigation",
+  "date": "2026-09-28",
+  "releaseQualified": false,
+  "intermittentWebKitFixed": false,
+  "sourceFiles": [
+    {
+      "path": "packages/breditor-browser/src/wasm_selection_adapter.ts",
+      "sha256": "e75b76dce1af8ed8fc5d3ea5829c1e1f76e71906cc4a4636ed7d4d90f22fe17b"
+    },
+    {
+      "path": "packages/breditor-browser/src/wasm_selection_adapter.test.ts",
+      "sha256": "61f6f9962e64ee153bb2a3fd8efae2abc87f49a16c9646f43868e05336ff66d4"
+    },
+    {
+      "path": "packages/breditor-browser/dist/wasm_selection_adapter.js",
+      "sha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb"
+    },
+    {
+      "path": "target/selection-reentry-before-20260928/browser-dist/wasm_selection_adapter.js",
+      "sha256": "4fd155c7c13875305097021b725ea34ce31f94a9028d6a6966f77931bb9f24a5"
+    },
+    {
+      "path": "tests/browser/diagnostics/link_fault_instrumentation.ts",
+      "sha256": "c5549ef962bf25661917d0358ffb21ce5a1e9067830da8d271df08af55c2d0ec"
+    },
+    {
+      "path": "tests/browser/diagnostics/link_fault_recorder.ts",
+      "sha256": "03dd03f15ed9c32dd0ce8061f03be3c25fe10097db8fc1cf8cc10cd7577932c5"
+    },
+    {
+      "path": "tests/browser/diagnostics/link_fault_instrumentation.test.ts",
+      "sha256": "8a00870b28b9240192033ee7f803671b91cf03197b9216d77708cbe6e6ffa804"
+    },
+    {
+      "path": "tests/browser/tsconfig.json",
+      "sha256": "b5e73b7a082377ca89052d1733933138c8761601f17c2ea7b683b3db52d8c46e"
+    }
+  ],
+  "reentry": {
+    "before": {
+      "outerAccepted": true,
+      "nestedAccepted": true,
+      "cleanupCalls": 2
+    },
+    "after": {
+      "outerAccepted": true,
+      "nestedAccepted": false,
+      "cleanupCalls": 1
+    },
+    "initialRegressions": {
+      "failed": 5,
+      "log": "/tmp/breditor-selection-reentry-before-20260928.log"
+    },
+    "finalRegressions": 9,
+    "unitTests": 1208,
+    "unitLog": "/tmp/breditor-selection-reentry-final-unit-20260928.log"
+  },
+  "endpointCounterexample": {
+    "build": "preserved pre-reentry lifecycle build",
+    "report": {
+      "path": "/tmp/breditor-link-diagnostics-v6-20260928.json",
+      "sha256": "26a855a4fc386bfccf7af5f932227822b5434603e62e0d35ce8a325375e6ea8b",
+      "stats": {
+        "startTime": "2026-09-28T15:00:22.408Z",
+        "duration": 154813.29,
+        "expected": 141,
+        "skipped": 113,
+        "unexpected": 1,
+        "flaky": 0
+      }
+    },
+    "trace": {
+      "path": "target/playwright-link-diagnostics-v6/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat2/trace.zip",
+      "sha256": "8f1e5e4898eb45d872006bd7574339b971b6db98f1a91c3d36b262190d9bfebb"
+    },
+    "labels": [
+      "BREDITOR_LINK_THROW=wasm_selection_adapter:failure:164",
+      "BREDITOR_LINK_THROW=wasm_command_adapter:throw:1321",
+      "BREDITOR_LINK_THROW=wasm_command_adapter:throw:1251",
+      "BREDITOR_LINK_THROW=wasm_command_adapter:throw:572",
+      "BREDITOR_LINK_THROW=browser_editor:failure:870"
+    ],
+    "branch": "anchor or focus readPoint returned null; not final generation admission",
+    "scenario": "formatted clipboard cycle 1 Link undo/redo",
+    "cause": "unresolved; failing endpoint and predicate not captured in this trace"
+  },
+  "expandedEndpointDiagnostics": {
+    "build": "same pre-reentry lifecycle build; different diagnostic code shape",
+    "report": {
+      "path": "/tmp/breditor-link-diagnostics-v7-20260928.json",
+      "sha256": "3314f884bd35866336df1fd84e509a29a41ea8c6f58f0b7c811c555915368a95",
+      "stats": {
+        "startTime": "2026-09-28T15:04:42.272Z",
+        "duration": 301988.093,
+        "expected": 255,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    "captures": "failure-only closed enums and numeric bits/decimal from existing locals; subsequent validation rechecks are not original predicate results",
+    "meaning": "no recurrence in this bounded run; not proof of a WebKit fix"
+  },
+  "qualification": {
+    "browserMatrix": {
+      "path": "/tmp/breditor-selection-reentry-browser-matrix-20260928.json",
+      "sha256": "ff3482c8905430cf39ca656ddfaa2fc355611a5bfcda48d6f913fc5cc0461360",
+      "stats": {
+        "startTime": "2026-09-28T15:10:19.624Z",
+        "duration": 171516.62,
+        "expected": 153,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    "diagnosticTests": 93,
+    "browserTypes": "passed",
+    "browserTestTypes": "passed",
+    "sizeLog": "/tmp/breditor-selection-reentry-size-20260928.log",
+    "demoGzipBytes": 224986,
+    "demoGzipLimit": 225000,
+    "fullReleaseVerifierRerun": false,
+    "nativeSafariRerun": false,
+    "noRetries": true,
+    "noAssertionsRelaxed": true,
+    "noBudgetRaised": true,
+    "demoMatrix": {
+      "path": "/tmp/breditor-selection-reentry-demo-matrix-20260928.json",
+      "sha256": "64b74c23313739008d37bc9bc23161e5fc36cfea84266fed244f51c2d941b798",
+      "stats": {
+        "startTime": "2026-09-28T15:13:23.547Z",
+        "duration": 89371.836,
+        "expected": 39,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    },
+    "demoAssets": [
+      {
+        "path": "examples/react/dist/assets/breditor_wasm_bg-CPkoTgEM.wasm",
+        "sha256": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41"
+      },
+      {
+        "path": "examples/react/dist/assets/index-BWBc5jyd.js",
+        "sha256": "e2aae69a1a9e93b134ddf6109ea82517f8e788cf3b7e06a2c83f08ff9ff8c45c"
+      }
+    ]
+  }
+}

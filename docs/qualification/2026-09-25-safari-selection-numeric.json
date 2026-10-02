@@ -1,0 +1,17 @@
+{
+  "format": "breditor/native-selection-stress-observation",
+  "version": 1,
+  "observation": "Read from installed Safari's visible accessibility tree. Bounded candidate result, not proof of root cause or broad Safari qualification.",
+  "batchesPlanned": 20,
+  "restoresPerBatch": 10000,
+  "readsPerRestore": 3,
+  "freshPageBetweenBatches": true,
+  "freshBrowserProcessBetweenBatches": false,
+  "active": false,
+  "outcome": "passed",
+  "passed": 20,
+  "current": 20,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+  "bundleSha256": "d920748b684d514831a3e10da7570d4f4ca3d023f68d1458988b24662f5ec892",
+  "candidate": "numeric-checks-at-both-selection-layers"
+}

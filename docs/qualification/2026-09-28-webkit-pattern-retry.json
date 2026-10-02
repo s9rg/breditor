@@ -1,0 +1,776 @@
+{
+  "format": "breditor/webkit-pattern-retry",
+  "date": "2026-09-28",
+  "conclusion": "Five guarded attempts pass without a native stop. The debugger-free bracket still reproduces numeric failures; no engine fix is established or adopted. Continue product-level fixes separately.",
+  "runs": [
+    {
+      "logs": [
+        {
+          "path": "/tmp/breditor-array-pattern-retry-20260928.jsonl",
+          "sha256": "63c58740e42451d55f9a5698c166acff9533169dfc8441433cade1a4093729ea"
+        },
+        {
+          "path": "/tmp/breditor-array-pattern-retry-20260928.stderr",
+          "sha256": "75bc44baa4ae12c7a52c1e51002c32f1cfd9b8b8a5cf5796361b3eceb6e7c791"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "68cf6fa4cebe9773285b53eca2363f0e84bf19d6dc5f4f6b211315cb6bac3350"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "00fce379cacb284c37b37508e4937fd8ea242a27b57b736325f694b0df20824c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-store-pattern",
+          "pid": "13534",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 13534,
+              "placement": "post-store-pattern",
+              "site": "0x10e16c140",
+              "address": "0x106b54000",
+              "trap": "0x106b54048",
+              "patchHex": "b09f2716",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd55f100071210200540a1140f9ea0100b50b14e8d20d0140f9bf010beb610100540d0540f9bf010beb010100540d0940f9bf010beba10000540d0d40f9bf010beb41000054807d21d4c0035fd6"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 2,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "68cf6fa4cebe9773285b53eca2363f0e84bf19d6dc5f4f6b211315cb6bac3350"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "00fce379cacb284c37b37508e4937fd8ea242a27b57b736325f694b0df20824c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-store-pattern",
+          "pid": "14030",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 14030,
+              "placement": "post-store-pattern",
+              "site": "0x10d44c140",
+              "address": "0x105ff4000",
+              "trap": "0x105ff4048",
+              "patchHex": "b09f2e16",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd55f100071210200540a1140f9ea0100b50b14e8d20d0140f9bf010beb610100540d0540f9bf010beb010100540d0940f9bf010beba10000540d0d40f9bf010beb41000054807d21d4c0035fd6"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 3,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "68cf6fa4cebe9773285b53eca2363f0e84bf19d6dc5f4f6b211315cb6bac3350"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "00fce379cacb284c37b37508e4937fd8ea242a27b57b736325f694b0df20824c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-store-pattern",
+          "pid": "14558",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 14558,
+              "placement": "post-store-pattern",
+              "site": "0x10d4a4140",
+              "address": "0x105e64000",
+              "trap": "0x105e64048",
+              "patchHex": "b0ff2616",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd55f100071210200540a1140f9ea0100b50b14e8d20d0140f9bf010beb610100540d0540f9bf010beb010100540d0940f9bf010beba10000540d0d40f9bf010beb41000054807d21d4c0035fd6"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 4,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "68cf6fa4cebe9773285b53eca2363f0e84bf19d6dc5f4f6b211315cb6bac3350"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "00fce379cacb284c37b37508e4937fd8ea242a27b57b736325f694b0df20824c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-store-pattern",
+          "pid": "14879",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 14879,
+              "placement": "post-store-pattern",
+              "site": "0x10fa70140",
+              "address": "0x1081c0000",
+              "trap": "0x1081c0048",
+              "patchHex": "b03f1d16",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd55f100071210200540a1140f9ea0100b50b14e8d20d0140f9bf010beb610100540d0540f9bf010beb010100540d0940f9bf010beba10000540d0d40f9bf010beb41000054807d21d4c0035fd6"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        },
+        {
+          "attempt": 5,
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+              "sha256": "68cf6fa4cebe9773285b53eca2363f0e84bf19d6dc5f4f6b211315cb6bac3350"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_select.py",
+              "sha256": "34f26a11af4cff6c25ebefb61a9c8c146a09eb31770cc7cec12d79846d9b7828"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-webkit-array-repro.mjs",
+              "sha256": "00fce379cacb284c37b37508e4937fd8ea242a27b57b736325f694b0df20824c"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/debug-jsc-array-repro.mjs",
+              "sha256": "1d270b13adcf65d234327497675ce7edb08a90dec68c725119e6560481c5554b"
+            }
+          ],
+          "variant": "probe",
+          "placement": "post-store-pattern",
+          "pid": "15394",
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "browser-probe-passed",
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 15394,
+              "placement": "post-store-pattern",
+              "site": "0x10dbb0140",
+              "address": "0x106570000",
+              "trap": "0x106570048",
+              "patchHex": "b0ff2616",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd55f100071210200540a1140f9ea0100b50b14e8d20d0140f9bf010beb610100540d0540f9bf010beb010100540d0940f9bf010beba10000540d0d40f9bf010beb41000054807d21d4c0035fd6"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          },
+          "probe": {
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            }
+          },
+          "native": {
+            "stderr": "",
+            "status": 0,
+            "signal": null
+          }
+        }
+      ]
+    },
+    {
+      "logs": [
+        {
+          "path": "/tmp/breditor-array-pattern-retry-baseline-20260928.jsonl",
+          "sha256": "19e73c53d9322f65135b6e1c4fda3039860f433c7f65fc7ee744ed983347fe7a"
+        },
+        {
+          "path": "/tmp/breditor-array-pattern-retry-baseline-20260928.stderr",
+          "sha256": "65830567899d819897c4347420eee2f8eb336b0e831c57bb8a5a4a558a9c54ad"
+        }
+      ],
+      "attempts": [
+        {
+          "attempt": 1,
+          "playwrightVersion": "1.62.1",
+          "browserVersion": "26.5",
+          "mode": "no-jit",
+          "executable": "/Users/s/Library/Caches/ms-playwright/webkit-2336/pw_run.sh",
+          "sources": [
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+              "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+            },
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+              "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+            },
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+              "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+            }
+          ],
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 2,
+          "playwrightVersion": "1.62.1",
+          "browserVersion": "26.5",
+          "mode": "no-jit",
+          "executable": "/Users/s/Library/Caches/ms-playwright/webkit-2336/pw_run.sh",
+          "sources": [
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+              "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+            },
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+              "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+            },
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+              "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+            }
+          ],
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 3,
+          "playwrightVersion": "1.62.1",
+          "browserVersion": "26.5",
+          "mode": "no-jit",
+          "executable": "/Users/s/Library/Caches/ms-playwright/webkit-2336/pw_run.sh",
+          "sources": [
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+              "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+            },
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+              "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+            },
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+              "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+            }
+          ],
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 331,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":331,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"typed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"parsed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"converted\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"selected\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}"
+        },
+        {
+          "attempt": 4,
+          "playwrightVersion": "1.62.1",
+          "browserVersion": "26.5",
+          "mode": "no-jit",
+          "executable": "/Users/s/Library/Caches/ms-playwright/webkit-2336/pw_run.sh",
+          "sources": [
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+              "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+            },
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+              "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+            },
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+              "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+            }
+          ],
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "passed",
+          "result": {
+            "iterations": "10000",
+            "checks": "150000"
+          }
+        },
+        {
+          "attempt": 5,
+          "playwrightVersion": "1.62.1",
+          "browserVersion": "26.5",
+          "mode": "no-jit",
+          "executable": "/Users/s/Library/Caches/ms-playwright/webkit-2336/pw_run.sh",
+          "sources": [
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/index.mjs",
+              "sha256": "a0f5715ea22354f922791a9c53dc012d5d5c067ff9cc4cd35ffb7cd272071a9f"
+            },
+            {
+              "path": "/Users/s/code/breditor/node_modules/playwright/package.json",
+              "sha256": "ca170ec143a88ed3043ac953eb3b2377b2b97304104f4e1e23316684ce2c35af"
+            },
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+              "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+              "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+            },
+            {
+              "path": "/Users/s/code/breditor/scripts/compare-webkit-build.mjs",
+              "sha256": "c954c82b93de9671b33cd6d4ed57d6099c4063f465167f687796881e9a30d9b5"
+            }
+          ],
+          "urls": [
+            "/",
+            "/probe.js"
+          ],
+          "outcome": "numeric-failure",
+          "failure": {
+            "iteration": 991,
+            "representation": 4,
+            "original": false,
+            "captured": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "upper": true,
+            "value": {
+              "decimal": "0",
+              "bits": "0000000000000000"
+            },
+            "maximum": {
+              "decimal": "4294967295",
+              "bits": "41efffffffe00000"
+            },
+            "recheck": {
+              "accepted": false,
+              "type": true,
+              "integer": true,
+              "lower": false
+            },
+            "staged": {
+              "literal": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "typed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "parsed": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "converted": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              "selected": {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              }
+            },
+            "sourceIndex": {
+              "decimal": "1",
+              "bits": "3ff0000000000000"
+            },
+            "values": [
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "2048",
+                "bits": "40a0000000000000"
+              },
+              {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              }
+            ],
+            "sources": {
+              "literal": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "parsed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "typed": [
+                {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "frozen": {
+                "revision": {
+                  "decimal": "1",
+                  "bits": "3ff0000000000000"
+                },
+                "maximum": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              }
+            }
+          },
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":991,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"typed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"parsed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"converted\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"selected\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "format": "breditor/command-queue-options",
+  "date": "2026-09-28",
+  "bug": "Queue construction read the observer option up to three times, allowing accessor-backed configuration to validate one value and retain another. Invalid retained callbacks could fail notification after command execution.",
+  "before": {
+    "targetedTests": 29,
+    "failed": 5,
+    "passed": 24,
+    "cases": [
+      "An initially absent observer was replaced by an unexpected callback.",
+      "An initially valid callback was replaced by a different callback.",
+      "A valid callback was validated but a non-function was retained, failing after execution.",
+      "A subsequent getter read threw despite a valid initial value.",
+      "An invalid initial value was accepted after a subsequent read returned a function."
+    ]
+  },
+  "fix": "Read the observer option once, validate that captured value and retain it.",
+  "verification": {
+    "newTests": 5,
+    "browserRuntimeTests": 1244,
+    "browserRuntimeFiles": 50,
+    "typecheck": "passed (production and test sources); explicit undefined runtime fixture uses a test-only cast for exactOptionalPropertyTypes",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224947,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "scenarios": ["native typing and deletion", "composition", "Bold/Undo/Redo", "copy/cut/paste"],
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 12,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/playwright-queue-options-20260928"
+    }
+  },
+  "limits": [
+    "Changing option accessors are exercised by controlled unit tests; browser checks cover ordinary editing integration.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/command_queue.ts", "sha256": "99584813e6985530d10357ebb49b2ee0c7f0684a6f3900b1f90686be50497702"},
+    {"path": "packages/breditor-browser/src/command_queue.test.ts", "sha256": "0674245f1341697f9c29f634191e52ac06c4c1a9e958b81454f154233ae2e9be"},
+    {"path": "/tmp/breditor-queue-options-before-20260928.log", "sha256": "4aca06837107852fd055b908eda00c4af3fe55984a22c760a5efe4171154bf19"},
+    {"path": "/tmp/breditor-queue-options-full-final-20260928.log", "sha256": "6e33b5b36d29737af2021137ad9118b7f50910b467c82e6a85b41ca44fc2d3cb"},
+    {"path": "/tmp/breditor-queue-options-types-final-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-queue-options-build-20260928.log", "sha256": "f63b2a260d50392f9825545e7f11b7694442804f2ba243d085d1b510f77df1a1"},
+    {"path": "/tmp/breditor-queue-options-browser-20260928.log", "sha256": "7e8e6d5851dd8ed7ecf8aa643e4296d1ebcdd071642a575073325860bef311ef"}
+  ]
+}

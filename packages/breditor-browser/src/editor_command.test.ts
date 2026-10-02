@@ -84,6 +84,10 @@ describe("editor command contract", () => {
     expect(browserCommandTextIsAdmissible("é".repeat(32_768))).toBe(true);
     expect(browserCommandTextIsAdmissible(`é${"x".repeat(65_535)}`)).toBe(false);
     expect(browserCommandTextIsAdmissible("😀")).toBe(true);
+    expect(browserCommandTextIsAdmissible("😀".repeat(16_384))).toBe(true);
+    expect(browserCommandTextIsAdmissible(`${"😀".repeat(16_384)}x`)).toBe(false);
+    expect(browserCommandTextIsAdmissible(`${"漢".repeat(21_845)}x`)).toBe(true);
+    expect(browserCommandTextIsAdmissible(`${"漢".repeat(21_845)}é`)).toBe(false);
     expect(browserCommandTextIsAdmissible("\ud800")).toBe(false);
     expect(browserCommandTextIsAdmissible("\udc00")).toBe(false);
     expect(browserCommandTextIsAdmissible("")).toBe(false);

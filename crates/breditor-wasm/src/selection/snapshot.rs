@@ -4,7 +4,7 @@ use breditor_core::{
     selection::{RangeOrder, Selection},
     state::EditorState,
 };
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::prelude::{JsValue, wasm_bindgen};
 
 use crate::{BreditorError, BreditorProfileGeneration, error::SELECTION_READ_CODE};
 
@@ -42,6 +42,30 @@ pub struct BreditorSelection {
 }
 
 impl BreditorSelection {
+    /// Returns the anchor node index to native Rust callers.
+    #[must_use]
+    pub fn anchor_node_index(&self) -> Option<u32> {
+        self.range().map(|(anchor, _, _)| anchor.node_index)
+    }
+
+    /// Returns the anchor UTF-16 or child-boundary offset to native Rust.
+    #[must_use]
+    pub fn anchor_offset(&self) -> Option<u32> {
+        self.range().map(|(anchor, _, _)| anchor.offset)
+    }
+
+    /// Returns the focus node index to native Rust callers.
+    #[must_use]
+    pub fn focus_node_index(&self) -> Option<u32> {
+        self.range().map(|(_, focus, _)| focus.node_index)
+    }
+
+    /// Returns the focus UTF-16 or child-boundary offset to native Rust.
+    #[must_use]
+    pub fn focus_offset(&self) -> Option<u32> {
+        self.range().map(|(_, focus, _)| focus.offset)
+    }
+
     pub(crate) fn from_state(
         generation: CompiledProfileGeneration,
         state: &EditorState,
@@ -151,16 +175,18 @@ impl BreditorSelection {
 
     /// Returns the anchor target's flattened semantic node index.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = anchorNodeIndex)]
-    pub fn anchor_node_index(&self) -> Option<u32> {
-        self.range().map(|(anchor, _, _)| anchor.node_index)
+    #[wasm_bindgen(getter, js_name = anchorNodeIndex, unchecked_return_type = "number | undefined")]
+    pub fn anchor_node_index_js(&self) -> JsValue {
+        // Avoid wasm-bindgen's optional-u32 f64 absence sentinel. Repeated
+        // real WebKit reads lost this present index on a collapsed selection.
+        self.anchor_node_index().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the anchor UTF-16 or child-boundary offset.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = anchorOffset)]
-    pub fn anchor_offset(&self) -> Option<u32> {
-        self.range().map(|(anchor, _, _)| anchor.offset)
+    #[wasm_bindgen(getter, js_name = anchorOffset, unchecked_return_type = "number | undefined")]
+    pub fn anchor_offset_js(&self) -> JsValue {
+        self.anchor_offset().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the anchor insertion-boundary affinity.
@@ -187,16 +213,16 @@ impl BreditorSelection {
 
     /// Returns the focus target's flattened semantic node index.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = focusNodeIndex)]
-    pub fn focus_node_index(&self) -> Option<u32> {
-        self.range().map(|(_, focus, _)| focus.node_index)
+    #[wasm_bindgen(getter, js_name = focusNodeIndex, unchecked_return_type = "number | undefined")]
+    pub fn focus_node_index_js(&self) -> JsValue {
+        self.focus_node_index().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the focus UTF-16 or child-boundary offset.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = focusOffset)]
-    pub fn focus_offset(&self) -> Option<u32> {
-        self.range().map(|(_, focus, _)| focus.offset)
+    #[wasm_bindgen(getter, js_name = focusOffset, unchecked_return_type = "number | undefined")]
+    pub fn focus_offset_js(&self) -> JsValue {
+        self.focus_offset().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the focus insertion-boundary affinity.

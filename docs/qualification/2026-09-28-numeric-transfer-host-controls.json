@@ -1,0 +1,1462 @@
+{
+  "format": "breditor/numeric-transfer-host-controls",
+  "date": "2026-09-28",
+  "fixed": false,
+  "productionChanged": false,
+  "framework": {
+    "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+    "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+  },
+  "compiledOriginalModuleSha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+  "originalStaticHostSources": [
+    {
+      "path": "scripts/serve-range-repro.mjs",
+      "sha256": "aa51fecb972d6cd5b7dd2e941bd2bcb155102d2d202dd0a56f6730c78acdd9cd"
+    },
+    {
+      "path": "playwright.numeric-range-static.config.ts",
+      "sha256": "f75ac36d1dd7ad1b3e55ef7c8fd16c441c161c24c27613d555c489b7b3bfceef"
+    },
+    {
+      "path": "tests/browser/diagnostics/numeric-range-static.spec.ts",
+      "sha256": "c0e1887080c075f0e6479e7086e564af6b0b54c82216e78731d5cd8af35339d2"
+    }
+  ],
+  "currentSources": [
+    {
+      "path": "scripts/run-jsc-range-repro.mjs",
+      "sha256": "48e3bf23360a438302354315906ad7197688b22d39cf57ca6e14a7009fa279ef"
+    },
+    {
+      "path": "scripts/serve-range-repro.mjs",
+      "sha256": "659451008cdad09e2075211a486354ac0b001015b7c88ab5d4a51933c8ff7e8c"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_range_runner.js",
+      "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_range_runner.test.ts",
+      "sha256": "a0e0a89252a9cbc020f4dc8fdbf0cad6a4f24721d5da87e32cef22af570eba71"
+    },
+    {
+      "path": "tests/browser/harness/numeric_transfer_staged_probe.ts",
+      "sha256": "a02d6238c384c4aba098a33b0efd3f0eda69e03347cdfde1e9bf12d0eab03ac7"
+    },
+    {
+      "path": "target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+      "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+    },
+    {
+      "path": "tests/browser/diagnostics/numeric-range-static.spec.ts",
+      "sha256": "1b26571629c7ca1facc808bf5d26406cc4eccf264e30e3b89758b0a51d764161"
+    },
+    {
+      "path": "playwright.numeric-range-static.config.ts",
+      "sha256": "373277ed1d79b93fc9d96c43a14c3b6fc4dbdb2752d7af49d1a786e2c525ee03"
+    }
+  ],
+  "runs": [
+    {
+      "kind": "standalone",
+      "name": "normal",
+      "path": "/tmp/breditor-jsc-range-normal-20260928.jsonl",
+      "sha256": "ae80726711f86bdffda4ef6e030d229eb308074b5575cf008f0b8a1d33f8d89f",
+      "summary": {
+        "mode": "normal",
+        "minimumTimerDelay": "4",
+        "passed": 5,
+        "failed": 0,
+        "total": 5
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "mode": "normal",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            },
+            "finalEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            }
+          }
+        },
+        {
+          "attempt": 2,
+          "mode": "normal",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            },
+            "finalEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            }
+          }
+        },
+        {
+          "attempt": 3,
+          "mode": "normal",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            },
+            "finalEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            }
+          }
+        },
+        {
+          "attempt": 4,
+          "mode": "normal",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            },
+            "finalEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            }
+          }
+        },
+        {
+          "attempt": 5,
+          "mode": "normal",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            },
+            "finalEngineOptions": {
+              "useJIT": 1,
+              "useDFGJIT": 1,
+              "useFTLJIT": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "standalone",
+      "name": "nojit",
+      "path": "/tmp/breditor-jsc-range-nojit-20260928.jsonl",
+      "sha256": "75ecd997995adf4de08b25e19d1fc6380689eff5d80fd68c45197b034c202ca6",
+      "summary": {
+        "mode": "no-jit",
+        "minimumTimerDelay": "4",
+        "passed": 5,
+        "failed": 0,
+        "total": 5
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "mode": "no-jit",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 2,
+          "mode": "no-jit",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 3,
+          "mode": "no-jit",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 4,
+          "mode": "no-jit",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 5,
+          "mode": "no-jit",
+          "minimumTimerDelay": "4",
+          "sources": [
+            {
+              "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+              "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+            },
+            {
+              "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+              "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+            },
+            {
+              "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+              "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+            }
+          ],
+          "status": 0,
+          "signal": null,
+          "stderr": "",
+          "passed": true,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "passed",
+            "result": {
+              "iterations": "10000",
+              "checks": "150000"
+            },
+            "error": null,
+            "events": [],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "static-browser",
+      "name": "static-normal",
+      "path": "/tmp/breditor-range-static-normal-20260928.json",
+      "sha256": "981c689edfe2c85a39f6fd44b2a0cea63f45b5824e3c00a165bda6d45473cd81",
+      "stats": {
+        "startTime": "2026-09-28T16:43:46.387Z",
+        "duration": 86153.723,
+        "expected": 9,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "requestedMode": "normal",
+      "startupJitObservations": {
+        "true": 20,
+        "false": 20
+      },
+      "hosts": [
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        }
+      ],
+      "failures": [
+        {
+          "title": "the standalone probe runs as identical static browser bytes",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":1651,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "host": {
+            "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+            "urls": [
+              "/",
+              "/probe.js"
+            ]
+          },
+          "trace": {
+            "path": "/Users/s/code/breditor/target/range-static-normal-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat1/trace.zip",
+            "sha256": "a486abb02ecf183e4b35eb2c28d71a0ba3d5f612af3ebaee45abc5d854664273"
+          },
+          "observations": [
+            {
+              "iteration": 1651,
+              "representation": 4,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "static-browser",
+      "name": "static-nojit",
+      "path": "/tmp/breditor-range-static-nojit-20260928.json",
+      "sha256": "7b182020951d816aa7032db84f4e0eb1a9e784fad1eef4c51685193fbf327b15",
+      "stats": {
+        "startTime": "2026-09-28T16:46:13.403Z",
+        "duration": 88285.203,
+        "expected": 9,
+        "skipped": 0,
+        "unexpected": 1,
+        "flaky": 0
+      },
+      "requestedMode": "no-jit",
+      "startupJitObservations": {
+        "true": 0,
+        "false": 40
+      },
+      "hosts": [
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        }
+      ],
+      "failures": [
+        {
+          "title": "the standalone probe runs as identical static browser bytes",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":7211,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "host": {
+            "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4",
+            "urls": [
+              "/",
+              "/probe.js"
+            ]
+          },
+          "trace": {
+            "path": "/Users/s/code/breditor/target/range-static-nojit-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat4/trace.zip",
+            "sha256": "e89c699308bcbd7a08101607d9673d3ff5c286c3cb4992926093a015981a5229"
+          },
+          "observations": [
+            {
+              "iteration": 7211,
+              "representation": 4,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "static-browser",
+      "name": "staged-nojit",
+      "path": "/tmp/breditor-range-staged-nojit-20260928.json",
+      "sha256": "c9c9abb61ff6220568dbd3030e40fd44b93fc869547f462dc225a32ec3cbc361",
+      "stats": {
+        "startTime": "2026-09-28T16:49:03.081Z",
+        "duration": 81574.73899999999,
+        "expected": 7,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "requestedMode": "no-jit",
+      "startupJitObservations": {
+        "true": 0,
+        "false": 40
+      },
+      "hosts": [
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        },
+        {
+          "variant": "staged",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+          "urls": [
+            "/",
+            "/probe.js"
+          ]
+        }
+      ],
+      "failures": [
+        {
+          "title": "the standalone probe runs as identical static browser bytes",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":2471,\"representation\":1,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"typed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"parsed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"converted\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"selected\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "host": {
+            "variant": "staged",
+            "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+            "urls": [
+              "/",
+              "/probe.js"
+            ]
+          },
+          "trace": {
+            "path": "/Users/s/code/breditor/target/range-staged-nojit-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat1/trace.zip",
+            "sha256": "df2cdc40069b7fc59ef2a69b1109e7b5e3965ce82a493b904571e7a9f257afb9"
+          },
+          "observations": [
+            {
+              "iteration": 2471,
+              "representation": 1,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "staged": {
+                "literal": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "typed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "parsed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "converted": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "selected": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "title": "the standalone probe runs as identical static browser bytes",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":9551,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"typed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"parsed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"converted\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"selected\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "host": {
+            "variant": "staged",
+            "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+            "urls": [
+              "/",
+              "/probe.js"
+            ]
+          },
+          "trace": {
+            "path": "/Users/s/code/breditor/target/range-staged-nojit-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat8/trace.zip",
+            "sha256": "381eaf93166da4393ceef8ad51672232a23a1e509a013a0fc98792a8e49426d8"
+          },
+          "observations": [
+            {
+              "iteration": 9551,
+              "representation": 4,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "staged": {
+                "literal": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "typed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "parsed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "converted": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "selected": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "title": "the standalone probe runs as identical static browser bytes",
+          "error": "Error: page.evaluate: Error: numeric range rejected: {\"iteration\":6871,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"typed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"parsed\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"converted\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},\"selected\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}},\"sourceIndex\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"values\":[{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+          "host": {
+            "variant": "staged",
+            "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9",
+            "urls": [
+              "/",
+              "/probe.js"
+            ]
+          },
+          "trace": {
+            "path": "/Users/s/code/breditor/target/range-staged-nojit-20260928/diagnostics-numeric-range--8668f-ntical-static-browser-bytes-webkit-repeat9/trace.zip",
+            "sha256": "ff36898dc80d0490d448213b20753b313c2f0441a094183b23dbd6a841c4b696"
+          },
+          "observations": [
+            {
+              "iteration": 6871,
+              "representation": 4,
+              "original": false,
+              "captured": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "upper": true,
+              "value": {
+                "decimal": "0",
+                "bits": "0000000000000000"
+              },
+              "maximum": {
+                "decimal": "4294967295",
+                "bits": "41efffffffe00000"
+              },
+              "recheck": {
+                "accepted": false,
+                "type": true,
+                "integer": true,
+                "lower": false
+              },
+              "staged": {
+                "literal": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "typed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "parsed": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "converted": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                "selected": {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                }
+              },
+              "sourceIndex": {
+                "decimal": "1",
+                "bits": "3ff0000000000000"
+              },
+              "values": [
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "2048",
+                  "bits": "40a0000000000000"
+                },
+                {
+                  "decimal": "0",
+                  "bits": "0000000000000000"
+                }
+              ],
+              "sources": {
+                "literal": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "parsed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "typed": [
+                  {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                ],
+                "frozen": {
+                  "revision": {
+                    "decimal": "1",
+                    "bits": "3ff0000000000000"
+                  },
+                  "maximum": {
+                    "decimal": "2048",
+                    "bits": "40a0000000000000"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "interpretation": {
+    "standalone": "Five normal and five JIT-disabled processes pass. The host uses a minimum four-millisecond timer shim; it is not equivalent to browser scheduling.",
+    "staticBrowser": "Same compiled bytes fail once in ten normal and once in ten JIT-disabled WebKit attempts. All 20 host attachments record only / and /probe.js with the expected module hash. Vite client, Rust, Wasm, editor DOM and JIT are not necessary for the reduced unexpected-zero symptom.",
+    "staged": "Seven passes, three failures with JIT disabled. At iterations 2471, 9551 and 6871, staged locals all read 2048; temporary values[1] or values[4] plus consumed local read positive zero. Sources also remain correct. Narrowed to array construction/storage/readback or intervening representation conversion, not solely the conditional expression. These remain cold-path observations, not native input/output register snapshots.",
+    "nativeCandidate": {
+      "status": "static-disassembly-only, not executed-failure capture",
+      "path": [
+        "llint_slow_path_new_array @ 0x160d158",
+        "constructArrayNegativeIndexed @ 0xf7c2d4",
+        "JSObject::initializeIndex @ 0xf7c074"
+      ],
+      "numericSelect": "0xf7c130: fcsel d0,d0,d1,hi",
+      "numericStore": "0xf7c13c: str d0,[x8,w2,uxtw #3]",
+      "reason": "The numeric-array initializer converts tagged integer/double values using the same instruction pattern implicated in an earlier separate Object.is capture. No causal link or defect at this location is established."
+    },
+    "limitations": [
+      "No established link between this unexpected-zero symptom and every editor fault or the earlier native FCSEL observation.",
+      "Passing bounded standalone runs do not prove the browser host causes the fault.",
+      "Compiler output differs from Vite output; only the original static and standalone runs here use exact same module bytes.",
+      "Failed compiler/setup attempts launched no diagnostic children and are not counted as probe runs.",
+      "No installed engine patch, browser preference change, validation relaxation or runtime fix."
+    ]
+  },
+  "verification": {
+    "diagnosticUnitTests": 111,
+    "browserTypecheck": "passed",
+    "whitespace": "passed"
+  }
+}

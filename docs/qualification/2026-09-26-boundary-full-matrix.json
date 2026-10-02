@@ -1,0 +1,123 @@
+{
+  "status": "All 153 existing browser tests pass on the minified boundary candidate after two fixture packaging failures; production runtime unchanged",
+  "productionSourceChangedThisCheckpoint": false,
+  "normalEngineSettings": true,
+  "retries": 0,
+  "workers": 1,
+  "maxFailures": 1,
+  "deadlines": "Existing suite and individual test deadlines retained; action-state restore has its pre-existing 60-second override.",
+  "testAssertionsChanged": false,
+  "setupAttempts": [
+    {
+      "report": {
+        "path": "/tmp/breditor-boundary-full-matrix-20260926.json",
+        "sha256": "5af85c27ca364dfede2d31a501afc197f14af7eae172b745778c61aaffb039bc",
+        "stats": {
+          "startTime": "2026-09-27T01:41:09.733Z",
+          "duration": 2005.28,
+          "expected": 0,
+          "skipped": 152,
+          "unexpected": 1,
+          "flaky": 0
+        },
+        "counts": {
+          "chromium/unexpected": 1,
+          "firefox/skipped": 51,
+          "webkit/skipped": 51,
+          "chromium/skipped": 50
+        },
+        "failures": [
+          "Error: page.evaluate: TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:4205/action_state_restore_probe.ts"
+        ]
+      },
+      "classification": "Missing dynamically imported .ts probe in clipboard-only build; probe did not execute"
+    },
+    {
+      "report": {
+        "path": "/tmp/breditor-boundary-full-matrix-b-20260926.json",
+        "sha256": "f3ac0a79dbede4a5cbeaf844bf789911454a4c33d351a18a2e10dafd2dedeb8c",
+        "stats": {
+          "startTime": "2026-09-27T01:42:33.912Z",
+          "duration": 1672.0149999999999,
+          "expected": 0,
+          "skipped": 152,
+          "unexpected": 1,
+          "flaky": 0
+        },
+        "counts": {
+          "chromium/unexpected": 1,
+          "firefox/skipped": 51,
+          "webkit/skipped": 51,
+          "chromium/skipped": 50
+        },
+        "failures": [
+          "Error: page.evaluate: TypeError: probe.probeRestoredActionStates is not a function\n    at eval (eval at evaluate (:311:30), <anonymous>:4:18)\n    at async <anonymous>:337:30"
+        ]
+      },
+      "classification": "Probe exports removed by application tree-shaking; probe did not execute"
+    }
+  ],
+  "qualifiedRun": {
+    "path": "/tmp/breditor-boundary-full-matrix-c-20260926.json",
+    "sha256": "dc2940672f9fcb94e0eee5d76efe2547f797f1ca0f8de33a02f5d9582aa8c8ca",
+    "stats": {
+      "startTime": "2026-09-27T01:43:04.762Z",
+      "duration": 198949.717,
+      "expected": 153,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "counts": {
+      "chromium/expected": 51,
+      "firefox/expected": 51,
+      "webkit/expected": 51
+    },
+    "failures": []
+  },
+  "artifacts": {
+    "target/boundary-matrix-normalized/assets/advanced-BvRk9kiK.js": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "target/boundary-matrix-normalized/assets/advanced-CC7mpbRd.js": "6b6b4bc93e4cc197070e07abce22ded72433d7a1175ed8f308057c42a02119a0",
+    "target/boundary-matrix-normalized/assets/breditor_wasm-CI1y1LP-.js": "9466cb667b44d3f8148650c9b284ffd318f341e183578e7160dcc36d9c0ff7a0",
+    "target/boundary-matrix-normalized/assets/breditor_wasm_bg-CPkoTgEM.wasm": "8bdb6afec021dff91384f739908357936369c9c9f9d100119043bf666a505a41",
+    "target/boundary-matrix-normalized/assets/dom_selection-BshttKe7.js": "044df0ea0dc2c71642b138a04e742a9f18a4840b678c21b604a0aeccf3b27779",
+    "target/boundary-matrix-normalized/assets/formatting_documents-BrmYJuAx.js": "df386e049395cdc07546b3e730ff17f3c88edf49073b6f8665ba2b1ad1648baa",
+    "target/boundary-matrix-normalized/assets/formatting_presentation-DbPqrEu_.js": "44b7b15b6f1d82707a8d85cfcb10c384d5375dd1cce5e1ba5d63293871b7d3f8",
+    "target/boundary-matrix-normalized/assets/index-Bv30S_Xe.js": "b82c445732c10cab2da309d10cf6df8c88f26efd0bc61a8c74f4ab143888eb8a",
+    "target/boundary-matrix-normalized/assets/manual-DZCR_wVY.js": "c1e2ab82dae51ae3d7449f5b3d4726050b4db18e366ce725a497084c04455e64",
+    "target/boundary-matrix-normalized/assets/showcase_documents-YDXKdJNi.js": "56c008fc1d06f79f8905ad5803d84d932b3b4216e6e7cb9ffa9a435598caee8d",
+    "target/boundary-matrix-normalized/assets/showcase_presentation-uG0FBPCT.js": "9d83b138b68d64b46df917c12bd5dc4c541f6046eda111eb89382fe81925a695",
+    "target/boundary-matrix-normalized/assets/showcase_profile-Cwnr5REb.js": "1191f6d2e786b33a07036d3a0c9c7fd4a8f4ec43aa4e1df474dd79dac944d7c7",
+    "target/boundary-matrix-normalized/assets/size_showcase_documents-C2CLh7Ig.js": "96b92d4fa1111b72ded034cc239d2f83d286ca10a904fecaa587c4de7971a7cb",
+    "target/boundary-matrix-normalized/assets/size_showcase_profile-BbVm3D8O.js": "43bd2c57f81404e346cb65027482b54e338c4792dc362284b5d26c3960cd9a5a",
+    "target/boundary-matrix-normalized/assets/styles-BKwVg2wd.js": "418c206484b89b68ef5f067277831e583fc9193a62aadf4de269acaaeb12a85f",
+    "target/boundary-matrix-normalized/assets/styles-Dld6ta9_.css": "4f9e74d11a019e92286c0ac940748967f0f42836289df2b831a92ca4436138da",
+    "target/boundary-matrix-normalized/assets/wasm_action_state_adapter-Di6phFcZ.js": "c0cd507f45438c1a69860fd09bf1f7188f703ec1c3cfedfdf6f1db693d4b60ad",
+    "target/boundary-matrix-normalized/assets/wasm_engine_bootstrap-BqUyMU_N.js": "8ec231d9b005076b4025c2d4f349ddd110fcc28dbf2ecb839bc86004fd4bc959",
+    "target/boundary-matrix-normalized/index.html": "a50e5035a8944baf7e73fef8e0b52d8ccac8ae7e401f0453b80bc874b2325527",
+    "target/boundary-matrix-normalized/manual-clipboard.html": "1da7e5d33c766a54b8eb81a9ebc11ab4b3599c053a6b50c301c3634bdba4de32",
+    "target/boundary-matrix-normalized/numeric-normalization-map.json": "4d7c766e1420a0d973cb58391bad7e211cffa91e9c32b4d06ee56d78cccd5e15",
+    "target/boundary-matrix-normalized/probes/action_state_restore_probe.js": "a9f58e8d2317304fd9a26dab1a527925f4f06344f09d84be0a55af3964232ff1",
+    "target/boundary-matrix-normalized/probes/profile_descriptor_probe.js": "cfd43d19844bb69bd5ef217ddd1b8e41521ea0ffd0ed99b9a65967822681e599",
+    "target/boundary-matrix-normalized/probes/profile_descriptor_raw_probe.js": "a090e91f8b3eec3d7619a2de14f41ab53f8cc400aaa667d233d1bd0af1ff1c9a",
+    "target/boundary-matrix-normalized/probes/profile_owner_lifecycle_probe.js": "dc578a714867ad20fb0991db485573869dd223e8f5df3825c3cdc6f3689f26a0",
+    "target/boundary-matrix-normalized/probes/selection_raw_restore_probe.js": "c51765dc91ba45338c0243d43985aaaf3c7f697ba9a312fe802260f28c924317",
+    "target/boundary-matrix-normalized/probes/selection_restore_probe.js": "0d1f021d4f5db4195a769194985c66290b5442eae9bf528859fafda1e1894978"
+  },
+  "coverage": "Entire ordinary browser discovery: 51 cases per engine, including action states, Unicode, composition events, history, Link forms, ShadowRoot, persistence, keyboard toolbar access, axe, clipboard, owner lifecycle, raw getters and validated selections.",
+  "limits": [
+    "Controlled composition and clipboard events do not certify physical IME or OS clipboard behavior.",
+    "Full-matrix bundles have different chunking from isolated/native restore and previous clipboard fixtures; hashes identify these separate artifacts.",
+    "The normalization remains an opt-in build transform. Exact production integration and the full 17-stage release verifier are not yet qualified by this run.",
+    "No fresh failing original full-matrix control was run in this checkpoint; earlier original restore failure remains separate evidence."
+  ],
+  "decision": "Cost and bounded native/full-matrix results support proceeding to a scoped production integration; do not call the underlying JavaScriptCore fault fixed. Preserve original control artifacts and re-qualify exact rebuilt production bytes before adoption.",
+  "verification": {
+    "ordinaryWorkspaceUnits": 1278,
+    "diagnosticUnits": 76,
+    "totalUnits": 1354,
+    "browserTypecheck": "passed",
+    "diffCheck": "passed",
+    "nativeServerInvalidPortChecks": 5
+  }
+}

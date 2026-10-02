@@ -1,0 +1,74 @@
+{
+  "format": "breditor/composition-scheduler-revocation",
+  "date": "2026-09-28",
+  "bug": "A custom scheduler retained a callback then threw. The callback could later recover the composition and release its queue lease despite failed scheduling.",
+  "before": {
+    "targetedTests": 30,
+    "failed": 1,
+    "expectedPhase": "quarantined",
+    "actualPhase": "idle"
+  },
+  "fix": "Mark the deferred callback invoked in the scheduling catch path, making any retained delivery inert.",
+  "after": {
+    "targetedTests": 30,
+    "browserRuntimeTests": 1210,
+    "diagnosticTests": 165,
+    "typecheck": "passed",
+    "build": "passed with installed Cargo on PATH",
+    "sizeBudgets": "all passed",
+    "referenceApplicationGzipBytes": 224988,
+    "browserIntegration": {
+      "scenario": "composition Unicode commit, Undo and Redo",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ],
+      "repetitionsPerBrowser": 3,
+      "passed": 9
+    }
+  },
+  "limits": [
+    "Custom scheduler failure-path regression is exercised by unit tests; browser checks cover ordinary composition behavior.",
+    "This fix is independent of the unresolved WebKit numerical failure.",
+    "No full release qualification, commit, publication, or upstream engine fix is claimed."
+  ],
+  "files": [
+    {
+      "path": "packages/breditor-browser/src/composition_controller.ts",
+      "sha256": "c326c56b1629766763096e7db4cfe650664fa5c234b3b6515088a7d85104636a"
+    },
+    {
+      "path": "packages/breditor-browser/src/composition_controller.test.ts",
+      "sha256": "fb506265057e30e6f4005e43bf9447fed75e0752e8116b272e32e444590c1082"
+    },
+    {
+      "path": "/tmp/breditor-composition-scheduler-before-20260928.log",
+      "sha256": "8ca9ea4e4229ee5a04807be0088e1b9cf1bcc97f45213e47c60424008f530087"
+    },
+    {
+      "path": "/tmp/breditor-composition-scheduler-after-20260928.log",
+      "sha256": "58323f6ffa51e600994f735505470f159a2b9264ed9ff52a070a5dc359b25525"
+    },
+    {
+      "path": "/tmp/breditor-browser-unit-fixed-20260928.log",
+      "sha256": "39aaf6357c9c0956786289f379a5bd39a4b84c3cd4e8564b6962d18c489e3982"
+    },
+    {
+      "path": "/tmp/breditor-browser-typecheck-fixed-20260928.log",
+      "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"
+    },
+    {
+      "path": "/tmp/breditor-size-fixed-complete-20260928.log",
+      "sha256": "60fb72c00042610a11bfd2b6b7eebbd00c6d9fc368adba4f1ad53cb8aff80215"
+    },
+    {
+      "path": "/tmp/breditor-composition-browser-fixed-20260928.log",
+      "sha256": "c82434169141191f3e472d7a480409e577db8efd1fea91a922c157eedb7bf232"
+    },
+    {
+      "path": "/tmp/breditor-diagnostics-final-20260928.log",
+      "sha256": "bc2e46cdb89c758ce1b2c7075ebe99266834cc4bc824aa4c9dcc1627881abdfc"
+    }
+  ]
+}

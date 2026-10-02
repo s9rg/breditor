@@ -1,0 +1,1809 @@
+{
+  "format": "breditor/numeric-transfer-native-capture",
+  "date": "2026-09-28",
+  "fixed": false,
+  "productionChanged": false,
+  "installedEngineChanged": false,
+  "currentDiagnosticSources": [
+    {
+      "path": "scripts/debug-jsc-array-repro.mjs",
+      "sha256": "adcd20ac58074ff01c23f4a44f3a87a60b6ec4ad914a2b91afee7487f2c1747d"
+    },
+    {
+      "path": "scripts/run-jsc-range-repro.mjs",
+      "sha256": "48e3bf23360a438302354315906ad7197688b22d39cf57ca6e14a7009fa279ef"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_native_array_capture.py",
+      "sha256": "02cddfa7b10b568bcd8e93b251b31b807e5d1811a25b7167b4c1f89c180d46a6"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_array_capture.test.ts",
+      "sha256": "485ae8e946aff9222054f31a66d56e4fe0e22e85e59c4d14d3bb0e362c043611"
+    },
+    {
+      "path": "tests/browser/diagnostics/jsc_range_runner.js",
+      "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+    },
+    {
+      "path": "tests/browser/harness/numeric_transfer_staged_probe.ts",
+      "sha256": "a02d6238c384c4aba098a33b0efd3f0eda69e03347cdfde1e9bf12d0eab03ac7"
+    }
+  ],
+  "runs": [
+    {
+      "name": "array-guard-control",
+      "path": "/tmp/breditor-array-guard-control-20260928.jsonl",
+      "sha256": "a760251e01ed9f590fd39bbac2ef98b6f9c02ae81f36d96ea3ff5f905e769964",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "f2971c84bd74ae6db17fb553ca66fd8a204a52fe01c9e035741bc8107cd0ba67"
+        }
+      ],
+      "counts": {
+        "control-confirmed": 1
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "control",
+          "minimumTimerDelay": "4",
+          "outcome": "control-confirmed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "control",
+              "pid": 13631,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a0080d22b00669e7f0009eb880000545f010beb40000054807d21d40020601e66000054005922fcc0035fd65000005800021fd644c1a50301000000"
+            },
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "guardStop": true,
+            "registers": {
+              "x0": "0x000000011800bdd8",
+              "x1": "0x0000000117400000",
+              "x2": "0x0000000000000004",
+              "x3": "0x3ff2000000000000",
+              "x8": "0x00000001171601c8",
+              "x9": "0xfffdffffffffffff",
+              "x10": "0x0000000000000000",
+              "x11": "0x3ff0000000000000",
+              "x12": "0x0000000000000000",
+              "d0": "1",
+              "d1": "1",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x00000001000f801c"
+            },
+            "stack": [
+              null,
+              "llint_slow_path_new_array",
+              "llint_op_new_array",
+              "llint_op_new_array"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "array-guard-probe",
+      "path": "/tmp/breditor-array-guard-probe-20260928.jsonl",
+      "sha256": "6d4c0fc2862cf1865849a9f4afc158c26b461ae568c0da2b0305cf74356e3722",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "f2971c84bd74ae6db17fb553ca66fd8a204a52fe01c9e035741bc8107cd0ba67"
+        }
+      ],
+      "counts": {
+        "probe-passed-no-native-stop": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 25827,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 2,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 25857,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 3,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 25895,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 4,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26139,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 5,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26201,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 6,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26222,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 7,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26271,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 8,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26315,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 9,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26339,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 10,
+          "variant": "probe",
+          "minimumTimerDelay": "4",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 26376,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "staged-shell-delay4",
+      "path": "/tmp/breditor-staged-shell-delay4-20260928.jsonl",
+      "sha256": "acd8cbe21cba821e58db76d91b90e5827287f93795fb2a9e14c6653b9c773bbd",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        }
+      ],
+      "counts": {
+        "passed": 10
+      },
+      "summary": {
+        "mode": "no-jit",
+        "minimumTimerDelay": "4",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 2,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 3,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 4,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 5,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 6,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 7,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 8,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 9,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 10,
+          "minimumTimerDelay": "4",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        }
+      ]
+    },
+    {
+      "name": "staged-shell-delay0",
+      "path": "/tmp/breditor-staged-shell-delay0-20260928.jsonl",
+      "sha256": "0f7b512f73576f0b12c929ef63608aa3220dd428b63cc49f557f5061584608ae",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        }
+      ],
+      "counts": {
+        "passed": 9,
+        "failed": 1
+      },
+      "summary": {
+        "mode": "no-jit",
+        "minimumTimerDelay": "0",
+        "passed": 9,
+        "failed": 1,
+        "total": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 2,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 3,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 4,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 5,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 6,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 7,
+          "minimumTimerDelay": "0",
+          "passed": false,
+          "status": 0,
+          "signal": null,
+          "report": {
+            "format": "breditor/jsc-range",
+            "outcome": "failed",
+            "result": null,
+            "error": "Error: numeric range rejected: {\"iteration\":332,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"typed\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"parsed\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"converted\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"selected\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"}},\"sourceIndex\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"values\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}",
+            "events": [
+              "BREDITOR_RANGE_REJECTION={\"iteration\":332,\"representation\":4,\"original\":false,\"captured\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"upper\":true,\"value\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"maximum\":{\"decimal\":\"4294967295\",\"bits\":\"41efffffffe00000\"},\"recheck\":{\"accepted\":false,\"type\":true,\"integer\":true,\"lower\":false},\"staged\":{\"literal\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"typed\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"parsed\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"converted\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"selected\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"}},\"sourceIndex\":{\"decimal\":\"0\",\"bits\":\"0000000000000000\"},\"values\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"0\",\"bits\":\"0000000000000000\"}],\"sources\":{\"literal\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"parsed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"typed\":[{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}],\"frozen\":{\"revision\":{\"decimal\":\"1\",\"bits\":\"3ff0000000000000\"},\"maximum\":{\"decimal\":\"2048\",\"bits\":\"40a0000000000000\"}}}}"
+            ],
+            "initialEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            },
+            "finalEngineOptions": {
+              "useJIT": 0,
+              "useDFGJIT": 0,
+              "useFTLJIT": 0
+            }
+          }
+        },
+        {
+          "attempt": 8,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 9,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 10,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        }
+      ]
+    },
+    {
+      "name": "array-guard-delay0",
+      "path": "/tmp/breditor-array-guard-delay0-20260928.jsonl",
+      "sha256": "8dd84e4e04e6480627c42f58ad6b6280bc7222432200c6609b32085e4c361c0f",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "f2971c84bd74ae6db17fb553ca66fd8a204a52fe01c9e035741bc8107cd0ba67"
+        }
+      ],
+      "counts": {
+        "probe-passed-no-native-stop": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28434,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 2,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28448,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 3,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28461,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 4,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28476,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 5,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28494,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 6,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28508,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 7,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28521,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 8,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28961,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 9,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28982,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 10,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 28997,
+              "site": "0x103a5c134",
+              "address": "0x1000f8000",
+              "trap": "0x1000f801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "array-guard-aslr-delay0",
+      "path": "/tmp/breditor-array-guard-aslr-delay0-20260928.jsonl",
+      "sha256": "d02076ed37c5078b9f11745effb2da84bc885092206bc73915efbac61fdafcad",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "f2971c84bd74ae6db17fb553ca66fd8a204a52fe01c9e035741bc8107cd0ba67"
+        }
+      ],
+      "counts": {
+        "probe-passed-no-native-stop": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29540,
+              "site": "0x106a08134",
+              "address": "0x102f80000",
+              "trap": "0x102f8001c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 2,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29556,
+              "site": "0x108708134",
+              "address": "0x104c10000",
+              "trap": "0x104c1001c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 3,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29807,
+              "site": "0x106788134",
+              "address": "0x102d14000",
+              "trap": "0x102d1401c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 4,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29826,
+              "site": "0x1067f0134",
+              "address": "0x102d90000",
+              "trap": "0x102d9001c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 5,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29849,
+              "site": "0x1069e4134",
+              "address": "0x102e58000",
+              "trap": "0x102e5801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 6,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29863,
+              "site": "0x106c6c134",
+              "address": "0x10306c000",
+              "trap": "0x10306c01c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 7,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29877,
+              "site": "0x1048c4134",
+              "address": "0x100d20000",
+              "trap": "0x100d2001c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 8,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29893,
+              "site": "0x105e4c134",
+              "address": "0x1023b4000",
+              "trap": "0x1023b401c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 9,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 29907,
+              "site": "0x105da4134",
+              "address": "0x1022a8000",
+              "trap": "0x1022a801c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 10,
+          "variant": "probe",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 30133,
+              "site": "0x106a84134",
+              "address": "0x1056e4000",
+              "trap": "0x1056e401c"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "staged-shell-delay0-second",
+      "path": "/tmp/breditor-staged-shell-delay0-second-20260928.jsonl",
+      "sha256": "97013344328a169dbf705a32a7f0fd8a282a56631adab7f371b3ab2c8a6fdddf",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        }
+      ],
+      "counts": {
+        "passed": 10
+      },
+      "summary": {
+        "mode": "no-jit",
+        "minimumTimerDelay": "0",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 2,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 3,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 4,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 5,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 6,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 7,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 8,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 9,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 10,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        }
+      ]
+    },
+    {
+      "name": "array-store-control",
+      "path": "/tmp/breditor-array-store-control-20260928.jsonl",
+      "sha256": "c1488fe07427952e80631ef0ee93e63c68e6c1a7b476197c895c917274fbe51e",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "02cddfa7b10b568bcd8e93b251b31b807e5d1811a25b7167b4c1f89c180d46a6"
+        }
+      ],
+      "counts": {
+        "control-confirmed": 1
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "control",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "control-confirmed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "control",
+              "pid": 30843,
+              "placement": "post-store",
+              "site": "0x1047dc140",
+              "address": "0x100d0c000",
+              "trap": "0x100d0c01c",
+              "patchHex": "b0bf1417",
+              "originalHex": "0020601e66000054005922fcc0035fd6",
+              "selectHex": "008c611e",
+              "payloadHex": "0c423bd50a0080d22b00669e7f0009eb880000545f010beb40000054807d21d4c0035fd6"
+            },
+            "stopped": true,
+            "exited": false,
+            "exitStatus": -1,
+            "guardStop": true,
+            "registers": {
+              "x0": "0x000000011e00bdd8",
+              "x1": "0x0000000118400000",
+              "x2": "0x0000000000000004",
+              "x3": "0x3ff2000000000000",
+              "x8": "0x00000001181601c8",
+              "x9": "0xfffdffffffffffff",
+              "x10": "0x0000000000000000",
+              "x11": "0x3ff0000000000000",
+              "x12": "0x0000000060000000",
+              "d0": "1",
+              "d1": "1",
+              "cpsr": "0x80001000",
+              "fpcr": "0x00000000",
+              "fpsr": "0x00000011",
+              "pc": "0x0000000100d0c01c"
+            },
+            "stack": [
+              null,
+              "llint_slow_path_new_array",
+              "llint_op_new_array",
+              "llint_op_new_array"
+            ],
+            "storedSlot": {
+              "address": "0x1181601e8",
+              "littleEndianHex": "000000000000f03f"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "array-store-probe",
+      "path": "/tmp/breditor-array-store-probe-20260928.jsonl",
+      "sha256": "b9605ce49e9675aafcee1fb09128975fa03d7de8866069626296f3ec0583613d",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "02cddfa7b10b568bcd8e93b251b31b807e5d1811a25b7167b4c1f89c180d46a6"
+        }
+      ],
+      "counts": {
+        "probe-passed-no-native-stop": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31386,
+              "placement": "post-store",
+              "site": "0x106a64140",
+              "address": "0x102ea0000",
+              "trap": "0x102ea001c",
+              "patchHex": "b0ef1017"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 2,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31399,
+              "placement": "post-store",
+              "site": "0x1046a8140",
+              "address": "0x100c1c000",
+              "trap": "0x100c1c01c",
+              "patchHex": "b0cf1517"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 3,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31413,
+              "placement": "post-store",
+              "site": "0x103f9c140",
+              "address": "0x10057c000",
+              "trap": "0x10057c01c",
+              "patchHex": "b07f1717"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 4,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31657,
+              "placement": "post-store",
+              "site": "0x104a4c140",
+              "address": "0x1010d0000",
+              "trap": "0x1010d001c",
+              "patchHex": "b00f1a17"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 5,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31692,
+              "placement": "post-store",
+              "site": "0x1067c4140",
+              "address": "0x102d24000",
+              "trap": "0x102d2401c",
+              "patchHex": "b07f1517"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 6,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31707,
+              "placement": "post-store",
+              "site": "0x10832c140",
+              "address": "0x104990000",
+              "trap": "0x10499001c",
+              "patchHex": "b08f1917"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 7,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31735,
+              "placement": "post-store",
+              "site": "0x1042f0140",
+              "address": "0x100980000",
+              "trap": "0x10098001c",
+              "patchHex": "b03f1a17"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 8,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31752,
+              "placement": "post-store",
+              "site": "0x108650140",
+              "address": "0x104cc4000",
+              "trap": "0x104cc401c",
+              "patchHex": "b0cf1917"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 9,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31778,
+              "placement": "post-store",
+              "site": "0x106898140",
+              "address": "0x102ec8000",
+              "trap": "0x102ec801c",
+              "patchHex": "b0bf1817"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 10,
+          "variant": "probe",
+          "placement": "post-store",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "probe-passed-no-native-stop",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": {
+              "variant": "probe",
+              "pid": 31794,
+              "placement": "post-store",
+              "site": "0x107f68140",
+              "address": "0x104568000",
+              "trap": "0x10456801c",
+              "patchHex": "b0ff1717"
+            },
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "array-debugger-baseline",
+      "path": "/tmp/breditor-array-debugger-baseline-20260928.jsonl",
+      "sha256": "8beaa75eb05bcc442dcc10dd9acec88be03b7c8e24c3adf7aa2d73db595c566d",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/JavaScriptCore",
+          "sha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d"
+        },
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-staged-20260928/numeric_transfer_staged_probe.js",
+          "sha256": "efb634fa1e5a8e080e27d177aefcaf181534675c900e60f7649bead66fc5efb9"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_native_array_capture.py",
+          "sha256": "02cddfa7b10b568bcd8e93b251b31b807e5d1811a25b7167b4c1f89c180d46a6"
+        }
+      ],
+      "counts": {
+        "baseline-passed": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 2,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 3,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 4,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 5,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 6,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 7,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 8,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 9,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        },
+        {
+          "attempt": 10,
+          "variant": "baseline",
+          "placement": "post-conversion",
+          "minimumTimerDelay": "0",
+          "disableAslr": false,
+          "outcome": "baseline-passed",
+          "status": 0,
+          "signal": null,
+          "capture": {
+            "guard": null,
+            "stopped": false,
+            "exited": true,
+            "exitStatus": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "original-shell-delay0",
+      "path": "/tmp/breditor-original-shell-delay0-20260928.jsonl",
+      "sha256": "78cb1023ee278dac2b2327fa71b59d8151277950ebc5e01aa345dfcf023f6f9a",
+      "sources": [
+        {
+          "path": "/Users/s/Library/Caches/ms-playwright/webkit-2336/JavaScriptCore.framework/Versions/A/Helpers/jsc",
+          "sha256": "b4b530088e0eb1e2319a7ec99529c964879090dde3e9e370d191163622eff88f"
+        },
+        {
+          "path": "/Users/s/code/breditor/target/numeric-range-shell-20260928/numeric_range_probe.js",
+          "sha256": "1a0308de4e60f85aff6c04d7364351d653706dcaae7128d3a0f1d5a22f152ad4"
+        },
+        {
+          "path": "/Users/s/code/breditor/tests/browser/diagnostics/jsc_range_runner.js",
+          "sha256": "b196f9f90382e3496843333fed265cb6a593ccb0985087cc3ffba9b2ec18d652"
+        }
+      ],
+      "counts": {
+        "passed": 10
+      },
+      "summary": {
+        "mode": "no-jit",
+        "minimumTimerDelay": "0",
+        "passed": 10,
+        "failed": 0,
+        "total": 10
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 2,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 3,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 4,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 5,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 6,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 7,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 8,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 9,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        },
+        {
+          "attempt": 10,
+          "minimumTimerDelay": "0",
+          "passed": true,
+          "status": 0,
+          "signal": null
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "diagnosticTests": 121,
+    "diagnosticFiles": 22,
+    "browserTypecheck": "passed",
+    "whitespace": "passed"
+  },
+  "conclusions": [
+    "The unchanged staged probe failed once in 20 uninstrumented standalone no-JIT zero-delay attempts. This smaller unexpected-zero symptom does not require a browser, editor, Rust, Wasm, or JIT.",
+    "Failure at iteration 332, slot 4, consumed/local array value +0; all five staged scalars reread 1 and original sources remain 1/2048. Unlike previous browser failures, it is not immediately after a timer yield.",
+    "Uninstrumented staged delay-4 control and original delay-0 control each pass 10/10. Small batches do not prove timer causation or staged-variable causation.",
+    "Both deliberately altered snapshot controls trap with real d0/d1 correct. Post-store control also reads correct 1 bits from the already-written array slot.",
+    "All 30 post-conversion guarded runs and 10 post-store guarded runs pass. Ten unpatched LLDB baseline runs also pass; debugger effects versus guard effects are not isolated by these samples.",
+    "No actual native array conversion mismatch has been captured. Guarded passes are not fixes or engine qualification. Relationship to the earlier editor false comparison and native Object.is capture remains unproven."
+  ]
+}

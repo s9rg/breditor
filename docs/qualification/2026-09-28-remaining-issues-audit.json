@@ -1,0 +1,92 @@
+{
+  "format": "breditor/remaining-issues-audit",
+  "date": "2026-09-28",
+  "baseCommit": "64fcee8529fc0784759cf347729de87e79b97853",
+  "workingTreeDirty": true,
+  "allKnownIssuesFixed": false,
+  "fixed": [
+    {
+      "issue": "Composition construction validated an executor, then reread it for queue binding. The third read could substitute a foreign executor or reject a valid adapter.",
+      "before": {"targetedTests": 54, "failed": 4, "passed": 50},
+      "after": {"targetedTests": 54, "failed": 0, "passed": 54},
+      "change": "Capture the validated executor and retain the existing two-read stability check. Five new regression/control cases cover third-read substitutions and unstable validation."
+    },
+    {
+      "issue": "The ordinary Vite server recursively scanned property-isolation/index.html without its diagnostic plugin, producing an unresolved virtual-module error and disabling dependency pre-bundling.",
+      "before": "The full release log records Failed to run dependency scan for virtual:breditor-property-validator.",
+      "change": "Use explicit ordinary HTML entries in vite.browser.config.ts from both Playwright and the manual clipboard launcher. Preserve default dependency discovery within those entries and all optional diagnostic configurations.",
+      "after": "Three new configuration tests pass; the fresh 159-case matrix and 40-case WebKit run contain no dependency-scan error. Vite optimized parse5 successfully."
+    }
+  ],
+  "verification": {
+    "releaseVerifier": {
+      "passedGates": 17,
+      "failedGates": 0,
+      "nativeRustAndDocTests": 1560,
+      "nativeRustIgnoredTests": 0,
+      "wasmTargetTests": 25,
+      "browserRuntimeTests": 1325,
+      "otherPackageTests": 90,
+      "diagnosticToolTestsAtReleaseRun": 165,
+      "browserMatrix": {"passed": 159, "failed": 0, "retries": 0},
+      "demoMatrix": {"passed": 39, "failed": 0, "retries": 0},
+      "checks": "Rust format/lint/tests/docs, Wasm target tests, TypeScript tests/types, package reproducibility and external packed consumers, generated ABI, production build/size and browser/demo matrices.",
+      "configurationNote": "The release run's browser server used the previous Vite launch configuration. The final harness configuration and launcher changes were checked separately below; no runtime source changed afterward."
+    },
+    "finalHarnessConfiguration": {
+      "diagnosticToolTests": 168,
+      "browserTypecheck": "passed",
+      "freshBrowserMatrix": {"passed": 159, "failed": 0, "retries": 0},
+      "dependencyScanErrors": 0,
+      "output": "target/playwright-remaining-final-20260928"
+    },
+    "webkitRepeat": {
+      "passed": 40,
+      "failed": 0,
+      "retries": 0,
+      "maxFailures": 1,
+      "repetitionsPerScenario": 20,
+      "formattedClipboardCycles": 1200,
+      "linkHistoryCycles": 6000,
+      "instrumented": false,
+      "output": "target/playwright-remaining-webkit-repeat-20260928"
+    },
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224936,
+    "referenceApplicationGzipLimit": 225000
+  },
+  "knownOpen": [
+    {
+      "issue": "Standalone WebKit/JavaScriptCore numeric corruption",
+      "status": "Not fixed or rerun by this audit. The recorded debugger-free counterexamples are retained; no engine patch was adopted.",
+      "evidence": "docs/qualification/2026-09-28-webkit-pattern-retry.json"
+    },
+    {
+      "issue": "Intermittent WebKit selection-endpoint rejection during formatted clipboard/Link history",
+      "status": "Not reproduced in this audit, but no causal fix has been established. Its connection to the standalone numeric fault remains unproven.",
+      "evidence": "docs/qualification/2026-09-28-selection-reentry-and-endpoint-rejection.json"
+    }
+  ],
+  "limits": [
+    "Passing finite suites cannot establish absence of all latent bugs or invalidate historical intermittent failures.",
+    "Native engine instrumentation stayed paused; this audit contains no WebKit engine patch.",
+    "Browser tests use controlled clipboard/composition fixtures, not complete OS-level clipboard or IME qualification.",
+    "No Rust implementation, durable format, package version or size limit changed in this audit.",
+    "No commit, push or publication was performed. Existing unrelated worktree changes were preserved."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/composition_controller.ts", "sha256": "dcbfe913f0db6c1870fe5ef036ac24b7c35ad0c9c4bf4c16c37c2d3a4207f6a9"},
+    {"path": "packages/breditor-browser/src/composition_controller.test.ts", "sha256": "5ff5b377f43235bdcf633ec97718d4d7a13a552d86ede9dfa0aa314abd3d0b52"},
+    {"path": "vite.browser.config.ts", "sha256": "ae26d5048a1e1b491be569f7ca99329070ca8dc3318234e3cda5cfb41b827290"},
+    {"path": "tests/browser/diagnostics/browser_vite_config.test.ts", "sha256": "2896a6cd6dcdba1562ae356cd48647277e5d31e9a73313f512bc08d4470759d7"},
+    {"path": "playwright.config.ts", "sha256": "0f56cfd001cce7b8e720675b0d1396901c31f456bfd5d5dcffa2ee4440dd26a5"},
+    {"path": "package.json", "sha256": "9160d3a79ca328e940bbab837857d4b822e3c12ae456eea5a959b000675b7681"},
+    {"path": "tests/browser/tsconfig.json", "sha256": "a5693d1412e2166a0bb148d2e0883532554fcb7d1e9867a5c7da5ab331ccf507"},
+    {"path": "/tmp/breditor-executor-capture-before-20260928.log", "sha256": "38709f8f44df408984628f6a34ea5d4a1c2b66db5f1799944b9a8c4b68593b7d"},
+    {"path": "/tmp/breditor-executor-capture-after-20260928.log", "sha256": "58e1d107e26a8491a87c9ca467ab57784819b3b5a48599c03b0fe6187af5a203"},
+    {"path": "/tmp/breditor-remaining-release-20260928.log", "sha256": "4bc2f2974affd6d27ffd60357eb449aed9349730dc6aca58d0fd7dc0ec01e4c6"},
+    {"path": "/tmp/breditor-remaining-browser-final-20260928.log", "sha256": "684f4f080089e88480f3e19575df959d0c0045a9aed98ae3c811b7c8f1f609e0"},
+    {"path": "/tmp/breditor-browser-scan-tests-20260928.log", "sha256": "7010c0001430095bf6ffcb73881759cc042059f94108c2d57400c84d7f126de2"},
+    {"path": "/tmp/breditor-remaining-webkit-repeat-20260928.log", "sha256": "e7978fa941139b39c6d3152ad4b12a322598c9327e4d7742cdb2b8c1a2c98ae9"}
+  ]
+}

@@ -323,6 +323,18 @@ stays quarantined and the queue remains leased; it neither retries a command nor
 releases ordinary work onto uncertain DOM. Disposal follows the same restore-
 before-release rule. Exposed failures use stable payload-redacted reasons.
 
+Composition event admission reads the controller's private phase, not an
+overridden public `active` getter. Scheduled recovery invokes the private
+recovery implementation; public `recover()` delegates to that same path.
+Shadowing public members cannot bypass quarantine or substitute a recovery
+result without restoring canonical DOM and releasing the exact queue lease.
+Public signatures, one-shot task delivery and manual recovery remain unchanged.
+
+Construction retains the exact command executor observed by the adapter's
+two-read stability check and uses that same value to open the queue lease port.
+There is no third executor read between validation and queue binding; a changed
+getter cannot substitute a different queue identity at that boundary.
+
 ### Composition limits
 
 The `0.0.54` composition slice deliberately supports one connected light-DOM
@@ -347,12 +359,25 @@ checks. See
 
 ## Queue contract
 
+Construction reads the optional observer once and validates that captured value.
+Accessor-backed options cannot substitute a different callback after validation;
+an invalid initial value is rejected before any command executes.
+
 `BreditorCommandQueue` is a bounded synchronous FIFO. The default capacity is
 256 and the hard maximum is 4,096, including the currently executing item.
 Reentrant submissions append and return `queued`; the executor is never called
 recursively. A promise-like executor result is rejected because native event
 cancellation, observation guards, and selection/render correlation require a
 synchronous boundary.
+
+Request inspection may invoke application callbacks, so ordinary admission
+rechecks disposal, failure and lease ownership before assigning a sequence or
+retaining the request. Capacity is read from private state; overriding a public
+status getter cannot change admission. A rejected outer request does not consume
+a sequence. Successfully completed nested admission may precede the outer one.
+Promise-like executor and observer returns retain the same terminal failure
+semantics, but their rejections are consumed to avoid an unhandled browser error.
+This does not make async callbacks supported or cancel work they already started.
 
 If an executor or delivery observer throws, the queue records the exact sequence
 at which outcome became uncertain and permanently quarantines later items. It

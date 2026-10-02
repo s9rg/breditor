@@ -1,0 +1,85 @@
+{
+  "status": "engine-context controls fail; native-only conversion passes; SameValue candidate promising but unqualified",
+  "productionRuntimeChanged": false,
+  "additionalSystemSettingsChanged": false,
+  "preservedModuleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+  "nativeOnly": {
+    "compiler": "Apple clang 21.0.0 (clang-2100.1.1.101)",
+    "target": "arm64-apple-darwin25.6.0",
+    "flags": ["-O2", "-Wall", "-Wextra", "-Werror"],
+    "cSourceSha256": "928f8f07a3c46dcd45873f99072291ee1ef194aca69c4c64754d15058737b0b0",
+    "assemblySourceSha256": "2d1a12a635b140d1db691136128687eab711ae3131b9858b63a10e7db7cc8523",
+    "binary": "/tmp/breditor-arm64-conversion-20260926",
+    "binarySha256": "a23320176242eacb72f74d24a164bf8b7a900ccfb50f8b1a393e81529a70c6db",
+    "linksJavaScriptCore": false,
+    "disassemblyChecked": true,
+    "cases": ["double/int 2048", "int/double 2048", "unequal 2049/2048", "negative integer/double -1", "negative zero/positive zero"],
+    "runs": [{ "variant": "fcsel", "iterations": 100000000, "outcome": "passed" }, { "variant": "branch", "iterations": 100000000, "outcome": "passed" }],
+    "argumentChecks": "zero, negative, over-limit, nonnumeric count and unknown variant all exit 2; valid five-case branch control exits 0",
+    "limit": "Does not reproduce JavaScriptCore execution context or establish that the platform cannot fail intermittently."
+  },
+  "engineContext": {
+    "mode": "standalone JSC without debugger",
+    "order": "five interleaved rounds: no-jit, no-jit-serial-gc, no-jit-polling, no-jit-posix",
+    "minimumTimerDelayMs": 4,
+    "iterationsPerCompletedCase": 10000,
+    "tuplesPerCompletedCase": 20000,
+    "watchdogSeconds": 30,
+    "initialAndFinalOptionsVerified": true,
+    "jitOptionsEveryCase": { "useJIT": 0, "useDFGJIT": 0, "useFTLJIT": 0 },
+    "runs": [
+      { "mode": "no-jit", "passed": 4, "failed": 1, "failureIterations": [3961], "context": { "useConcurrentGC": 1, "usePollingTraps": 1, "useMachForExceptions": 1 } },
+      { "mode": "no-jit-serial-gc", "passed": 2, "failed": 3, "failureIterations": [4061, 9541, 2311], "context": { "useConcurrentGC": 0, "usePollingTraps": 1, "useMachForExceptions": 1 } },
+      { "mode": "no-jit-polling", "passed": 3, "failed": 2, "failureIterations": [9790, 6631], "context": { "useConcurrentGC": 1, "usePollingTraps": 1, "useMachForExceptions": 1 } },
+      { "mode": "no-jit-posix", "passed": 4, "failed": 1, "failureIterations": [801], "context": { "useConcurrentGC": 1, "usePollingTraps": 1, "useMachForExceptions": 0 } }
+    ],
+    "everyFailure": { "mask": 16, "actual": 2048, "expected": 2048, "identicalColdBits": true, "objectIsRecheck": true, "strictEqualityRecheck": true },
+    "log": "/tmp/breditor-jsc-context-controls-20260926.jsonl",
+    "sha256": "6e2aad1181c2705c3d1237514dfe74eb6fb011f5732d9ebd24f4eeb9faf7189c",
+    "limit": "No-JIT already enables polling traps, so explicitly requesting polling is not a distinct effective setting. These small samples do not establish comparative failure rates."
+  },
+  "sameValue": {
+    "exploratory": {
+      "originalPassed": 9, "originalFailed": 1, "candidatePassed": 10, "candidateFailed": 0,
+      "cleanComparativeEvidence": false,
+      "reason": "Host diagnostic watchdog source changed during this batch; excluded from clean comparison totals.",
+      "log": "/tmp/breditor-jsc-samevalue-interleaved-20260926.jsonl",
+      "sha256": "78de6e141b74bdd704a9b7aabcb92b334e0b7c7e68f85354fa33a32d6a015f22"
+    },
+    "clean": {
+      "mode": "no-jit", "minimumTimerDelayMs": 4, "order": "five interleaved original/candidate pairs",
+      "runnerSha256EveryCase": "f0c045e92d812aa139b2c90537da286776bc6aafacf087d4e4d354e2497e30da",
+      "originalPassed": 2, "originalFailed": 3, "originalFailureIterations": [3491, 2311, 4621],
+      "candidatePassed": 5, "candidateFailed": 0,
+      "log": "/tmp/breditor-jsc-samevalue-clean-20260926.jsonl",
+      "sha256": "27d1001474c9453a204f08b6e2c09a059f34d75bc12ff64b9538db3c83738353",
+      "concurrentDiagnostic": "Separate baseline early-conversion LLDB child was running; neither compared variant was attached to the debugger."
+    },
+    "limit": "A bounded success for an altered comparison is not a production fix; editor validators use other numeric predicates too."
+  },
+  "earlyConversionDebugger": {
+    "scenario": "probe-conversion-slow",
+    "watchdogSeconds": 120,
+    "normalWatchdogStillSeconds": 30,
+    "fileAddress": "0x112ce9c",
+    "jitDisabled": {
+      "completedPasses": 1, "nativeStops": 0, "timeouts": 0,
+      "log": "/tmp/breditor-native-early-conversion-slow-20260926.jsonl",
+      "sha256": "9a1cdc7e10d5ec6f153efffd48b8ce8c86ffb15df672b7dd1db4b3d834740bfa"
+    },
+    "baseline": {
+      "requested": 2, "completedPasses": 0, "nativeStops": 0, "timeouts": 1, "notRun": 1,
+      "outcome": "probe-timeout-inconclusive",
+      "log": "/tmp/breditor-native-early-baseline-slow-20260926.jsonl",
+      "sha256": "fd222796f5bed71356edb8c0153b140a128106faefeaf4b57b28410fd88510f0"
+    },
+    "limit": "Breakpoint timing changes may suppress the fault; this does not prove that bad conversions only occur after the inspected instruction."
+  },
+  "verification": { "workspaceTestsPassed": 1278, "diagnosticTestsPassed": 66, "totalTestsPassed": 1344, "browserTypecheck": "passed", "javascriptSyntaxChecks": "passed", "diffCheck": "passed" },
+  "limits": [
+    "Exact engine/platform cause remains unresolved.",
+    "No production comparisons, validators, engine libraries or signatures changed.",
+    "No renewed native Safari, editor or clipboard qualification performed.",
+    "Raw logs and the compiled control binary are temporary local artifacts; source, bounded evidence and hashes are retained here."
+  ]
+}

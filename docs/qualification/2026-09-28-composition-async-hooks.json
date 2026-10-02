@@ -1,0 +1,56 @@
+{
+  "format": "breditor/composition-async-hooks",
+  "date": "2026-09-28",
+  "bugs": [
+    "Promise/thenable scheduler returns were ignored, so an asynchronous failure could leave composition ending with its queue lease held and retained callbacks still live.",
+    "Asynchronous settlement observer rejections were not consumed, unlike synchronous observer exceptions."
+  ],
+  "before": {
+    "targetedTests": 34,
+    "failed": 4,
+    "passed": 30,
+    "failures": [
+      "Promise, thenable and throwing-then-getter scheduler results incorrectly returned scheduled instead of recoveryRequired.",
+      "The observer's rejected promise had no rejection handler installed by the controller."
+    ],
+    "note": "Test-owned rejected promises were prehandled to isolate assertions without leaking rejection events during the pre-fix run. Thenable regressions reject when consumed."
+  },
+  "fix": [
+    "Share the existing browser-controller rejection handler with the composition controller and router.",
+    "Reject asynchronous scheduler results synchronously and invalidate retained callbacks. Failed recovery scheduling preserves quarantine until explicit recovery or disposal.",
+    "Consume observer rejections without awaiting them or changing committed/recovered lifecycle results."
+  ],
+  "after": {
+    "newRegressionTests": 9,
+    "browserRuntimeTests": 1219,
+    "browserRuntimeFiles": 50,
+    "typecheck": "passed (production and test sources)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224918,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "scenario": "composition Unicode commit, Undo and Redo",
+      "browsers": ["chromium", "firefox", "webkit"],
+      "repetitionsPerBrowser": 3,
+      "passed": 9
+    }
+  },
+  "limits": [
+    "Custom-hook failure paths are unit-tested. Browser integration covers ordinary simulated composition events, not OS-level IME qualification.",
+    "The WebKit numeric fault remains unresolved; native instrumentation was not resumed.",
+    "No full release qualification, commit or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/composition_controller.ts", "sha256": "97397ae6dd30f628296dc89fbd3310e55f7f03c33210f7dfaf5abf746986b4bb"},
+    {"path": "packages/breditor-browser/src/composition_controller.test.ts", "sha256": "b0d52573491d23317bc1dac2dbe13728df1307a13c8e90e01616bb2d11424eff"},
+    {"path": "packages/breditor-browser/src/contain_async_rejection.ts", "sha256": "5efb0bee1af6187da441f960b593f4e5bcaed7f653a3581c10b14204ee71aa19"},
+    {"path": "packages/breditor-browser/src/browser_event_controller.ts", "sha256": "7c5abd406975c442126ce289318189a9c1285872373cd9197db834c400fe2907"},
+    {"path": "packages/breditor-browser/src/browser_event_router.ts", "sha256": "b46c082fcf9f7b96a35cf5ded67c7c1be40496a087c4fd9dd609ae8ee3041c90"},
+    {"path": "/tmp/breditor-ime-async-before-20260928.log", "sha256": "e0f362d16d28131ba1cb83d84306eee1c3bf17e2cb15c0f9b701ebc639a5f317"},
+    {"path": "/tmp/breditor-ime-async-full-20260928.log", "sha256": "e7f047c3ad320f56e6e6c3c29b2745732fd5b232887268aab2ec769221cc8cee"},
+    {"path": "/tmp/breditor-ime-async-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-ime-async-build-20260928.log", "sha256": "c73fae693f2c4ebb1337b7b45356681d477c537fa85ef49aec59862f3964b9e8"},
+    {"path": "/tmp/breditor-ime-async-browser-20260928.log", "sha256": "51b9889687e751d9e228dbd37f39ed618a792bec3f1e057234fbaec13b1b1c1d"}
+  ]
+}

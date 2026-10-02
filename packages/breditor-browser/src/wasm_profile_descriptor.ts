@@ -1,4 +1,5 @@
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
+import { normalizeWasmBoundaryNumber } from "./normalize_wasm_boundary_number.js";
 
 /** Maximum inline-format descriptors admitted by the browser ABI boundary. */
 export const MAX_BROWSER_PROFILE_FORMATS = 256;
@@ -244,29 +245,22 @@ interface DescriptorMethods {
   readonly inlineFormatSetActionStateId: WasmCompiledProfileDescriptorView["inlineFormatSetActionStateId"];
 }
 
+const ACTIVE_DESCRIPTOR_CONSUMPTIONS = new WeakSet<object>();
+
 /**
  * Consumes one generated descriptor into bounded, deeply frozen metadata.
  *
  * The opaque generation remains caller-owned. The descriptor is freed exactly
  * once on every path where its cleanup can be captured safely.
+ * Overlapping reads are rejected before getters and through final admission;
+ * independent nested descriptors remain supported.
  */
 export function consumeWasmCompiledProfileDescriptor(
   generation: WasmProfileGenerationView,
   view: WasmCompiledProfileDescriptorView,
   protectedHandles: readonly unknown[] = [],
 ): BrowserProfileDescriptorResult {
-  const protectedSet = snapshotProtectedHandleArray(protectedHandles, generation);
-  if (protectedSet === null || protectedSet.has(view)) return descriptorFailure();
-  const cleanup = snapshotGeneratedCleanup(view);
-  const asynchronous = containGeneratedThenable(view);
-  if (cleanup === null) return descriptorFailure();
-  return consumeWasmCompiledProfileDescriptorWithCleanup(
-    generation,
-    view,
-    cleanup,
-    protectedSet,
-    asynchronous,
-  );
+  return consumeDescriptor(generation, view, protectedHandles);
 }
 
 /** Consumes a descriptor using cleanup already captured by an outer owner. @internal */
@@ -275,30 +269,44 @@ export function consumeWasmCompiledProfileDescriptorWithCleanup(
   view: WasmCompiledProfileDescriptorView,
   cleanup: GeneratedCleanup,
   protectedHandles: readonly unknown[] | ReadonlySet<object> = [],
-  asynchronous = containGeneratedThenable(view),
+  asynchronous?: boolean,
 ): BrowserProfileDescriptorResult {
-  const protectedSet = normalizeProtectedHandles(protectedHandles, generation);
-  if (protectedSet === null || protectedSet.has(view)) return descriptorFailure();
-  let result: BrowserProfileDescriptorResult = descriptorFailure();
+  return consumeDescriptor(generation, view, protectedHandles, true, cleanup, asynchronous);
+}
+
+/** Reserve before any foreign metadata/getter and retain through final admission. */
+function consumeDescriptor(
+  generation: WasmProfileGenerationView,
+  view: WasmCompiledProfileDescriptorView,
+  protectedHandles: readonly unknown[] | ReadonlySet<object>,
+  captured = false,
+  cleanup?: GeneratedCleanup,
+  asynchronous?: boolean,
+): BrowserProfileDescriptorResult {
+  if (!objectLike(view) || ACTIVE_DESCRIPTOR_CONSUMPTIONS.has(view)) return descriptorFailure();
+  ACTIVE_DESCRIPTOR_CONSUMPTIONS.add(view);
   try {
-    result = asynchronous
+    const protectedSet = captured
+      ? normalizeProtectedHandles(protectedHandles, generation)
+      : snapshotProtectedHandleArray(protectedHandles, generation);
+    if (protectedSet === null || protectedSet.has(view)) return descriptorFailure();
+    const release = captured ? cleanup : snapshotGeneratedCleanup(view);
+    const thenable = asynchronous ?? containGeneratedThenable(view);
+    if (release === null || release === undefined) return descriptorFailure();
+    let result: BrowserProfileDescriptorResult = descriptorFailure();
+    try {
+      result = thenable ? descriptorFailure() : readDescriptor(generation, view);
+    } catch {
+      result = descriptorFailure();
+    } finally {
+      if (!runGeneratedCleanup(release)) result = descriptorFailure();
+    }
+    return result.ok && !browserCompiledProfileDescriptorMatchesGeneration(result.descriptor, generation)
       ? descriptorFailure()
-      : readDescriptor(generation, view);
-  } catch {
-    result = descriptorFailure();
+      : result;
   } finally {
-    if (!runGeneratedCleanup(cleanup)) result = descriptorFailure();
+    ACTIVE_DESCRIPTOR_CONSUMPTIONS.delete(view);
   }
-  if (
-    result.ok &&
-    !browserCompiledProfileDescriptorMatchesGeneration(
-      result.descriptor,
-      generation,
-    )
-  ) {
-    result = descriptorFailure();
-  }
-  return result;
 }
 
 /** Exact, exception-contained generation comparison for a generated view. */
@@ -923,13 +931,13 @@ function stateContractsEqual(
 function readScalar(value: object, key: string): unknown {
   const result = Reflect.get(value, key, value) as unknown;
   if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor scalar");
-  return result;
+  return normalizeWasmBoundaryNumber(result);
 }
 
 function invoke(method: Function, receiver: object, index: number): unknown {
   const result = Reflect.apply(method, receiver, [index]) as unknown;
   if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor method");
-  return result;
+  return normalizeWasmBoundaryNumber(result);
 }
 
 function invoke2(
@@ -940,7 +948,7 @@ function invoke2(
 ): unknown {
   const result = Reflect.apply(method, receiver, [first, second]) as unknown;
   if (valueIsThenable(result)) throw new TypeError("asynchronous descriptor method");
-  return result;
+  return normalizeWasmBoundaryNumber(result);
 }
 
 function snapshotGeneratedCleanup(value: unknown): GeneratedCleanup | null {
@@ -1029,10 +1037,9 @@ function isQualifiedName(value: unknown): value is string {
 }
 
 function isPositiveU32(value: unknown): value is number {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 1 &&
-    value <= 4_294_967_295;
+  // Require an exact unsigned round trip, not a truncated or coerced value.
+  // Keep the type guard first so foreign metadata never invokes coercion hooks.
+  return typeof value === "number" && value > 0 && value === (value >>> 0);
 }
 
 function isU32(value: unknown): value is number {

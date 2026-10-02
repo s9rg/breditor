@@ -1,0 +1,19 @@
+{
+  "format": "breditor/native-selection-stress-observation",
+  "version": 1,
+  "observation": "Read from installed Safari's visible accessibility tree after all immutable-record candidate batches completed.",
+  "batchesPlanned": 20,
+  "restoresPerBatch": 10000,
+  "readsPerRestore": 3,
+  "freshPageBetweenBatches": true,
+  "freshBrowserProcessBetweenBatches": false,
+  "active": false,
+  "outcome": "passed",
+  "passed": 20,
+  "current": 20,
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6.2 Safari/605.1.15",
+  "bundleSha256": "816f7c4894a99cb9f89e8a5ee970cd1a1e1b45ff1a7b1441c80ac7cfbd279914",
+  "diagnosticBranchLabels": false,
+  "immutableRecordCandidate": true,
+  "limitation": "Bounded mitigation evidence, not proof that every intermittent selection, startup, clipboard, or DOM-restoration failure is resolved."
+}

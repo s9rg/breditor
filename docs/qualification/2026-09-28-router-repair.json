@@ -1,0 +1,65 @@
+{
+  "format": "breditor/router-repair",
+  "date": "2026-09-28",
+  "bugs": [
+    "Invalid asynchronous repair schedulers left the router live with pending repair.",
+    "Task-driven and pre-dispatch canonical restoration admitted reentrant commands before repair completed."
+  ],
+  "before": {
+    "targetedTests": 32,
+    "failed": 6,
+    "passed": 26,
+    "schedulerFailures": "Four cases expected reconciliationFailed but observed live.",
+    "reentrancyFailures": "Both task-driven and input-triggered repair submitted one nested command; expected zero."
+  },
+  "fix": [
+    "Use the shared rejection handler result to reject thenable scheduler returns. Inline delivery, throws and async results all invalidate the retained callback and fault the router.",
+    "Hold the dispatch guard throughout canonical restoration and recheck router liveness before reporting success. Restore the prior guard in finally."
+  ],
+  "verification": {
+    "newRegressionTests": 11,
+    "browserRuntimeTests": 1230,
+    "browserRuntimeFiles": 50,
+    "typecheck": "passed (production and tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224934,
+    "referenceApplicationGzipLimit": 225000,
+    "firstBrowserRun": {
+      "passed": 75,
+      "failed": 3,
+      "failures": "Firefox persistence startup failures coincided with ENOSPC saving traces; data volume was 100% full with 175 MiB available.",
+      "affectedScenarios": ["native typing", "Link whitespace round-trip", "axe accessibility"]
+    },
+    "browserRerun": {
+      "suite": "tests/browser/editor.spec.ts",
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 78,
+      "failed": 0,
+      "retries": 0,
+      "output": "target/playwright-router-repair-20260928"
+    }
+  },
+  "environmentRecovery": {
+    "removed": "/Users/s/code/breditor/target/debug/incremental",
+    "kind": "verified git-ignored, non-symlink Rust incremental compiler cache; no compiler was running",
+    "reportedCacheSize": "41 GB",
+    "freeSpaceAfterCleanup": "30 GiB",
+    "recovery": "Cargo regenerates the cache; source, compiled outputs and diagnostic evidence were preserved."
+  },
+  "limits": [
+    "Scheduler and reentrancy failures are unit-tested with controlled adapter hooks.",
+    "This is not a full release qualification or a fix for the separate intermittent WebKit numeric fault.",
+    "Native engine instrumentation remained paused; no commit or publication was performed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/browser_event_router.ts", "sha256": "b9a39418fc7016af6d691e3e8c1dd28e5868e2f71faa342278a56254f1a1c5e6"},
+    {"path": "packages/breditor-browser/src/browser_event_router.test.ts", "sha256": "c1df26c89e87b36566f3cf1363b1cd66e942d3e5cfffd392c2f468aa5ea5a102"},
+    {"path": "/tmp/breditor-router-repair-before-20260928.log", "sha256": "833a5400361c4ac54a6d55c3def38ec2c659d18d43f4649b360c263b75e57409"},
+    {"path": "/tmp/breditor-router-repair-full-20260928.log", "sha256": "cb69382b0dbaf301cc4297fb6a1b1b86a93d249f98bc330d0a9dd02d9801e05d"},
+    {"path": "/tmp/breditor-router-repair-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-router-repair-build-20260928.log", "sha256": "35a6748a9b79ef74922b3d62a2f45ec19501ac9739680c5a827ed8b60ff59171"},
+    {"path": "/tmp/breditor-router-repair-browser-20260928.log", "sha256": "47e08f7fc0d9664b805baa8ec33bb1a2491339a5c3cccbdec3373729a95dc556"},
+    {"path": "/tmp/breditor-router-repair-browser-retry-20260928.log", "sha256": "fad70fd6ece1331a634fc411ce3e5a59a0765345f76184780450b132fe9d2a85"}
+  ]
+}

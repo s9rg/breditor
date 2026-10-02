@@ -1,0 +1,53 @@
+{
+  "format": "breditor/autosave-status-isolation",
+  "date": "2026-09-28",
+  "bug": "Autosave transitions and observer delivery called the public getStatus method internally. Overrides could throw during persistence bookkeeping, fabricate notifications, clear listeners through a false disposed snapshot, or reenter disposal.",
+  "before": {
+    "targetedTests": 31,
+    "failed": 9,
+    "passed": 22,
+    "observations": "Six method/accessor override cases interrupted markDirty, flush or dispose. Two fabricated-state cases broke the canonical notification sequence. A reentrant status override executed during scheduling."
+  },
+  "fix": [
+    "Move canonical status snapshot construction into a private method; preserve the public getStatus return contract by delegating to it.",
+    "Use the private snapshot for transition fingerprints and observer delivery, without invoking public overrides."
+  ],
+  "verification": {
+    "newRegressionTests": 9,
+    "browserRuntimeTests": 1310,
+    "browserRuntimeFiles": 51,
+    "typecheck": "passed (runtime and unit tests)",
+    "build": "passed",
+    "sizeBudgets": "all passed without changing limits",
+    "referenceApplicationGzipBytes": 224917,
+    "referenceApplicationGzipLimit": 225000,
+    "browserIntegration": {
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 9,
+      "failed": 0,
+      "retries": 0,
+      "scenarios": [
+        "React demo edits, formats, replays history, persists/reloads and remains accessible.",
+        "Autosave observation retains a dirty-to-saved transition even when complete before the action returns.",
+        "Autosave observation rejects an unchanged initial idle status."
+      ],
+      "output": "target/playwright-autosave-status-20260928"
+    }
+  },
+  "limits": [
+    "This fixes overridden status methods/accessors, not isolation from arbitrary same-origin code.",
+    "Notification coalescing, listener-driven lifecycle actions and already-dispatched storage semantics remain unchanged.",
+    "No durable format, Rust implementation, public status shape, package version or release budget changed.",
+    "The separate WebKit numeric fault remains unresolved; native instrumentation stayed paused.",
+    "No full release qualification, commit, push or publication is claimed."
+  ],
+  "files": [
+    {"path": "packages/breditor-browser/src/session_checkpoint_autosave.ts", "sha256": "3e9a00a7f0456b6fb95899159c33138102f1392887fc41b28f6a59ff62f3ba49"},
+    {"path": "packages/breditor-browser/src/session_checkpoint_autosave.test.ts", "sha256": "be429e002c3976ea8c822741a9ea54849196485a5f539a7d78df0524ea701392"},
+    {"path": "/tmp/breditor-autosave-status-before-20260928.log", "sha256": "d30b49b21f0b669f7a1294ef37ad4a22cb995fffebad71dfc4635b71f898419a"},
+    {"path": "/tmp/breditor-autosave-status-full-20260928.log", "sha256": "cb3c7d4e7b1b66d77219e9e8003c7a31a588de458557e7129e5f79405d25d3b7"},
+    {"path": "/tmp/breditor-autosave-status-types-20260928.log", "sha256": "ca7dd5b4c276c3c01bc67f90d95dff6e684fc365c398b2ddcaffcc035244f206"},
+    {"path": "/tmp/breditor-autosave-status-build-20260928.log", "sha256": "98465098c2927946b45e9f30e09cdc1568591e83f50e8c354d6f3fa6748a140f"},
+    {"path": "/tmp/breditor-autosave-status-browser-20260928.log", "sha256": "d161fd4dedc90be5fd199099739ab02619b23ac83dd6312690303dca2f50d856"}
+  ]
+}

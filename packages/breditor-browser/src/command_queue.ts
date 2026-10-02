@@ -2,6 +2,7 @@ import {
   canonicalEditorCommandRequest,
   type EditorCommandRequest,
 } from "./editor_command.js";
+import { containAsyncRejection } from "./contain_async_rejection.js";
 
 /** Default and maximum retained work bounds for one editor queue. */
 export const DEFAULT_COMMAND_QUEUE_CAPACITY = 256;
@@ -166,12 +167,14 @@ export class BreditorCommandQueue<TResult> {
     ) {
       throw new RangeError("command queue capacity is outside its fixed bounds");
     }
-    if (options.observer !== undefined && typeof options.observer !== "function") {
+    // Validate and retain the same read: options may be accessor-backed.
+    const observer = options.observer;
+    if (observer !== undefined && typeof observer !== "function") {
       throw new TypeError("command queue observer must be a function");
     }
     this.#capacity = capacity;
     this.#executor = executor;
-    this.#observer = options.observer;
+    this.#observer = observer;
   }
 
   /** Maximum active-plus-pending work accepted by this queue. */
@@ -223,7 +226,13 @@ export class BreditorCommandQueue<TResult> {
     if (canonical === null) {
       return rejected("invalidRequest");
     }
-    if (this.pendingCount >= this.#capacity) {
+    // Request inspection may reenter application code. Revalidate ownership
+    // before assigning a sequence, retaining payloads or invoking the executor.
+    if (this.#disposed) return rejected("disposed");
+    if (this.#lease !== undefined) return rejected("leased");
+    if (this.#failure !== undefined) return rejected("failed");
+    // Capacity is authoritative private state, not an overridable public read.
+    if (this.#pending.length + (this.#draining ? 1 : 0) >= this.#capacity) {
       return rejected("capacity");
     }
 
@@ -297,7 +306,7 @@ export class BreditorCommandQueue<TResult> {
       let result: TResult;
       try {
         result = this.#executor(canonical);
-        if (isPromiseLike(result)) {
+        if (containAsyncRejection(result)) {
           throw new TypeError("command queue executors must be synchronous");
         }
       } catch {
@@ -313,7 +322,7 @@ export class BreditorCommandQueue<TResult> {
           const observed = this.#observer(
             Object.freeze({ sequence, request: canonical, result }),
           );
-          if (isPromiseLike(observed)) {
+          if (containAsyncRejection(observed)) {
             throw new TypeError("command queue observers must be synchronous");
           }
         } catch {
@@ -371,7 +380,7 @@ export class BreditorCommandQueue<TResult> {
         let result: TResult;
         try {
           result = this.#executor(pending.request);
-          if (isPromiseLike(result)) {
+          if (containAsyncRejection(result)) {
             throw new TypeError("command queue executors must be synchronous");
           }
         } catch {
@@ -391,7 +400,7 @@ export class BreditorCommandQueue<TResult> {
                 result,
               }),
             );
-            if (isPromiseLike(observed)) {
+            if (containAsyncRejection(observed)) {
               throw new TypeError("command queue observers must be synchronous");
             }
           } catch {
@@ -447,15 +456,4 @@ function leasedRejected<TResult>(
   reason: "invalidRequest" | "capacity" | "failed" | "disposed" | "leased",
 ): CommandQueueLeasedSubmission<TResult> {
   return Object.freeze({ status: "rejected", reason });
-}
-
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
-    return false;
-  }
-  try {
-    return typeof (value as { then?: unknown }).then === "function";
-  } catch {
-    return true;
-  }
 }

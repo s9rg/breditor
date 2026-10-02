@@ -9,6 +9,8 @@ import {
   type WasmProfileGenerationView,
 } from "./wasm_profile_descriptor.js";
 import { snapshotProtectedHandleArray } from "./protected_handle_snapshot.js";
+import { ACTIVE_WASM_STRING_HANDLES } from "./active_wasm_string_handles.js";
+import { wellFormedUtf8Length as utf8Length } from "./well_formed_utf8_length.js";
 
 /** Maximum entries admitted by the browser action-state boundary. */
 export const MAX_BROWSER_ACTION_STATE_ENTRIES = 514;
@@ -220,6 +222,7 @@ interface OwnedHandle {
 }
 
 interface HandleRegistry {
+  readonly root: object;
   readonly handles: OwnedHandle[];
   readonly seen: Set<object>;
   invalid: boolean;
@@ -255,6 +258,10 @@ interface SnapshotMethods {
  * result are released exactly once on every reachable path. Generated values
  * are treated as hostile raw-JavaScript objects: getters may throw, handles may
  * alias, and scalar fields may violate their documented TypeScript unions.
+ * Active ownership is shared with document/checkpoint readers through cleanup;
+ * independent nested reads remain valid, but overlapping aliases are rejected.
+ * Successful publication also requires a live generation after all cleanup;
+ * getters and destructors may invalidate it reentrantly.
  */
 export function consumeWasmActionStates(
   expected: WasmActionStateExpectedSnapshot,
@@ -262,7 +269,28 @@ export function consumeWasmActionStates(
   generation: WasmProfileGenerationView,
   protectedHandles: readonly unknown[] = [],
 ): BrowserActionStateReadResult {
-  const registry: HandleRegistry = { handles: [], seen: new Set(), invalid: false };
+  // Reserve before protected-list/expected metadata or any generated accessor.
+  // Nested readers may own independent handles, but not this active graph.
+  if (!objectLike(view) || ACTIVE_WASM_STRING_HANDLES.has(view)) return boundaryFailure();
+  ACTIVE_WASM_STRING_HANDLES.add(view);
+  const registry: HandleRegistry = { root: view, handles: [], seen: new Set(), invalid: false };
+  try {
+    return consumeReservedActionStates(expected, view, generation, protectedHandles, registry);
+  } finally {
+    // Retain every reservation through the entire reverse-order cleanup pass:
+    // a parent's destructor must not consume an already-cleaned child again.
+    for (const handle of registry.seen) ACTIVE_WASM_STRING_HANDLES.delete(handle);
+    ACTIVE_WASM_STRING_HANDLES.delete(view);
+  }
+}
+
+function consumeReservedActionStates(
+  expected: WasmActionStateExpectedSnapshot,
+  view: WasmActionStatesResultView,
+  generation: WasmProfileGenerationView,
+  protectedHandles: readonly unknown[],
+  registry: HandleRegistry,
+): BrowserActionStateReadResult {
   let protectedSet: ReadonlySet<object>;
   try {
     protectedSet = objectSet(protectedHandles, generation);
@@ -283,7 +311,12 @@ export function consumeWasmActionStates(
   } catch {
     provisional = boundaryFailure();
   }
-  return freeHandles(registry) ? boundaryFailure() : provisional;
+  // Cleanup is foreign code too: finish it before admitting a successful
+  // snapshot, and never release the caller-owned generation ourselves.
+  const cleanupFailed = freeHandles(registry);
+  return cleanupFailed || (provisional.ok && !wasmProfileGenerationIsLive(generation))
+    ? boundaryFailure()
+    : provisional;
 }
 
 /** Whether a handle-free result was minted by this adapter module. @internal */
@@ -1062,10 +1095,13 @@ function captureHandle(
   value: unknown,
   protectedHandles: ReadonlySet<object>,
 ): boolean {
-  if (!objectLike(value) || protectedHandles.has(value) || registry.seen.has(value)) {
+  if (!objectLike(value) || protectedHandles.has(value) || registry.seen.has(value) ||
+      (value !== registry.root && ACTIVE_WASM_STRING_HANDLES.has(value))) {
     registry.invalid = true;
     return false;
   }
+  registry.seen.add(value);
+  ACTIVE_WASM_STRING_HANDLES.add(value);
   let free: unknown;
   try {
     free = (value as { free?: unknown }).free;
@@ -1080,7 +1116,6 @@ function captureHandle(
     registry.invalid = true;
     return false;
   }
-  registry.seen.add(value);
   registry.handles.push({
     value,
     free: () => Reflect.apply(free, value, []),
@@ -1253,34 +1288,4 @@ function isActionValueKey(value: string): boolean {
     value.length <= MAX_ACTION_VALUE_OBJECT_KEY_BYTES &&
     /^[A-Za-z_][A-Za-z0-9._-]*$/u.test(value)
   );
-}
-
-// Every scan uses its caller's actual contract budget. A MAX_SAFE_INTEGER
-// default is unnecessary and triggered a false limit rejection in WebKit FTL.
-function utf8Length(
-  value: string,
-  maximum: number,
-): number | null {
-  let bytes = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index);
-    if (code <= 0x7f) {
-      bytes += 1;
-    } else if (code <= 0x7ff) {
-      bytes += 2;
-    } else if (code >= 0xd800 && code <= 0xdbff) {
-      const low = value.charCodeAt(index + 1);
-      // charCodeAt returns NaN after a terminal high surrogate. Require a
-      // positively valid low surrogate rather than only rejecting its range.
-      if (!(low >= 0xdc00 && low <= 0xdfff)) return null;
-      bytes += 4;
-      index += 1;
-    } else if (code >= 0xdc00 && code <= 0xdfff) {
-      return null;
-    } else {
-      bytes += 3;
-    }
-    if (bytes > maximum) return null;
-  }
-  return bytes;
 }

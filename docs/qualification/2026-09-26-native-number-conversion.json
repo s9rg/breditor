@@ -1,0 +1,97 @@
+{
+  "status": "native false-return path captured with equal encoded inputs and unequal comparison registers; exact cause unresolved",
+  "productionRuntimeChanged": false,
+  "environment": { "os": "macOS", "version": "26.6.2", "build": "25G83", "architecture": "arm64", "playwrightWebkitRevision": "2336" },
+  "authorization": {
+    "explicitUserApproval": true,
+    "command": "DevToolsSecurity -enable",
+    "developerModeEnabled": true,
+    "statusConfirmed": true,
+    "existingApplicationsAttached": false,
+    "binariesResigned": false,
+    "otherSecuritySettingsChanged": false,
+    "scope": "LLDB launches standalone diagnostic jsc children only; stopped children terminated after capture"
+  },
+  "frameworkSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+  "unchangedBundleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+  "bundleBytes": 4480,
+  "minimumTimerDelayMs": 4,
+  "iterationsPerCompletedCase": 10000,
+  "tuplesPerCompletedCase": 20000,
+  "nativeContradiction": {
+    "function": "JSC::objectConstructorIs",
+    "fileAddress": "0x112cf60",
+    "functionOffset": 316,
+    "instructionNotYetExecuted": "mov w0, #6",
+    "decodedInputOperands": [2048, 2048],
+    "registers": { "x0": "0x40a2000000000000", "x2": "0xfffe000000000800", "x8": "0x0000000000000000", "x9": "0x40a0000000000000", "d0": "0", "d1": "2048" },
+    "meaning": "At the native false-return block the inputs still encode 2048, but comparison registers and their integer bit copies differ.",
+    "failureIteration": null,
+    "javascriptFailureReportCompleted": false
+  },
+  "runs": [
+    {
+      "tier": "baseline", "scenario": "probe", "requested": 10, "completedPasses": 1, "nativeContradictions": 1, "notRun": 8,
+      "noLldbInit": false, "startupOptionDump": false,
+      "log": "/tmp/breditor-native-baseline-probes-20260926.jsonl",
+      "sha256": "e6ed29e44f9685a99b40dd1e01fb19eab67321e9725d796f792e68e6471d3923"
+    },
+    {
+      "tier": "baseline", "scenario": "probe", "requested": 10, "completedPasses": 4, "nativeContradictions": 1, "notRun": 5,
+      "noLldbInit": true, "startupOptionDump": false,
+      "log": "/tmp/breditor-native-baseline-independent-20260926.jsonl",
+      "sha256": "c9bb92cf0741852cdd56c86fc515b8c59bf7b0c37b8c2a37862dab7338a5c2e0"
+    },
+    {
+      "tier": "no-jit", "scenario": "probe", "requested": 10, "completedPasses": 0, "nativeContradictions": 1, "notRun": 9,
+      "noLldbInit": true, "startupOptionDump": false,
+      "stack": ["JSC::objectConstructorIs(JSC::JSGlobalObject*, JSC::CallFrame*)", "jsc_llint_op__commonOp__fn__size__k__gen__nativeCallTrampoline__isExecutable_LowLevelInterpreter_asm_628"],
+      "log": "/tmp/breditor-native-no-jit-probes-20260926.jsonl",
+      "sha256": "d8b5ec8ef9821fcb5b774731bc46fec5fd18f505e2c32c84e228c24f43277fd3"
+    },
+    {
+      "tier": "no-jit", "scenario": "probe", "requested": 5, "completedPasses": 5, "nativeContradictions": 0, "notRun": 0,
+      "noLldbInit": true, "startupOptionDump": true,
+      "initialAndFinalOptionsEachCase": { "useJIT": 0, "useDFGJIT": 0, "useFTLJIT": 0 },
+      "log": "/tmp/breditor-native-no-jit-logged-20260926.jsonl",
+      "sha256": "a5f7d398309ad43dc51d043695ec5c30a61f03b0f2eba23a385b867cbd532302"
+    },
+    {
+      "tier": "baseline", "scenario": "probe-conversion", "requested": 3, "completedPasses": 0, "nativeContradictions": 0, "watchdogTimeouts": 1, "notRun": 2,
+      "noLldbInit": true, "startupOptionDump": false,
+      "breakpointFileAddress": "0x112ce9c",
+      "classification": "inconclusive debugger overhead; not an arithmetic failure",
+      "log": "/tmp/breditor-native-probe-conversion-20260926.jsonl",
+      "sha256": "e05eab4aa948e01bcdba2a0fddf3e0e2f1c185c458ada37fba4943b302c32d36",
+      "parserNote": "Original log used probe-failed-without-native-stop; updated parser explicitly classifies its watchdog report as probe-timeout-inconclusive. Raw log preserved unchanged."
+    }
+  ],
+  "controls": [
+    {
+      "tier": "no-jit", "scenario": "negative-control", "outcome": "confirmed", "decodedOperands": [2049, 2048], "floatingRegisters": [2049, 2048],
+      "log": "/tmp/breditor-native-negative-control-20260926.jsonl",
+      "sha256": "1ea700dac3b549223e9c6870747494c655a24ecf93d8a1f832d68e6c375d5fa5"
+    },
+    {
+      "tier": "baseline", "scenario": "negative-control", "outcome": "confirmed", "decodedOperands": [2049, 2048], "floatingRegisters": [2049, 2048],
+      "log": "/tmp/breditor-native-negative-baseline-20260926.jsonl",
+      "sha256": "cb7044cef73c5be17615bcbfbf4858befa0af6552092dea1794d49a493661ca4"
+    },
+    {
+      "tier": "baseline", "scenario": "conversion-control", "outcome": "confirmed", "fileAddress": "0x112ce9c", "decodedOperands": [2048, 2048], "floatingRegisters": [2048, 2048],
+      "registers": { "x0": "0x40a2000000000000", "x2": "0xfffe000000000800", "x8": "0xfffe000000000000", "x9": "0xfffdffffffffffff", "d0": "2048", "d1": "2048", "cpsr": "0x00001000" },
+      "log": "/tmp/breditor-native-conversion-control-20260926.jsonl",
+      "sha256": "70fccbac7aee88ad88474b8d43047090d8a75497e332fbc89c034b41eb58ae5b"
+    }
+  ],
+  "verification": { "workspaceTestsPassed": 1278, "diagnosticTestsPassed": 65, "totalTestsPassed": 1343, "browserTypecheck": "passed" },
+  "limits": [
+    "Native snapshots localize the observed contradiction, not the exact instruction where the value first becomes wrong.",
+    "No claim of a CPU, OS, or specific engine source defect is established.",
+    "Debugger breakpoints perturb timing; the early-conversion probe timed out and is inconclusive.",
+    "Five later no-JIT passes do not invalidate the captured interpreter-path contradiction.",
+    "Stopped failures precede final option reports; the no-JIT failure has an explicit launch flag and an interpreter trampoline stack, not a completed option report.",
+    "Raw log files are temporary local artifacts; bounded register findings and their hashes are retained here.",
+    "No production workaround or renewed native browser/editor qualification was performed."
+  ]
+}

@@ -1,4 +1,5 @@
 import { BreditorBrowserEventController } from "./browser_event_controller.js";
+import { containAsyncRejection } from "./contain_async_rejection.js";
 import { BreditorClipboardController } from "./clipboard_controller.js";
 import { BreditorCommandQueue } from "./command_queue.js";
 import {
@@ -50,6 +51,7 @@ export interface BrowserEventRouterOptions {
   readonly keyboard: KeyboardTranslationPolicy;
   /** Descriptor-compiled semantic shortcuts; base bindings are the default. */
   readonly keyboardShortcuts?: BrowserCompiledKeyboardShortcuts;
+  /** Enqueue a later task synchronously; promise/thenable returns are invalid. */
   readonly scheduleTask?: (callback: () => void) => void;
 }
 
@@ -687,8 +689,13 @@ export class BreditorBrowserEventRouter {
       this.#fault("queueUncertain");
       return false;
     }
+    // Repair can run outside dispatch (or before its guard is installed).
+    // DOM/selection restoration must not admit nested editing events either.
+    const dispatching = this.#dispatching;
+    this.#dispatching = true;
     try {
       const restored = this.#adapter.restoreCanonicalRender();
+      if (this.#status.kind !== "live") return false;
       if (!restored.ok) {
         this.#fault("reconciliationFailed");
         return false;
@@ -699,6 +706,8 @@ export class BreditorBrowserEventRouter {
     } catch {
       this.#fault("reconciliationFailed");
       return false;
+    } finally {
+      this.#dispatching = dispatching;
     }
   }
 
@@ -717,13 +726,13 @@ export class BreditorBrowserEventRouter {
     const generation = this.#repairGeneration;
     let scheduling = true;
     let invoked = false;
-    let synchronous = false;
+    let invalidSchedule = false;
     try {
       const returned = this.#scheduleTask(() => {
         if (invoked) return;
         invoked = true;
         if (scheduling) {
-          synchronous = true;
+          invalidSchedule = true;
           return;
         }
         if (
@@ -735,15 +744,13 @@ export class BreditorBrowserEventRouter {
         }
         this.#finishPendingRepair();
       });
-      containAsyncRejection(returned);
+      invalidSchedule = containAsyncRejection(returned) || invalidSchedule;
     } catch {
-      scheduling = false;
-      this.#invalidatePendingRepair();
-      this.#fault("reconciliationFailed");
-      return;
+      invalidSchedule = true;
     }
     scheduling = false;
-    if (synchronous) {
+    if (invalidSchedule) {
+      invoked = true;
       this.#invalidatePendingRepair();
       this.#fault("reconciliationFailed");
     }
@@ -915,18 +922,6 @@ function isNonClipboardDisposition(
   disposition: ReturnType<BreditorClipboardController["handleBeforeInput"]>,
 ): boolean {
   return disposition.kind === "ignored" && disposition.reason === "notClipboardInput";
-}
-
-function containAsyncRejection(value: unknown): void {
-  if (!objectLike(value)) return;
-  try {
-    const then = (value as Readonly<{ then?: unknown }>).then;
-    if (typeof then === "function") {
-      void Promise.resolve(value).catch(() => {});
-    }
-  } catch {
-    // A hostile thenable is subscriber-local failure too.
-  }
 }
 
 function objectLike(value: unknown): value is object {

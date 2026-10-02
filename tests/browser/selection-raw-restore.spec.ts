@@ -1,0 +1,11 @@
+import { expect, test } from "@playwright/test";
+
+test("raw restored Wasm selection getters retain exact fields independently of browser validation", async ({ page }) => {
+  await page.goto("/");
+  const result = await page.evaluate(async () => {
+    const url = "/selection_raw_restore_probe.ts";
+    const probe = await import(url) as typeof import("./harness/selection_raw_restore_probe");
+    return probe.probeRawRestoredSelections(3_000);
+  });
+  expect(result).toEqual({ iterations: 3_000, reads: 9_000 });
+});
