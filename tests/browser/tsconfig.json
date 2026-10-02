@@ -12,6 +12,7 @@
   },
   "include": ["./**/*.ts", "../../playwright.config.ts", "../../playwright.clipboard-stress.config.ts", "../../playwright.selection-stress.config.ts", "../../playwright.selection-production-stress.config.ts", "../../playwright.startup-diagnostics.config.ts", "../../playwright.property-isolation.config.ts", "../../playwright.property-no-jit.config.ts", "../../playwright.property-baseline-jit.config.ts", "../../playwright.property-wasm-interpreter.config.ts", "../../playwright.number-transport.config.ts", "../../vite.selection-stress.config.ts", "../../vite.startup-diagnostics.config.ts", "../../vite.property-isolation.config.ts", "../../vite.number-transport.config.ts"],
   "files": [
+    "../../playwright.delivery-control.config.ts",
     "../../playwright.queue-diagnostics.config.ts",
     "../../vite.queue-diagnostics.config.ts",
     "../../playwright.startup-development-diagnostics.config.ts",

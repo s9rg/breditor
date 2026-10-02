@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "0276256",
+  "status": "history-fault-reproduced-no-runtime-fix",
+  "target": "Locate the first internal rejection behind intermittent toolbarDispatchFailed and queueUncertain owner faults",
+  "startupFollowup": {
+    "command": "playwright test -c playwright.startup-development-diagnostics.config.ts --project=webkit --repeat-each=5 --output=target/playwright-startup-followup-20261002",
+    "passed": 257, "failed": 1, "notRun": 12, "retries": 0,
+    "failure": "Formatted clipboard cycle=9 stage=history after cut/caret, owner toolbarDispatchFailed, no native selection",
+    "log": "/tmp/breditor-startup-followup-20261002.log",
+    "logSha256": "7dda80d18bdca209227d6da0edd04927eb9fabf6afa2bc06f649951b6d2737fb",
+    "trace": "target/playwright-startup-followup-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat4/trace.zip",
+    "traceSha256": "5f9d0a460c1835391c3c2b8de4a79381ee368ee9d07a9e372373e37b92a8b2c1",
+    "startupAttachmentSha1": "388dbb6ff3af7e85d43f895c1164b46fd64e7d9f",
+    "startupAttachment": { "format": "breditor/startup-rejections", "version": 1, "limit": 16, "omitted": 0, "events": [] },
+    "manifestAttachmentSha1": "cfa1ca5f6f19a694022a37c4e5d4268cda79344d",
+    "interpretation": "None of the installed startup/selection rejection edges recorded an event. This does not prove that every possible selection failure or exception was excluded. The exact history call was not labeled in this run."
+  },
+  "diagnosticChanges": [
+    "Opt-in BREDITOR_QUEUE_DELIVERY=1 augments the queue-only configuration with nine existing failed-delivery result edges and the terminal toolbarDispatchFailed call.",
+    "The toolbar probe records only closed delivery/submission/sequence/outcome/command/history tags, using own data properties and never invoking accessors or retaining identifiers, text, snapshots or errors.",
+    "The queue recorder remains responsible for original caught exceptions. Only browser_editor and command_queue are transformed; Wasm adapters and validators are untouched.",
+    "Formatted clipboard history now identifies each of its six Undo/Redo steps separately."
+  ],
+  "originalModules": {
+    "browser_editor": "58f4b42fd1f5099087660441f1d60f96aeb06c768bdda38eb6c910cd6eaa36ed",
+    "command_queue": "b79b3c9ad59d88ba3112ef62c50296d1c7caea653db077c4de352aaff0534561"
+  },
+  "deliverySites": {
+    "809": "noncanonical command host",
+    "823": "queue already failed",
+    "827": "preflight inspection threw",
+    "834": "acquireLease threw",
+    "840": "lease unavailable and queue failed",
+    "843": "lease-unavailable failure inspection threw",
+    "865": "completed submission but lease not released while owner live",
+    "870": "queue submission failed",
+    "878": "no admitted completion or recognized terminal result",
+    "932": "terminal toolbar fault, with closed result tags"
+  },
+  "verification": {
+    "deliveryCatch": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --output=target/playwright-delivery-first-20261002",
+      "passed": 270, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-delivery-first-20261002.log",
+      "logSha256": "3ae38adb70940de0378201014645bfe790e47369de8d13663365001824ebf27a",
+      "note": "Both queue exception and owner delivery probes were active. Five boundary modules remained byte-identical. No captured reproduction."
+    },
+    "deliveryStop": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_CAPTURE=stop playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --max-failures=3 --output=target/playwright-delivery-stop-20261002",
+      "passed": 270, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-delivery-stop-20261002.log",
+      "logSha256": "f0278f6106b8b6aaabc25b114357d76c891834028256610b4a90b673ed822109",
+      "note": "Queue execution loops and catch bodies were unchanged. Three independent failures were permitted before stopping the batch; no assertions or per-test timeouts were relaxed. No captured reproduction."
+    },
+    "deliberateFailureControl": {
+      "command": "playwright test -c playwright.delivery-control.config.ts --output=target/playwright-delivery-control-fixed-20261002",
+      "passed": 3, "failed": 0, "retries": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "log": "/tmp/breditor-delivery-positive-control-fixed-20261002.log",
+      "logSha256": "230c77ce1aa3d0eaf8b438b79b561daa28cfb847d4af6878325b6ac731488e3f",
+      "note": "A separate control intentionally detaches its own temporary editor host, invokes a declared intent, and requires the original failed result plus exactly the first delivery breadcrumb. This proves recording works for that known failure; it does not reproduce the intermittent defect. The first control attempt used the wrong profile format version and failed startup in Chromium; correcting the fixture to match the existing v1 Highlight profile produced this passing run. Ordinary 54-case suite ordering is unchanged."
+    },
+    "browserControls": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=chromium --project=firefox --output=target/playwright-delivery-controls-20261002",
+      "passed": 14, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-delivery-controls-20261002.log",
+      "logSha256": "eadcbadbc21fa3cd49ad23fec977c53a4f91ff417cbf1494ffd2ae6d2b06eda3"
+    },
+    "diagnosticUnitTests": { "passed": 187, "log": "/tmp/breditor-delivery-unit-20261002.log" },
+    "types": { "passed": true, "log": "/tmp/breditor-delivery-types-20261002.log" }
+  },
+  "limitations": [
+    "Cold-path recording can still affect compilation, inlining and timing. It is not optimization-neutral.",
+    "No production source, validation, recovery policy, Rust code, Wasm ABI, retry setting or test timeout changed.",
+    "An empty recorder excludes only its successfully observed edges; it does not establish a root cause or close earlier failures."
+  ]
+}

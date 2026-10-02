@@ -104,11 +104,15 @@ test("formatted clipboard, Link history, and immediate caret moves preserve one 
         input("insertText", "!");
         assertLive(`${remaining}!`);
         stage = "history after cut/caret";
+        let historyStep = 0;
         for (const [name, text] of [
           ["Undo", remaining], ["Undo", fixture.text],
           ["Redo", remaining], ["Redo", `${remaining}!`],
           ["Undo", remaining], ["Undo", fixture.text],
-        ] as const) { click(name); assertLive(text); }
+        ] as const) {
+          stage = `history after cut/caret ${++historyStep} ${name}`;
+          click(name); assertLive(text);
+        }
         if (harness.referenceFormattingDocument(fixture.probeId) !== beforeCut) throw new Error("history lost canonical formatting");
         if (host.querySelector("mark")?.textContent !== fixture.text) throw new Error("Highlight was lost");
         priorHref = href;

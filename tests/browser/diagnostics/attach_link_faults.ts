@@ -13,6 +13,10 @@ export async function attachLinkFaults(page: Page, testInfo: TestInfo): Promise<
         testInfo.config.configFile?.endsWith("playwright.queue-diagnostics.config.ts")) {
       expect(diagnostic, "diagnostic fixture must expose its recorder").not.toBeNull();
     }
+    if (testInfo.config.configFile?.endsWith("playwright.queue-diagnostics.config.ts") &&
+        process.env["BREDITOR_QUEUE_DELIVERY"] === "1") {
+      expect(diagnostic, "delivery diagnostic must expose its recorder").toHaveProperty("deliveries");
+    }
     if (diagnostic !== null) {
       const mapping = await page.request.get("/link-diagnostic-map.json");
       await testInfo.attach("link-faults.json", { body: JSON.stringify(diagnostic), contentType: "application/json" });

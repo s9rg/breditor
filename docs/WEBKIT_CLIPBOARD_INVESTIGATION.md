@@ -2361,3 +2361,45 @@ and 21 queue-only clipboard/Link cases across Chromium, Firefox and WebKit.
 The diagnostic unit suite passed 183 tests; browser test type checking passed.
 No shipping source or Rust/Wasm contract changed in this checkpoint. The first
 internal rejection responsible for the intermittent owner fault remains open.
+
+### Distinguishing failed toolbar delivery from queue exceptions
+
+A subsequent startup-diagnostic batch reproduced `toolbarDispatchFailed` in
+the formatted clipboard test, cycle 9, during its history sequence: **257 passed,
+1 failed, 12 unrun**. This time the failure retained its complete five-module
+manifest and startup recorder, which contained zero events and zero omissions.
+That rules out a recorded rejection at those instrumented edges, not every
+possible exception or selection failure. The first internal cause is still
+unknown. The six history calls now carry distinct step/direction labels.
+
+The queue diagnostic has an additional opt-in owner-delivery observer:
+
+```sh
+BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5
+BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_CAPTURE=stop playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --max-failures=3
+```
+
+This adds recording at nine existing failed-delivery result edges and the
+terminal toolbar fault. It distinguishes host preflight, lease acquisition,
+failed queue submission, lease release and the final outcome check. Only
+closed result/command tags are retained; arbitrary identifiers, payloads,
+document snapshots and accessors are not read. Queue exception recording stays
+separate. Source round-trip and synthetic execution tests verify that the
+inserted observer does not replace a predicate, result or successful path.
+
+The first five-suite delivery/catch batch passed all 270 WebKit cases; this is
+not a runtime fix. Only the queue and browser owner are transformed, and the
+boundary adapters remain unchanged. Full commands, source identities and trace
+hashes are in the [delivery evidence record](qualification/2026-10-02-webkit-delivery.json).
+
+The stop-only queue variant also passed 270 WebKit cases without reproducing
+the fault. A separate deliberate-failure control now proves that a detached
+temporary editor records the original host-preflight rejection in Chromium,
+Firefox and WebKit (3 passed). It preserves the failed result and does not
+retry or recover the owner. Run it with
+`playwright test -c playwright.delivery-control.config.ts`; it is excluded from
+the ordinary 54-case suite so its test ordering remains unchanged. These passing
+controls verify the observer, not a fix for the intermittent failure.
+Final Chromium/Firefox clipboard and Link controls passed 14 cases. The
+diagnostic unit suite passed 187 tests and browser type checking passed. No
+shipping runtime or Rust/Wasm source changed during this investigation.

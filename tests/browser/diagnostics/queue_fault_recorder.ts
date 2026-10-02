@@ -43,4 +43,5 @@ export function createQueueFaultRecorder(emit?: (event: unknown) => void) {
 
 const recorder = createQueueFaultRecorder(event => console.debug(`BREDITOR_QUEUE_FAULT=${JSON.stringify(event)}`));
 export const recordQueueFault = recorder.record;
+export const readQueueFaults = recorder.snapshot;
 if (typeof window !== "undefined") Object.assign(window, { breditorLinkDiagnostics: recorder.snapshot });
