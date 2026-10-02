@@ -63,10 +63,10 @@ const diagnostic: Plugin = {
     if (projectionEnabled && id.endsWith("/breditor-browser/dist/wasm_projection_adapter.js")) {
       // Observe rejection sites only. In particular, leave the hot isIndex
       // predicate and every successful traversal byte-identical.
-      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: false, projectionChild: true, projectionImpact: true });
+      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: false, projectionChild: true, projectionImpact: true, impactState: true });
       if (output === null) throw new Error("Projection diagnostic module was not recognized");
       manifest.set("wasm_projection_adapter", { instrumented: true, numericPredicates: false,
-        childResultCapture: true, impactRejections: true, sourceSha256: output.sourceSha256, sites: output.sites });
+        childResultCapture: true, impactRejections: true, impactStateCapture: true, sourceSha256: output.sourceSha256, sites: output.sites });
       return { code: output.code, map: null };
     }
     const delivery = deliveryEnabled ? instrumentDeliveryFaults(code, id, deliveryRecorder) : null;

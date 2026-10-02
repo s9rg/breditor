@@ -30,18 +30,39 @@ it("captures the child result only at the already-taken rejection branch", () =>
   expect(recorder.snapshot().children[0]).toMatchObject({ okField: "accessor", ok: "unknown" });
 });
 
-it.each([false, true])("restores emitted projection source after child capture (impact capture=%s)", projectionImpact => {
+it.each([[false, false], [true, false], [true, true]])("restores emitted projection source after child capture (impact=%s, state=%s)", (projectionImpact, impactState) => {
   const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_projection_adapter.js", import.meta.url), "utf8");
   const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),
-    "/recorder.js", { numericPredicates: false, projectionChild: true, projectionImpact })!;
+    "/recorder.js", { numericPredicates: false, projectionChild: true, projectionImpact, impactState })!;
   const body = output.code.split("\n").slice(1).join("\n");
   expect(body.match(/__breditorProjectionChild\(/g)).toHaveLength(1);
   expect(output.sites.filter(site => site.stage.includes(":impact:"))).toHaveLength(projectionImpact ? 8 : 0);
   expect(body.replace(/__breditorProjectionChild\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\), projectionResult\)/g, "$1")
     .replace(/__breditorLinkThrow\("wasm_projection_adapter:impact:[0-9]+", \(null\)\)/g, "null")
+    .replace(/__breditorImpactRejection\("wasm_projection_adapter:impact:[0-9]+", \(null\), snapshot, affectedParagraphCount\)/g, "null")
     .replace(/__breditorLinkThrow\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\)\)/g, "$1")
     .replace(/__breditorLinkThrow\("wasm_projection_adapter:throw:[0-9]+", \((new TypeError\([^)]*\))\)\)/g, "$1"))
     .toBe(source);
+});
+
+it("captures impact state only after the original branch rejects, without rereading generated getters", () => {
+  const source = `function readSemanticImpact(view, snapshot, affectedParagraphCount) {
+    if (!rangesAbsent(snapshot) || affectedParagraphCount === 0) { return null; }
+    return snapshot;
+  }`;
+  const projectionId = id.replace("wasm_command_adapter", "wasm_projection_adapter");
+  expect(() => instrumentLinkFaults(source, projectionId, "/recorder.js", { impactState: true })).toThrow("requires impact");
+  const output = instrumentLinkFaults(source, projectionId, "/recorder.js", { projectionImpact: true, impactState: true })!;
+  const run = new Function("__breditorImpactRejection", "rangesAbsent", "snapshot", "count",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn readSemanticImpact(null, snapshot, count);");
+  const recorder = createLinkFaultRecorder();
+  const rangesAbsent = vi.fn(() => true);
+  const snapshot = { impact: "textContainers" };
+  expect(run(recorder.impactRejection, rangesAbsent, snapshot, 1)).toBe(snapshot);
+  expect(recorder.snapshot().impacts).toEqual([]);
+  expect(run(recorder.impactRejection, rangesAbsent, snapshot, 0)).toBeNull();
+  expect(rangesAbsent).toHaveBeenCalledTimes(2);
+  expect(recorder.snapshot().impacts[0]).toMatchObject({ affectedParagraphCount: { decimal: "0" } });
 });
 
 it("observes impact null returns without repeating predicates or invoking success observers", () => {

@@ -1,14 +1,16 @@
 import { snapshotProjectionChild } from "./projection_child_snapshot";
 import { snapshotRequiredProperty } from "./required_property_snapshot";
+import { snapshotImpactRejection } from "./impact_rejection_snapshot";
 
 /** Diagnostic fixture only. Retain static locations, never errors or payloads. */
-export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoint?: (point: unknown) => void, emitLoop?: (loop: unknown) => void, emitNumeric?: (numeric: unknown) => void, emitChild?: (child: unknown) => void, emitRequired?: (state: unknown) => void) {
+export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoint?: (point: unknown) => void, emitLoop?: (loop: unknown) => void, emitNumeric?: (numeric: unknown) => void, emitChild?: (child: unknown) => void, emitRequired?: (state: unknown) => void, emitImpact?: (state: unknown) => void) {
   const events: string[] = [];
   const points: unknown[] = [];
   const loops: unknown[] = [];
   const numeric: unknown[] = [];
   const children: (ReturnType<typeof snapshotProjectionChild> & { stage: string })[] = [];
   const requiredProperties: string[] = [];
+  const impacts: string[] = [];
   let omitted = 0;
   function record<T>(stage: string, original: T): T {
     try {
@@ -81,9 +83,21 @@ export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoin
     } catch { /* Preserve the original rejection even when observation fails. */ }
     return original;
   }
-  return { record, point, contentResult, loop, numericPredicate, childResult, requiredProperty, snapshot: () => ({ format: "breditor/link-faults", version: 1,
+  function impactRejection<T>(stage: string, original: T, snapshot: unknown, count: unknown): T {
+    record(stage, original);
+    try {
+      if (impacts.length < 8 && /^wasm_projection_adapter:impact:[0-9]+$/.test(stage)) {
+        const state = JSON.stringify({ stage, ...snapshotImpactRejection(snapshot, count) });
+        impacts.push(state);
+        emitImpact?.(JSON.parse(state));
+      }
+    } catch { /* Preserve rejection even if observation or emission fails. */ }
+    return original;
+  }
+  return { record, point, contentResult, loop, numericPredicate, childResult, requiredProperty, impactRejection, snapshot: () => ({ format: "breditor/link-faults", version: 1,
     events: [...events], points: [...points], loops: [...loops], numeric: [...numeric],
-    children: children.map(child => ({ ...child })), requiredProperties: requiredProperties.map(value => JSON.parse(value) as unknown), omitted }) };
+    children: children.map(child => ({ ...child })), requiredProperties: requiredProperties.map(value => JSON.parse(value) as unknown),
+    impacts: impacts.map(value => JSON.parse(value) as unknown), omitted }) };
 }
 
 /** These are subsequent observations, not the original predicate's results. */
@@ -103,7 +117,8 @@ const recorder = createLinkFaultRecorder(stage => console.debug(`BREDITOR_LINK_T
   loop => console.debug(`BREDITOR_LOOP_RESULT=${JSON.stringify(loop)}`),
   numeric => console.debug(`BREDITOR_NUMERIC_PREDICATE=${JSON.stringify(numeric)}`),
   child => console.debug(`BREDITOR_PROJECTION_CHILD=${JSON.stringify(child)}`),
-  state => console.debug(`BREDITOR_REQUIRED_PROPERTY=${JSON.stringify(state)}`));
+  state => console.debug(`BREDITOR_REQUIRED_PROPERTY=${JSON.stringify(state)}`),
+  state => console.debug(`BREDITOR_IMPACT_REJECTION=${JSON.stringify(state)}`));
 export const recordLinkThrow = recorder.record;
 export const recordSelectionPoint = recorder.point;
 export const recordContentResult = recorder.contentResult;
@@ -111,4 +126,5 @@ export const recordLoopResult = recorder.loop;
 export const recordNumericPredicate = recorder.numericPredicate;
 export const recordProjectionChild = recorder.childResult;
 export const recordRequiredProperty = recorder.requiredProperty;
+export const recordImpactRejection = recorder.impactRejection;
 export const readLinkFaults = recorder.snapshot;

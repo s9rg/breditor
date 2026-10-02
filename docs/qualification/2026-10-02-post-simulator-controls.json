@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "ab49901",
+  "status": "simulator-shutdown-restored-cross-browser-controls-projection-faults-still-open",
+  "intervention": {
+    "action": "User-approved graceful shutdown of the four previously identified booted iOS simulators, using explicit device IDs.",
+    "completed": 4,
+    "shutdownExitCodes": [0, 0, 0, 0],
+    "verifiedBootedDevicesAfter": 0,
+    "dataDeleted": false,
+    "cacheDeleted": false,
+    "note": "Status and shutdown commands initially stalled. No force-kill or simulator erase was used. Optional incremental-cache cleanup was proposed separately but not performed."
+  },
+  "hostObservations": {
+    "logicalCpus": 10,
+    "runnableProcessesBefore": 523,
+    "runnableSimulatorProcessesBefore": 264,
+    "runnableProcessesAfter": 92,
+    "runnableSimulatorProcessesAfter": 1,
+    "diskAvailableGiBBefore": 2.5,
+    "diskAvailableGiBAfter": 9.5,
+    "note": "Counts and disk availability are point-in-time observations. Load averages remained high immediately afterwards because they include earlier activity. No source or saved test evidence was removed."
+  },
+  "controls": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --trace=on --max-failures=3 --output=target/playwright-post-simulator-controls-20261002",
+    "passed": 6, "failed": 0, "retries": 0, "elapsedSeconds": 27.3,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "log": "/tmp/breditor-post-simulator-controls-20261002.log",
+    "logSha256": "47842d2519f792fa27053f048780e5ad121364d05e0b67774165b755cab4a20e",
+    "verifiedNineModuleManifests": 6,
+    "allFailureRecordersEmpty": true,
+    "requiredPropertyAndImpactCaptureEnabled": true,
+    "timing": [
+      { "browser": "chromium", "completedYields": 300, "pending": null, "maxTimerMs": 6.099999904632568, "maxBetweenYieldMs": 27.799999952316284, "slowEvents": 0, "attachmentSha1": "a4b5dd348e6d6260ec6616a33ee849d1d1bacda9" },
+      { "browser": "firefox", "completedYields": 300, "pending": null, "maxTimerMs": 14, "maxBetweenYieldMs": 38, "slowEvents": 0, "attachmentSha1": "46e9a8e015df628b19c704f3f79ea754c3dca0f2" },
+      { "browser": "webkit", "completedYields": 300, "pending": null, "maxTimerMs": 10, "maxBetweenYieldMs": 39, "slowEvents": 0, "attachmentSha1": "3dcb02605ffca5077db68b389ed24d2df349f125" }
+    ]
+  },
+  "focusedFollowup": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=3 --output=target/playwright-post-simulator-focused-20261002",
+    "passed": 23, "failed": 3, "unrun": 14, "additionalRunnerErrors": 1, "retries": 0,
+    "log": "/tmp/breditor-post-simulator-focused-20261002.log",
+    "logSha256": "079a2be8fd3de21b632f80d4e16f29050f4ed32cf1a09310c3473a35752df109",
+    "semanticRejection": {
+      "repeat": 8, "cycle": 9, "operation": "Link Apply",
+      "trace": "target/playwright-post-simulator-focused-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-webkit-repeat8/trace.zip",
+      "traceSha256": "ed9d1d2ebb1d23e7b81a333c8caf7456b125d969a980d73e3eed6497b159e774",
+      "recorderSha1": "c64569610f20df0867d9700d4bdb1c89296ecef4",
+      "mapSha1": "dfce77bd962e04f3f20b61f366f9619e2fc7f4c9",
+      "firstMarker": "wasm_projection_adapter:impact:505",
+      "branch": "readSemanticImpact: textContainers rejects when !rangesAbsent(snapshot) || affectedParagraphCount === 0",
+      "followingMarkers": ["wasm_projection_adapter:failure:474", "command_queue:stop:265", "browser_editor:delivery:870", "browser_editor:toolbar:932"],
+      "limitation": "No field-state capture was installed yet. The marker does not distinguish a non-absent range from a zero count or an erroneous branch decision."
+    },
+    "otherFailures": [
+      {
+        "case": "formatted clipboard repeat12", "kind": "timeout",
+        "traceSha256": "3ca5bb64b069705f67eeae73296ae41de0a6c44e9ad8f323dc20fbbfe6690eb3",
+        "recorderSha1": "a33110e6f8e6274feab9ecde41456d0f4a33ac41",
+        "failureRecordersEmpty": true
+      },
+      {
+        "case": "Link history repeat12", "kind": "timeout including afterEach",
+        "traceSha256": "53400819c78438912a2840bbc6286f977d2ffbe93fa4a84a9f2d5ec45c9f1667",
+        "recorderAttachmentAvailable": false
+      }
+    ]
+  },
+  "impactStateFollowup": {
+    "change": "Failure-only snapshots of impact tag, local and snapshot paragraph counts, and four range fields, using own data descriptors. No generated getters repeated, no successful predicates wrapped, no shipping source changed.",
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=30 --max-failures=1 --output=target/playwright-impact-state-20261002",
+    "passed": 0, "failed": 1, "unrun": 29, "additionalRunnerErrors": 1, "retries": 0,
+    "failure": "First case timed out; context teardown also exceeded the deadline. No metadata rejection was captured.",
+    "log": "/tmp/breditor-impact-state-20261002.log",
+    "logSha256": "a45b2f7fc9e511b016e3c0f17eca5fe832fff0d81736ccca50141f2210583640",
+    "trace": "target/playwright-impact-state-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-webkit/trace.zip",
+    "traceSha256": "e7dafd3b043caba9329d50266cc7299ca4a7b96d1fdb8684a6216acce6469d54",
+    "recorderSha1": "913495b90f099972a47e139102c74ba86a7966db",
+    "mapSha1": "6463aa7cb80035aa87ba0ff85101cca88efc9bb1",
+    "verifiedNineModuleManifest": true,
+    "impactStateCaptureEnabled": true,
+    "allFailureRecordersEmpty": true,
+    "timing": {
+      "attachmentSha1": "db85e9034ade31586cfe09d7c19a4703be20f594",
+      "terminal": "running", "scheduled": 10, "completed": 9, "pendingTimer": true,
+      "maxTimerMs": 820, "maxBetweenYieldMs": 4004, "slowEvents": 10, "omitted": 0,
+      "allSlowEventsVisibleAndFocused": true
+    },
+    "hostLoadAverageAfter": [134.27, 202.00, 290.85],
+    "interpretation": "Host load remained a timing confounder. This timeout is not a successful validation of the editor fix, and is not evidence that the state observer suppresses the semantic rejection."
+  },
+  "verification": {
+    "diagnosticUnitTests": 235,
+    "diagnosticUnitLog": "/tmp/breditor-impact-state-unit-20261002.log",
+    "browserHarnessTypecheck": "passed",
+    "projectionAdapterUnitTests": 43,
+    "newImpactContractCombinations": 32,
+    "projectionAdapterLog": "/tmp/breditor-impact-matrix-unit-20261002.log",
+    "browserPackageTypecheck": "passed"
+  },
+  "interpretation": "The initial six controls passed after shutdown, supporting host contention as a contributor to stalls. A subsequent focused run nevertheless reproduced an impact rejection and later timeouts. The metadata fault remains open; simulator shutdown did not fix it. The exact rejection branch is now known, but its operand state is not yet captured.",
+  "limitations": ["No shipping code changed.", "The earlier projection failures remain open.", "A successful diagnostic run does not prove instrumentation is optimization-neutral."]
+}

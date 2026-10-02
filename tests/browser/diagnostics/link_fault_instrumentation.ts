@@ -5,7 +5,8 @@ const modules = ["browser_editor", "browser_event_router", "command_queue", "was
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
 export function instrumentLinkFaults(code: string, id: string, recorder: string,
-  options: { numericPredicates?: boolean; projectionChild?: boolean; projectionImpact?: boolean } = {}) {
+  options: { numericPredicates?: boolean; projectionChild?: boolean; projectionImpact?: boolean; impactState?: boolean } = {}) {
+  if (options.impactState && !options.projectionImpact) throw new Error("Impact state requires impact rejection capture");
   const module = modules.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
   if (module === undefined) return null;
   if (code.includes("__breditorLinkThrow")) throw new Error("Link diagnostic already installed");
@@ -25,7 +26,9 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
       impactSites++;
       sites.push({ stage, line });
       edits.push({ start: node.start, end: node.end,
-        text: `__breditorLinkThrow(${JSON.stringify(stage)}, (null))` });
+        text: options.impactState
+          ? `__breditorImpactRejection(${JSON.stringify(stage)}, (null), snapshot, affectedParagraphCount)`
+          : `__breditorLinkThrow(${JSON.stringify(stage)}, (null))` });
       return;
     }
     if (options.projectionChild && module === "wasm_projection_adapter" &&
@@ -149,5 +152,5 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
     transformed = transformed.slice(0, edit.start) + edit.text + transformed.slice(edit.end);
   }
   return { module, sourceSha256: createHash("sha256").update(code).digest("hex"), sites,
-    code: `import { recordLinkThrow as __breditorLinkThrow, recordSelectionPoint as __breditorSelectionPoint, recordNumericPredicate as __breditorNumericPredicate, recordProjectionChild as __breditorProjectionChild } from ${JSON.stringify(recorder)};\n${transformed}` };
+    code: `import { recordLinkThrow as __breditorLinkThrow, recordSelectionPoint as __breditorSelectionPoint, recordNumericPredicate as __breditorNumericPredicate, recordProjectionChild as __breditorProjectionChild, recordImpactRejection as __breditorImpactRejection } from ${JSON.stringify(recorder)};\n${transformed}` };
 }

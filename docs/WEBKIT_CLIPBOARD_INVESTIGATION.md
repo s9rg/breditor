@@ -2657,3 +2657,52 @@ was requested before shutting down simulators belonging to another project.
 No simulator or unrelated app was stopped and no system setting changed.
 Exact results and trace hashes are in the
 [host-load control record](qualification/2026-10-02-host-load-controls.json).
+
+After user approval, all four identified simulators shut down gracefully,
+without erasing data or force-killing processes. A fresh device query showed
+no booted simulators. Runnable processes fell from 523 to 92, runnable processes
+with simulator paths from 264 to one, and available disk space rose from about
+2.5 GiB to 9.5 GiB. No source, browser traces or build caches were deleted.
+
+The same six controls then **passed in all three engines in 27.3 seconds**,
+with unchanged timeouts and complete nine-module diagnostic maps. All three
+Link timing captures completed 300 yields, with no pending timer or slow span
+at or above 250 ms. Maximum timer waits were 6.1/14/10 ms in
+Chromium/Firefox/WebKit, compared with the prior Chromium capture's roughly
+600 ms timer and incomplete run. This supports host contention as a contributor
+to the cross-browser stalls, but does not close the earlier required-property
+or semantic-impact rejections. See the
+[post-shutdown evidence record](qualification/2026-10-02-post-simulator-controls.json).
+
+### Impact rejection localized after host recovery
+
+The next focused WebKit run was **23 passed / 3 failed / 14 unrun**, plus a
+runner error. Link-history repeat 8, cycle 9, failed on Apply with the new first
+marker `wasm_projection_adapter:impact:505`. This is the `textContainers` check
+`!rangesAbsent(snapshot) || affectedParagraphCount === 0`, before taking the
+child projection. It narrows the previous `readSemanticImpact` failure to one
+condition but does not yet identify the failing operand. The other two cases
+timed out; the formatted case had empty failure recorders and the Link case
+also timed out during attachment capture. They are not additional reproductions
+of that condition.
+
+The observer now records the already-captured impact/count/range metadata only
+after an impact rejection. It never repeats generated getters, retains only
+closed tags, types and numeric metadata, and bounds retained snapshots to eight.
+Tests check exact source restoration, unchanged success behavior, single
+predicate evaluation, accessor avoidance, bounded storage, sink-failure
+containment and isolation of nested snapshots. All **235 diagnostic tests**
+pass, as does browser-harness type checking. A new adapter regression covers
+all **32 combinations** of empty/nonempty affected paragraphs and four
+present/absent range endpoints, including present zero endpoints. The adapter
+suite passes **43 tests**, and the browser package type-checks. No production
+code, validation rule or timeout was changed.
+
+The state-capture follow-up stopped on its first timeout: **0 passed / 1 failed /
+29 unrun**, with a context-teardown error. Its complete nine-module map confirms
+the new observer loaded, but every failure recorder was empty. Link timing
+captured only 9 completed yields with a tenth pending, an 820 ms maximum timer
+and a 4,004 ms maximum between-yield interval; all ten slow spans were visible
+and focused. Host load averages remained 134/202/291 on ten logical CPUs.
+This run does not resolve the metadata defect. Full commands and artifact
+hashes remain in the post-shutdown evidence record above.

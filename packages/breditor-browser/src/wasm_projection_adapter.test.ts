@@ -1253,6 +1253,37 @@ describe("Wasm semantic projection adapter", () => {
     expect(updateView.takeProjection()).toBeUndefined();
   });
 
+  it("accepts text-container impact only with affected paragraphs and all splice ranges absent", () => {
+    const rangeKeys = ["oldChildStart", "oldChildEnd", "newChildStart", "newChildEnd"] as const;
+    // Cover each partial range shape too: zero is a present endpoint, not absence.
+    for (let rangeMask = 0; rangeMask < 16; rangeMask += 1) {
+      for (const affected of [[], [0]]) {
+        const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[{ text: "a", strong: false }]])));
+        const child = new FakeProjectionView("1", [[{ text: "b", strong: false }]]);
+        const update = new FakeUpdateView({ baseRevision: "0", resultRevision: "1",
+          impact: "textContainers", projection: child, affected });
+        const reads = rangeKeys.map((key, index) => {
+          const read = vi.fn(() => (rangeMask & (1 << index)) === 0 ? undefined : 0);
+          Object.defineProperty(update, key, { get: read });
+          return read;
+        });
+        const count = vi.fn(() => affected.length);
+        Object.defineProperty(update, "affectedParagraphCount", { get: count });
+        const take = vi.spyOn(update, "takeProjection");
+        const accepted = rangeMask === 0 && affected.length > 0;
+        const result = consumeSemanticProjectionUpdate(base, update);
+        expect(result.ok, `ranges=${rangeMask}, affected=${affected.length}`).toBe(accepted);
+        if (!result.ok) expect(result.error.code).toBe("projection.invalid_update");
+        expect(count).toHaveBeenCalledOnce();
+        for (const read of reads) expect(read).toHaveBeenCalledOnce();
+        expect(take).toHaveBeenCalledTimes(accepted ? 1 : 0);
+        expect(update.freeCalls).toBe(1);
+        // An unconsumed child remains owned by the Rust update, not JS cleanup.
+        expect(child.freeCalls).toBe(accepted ? 1 : 0);
+      }
+    }
+  });
+
   it("rejects mismatched duplicate snapshots and still frees the update", () => {
     const base = valueOf(consumeSemanticProjection(new FakeProjectionView("0", [[]])));
     const resultView = new FakeProjectionView("1", [[]]);
