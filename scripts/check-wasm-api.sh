@@ -207,6 +207,8 @@ printf 'check-wasm-api: minifying JavaScript glue with %s\n' "${required_rolldow
   fail "Rolldown did not produce the expected minified JavaScript glue: ${generated_module}"
 
 printf 'check-wasm-api: exercising generated JavaScript glue with Node.js\n'
+"${node_executable}" --test \
+  "${repository_root}/crates/breditor-wasm/tests/assert_text_container_update.test.mjs"
 "${node_executable}" \
   "${generated_glue_test}" \
   "${generated_module}" \

@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "6f95015",
+  "status": "raw-metadata-control-added-editor-fault-unresolved",
+  "shippingCodeChanged": false,
+  "sourceInspection": {
+    "rust": "ProjectionImpact::TextContainers is only classified with a nonempty paragraph set; root_splice returns None for that variant.",
+    "generatedGlue": "Projection update optional u32 fields still use wasm-bindgen's f64 absence sentinel, converted to undefined in JavaScript.",
+    "interpretation": "The exact impact rejection could still reflect a bad value or an incorrect predicate result. No captured operand state establishes either, and no ABI change is justified by this inspection alone."
+  },
+  "artifactIdentity": {
+    "generatedGlueSha256": "f3595a4690f94c560677f11de9587fe01e8483cb9231c6936b72c850215270c2",
+    "wasmSha256": "2884d556ff22073e83031ed3c256dc6c08643bc781687f9df883961f49e6d406"
+  },
+  "generatedGlueVerification": {
+    "command": "node crates/breditor-wasm/tests/generated_web_glue.mjs packages/breditor-wasm/dist/breditor_wasm.js packages/breditor-wasm/dist/breditor_wasm_bg.wasm packages/breditor-browser/dist/advanced.js",
+    "exitCode": 0,
+    "newPaths": ["Link typed action", "Link typed intent", "Link undo", "Link redo", "Text insertion"],
+    "checks": "Each path checks textContainers, count 1, affected index 0, absent out-of-range index, and all four absent splice endpoints, before and after the child is transferred exactly once.",
+    "negativeControlTests": 7,
+    "negativeControlsPassed": 7,
+    "note": "Uses the existing built package; not a Rust rebuild or a WebKit qualification. The helper's negative controls are now included in check-wasm-api.sh."
+  },
+  "fullEditorReadinessControl": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/link-history-lifecycle.spec.ts --trace=on --max-failures=1 --output=target/playwright-impact-readiness-20261002",
+    "passed": 0, "failed": 1, "unrun": 2, "additionalRunnerErrors": 1,
+    "browser": "chromium",
+    "failure": "page.evaluate exceeded the unchanged 30-second deadline",
+    "log": "/tmp/breditor-impact-readiness-20261002.log",
+    "logSha256": "ff77232c778b436d027ba481bdd4c1c47ef984d5d9fef38b17a56b750629b638",
+    "traceSha256": "154c12186a1bbfe7431fa84f7903ed6baaedcb67153382fa3d2951937afeb11c",
+    "failureRecorderSha1": "913495b90f099972a47e139102c74ba86a7966db",
+    "allFailureRecordersEmpty": true,
+    "timingAttachmentSha1": "a3de7484d5c2f82d6e57ec35e6d46e7abd3de64e",
+    "completedYields": 128, "scheduledYields": 129, "pendingTimer": true,
+    "maxTimerMs": 1003.5, "maxBetweenYieldMs": 3174.600000143051
+  },
+  "reducedBrowserControl": {
+    "command": "playwright test -c playwright.impact-contract.config.ts --trace=on --output=target/playwright-raw-impact-controls-20261002",
+    "passed": 1, "failed": 1, "unrun": 1, "additionalRunnerErrors": 1, "retries": 0,
+    "description": "Blank opt-in fixture, one actual reference-formatting Wasm owner, 300 Link Apply/Undo/Redo cycles, 900 metadata updates, before/after child transfer checks. No toolbar, DOM rendering, command queue, clipboard events, adapter validation, or timer loop.",
+    "log": "/tmp/breditor-raw-impact-controls-20261002.log",
+    "logSha256": "7824bc8fa7c0f698e6cb826ecceffcc919e7d99ffac96d2be550f8b9fe9e5f05",
+    "chromium": {
+      "status": "passed", "cycles": 300, "updates": 900,
+      "resultAttachmentSha1": "89a279e3e0089274090ccd700b7101c5c3ee7ea2",
+      "traceSha256": "04730ccfab3f36b7c34fdfbd7949326a3ad7556f8d1163741c51e7f0acd86855"
+    },
+    "firefox": {
+      "status": "failed-before-test-body",
+      "failure": "Timed out creating page; browser logs report tab and RDD subprocess MachCheckInListener timeouts.",
+      "traceSha256": "d5e8a3f893c203bdbd92d73b592388228dc5c526118ba257b23c6074a0be2ff9"
+    },
+    "webkit": "not run in this batch because the failure limit stopped the suite"
+  },
+  "separateWebkitRawControl": {
+    "command": "playwright test -c playwright.impact-contract.config.ts --project=webkit --trace=on --output=target/playwright-raw-impact-webkit-20261002",
+    "passed": 1, "failed": 0, "retries": 0, "elapsedSeconds": 27.2,
+    "cycles": 300, "updates": 900,
+    "log": "/tmp/breditor-raw-impact-webkit-20261002.log",
+    "logSha256": "55f8881553a4daa1cb5b174b693b1aec47d5a7ccd51ab598d2d7a0a83dd69d84",
+    "traceSha256": "562843555973cd95f84a32da00fce8d9dcb452f46f11615789c44fbf43bac2bb",
+    "resultAttachmentSha1": "89a279e3e0089274090ccd700b7101c5c3ee7ea2"
+  },
+  "finalFullEditorWebkitAttempt": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --trace=on --max-failures=1 --output=target/playwright-impact-final-control-20261002",
+    "passed": 0, "failed": 1, "additionalRunnerErrors": 1,
+    "failure": "Timed out setting up page, before the test body or Breditor application ran.",
+    "log": "/tmp/breditor-impact-final-control-20261002.log",
+    "logSha256": "368002039eea1bc32fe863691402a95f7bdd01ba02d370f506596fe3feb49b4c",
+    "traceSha256": "e7a8ac2c007c2adc797d132172679b71cf5b49e62b66ea508e312b8d8a7b4d80",
+    "interpretation": "No new impact rejection was observed. Browser launches are unreliable on this host; stop repetition until it recovers."
+  },
+  "verification": { "browserTypecheck": "passed", "shellSyntax": "passed", "diffWhitespace": "passed" },
+  "limitations": [
+    "The reduced workload has different call sites, optimization behavior, and lifecycle timing from the editor; passing it does not prove the original bug fixed.",
+    "Host check found 178 runnable processes and no booted simulators; no additional apps or services were stopped.",
+    "No production validation rules, deadlines, or retry settings were relaxed."
+  ]
+}

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { IDBFactory } from "fake-indexeddb";
 import { JSDOM } from "jsdom";
+import { assertTextContainerUpdate } from "./assert_text_container_update.mjs";
 
 const [modulePath, wasmPath, browserModulePath] = process.argv.slice(2);
 if (modulePath === undefined || wasmPath === undefined || browserModulePath === undefined) {
@@ -916,6 +917,7 @@ assert.equal(typedAction.eventKind, "action");
 assert.equal(typedAction.historyGroupClosedBefore, false);
 assert.equal(JSON.parse(takeString(typedAction.commitJson())).formatVersion, 3);
 const typedActionCommitted = typedAction.observation();
+assertTextContainerUpdate(typedAction, "Link typed action");
 typedAction.free();
 typedSelected.free();
 
@@ -959,6 +961,7 @@ assert.equal(typedIntent.intentId, "example/set-link-intent");
 assert.equal(typedIntent.historyGroupClosedBefore, false);
 assert.equal(JSON.parse(takeString(typedIntent.commitJson())).formatVersion, 3);
 const typedCommitted = typedIntent.observation();
+assertTextContainerUpdate(typedIntent, "Link typed intent");
 typedIntent.free();
 typedActionCommitted.free();
 assert.equal(JSON.parse(takeString(typedEngine.stateJson())).formatVersion, 3);
@@ -1029,10 +1032,12 @@ assert.match(typedCheckpoint, /https:\/\/example\.test\/path/);
 const typedUndo = typedEngine.undo(typedCommitted, false);
 assert.equal(typedUndo.status, "committed");
 const typedUndone = typedUndo.observation();
+assertTextContainerUpdate(typedUndo, "Link undo");
 typedUndo.free();
 const typedRedo = typedEngine.redo(typedUndone, false);
 assert.equal(typedRedo.status, "committed");
 const typedRedone = typedRedo.observation();
+assertTextContainerUpdate(typedRedo, "Link redo");
 typedRedo.free();
 typedUndone.free();
 const typedRestoreResult =
@@ -1919,6 +1924,7 @@ const projectionCommand = projectionEngine.executeStringAction(
 );
 assert.equal(projectionCommand.status, "committed");
 const projectionSuccessor = projectionCommand.observation();
+assertTextContainerUpdate(projectionCommand, "Text insertion");
 const rawUpdate = projectionCommand.projectionUpdate();
 assert.ok(rawUpdate instanceof api.BreditorProjectionUpdate);
 assert.equal(rawUpdate.baseRevision, "0");

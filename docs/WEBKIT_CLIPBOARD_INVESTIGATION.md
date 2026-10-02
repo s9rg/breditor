@@ -2706,3 +2706,48 @@ and a 4,004 ms maximum between-yield interval; all ten slow spans were visible
 and focused. Host load averages remained 134/202/291 on ten logical CPUs.
 This run does not resolve the metadata defect. Full commands and artifact
 hashes remain in the post-shutdown evidence record above.
+
+### Reduced raw projection-impact control
+
+The next full-editor readiness control failed in **Chromium**, with empty
+failure recorders and only 128/300 timer yields completed. The longest timer
+was about 1 second and the longest between-yield interval about 3.17 seconds.
+The host still had 178 runnable processes, despite no booted simulators.
+
+Source inspection found no deterministic mismatch in the rejected metadata
+contract: Rust only classifies nonempty paragraph sets as `textContainers`,
+and that variant has no root-splice ranges. The generated update glue still
+converts optional-u32 absence sentinels to JavaScript `undefined`. This is a
+boundary worth testing, not evidence that the sentinel conversion is faulty.
+
+The generated-glue suite now checks real Link typed action, typed intent,
+Undo, Redo and text insertion updates. It asserts count/index/range fields
+before and after transferring the child exactly once. The complete suite
+passes against the existing built Wasm package in Node. Seven negative controls
+also pass, including zero, null, NaN, leaked ABI sentinel and post-transfer
+metadata changes. They are included in the existing Wasm API check script.
+
+A new opt-in reduced browser probe mounts **no editor**. It keeps one raw
+reference-formatting Wasm owner alive for 300 Apply/Undo/Redo cycles, checks all
+900 updates before and after child transfer, and returns its counters as text.
+It excludes DOM rendering, toolbar dispatch, the command queue, clipboard,
+adapter validation and timer scheduling:
+
+```sh
+playwright test -c playwright.impact-contract.config.ts --project=webkit --trace=on
+```
+
+Chromium passed. Firefox then timed out before the test body, creating its
+page; browser logs showed tab and RDD subprocess startup timeouts. The failure
+limit prevented WebKit from running in that batch. A separate WebKit invocation
+**passed all 900 updates**. Browser type checking and shell syntax checking
+pass. This is a smaller control, not a reproduction or fix: changed call sites,
+optimization and lifecycle timing mean it cannot clear the full editor fault.
+Commands, identities and results are in the
+[raw impact contract record](qualification/2026-10-02-raw-impact-contract.json).
+
+One final full-editor WebKit attempt timed out **setting up the page**, before
+the application or test body ran. No new metadata rejection was observed.
+Browser repetition was stopped because startup itself was unreliable. The
+next full-editor capture should run after host recovery; no application fix
+is claimed by the reduced controls or the new regression coverage.
