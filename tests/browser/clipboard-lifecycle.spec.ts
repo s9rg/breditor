@@ -1,4 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { attachLinkFaults } from "./diagnostics/attach_link_faults";
+
+test.afterEach(async ({ page }, testInfo) => {
+  await attachLinkFaults(page, testInfo);
+});
 
 // These are controlled DOM event schedules, not OS clipboard automation. Keep
 // the system clipboard untouched while testing the optional native echo paths.

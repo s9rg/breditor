@@ -83,9 +83,17 @@ export function instrumentStartupModule(code: string, id: string, recorderImport
       text: `(__breditorStartupRejection(${JSON.stringify(stage)}${detail}), ${sourceText(expression)})` });
   }
 
-  function visit(node: ESTree.Node, scope: string | null): void {
+  function visit(node: ESTree.Node, scope: string | null, parent?: ESTree.Node): void {
     if (node.type === "FunctionDeclaration") scope = node.id?.name ?? null;
     else if (node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression") scope = null;
+    if (module === "wasm_profile_descriptor" && scope === "consumeDescriptor" &&
+        node.type === "CallExpression" && sourceText(node.callee) === "descriptorFailure" &&
+        parent?.type !== "VariableDeclarator") {
+      // The initial default is provisional. Guard, catch, cleanup and final
+      // generation rejections are real failures, even without a field failure.
+      capture(node, scope, false);
+      return;
+    }
     if (scope !== null && node.type === "CallExpression" && sourceText(node.callee) === "failure" &&
         node.arguments.length === 1 && sourceText(node.arguments[0]!) === "INVALID_REQUEST") {
       requestSites += 1;
@@ -118,7 +126,7 @@ export function instrumentStartupModule(code: string, id: string, recorderImport
     for (const value of Object.values(node)) {
       for (const child of Array.isArray(value) ? value : [value]) {
         if (child !== null && typeof child === "object" && "type" in child &&
-            "start" in child && "end" in child) visit(child as ESTree.Node, scope);
+            "start" in child && "end" in child) visit(child as ESTree.Node, scope, node);
       }
     }
   }

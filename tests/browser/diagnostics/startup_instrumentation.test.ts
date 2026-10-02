@@ -4,6 +4,28 @@ import { instrumentStartupModule } from "./startup_instrumentation";
 const id = "/checkout/packages/breditor-browser/dist/wasm_session_checkpoint.js";
 
 describe("startup rejection instrumentation", () => {
+  it("captures descriptor guards, exceptions, cleanup and final admission, but not provisional defaults", () => {
+    const source = `function consumeDescriptor(flag, read, release) {
+  if (flag === 1) return descriptorFailure();
+  let result = descriptorFailure();
+  try { result = read(); } catch { result = descriptorFailure(); }
+  finally { if (!release()) result = descriptorFailure(); }
+  return result.ok && flag === 4 ? descriptorFailure() : result;
+}`;
+    const output = instrumentStartupModule(source, id.replace("wasm_session_checkpoint", "wasm_profile_descriptor"), "./recorder")!;
+    const record = vi.fn();
+    const failure = vi.fn(() => ({ ok: false }));
+    const run = new Function("__breditorStartupRejection", "descriptorFailure",
+      output.code.slice(output.code.indexOf("\n") + 1) + ";return consumeDescriptor;")(record, failure);
+    expect(output.sites.map(site => site.line)).toEqual([2, 4, 5, 6]);
+    expect(run(0, () => ({ ok: true }), () => true)).toEqual({ ok: true });
+    expect(record).not.toHaveBeenCalled();
+    for (const flag of [1, 2, 3, 4]) {
+      record.mockClear();
+      expect(run(flag, () => { if (flag === 2) throw new Error("private"); return { ok: true }; }, () => flag !== 3)).toEqual({ ok: false });
+      expect(record).toHaveBeenCalledExactlyOnceWith(`descriptor:consumeDescriptor:${[2, 4, 5, 6][flag - 1]}`);
+    }
+  });
   it("ignores public package source and unrelated modules", () => {
     expect(instrumentStartupModule("anything", "/src/wasm_session_checkpoint.ts", "./recorder")).toBeNull();
     expect(instrumentStartupModule("anything", "/dist/other.js", "./recorder")).toBeNull();

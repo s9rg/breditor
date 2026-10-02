@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "8cd5c72",
+  "status": "queue-fault-reproduced-first-cause-not-yet-captured",
+  "target": "WebKit selection bootstrap 9: engine_bootstrap.invalid_profile_descriptor",
+  "originalFailure": {
+    "record": "docs/qualification/2026-10-02-webkit-durable-u32.json",
+    "trace": "target/playwright-link-u32-candidate-matrix-20261002/selection-restore-restored-6f93c--zero-offsets-and-direction-webkit/trace.zip",
+    "sha256": "94ec075ec3a4a5f661fa15f22ef242c0a56cbc0c9e612967a994557917e9e622"
+  },
+  "changes": [
+    "New opt-in development-module startup diagnostic, avoiding the previous production bundling/minification difference.",
+    "Descriptor outer guards, caught exceptions, cleanup failure and final generation rejection are now labelled. Provisional failure initialization is deliberately not recorded.",
+    "Selection-restore failures attach the exact emitted-source map alongside bounded rejection breadcrumbs."
+  ],
+  "verification": {
+    "finalDevelopmentSmoke": {
+      "passed": 3, "failed": 0, "retries": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "log": "/tmp/breditor-startup-dev-smoke-20261002.log",
+      "note": "Final test source requires the exact five-module manifest and an empty recorder on success."
+    },
+    "queueDiagnosticMatrix": {
+      "command": "playwright test -c playwright.link-diagnostics.config.ts --project=webkit --repeat-each=3 --output=target/playwright-queue-matrix-trace-20261002",
+      "passed": 162, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-queue-matrix-trace-20261002.log",
+      "logSha256": "fd2d08443a951ac9f7055065d5884636b9448a34c02781670936115cbae401e7",
+      "note": "The complete ordinary WebKit ordering under nine-module Link/queue diagnostics did not reproduce the fault. This does not override the failed uninstrumented control."
+    },
+    "ordinaryWebKitControl": {
+      "command": "playwright test --project=webkit --repeat-each=5 --max-failures=1 --output=target/playwright-startup-ordinary-control-20261002",
+      "passed": 118, "failed": 1, "notRun": 151, "retries": 0,
+      "failure": "clipboard none echoes: cycle 1, caret stage, expected offset 9/9, owner faulted with queueUncertain, actual selection null",
+      "log": "/tmp/breditor-startup-ordinary-control-20261002.log",
+      "logSha256": "47e45b43d8c9f5d3b5eaea938e4aae4ab130e829fd0d73eae412291eddab8ccf",
+      "trace": "target/playwright-startup-ordinary-control-20261002/clipboard-lifecycle-clipbo-8b5bf--history-and-caret-liveness-webkit-repeat2/trace.zip",
+      "traceSha256": "620efa13b343275dca76808215fc0e0675bdf39f1f3718284353cacefaf6e15f"
+    },
+    "focusedQueueDiagnosticInterrupted": {
+      "planned": 80, "passed": 17, "notRun": 63,
+      "result": "inconclusive-browser-launch-timeout",
+      "log": "/tmp/breditor-clipboard-queue-trace-20261002.log",
+      "trace": "target/playwright-clipboard-queue-trace-20261002/clipboard-lifecycle-clipbo-8b5bf--history-and-caret-liveness-webkit-repeat17/trace.zip",
+      "traceSha256": "1efe99df5fd30f6c3d6855cd878936c19866d2e327ef5ba2be10e395003b48af",
+      "note": "Case 18 did not load the editor: browser launch consumed approximately 933 seconds and suite/teardown deadlines expired. No page trace or editor exception. Process inspection afterward found no remaining test-owned browser/server processes; unrelated native apps were left untouched."
+    },
+    "focusedQueueDiagnosticRetry": {
+      "command": "playwright test -c playwright.link-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts --grep 'clipboard none echoes' --project=webkit --repeat-each=20 --global-timeout=120000 --output=target/playwright-clipboard-queue-retry-20261002",
+      "passed": 20, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-clipboard-queue-retry-20261002.log",
+      "logSha256": "1874d599e0e2a66f9e503c9e19f84dbe9b405fa21d9bb61240ad704874876671",
+      "note": "Shorter total batch budget after the launch timeout; per-test timeouts and assertions unchanged. Added source-map/queue diagnostic attachments to the ordinary clipboard lifecycle test."
+    },
+    "isolatedDevelopmentDiagnostic": {
+      "command": "playwright test -c playwright.startup-development-diagnostics.config.ts tests/browser/selection-restore.spec.ts --project=webkit --repeat-each=40 --output=target/playwright-startup-dev-first-20261002",
+      "passed": 40, "failed": 0, "retries": 0, "restores": 120000, "selectionReads": 360000,
+      "log": "/tmp/breditor-startup-dev-first-20261002.log",
+      "logSha256": "e514eb86d50ed55f77eee8d64ebd9d63aeb4b7b4598efa5eea4b92bf70649127",
+      "note": "Ran before outer descriptor lifecycle markers were added. Initial configuration selected this file and 40 repeats by default; the final configuration uses explicit CLI selection/repetition."
+    },
+    "developmentDiagnosticMatrix": {
+      "command": "playwright test -c playwright.startup-development-diagnostics.config.ts --project=webkit --repeat-each=3 --output=target/playwright-startup-dev-matrix-20261002",
+      "passed": 162, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-startup-dev-matrix-20261002.log",
+      "logSha256": "3008672715fa97e20c0a0d006c546a20a67769ed51d121e9cfe1391e332484a0",
+      "note": "All 54 WebKit cases in ordinary order, repeated three times, with the added descriptor lifecycle markers. No descriptor rejection captured."
+    },
+    "diagnosticUnitTests": { "passed": 173, "log": "/tmp/breditor-startup-dev-unit-20261002.log", "logSha256": "7097fb9efcfee78857ab2284a2dad810624d02a3c8857b240add227da071640c" },
+    "typecheck": { "passed": true, "log": "/tmp/breditor-startup-dev-final-types-20261002.log" }
+  },
+  "verifiedDevelopmentManifest": {
+    "wasm_engine_bootstrap.js": { "sourceSha256": "02b467183d1236fe64a7f54c3cc29402c1f47d159a0acc282204cf879ec8f20b", "sites": 10 },
+    "wasm_profile_descriptor.js": { "sourceSha256": "767bb9f0032fc639f2a4e82ebb5ed41f4271f4af9d067432e5c55081a73aeb1d", "sites": 37 },
+    "wasm_document_json.js": { "sourceSha256": "36bfda84f4cdd78eac7ac6bbfb15217691cf9f765d9eedf14b3cfb10e72c15e1", "sites": 21 },
+    "wasm_session_checkpoint.js": { "sourceSha256": "4cbb4b9ee840e021fb77695e5095de6e81ca2c9fa1e2e9dcb009e0172b28dffa", "sites": 12 },
+    "wasm_selection_adapter.js": { "sourceSha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb", "sites": 13 }
+  },
+  "limitations": [
+    "No shipping runtime or Wasm changes in this investigation; the earlier export mitigation is retained unchanged.",
+    "Rejection-only logging can still change optimization and timing. Successful diagnostic batches do not close the original ordinary-build failure.",
+    "The original queueUncertain failure and the separate numerical-runtime reproduction remain unresolved; no common cause is assumed."
+  ]
+}

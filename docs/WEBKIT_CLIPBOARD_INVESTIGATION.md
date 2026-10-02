@@ -2269,3 +2269,42 @@ batches (200,000 restores / 600,000 selection reads) with normal optimization
 and zero retries. It captured no descriptor rejection. That diagnostic has a
 different code shape from the failing development-module matrix and does not
 supersede it. The exact startup branch remains unidentified.
+
+### Development-module startup tracing and fresh queue reproduction
+
+The startup recorder can now run against the ordinary development module graph,
+without the separate production bundle/minifier. Run the isolated restore case:
+
+```sh
+playwright test -c playwright.startup-development-diagnostics.config.ts \
+  tests/browser/selection-restore.spec.ts --project=webkit --repeat-each=40
+```
+
+Omit the file filter to preserve the full ordinary WebKit suite ordering. The
+config keeps normal optimization, per-test limits and zero retries. The first
+isolated run passed 40 batches (120,000 restores); the subsequent three complete
+instrumented WebKit suites passed 162 cases. The recorder now also labels outer
+descriptor guard, exception, cleanup and final-generation failures, while
+ignoring provisional default failures. Startup tests require the five-module
+manifest and retain its source identities on failure.
+
+A five-repeat **uninstrumented** WebKit control then stopped after 118 passed,
+one failed and 151 unrun cases. This was a fresh `queueUncertain` failure in
+`clipboard-lifecycle.spec.ts`, schedule `none`, cycle 1, at the immediate caret
+move after cutting. Expected caret offsets were 9/9; the faulted owner had no
+native selection. No clipboard echo events were involved. This narrows the
+workflow but does not identify its first internal rejection or prove a common
+cause with descriptor startup.
+
+That ordinary clipboard test now retains the existing Link/queue diagnostic
+attachments too. An 80-case focused diagnostic attempt passed 17 cases, then
+stalled launching the next browser before the editor loaded. Suite and teardown
+timeouts make that run inconclusive; it is not an editor failure or a pass.
+A smaller 20-case rerun passed. The earlier ordinary failure remains open.
+See the [development and queue evidence](qualification/2026-10-02-webkit-startup-development.json).
+
+Three complete suites under the Link/queue diagnostic transform also passed
+162 cases. Neither diagnostic workload captured the first queue rejection.
+This is evidence of intermittency and possible instrumentation sensitivity,
+not a fix; a lower-impact observer is the next useful comparison. No shipping
+runtime code changed during this follow-up.
