@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-01",
+  "format": "breditor/structural-block-foundation",
+  "baseCommit": "6ae26be",
+  "scope": "Rust value foundation and contract only; no heading/list document admission, editing actions, codecs, Wasm bindings or toolbar feature enabled.",
+  "implemented": [
+    "HeadingLevel 1..6 checked before narrowing",
+    "TextBlockKind paragraph or checked heading",
+    "ListKind bullet or ordered",
+    "OrderedListStart 1..2147483647 with checked ordinal arithmetic",
+    "Payload-free block diagnostics",
+    "Existing schema fingerprint and unknown-node rejection regression"
+  ],
+  "verification": {
+    "rustAndDocTests": 1566,
+    "newTests": 6,
+    "fullWorkspaceTests": "passed",
+    "workspaceClippyAllTargetsAllFeatures": "passed with -D warnings",
+    "workspaceRustdoc": "passed with -D warnings",
+    "format": "passed",
+    "initialCheck": "First test compile lacked the integration-test module documentation; added it before final verification. No test assertions or lints were relaxed."
+  },
+  "passed": 1566,
+  "artifacts": [
+    {
+      "path": "/tmp/breditor-block-values-final-20261001.log",
+      "sha256": "e8f016e10a59969ffff67c4a0bb11f229c4bec32259ec83aaf06f29c8f4fe461"
+    },
+    {
+      "path": "/tmp/breditor-block-clippy-20261001.log",
+      "sha256": "aea015f0f85aa6cb75255a7683fed615a64071b89be73b9e918c9e2c185de41f"
+    },
+    {
+      "path": "/tmp/breditor-block-docs-20261001.log",
+      "sha256": "64bc648f37116e0a6e5eb93ac3c3fe9293053231bc7f49d65d86b90e09d339de"
+    },
+    {
+      "path": "/tmp/breditor-block-workspace-20261001.log",
+      "sha256": "b984d0bbe1eee2ceb5e592873ba7e9c3f40b8e17555ad62fc309d99ab10a02ad"
+    },
+    {
+      "path": "crates/breditor-core/src/block/heading_level.rs",
+      "sha256": "02d729d58ce908bcce453e2a64dcf00a1f94ebd482fed0b1409fbbadf7865ba8"
+    },
+    {
+      "path": "crates/breditor-core/src/block/list_kind.rs",
+      "sha256": "1105bab9f1fda7e621cb49049d682740c77f0c49f597f08f8194c9e4f79640dc"
+    },
+    {
+      "path": "crates/breditor-core/src/block/mod.rs",
+      "sha256": "344e41b0f4d0714170d9ff3dbe8efacca956855387681f4b65bad0690061e1af"
+    },
+    {
+      "path": "crates/breditor-core/src/block/ordered_list_start.rs",
+      "sha256": "939a6516d7881033378615a3f17650f2614bd7e61fdb0bb6ad1d0c10af2fc9e0"
+    },
+    {
+      "path": "crates/breditor-core/src/block/text_block_kind.rs",
+      "sha256": "6dfba2da5c09a3e140916feb8db739f627e69cceb3091113a820af98656e4969"
+    },
+    {
+      "path": "crates/breditor-core/src/block/value_error.rs",
+      "sha256": "0b02ab2da42bb8d8d2e9710b82fc4a68a81139d6b3fa858d84ef13c2cd53cc68"
+    },
+    {
+      "path": "crates/breditor-core/tests/structural_block_values.rs",
+      "sha256": "794f2e5ed67c792fd951831c7ccc319eb327e85aaaf05d1229deac257ff07536"
+    }
+  ],
+  "notClaimed": [
+    "Headings or lists in the browser",
+    "New durable structural format",
+    "Fresh Wasm artifact build or a second full 17-gate release run for this additive Rust-only slice",
+    "Native CJK IME, physical devices, second computer or complete touch/soft-keyboard support"
+  ],
+  "mobileFollowup": {
+    "runtime": "Same packaged runtime qualified in the consolidation record, not a newly generated Wasm module for the Rust values.",
+    "device": "iPhone 17 Pro Simulator, iOS 26.5",
+    "outcome": "partial native hardware-keyboard qualification",
+    "verified": [
+      "Native tab navigation focuses the editor; Select All shows range handles scoped to its text",
+      "Copy of the entire sample pastes exactly into the scratch textarea, distinct from the previous clipboard word",
+      "Cut replaces an independently copied scratch sentinel with the entire selected sample and empties the editor once",
+      "Native punctuation insertion after Cut; separate Undo twice and Redo twice restore empty/original/empty/punctuation states",
+      "After restoring, native end-caret Paste appends the full sample exactly once; Undo restores the original",
+      "Link form accepts the changed URL and shows Link applied, with Highlight still visible"
+    ],
+    "notVerified": [
+      "Complete Link Undo/Redo value round trip",
+      "Immediate near-emoji caret workflow from the six-checkbox fixture",
+      "Native touch-selection and on-screen keyboard behavior"
+    ],
+    "checksWereNotMarkedComplete": true,
+    "automationNotes": "Initial multi-key/tap attempts were inconclusive. Later commands established focus explicitly and inspected visible results. No failed input setup was classified as an editor defect.",
+    "reloadNotes": "The additional package-consumer build triggered Vite reloads after the saved desktop checklists. Those desktop reports describe the previously observed sessions, not the reloaded empty recorder. Later mobile observations were separate and remain partial."
+  },
+  "cleanup": {
+    "temporaryServersStopped": [
+      4186,
+      4241
+    ],
+    "systemClipboard": "Breditor",
+    "published": false,
+    "pushed": false
+  },
+  "next": "Implement and test the closed structural grammar and element property contracts before enabling guarded heading actions."
+}

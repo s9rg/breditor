@@ -1,5 +1,10 @@
 # Breditor `0.3.0` scope
 
+October 1 structural follow-up: checked Rust heading/list values and their
+boundary tests are implemented, but structural schema admission and editor
+actions are not. The existing paragraph-only limitations below still apply.
+See [Structural blocks](STRUCTURAL_BLOCKS.md) for the separate staged contract.
+
 ## Property-aware milestone verification
 
 The requested property-aware Rust-to-browser milestone is implemented through

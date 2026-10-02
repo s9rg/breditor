@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Start the experimental Rust structural-block value contract: checked heading
+  ranks, text-block/list kinds and overflow-checked positive list numbering.
+  These values do not yet admit headings or lists into documents or expose new
+  editor actions. Existing schema fingerprints, codecs and the Wasm ABI stay
+  unchanged. See `docs/STRUCTURAL_BLOCKS.md` for integration decisions and gates.
+
 - Gate the browser npm tarball against an exact reviewed file allowlist, keeping
   test fixtures and optional diagnostics outside published artifacts. Preserve
   the standalone numerical repro as a portable, hash-checked JavaScript fixture.

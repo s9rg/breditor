@@ -825,6 +825,7 @@
 //! [`TEXT_SIZE_PRESETS.md`](https://github.com/s9rg/breditor/blob/main/docs/TEXT_SIZE_PRESETS.md).
 
 pub mod action;
+pub mod block;
 pub mod codec;
 pub mod document;
 pub mod engine;

@@ -23,6 +23,12 @@ Cut/Undo, but input automation did not reliably deliver the requested key
 sequences; no complete mobile pass is claimed. Native CJK IME, physical devices
 and a second computer remain unverified.
 
+A [later simulator follow-up](qualification/2026-10-01-structural-foundation.json)
+independently verifies whole-sample Copy/Cut, native typing history and single
+Paste using explicit focus checks and simulated hardware keys. It remains a
+partial result: Link history, touch selection and the soft keyboard are not
+qualified by that follow-up.
+
 The entries below are historical checkpoints, not cumulative claims that every
 listed build is currently supported. See the
 [October 1 consolidation evidence](qualification/2026-10-01-consolidation.json)
