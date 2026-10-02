@@ -23,11 +23,16 @@ use super::{
     compiled_schema::CompiledSchema,
 };
 
+#[cfg(feature = "experimental-structural-properties")]
+use super::element_property_contract::RequiredIntegerProperty;
+
 const CANONICAL_ENCODING_VERSION: u32 = 1;
 const SCHEMA_VALUE_MODEL_VERSION: u32 = 1;
 const SCHEMA_COMPILER_CONTRACT_VERSION_V1: u32 = 1;
 const SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES: u32 = 2;
 const SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_GROUPS: u32 = 3;
+#[cfg(feature = "experimental-structural-properties")]
+const SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER: u32 = 4;
 const FINGERPRINT_DOMAIN: &[u8] = b"breditor/schema-fingerprint\0";
 
 const MAX_ELEMENT_TYPES: u32 = 256;
@@ -90,11 +95,18 @@ impl CompiledSchemaDefinition {
 pub(super) struct ElementDefinition {
     revision: PersistedTypeRevision,
     allows_properties: bool,
+    #[cfg(feature = "experimental-structural-properties")]
+    property_contract: Option<RequiredIntegerProperty>,
     allows_entity_id: bool,
     children: ChildConstraint,
 }
 
 impl ElementDefinition {
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(super) const fn property_contract(&self) -> Option<&RequiredIntegerProperty> {
+        self.property_contract.as_ref()
+    }
+
     pub(super) const fn allows_properties(&self) -> bool {
         self.allows_properties
     }
@@ -204,6 +216,8 @@ struct ElementSpec {
     owner: DeclarationOwner,
     revision: PersistedTypeRevision,
     allows_properties: bool,
+    #[cfg(feature = "experimental-structural-properties")]
+    property_contract: Option<RequiredIntegerProperty>,
     allows_entity_id: bool,
     children: ChildConstraint,
 }
@@ -271,6 +285,11 @@ enum SchemaCompilerError {
     OverlappingChildAlternatives { element: QualifiedName },
     #[error("element {element} has an unrepresentable total minimum child count")]
     ChildMinimumOverflow { element: QualifiedName },
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(
+        "element {element} has a reversed integer property range or forbids its required property"
+    )]
+    InvalidElementPropertyContract { element: QualifiedName },
 }
 
 static BASE_DEFINITION: OnceLock<(Arc<CompiledSchemaDefinition>, SchemaFingerprint)> =
@@ -378,6 +397,10 @@ fn supports_base_text_structure(definition: &CompiledSchemaDefinition) -> bool {
         {
             return false;
         }
+        #[cfg(feature = "experimental-structural-properties")]
+        if compiled.property_contract != element.property_contract {
+            return false;
+        }
     }
 
     let Some(strong) = definition.inline_formats.get(&base.strong_kind) else {
@@ -456,6 +479,8 @@ fn compile(
     reject_reserved_schema_name(&spec)?;
     for element in &mut spec.elements {
         reject_reserved_element_name(element)?;
+        #[cfg(feature = "experimental-structural-properties")]
+        reject_invalid_element_property_contract(element)?;
         canonicalize_child_constraint(element)?;
     }
     for inline_format in &spec.inline_formats {
@@ -472,6 +497,8 @@ fn compile(
                 ElementDefinition {
                     revision: element.revision,
                     allows_properties: element.allows_properties,
+                    #[cfg(feature = "experimental-structural-properties")]
+                    property_contract: element.property_contract.clone(),
                     allows_entity_id: element.allows_entity_id,
                     children: element.children.clone(),
                 },
@@ -525,6 +552,20 @@ fn compile(
     });
     let fingerprint = fingerprint(&definition);
     Ok(CompiledSchema::from_compilation(definition, fingerprint))
+}
+
+#[cfg(feature = "experimental-structural-properties")]
+fn reject_invalid_element_property_contract(
+    element: &ElementSpec,
+) -> Result<(), SchemaCompilerError> {
+    if let Some(contract) = &element.property_contract
+        && (!element.allows_properties || contract.minimum > contract.maximum)
+    {
+        return Err(SchemaCompilerError::InvalidElementPropertyContract {
+            element: element.kind.clone(),
+        });
+    }
+    Ok(())
 }
 
 fn canonicalize_child_constraint(element: &mut ElementSpec) -> Result<(), SchemaCompilerError> {
@@ -626,21 +667,25 @@ fn fingerprint(definition: &CompiledSchemaDefinition) -> SchemaFingerprint {
     SchemaFingerprint::from_digest(hasher.finalize().into())
 }
 
-fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[u8])) {
-    let mut encoder = CanonicalFingerprintEncoder::new(sink);
-    encoder.u32(0x01, CANONICAL_ENCODING_VERSION);
-    encoder.u32(0x02, SCHEMA_VALUE_MODEL_VERSION);
-    let compiler_contract_version = if definition
-        .elements
-        .values()
-        .any(|element| element.children.single().is_none())
-    {
+fn compiler_contract_version(definition: &CompiledSchemaDefinition) -> u32 {
+    #[cfg(feature = "experimental-structural-properties")]
+    if definition.elements.values().any(|element| element.property_contract.is_some()) {
+        return SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER;
+    }
+    if definition.elements.values().any(|element| element.children.single().is_none()) {
         SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_GROUPS
     } else if definition.inline_formats.values().any(|format| format.property_contract.is_some()) {
         SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES
     } else {
         SCHEMA_COMPILER_CONTRACT_VERSION_V1
-    };
+    }
+}
+
+fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[u8])) {
+    let mut encoder = CanonicalFingerprintEncoder::new(sink);
+    encoder.u32(0x01, CANONICAL_ENCODING_VERSION);
+    encoder.u32(0x02, SCHEMA_VALUE_MODEL_VERSION);
+    let compiler_contract_version = compiler_contract_version(definition);
     encoder.u32(0x03, compiler_contract_version);
     encoder.name(0x10, definition.id.name());
     encoder.u32(0x11, definition.id.version().get());
@@ -659,6 +704,15 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
         encoder.u32(0x33, element.revision.get());
         encoder.boolean(0x34, element.allows_properties);
         encoder.boolean(0x35, element.allows_entity_id);
+        #[cfg(feature = "experimental-structural-properties")]
+        if compiler_contract_version == SCHEMA_COMPILER_CONTRACT_VERSION_ELEMENT_INTEGER {
+            encoder.boolean(0x52, element.property_contract.is_some());
+            if let Some(contract) = &element.property_contract {
+                encoder.name(0x53, &contract.name);
+                encoder.i64(0x54, contract.minimum.get());
+                encoder.i64(0x55, contract.maximum.get());
+            }
+        }
         if let Some((kind, group)) = element.children.single() {
             match kind {
                 ChildKind::Text => encoder.tag(0x36),
@@ -764,6 +818,12 @@ where
         }
     }
 
+    #[cfg(feature = "experimental-structural-properties")]
+    fn i64(&mut self, tag: u8, value: i64) {
+        self.tag(tag);
+        self.raw(&value.to_be_bytes());
+    }
+
     fn optional_u32(&mut self, tag: u8, value: Option<u32>) {
         self.tag(tag);
         match value {
@@ -817,6 +877,8 @@ fn base_spec() -> SchemaSpec {
                 owner: DeclarationOwner::Breditor,
                 revision: PersistedTypeRevision::one(),
                 allows_properties: false,
+                #[cfg(feature = "experimental-structural-properties")]
+                property_contract: None,
                 allows_entity_id: false,
                 children: ChildConstraint::repeated(
                     ChildKind::Element(paragraph_kind.clone()),
@@ -829,6 +891,8 @@ fn base_spec() -> SchemaSpec {
                 owner: DeclarationOwner::Breditor,
                 revision: PersistedTypeRevision::one(),
                 allows_properties: false,
+                #[cfg(feature = "experimental-structural-properties")]
+                property_contract: None,
                 allows_entity_id: false,
                 children: ChildConstraint::repeated(ChildKind::Text, 0, None),
             },
@@ -845,6 +909,10 @@ fn base_spec() -> SchemaSpec {
 fn fixed_count(value: usize) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
+
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+#[path = "element_property_tests.rs"]
+mod element_property_tests;
 
 #[cfg(test)]
 #[path = "structural_grammar_tests.rs"]
@@ -888,6 +956,8 @@ mod tests {
             owner,
             revision: PersistedTypeRevision::one(),
             allows_properties: false,
+            #[cfg(feature = "experimental-structural-properties")]
+            property_contract: None,
             allows_entity_id: false,
             children: ChildConstraint::repeated(ChildKind::Text, 0, None),
         }

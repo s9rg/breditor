@@ -1,6 +1,7 @@
 # Structural blocks: heading and list contract
 
-Status: experimental Rust values and private child-grammar foundation. Headings
+Status: experimental Rust values, private child grammar, and opt-in closed
+integer element-property contracts. Headings
 and lists are **not yet editable features**. The paragraph-only schema, existing fingerprints,
 durable formats, Wasm ABI and browser renderer are unchanged. Links already
 exist as typed inline formatting and must continue to work inside future blocks.
@@ -9,15 +10,27 @@ This document records the next implementation decisions and acceptance gates.
 It does not silently widen the contracts in `DATA_CONTRACT.md`, `WASM_ABI.md`
 or `V0_3_SCOPE.md`.
 
-Verification: all 1,580 Rust workspace/doc tests pass, including the six initial
+Prior child-grammar verification: all 1,580 Rust workspace/doc tests passed, including the six initial
 value tests and fourteen child-grammar tests. Workspace Clippy and Rustdoc pass
 with warnings denied; the streaming recognizer additionally passes 10,000
 fixed-seed cases against an independent count/order oracle. The prior value
 checkpoint is recorded in [the foundation record](qualification/2026-10-01-structural-foundation.json).
-All 17 release gates pass for this child-grammar checkpoint, including 25 Wasm
+That earlier checkpoint passed all 17 release gates, including 25 Wasm
 tests, 162 browser cases and 39 demo cases with zero retries; see the
-[current verification record](qualification/2026-10-02-structural-child-grammar.json).
+[child-grammar verification record](qualification/2026-10-02-structural-child-grammar.json).
 This does not qualify headings/lists as public browser features.
+
+The subsequent element-property slice passes all 1,593 Rust workspace/doc tests,
+44 feature-enabled schema tests, 31 default-feature schema tests, and two
+10,000-case seeded property checks. Its first release run passed gates 1–14 but
+failed the browser gate: one WebKit formatted-clipboard lifecycle case faulted
+with `queueUncertain`; 161 other browser cases passed. Ten fresh focused reruns
+passed. This is **not** an all-green release or evidence that the WebKit fault
+is fixed. The original trace is retained, and no browser workaround is applied.
+One separately recorded full recheck passed 162/162, followed by 39/39 demo
+cases, all with zero retries. See the
+[element-property verification record](qualification/2026-10-02-structural-element-properties.json)
+for commands, hashes, the preserved failure and the limits of these results.
 
 ## Values implemented first
 
@@ -60,8 +73,9 @@ The first proposed grammar is:
 The private schema compiler now supports bounded alternatives and ordered child
 groups. Its test-only structural fixture proves these tree shapes, including
 nested lists; it is **not** a complete heading/list schema. Exact closed element-
-property contracts for heading rank and ordered-list start remain required.
-A generic "properties allowed" Boolean is insufficient.
+property contracts for heading rank and ordered-list start are implemented
+behind `experimental-structural-properties`, not admitted by a public profile.
+A generic "properties allowed" Boolean is insufficient for those blocks.
 
 The child-grammar contract is deliberately restricted:
 
@@ -85,6 +99,40 @@ No public structural schema factory, manifest contribution, durable action,
 Wasm export or browser feature was added. The private shape fixture deliberately
 omits heading/list properties. Structural schemas fail all three existing
 paragraph-only operation capability checks.
+
+### Closed integer element properties (experimental)
+
+The opt-in Cargo feature `experimental-structural-properties` builds the private
+compiler and validation support for one required bounded integer property per
+element. It is a development/testing feature, **not** a switch that enables
+heading/list editing. The default Wasm package does not enable it; adding this
+unfinished code to that package exceeded its existing size budget.
+
+The separate property fixture assigns `breditor/level` in `1..=6` to headings
+and `breditor/start` in `1..=2147483647` to ordered lists. These internal fixture
+names are not a frozen public structural document profile. Contracts are closed:
+the named property is required, every other property is rejected, and strings,
+Booleans, null, arrays and objects are not coerced into integers. No missing
+value is defaulted to level/start one. Shared property-resource budgets remain
+in force before publication. Duplicate JSON keys, fractions and unsafe integers
+are rejected by the existing codec boundary.
+
+The compiler rejects reversed bounds and a required contract on an element
+that forbids properties. Bounds themselves use checked JavaScript-safe integers.
+The first contract intentionally has no optional/defaulted properties, multiple
+fields, string/Boolean element properties or extension manifest surface.
+Diagnostics identify the element path, property name, expected/actual type or
+range direction, without retaining the rejected payload value.
+
+Compiler-contract version 4 binds the property name and inclusive signed bounds
+alongside the existing complete grammar and inline-format contracts. Schemas
+without element contracts retain version 1–3 bytes exactly, with the Cargo
+feature enabled or disabled. Both configurations are checked separately.
+
+This proves a start value, not the last displayed ordinal of a whole list.
+`start + item_count - 1` overflow/ceiling validation, nested-list editing laws,
+selection relocation and exact inverse recipes remain required before lists
+can be admitted publicly.
 
 Do not open the paragraph schema to unknown elements as an interim shortcut.
 Do not expose a schema that permits new blocks to an editor while its editing
@@ -172,7 +220,7 @@ Clipboard plain-text serialization needs explicit list/heading boundary rules;
 rich paste remains unsupported until a separate validated import contract exists.
 
 There are only 49 bytes of JavaScript gzip headroom in the verified demo build
-(224,951 / 225,000 bytes). The Wasm binary is 1,608,592 / 1,610,000 bytes.
+(224,951 / 225,000 bytes). The default Wasm binary is 1,608,759 / 1,610,000 bytes.
 Structural UI work therefore needs a measured bundle plan (for example,
 separately loaded optional controls) before adoption. Do not silently raise
 limits or delete correctness checks to fit a new feature.
@@ -181,7 +229,8 @@ limits or delete correctness checks to fit a new feature.
 
 1. Checked values and boundary/property tests: implemented.
 2. Closed structural grammar and fingerprint parity: implemented privately;
-   exact element-property contracts and public structural profile still pending.
+   required integer element properties are opt-in and tested. A complete public
+   structural profile and cross-child numbering laws are still pending.
 3. Guarded block-kind replacement, exact selection relocation and inverse replay.
 4. Heading action/state, durable recipes, Wasm descriptor and browser projection.
 5. Heading toolbar and Enter/delete/clipboard behavior across three engines.
@@ -216,6 +265,12 @@ From the repository root with the pinned Rust/Node toolchains available:
 `npm run verify:release` is the wider 17-gate checkpoint, including Wasm-target
 tests, packed-consumer reproducibility, unchanged ABI, and browser/demo matrices.
 
-The next implementation slice is closed, typed element properties, followed by
-guarded block-kind replacement and selection/history laws. This checkpoint
+For the new property slice, use
+`cargo test -p breditor-core --lib --features experimental-structural-properties schema::compiler --locked`.
+Prefix it with `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261002` to run the grammar
+and integer-admission property checks at the larger fixed-seed count. Run the same schema
+filter with `--no-default-features` to check the shipped configuration separately.
+
+The next implementation slice is guarded block-kind replacement and exact
+selection/history laws, with list-wide numbering validation before lists. This checkpoint
 does not resolve the independent WebKit numerical fault.

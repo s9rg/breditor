@@ -1,8 +1,10 @@
 # Breditor `0.3.0` scope
 
 October 2 structural follow-up: checked Rust heading/list values and the private
-bounded child-grammar compiler/validator are implemented. Closed element-property
-contracts, public structural schema admission and editor actions are not.
+bounded child-grammar compiler/validator are implemented. Closed required-integer
+element contracts are implemented under the opt-in Rust feature
+`experimental-structural-properties`; the default Wasm package excludes them.
+Public structural schema admission and editor actions are not implemented.
 The existing paragraph-only limitations below still apply.
 See [Structural blocks](STRUCTURAL_BLOCKS.md) for the separate staged contract.
 

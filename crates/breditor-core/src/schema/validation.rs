@@ -24,6 +24,10 @@ use crate::{
 
 use super::child_grammar::{ChildConstraint, ChildKind, ChildSequence};
 
+#[path = "element_property_validation.rs"]
+#[cfg(feature = "experimental-structural-properties")]
+mod element_properties;
+
 /// Maximum issues retained by one validation report, including truncation metadata.
 pub const MAX_VALIDATION_REPORT_ISSUES: usize = 1_024;
 const MAX_DETAILED_VALIDATION_ISSUES: usize = MAX_VALIDATION_REPORT_ISSUES - 1;
@@ -61,6 +65,14 @@ pub enum ValidationCode {
     DuplicateFormat,
     /// The current schema item does not allow supplied properties.
     PropertiesNotAllowed,
+    /// An element property is absent from its closed contract.
+    UnknownElementProperty,
+    /// The required element property is absent; no default is inferred.
+    MissingRequiredElementProperty,
+    /// An element property uses the wrong value variant.
+    ElementPropertyTypeMismatch,
+    /// An element integer property falls outside its inclusive range.
+    ElementPropertyIntegerOutOfRange,
     /// A property-bearing format contains a property absent from its contract.
     UnknownFormatProperty,
     /// A required property-bearing format property is absent.
@@ -99,6 +111,12 @@ impl ValidationCode {
             Self::NonCanonicalFormatOrder => "document.noncanonical_format_order",
             Self::DuplicateFormat => "document.duplicate_format",
             Self::PropertiesNotAllowed => "document.properties_not_allowed",
+            Self::UnknownElementProperty => "document.unknown_element_property",
+            Self::MissingRequiredElementProperty => "document.missing_required_element_property",
+            Self::ElementPropertyTypeMismatch => "document.element_property_type_mismatch",
+            Self::ElementPropertyIntegerOutOfRange => {
+                "document.element_property_integer_out_of_range"
+            }
             Self::UnknownFormatProperty => "document.unknown_format_property",
             Self::MissingRequiredFormatProperty => "document.missing_required_format_property",
             Self::FormatPropertyTypeMismatch => "document.format_property_type_mismatch",
@@ -236,6 +254,22 @@ impl LimitKind {
 /// Stable structured data carried by a [`ValidationIssue`].
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum ValidationDetail {
+    /// Expected and actual variants for a typed element property.
+    ElementPropertyType {
+        /// Variant required by the compiled contract.
+        expected: PropertyValueKind,
+        /// Variant supplied by the document.
+        actual: PropertyValueKind,
+    },
+    /// Inclusive element integer bounds, without retaining the rejected value.
+    ElementPropertyIntegerRange {
+        /// Inclusive lower bound.
+        minimum: PropertyInteger,
+        /// Inclusive upper bound.
+        maximum: PropertyInteger,
+        /// Bound crossed by the payload.
+        violation: IntegerRangeViolation,
+    },
     /// No additional machine data is needed.
     None,
     /// Actual and configured resource sizes.
@@ -640,6 +674,8 @@ impl<'a> ValidationState<'a> {
         if self.report_is_saturated() {
             return;
         }
+        #[cfg(feature = "experimental-structural-properties")]
+        self.validate_element_property_contract(element, path);
         if !element.properties().is_empty()
             && !self.schema.element_allows_properties(element.kind())
         {

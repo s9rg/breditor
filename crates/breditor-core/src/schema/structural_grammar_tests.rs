@@ -44,7 +44,7 @@ fn group(kinds: &[&str], minimum: u32, maximum: Option<u32>) -> ChildGroup {
     }
 }
 
-fn structural_spec() -> SchemaSpec {
+pub(super) fn structural_spec() -> SchemaSpec {
     let mut spec = base_spec();
     spec.id = SchemaId::new(
         QualifiedName::from_known_static("example/structural-shape-test"),
@@ -73,6 +73,8 @@ fn structural_spec() -> SchemaSpec {
             owner: DeclarationOwner::Breditor,
             revision: PersistedTypeRevision::one(),
             allows_properties: false,
+            #[cfg(feature = "experimental-structural-properties")]
+            property_contract: None,
             allows_entity_id: false,
             children,
         });
@@ -236,6 +238,8 @@ fn compiler_accepts_exact_group_and_alternative_limits() -> TestResult {
             owner: DeclarationOwner::Profile,
             revision: PersistedTypeRevision::one(),
             allows_properties: false,
+            #[cfg(feature = "experimental-structural-properties")]
+            property_contract: None,
             allows_entity_id: false,
             children: ChildConstraint::repeated(ChildKind::Text, 0, None),
         });

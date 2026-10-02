@@ -211,6 +211,14 @@ impl CompiledSchema {
             .is_some_and(super::compiler::ElementDefinition::allows_properties)
     }
 
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(super) fn element_property_contract(
+        &self,
+        kind: &QualifiedName,
+    ) -> Option<&super::element_property_contract::RequiredIntegerProperty> {
+        self.definition.element(kind)?.property_contract()
+    }
+
     pub(crate) fn element_allows_entity_id(&self, kind: &QualifiedName) -> bool {
         self.definition
             .element(kind)

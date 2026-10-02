@@ -7,6 +7,8 @@ mod compilation_error;
 mod compiled_schema;
 mod compiler;
 mod durable_binding;
+#[cfg(feature = "experimental-structural-properties")]
+mod element_property_contract;
 mod fingerprint;
 mod fingerprint_parse_error;
 mod limits;

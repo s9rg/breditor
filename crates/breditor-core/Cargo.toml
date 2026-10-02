@@ -8,6 +8,11 @@ authors.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+# Internal structural-schema work only. The default editor/Wasm package stays
+# paragraph-only until the complete structural editing contract is qualified.
+experimental-structural-properties = []
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

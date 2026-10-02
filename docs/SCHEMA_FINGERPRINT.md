@@ -48,6 +48,11 @@ Existing base/text/typed-format schema fingerprints are unchanged.
 Compiler-contract version 3 is a fingerprint-encoding discriminator, not a new
 document wire version or permission to admit structural documents publicly.
 
+The optional `experimental-structural-properties` Rust feature adds version 4
+for closed required-integer element contracts. It likewise adds no public
+structural profile and no document wire version. Without any element contract,
+the exact version 1–3 fingerprints remain unchanged even with this feature on.
+
 ## Canonical byte encoding
 
 The SHA-256 input starts with the exact ASCII/UTF-8 domain bytes
@@ -61,7 +66,8 @@ tag.
    child constraints are single-kind repeats and all formats are property-free;
    `2` when those child constraints remain single-kind repeats but any format
    has a typed property contract; `3` when any element uses multiple alternatives
-   or ordered child groups, whether or not typed format properties are present.
+   or ordered child groups, whether or not typed format properties are present;
+   `4` takes precedence when any element has a required-integer property contract.
 4. `0x10`: qualified schema name.
 5. `0x11`: nonzero `SchemaVersion` as a big-endian `u32`.
 6. `0x12`: qualified root element kind.
@@ -113,6 +119,25 @@ The private `example/structural-shape-test@1` fixture in
 Its independent encoding was checked with Node big-endian Buffer writes and
 SHA-256. This is a shape-only test vector, **not** an admitted editor profile:
 heading rank and ordered-list properties are intentionally absent.
+
+In version 4 only, immediately after **every** element's `0x35` entity-ID field,
+insert `0x52` plus a Boolean indicating whether it has an integer contract.
+When true, append `0x53` plus the qualified property name, `0x54` plus the
+inclusive minimum as a signed big-endian `i64`, and `0x55` plus the inclusive
+maximum as a signed big-endian `i64`. Version 4 defines this contract as exactly
+one required integer and no other properties; it does not imply defaults or
+coercion. Bounds must be JavaScript-safe and ordered, and the existing `0x34`
+property permission must be true. Child and inline-format encoding is otherwise
+unchanged. Version 1–3 elements receive **no** `0x52` marker.
+
+The separate `example/structural-properties-test@1` fixture has a 798-byte
+canonical encoding and fingerprint
+`sha256:cbd1ac563a51c1f924f525c049e6e0967f0d61a788c6437c062bbd3926bf589c`,
+independently checked with Node big-endian Buffer writes and SHA-256. It adds
+required `breditor/level` (`1..=6`) and `breditor/start` (`1..=2147483647`) to the
+heading and ordered-list fixtures. These are internal test fixtures, not
+production schema selectors. A future richer element contract needs its own
+explicitly encoded semantics rather than reinterpretation of these bytes.
 
 Each inline-format entry contains, in order:
 
