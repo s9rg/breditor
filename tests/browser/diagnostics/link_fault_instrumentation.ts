@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { parseSync, type ESTree } from "rolldown/utils";
 
-const modules = ["browser_editor", "wasm_command_adapter", "wasm_projection_adapter", "wasm_selection_adapter", "wasm_action_state_adapter"];
+const modules = ["browser_editor", "browser_event_router", "command_queue", "wasm_command_adapter", "wasm_projection_adapter", "wasm_selection_adapter", "wasm_action_state_adapter"];
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
 export function instrumentLinkFaults(code: string, id: string, recorder: string) {
@@ -14,6 +14,17 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string)
   const sites: { stage: string; line: number }[] = [];
   function visit(node: ESTree.Node, parent?: ESTree.Node, functionName?: string): void {
     if (node.type === "FunctionDeclaration") functionName = node.id?.name;
+    if (node.type === "CallExpression" && node.callee.type === "MemberExpression" &&
+        node.callee.property.type === "PrivateIdentifier" &&
+        ((module === "command_queue" && node.callee.property.name === "fail") ||
+         (module === "browser_event_router" && node.callee.property.name === "fault"))) {
+      const line = code.slice(0, node.start).split("\n").length;
+      const stage = `${module}:failure:${line}`;
+      sites.push({ stage, line });
+      edits.push({ start: node.start, end: node.end,
+        text: `__breditorLinkThrow(${JSON.stringify(stage)}, (${code.slice(node.start, node.end)}))` });
+      return;
+    }
     if (((module === "wasm_selection_adapter" && functionName === "isU32") ||
          (module === "wasm_projection_adapter" && functionName === "isIndex")) &&
         node.type === "ReturnStatement" && node.argument) {

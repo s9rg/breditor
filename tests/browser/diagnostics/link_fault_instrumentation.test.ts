@@ -3,6 +3,18 @@ import { instrumentLinkFaults } from "./link_fault_instrumentation";
 import { createLinkFaultRecorder } from "./link_fault_recorder";
 
 const id = "/repo/packages/breditor-browser/dist/wasm_command_adapter.js";
+it.each(["command_queue", "browser_event_router"])("captures %s fail-stop calls without inspecting arguments", (module) => {
+  const method = module === "command_queue" ? "fail" : "fault";
+  const output = instrumentLinkFaults(`class Owner { #${method}(value) { return value; } run(value) { return this.#${method}(value); } }`,
+    id.replace("wasm_command_adapter", module), "/recorder.js")!;
+  const run = new Function("__breditorLinkThrow", "value",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn new Owner().run(value);");
+  const recorder = createLinkFaultRecorder();
+  const value = new Proxy({}, { get() { throw new Error("do not inspect"); } });
+  expect(run(recorder.record, value)).toBe(value);
+  expect(recorder.snapshot().events).toEqual([`${module}:failure:1`]);
+});
+
 it.each(["selection_adapter", "projection_adapter"])("captures original numeric rejection in %s", (module) => {
   const name = module === "selection_adapter" ? "isU32" : "isIndex";
   const output = instrumentLinkFaults(`function ${name}(value) { return check(value); }`,

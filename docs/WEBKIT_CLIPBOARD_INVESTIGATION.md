@@ -2224,3 +2224,48 @@ Final diagnostic JS SHA-256:
 `3f0428f4cd62e4dd6758e544e82dd868e85210450edd2e94ba7d2295072467cb`.
 The full unit count is 1,293 (1,278 workspace tests plus fifteen diagnostic
 tests). These tooling checks do not supersede any sustained-stress failure.
+
+## 2026-10-02: durable revision export rejection
+
+Two fresh normally optimized WebKit diagnostic batches reproduced an export
+failure in the formatted clipboard/Link lifecycle: case 3 of the first batch
+and case 20 of the second. Both rejected the original `isPositiveU32` upper
+bound, `value <= 4_294_967_295`, inside `readDurableFormatBinding`. Subsequent
+snapshots recorded revisions 7 and 1 respectively, with matching IEEE-754 bits.
+These observations locate the first rejecting expression; they do not capture
+the engine's operand representation at the instruction that compared it.
+
+The durable-contract reader now uses the descriptor reader's exact unsigned
+round-trip predicate for positive-u32 versions/revisions. Type guarding stays
+first; fractions, overflow, zero revisions and foreign objects still reject.
+There is no reread, validation bypass, queue restart, Wasm ABI change or Rust
+change. Sixty boundary cases cover both call sites, including the signed/u32
+boundary and the maximum accepted value. The candidate passed forty diagnostic
+and forty ordinary uninstrumented WebKit repetitions, each with sixty complete
+clipboard/Link/history cycles. Normal optimization, zero retries and existing
+assertions/timeouts were retained.
+
+The formatted workflow now attaches the same bounded recorder and source-map
+evidence as the Link-history workflow. Test-only instrumentation also captures
+queue and router fail-stop sites; it never reads exception payloads or document
+content. This instrumentation does not ship in the browser package.
+
+This is a targeted mitigation, **not closure of the earlier `queueUncertain`
+fault**. Neither reproduction faulted the owner, and a shared cause has not
+been demonstrated. Preserve the original queue-failure trace and do not treat
+green repetitions as an engine repair or native Safari/iOS qualification.
+Commands, trace hashes and verification results are in the
+[durable-u32 evidence record](qualification/2026-10-02-webkit-durable-u32.json).
+
+The subsequent ordinary browser matrix was **161 passed / 1 failed**, not green.
+The WebKit selection-restore test rejected bootstrap 9 with
+`engine_bootstrap.invalid_profile_descriptor`; the clipboard/Link cases passed.
+That trace is preserved independently in the evidence record. No exact
+descriptor rejection branch was captured in the ordinary build, and the
+export mitigation must not be described as fixing this startup failure.
+
+The maintained production-minified startup diagnostic then passed twenty
+batches (200,000 restores / 600,000 selection reads) with normal optimization
+and zero retries. It captured no descriptor rejection. That diagnostic has a
+different code shape from the failing development-module matrix and does not
+supersede it. The exact startup branch remains unidentified.

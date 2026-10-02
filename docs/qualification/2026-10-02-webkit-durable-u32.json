@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "c5afccd",
+  "status": "targeted-export-mitigation-passes-stress-broader-webkit-still-fails",
+  "scope": "Formatted clipboard / Link lifecycle document-export rejection; not a claim to repair all WebKit faults",
+  "runtimeChange": {
+    "file": "packages/breditor-browser/src/wasm_document_json.ts",
+    "function": "isPositiveU32",
+    "before": "typeof value === \"number\" && Number.isInteger(value) && value >= 1 && value <= 4294967295",
+    "after": "typeof value === \"number\" && value > 0 && value === (value >>> 0)",
+    "contract": "Exact primitive positive u32; no coercion of foreign values, truncation acceptance, retries, or relaxed validation",
+    "candidateEmittedModuleSha256": "36bfda84f4cdd78eac7ac6bbfb15217691cf9f765d9eedf14b3cfb10e72c15e1",
+    "unchangedWasmSha256": "2884d556ff22073e83031ed3c256dc6c08643bc781687f9df883961f49e6d406"
+  },
+  "reproductions": [
+    {
+      "command": "playwright test -c playwright.link-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=40 --workers=1 --output=target/playwright-link-investigation-20261002",
+      "log": "/tmp/breditor-link-investigation-20261002.log",
+      "passed": 2,
+      "failed": 1,
+      "notRun": 37,
+      "cycle": 2,
+      "stage": "copy/cut",
+      "ownerPhase": "live",
+      "error": "content_export.invalid_wasm_view",
+      "firstRejectedOperand": "wasm_document_json:numeric:562:operand:3",
+      "expression": "value <= 4_294_967_295",
+      "subsequentlyCapturedValue": { "decimal": "7", "bits": "401c000000000000" },
+      "trace": "target/playwright-link-investigation-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat2/trace.zip",
+      "traceSha256": "ae7fa68bdc650f80a98a552a3f211299bc46f6acb1e7d137257ca74300e38182"
+    },
+    {
+      "command": "playwright test -c playwright.link-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=40 --workers=1 --output=target/playwright-link-baseline-b-20261002",
+      "log": "/tmp/breditor-link-baseline-b-20261002.log",
+      "passed": 19,
+      "failed": 1,
+      "notRun": 20,
+      "cycle": 3,
+      "stage": "history after cut/caret",
+      "ownerPhase": "live",
+      "error": "content_export.invalid_wasm_view",
+      "firstRejectedOperand": "wasm_document_json:numeric:562:operand:3",
+      "expression": "value <= 4_294_967_295",
+      "subsequentlyCapturedValue": { "decimal": "1", "bits": "3ff0000000000000" },
+      "originalModuleSha256": "40c13a84b44897a6c6e35c899ae8ea9c102e05bddf7de1cfaa99a3505be0ccbc",
+      "trace": "target/playwright-link-baseline-b-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat19/trace.zip",
+      "traceSha256": "90130b0cc278e5ac5e2da5644a7ae9f57e58c5407f3460d76a37dbeedcab7221",
+      "attachments": ["link-faults.json", "link-diagnostic-map.json"],
+      "note": "Added test-only router/queue instrumentation; runtime emitted source still unchanged. All nine instrumented modules confirmed by attached manifest."
+    }
+  ],
+  "verification": {
+    "demoMatrix": { "passed": 39, "failed": 0, "retries": 0, "log": "/tmp/breditor-link-u32-candidate-demo-20261002.log" },
+    "startupDiagnosticFollowup": {
+      "command": "vite build -c vite.startup-diagnostics.config.ts; playwright test -c playwright.startup-diagnostics.config.ts --project=webkit --output=target/playwright-startup-u32-investigation-20261002",
+      "passed": 20, "failed": 0, "retries": 0, "restores": 200000, "selectionReads": 600000,
+      "log": "/tmp/breditor-startup-u32-investigation-20261002.log",
+      "bundle": "target/startup-diagnostics/assets/index-Q0kv8Enb.js",
+      "bundleSha256": "ef526527143f22f8c75d0ff3098f6468c65c53b99aba04a676b5707d8e4872cc",
+      "note": "Maintained normally optimized production-minified diagnostic build; the failing ordinary matrix uses development modules. No descriptor rejection captured. This pass does not override the failed matrix."
+    },
+    "ordinaryBrowserMatrix": {
+      "passed": 161, "failed": 1, "retries": 0,
+      "log": "/tmp/breditor-link-u32-candidate-matrix-20261002.log",
+      "failure": "WebKit selection-restore: bootstrap 9 engine_bootstrap.invalid_profile_descriptor",
+      "trace": "target/playwright-link-u32-candidate-matrix-20261002/selection-restore-restored-6f93c--zero-offsets-and-direction-webkit/trace.zip",
+      "traceSha256": "94ec075ec3a4a5f661fa15f22ef242c0a56cbc0c9e612967a994557917e9e622",
+      "note": "The formatted clipboard and Link cases passed. This descriptor-startup failure prevents calling the overall WebKit issue fixed."
+    },
+    "diagnosticWebKit": { "passed": 40, "failed": 0, "retries": 0, "cyclesPerCase": 60, "log": "/tmp/breditor-link-u32-candidate-diagnostic-20261002.log" },
+    "ordinaryWebKit": { "passed": 40, "failed": 0, "retries": 0, "cyclesPerCase": 60, "log": "/tmp/breditor-link-u32-candidate-ordinary-20261002.log", "diagnosticTransforms": false },
+    "boundaryTestsBaseline": { "passed": 60, "log": "/tmp/breditor-durable-u32-baseline-unit-20261002.log" },
+    "boundaryTestsCandidate": { "passed": 60, "log": "/tmp/breditor-durable-u32-candidate-boundary-20261002.log", "note": "Final table wraps each input in a record so Vitest passes the empty array as a value, not a zero-argument row." },
+    "browserPackageUnitTestsCandidate": { "passed": 1438, "log": "/tmp/breditor-durable-u32-candidate-unit-20261002.log" },
+    "diagnosticUnitTests": { "passed": 172, "log": "/tmp/breditor-link-diagnostics-unit-20261002.log" },
+    "types": { "passed": true, "log": "/tmp/breditor-link-types-20261002.log" },
+    "sizeBudgets": { "passed": true, "log": "/tmp/breditor-link-candidate-size-20261002.log", "demoJsGzipBytes": 224956, "demoJsGzipLimit": 225000 }
+  },
+  "logSha256": {
+    "/tmp/breditor-link-u32-candidate-diagnostic-20261002.log": "b3500b6c3289b81fc7c47ee0decd720f053dfc90c089513e1599ca9d20cd215e",
+    "/tmp/breditor-link-u32-candidate-ordinary-20261002.log": "ad46337b0b6e869e0221884513eef5c8844e86a469392380282d4b1033a89b54",
+    "/tmp/breditor-link-u32-candidate-matrix-20261002.log": "3b73599475d78a54caab24d17b7489eaa9c695ac59fef7d8819d65c6fcf1afc4",
+    "/tmp/breditor-startup-u32-investigation-20261002.log": "26a0c09c93807ed4fed4dadde123c728b5b4f9f273a8218f152f82f3e0694798"
+  },
+  "limitations": [
+    "The full seventeen-gate release verifier was not rerun. The failed ordinary browser matrix remains a release blocker regardless of later diagnostic or demo passes.",
+    "The recorder preserves the original false operand result, but number bits and decimal are subsequent observations, not a CPU-level capture at comparison time.",
+    "The export failures are not the previously saved cycle-4 Link-apply queueUncertain failure (trace SHA-256 eb5ac98cfcc40be66acde5199033427f869c6cb781729981edea42bdfbe5b25e); no shared cause has been proved.",
+    "Instrumentation may alter optimization. Diagnostic passes cannot substitute for ordinary uninstrumented browser qualification.",
+    "No WebKit engine root cause, native Safari/iOS qualification, or general numerical-runtime repair is claimed."
+  ]
+}

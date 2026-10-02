@@ -20,7 +20,7 @@ const plugin: Plugin = {
   configureServer(server) {
     server.middlewares.use((request, response, next) => {
       if (request.method !== "GET" || request.url !== "/link-diagnostic-map.json") return next();
-      response.writeHead(manifest.size === 7 ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      response.writeHead(manifest.size === 9 ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
       response.end(JSON.stringify({ modules: Object.fromEntries(manifest) }));
     });
   },

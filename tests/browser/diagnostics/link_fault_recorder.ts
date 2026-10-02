@@ -7,7 +7,7 @@ export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoin
   let omitted = 0;
   function record<T>(stage: string, original: T): T {
     try {
-      if (/^(wasm_(command|projection|selection|action_state)_adapter:(throw|failure)|browser_editor:(throw|failure)|wasm_(document_json|session_checkpoint):(result|failure)):[0-9]+$/.test(stage)) {
+      if (/^(wasm_(command|projection|selection|action_state)_adapter:(throw|failure)|(browser_editor|browser_event_router|command_queue):(throw|failure)|wasm_(document_json|session_checkpoint):(result|failure)):[0-9]+$/.test(stage)) {
         if (events.length < 32) {
           events.push(stage);
           emit?.(stage);

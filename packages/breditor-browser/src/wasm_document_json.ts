@@ -848,10 +848,11 @@ function isQualifiedName(value: unknown): value is string {
 }
 
 function isPositiveU32(value: unknown): value is number {
-  return typeof value === "number" &&
-    Number.isInteger(value) &&
-    value >= 1 &&
-    value <= 4_294_967_295;
+  // Match the descriptor's exact unsigned round trip. The explicit type guard
+  // prevents foreign coercion; equality rejects fractions and modulo wrapping.
+  // The separate floating upper-bound path rejected a captured revision 7 in
+  // WebKit. Keep this candidate subject to the Link lifecycle stress oracle.
+  return typeof value === "number" && value > 0 && value === (value >>> 0);
 }
 
 function isU32(value: unknown): value is number {

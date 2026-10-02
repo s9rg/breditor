@@ -1,4 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { attachLinkFaults } from "./diagnostics/attach_link_faults";
+
+test.afterEach(async ({ page }, testInfo) => {
+  await attachLinkFaults(page, testInfo);
+});
 
 test("formatted clipboard, Link history, and immediate caret moves preserve one warm owner", async ({ page }) => {
   await page.goto("/");
