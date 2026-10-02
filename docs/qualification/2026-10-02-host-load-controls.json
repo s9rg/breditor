@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "13b3bc8",
+  "status": "cross-browser-controls-blocked-by-severe-host-load",
+  "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --trace=on --max-failures=3 --output=target/playwright-required-impact-controls-20261002",
+  "results": {
+    "passed": 0, "failed": 3, "notRun": 3, "retries": 0,
+    "additionalRunnerErrors": 1,
+    "failures": ["Chromium formatted clipboard: test/evaluation timeout", "Chromium Link history: test/evaluation timeout", "Firefox formatted clipboard: startup wait timeout"],
+    "webkitRan": false,
+    "log": "/tmp/breditor-required-impact-controls-20261002.log",
+    "logSha256": "f31a97f5ed30a9754469f1a9dd8dc242533d0d76faea9967ff1ceede73e6e165",
+    "runnerExitCode": 130,
+    "note": "SIGINT sent only to the verified Breditor test runner after host load was confirmed. Its final report listed three failures and three unrun cases. This interrupted run is not qualification evidence of a product fix."
+  },
+  "hostObservations": {
+    "logicalCpus": 10,
+    "loadAverages": [472.86, 483.22, 295.84],
+    "laterRunnableProcesses": 523,
+    "runnableWithCoreSimulatorExecutablePaths": 264,
+    "bootedIosSimulators": 4,
+    "memoryPressureReportedFreePercent": 43,
+    "interpretation": "The host has hundreds of runnable processes relative to ten logical CPUs, including many simulator processes. This is a strong confounder for cross-browser deadline failures. It does not explain the previously captured required-property or semantic-impact rejection, and simulator shutdown has not yet been tested as an intervention."
+  },
+  "traces": [
+    { "path": "target/playwright-required-impact-controls-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-chromium/trace.zip", "sha256": "fd528fd1dc487d57e453871cae7b09d6e259a02910beddd9619450503f85d90e" },
+    { "path": "target/playwright-required-impact-controls-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-chromium/trace.zip", "sha256": "d477e95aa9218e15de503ed14c978e570ac33baf0d2a449472e15905339903da" },
+    { "path": "target/playwright-required-impact-controls-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-firefox/trace.zip", "sha256": "e13a26d0ccd7bc31c8bbe86f1b98da7bbee7f676a98663477dcffd8f10b79aa7" }
+  ],
+  "capture": {
+    "allThreeFailureRecordersEmpty": true,
+    "chromiumLinkTiming": {
+      "terminal": "running", "scheduled": 129, "completed": 128, "timerPending": true,
+      "timerMs": 1957, "betweenYieldMs": 12691.5,
+      "maxTimerMs": 599.7999999523163, "maxBetweenYieldMs": 3392.7999999523163,
+      "slowEvents": 6, "omitted": 0,
+      "visibilityAtSlowEvents": "visible", "focusedAtSlowEvents": true
+    },
+    "interpretation": "Both timer waits and between-yield spans were slow in Chromium while visible and focused. Between-yield time includes scheduling gaps and is not a direct measure of Rust execution. No projection/queue rejection was recorded."
+  },
+  "actions": [
+    "Stopped this task's test runner, preserved traces, and stopped further browser stress.",
+    "Requested permission before shutting down four booted simulators because three belong to another project. No simulator or unrelated application was stopped.",
+    "No shipping code, test timeout, retry policy, or system setting changed."
+  ]
+}

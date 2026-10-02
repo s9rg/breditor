@@ -2637,3 +2637,23 @@ included diagnostic reads and context teardown, not just editor execution.
 A read-only host snapshot showed substantial swap use, but did not establish
 the cause. Further stress was stopped; no apps were closed, system settings
 changed, or deadlines relaxed. Final cross-browser controls remain pending.
+
+### Cross-browser timeouts coincide with severe host load
+
+The next six-case control run timed out in Chromium (both selected cases) and
+Firefox (startup), before reaching WebKit. It reported **0 passed / 3 failed /
+3 unrun**, plus a runner error; the verified test runner was interrupted after
+the host check. All three saved failure recorders were empty. Chromium's Link
+timing capture remained incomplete at 128/300 yields, with a pending timer;
+recorded slow spans included a roughly 600 ms timer and 3.39-second between-yield
+interval while the page was visible and focused.
+
+Read-only host checks found ten logical CPUs, a one-minute load average of
+472.86, and later 523 runnable processes, 264 with CoreSimulator executable
+paths. Four iOS simulators were booted. These observations make host contention
+a substantial timing confounder; they do not explain the earlier projection
+rejections or establish that simulator shutdown will resolve them. Permission
+was requested before shutting down simulators belonging to another project.
+No simulator or unrelated app was stopped and no system setting changed.
+Exact results and trace hashes are in the
+[host-load control record](qualification/2026-10-02-host-load-controls.json).
