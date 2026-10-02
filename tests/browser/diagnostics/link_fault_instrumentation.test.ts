@@ -30,16 +30,38 @@ it("captures the child result only at the already-taken rejection branch", () =>
   expect(recorder.snapshot().children[0]).toMatchObject({ okField: "accessor", ok: "unknown" });
 });
 
-it("restores emitted projection source exactly after removing child-result capture", () => {
+it.each([false, true])("restores emitted projection source after child capture (impact capture=%s)", projectionImpact => {
   const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_projection_adapter.js", import.meta.url), "utf8");
   const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),
-    "/recorder.js", { numericPredicates: false, projectionChild: true })!;
+    "/recorder.js", { numericPredicates: false, projectionChild: true, projectionImpact })!;
   const body = output.code.split("\n").slice(1).join("\n");
   expect(body.match(/__breditorProjectionChild\(/g)).toHaveLength(1);
+  expect(output.sites.filter(site => site.stage.includes(":impact:"))).toHaveLength(projectionImpact ? 8 : 0);
   expect(body.replace(/__breditorProjectionChild\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\), projectionResult\)/g, "$1")
+    .replace(/__breditorLinkThrow\("wasm_projection_adapter:impact:[0-9]+", \(null\)\)/g, "null")
     .replace(/__breditorLinkThrow\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\)\)/g, "$1")
     .replace(/__breditorLinkThrow\("wasm_projection_adapter:throw:[0-9]+", \((new TypeError\([^)]*\))\)\)/g, "$1"))
     .toBe(source);
+});
+
+it("observes impact null returns without repeating predicates or invoking success observers", () => {
+  const source = `function readSemanticImpact(value) { if (value === null) return null; return check(value) ? value : null; }`;
+  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),
+    "/recorder.js", { projectionImpact: true })!;
+  const run = new Function("__breditorLinkThrow", "check", "value",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn readSemanticImpact(value);");
+  const recorder = createLinkFaultRecorder();
+  const check = vi.fn(() => true);
+  const value = {};
+  expect(run(recorder.record, check, value)).toBe(value);
+  expect(recorder.snapshot().events).toEqual([]);
+  expect(check).toHaveBeenCalledOnce();
+  check.mockReturnValue(false);
+  expect(run(recorder.record, check, value)).toBeNull();
+  expect(check).toHaveBeenCalledTimes(2);
+  expect(run(recorder.record, check, null)).toBeNull();
+  expect(check).toHaveBeenCalledTimes(2);
+  expect(recorder.snapshot().events).toHaveLength(2);
 });
 
 it("bounds child observations and preserves the rejected result if emission throws", () => {

@@ -2587,3 +2587,53 @@ the stalled cases, so their cause remains unestablished. No timeout was relaxed.
 A final separate formatted-clipboard control passed in all three engines
 (3 cases), with complete maps for all 63 validator rejection sites and empty
 failure recorders. This does not supersede the preceding faults or stalls.
+
+### First exact validator rejection: trailing required property
+
+The next validator-instrumented batch was **59 passed / 1 failed**. Repeat 7,
+cycle 4 failed during Link Redo. The first marker was `projection:reject:405`,
+the null return in `validateFormatDetails`' trailing required-property loop.
+It propagated through `projection:reject:295`, `projection:reject:70`, and the
+previously observed child rejection before faulting the owner. The captured
+child again had `projection.invalid_shape`. This instance is Link Redo, not
+Redo cut; the evidence does not prove that both earlier Redo-cut failures came
+from this exact check.
+
+The next diagnostic snapshots the validator's contract position and the bounded
+shapes of contract, supplied and accepted properties only after that rejection.
+It retains only fixed reference property names, presence tags, value types and
+numeric metadata, never values or document text. Getters are not invoked.
+The 228 diagnostic unit tests and browser type checking pass, including exact
+source restoration and preservation of the original rejection. No shipping
+validation rule changed. Details are in the
+[required-property evidence record](qualification/2026-10-02-webkit-required-property.json).
+
+A deterministic projection-adapter regression now checks all 64 combinations
+of required/optional declarations and supplied property subsets, including
+trailing omissions and optional gaps. All pass, with accepted properties
+preserved and exactly-once view cleanup; the adapter suite passes 42 tests and
+the browser package type-checks. This does not reproduce the intermittent
+browser fault. The first state-capture follow-up also passed 60 WebKit cases;
+the prior rejection remains open, and observer effects remain possible.
+
+The next mixed formatted-clipboard/Link-history batch was **39 passed / 1
+failed**, exposing a separate boundary: Link Apply failed at cycle 6, with
+`wasm_projection_adapter:failure:474` as the first marker. `readSemanticImpact`
+had returned null, before `takeProjection` or child construction. No required-
+property snapshot was produced, so this instance must not be attributed to
+the trailing property check. The projection observer now also marks the eight
+existing null-return sites inside `readSemanticImpact`, including conditional
+null returns, without wrapping successful predicates or repeating getters.
+Source restoration and single-evaluation tests pass; the diagnostic suite now
+passes 230 tests and browser type checking passes.
+
+The final combined-observer run was **33 passed / 3 timed out / 4 unrun**, with
+an additional teardown/runner error. It stopped at the failure limit. All
+three failed traces retained complete nine-module maps and empty failure
+recorders. In the formatted case, all 60 cycles completed in about 16 seconds,
+but page creation and navigation had already consumed about 12 seconds;
+the whole test exceeded its unchanged 30-second deadline. Other delays
+included diagnostic reads and context teardown, not just editor execution.
+A read-only host snapshot showed substantial swap use, but did not establish
+the cause. Further stress was stopped; no apps were closed, system settings
+changed, or deadlines relaxed. Final cross-browser controls remain pending.

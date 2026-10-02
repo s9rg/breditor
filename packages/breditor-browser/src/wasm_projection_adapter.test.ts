@@ -610,6 +610,38 @@ describe("Wasm semantic projection adapter", () => {
     expect(equivalent.freeCalls).toBe(1);
   });
 
+  it("matches all required/optional and supplied-property subsets, including trailing omissions", () => {
+    const valid = typedProperties();
+    // Exhaust all 64 combinations, including no properties and optional gaps.
+    // A tail omission must reject only when the omitted contract is required.
+    for (let required = 0; required < 8; required++) {
+      const descriptor = ownedProfileDescriptor([{
+        ...TYPED_FORMAT,
+        properties: TYPED_FORMAT.properties.map((property, index) => ({
+          ...property,
+          presence: (required & (1 << index)) !== 0 ? "required" as const : "optional" as const,
+        })),
+      }]);
+      for (let supplied = 0; supplied < 8; supplied++) {
+        const properties = valid.filter((_property, index) => (supplied & (1 << index)) !== 0);
+        const view = new FakeProjectionView("0", [[{
+          text: "typed", strong: false,
+          formatDetails: [{ kind: TYPED_FORMAT.kind, properties }],
+        }]], descriptor.schema);
+        const result = consumeSemanticProjectionRaw(view, TEST_PROFILE_GENERATION, descriptor);
+        const context = `required=${required} supplied=${supplied}`;
+        expect(result.ok, context).toBe((supplied & required) === required);
+        expect(view.freeCalls, context).toBe(1);
+        if (result.ok) {
+          expect(result.value.paragraphs[0]?.runs[0]?.formatDetails[0]?.properties.map(property => property.name), context)
+            .toEqual(properties.map(property => property.name));
+        } else {
+          expect(result.error.code, context).toBe("projection.invalid_shape");
+        }
+      }
+    }
+  });
+
   it("rejects noncanonical, uncontracted, wrong-domain, and unsafe property values", () => {
     const descriptor = ownedProfileDescriptor([TYPED_FORMAT]);
     const valid = typedProperties();

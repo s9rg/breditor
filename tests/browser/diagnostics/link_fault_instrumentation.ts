@@ -5,7 +5,7 @@ const modules = ["browser_editor", "browser_event_router", "command_queue", "was
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
 export function instrumentLinkFaults(code: string, id: string, recorder: string,
-  options: { numericPredicates?: boolean; projectionChild?: boolean } = {}) {
+  options: { numericPredicates?: boolean; projectionChild?: boolean; projectionImpact?: boolean } = {}) {
   const module = modules.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
   if (module === undefined) return null;
   if (code.includes("__breditorLinkThrow")) throw new Error("Link diagnostic already installed");
@@ -14,8 +14,20 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
   const edits: { start: number; end: number; text: string }[] = [];
   const sites: { stage: string; line: number }[] = [];
   let childSites = 0;
+  let impactSites = 0;
   function visit(node: ESTree.Node, parent?: ESTree.Node, functionName?: string): void {
     if (node.type === "FunctionDeclaration") functionName = node.id?.name;
+    if (options.projectionImpact && module === "wasm_projection_adapter" && functionName === "readSemanticImpact" &&
+        node.type === "Literal" && node.value === null &&
+        (parent?.type === "ReturnStatement" || parent?.type === "ConditionalExpression")) {
+      const line = code.slice(0, node.start).split("\n").length;
+      const stage = `${module}:impact:${line}`;
+      impactSites++;
+      sites.push({ stage, line });
+      edits.push({ start: node.start, end: node.end,
+        text: `__breditorLinkThrow(${JSON.stringify(stage)}, (null))` });
+      return;
+    }
     if (options.projectionChild && module === "wasm_projection_adapter" &&
         functionName === "readProfiledSemanticProjectionUpdate" && node.type === "IfStatement" &&
         code.slice(node.test.start, node.test.end) === "!projectionResult.ok") {
@@ -125,6 +137,9 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
     }
   }
   visit(parsed.program);
+  if (options.projectionImpact && module === "wasm_projection_adapter" && impactSites === 0) {
+    throw new Error("Expected projection impact rejection sites");
+  }
   if (options.projectionChild && module === "wasm_projection_adapter" && childSites !== 1) {
     throw new Error("Expected one projection child rejection");
   }

@@ -45,15 +45,16 @@ it("records only existing rejection returns and preserves result identity and pr
   expect(observe).toHaveBeenCalledTimes(3);
 });
 
-it("round-trips the entire emitted projection module and maps the profiled constructor and validators", () => {
+it.each([false, true])("round-trips the entire emitted projection module (required-property capture=%s)", requiredProperty => {
   const source = readFileSync(new URL("../../../packages/breditor-browser/dist/projection.js", import.meta.url), "utf8");
-  const output = instrumentProjectionValidation(source, id, "/recorder.js")!;
+  const output = instrumentProjectionValidation(source, id, "/recorder.js", { requiredProperty })!;
   const body = output.code.split("\n").slice(1).join("\n");
   const parsed = parseSync(id, body);
   expect(parsed.errors).toEqual([]);
   const edits: { start: number; end: number; original: string }[] = [];
   function visit(node: ESTree.Node): void {
-    if (node.type === "CallExpression" && node.callee.type === "Identifier" && node.callee.name === "__breditorProjectionReject") {
+    if (node.type === "CallExpression" && node.callee.type === "Identifier" &&
+        ["__breditorProjectionReject", "__breditorRequiredProperty"].includes(node.callee.name)) {
       const argument = node.arguments[1]!;
       const wrapped = body.slice(argument.start, argument.end);
       expect(wrapped.startsWith("(") && wrapped.endsWith(")")).toBe(true);
@@ -72,6 +73,47 @@ it("round-trips the entire emitted projection module and maps the profiled const
   for (const name of ["createProfiledDocumentProjection", "validateProfiledProjection", "validateFormatDetails", "validateSnapshot", "exactDataRecord", "readExactBoundedArray"]) {
     expect(output.sites.some(site => site.function === name), name).toBe(true);
   }
+});
+
+it("captures required-property locals only after the original check rejects", () => {
+  const source = `function validateFormatDetails(format, contractIndex, formatContract, propertyArray, properties) {
+    while (contractIndex < formatContract.properties.length) {
+      if (formatContract.properties[contractIndex]?.presence === "required") return null;
+      contractIndex += 1;
+    }
+    return properties;
+  }`;
+  const output = instrumentProjectionValidation(source, id, "/recorder.js", { requiredProperty: true })!;
+  const run = new Function("__breditorRequiredProperty", "args",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn validateFormatDetails(...args);");
+  const emit = vi.fn();
+  const recorder = createLinkFaultRecorder(undefined, undefined, undefined, undefined, undefined, emit);
+  const required = vi.fn(() => "required");
+  const contract = { properties: [{ get presence() { return required(); } }] };
+  const accepted: unknown[] = [];
+  expect(run(recorder.requiredProperty, ["example/link", 1, contract, { values: [] }, accepted])).toBe(accepted);
+  expect(emit).not.toHaveBeenCalled();
+  expect(run(recorder.requiredProperty, ["example/link", 0, contract, { values: [] }, accepted])).toBeNull();
+  expect(required).toHaveBeenCalledOnce();
+  expect(emit).toHaveBeenCalledOnce();
+  expect(() => instrumentProjectionValidation(source.replace('?.presence === "required"', '?.presence !== "optional"'), id,
+    "/recorder.js", { requiredProperty: true })).toThrow("shape drift");
+  expect(() => instrumentProjectionValidation("function other() { return null; }", id,
+    "/recorder.js", { requiredProperty: true })).toThrow("Expected one");
+});
+
+it("bounds required-property snapshots and isolates stored evidence from callers and failing sinks", () => {
+  const emit = vi.fn(() => { throw new Error("sink failure"); });
+  const recorder = createLinkFaultRecorder(undefined, undefined, undefined, undefined, undefined, emit);
+  const properties = [{ name: "example/href", value: "secret" }];
+  for (let i = 0; i < 12; i++) expect(recorder.requiredProperty("projection:reject:405", null,
+    "example/link", 1, { properties: [] }, { values: properties }, properties)).toBeNull();
+  expect(emit).toHaveBeenCalledTimes(8);
+  expect(recorder.snapshot().requiredProperties).toHaveLength(8);
+  const snapshot = recorder.snapshot();
+  (snapshot.requiredProperties[0] as { supplied: { items: unknown[] } }).supplied.items.length = 0;
+  expect(recorder.snapshot().requiredProperties[0]).toMatchObject({ supplied: { items: [{ name: "example/href" }] } });
+  expect(JSON.stringify(recorder.snapshot())).not.toContain("secret");
 });
 
 it("rejects duplicate or drifted instrumentation and ignores unrelated modules", () => {

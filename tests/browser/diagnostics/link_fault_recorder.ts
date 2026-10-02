@@ -1,16 +1,18 @@
 import { snapshotProjectionChild } from "./projection_child_snapshot";
+import { snapshotRequiredProperty } from "./required_property_snapshot";
 
 /** Diagnostic fixture only. Retain static locations, never errors or payloads. */
-export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoint?: (point: unknown) => void, emitLoop?: (loop: unknown) => void, emitNumeric?: (numeric: unknown) => void, emitChild?: (child: unknown) => void) {
+export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoint?: (point: unknown) => void, emitLoop?: (loop: unknown) => void, emitNumeric?: (numeric: unknown) => void, emitChild?: (child: unknown) => void, emitRequired?: (state: unknown) => void) {
   const events: string[] = [];
   const points: unknown[] = [];
   const loops: unknown[] = [];
   const numeric: unknown[] = [];
   const children: (ReturnType<typeof snapshotProjectionChild> & { stage: string })[] = [];
+  const requiredProperties: string[] = [];
   let omitted = 0;
   function record<T>(stage: string, original: T): T {
     try {
-      if (/^(wasm_(command|projection|selection|action_state)_adapter:(throw|failure)|(browser_editor|browser_event_router|command_queue):(throw|failure)|wasm_(document_json|session_checkpoint):(result|failure)|projection:reject):[0-9]+$/.test(stage)) {
+      if (/^(wasm_(command|projection|selection|action_state)_adapter:(throw|failure)|wasm_projection_adapter:impact|(browser_editor|browser_event_router|command_queue):(throw|failure)|wasm_(document_json|session_checkpoint):(result|failure)|projection:reject):[0-9]+$/.test(stage)) {
         if (events.length < 32) {
           events.push(stage);
           emit?.(stage);
@@ -67,9 +69,21 @@ export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoin
     } catch { /* Preserve the original rejection result. */ }
     return original;
   }
-  return { record, point, contentResult, loop, numericPredicate, childResult, snapshot: () => ({ format: "breditor/link-faults", version: 1,
+  function requiredProperty<T>(stage: string, original: T, format: unknown, contractIndex: unknown,
+    contract: unknown, propertyArray: unknown, accepted: unknown): T {
+    record(stage, original);
+    try {
+      if (requiredProperties.length < 8 && /^projection:reject:[0-9]+$/.test(stage)) {
+        const snapshot = JSON.stringify({ stage, ...snapshotRequiredProperty(format, contractIndex, contract, propertyArray, accepted) });
+        requiredProperties.push(snapshot);
+        emitRequired?.(JSON.parse(snapshot));
+      }
+    } catch { /* Preserve the original rejection even when observation fails. */ }
+    return original;
+  }
+  return { record, point, contentResult, loop, numericPredicate, childResult, requiredProperty, snapshot: () => ({ format: "breditor/link-faults", version: 1,
     events: [...events], points: [...points], loops: [...loops], numeric: [...numeric],
-    children: children.map(child => ({ ...child })), omitted }) };
+    children: children.map(child => ({ ...child })), requiredProperties: requiredProperties.map(value => JSON.parse(value) as unknown), omitted }) };
 }
 
 /** These are subsequent observations, not the original predicate's results. */
@@ -88,11 +102,13 @@ const recorder = createLinkFaultRecorder(stage => console.debug(`BREDITOR_LINK_T
   point => console.debug(`BREDITOR_SELECTION_POINT=${JSON.stringify(point)}`),
   loop => console.debug(`BREDITOR_LOOP_RESULT=${JSON.stringify(loop)}`),
   numeric => console.debug(`BREDITOR_NUMERIC_PREDICATE=${JSON.stringify(numeric)}`),
-  child => console.debug(`BREDITOR_PROJECTION_CHILD=${JSON.stringify(child)}`));
+  child => console.debug(`BREDITOR_PROJECTION_CHILD=${JSON.stringify(child)}`),
+  state => console.debug(`BREDITOR_REQUIRED_PROPERTY=${JSON.stringify(state)}`));
 export const recordLinkThrow = recorder.record;
 export const recordSelectionPoint = recorder.point;
 export const recordContentResult = recorder.contentResult;
 export const recordLoopResult = recorder.loop;
 export const recordNumericPredicate = recorder.numericPredicate;
 export const recordProjectionChild = recorder.childResult;
+export const recordRequiredProperty = recorder.requiredProperty;
 export const readLinkFaults = recorder.snapshot;

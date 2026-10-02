@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "2869af9",
+  "status": "projection-required-property-rejection-reproduced-not-fixed",
+  "reproduction": {
+    "passed": 59, "failed": 1, "retries": 0,
+    "log": "/tmp/breditor-validator-followup-20261002.log",
+    "logSha256": "13c7804ed757d4a8b90d26108cf31560be5c5c56ce1a66fec7f4d0a1252f6546",
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=60 --max-failures=3 --output=target/playwright-validator-followup-20261002",
+    "case": "repeat7, cycle=4, stage=Link undo/redo, history operation=redo",
+    "eventsInOrder": [
+      "projection:reject:405", "projection:reject:295", "projection:reject:70",
+      "wasm_projection_adapter:failure:488", "command_queue:stop:265 command_queue.executor_threw",
+      "browser_editor:delivery:870", "browser_editor:toolbar:932 history redo failed"
+    ],
+    "childCode": "projection.invalid_shape",
+    "trace": "target/playwright-validator-followup-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat7/trace.zip",
+    "traceSha256": "9c0a989dd731796cb1cd3ccc6f25e5283d67bf9b5e3aa83e49600193140f2be8",
+    "recorderAttachmentSha1": "1c77856d2ab59e7ac7443bfc84b26c3c5d989f2e",
+    "manifestAttachmentSha1": "ea34dc8cbf1fdd8e961ab94aaf64299b1b8cf7cf",
+    "interpretation": "validateFormatDetails took the trailing required-property rejection after the supplied-property loop. The marker is emitted at the null return in the trailing contractIndex loop, not at the earlier skipped-required-property check. It then propagated as an invalid-shape child result. This does not yet establish whether the supplied properties were missing, the validator state was incorrect, or a predicate was evaluated incorrectly."
+  },
+  "sourceReview": {
+    "rustFormatOrder": "FormatSet retains immutable formats in validated ascending kind order.",
+    "rustPropertyOrder": "PropertyMap retains an Arc<BTreeMap<QualifiedName, PropertyValue>> and iterates that map. Random HashMap iteration is not the ordering mechanism in this projection path."
+  },
+  "diagnosticChanges": [
+    "In the opt-in validator mode, the trailing required-property rejection now captures its format tag, contractIndex bits and decimal text, and bounded own-data property shapes for the contract, supplied input and accepted output.",
+    "Only the two fixed reference Link property names and three fixed format names are retained. Other names are redacted. Values, URLs, document text and contract bounds are not retained; property values contribute only their JavaScript type.",
+    "The capture runs after the original rejection, does not invoke getters, retains at most eight snapshots, and returns the same rejection. Snapshot callers and logging sinks cannot mutate retained evidence.",
+    "The manifest identifies requiredPropertyCapture=true; the source transform requires exactly one recognized trailing rejection and is tested for exact source restoration.",
+    "After the mixed run exposed an earlier readSemanticImpact rejection, the projection observer additionally marks its eight existing null-return sites. It does not wrap numeric predicates, repeat generated getters or change return values. The manifest identifies impactRejections=true."
+  ],
+  "verification": {
+    "impactAndPropertyFollowup": {
+      "passed": 33, "failed": 3, "notRun": 4, "retries": 0,
+      "additionalRunnerErrors": 1,
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=3 --output=target/playwright-required-impact-followup-20261002",
+      "log": "/tmp/breditor-required-impact-followup-20261002.log",
+      "logSha256": "00b11e7535d0df817dc04cf420e7c81a8784f1de24da056a68ef38a59323d735",
+      "failure": "Three test timeouts; the last also exceeded context/trace teardown deadlines. The suite stopped at its failure limit. No deadline or retry policy changed.",
+      "verifiedFailedTraceManifests": 3,
+      "manifestAttachmentSha1": "f8cd296ae4ed5745e6ae02d5413e8eb889c9e35c",
+      "recorderObservation": "All three failed traces retained complete nine-module maps with requiredPropertyCapture=true and impactRejections=true; queue, delivery and projection rejection records were empty.",
+      "traces": [
+        {
+          "case": "Link history repeat16",
+          "path": "target/playwright-required-impact-followup-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-webkit-repeat16/trace.zip",
+          "sha256": "e5c4b82ee2969f1ab0d0621a57a9ea6738dd04d303389ebee7173c01ae7b2c85",
+          "recorderAttachmentSha1": "9ca2fab649d19383eceb8b8026a0d51b11d5af2b",
+          "note": "Main evaluation has no successful completion in the saved trace. The later diagnostic snapshot evaluation itself took about 4.88 seconds."
+        },
+        {
+          "case": "formatted clipboard repeat17",
+          "path": "target/playwright-required-impact-followup-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat17/trace.zip",
+          "sha256": "bd45cbc9af1a4a00db29a3ec82dbeb16fd5fdd0472deca36281310cc6ed9b5d3",
+          "recorderAttachmentSha1": "fdb628a018c68684a42773e3d313b04ac82d5f66",
+          "note": "Main evaluation returned all 60 cycles after about 15.97 seconds, but page creation took about 6.69 seconds and navigation about 5.25 seconds; the whole test exceeded its deadline."
+        },
+        {
+          "case": "Link history repeat17",
+          "path": "target/playwright-required-impact-followup-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-webkit-repeat17/trace.zip",
+          "sha256": "9efc66d3b6fd028913cda82670f0c97d512932423e3be07c19d3c5af94755e66",
+          "recorderAttachmentSha1": "9ca2fab649d19383eceb8b8026a0d51b11d5af2b",
+          "note": "Main evaluation and context teardown timed out. Runner logs show its own forced browser shutdown."
+        }
+      ],
+      "interpretation": "No targeted rejection reproduced in this final batch. Delay affected browser setup and diagnostic reads too, so these timeouts cannot be attributed solely to Rust command execution. Further stress was stopped rather than treating an incomplete batch as green."
+    },
+    "requiredPropertyCaptureFollowup": {
+      "passed": 60, "failed": 0, "retries": 0,
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=60 --max-failures=3 --output=target/playwright-required-property-followup-20261002",
+      "log": "/tmp/breditor-required-property-followup-20261002.log",
+      "logSha256": "a20e17c4d692581c923a802551b2f328502aac9cb1691f08ff6b4c5219ae1cc0",
+      "interpretation": "No rejection reproduced with the added state capture in this batch. Instrumentation can change timing and compilation; this is not a fix."
+    },
+    "propertySubsetRegression": {
+      "passed": 42, "failed": 0,
+      "log": "/tmp/breditor-required-subsets-unit-20261002.log",
+      "note": "The projection-adapter suite now includes all 64 combinations of required/optional declarations and supplied property subsets. It verifies acceptance exactly when every required property is supplied, preserves accepted names, rejects missing properties with invalid_shape, and checks exactly-once view cleanup."
+    },
+    "browserPackageTypecheck": { "passed": true, "log": "/tmp/breditor-required-subsets-types-20261002.log" },
+    "diagnosticUnitTests": { "passed": 230, "failed": 0, "log": "/tmp/breditor-required-impact-unit-20261002.log" },
+    "browserTypecheck": { "passed": true, "log": "/tmp/breditor-required-impact-types-20261002.log" }
+  },
+  "separateImpactReproduction": {
+    "passed": 39, "failed": 1, "retries": 0,
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=3 --output=target/playwright-required-property-mixed-20261002",
+    "case": "Link history repeat6, cycle=6, stage=apply",
+    "eventsInOrder": ["wasm_projection_adapter:failure:474", "command_queue:stop:265 command_queue.executor_threw", "browser_editor:delivery:870", "browser_editor:toolbar:932 intentJson failed"],
+    "requiredPropertySnapshots": [],
+    "log": "/tmp/breditor-required-property-mixed-20261002.log",
+    "logSha256": "750be5c52a1f347ee2ab7b17e7735de41dfcadf41b96eaa3ce9b361cb68e34f9",
+    "trace": "target/playwright-required-property-mixed-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-webkit-repeat6/trace.zip",
+    "traceSha256": "b34134149d37374f2cfdfd961da488f44f93021e20a11192ea7fc685e39cfa7c",
+    "recorderAttachmentSha1": "8212ecf75ba2875189a7cbd0636121476ce8bfee",
+    "manifestAttachmentSha1": "433dc67a6387f687f86b0ea4ec5edb206d70eced",
+    "interpretation": "readSemanticImpact returned null; rejection happened before takeProjection and child construction. Its internal null returns were not yet instrumented. This is a different established failure boundary, not evidence of missing format properties in this instance."
+  },
+  "limitations": [
+    "The new instance is Link Redo, not the previously captured Redo cut; identical high-level error codes alone do not prove all earlier cases share this exact check.",
+    "No production validation rule has been weakened or replaced.",
+    "Existing timing stalls and live-owner canceled-paste mismatch remain separate open observations.",
+    "A read-only macOS snapshot during the stalled run showed 32 GiB physical memory, 21151.50 MiB used swap, and memory_pressure -Q reporting 41 percent system-wide free memory. These point-in-time figures do not establish memory pressure as the cause. No apps were closed or system settings changed.",
+    "Final cross-browser controls were not run after the repeated timing failures. Unit tests and types pass, but browser qualification remains incomplete."
+  ]
+}

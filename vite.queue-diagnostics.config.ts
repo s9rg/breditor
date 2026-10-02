@@ -54,19 +54,19 @@ const diagnostic: Plugin = {
       manifest.set("browser_event_router", { instrumented: true, sourceSha256: clipboard.sourceSha256, sites: clipboard.sites });
       return { code: clipboard.code, map: null };
     }
-    const validation = validationEnabled ? instrumentProjectionValidation(code, id, projectionRecorder) : null;
+    const validation = validationEnabled ? instrumentProjectionValidation(code, id, projectionRecorder, { requiredProperty: true }) : null;
     if (validation !== null) {
-      manifest.set("projection", { instrumented: true, rejectionReturnsOnly: true,
+      manifest.set("projection", { instrumented: true, rejectionReturnsOnly: true, requiredPropertyCapture: true,
         sourceSha256: validation.sourceSha256, sites: validation.sites });
       return { code: validation.code, map: null };
     }
     if (projectionEnabled && id.endsWith("/breditor-browser/dist/wasm_projection_adapter.js")) {
       // Observe rejection sites only. In particular, leave the hot isIndex
       // predicate and every successful traversal byte-identical.
-      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: false, projectionChild: true });
+      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: false, projectionChild: true, projectionImpact: true });
       if (output === null) throw new Error("Projection diagnostic module was not recognized");
       manifest.set("wasm_projection_adapter", { instrumented: true, numericPredicates: false,
-        childResultCapture: true, sourceSha256: output.sourceSha256, sites: output.sites });
+        childResultCapture: true, impactRejections: true, sourceSha256: output.sourceSha256, sites: output.sites });
       return { code: output.code, map: null };
     }
     const delivery = deliveryEnabled ? instrumentDeliveryFaults(code, id, deliveryRecorder) : null;
