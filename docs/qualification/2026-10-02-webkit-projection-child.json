@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "dcd9b35",
+  "status": "redo-cut-projection-child-rejection-reproduced-not-fixed",
+  "reproduction": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=3 --output=target/playwright-route-followup-20261002",
+    "passed": 139,
+    "failed": 1,
+    "retries": 0,
+    "case": "formatted clipboard, first repeat, cycle=3, stage=history after cut/caret 3 Redo",
+    "meaning": "The third history operation redoes the cut, after undoing typing and then undoing the cut.",
+    "ownerReason": "toolbarDispatchFailed",
+    "eventsInOrder": [
+      "wasm_projection_adapter:failure:488",
+      "command_queue:stop:265 command_queue.executor_threw",
+      "browser_editor:delivery:870",
+      "browser_editor:toolbar:932 history redo failed"
+    ],
+    "projectionEventsOmitted": 0,
+    "log": "/tmp/breditor-route-followup-20261002.log",
+    "logSha256": "4c7ace80a8c9997dff3c0d5ea11027050e9d31a6e523877abea6ce26763d002a",
+    "trace": "target/playwright-route-followup-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit/trace.zip",
+    "traceSha256": "67e1db5bf71ed56153e3257fee9f593b65c99a0a2c20ca6a619ef49ed5b7ba00",
+    "recorderAttachmentSha1": "2bb16ba046f6e9c122e17cb6be9e95c02edfca43",
+    "manifestAttachmentSha1": "04dd8a717b7ab7db5e85fc8b1bfbbd2712aceaf3",
+    "projectionSourceSha256": "007d17eb7ce31ddf43d57b24362167c2873916e38cd3530e364da33481426c55",
+    "interpretation": "readProfiledSemanticProjectionUpdate took its !projectionResult.ok branch after consuming the child projection. No earlier adapter rejection or throw was recorded. This does not prove the child was successful: projection constructors and their validators were not instrumented, and a legitimate failure result can propagate from there. The existing clipboard echo reconciliation paths are not established as the cause."
+  },
+  "diagnosticChanges": [
+    "The projection-only mode now snapshots the child result only after entering the existing rejection branch. The original condition is evaluated once and the original failure result is returned unchanged.",
+    "The snapshot reads own data descriptors for ok, value and error/code, records a closed error code and boolean text, and does not inspect projection data, error messages, clipboard contents or a freed Wasm view. Descriptor exceptions are contained.",
+    "At most eight child snapshots are retained. Child observations are explicitly later observations, not a record of the original condition value.",
+    "The module manifest identifies childResultCapture and numericPredicates=false. Exact source round-trip and synthetic execution tests cover the insertion and reject source shape drift.",
+    "After capturing projection.invalid_shape, a separate opt-in BREDITOR_QUEUE_PROJECTION_VALIDATION=1 adds only static rejection-return markers in projection.js. Its constructor, null-returning validation helpers and failed array results are mapped. It requires BREDITOR_QUEUE_PROJECTION=1 and adds a ninth manifest module when all observers are enabled."
+  ],
+  "verification": {
+    "finalFormattedControls": {
+      "passed": 3, "failed": 0, "retries": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --trace=on --output=target/playwright-projection-validator-controls-final-20261002",
+      "verifiedNineModuleManifests": 3,
+      "projectionSourceSha256": "5a03bbf5d7547405a513981ee9357f430817f8e5e48a305d073c056a80854ccc",
+      "mappedValidatorRejectionSites": 63,
+      "log": "/tmp/breditor-projection-validator-controls-final-20261002.log",
+      "logSha256": "061315eec20c05e6e05f82d4ca5e1efb524e15567e7e73714e84638fb32e5704",
+      "note": "All three recorder snapshots have empty queue, delivery, projection events and child observations. These controls do not supersede earlier fault or timeout evidence."
+    },
+    "crossBrowserControls": {
+      "passed": 20, "failed": 1, "retries": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --trace=on --max-failures=3 --output=target/playwright-projection-validator-controls-20261002",
+      "verifiedNineModuleManifests": 21,
+      "log": "/tmp/breditor-projection-validator-controls-20261002.log",
+      "logSha256": "36ed92d5c678c19182c450de56c99734d0d76afd8e2f266fe1ee06911384a579",
+      "failure": "WebKit inputOnly clipboard case exceeded its unchanged 30-second timeout. Its browser evaluation eventually returned undefined without throwing after 95185.171ms; queue, delivery and projection recorders were empty. Chromium and Firefox passed all fourteen selected cases.",
+      "trace": "target/playwright-projection-validator-controls-20261002/clipboard-lifecycle-clipbo-1aebf--history-and-caret-liveness-webkit/trace.zip",
+      "traceSha256": "36312913f323a7dfa9997b97544db8be1eeb1b60e4f8cc1e998171adeb8ba7bc",
+      "recorderAttachmentSha1": "c8b4c3c4730fcadf72c1334f72160e61b60877ab",
+      "manifestAttachmentSha1": "b7acff98e5d8357ee5d7f5e0cfa3137502c1860a"
+    },
+    "validatorFocused": {
+      "passed": 49, "failed": 1, "retries": 0,
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=50 --max-failures=3 --output=target/playwright-projection-validator-formatted-20261002",
+      "log": "/tmp/breditor-projection-validator-formatted-20261002.log",
+      "logSha256": "1bf25e226000eb1df7fb208d61528ba6bc6a17ccb26617de0887a1c3dd747920",
+      "failure": "Repeat36 exceeded the unchanged 30-second test timeout. Its browser evaluation eventually returned 60 after 103766.557ms. Queue, delivery and projection recorders were empty; no projection rejection reproduced in this batch.",
+      "trace": "target/playwright-projection-validator-formatted-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat36/trace.zip",
+      "traceSha256": "7843b364c3956bf5c44cba157c92fd3f3c86ab09d4df5c203454dd4f8801b19a",
+      "recorderAttachmentSha1": "f945879e364bcf6a42f8b29c3bd604ae4aa1a769",
+      "manifestAttachmentSha1": "0948f3eebe1bb0afa7d9a365c49870f6fe3fe39b",
+      "interpretation": "The recorded timeout is not a projection rejection. No timer-versus-work timing observer was active in this formatted-clipboard case, so the cause of the delay remains unknown."
+    },
+    "sameSequenceWithChildCapture": {
+      "passed": 140, "failed": 0, "retries": 0,
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=3 --output=target/playwright-projection-child-followup-20261002",
+      "log": "/tmp/breditor-projection-child-followup-20261002.log",
+      "logSha256": "930b42f0d0cd661181410eca782625364bd4d06d61de2a0af8ec5a2adb853971",
+      "interpretation": "No reproduction in this batch; not evidence of a fix."
+    },
+    "diagnosticUnitTests": { "passed": 223, "failed": 0, "log": "/tmp/breditor-projection-validator-all-unit-20261002.log" },
+    "browserTypecheck": { "passed": true, "log": "/tmp/breditor-projection-validator-types-20261002.log" }
+  },
+  "childResultReproduction": {
+    "passed": 49, "failed": 1, "retries": 0,
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts --project=webkit --repeat-each=50 --max-failures=3 --output=target/playwright-projection-child-formatted-20261002",
+    "log": "/tmp/breditor-projection-child-formatted-20261002.log",
+    "logSha256": "f176df5dce9627de7e0213fe3a89abd9970d89f9661f78b258e4006c33a6d8bb",
+    "case": "formatted clipboard, repeat3, cycle=6, stage=history after cut/caret 3 Redo",
+    "trace": "target/playwright-projection-child-formatted-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat3/trace.zip",
+    "traceSha256": "c6cd7747cb621f3c61f83ea433b6d31b1b68156696214984fd501e8f61cbe52f",
+    "recorderAttachmentSha1": "3d5362b83f0fdd7f1c7ea6a92706f2012f47b266",
+    "manifestAttachmentSha1": "b96409701eb8acf7157d7b70e065fcd0bb9ba35a",
+    "child": {
+      "stage": "wasm_projection_adapter:failure:488", "resultType": "object", "frozen": true,
+      "okField": "data", "okType": "boolean", "ok": "false", "okJson": "false",
+      "valueField": "absent", "errorField": "data", "code": "projection.invalid_shape"
+    },
+    "interpretation": "The observed child is a frozen failure union, not a success result misread at the outer check. The next unresolved boundary is projection construction and validation, including the constructor catch. This capture does not establish whether the input was invalid or a validator rejected valid input."
+  },
+  "limitations": [
+    "No shipping source, Wasm ABI, validation, recovery, timeout or retry policy changed.",
+    "Instrumentation can affect compilation and timing even when it executes only on failure.",
+    "The separate canceled-paste-with-live-owner failure remains open.",
+    "Neither Rust nor WebKit is established as the underlying cause of this projection rejection."
+  ]
+}

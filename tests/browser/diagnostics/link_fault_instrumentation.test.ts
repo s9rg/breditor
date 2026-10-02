@@ -4,6 +4,55 @@ import { instrumentLinkFaults } from "./link_fault_instrumentation";
 import { createLinkFaultRecorder } from "./link_fault_recorder";
 
 const id = "/repo/packages/breditor-browser/dist/wasm_command_adapter.js";
+it("captures the child result only at the already-taken rejection branch", () => {
+  const source = `function readProfiledSemanticProjectionUpdate(projectionResult) {
+    if (!projectionResult.ok) return projectionFailure("projection.invalid_update");
+    return projectionResult; }`;
+  // The emitted module uses a block; require that exact shape.
+  const blocked = source.replace('if (!projectionResult.ok) return projectionFailure("projection.invalid_update");',
+    'if (!projectionResult.ok) { return projectionFailure("projection.invalid_update"); }');
+  const projectionId = id.replace("wasm_command_adapter", "wasm_projection_adapter");
+  expect(() => instrumentLinkFaults(source, projectionId, "/recorder.js", { projectionChild: true })).toThrow("shape drift");
+  const output = instrumentLinkFaults(blocked, projectionId, "/recorder.js", { projectionChild: true })!;
+  const run = new Function("__breditorProjectionChild", "projectionFailure", "value",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn readProfiledSemanticProjectionUpdate(value);");
+  const recorder = createLinkFaultRecorder();
+  const rejected = Object.freeze({ ok: false });
+  const reject = vi.fn(() => rejected);
+  const success = Object.freeze({ ok: true, value: {} });
+  expect(run(recorder.childResult, reject, success)).toBe(success);
+  expect(recorder.snapshot().children).toEqual([]);
+  expect(reject).not.toHaveBeenCalled();
+  const ok = vi.fn(() => false);
+  expect(run(recorder.childResult, reject, { get ok() { return ok(); } })).toBe(rejected);
+  expect(ok).toHaveBeenCalledOnce();
+  expect(reject).toHaveBeenCalledOnce();
+  expect(recorder.snapshot().children[0]).toMatchObject({ okField: "accessor", ok: "unknown" });
+});
+
+it("restores emitted projection source exactly after removing child-result capture", () => {
+  const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_projection_adapter.js", import.meta.url), "utf8");
+  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),
+    "/recorder.js", { numericPredicates: false, projectionChild: true })!;
+  const body = output.code.split("\n").slice(1).join("\n");
+  expect(body.match(/__breditorProjectionChild\(/g)).toHaveLength(1);
+  expect(body.replace(/__breditorProjectionChild\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\), projectionResult\)/g, "$1")
+    .replace(/__breditorLinkThrow\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\)\)/g, "$1")
+    .replace(/__breditorLinkThrow\("wasm_projection_adapter:throw:[0-9]+", \((new TypeError\([^)]*\))\)\)/g, "$1"))
+    .toBe(source);
+});
+
+it("bounds child observations and preserves the rejected result if emission throws", () => {
+  const emit = vi.fn(() => { throw new Error("sink failed"); });
+  const recorder = createLinkFaultRecorder(undefined, undefined, undefined, undefined, emit);
+  const rejection = Object.freeze({ ok: false });
+  const child = Object.freeze({ ok: false, error: { code: "projection.noncanonical_runs" } });
+  for (let i = 0; i < 20; i++) expect(recorder.childResult("wasm_projection_adapter:failure:488", rejection, child)).toBe(rejection);
+  expect(recorder.snapshot().children).toHaveLength(8);
+  expect(emit).toHaveBeenCalledTimes(8);
+  expect(recorder.snapshot().children[0]).toMatchObject({ ok: "false", okJson: "false", code: "projection.noncanonical_runs" });
+});
+
 it("can observe only projection rejection sites without touching numeric predicates", () => {
   const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_projection_adapter.js", import.meta.url), "utf8");
   const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),

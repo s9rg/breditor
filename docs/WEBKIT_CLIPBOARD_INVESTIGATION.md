@@ -2526,3 +2526,64 @@ admission rule, timeout or retry count was changed.
 The final clipboard observer controls passed in Chromium, Firefox and WebKit
 (3 cases), retaining eight-module manifests and identical redacted successful
 paste results. All 213 diagnostic unit tests and browser type checking passed.
+
+### Redo-cut fault narrowed to the child projection result
+
+The next seven-case batch reproduced a fault with all four observers enabled:
+**139 passed / 1 failed**. In the first formatted-clipboard case, cycle 3,
+the third history action (Redo cut) faulted the owner. The recorded order was
+`wasm_projection_adapter:failure:488`, queue stop with
+`command_queue.executor_threw`, failed queue delivery, then
+`toolbarDispatchFailed` for history redo.
+
+The first marker is the `!projectionResult.ok` branch in
+`readProfiledSemanticProjectionUpdate`. There were no earlier projection-adapter
+markers and none were omitted. This narrows the fault but does not establish
+an inconsistent boolean read: the child can legitimately return an error from
+the uninstrumented projection constructor and its validators.
+
+The projection diagnostic now captures that child's own result fields only
+after this rejection branch has been taken. It records boolean text, frozen
+status, field kinds and a closed error code, without traversing document data
+or rereading a freed Wasm view. The original predicate and rejection identity
+are preserved. At most eight snapshots are retained, and the manifest names
+this capture mode. These are later observations, not the original predicate's
+value. Source round-trip, getter non-invocation, bounded emission and identity
+tests pass as part of the **219-test diagnostic suite**; browser type checking
+also passes.
+
+Exact reproduction details and follow-up results are in the
+[child projection evidence record](qualification/2026-10-02-webkit-projection-child.json).
+No shipping code or acceptance check changed. Both the projection fault and the
+separate live-owner canceled-paste mismatch remain open.
+
+The seven-case child-capture follow-up passed 140 cases, but a focused
+formatted-clipboard batch then reproduced the same Redo-cut fault: **49 passed /
+1 failed**, repeat 3, cycle 6. This time the child snapshot captured a frozen
+failure union: own `ok` data field was boolean false (also `"false"` through
+native JSON), no `value` field, and `error.code=projection.invalid_shape`.
+The observation is consistent with rejection by the child constructor or its
+validators, not a successful child result rejected by the outer boolean check.
+It does not yet distinguish malformed input from erroneous validation.
+
+`BREDITOR_QUEUE_PROJECTION_VALIDATION=1`, requiring the projection observer,
+now adds a separate opt-in module capture for existing rejection returns in
+`projection.js`. It records only static original lines and a function-name map,
+including constructor catch returns, null-returning validation helpers and
+array-validation failures. It does not wrap successful predicates or retain
+inputs. Exact source restoration and rejection identity tests pass; the full
+diagnostic suite now passes 223 tests and browser type checking passes.
+
+The validator-instrumented batch did not reproduce a projection rejection, but
+it was **not green**: 49 passed and one formatted-clipboard case timed out.
+That evaluation eventually returned all 60 cycles after about 104 seconds,
+with empty queue, delivery and projection recorders. The broader controls were
+also **20 passed / 1 failed**: Chromium and Firefox passed all 14 selected cases,
+while WebKit's input-only clipboard case eventually completed after about
+95 seconds, exceeding its unchanged 30-second timeout. All 21 traces retained
+complete nine-module maps. These two stalls are distinct observations from
+the captured Redo-cut rejection; no per-yield timing observer was active in
+the stalled cases, so their cause remains unestablished. No timeout was relaxed.
+A final separate formatted-clipboard control passed in all three engines
+(3 cases), with complete maps for all 63 validator rejection sites and empty
+failure recorders. This does not supersede the preceding faults or stalls.

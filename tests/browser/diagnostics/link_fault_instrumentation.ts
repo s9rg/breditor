@@ -5,7 +5,7 @@ const modules = ["browser_editor", "browser_event_router", "command_queue", "was
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
 export function instrumentLinkFaults(code: string, id: string, recorder: string,
-  options: { numericPredicates?: boolean } = {}) {
+  options: { numericPredicates?: boolean; projectionChild?: boolean } = {}) {
   const module = modules.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
   if (module === undefined) return null;
   if (code.includes("__breditorLinkThrow")) throw new Error("Link diagnostic already installed");
@@ -13,8 +13,27 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
   if (parsed.errors.length) throw new Error(`Cannot parse Link diagnostic module ${module}`);
   const edits: { start: number; end: number; text: string }[] = [];
   const sites: { stage: string; line: number }[] = [];
+  let childSites = 0;
   function visit(node: ESTree.Node, parent?: ESTree.Node, functionName?: string): void {
     if (node.type === "FunctionDeclaration") functionName = node.id?.name;
+    if (options.projectionChild && module === "wasm_projection_adapter" &&
+        functionName === "readProfiledSemanticProjectionUpdate" && node.type === "IfStatement" &&
+        code.slice(node.test.start, node.test.end) === "!projectionResult.ok") {
+      const statement = node.consequent.type === "BlockStatement" && node.consequent.body.length === 1
+        ? node.consequent.body[0] : undefined;
+      if (statement?.type !== "ReturnStatement" || statement.argument?.type !== "CallExpression" ||
+          statement.argument.callee.type !== "Identifier" || statement.argument.callee.name !== "projectionFailure") {
+        throw new Error("Projection child rejection shape drift");
+      }
+      const value = statement.argument;
+      const line = code.slice(0, value.start).split("\n").length;
+      const stage = `${module}:failure:${line}`;
+      sites.push({ stage, line });
+      childSites++;
+      edits.push({ start: value.start, end: value.end,
+        text: `__breditorProjectionChild(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), projectionResult)` });
+      return;
+    }
     if (node.type === "CallExpression" && node.callee.type === "MemberExpression" &&
         node.callee.property.type === "PrivateIdentifier" &&
         ((module === "command_queue" && node.callee.property.name === "fail") ||
@@ -106,11 +125,14 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
     }
   }
   visit(parsed.program);
+  if (options.projectionChild && module === "wasm_projection_adapter" && childSites !== 1) {
+    throw new Error("Expected one projection child rejection");
+  }
   if (sites.length === 0) throw new Error(`No throw sites found in ${module}`);
   let transformed = code;
   for (const edit of edits.sort((a, b) => b.start - a.start)) {
     transformed = transformed.slice(0, edit.start) + edit.text + transformed.slice(edit.end);
   }
   return { module, sourceSha256: createHash("sha256").update(code).digest("hex"), sites,
-    code: `import { recordLinkThrow as __breditorLinkThrow, recordSelectionPoint as __breditorSelectionPoint, recordNumericPredicate as __breditorNumericPredicate } from ${JSON.stringify(recorder)};\n${transformed}` };
+    code: `import { recordLinkThrow as __breditorLinkThrow, recordSelectionPoint as __breditorSelectionPoint, recordNumericPredicate as __breditorNumericPredicate, recordProjectionChild as __breditorProjectionChild } from ${JSON.stringify(recorder)};\n${transformed}` };
 }
