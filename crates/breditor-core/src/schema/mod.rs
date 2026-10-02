@@ -2,6 +2,7 @@
 
 mod binding;
 mod binding_error;
+mod child_grammar;
 mod compilation_error;
 mod compiled_schema;
 mod compiler;

@@ -1,7 +1,7 @@
 # Structural blocks: heading and list contract
 
-Status: experimental Rust value foundation only. Headings and lists are **not
-yet editable features**. The paragraph-only schema, existing fingerprints,
+Status: experimental Rust values and private child-grammar foundation. Headings
+and lists are **not yet editable features**. The paragraph-only schema, existing fingerprints,
 durable formats, Wasm ABI and browser renderer are unchanged. Links already
 exist as typed inline formatting and must continue to work inside future blocks.
 
@@ -9,10 +9,15 @@ This document records the next implementation decisions and acceptance gates.
 It does not silently widen the contracts in `DATA_CONTRACT.md`, `WASM_ABI.md`
 or `V0_3_SCOPE.md`.
 
-Verification: all 1,566 Rust workspace/doc tests pass, including six new boundary,
-property and unchanged-admission tests; workspace Clippy and Rustdoc pass with
-warnings denied. See [the foundation record](qualification/2026-10-01-structural-foundation.json).
-This is not a fresh browser/Wasm release qualification for structural features.
+Verification: all 1,580 Rust workspace/doc tests pass, including the six initial
+value tests and fourteen child-grammar tests. Workspace Clippy and Rustdoc pass
+with warnings denied; the streaming recognizer additionally passes 10,000
+fixed-seed cases against an independent count/order oracle. The prior value
+checkpoint is recorded in [the foundation record](qualification/2026-10-01-structural-foundation.json).
+All 17 release gates pass for this child-grammar checkpoint, including 25 Wasm
+tests, 162 browser cases and 39 demo cases with zero retries; see the
+[current verification record](qualification/2026-10-02-structural-child-grammar.json).
+This does not qualify headings/lists as public browser features.
 
 ## Values implemented first
 
@@ -52,11 +57,34 @@ The first proposed grammar is:
 - List item: one or more text blocks, followed by zero or more nested lists.
 - Nested lists are admitted only under list items, never directly under text.
 
-The AST already has immutable element nodes. Its schema compiler currently has
-only text-child and one-element-kind child constraints; it does **not** prove
-this grammar. The next compiler slice needs bounded alternatives and ordered
-child groups, exact closed element-property contracts, canonical encoding and
-fingerprint tests. A generic "properties allowed" Boolean is insufficient.
+The private schema compiler now supports bounded alternatives and ordered child
+groups. Its test-only structural fixture proves these tree shapes, including
+nested lists; it is **not** a complete heading/list schema. Exact closed element-
+property contracts for heading rank and ordered-list start remain required.
+A generic "properties allowed" Boolean is insufficient.
+
+The child-grammar contract is deliberately restricted:
+
+- One to eight ordered groups per element, with one to sixteen alternatives
+  per group. An alternative is text or one exact registered element kind.
+- Each group has an inclusive minimum and optional inclusive maximum. Zero
+  maximum is allowed only with zero minimum. Aggregate minima must fit `u32`.
+- Alternatives are sorted canonically. Duplicates within a group and overlap
+  between groups are rejected, so parsing never guesses or backtracks.
+- Group order is semantic; alternate declaration order within a group is not.
+  Required groups cannot be skipped, exhausted groups cannot resume, and an
+  unknown child cannot be silently removed or repaired.
+- Matching uses constant auxiliary space with at most 128 kind comparisons per
+  visited child. Existing document child, depth, node and diagnostic limits
+  still apply independently; grammar bounds do not widen host budgets.
+- Single-kind repeats retain the exact legacy fingerprint encoding. Any
+  alternative set or multi-group sequence selects compiler-contract version 3;
+  both group bounds and ordering enter its fingerprint.
+
+No public structural schema factory, manifest contribution, durable action,
+Wasm export or browser feature was added. The private shape fixture deliberately
+omits heading/list properties. Structural schemas fail all three existing
+paragraph-only operation capability checks.
 
 Do not open the paragraph schema to unknown elements as an interim shortcut.
 Do not expose a schema that permits new blocks to an editor while its editing
@@ -143,7 +171,8 @@ containers, with host-controlled visual styles and accessible control names.
 Clipboard plain-text serialization needs explicit list/heading boundary rules;
 rich paste remains unsupported until a separate validated import contract exists.
 
-There are only 50 bytes of gzip headroom in the consolidated demo build.
+There are only 49 bytes of JavaScript gzip headroom in the verified demo build
+(224,951 / 225,000 bytes). The Wasm binary is 1,608,592 / 1,610,000 bytes.
 Structural UI work therefore needs a measured bundle plan (for example,
 separately loaded optional controls) before adoption. Do not silently raise
 limits or delete correctness checks to fit a new feature.
@@ -151,7 +180,8 @@ limits or delete correctness checks to fit a new feature.
 ## Integration order and completion gate
 
 1. Checked values and boundary/property tests: implemented.
-2. Closed structural grammar, element contracts and fingerprint parity tests.
+2. Closed structural grammar and fingerprint parity: implemented privately;
+   exact element-property contracts and public structural profile still pending.
 3. Guarded block-kind replacement, exact selection relocation and inverse replay.
 4. Heading action/state, durable recipes, Wasm descriptor and browser projection.
 5. Heading toolbar and Enter/delete/clipboard behavior across three engines.
@@ -165,3 +195,27 @@ headings and lists, including empty blocks, Unicode, backward ranges, adjacent
 lists with different starts, maximum-depth rejection and retained redo after
 reload. Full release verification and fresh size measurements precede a claim
 that headings or lists are ready to use.
+
+## Reproduce the child-grammar checkpoint
+
+From the repository root with the pinned Rust/Node toolchains available:
+
+1. `cargo test -p breditor-core --lib schema::compiler --locked` checks the
+   legacy byte/hash vectors, structural hash vector, compiler rejection cases,
+   nested trees, codec binding, resource bounds and randomized sequence laws.
+2. `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261002 cargo test -p breditor-core --lib streaming_recognizer_matches_reference_language --locked`
+   runs the recognizer against an independent count/order oracle.
+3. `cargo test --workspace --all-features --locked`,
+   `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`,
+   `RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked`,
+   and `cargo fmt --all -- --check` check the whole Rust workspace.
+4. `npm run build`, `npm run build --workspace @breditor/example-react`, and
+   `node scripts/check-size-budgets.mjs` rebuild the shipped paths and measure
+   their unchanged budgets. Building artifacts is not publishing them.
+
+`npm run verify:release` is the wider 17-gate checkpoint, including Wasm-target
+tests, packed-consumer reproducibility, unchanged ABI, and browser/demo matrices.
+
+The next implementation slice is closed, typed element properties, followed by
+guarded block-kind replacement and selection/history laws. This checkpoint
+does not resolve the independent WebKit numerical fault.

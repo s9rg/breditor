@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "5e2a29d8f1da52389cde74bd0100b62488e7672c",
+  "packageVersion": "0.3.0-alpha.22",
+  "scope": "Private bounded child-grammar compiler, validator and fingerprint foundation; no public structural editor profile",
+  "goalCheckpoints": [
+    "Define bounded, disjoint alternatives and ordered groups",
+    "Integrate compiler, validator and deterministic fingerprint encoding without changing legacy vectors",
+    "Exercise structural shapes, invalid input, resource bounds, private codec roundtrips and independent sequence laws",
+    "Run all local release gates, document limitations and save a local checkpoint without publication"
+  ],
+  "implementation": {
+    "maximumGroupsPerElement": 8,
+    "maximumAlternativesPerGroup": 16,
+    "duplicateAndOverlappingAlternatives": "rejected",
+    "unknownElementReferences": "rejected",
+    "aggregateMinimumOverflow": "rejected",
+    "matcherAuxiliarySpace": "constant; no backtracking",
+    "legacySingleKindFingerprints": "unchanged",
+    "compilerContractForGroupedGrammars": 3,
+    "structuralTestVectorBytes": 707,
+    "structuralTestVectorFingerprint": "sha256:06fd7accf6565539dd4343137facc535dc40fde232cee5d7ada72ce572a08716",
+    "structuralTestVectorCrossCheck": "Independently encoded from field definitions using Node big-endian Buffer writes and SHA-256",
+    "existingParagraphOperationCapabilitiesForStructuralFixture": "all disabled"
+  },
+  "verification": {
+    "releaseCommand": "npm run verify:release",
+    "releaseExitCode": 0,
+    "releaseGatesPassed": 17,
+    "rustWorkspaceAndDocTestsPassed": 1580,
+    "rustWorkspaceAndDocTestsFailed": 0,
+    "rustWorkspaceAndDocTestsIgnored": 0,
+    "newChildGrammarTests": 14,
+    "focusedSchemaTestsPassed": 31,
+    "propertyCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261002 cargo test -p breditor-core --lib streaming_recognizer_matches_reference_language --locked",
+    "propertyCases": 10000,
+    "propertyExitCode": 0,
+    "wasmTargetTestsPassed": 25,
+    "browserRuntimeUnitTestsPassed": 1378,
+    "referenceUnitTestsPassed": 57,
+    "demoUnitTestsPassed": 33,
+    "diagnosticUnitTestsPassed": 170,
+    "browserMatrixPassed": 162,
+    "demoMatrixPassed": 39,
+    "browserEngines": ["Chromium", "Firefox", "WebKit"],
+    "browserRetries": 0,
+    "rustClippyAndRustdoc": "passed with warnings denied",
+    "wasmAbi": "227 signatures and ABI generation 5 unchanged",
+    "packageConsumers": "direct/path-aliased reproducibility and isolated tarball consumers passed",
+    "budgetsRaised": false
+  },
+  "sizeBytes": {
+    "wasm": {"actual": 1608592, "maximum": 1610000},
+    "demoWasmGzip": {"actual": 450525, "maximum": 452000},
+    "demoJavascriptGzip": {"actual": 224951, "maximum": 225000},
+    "browserTarball": {"actual": 269061, "maximum": 270000},
+    "wasmTarball": {"actual": 521708, "maximum": 525000}
+  },
+  "issuesCaughtDuringDevelopment": [
+    "Updated two missed legacy test field accesses after the internal representation change",
+    "Corrected the test's compiler-contract byte offset, then independently cross-checked the full 707-byte vector",
+    "Split grouped validation into a named helper to satisfy the existing lint limit",
+    "Initial rebuilt Wasm was 1611502 bytes, above the unchanged 1610000-byte limit; replaced the new tree-based duplicate detector with a bounded flat reference scan, retaining every rejection check and reducing it to 1608592 bytes"
+  ],
+  "evidence": [
+    {"path": "/tmp/breditor-structural-release-20261002.log", "sha256": "655737a0606a6670e8be0aafbd31ed8378e89e668d331f2a1df2a3ce66a7f783"},
+    {"path": "/tmp/breditor-structural-property-final-20261002.log", "sha256": "e8b1d623c7e5200978e233b1473e5d14d7c4660eeff0467b6b454450f0f829c5"},
+    {"path": "crates/breditor-core/src/schema/child_grammar.rs", "sha256": "34f76fbf7e785d41b539f81ee075dde600aaec81527e7dcb19fb0036855d942d"},
+    {"path": "crates/breditor-core/src/schema/compiled_schema.rs", "sha256": "57a0cdef62cf59687edc59352a0624e59bd869de084fa9da87c7cd4a99505ef8"},
+    {"path": "crates/breditor-core/src/schema/compiler.rs", "sha256": "f2494e2fddebea750379ec2f0bc8044d7e54f3f415b65cfeb6733a5143d7e7d3"},
+    {"path": "crates/breditor-core/src/schema/mod.rs", "sha256": "efe9aaae718ba7aa51a289ee4999ca0cbed6057a982c1903a3e043e947ed6c12"},
+    {"path": "crates/breditor-core/src/schema/validation.rs", "sha256": "c8d44c285eb83218cce5314459f0a5894222a73ec91a64fce235f59013e482f4"},
+    {"path": "crates/breditor-core/src/schema/structural_grammar_tests.rs", "sha256": "416ef743c5dfc7a406e2b9542da7928ecf148601825636779211d1f6ece68377"}
+  ],
+  "limitations": [
+    "Exact typed element-property contracts for heading rank and ordered-list start are not implemented",
+    "No public heading/list schema factory, editing action, selection relocation, undo/redo recipe, Wasm export or toolbar was added",
+    "The structural test fixture is shape-only and must not be treated as a production schema",
+    "Disjoint ordered groups intentionally cannot express ambiguous or overlapping child alternatives",
+    "The independent intermittent WebKit numerical fault remains unresolved; passing the existing browser matrix does not close it",
+    "No new native Safari/Chrome, physical-device, mobile touch or CJK IME qualification was performed"
+  ],
+  "published": false,
+  "pushed": false,
+  "next": "Closed typed element-property contracts, followed by guarded block-kind replacement with exact selection/history laws"
+}

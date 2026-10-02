@@ -41,6 +41,13 @@ action-state components under a fresh process-local generation. Those semantic
 components do not widen the fingerprint input. A general node/property schema
 compiler remains staged.
 
+The October 2 private structural grammar slice adds compiler-contract version
+3 for child alternatives and ordered groups. No public structural profile is
+admitted yet; element-property contracts and structural editing remain staged.
+Existing base/text/typed-format schema fingerprints are unchanged.
+Compiler-contract version 3 is a fingerprint-encoding discriminator, not a new
+document wire version or permission to admit structural documents publicly.
+
 ## Canonical byte encoding
 
 The SHA-256 input starts with the exact ASCII/UTF-8 domain bytes
@@ -51,8 +58,10 @@ tag.
 1. `0x01`: canonical-encoding version as a big-endian `u32` (`1`).
 2. `0x02`: schema value-model version as a big-endian `u32` (`1`).
 3. `0x03`: compiler-contract version as a big-endian `u32`. It is `1` when all
-   formats are property-free and `2` when any format has a typed property
-   contract.
+   child constraints are single-kind repeats and all formats are property-free;
+   `2` when those child constraints remain single-kind repeats but any format
+   has a typed property contract; `3` when any element uses multiple alternatives
+   or ordered child groups, whether or not typed format properties are present.
 4. `0x10`: qualified schema name.
 5. `0x11`: nonzero `SchemaVersion` as a big-endian `u32`.
 6. `0x12`: qualified root element kind.
@@ -79,6 +88,31 @@ Each element entry contains, in order:
    with a qualified child element kind.
 7. `0x38`: minimum child count as a big-endian `u32`.
 8. `0x39`: optional maximum child count.
+
+For a multi-alternative or multi-group element, replace fields 6–8 with:
+
+1. `0x50`: number of ordered groups as a big-endian `u32` (1–8).
+2. For each group in semantic order:
+
+   - `0x51`: alternative count as a big-endian `u32` (1–16).
+   - Each alternative: `0x36` for text or `0x37` with an exact qualified
+     element name. Text sorts first, then element names in lexical order.
+   - `0x38`: this group's minimum count as a big-endian `u32`.
+   - `0x39`: this group's optional maximum count.
+
+Every alternative must be unique across all groups of the element. The
+compiler rejects empty groups, excessive declaration counts, invalid ranges,
+unknown element references and aggregate minimum overflow. It does not sort
+groups: changing their order changes the language and fingerprint. Within a
+version-3 schema, single-kind-repeat elements still use fields 6–8 above.
+Typed format entries below remain fully encoded under version 3.
+
+The private `example/structural-shape-test@1` fixture in
+`schema/structural_grammar_tests.rs` has a 707-byte canonical input and digest
+`sha256:06fd7accf6565539dd4343137facc535dc40fde232cee5d7ada72ce572a08716`.
+Its independent encoding was checked with Node big-endian Buffer writes and
+SHA-256. This is a shape-only test vector, **not** an admitted editor profile:
+heading rank and ordered-list properties are intentionally absent.
 
 Each inline-format entry contains, in order:
 

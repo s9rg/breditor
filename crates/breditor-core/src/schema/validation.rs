@@ -22,7 +22,7 @@ use crate::{
     },
 };
 
-use super::compiler::ChildKind;
+use super::child_grammar::{ChildConstraint, ChildKind, ChildSequence};
 
 /// Maximum issues retained by one validation report, including truncation metadata.
 pub const MAX_VALIDATION_REPORT_ISSUES: usize = 1_024;
@@ -729,19 +729,19 @@ impl<'a> ValidationState<'a> {
         let Some(constraint) = self.schema.element_child_constraint(element.kind()) else {
             return;
         };
+        let Some((kind, group)) = constraint.single() else {
+            self.validate_grouped_child_shape(element, path, constraint);
+            return;
+        };
         let child_count = u32::try_from(element.children().len()).unwrap_or(u32::MAX);
-        if child_count < constraint.minimum() {
+        if child_count < group.minimum {
             let message = if element.kind() == self.schema.root_kind()
-                && constraint.minimum() == 1
-                && matches!(constraint.kind(), ChildKind::Element(kind) if kind == self.schema.paragraph_kind())
+                && group.minimum == 1
+                && matches!(kind, ChildKind::Element(kind) if kind == self.schema.paragraph_kind())
             {
                 "a document must contain at least one paragraph".to_owned()
             } else {
-                format!(
-                    "element `{}` requires at least {} children",
-                    element.kind(),
-                    constraint.minimum()
-                )
+                format!("element `{}` requires at least {} children", element.kind(), group.minimum)
             };
             self.issue(
                 ValidationCode::MissingRequiredChild,
@@ -758,10 +758,10 @@ impl<'a> ValidationState<'a> {
             if self.report_is_saturated() {
                 break;
             }
-            let within_maximum = constraint
-                .maximum()
+            let within_maximum = group
+                .maximum
                 .is_none_or(|maximum| u32::try_from(index).is_ok_and(|index| index < maximum));
-            let valid_kind = match constraint.kind() {
+            let valid_kind = match kind {
                 ChildKind::Text => child.as_text().is_some(),
                 ChildKind::Element(required) => {
                     child.as_element().is_some_and(|child_element| child_element.kind() == required)
@@ -771,17 +771,17 @@ impl<'a> ValidationState<'a> {
                 continue;
             }
             let message = if element.kind() == self.schema.root_kind()
-                && matches!(constraint.kind(), ChildKind::Element(kind) if kind == self.schema.paragraph_kind())
+                && matches!(kind, ChildKind::Element(kind) if kind == self.schema.paragraph_kind())
             {
                 format!("document child {index} must be `{}`", self.schema.paragraph_kind())
             } else if element.kind() == self.schema.paragraph_kind()
-                && matches!(constraint.kind(), ChildKind::Text)
+                && matches!(kind, ChildKind::Text)
             {
                 format!("paragraph child {index} must be text")
             } else if !within_maximum {
                 format!("element `{}` has too many children", element.kind())
             } else {
-                match constraint.kind() {
+                match kind {
                     ChildKind::Text => {
                         format!("element `{}` child {index} must be text", element.kind())
                     }
@@ -796,6 +796,47 @@ impl<'a> ValidationState<'a> {
                 ValidationSubject::Child { index },
                 ValidationDetail::None,
                 message,
+            );
+        }
+    }
+
+    fn validate_grouped_child_shape(
+        &mut self,
+        element: &crate::document::ElementNode,
+        path: &NodePath,
+        constraint: &ChildConstraint,
+    ) {
+        let mut sequence = ChildSequence::new(constraint);
+        for (index, child) in
+            element.children().iter().take(self.limits.max_children_per_element).enumerate()
+        {
+            if self.report_is_saturated() {
+                return;
+            }
+            if !sequence.observe(child) {
+                self.issue(
+                    ValidationCode::InvalidChild,
+                    path,
+                    ValidationSubject::Child { index },
+                    ValidationDetail::None,
+                    format!(
+                        "element `{}` child {index} violates its ordered child groups",
+                        element.kind()
+                    ),
+                );
+            }
+        }
+        // An unvisited suffix has already failed the child resource limit;
+        // do not invent missing-child diagnostics from truncated input.
+        if element.children().len() <= self.limits.max_children_per_element
+            && sequence.missing_required()
+        {
+            self.issue(
+                ValidationCode::MissingRequiredChild,
+                path,
+                ValidationSubject::Node,
+                ValidationDetail::None,
+                format!("element `{}` is missing a required child group", element.kind()),
             );
         }
     }

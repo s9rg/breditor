@@ -18,12 +18,16 @@ use crate::{
     },
 };
 
-use super::compiled_schema::CompiledSchema;
+use super::{
+    child_grammar::{ChildConstraint, ChildKind, MAX_CHILD_ALTERNATIVES, MAX_CHILD_GROUPS},
+    compiled_schema::CompiledSchema,
+};
 
 const CANONICAL_ENCODING_VERSION: u32 = 1;
 const SCHEMA_VALUE_MODEL_VERSION: u32 = 1;
 const SCHEMA_COMPILER_CONTRACT_VERSION_V1: u32 = 1;
 const SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES: u32 = 2;
+const SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_GROUPS: u32 = 3;
 const FINGERPRINT_DOMAIN: &[u8] = b"breditor/schema-fingerprint\0";
 
 const MAX_ELEMENT_TYPES: u32 = 256;
@@ -166,33 +170,6 @@ impl ConstraintMode {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) struct ChildConstraint {
-    kind: ChildKind,
-    minimum: u32,
-    maximum: Option<u32>,
-}
-
-impl ChildConstraint {
-    pub(super) const fn kind(&self) -> &ChildKind {
-        &self.kind
-    }
-
-    pub(super) const fn minimum(&self) -> u32 {
-        self.minimum
-    }
-
-    pub(super) const fn maximum(&self) -> Option<u32> {
-        self.maximum
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) enum ChildKind {
-    Text,
-    Element(QualifiedName),
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
 enum DeclarationOwner {
     Breditor,
     Profile,
@@ -284,6 +261,16 @@ enum SchemaCompilerError {
         "element {element} has minimum child count {minimum} above maximum child count {maximum}"
     )]
     InvalidChildCountRange { element: QualifiedName, minimum: u32, maximum: u32 },
+    #[error("element {element} must declare between 1 and {MAX_CHILD_GROUPS} child groups")]
+    InvalidChildGroupCount { element: QualifiedName },
+    #[error(
+        "element {element} must declare between 1 and {MAX_CHILD_ALTERNATIVES} alternatives per child group"
+    )]
+    InvalidChildAlternativeCount { element: QualifiedName },
+    #[error("element {element} repeats a child alternative within or across groups")]
+    OverlappingChildAlternatives { element: QualifiedName },
+    #[error("element {element} has an unrepresentable total minimum child count")]
+    ChildMinimumOverflow { element: QualifiedName },
 }
 
 static BASE_DEFINITION: OnceLock<(Arc<CompiledSchemaDefinition>, SchemaFingerprint)> =
@@ -420,7 +407,7 @@ pub(super) fn compile_test_semantic_variant_same_id() -> CompiledSchema {
     let Some(root) = spec.elements.iter_mut().find(|element| element.kind == spec.root_kind) else {
         unreachable!("trusted test schema must declare its root element")
     };
-    root.children.minimum = 2;
+    root.children.groups[0].minimum = 2;
     match compile(spec, CompilerLimits::default()) {
         Ok(compiled) => compiled,
         Err(error) => unreachable!("test-only semantic schema variant failed to compile: {error}"),
@@ -467,8 +454,9 @@ fn compile(
     }
 
     reject_reserved_schema_name(&spec)?;
-    for element in &spec.elements {
+    for element in &mut spec.elements {
         reject_reserved_element_name(element)?;
+        canonicalize_child_constraint(element)?;
     }
     for inline_format in &spec.inline_formats {
         reject_reserved_inline_format_name(inline_format)?;
@@ -514,22 +502,15 @@ fn compile(
         return Err(SchemaCompilerError::UnknownStrongFormat { kind: spec.strong_kind });
     }
     for (kind, element) in &elements {
-        if let Some(maximum) = element.children.maximum
-            && element.children.minimum > maximum
-        {
-            return Err(SchemaCompilerError::InvalidChildCountRange {
-                element: kind.clone(),
-                minimum: element.children.minimum,
-                maximum,
-            });
-        }
-        if let ChildKind::Element(child) = &element.children.kind
-            && !elements.contains_key(child)
-        {
-            return Err(SchemaCompilerError::UnknownChildElement {
-                element: kind.clone(),
-                child: child.clone(),
-            });
+        for child_kind in element.children.groups.iter().flat_map(|group| &group.kinds) {
+            if let ChildKind::Element(child) = child_kind
+                && !elements.contains_key(child)
+            {
+                return Err(SchemaCompilerError::UnknownChildElement {
+                    element: kind.clone(),
+                    child: child.clone(),
+                });
+            }
         }
     }
 
@@ -544,6 +525,47 @@ fn compile(
     });
     let fingerprint = fingerprint(&definition);
     Ok(CompiledSchema::from_compilation(definition, fingerprint))
+}
+
+fn canonicalize_child_constraint(element: &mut ElementSpec) -> Result<(), SchemaCompilerError> {
+    let kind = &element.kind;
+    let groups = &mut element.children.groups;
+    if groups.is_empty() || groups.len() > MAX_CHILD_GROUPS {
+        return Err(SchemaCompilerError::InvalidChildGroupCount { element: kind.clone() });
+    }
+    // At most 8 * 16 alternatives. A bounded flat scan avoids allocating a
+    // separate search tree (and its Wasm code) for these tiny declarations.
+    let mut seen = Vec::new();
+    let mut total_minimum = 0_u32;
+    for group in groups {
+        if group.kinds.is_empty() || group.kinds.len() > MAX_CHILD_ALTERNATIVES {
+            return Err(SchemaCompilerError::InvalidChildAlternativeCount {
+                element: kind.clone(),
+            });
+        }
+        if let Some(maximum) = group.maximum
+            && group.minimum > maximum
+        {
+            return Err(SchemaCompilerError::InvalidChildCountRange {
+                element: kind.clone(),
+                minimum: group.minimum,
+                maximum,
+            });
+        }
+        total_minimum = total_minimum
+            .checked_add(group.minimum)
+            .ok_or_else(|| SchemaCompilerError::ChildMinimumOverflow { element: kind.clone() })?;
+        group.kinds.sort();
+        for alternative in &group.kinds {
+            if seen.contains(&alternative) {
+                return Err(SchemaCompilerError::OverlappingChildAlternatives {
+                    element: kind.clone(),
+                });
+            }
+            seen.push(alternative);
+        }
+    }
+    Ok(())
 }
 
 fn reject_reserved_schema_name(spec: &SchemaSpec) -> Result<(), SchemaCompilerError> {
@@ -608,12 +630,17 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
     let mut encoder = CanonicalFingerprintEncoder::new(sink);
     encoder.u32(0x01, CANONICAL_ENCODING_VERSION);
     encoder.u32(0x02, SCHEMA_VALUE_MODEL_VERSION);
-    let compiler_contract_version =
-        if definition.inline_formats.values().any(|format| format.property_contract.is_some()) {
-            SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES
-        } else {
-            SCHEMA_COMPILER_CONTRACT_VERSION_V1
-        };
+    let compiler_contract_version = if definition
+        .elements
+        .values()
+        .any(|element| element.children.single().is_none())
+    {
+        SCHEMA_COMPILER_CONTRACT_VERSION_CHILD_GROUPS
+    } else if definition.inline_formats.values().any(|format| format.property_contract.is_some()) {
+        SCHEMA_COMPILER_CONTRACT_VERSION_TYPED_PROPERTIES
+    } else {
+        SCHEMA_COMPILER_CONTRACT_VERSION_V1
+    };
     encoder.u32(0x03, compiler_contract_version);
     encoder.name(0x10, definition.id.name());
     encoder.u32(0x11, definition.id.version().get());
@@ -632,12 +659,27 @@ fn encode_fingerprint(definition: &CompiledSchemaDefinition, sink: impl FnMut(&[
         encoder.u32(0x33, element.revision.get());
         encoder.boolean(0x34, element.allows_properties);
         encoder.boolean(0x35, element.allows_entity_id);
-        match &element.children.kind {
-            ChildKind::Text => encoder.tag(0x36),
-            ChildKind::Element(child) => encoder.name(0x37, child),
+        if let Some((kind, group)) = element.children.single() {
+            match kind {
+                ChildKind::Text => encoder.tag(0x36),
+                ChildKind::Element(child) => encoder.name(0x37, child),
+            }
+            encoder.u32(0x38, group.minimum);
+            encoder.optional_u32(0x39, group.maximum);
+        } else {
+            encoder.u32(0x50, fixed_count(element.children.groups.len()));
+            for group in &element.children.groups {
+                encoder.u32(0x51, fixed_count(group.kinds.len()));
+                for kind in &group.kinds {
+                    match kind {
+                        ChildKind::Text => encoder.tag(0x36),
+                        ChildKind::Element(child) => encoder.name(0x37, child),
+                    }
+                }
+                encoder.u32(0x38, group.minimum);
+                encoder.optional_u32(0x39, group.maximum);
+            }
         }
-        encoder.u32(0x38, element.children.minimum);
-        encoder.optional_u32(0x39, element.children.maximum);
     }
     encoder.u32(0x40, fixed_count(definition.inline_formats.len()));
     for (kind, inline_format) in &definition.inline_formats {
@@ -776,11 +818,11 @@ fn base_spec() -> SchemaSpec {
                 revision: PersistedTypeRevision::one(),
                 allows_properties: false,
                 allows_entity_id: false,
-                children: ChildConstraint {
-                    kind: ChildKind::Element(paragraph_kind.clone()),
-                    minimum: 1,
-                    maximum: None,
-                },
+                children: ChildConstraint::repeated(
+                    ChildKind::Element(paragraph_kind.clone()),
+                    1,
+                    None,
+                ),
             },
             ElementSpec {
                 kind: paragraph_kind,
@@ -788,7 +830,7 @@ fn base_spec() -> SchemaSpec {
                 revision: PersistedTypeRevision::one(),
                 allows_properties: false,
                 allows_entity_id: false,
-                children: ChildConstraint { kind: ChildKind::Text, minimum: 0, maximum: None },
+                children: ChildConstraint::repeated(ChildKind::Text, 0, None),
             },
         ],
         inline_formats: vec![InlineFormatSpec {
@@ -803,6 +845,10 @@ fn base_spec() -> SchemaSpec {
 fn fixed_count(value: usize) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
+
+#[cfg(test)]
+#[path = "structural_grammar_tests.rs"]
+mod structural_grammar_tests;
 
 #[cfg(test)]
 mod tests {
@@ -843,7 +889,7 @@ mod tests {
             revision: PersistedTypeRevision::one(),
             allows_properties: false,
             allows_entity_id: false,
-            children: ChildConstraint { kind: ChildKind::Text, minimum: 0, maximum: None },
+            children: ChildConstraint::repeated(ChildKind::Text, 0, None),
         }
     }
 
@@ -1042,14 +1088,14 @@ mod tests {
         let mut revisions = base.clone();
         revisions.inline_formats[0].revision = PersistedTypeRevision::try_new(2)?;
         let mut child_count = base.clone();
-        child_count.elements[0].children.minimum = 2;
+        child_count.elements[0].children.groups[0].minimum = 2;
         let mut properties = base.clone();
         properties.inline_formats[0].property_contract =
             Some(property_contract(properties.inline_formats[0].kind.clone())?);
         let mut entity_identity = base.clone();
         entity_identity.elements[0].allows_entity_id = true;
         let mut maximum = base.clone();
-        maximum.elements[0].children.maximum = Some(1);
+        maximum.elements[0].children.groups[0].maximum = Some(1);
 
         let fingerprints = [base, revisions, child_count, properties, entity_identity, maximum]
             .into_iter()
@@ -1270,7 +1316,7 @@ mod tests {
         );
 
         let mut child = base_spec();
-        child.elements[0].children.kind = ChildKind::Element(unknown.clone());
+        child.elements[0].children.groups[0].kinds = vec![ChildKind::Element(unknown.clone())];
         assert_eq!(
             compile(child, CompilerLimits::default()),
             Err(SchemaCompilerError::UnknownChildElement {
@@ -1280,8 +1326,8 @@ mod tests {
         );
 
         let mut range = base_spec();
-        range.elements[0].children.minimum = 2;
-        range.elements[0].children.maximum = Some(1);
+        range.elements[0].children.groups[0].minimum = 2;
+        range.elements[0].children.groups[0].maximum = Some(1);
         assert_eq!(
             compile(range, CompilerLimits::default()),
             Err(SchemaCompilerError::InvalidChildCountRange {
@@ -1394,11 +1440,11 @@ mod tests {
         std::mem::swap(&mut changed_roles.root_kind, &mut changed_roles.paragraph_kind);
 
         let mut changed_child_range = base_spec();
-        changed_child_range.elements[0].children.minimum = 2;
+        changed_child_range.elements[0].children.groups[0].minimum = 2;
 
         let mut changed_child_kind = base_spec();
-        changed_child_kind.elements[1].children.kind =
-            ChildKind::Element(QualifiedName::from_known_static("breditor/paragraph"));
+        changed_child_kind.elements[1].children.groups[0].kinds =
+            vec![ChildKind::Element(QualifiedName::from_known_static("breditor/paragraph"))];
 
         for (label, spec, supports_structural_text) in [
             ("extra element", extra_element, false),

@@ -6,10 +6,11 @@ use crate::{
     schema::{DurableSchemaBinding, SchemaCompilationError, SchemaFingerprint, SchemaId},
 };
 
+use super::child_grammar::{ChildConstraint, ChildKind};
 use super::compiler::{
-    ChildConstraint, CompiledSchemaDefinition, GlobalConstraints, compile_base_text_profile,
-    compile_breditor_base, is_exact_breditor_base, supports_base_text_operations,
-    supports_paragraph_structure_operations, supports_text_splice_operations,
+    CompiledSchemaDefinition, GlobalConstraints, compile_base_text_profile, compile_breditor_base,
+    is_exact_breditor_base, supports_base_text_operations, supports_paragraph_structure_operations,
+    supports_text_splice_operations,
 };
 
 /// The immutable schema used to validate a document.
@@ -193,7 +194,7 @@ impl CompiledSchema {
 
     pub(crate) fn is_text_container(&self, kind: &QualifiedName) -> bool {
         self.element_child_constraint(kind)
-            .is_some_and(|constraint| matches!(constraint.kind(), super::compiler::ChildKind::Text))
+            .is_some_and(|constraint| matches!(constraint.single(), Some((ChildKind::Text, _))))
     }
 
     pub(crate) fn allows_text_format(&self, kind: &QualifiedName) -> bool {
