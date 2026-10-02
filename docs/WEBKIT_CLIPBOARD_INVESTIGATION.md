@@ -2403,3 +2403,52 @@ controls verify the observer, not a fix for the intermittent failure.
 Final Chromium/Firefox clipboard and Link controls passed 14 cases. The
 diagnostic unit suite passed 187 tests and browser type checking passed. No
 shipping runtime or Rust/Wasm source changed during this investigation.
+
+### Separating a numeric-transfer false failure from editor faults
+
+Another five-suite delivery run finished **269 passed / 1 failed**. The failure
+was not a clipboard owner fault: a detached-toolbar shadow counter arrived as
+`Infinity`, despite both owner phases remaining live and the document staying
+unchanged. The counter starts at zero and its only update is a unit increment.
+
+Retaining the original frozen page result with `evaluateHandle` and reading it
+through `jsonValue` reproduced a second disagreement in a focused batch:
+**79 passed / 1 failed**. This time `ownerDocumentShadowReads` arrived as `NaN`.
+Reading that same retained object afterwards through JSON text showed all four
+counters as decimal `0`, native JSON `0`, and IEEE-754 bits
+`0000000000000000`. The operation was not replayed. This proves disagreement
+between the received numeric result and later observations of the frozen page
+object; it does not establish what each original serializer predicate saw.
+
+The ordinary detached-toolbar test now carries its JSON-only result as text.
+Every existing assertion remains, with additional checks of the original
+counter types, decimal/JSON strings and raw bits. This prevents JSON's
+normalization of negative zero, NaN or infinities from hiding a bad counter.
+The first fixed focused batch passed all **80 WebKit cases**. Direct numeric
+transfer remains available, with unchanged failure assertions, as an opt-in
+diagnostic:
+
+```sh
+playwright test -c playwright.counter-transport.config.ts --project=webkit --repeat-each=40
+```
+
+A subsequent 40-case direct-transfer batch passed, so reproduction remains
+intermittent. The installed Playwright serializer uses special-value
+`Object.is` checks, but the evidence does not identify a Playwright logic bug
+versus an engine/runtime anomaly. No dependency or shipping editor code was
+patched. The earlier `queueUncertain`, `toolbarDispatchFailed` and startup
+descriptor failures remain open and must not be dismissed as this counter
+transport issue. Exact commands, trace hashes and verification results are in
+the [counter transport evidence record](qualification/2026-10-02-webkit-counter-transport.json).
+
+The subsequent five-suite delivery batch was **not green**: 257 passed, one
+navigation timeout, 12 unrun, and suite/teardown timeout errors. The navigation
+failure occurred before the toolbar disposal probe; its later page snapshot
+showed a live revision-zero editor. The final Link evaluation returned all 300
+cycles without throwing its owner checks, but only after about 268 seconds.
+Its manifest request then failed because the test server had stopped. These
+traces do not identify the cause of either stall, and no timeout was relaxed.
+Chromium/Firefox controls passed all 18 selected counter/clipboard/Link cases.
+A final separate single-suite WebKit run passed all 54 cases in one minute;
+this does not supersede the preceding failures. Diagnostic unit tests passed
+193 cases and browser type checking passed. No shipping source changed.

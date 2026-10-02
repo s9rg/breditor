@@ -1,5 +1,10 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test as base, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { SHADOW_COUNTER_FIELDS, type ShadowCounterSnapshot } from "./harness/shadow_counter_snapshot";
+
+const test = base.extend<{ directCounterTransport: boolean }>({
+  directCounterTransport: [false, { option: true }],
+});
 
 async function openEditor(page: Page): Promise<void> {
   await page.goto("/");
@@ -355,8 +360,8 @@ test("toolbar disposal defeats own remove shadows and permits host reuse", async
 
 for (const focusShadowMode of ["noOp", "throw"] as const) {
   test(`detached toolbar buttons cannot dispatch through ${focusShadowMode} focus shadows`, async ({
-    page,
-  }) => {
+    page, directCounterTransport,
+  }, testInfo) => {
     const text = `detached ${focusShadowMode} toolbar`;
     await select(page, 0, 0);
     await insert(page, text);
@@ -386,27 +391,63 @@ for (const focusShadowMode of ["noOp", "throw"] as const) {
       BigInt(afterKeyboardRevision ?? "0"),
     );
 
-    const outcome = await page.evaluate((mode) => {
+    // Retain the original frozen page object if numeric transport disagrees.
+    // Do not rerun the operation: it intentionally detaches its toolbar button.
+    const outcomeHandle = await page.evaluateHandle((mode) => {
       const harness = window.__breditorHarness;
       if (harness === undefined) throw new Error("browser harness is unavailable");
       return harness.probeDetachedToolbarButtonShadow(mode);
     }, focusShadowMode);
-
-    expect(outcome).toMatchObject({
-      detachedBeforeShadow: true,
-      parentNodeShadowReads: 0,
-      isConnectedShadowReads: 0,
-      ownerDocumentShadowReads: 0,
-      focusShadowCalls: 0,
-      dispatchReturned: false,
-      clickDefaultPrevented: true,
-      beforePhase: "live",
-      afterPhase: "live",
-    });
-    expect(outcome.afterDocument).toEqual(outcome.beforeDocument);
-    expect(outcome.beforeDocumentJson).toBeDefined();
-    expect(outcome.afterDocumentJson).toBe(outcome.beforeDocumentJson);
-    expect(outcome.afterHtml).toBe(outcome.beforeHtml);
+    try {
+      // The diagnostic keeps the original direct-number read and assertion.
+      // Ordinary editor qualification uses lossless text + explicit bit checks.
+      const direct = directCounterTransport ? await outcomeHandle.jsonValue() : undefined;
+      const retainedJson = await outcomeHandle.evaluate(async (retained) => {
+        const url = "/shadow_counter_snapshot.ts";
+        const probe = await import(url) as typeof import("./harness/shadow_counter_snapshot");
+        return probe.serializeShadowCounterSnapshot(retained);
+      });
+      const snapshot = JSON.parse(retainedJson) as ShadowCounterSnapshot<Awaited<ReturnType<typeof outcomeHandle.jsonValue>>>;
+      if (directCounterTransport) expect(direct).toBeDefined();
+      const outcome = directCounterTransport ? direct! : snapshot.outcome;
+      try {
+        expect(outcome).toMatchObject({
+          detachedBeforeShadow: true,
+          parentNodeShadowReads: 0,
+          isConnectedShadowReads: 0,
+          ownerDocumentShadowReads: 0,
+          focusShadowCalls: 0,
+          dispatchReturned: false,
+          clickDefaultPrevented: true,
+          beforePhase: "live",
+          afterPhase: "live",
+        });
+        expect(outcome.afterDocument).toEqual(outcome.beforeDocument);
+        expect(outcome.beforeDocumentJson).toBeDefined();
+        expect(outcome.afterDocumentJson).toBe(outcome.beforeDocumentJson);
+        expect(outcome.afterHtml).toBe(outcome.beforeHtml);
+        expect(snapshot.frozen).toBe(true);
+        expect(snapshot.counters).toEqual(Object.fromEntries(SHADOW_COUNTER_FIELDS.map(key => [key, {
+          type: "number", decimal: "0", json: "0", bits: "0000000000000000",
+        }])));
+      } catch (error) {
+        try {
+          // Later retained-value observations, not a replay or a claim about
+          // what the original serializer's predicates saw. Exclude all content.
+          await testInfo.attach("shadow-counter-transport.json", {
+            body: JSON.stringify({ received: {
+              parentNodeShadowReads: String(outcome.parentNodeShadowReads),
+              isConnectedShadowReads: String(outcome.isConnectedShadowReads),
+              ownerDocumentShadowReads: String(outcome.ownerDocumentShadowReads),
+              focusShadowCalls: String(outcome.focusShadowCalls),
+            }, retained: { frozen: snapshot.frozen, counters: snapshot.counters } }), contentType: "application/json",
+          });
+        } catch { /* Preserve the original assertion if evidence capture fails. */ }
+        throw error;
+      }
+    } finally {
+      try { await outcomeHandle.dispose(); } catch { /* The closing page owns remaining handles. */ }
+    }
   });
 }
 

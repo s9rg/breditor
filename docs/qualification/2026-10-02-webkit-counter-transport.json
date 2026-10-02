@@ -1,0 +1,94 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "e6895e7",
+  "status": "numeric-transfer-disagreement-reproduced-editor-history-fault-still-open",
+  "environment": {
+    "architecture": "macOS arm64",
+    "playwright": "1.62.1",
+    "webkitRevision": "2336",
+    "inheritedDebugFlags": "No JSC_, DYLD_, WEBKIT_ or PLAYWRIGHT_ environment variables were present."
+  },
+  "firstFailure": {
+    "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --max-failures=3 --output=target/playwright-delivery-followup-20261002",
+    "passed": 269,
+    "failed": 1,
+    "retries": 0,
+    "observation": "The detached noOp toolbar test received focusShadowCalls=Infinity. Before/after owner phase was live, document revision remained 5, and content was unchanged. This was not the history owner fault.",
+    "log": "/tmp/breditor-delivery-followup-20261002.log",
+    "logSha256": "96e85704f99b0780da30932707dc6d5478029fc913dbe49909622979b013b9e8",
+    "trace": "target/playwright-delivery-followup-20261002/editor-detached-toolbar-bu-ccaa3--through-noOp-focus-shadows-webkit-repeat1/trace.zip",
+    "traceSha256": "6cf966eca07c8db7f1ae377eb5c8c830b82e88705abe99af08d68c9f47fe3515"
+  },
+  "retainedObjectReproduction": {
+    "command": "playwright test tests/browser/editor.spec.ts --grep 'detached toolbar buttons' --project=webkit --repeat-each=40 --max-failures=3 --output=target/playwright-counter-transport-focused-20261002",
+    "passed": 79,
+    "failed": 1,
+    "retries": 0,
+    "changeFromOriginalTest": "Retain the original page result with evaluateHandle, then read it with jsonValue using the original assertions. On failure only, inspect the same object through JSON text; do not rerun the toolbar operation.",
+    "observation": "noOp repeat23 received ownerDocumentShadowReads=NaN. The retained original object was frozen and all four counters subsequently read as decimal 0, native JSON 0 and IEEE-754 bits 0000000000000000. Later Object.is rechecks also returned zero=true and infinity=false.",
+    "log": "/tmp/breditor-counter-transport-focused-20261002.log",
+    "logSha256": "765a3e4aafe80ef23e99298768225efb8f4a31a4c28d476214daf166e237fa57",
+    "trace": "target/playwright-counter-transport-focused-20261002/editor-detached-toolbar-bu-ccaa3--through-noOp-focus-shadows-webkit-repeat23/trace.zip",
+    "traceSha256": "3cea49533841d0246e8696ea108e761a4e91dd5cac0e456abecf80a2e2539b85",
+    "counterAttachmentSha1": "fd1ac2d54fde31503fc57188b1de704370a5941a"
+  },
+  "testHarnessFix": [
+    "Transport this JSON-only detached-toolbar fixture as native JSON text, not per-number special-value tags. Keep every original assertion.",
+    "Check each original counter's type, decimal text, native JSON text and IEEE-754 bit string. Negative zero, NaN and infinities cannot silently normalize into an accepted zero.",
+    "Keep direct numeric transfer as an opt-in diagnostic in playwright.counter-transport.config.ts. It retains the same assertions and does not mark failures as expected.",
+    "Execute the toolbar operation exactly once. Diagnostic failure attachments contain only counters and frozen status, not document content."
+  ],
+  "verification": {
+    "finalSingleWebKitSuite": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --max-failures=3 --output=target/playwright-counter-transport-final-webkit-20261002",
+      "passed": 54, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-counter-transport-final-webkit-20261002.log",
+      "logSha256": "f177cb5d8ddd6f17705ae97171e2e82b8e1b876020425ceed8cbb62aefca0c8f",
+      "note": "A separate bounded passing run does not supersede the preceding navigation and suite timeouts. Ordinary suite membership remains 54 tests in 13 files."
+    },
+    "chromiumFirefoxControls": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/editor.spec.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --grep 'detached toolbar buttons|echoes preserve|formatted clipboard|a warm Link' --project=chromium --project=firefox --output=target/playwright-counter-transport-controls-20261002",
+      "passed": 18, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-counter-transport-controls-20261002.log",
+      "logSha256": "1c82506076f4fc6300e82e6df4853101b080b5d807bc13067a48e4081bc3ff20"
+    },
+    "deliveryFollowup": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --max-failures=3 --output=target/playwright-delivery-counter-fixed-20261002",
+      "passed": 257, "failed": 1, "notRun": 12, "retries": 0,
+      "suiteErrors": 2,
+      "log": "/tmp/breditor-delivery-counter-fixed-20261002.log",
+      "logSha256": "b59eb242e3ecc11338f781178e0b4b5829719f146819a9cd5a2c9f593acaceac",
+      "navigationFailure": {
+        "message": "page.goto exceeded its existing 10000ms timeout waiting for load, before the toolbar disposal probe ran. A later failure snapshot showed the editor live at revision 0.",
+        "trace": "target/playwright-delivery-counter-fixed-20261002/editor-toolbar-disposal-de-9cb73-dows-and-permits-host-reuse-webkit-repeat2/trace.zip",
+        "traceSha256": "d5262983ff16191c8e69b67990e650fe6110e54d9d3bc71d7ccfccf48cf00a39"
+      },
+      "suiteTimeout": {
+        "message": "The suite and its teardown exceeded the configured 480-second deadline. Link repeat4's evaluate ultimately returned 300 after 267895.639ms, with no thrown owner/liveness assertion. Its diagnostic manifest fetch then failed ECONNREFUSED after the test server stopped. This is not a passing qualification and does not locate the cause of the stall.",
+        "trace": "target/playwright-delivery-counter-fixed-20261002/link-history-lifecycle-a-w-28cef-d-an-exportable-redo-branch-webkit-repeat4/trace.zip",
+        "traceSha256": "215e08d944557aa6845afc4eee056c638a9c7fffe800bb56c89ce3fb1df237bc"
+      }
+    },
+    "directTransportDiagnostic": {
+      "command": "playwright test -c playwright.counter-transport.config.ts --project=webkit --repeat-each=20 --output=target/playwright-counter-transport-direct-20261002",
+      "passed": 40, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-counter-transport-direct-20261002.log",
+      "logSha256": "3e1b9355c92fb8433f90e6311ac437818aa1443cd65349336c771b3a21d8e8d5",
+      "note": "No disagreement in this later batch; reproduction is intermittent."
+    },
+    "textTransportWebKit": {
+      "command": "playwright test tests/browser/editor.spec.ts --grep 'detached toolbar buttons' --project=webkit --repeat-each=40 --max-failures=3 --output=target/playwright-counter-transport-fixed-20261002",
+      "passed": 80, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-counter-transport-fixed-20261002.log",
+      "logSha256": "e640ed625297f5ebd2407c0e2cbcfefaa042637e2fd22a43ed01ca859c0cdeaa"
+    },
+    "diagnosticUnitTests": { "passed": 193, "log": "/tmp/breditor-counter-transport-unit-20261002.log" },
+    "browserTypecheck": { "passed": true, "log": "/tmp/breditor-counter-transport-final-types-20261002.log" }
+  },
+  "limitations": [
+    "The retained readings occurred after direct transfer. They prove a disagreement with the received result, not the exact predicate values observed inside the original serializer.",
+    "The installed Playwright serializer uses Object.is special-value checks. This evidence does not distinguish an engine predicate anomaly from a transport implementation defect; no dependency or browser engine was patched.",
+    "The helper loads after the toolbar operation but changes observation timing. Passing repetitions do not prove the underlying WebKit behavior is repaired.",
+    "No shipping source, Rust/Wasm ABI, validation, recovery policy, retry count or test timeout changed. Earlier queueUncertain, toolbarDispatchFailed and startup descriptor failures remain open."
+  ]
+}
