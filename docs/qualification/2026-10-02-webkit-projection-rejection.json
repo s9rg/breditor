@@ -1,0 +1,120 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "322185c",
+  "status": "queue-fault-reproduced-and-localized-to-projection-conversion-not-fixed",
+  "reproduction": {
+    "command": "BREDITOR_QUEUE_DELIVERY=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=3 --output=target/playwright-history-focused-20261002",
+    "passed": 139, "failed": 1, "retries": 0,
+    "case": "clipboard none echoes, repeat19, cycle=1, stage=continued typing",
+    "ownerReason": "queueUncertain",
+    "queueEvent": {
+      "stage": "command_queue:executor:225",
+      "reason": "Wasm projection update is invalid",
+      "frames": [
+        "wasm_command_adapter.js:1218:32", "wasm_command_adapter.js:850:62",
+        "wasm_command_adapter.js:538:47", "command_queue.js:223:44",
+        "browser_event_controller.js:419:38", "browser_event_controller.js:409:50",
+        "browser_event_router.js:298:61", "browser_event_router.js:252:43"
+      ]
+    },
+    "deliveryEvents": [],
+    "log": "/tmp/breditor-history-focused-20261002.log",
+    "logSha256": "c298de2cdb478ec7a1e62b52f372bb625418de4bf8ca02cbc13f4e173390cd6d",
+    "trace": "target/playwright-history-focused-20261002/clipboard-lifecycle-clipbo-8b5bf--history-and-caret-liveness-webkit-repeat19/trace.zip",
+    "traceSha256": "b5a47c47559ced9e79cf6cf1223bf9ad064f61fb1c08294f80140658dbeac85d",
+    "recorderAttachmentSha1": "cc10c3219c113e2eac6d38ff30a0be32b43858a0",
+    "manifestAttachmentSha1": "3be1efecba965e31ffae14a356a4f7b66cb952ee",
+    "projectionModule": { "instrumented": false, "sourceSha256": "007d17eb7ce31ddf43d57b24362167c2873916e38cd3530e364da33481426c55" },
+    "interpretation": "The executor threw in consumeAndRenderUpdate because consumeSemanticProjectionUpdateWithCleanup returned a failure, before the renderer update. This locates this instance's failure boundary but not the failing projection predicate, cleanup, generation check or underlying runtime cause. It does not prove all earlier owner faults share this cause."
+  },
+  "diagnosticChanges": [
+    "BREDITOR_QUEUE_PROJECTION=1 adds projection-adapter failure/throw-site capture to the queue configuration. The existing isIndex predicate is not wrapped and original operands are evaluated once. Source round-trip tests verify that removing inserted wrappers restores the emitted source exactly.",
+    "The projection recorder is required in this opt-in mode and included alongside queue and delivery evidence. Other boundary modules remain unmodified.",
+    "Save link-faults.json before requesting its source map. A stopped server can no longer discard a recorder already retrieved from the page. Missing maps still fail otherwise passing diagnostic tests.",
+    "BREDITOR_LINK_TIMING=1 observes the existing serial Link fixture yields, separating timer wait duration from between-yield time. It adds no timers, records visibility/focus and two clocks, emits at most 16 slow-span records, reports omissions, and carries snapshots as JSON text.",
+    "BREDITOR_QUEUE_CLIPBOARD=1 records the last sixteen redacted clipboard dispositions at the router's existing afterClipboard entry. It reads only own data fields with closed tag allowlists; no event, clipboard payload, sequence identifier or document is retained. At most sixteen non-success events are emitted to the trace console."
+  ],
+  "attachmentRegression": {
+    "before": { "passed": 5, "failed": 4, "log": "/tmp/breditor-link-attachment-before-20261002.log",
+      "logSha256": "7ef24574d9e493e62c912c27529699faf24a7fb4ecf5727b25884c3e2e8e443f" },
+    "cause": "The hook awaited page.request.get before attaching the already-read recorder. ECONNREFUSED aborted both attachments.",
+    "fix": "Move recorder attachment ahead of the network request; preserve the original failed/timedOut test and still reject missing evidence on a passing test."
+  },
+  "verification": {
+    "clipboardRouteControls": {
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts --grep 'clipboard delayed echoes' --trace=on --output=target/playwright-clipboard-route-controls-20261002",
+      "passed": 3, "failed": 0, "retries": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "log": "/tmp/breditor-clipboard-route-controls-20261002.log",
+      "logSha256": "895dcb19f40068b2b2aa10b05a2db0e74e9bcd5d136f79836d1253917a491e1e",
+      "recorderAttachmentSha1": "64985d3a041f14c65ef1f340bba7feb915884665",
+      "note": "All three traces have complete eight-module manifests and identical redacted route snapshots: last sixteen routes, sixty-eight earlier routes omitted, retained paste dispositions handled with command completed and cancellation confirmed."
+    },
+    "clipboardRouteFocused": {
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts --grep 'clipboard delayed echoes' --project=webkit --repeat-each=50 --max-failures=3 --output=target/playwright-clipboard-route-focused-20261002",
+      "passed": 50, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-clipboard-route-focused-20261002.log",
+      "logSha256": "b366d8c4a780738257c12be2af0f2c6581e1498973b4c6879421119f6dec8521",
+      "note": "No canceled-paste mismatch with the added clipboard observer; the preceding failure is not superseded."
+    },
+    "projectionStopComparison": {
+      "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=10 --max-failures=3 --output=target/playwright-projection-stop-history-20261002",
+      "passed": 69, "failed": 1, "retries": 0,
+      "case": "clipboard delayed echoes, repeat9, cycle=0, stage=paste",
+      "failure": "Paste was canceled but the expected insertion was missing. The owner remained live, with owned/connected native selection endpoints at offset 9. Queue, delivery and projection recorders were empty. This is distinct from the captured queueUncertain/projection rejection.",
+      "log": "/tmp/breditor-projection-stop-history-20261002.log",
+      "logSha256": "6f1b553a363ad4d7d9736bb5753a5e1892f1bbf2c78acf96c883399ae6a2d2ad",
+      "trace": "target/playwright-projection-stop-history-20261002/clipboard-lifecycle-clipbo-5f2fa--history-and-caret-liveness-webkit-repeat9/trace.zip",
+      "traceSha256": "644a3e821e25cfe5c052a984eac52b7d6209c6a180a39af93066b0dd7ae25188",
+      "recorderAttachmentSha1": "803f710f95f2180137edbdf4ee11d899e33493b9",
+      "manifestAttachmentSha1": "098c093fc05bb90732fca8f75f61012243caa590",
+      "interpretation": "The trace does not contain the original clipboard disposition, so its rejection/handling path is not established. The opt-in clipboard observer was added afterwards to identify that path without replaying the operation."
+    },
+    "ordinaryWebKit": {
+      "command": "playwright test --project=webkit --max-failures=3 --output=target/playwright-projection-ordinary-final-20261002",
+      "passed": 54, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-projection-ordinary-final-20261002.log",
+      "logSha256": "3efe3856b97a0bc61aad2fef156728ce09a03897eb171d16203dd4e9e9a761a7"
+    },
+    "completeTimingAssertions": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/link-history-lifecycle.spec.ts --output=target/playwright-link-timing-final-20261002",
+      "passed": 3, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-link-timing-final-20261002.log",
+      "logSha256": "80e48f625454db4be4d093b908980761e5e06b652951966b0642fd127c619f78",
+      "note": "Otherwise passing timing runs now require a completed recorder with all 300 yields resolved and no pending timer, after saving the evidence."
+    },
+    "crossBrowserControls": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_LINK_TIMING=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --repeat-each=2 --trace=on --max-failures=3 --output=target/playwright-projection-timing-controls-20261002",
+      "passed": 42, "failed": 0, "retries": 0,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "log": "/tmp/breditor-projection-timing-controls-20261002.log",
+      "logSha256": "b0a3477f528743a72bed30d3c3f2c0b957fb5bd83b1d3fd660fa55eace10ad4f",
+      "verifiedManifestCount": 42,
+      "note": "All manifests contained seven modules, with projection instrumentation enabled and no numeric-predicate sites. All six timing snapshots completed 300 scheduled yields, with no pending timer, no spans at or above 250ms, and no omissions.",
+      "webkitTiming": [
+        { "repeat": 0, "attachmentSha1": "58ff4f5eb4e864f5c03e636ddf72d43fcf566885", "timerMs": 1872, "betweenYieldMs": 2082, "maxTimerMs": 12, "maxBetweenYieldMs": 43 },
+        { "repeat": 1, "attachmentSha1": "08cc4e1d937d01cd24158a1237b9625351b032aa", "timerMs": 1783, "betweenYieldMs": 2064, "maxTimerMs": 9, "maxBetweenYieldMs": 40 }
+      ],
+      "interpretation": "The previous stall was not reproduced. These normal timing measurements do not establish its cause."
+    },
+    "projectionFocused": {
+      "command": "BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts --grep 'clipboard none echoes' --project=webkit --repeat-each=100 --max-failures=3 --output=target/playwright-projection-queue-focused-20261002",
+      "passed": 100, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-projection-queue-focused-20261002.log",
+      "logSha256": "532e7b1ca6a22b206c3d8a8c520813ac1caa8cf0f32989c3ed6361ab14acfffb",
+      "interpretation": "No reproduction under the added projection observer. This is not a fix or proof the observer is optimization-neutral."
+    },
+    "diagnosticUnitTests": { "passed": 213, "log": "/tmp/breditor-projection-queue-unit-20261002.log" },
+    "browserTypecheck": { "passed": true, "log": "/tmp/breditor-projection-queue-types-20261002.log" }
+  },
+  "timingHypothesis": {
+    "source": "https://webkit.org/blog/8970/how-web-content-can-affect-power-usage/",
+    "interpretation": "WebKit documents inactive-page timer throttling and macOS App Nap. These are hypotheses to measure, not established causes of the previous 268-second Link run or the projection rejection."
+  },
+  "limitations": [
+    "The original editor defect is not fixed; no shipping source, validation, Wasm ABI, recovery or retry policy changed.",
+    "Failure-site instrumentation can affect compilation and timing even when numeric predicates are not wrapped.",
+    "Between-yield time includes all synchronous work, microtasks and scheduling gaps; it is not a direct measure of Rust command execution time.",
+    "A timing observer and visibility state cannot alone attribute delays to App Nap, timer throttling, system sleep, CPU load or an engine defect."
+  ]
+}

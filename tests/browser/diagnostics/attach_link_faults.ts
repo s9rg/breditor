@@ -17,9 +17,19 @@ export async function attachLinkFaults(page: Page, testInfo: TestInfo): Promise<
         process.env["BREDITOR_QUEUE_DELIVERY"] === "1") {
       expect(diagnostic, "delivery diagnostic must expose its recorder").toHaveProperty("deliveries");
     }
+    if (testInfo.config.configFile?.endsWith("playwright.queue-diagnostics.config.ts") &&
+        process.env["BREDITOR_QUEUE_PROJECTION"] === "1") {
+      expect(diagnostic, "projection diagnostic must expose its recorder").toHaveProperty("projection");
+    }
+    if (testInfo.config.configFile?.endsWith("playwright.queue-diagnostics.config.ts") &&
+        process.env["BREDITOR_QUEUE_CLIPBOARD"] === "1") {
+      expect(diagnostic, "clipboard diagnostic must expose its recorder").toHaveProperty("clipboard");
+    }
     if (diagnostic !== null) {
-      const mapping = await page.request.get("/link-diagnostic-map.json");
+      // The server may already have stopped after a suite timeout. Preserve
+      // the fetched recorder before attempting any further network operation.
       await testInfo.attach("link-faults.json", { body: JSON.stringify(diagnostic), contentType: "application/json" });
+      const mapping = await page.request.get("/link-diagnostic-map.json");
       await testInfo.attach("link-diagnostic-map.json", { body: await mapping.body(), contentType: "application/json" });
       expect(mapping.ok(), "all diagnostic modules must be installed").toBe(true);
     }

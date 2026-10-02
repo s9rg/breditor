@@ -5,6 +5,25 @@ test.afterEach(async ({ page }, testInfo) => {
   await attachLinkFaults(page, testInfo);
 });
 
+test.afterEach(async ({ page }, testInfo) => {
+  if (process.env["BREDITOR_LINK_TIMING"] !== "1") return;
+  try {
+    const snapshot = await page.evaluate(() =>
+      (window as unknown as { breditorLinkTiming?: () => string }).breditorLinkTiming?.() ?? null,
+    );
+    expect(snapshot, "opt-in timing observer must be installed").not.toBeNull();
+    if (snapshot !== null) {
+      await testInfo.attach("link-timing.json", { body: snapshot, contentType: "application/json" });
+      if (testInfo.status === testInfo.expectedStatus) {
+        expect(JSON.parse(snapshot)).toMatchObject({ format: "breditor/link-timing", version: 1,
+          terminal: "completed", scheduled: 300, completed: 300, pending: null });
+      }
+    }
+  } catch (error) {
+    if (testInfo.status === testInfo.expectedStatus) throw error;
+  }
+});
+
 test("a warm Link owner retains typed form hydration, bounded history, and an exportable redo branch", async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(() =>
@@ -12,7 +31,11 @@ test("a warm Link owner retains typed form hydration, bounded history, and an ex
   );
   expect(await page.evaluate(() => window.__breditorStartupError)).toBeUndefined();
 
-  const completed = await page.evaluate(async () => {
+  const completed = await page.evaluate(async observeTiming => {
+    const probeUrl = "/link_timing_probe.ts";
+    const timing = observeTiming
+      ? (await import(probeUrl) as typeof import("./harness/link_timing_probe")).installLinkTimingProbe()
+      : undefined;
     const harness = window.__breditorHarness!;
     const initialHref = "https://example.test/reference";
     const fixture = await harness.mountReferenceFormatting(false, initialHref);
@@ -28,7 +51,7 @@ test("a warm Link owner retains typed form hydration, bounded history, and an ex
     };
     click("Link");
     const input = root.querySelector<HTMLInputElement>('input[type="text"]')!;
-    const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const nextTask = timing?.nextTask ?? (() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
     const assertState = (href: string, raw: string) => {
       if (harness.referenceFormattingSnapshot(fixture.probeId).status.phase !== "live") throw new Error("owner is not live");
       if (host.querySelector("a")?.getAttribute("href") !== href) throw new Error("rendered Link differs");
@@ -73,12 +96,14 @@ test("a warm Link owner retains typed form hydration, bounded history, and an ex
       click("Redo");
       assertState(priorHref, priorRaw);
     } catch (error) {
+      try { timing?.finish("failed"); } catch { /* Preserve the original probe failure. */ }
       // Keep the failed fixture mounted for Playwright's screenshot/trace.
       // The page fixture releases its owners when the browser context closes.
       throw new Error(`Link cycle=${cycle} stage=${stage} status=${JSON.stringify(harness.referenceFormattingSnapshot(fixture.probeId).status)}: ${String(error)}`);
     }
     harness.cleanupReferenceFormatting(fixture.probeId);
+    timing?.finish("completed");
     return cycle;
-  });
+  }, process.env["BREDITOR_LINK_TIMING"] === "1");
   expect(completed).toBe(300);
 });

@@ -1,8 +1,42 @@
 import { expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { instrumentLinkFaults } from "./link_fault_instrumentation";
 import { createLinkFaultRecorder } from "./link_fault_recorder";
 
 const id = "/repo/packages/breditor-browser/dist/wasm_command_adapter.js";
+it("can observe only projection rejection sites without touching numeric predicates", () => {
+  const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_projection_adapter.js", import.meta.url), "utf8");
+  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),
+    "/recorder.js", { numericPredicates: false })!;
+  expect(output.sites.length).toBeGreaterThan(30);
+  expect(output.sites.every(site => /^wasm_projection_adapter:(failure|throw):[0-9]+$/.test(site.stage))).toBe(true);
+  const body = output.code.split("\n").slice(1).join("\n");
+  expect(body).not.toContain("__breditorNumericPredicate");
+  expect(body.replace(/__breditorLinkThrow\("wasm_projection_adapter:failure:[0-9]+", \((projectionFailure\([^)]*\))\)\)/g, "$1")
+    .replace(/__breditorLinkThrow\("wasm_projection_adapter:throw:[0-9]+", \((new TypeError\([^)]*\))\)\)/g, "$1"))
+    .toBe(source);
+});
+
+it("failure-only projection observation leaves success and provisional defaults unrecorded", () => {
+  const source = `function isIndex(value) { return check(value); }
+    function read(value) { let result = projectionFailure("projection.invalid_shape");
+      if (!isIndex(value)) return projectionFailure("projection.invalid_shape");
+      return value; }`;
+  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_projection_adapter"),
+    "/recorder.js", { numericPredicates: false })!;
+  const run = new Function("__breditorLinkThrow", "check", "projectionFailure", "value",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn read(value);");
+  const recorder = createLinkFaultRecorder();
+  const failure = Object.freeze({ ok: false });
+  const check = vi.fn(() => true);
+  expect(run(recorder.record, check, () => failure, 2)).toBe(2);
+  expect(check).toHaveBeenCalledOnce();
+  expect(recorder.snapshot().events).toEqual([]);
+  check.mockReturnValue(false);
+  expect(run(recorder.record, check, () => failure, 2)).toBe(failure);
+  expect(recorder.snapshot().events).toHaveLength(1);
+});
+
 it.each(["command_queue", "browser_event_router"])("captures %s fail-stop calls without inspecting arguments", (module) => {
   const method = module === "command_queue" ? "fail" : "fault";
   const output = instrumentLinkFaults(`class Owner { #${method}(value) { return value; } run(value) { return this.#${method}(value); } }`,

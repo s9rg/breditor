@@ -2452,3 +2452,77 @@ Chromium/Firefox controls passed all 18 selected counter/clipboard/Link cases.
 A final separate single-suite WebKit run passed all 54 cases in one minute;
 this does not supersede the preceding failures. Diagnostic unit tests passed
 193 cases and browser type checking passed. No shipping source changed.
+
+### First captured queue exception: projection conversion rejected
+
+A focused, unchanged clipboard/history batch reproduced a real owner fault:
+**139 passed / 1 failed**. The no-echo clipboard case failed in repeat 19,
+cycle 1, at `continued typing`. The queue recorder captured
+`Wasm projection update is invalid` at `command_queue:executor:225`, with its
+first frame at `wasm_command_adapter.js:1218:32`. The seven-module manifest
+confirms that the projection adapter was not instrumented in this run.
+
+This identifies the failing boundary in `#consumeAndRenderUpdate`:
+`consumeSemanticProjectionUpdateWithCleanup` returned a failure before the DOM
+renderer was called. It does **not** yet identify which shape, generation,
+cleanup or update check failed, or whether Rust returned malformed data versus
+JavaScript rejecting valid data. It also does not establish that all earlier
+`toolbarDispatchFailed` failures share this cause.
+
+To narrow the next reproduction, the queue configuration now accepts a
+failure-only projection observer:
+
+```sh
+BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts --grep 'clipboard none echoes' --project=webkit --repeat-each=100 --max-failures=3
+```
+
+Only existing projection rejection/throw sites are wrapped. Numeric predicates
+and successful traversal operations are unchanged; source round-trip and
+synthetic execution tests check this. Instrumentation can still affect timing
+and compilation. The recorder and module map distinguish this mode from the
+previous unmodified-projection capture.
+
+Separately, four deterministic tests exposed an evidence-loss bug in the
+after-test hook: it fetched the source map before attaching the already-read
+queue recorder. A stopped server therefore discarded valid evidence. The hook
+now saves the recorder first. Missing maps still fail an otherwise passing
+diagnostic test, and attachment errors do not replace an original test failure.
+
+`BREDITOR_LINK_TIMING=1` adds an opt-in observer to the existing Link test. It
+adds no timers and measures timer waits separately from time between yields,
+retaining at most 16 slow spans plus omission counts, visibility/focus and
+monotonic/wall-clock deltas. Snapshots travel as JSON text. WebKit documents
+[inactive-page timer throttling and macOS App Nap](https://webkit.org/blog/8970/how-web-content-can-affect-power-usage/),
+but neither is established as the cause of the earlier stall; between-yield
+time is not a direct Rust execution measurement.
+
+Commands, hashes, the exact captured exception and follow-up results are in the
+[projection rejection record](qualification/2026-10-02-webkit-projection-rejection.json).
+
+The first projection-only follow-up passed 100 no-echo clipboard cases.
+Cross-browser controls passed 42 cases and retained complete seven-module
+manifests; all six Link timing snapshots completed 300 yields with no measured
+span at or above 250 ms. Three further cross-browser cases passed explicit
+timing-completeness assertions, and an ordinary uninstrumented WebKit suite
+passed all 54 cases. None closes the earlier projection rejection.
+
+The stop-only queue comparison then found a **different failure**: 69 passed /
+1 failed. Delayed-echo clipboard repeat 9, cycle 0, canceled paste but did not
+insert the expected text. The owner remained live and the native caret was
+owned and connected at offset 9. Queue, delivery and projection recorders were
+empty. The trace does not contain the original clipboard disposition, so it
+cannot yet distinguish admission rejection, a handled no-op or another cause.
+
+`BREDITOR_QUEUE_CLIPBOARD=1` now adds one observer at the router's existing
+`#afterClipboard` entry. It keeps the last 16 results using closed operation,
+reason and progress tags, never clipboard contents or event objects. It invokes
+no getters, caps console emission at 16 non-success records, and leaves the
+controller's decision and the router's handling unchanged. A source round-trip
+test and synthetic execution tests verify the insertion. This mode adds the
+router to the manifest and requires its recorder in attachments. The first
+focused delayed-echo follow-up passed 50 WebKit cases without reproducing the
+mismatch. The evidence record retains both failures as open; no shipping code,
+admission rule, timeout or retry count was changed.
+The final clipboard observer controls passed in Chromium, Firefox and WebKit
+(3 cases), retaining eight-module manifests and identical redacted successful
+paste results. All 213 diagnostic unit tests and browser type checking passed.

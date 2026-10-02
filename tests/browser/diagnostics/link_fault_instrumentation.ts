@@ -4,7 +4,8 @@ import { parseSync, type ESTree } from "rolldown/utils";
 const modules = ["browser_editor", "browser_event_router", "command_queue", "wasm_command_adapter", "wasm_projection_adapter", "wasm_selection_adapter", "wasm_action_state_adapter"];
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
-export function instrumentLinkFaults(code: string, id: string, recorder: string) {
+export function instrumentLinkFaults(code: string, id: string, recorder: string,
+  options: { numericPredicates?: boolean } = {}) {
   const module = modules.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
   if (module === undefined) return null;
   if (code.includes("__breditorLinkThrow")) throw new Error("Link diagnostic already installed");
@@ -25,7 +26,7 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string)
         text: `__breditorLinkThrow(${JSON.stringify(stage)}, (${code.slice(node.start, node.end)}))` });
       return;
     }
-    if (((module === "wasm_selection_adapter" && functionName === "isU32") ||
+    if (options.numericPredicates !== false && ((module === "wasm_selection_adapter" && functionName === "isU32") ||
          (module === "wasm_projection_adapter" && functionName === "isIndex")) &&
         node.type === "ReturnStatement" && node.argument) {
       const value = node.argument;
