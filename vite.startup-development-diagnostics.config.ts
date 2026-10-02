@@ -8,7 +8,7 @@ const manifest = new Map<string, unknown>();
 const diagnostic: Plugin = {
   name: "breditor-startup-development-diagnostics", enforce: "pre",
   transform(code, id) {
-    if (id.endsWith("/harness/selection_restore_probe.ts")) {
+    if (id.endsWith("/harness/selection_restore_probe.ts") || id.endsWith("/harness/main.ts")) {
       return `import { readStartupRejections } from ${JSON.stringify(recorder)};\n${code}\nObject.assign(window, { breditorStartupDiagnostics: readStartupRejections });`;
     }
     const output = instrumentStartupModule(code, id, recorder);

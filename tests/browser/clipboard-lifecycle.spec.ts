@@ -109,10 +109,13 @@ for (const schedule of schedules) {
           await echoes("paste");
           if (schedule === "staleAfterCaret" &&
             (harness.selection().anchorOffset !== 0 || harness.selection().focusOffset !== 0)) throw new Error("stale paste echo moved caret");
-          stage = "history";
+          stage = "history undo paste";
           history("Undo", " 🙂 world");
+          stage = "history undo cut";
           history("Undo", "Hello 🙂 world");
+          stage = "history redo cut";
           history("Redo", " 🙂 world");
+          stage = "history redo paste";
           history("Redo", " 🙂 world!");
           stage = "continued typing";
           await harness.select(10, 10);

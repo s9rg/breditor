@@ -1,0 +1,30 @@
+import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { mergeConfig, type Plugin } from "vite";
+import base from "./vite.browser.config";
+import { instrumentQueueFaults } from "./tests/browser/diagnostics/queue_fault_instrumentation";
+
+const recorder = fileURLToPath(new URL("./tests/browser/diagnostics/queue_fault_recorder.ts", import.meta.url));
+const mode = process.env["BREDITOR_QUEUE_CAPTURE"] ?? "catch";
+if (mode !== "catch" && mode !== "stop") throw new Error("BREDITOR_QUEUE_CAPTURE must be catch or stop");
+const untouched = ["wasm_command_adapter", "wasm_selection_adapter", "wasm_projection_adapter", "wasm_profile_descriptor", "wasm_document_json"];
+const manifest = new Map<string, unknown>();
+const diagnostic: Plugin = {
+  name: "breditor-queue-only-diagnostics", enforce: "pre",
+  transform(code, id) {
+    const name = untouched.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
+    if (name) manifest.set(name, { instrumented: false, sourceSha256: createHash("sha256").update(code).digest("hex") });
+    const output = instrumentQueueFaults(code, id, recorder, mode);
+    if (output === null) return null;
+    manifest.set("command_queue", { instrumented: true, mode, sourceSha256: output.sourceSha256, sites: output.sites });
+    return { code: output.code, map: null };
+  },
+  configureServer(server) {
+    server.middlewares.use((request, response, next) => {
+      if (request.method !== "GET" || request.url !== "/link-diagnostic-map.json") return next();
+      response.writeHead(manifest.size === 6 ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+      response.end(JSON.stringify({ modules: Object.fromEntries(manifest) }));
+    });
+  },
+};
+export default mergeConfig(base, { plugins: [diagnostic] });

@@ -2308,3 +2308,56 @@ Three complete suites under the Link/queue diagnostic transform also passed
 This is evidence of intermittency and possible instrumentation sensitivity,
 not a fix; a lower-impact observer is the next useful comparison. No shipping
 runtime code changed during this follow-up.
+
+### Queue-only observation and another startup reproduction
+
+The opt-in `playwright.queue-diagnostics.config.ts` now supports two smaller
+observers, without transforming selection, projection, command-adapter,
+descriptor or durable-document validators:
+
+```sh
+playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5
+BREDITOR_QUEUE_CAPTURE=stop playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5
+```
+
+The default observes four existing catch clauses and retains only known error
+messages and sanitized package line/column frames. The `stop` mode observes the
+existing `#fail` method and captures only executor-versus-observer failure codes;
+its execution loops and catch bodies remain byte-identical. Unit tests check
+that removing the inserted code restores the exact original module. Neither
+mode is claimed to be optimization-neutral. No failed command is retried.
+
+The first catch-mode batch passed 162 cases. The second stopped at 194 passed /
+1 failed / 75 unrun because axe reported `#0NaN0NaN0NaN` foreground/background
+colors for Highlight. Its accessibility assertion remains unchanged; this is
+not a captured queue failure, and its cause has not been established.
+
+Stop mode stopped at 159 passed / 1 failed / 110 unrun: fresh profile-owner
+iteration 8, variant 2, returned `engine_bootstrap.invalid_profile_descriptor`.
+The descriptor module was unmodified and no queue exception marker was emitted.
+This is another startup reproduction, not proof that startup and clipboard
+failures share a cause. The startup diagnostic now exposes and attaches its
+recorder for the profile-owner test as well as the selection-restore test; a
+missing recorder or incomplete manifest fails a diagnostic test that otherwise
+passes, while attachment errors cannot replace the original failure.
+
+Commands, traces and source identities are retained in the
+[queue-only evidence record](qualification/2026-10-02-webkit-queue-only.json).
+
+The next full startup-diagnostic batch stopped at 118 passed / 1 failed / 151
+unrun in the no-echo clipboard test, cycle 1, during history. This time the
+reason was `toolbarDispatchFailed`; the expected content check passed before
+the liveness assertion failed. The test did not distinguish the four Undo/Redo
+calls, so the exact history transition is not known. Startup attachments have
+now also been connected to the existing clipboard/Link failure hook. This
+closes an evidence-capture gap, not the runtime bug.
+
+With those attachments installed, a further five-suite startup-diagnostic batch
+passed all 270 WebKit cases. This does not supersede the preceding failures.
+The clipboard test now labels undo-paste, undo-cut, redo-cut and redo-paste
+separately, so the next failure can identify its exact history transition.
+Final controls passed 20 startup/clipboard cases across Chromium and Firefox,
+and 21 queue-only clipboard/Link cases across Chromium, Firefox and WebKit.
+The diagnostic unit suite passed 183 tests; browser test type checking passed.
+No shipping source or Rust/Wasm contract changed in this checkpoint. The first
+internal rejection responsible for the intermittent owner fault remains open.

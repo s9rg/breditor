@@ -1,13 +1,16 @@
 import { expect, type Page, type TestInfo } from "@playwright/test";
+import { attachStartupRejections } from "./attach_startup_rejections";
 
 /** Keep the first-failure breadcrumbs and source map with either Link workflow. */
 export async function attachLinkFaults(page: Page, testInfo: TestInfo): Promise<void> {
+  await attachStartupRejections(page, testInfo);
   try {
     const diagnostic = await page.evaluate(() => {
       const fixture = window as unknown as { breditorLinkDiagnostics?: () => unknown };
       return fixture.breditorLinkDiagnostics?.() ?? null;
     });
-    if (testInfo.config.configFile?.endsWith("playwright.link-diagnostics.config.ts")) {
+    if (testInfo.config.configFile?.endsWith("playwright.link-diagnostics.config.ts") ||
+        testInfo.config.configFile?.endsWith("playwright.queue-diagnostics.config.ts")) {
       expect(diagnostic, "diagnostic fixture must expose its recorder").not.toBeNull();
     }
     if (diagnostic !== null) {

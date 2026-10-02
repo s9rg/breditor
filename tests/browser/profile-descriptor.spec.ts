@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { attachStartupRejections } from "./diagnostics/attach_startup_rejections";
+
+test.afterEach(async ({ page }, testInfo) => attachStartupRejections(page, testInfo));
 
 test("repeated profile descriptor reads retain properties and absent sentinels", async ({ page }) => {
   await page.goto("/");

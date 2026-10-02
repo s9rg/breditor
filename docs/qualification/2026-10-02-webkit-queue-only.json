@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "5d93e2e",
+  "status": "additional-faults-reproduced-no-runtime-fix",
+  "target": "Uninstrumented clipboard none-echo cycle-1 caret transition faulted with queueUncertain; prior evidence in 2026-10-02-webkit-startup-development.json",
+  "observers": {
+    "catch": "Adds bindings and recording calls to only the queue's four existing executor/observer catch clauses. Records closed known error messages and sanitized package line/column frames; never retains errors or arbitrary payloads.",
+    "stop": "BREDITOR_QUEUE_CAPTURE=stop inserts one call in the existing #fail method. The complete drain/leased execution and catch bodies remain byte-identical. Only the existing closed executor_threw/observer_threw code is captured; exception detail is unavailable.",
+    "proof": "Unit tests strip the diagnostic import and inserted code and require exact equality with the original emitted module. Both modes preserve original success/failure results."
+  },
+  "unchangedBoundaryModules": {
+    "wasm_profile_descriptor": "767bb9f0032fc639f2a4e82ebb5ed41f4271f4af9d067432e5c55081a73aeb1d",
+    "wasm_projection_adapter": "007d17eb7ce31ddf43d57b24362167c2873916e38cd3530e364da33481426c55",
+    "wasm_document_json": "36bfda84f4cdd78eac7ac6bbfb15217691cf9f765d9eedf14b3cfb10e72c15e1",
+    "wasm_command_adapter": "d5d15596440f78fa263574ba0928c0678ac885fd4bd5bc57d46be23ec45c3421",
+    "wasm_selection_adapter": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb"
+  },
+  "originalQueueModuleSha256": "b79b3c9ad59d88ba3112ef62c50296d1c7caea653db077c4de352aaff0534561",
+  "verification": {
+    "catchFirst": {
+      "command": "playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=3 --output=target/playwright-queue-cold-first-20261002",
+      "passed": 162, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-queue-cold-first-20261002.log",
+      "logSha256": "fe8bd12d61a3b8a1f0bf5b59419d269788be13f845713316543a6007aa394f96"
+    },
+    "catchSecond": {
+      "command": "playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --output=target/playwright-queue-cold-second-20261002",
+      "passed": 194, "failed": 1, "notRun": 75, "retries": 0,
+      "failure": "Link accessibility test: axe color-contrast returned foreground and background #0NaN0NaN0NaN and a null contrast ratio for Highlight",
+      "queueMarkers": 0,
+      "log": "/tmp/breditor-queue-cold-second-20261002.log",
+      "logSha256": "109031aafc519c5938965770b26d327841fc58c6427d7c0bfdf923ed4513b60f",
+      "trace": "target/playwright-queue-cold-second-20261002/editor-the-native-Link-for-60b5c-nd-responsive-accessibility-webkit-repeat3/trace.zip",
+      "traceSha256": "f4dc94b8a1719890888c35fecf64cbb617784d6b9f6694d41415bfcc3c2793d0",
+      "note": "This is not a captured queue fault. The a11y assertion remains unchanged. Neither a CSS defect nor an engine cause has been established."
+    },
+    "stopFirst": {
+      "command": "BREDITOR_QUEUE_CAPTURE=stop playwright test -c playwright.queue-diagnostics.config.ts --project=webkit --repeat-each=5 --output=target/playwright-queue-stop-first-20261002",
+      "passed": 159, "failed": 1, "notRun": 110, "retries": 0,
+      "failure": "Fresh alternating profile owner rejected iteration=8 variant=2 with browser_editor.engine_bootstrap_failed/engine_bootstrap.invalid_profile_descriptor",
+      "queueMarkers": 0,
+      "log": "/tmp/breditor-queue-stop-first-20261002.log",
+      "logSha256": "e6c3d77c46040f176c53accb60893d70bb8c0139dc2d5732962eca348f30d2f0",
+      "trace": "target/playwright-queue-stop-first-20261002/profile-descriptor-fresh-a-2353b-tup-and-canonical-documents-webkit-repeat2/trace.zip",
+      "traceSha256": "89fab8463393840ae723452d381fd47ef6c844ae362f078ac6121050fadb30ff",
+      "note": "The descriptor module was not transformed. Queue-only instrumentation cannot identify its first startup rejection. This is not a captured queue exception."
+    },
+    "startupProfileFirst": {
+      "command": "playwright test -c playwright.startup-development-diagnostics.config.ts --project=webkit --repeat-each=5 --output=target/playwright-startup-profile-first-20261002",
+      "passed": 118, "failed": 1, "notRun": 151, "retries": 0,
+      "failure": "Clipboard none-echo, cycle=1, stage=history, owner faulted with toolbarDispatchFailed; content check had passed before the liveness assertion",
+      "log": "/tmp/breditor-startup-profile-first-20261002.log",
+      "logSha256": "2bdc457a0b7d4b769689238464e8254f26da6ef4cc52b77ffa13aa75b4fe86b0",
+      "trace": "target/playwright-startup-profile-first-20261002/clipboard-lifecycle-clipbo-8b5bf--history-and-caret-liveness-webkit-repeat2/trace.zip",
+      "traceSha256": "efa3dc03cef33a935fe4a2a9b635c9f06270ac5541f1f4e9f76491a1f7690ffa",
+      "note": "Profile tests now attached startup diagnostics, but clipboard tests did not yet attach that recorder. Subsequent change extends the existing clipboard/Link afterEach helper to attach startup evidence. The four history calls were not individually labeled; the specific Undo/Redo transition is unknown."
+    },
+    "startupClipboardSecond": {
+      "command": "playwright test -c playwright.startup-development-diagnostics.config.ts --project=webkit --repeat-each=5 --output=target/playwright-startup-clipboard-second-20261002",
+      "passed": 270, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-startup-clipboard-second-20261002.log",
+      "logSha256": "9e98ac8eaf500770e9f2f2c7f077bca5671249e5905aef0d173a5d849a55495e",
+      "note": "Complete startup-instrumented WebKit suite with profile and clipboard/Link recorder assertions and attachments. Does not supersede the preceding failures. Four history-stage labels were made distinct after this batch."
+    },
+    "startupControls": {
+      "command": "playwright test -c playwright.startup-development-diagnostics.config.ts tests/browser/profile-descriptor.spec.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts tests/browser/selection-restore.spec.ts --project=chromium --project=firefox --output=target/playwright-startup-queue-controls-20261002",
+      "passed": 20, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-startup-queue-controls-20261002.log",
+      "logSha256": "b808b188066936ff1bc4a99efa0cb4f66c610bb1ed9b986fe4a4e616b6baf201"
+    },
+    "queueControls": {
+      "command": "playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --output=target/playwright-queue-final-controls-20261002",
+      "browsers": ["chromium", "firefox", "webkit"],
+      "passed": 21, "failed": 0, "retries": 0,
+      "log": "/tmp/breditor-queue-final-controls-20261002.log",
+      "logSha256": "28d2632947ebc70640dd91a9fd57b2f5012ac9cdd04fd08d24b7faf7d38a2345"
+    },
+    "diagnosticUnitTests": { "passed": 183, "log": "/tmp/breditor-queue-final-unit-20261002.log" },
+    "types": { "passed": true, "log": "/tmp/breditor-queue-final-types-20261002.log" }
+  },
+  "limitations": [
+    "Even cold-path instrumentation and an additional import may alter compilation, inlining or timing. No probe is asserted to be optimization-neutral.",
+    "Known messages are allowlisted; stack accessors are not invoked, unknown reasons are redacted, and recorder errors are contained. Missing detail is not evidence that an exception did not occur.",
+    "No production source, validation, queue recovery policy, Rust code, Wasm ABI, retry setting or per-test timeout changed. Earlier ordinary queue and startup failures remain open."
+  ]
+}
