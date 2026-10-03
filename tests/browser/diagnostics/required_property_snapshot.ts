@@ -35,12 +35,13 @@ function properties(value: unknown) {
  * Own data descriptors only; no getters, input strings or property values retained.
  */
 export function snapshotRequiredProperty(format: unknown, contractIndex: unknown,
-  contract: unknown, propertyArray: unknown, accepted: unknown) {
+  contract: unknown, propertyArray: unknown, accepted: unknown, sourceRecord?: unknown) {
   try {
     return {
       format: format === "example/link" || format === "example/highlight" || format === "breditor/strong" ? format : "unknown",
       contractIndex: number(contractIndex),
       contract: properties(data(contract, "properties")),
+      source: properties(data(sourceRecord, "properties")),
       supplied: properties(data(propertyArray, "values")),
       accepted: properties(accepted),
     };

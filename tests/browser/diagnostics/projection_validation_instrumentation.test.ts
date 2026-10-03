@@ -76,7 +76,7 @@ it.each([false, true])("round-trips the entire emitted projection module (requir
 });
 
 it("captures required-property locals only after the original check rejects", () => {
-  const source = `function validateFormatDetails(format, contractIndex, formatContract, propertyArray, properties) {
+  const source = `function validateFormatDetails(format, contractIndex, formatContract, propertyArray, properties, record) {
     while (contractIndex < formatContract.properties.length) {
       if (formatContract.properties[contractIndex]?.presence === "required") return null;
       contractIndex += 1;
@@ -93,11 +93,16 @@ it("captures required-property locals only after the original check rejects", ()
   const accepted: unknown[] = [];
   expect(run(recorder.requiredProperty, ["example/link", 1, contract, { values: [] }, accepted])).toBe(accepted);
   expect(emit).not.toHaveBeenCalled();
-  expect(run(recorder.requiredProperty, ["example/link", 0, contract, { values: [] }, accepted])).toBeNull();
+  expect(run(recorder.requiredProperty, ["example/link", 0, contract, { values: [] }, accepted,
+    { properties: [{ name: "example/href", value: "private URL" }] }])).toBeNull();
   expect(required).toHaveBeenCalledOnce();
   expect(emit).toHaveBeenCalledOnce();
+  expect(recorder.snapshot().requiredProperties[0]).toMatchObject({ source: { length: { decimal: "1" }, items: [{ name: "example/href", valueType: "string" }] } });
+  expect(JSON.stringify(recorder.snapshot())).not.toContain("private URL");
   expect(() => instrumentProjectionValidation(source.replace('?.presence === "required"', '?.presence !== "optional"'), id,
     "/recorder.js", { requiredProperty: true })).toThrow("shape drift");
+  expect(() => instrumentProjectionValidation(source.replace(/\brecord\b/g, "renamedRecord"), id,
+    "/recorder.js", { requiredProperty: true })).toThrow("source record binding drift");
   expect(() => instrumentProjectionValidation("function other() { return null; }", id,
     "/recorder.js", { requiredProperty: true })).toThrow("Expected one");
 });

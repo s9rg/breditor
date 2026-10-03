@@ -15,7 +15,7 @@ export function createQueueFaultRecorder(emit?: (event: unknown) => void) {
   const events: { stage: string; reason: string; frames: string[] }[] = [];
   function record(stage: string, error: unknown): void {
     try {
-      if (!/^command_queue:(executor|observer|stop):[0-9]+$/.test(stage) || events.length >= 8) return;
+      if (!/^(command_queue:(executor|observer|stop)|wasm_command_adapter:throw):[0-9]+$/.test(stage) || events.length >= 8) return;
       let reason = "unclassified";
       const frames: string[] = [];
       if (error === "command_queue.executor_threw" || error === "command_queue.observer_threw") reason = error;
@@ -43,5 +43,10 @@ export function createQueueFaultRecorder(emit?: (event: unknown) => void) {
 
 const recorder = createQueueFaultRecorder(event => console.debug(`BREDITOR_QUEUE_FAULT=${JSON.stringify(event)}`));
 export const recordQueueFault = recorder.record;
+/** Return the original throw operand after bounded, failure-contained observation. */
+export function recordAdapterThrow<T>(stage: string, error: T): T {
+  recorder.record(stage, error);
+  return error;
+}
 export const readQueueFaults = recorder.snapshot;
 if (typeof window !== "undefined") Object.assign(window, { breditorLinkDiagnostics: recorder.snapshot });

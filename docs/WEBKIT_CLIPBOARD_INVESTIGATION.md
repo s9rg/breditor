@@ -2828,3 +2828,70 @@ attachments confirming 900 updates each.
 No shipping implementation, timeout or validation rule was changed. Commands,
 failure trace identities and verification results are in the
 [Redo Paste evidence record](qualification/2026-10-02-redo-paste-evidence.json).
+
+### Original exception captured with cold adapter throw sites
+
+The opt-in `BREDITOR_QUEUE_ADAPTER_THROWS=1` observer wraps the emitted command
+adapter's existing throw operands. It leaves queue catch blocks, numeric
+predicates and successful calls unchanged, and preserves the thrown identity.
+Exact-source restoration and single-evaluation tests cover the transform. Three
+no-echo workflow controls passed in Chromium, Firefox and WebKit; their traces
+confirm stop-only queue handling and all 96 adapter throw sites installed.
+
+The next mixed WebKit run was **159 passed / 1 failed**, with no timeouts. It
+naturally faulted in `crossParagraphHtml backward`,
+repeat 2, during replacement/typing history Redo at revision 17. The first
+exception is now known: `Wasm semantic selection is invalid`, thrown at original
+adapter line 1321 after `consumeSemanticSelectionWithCleanup` returns failure.
+It propagates through lines 1251 and 572 before the queue stops. Projection
+rejection records remain empty. This localizes this failure to selection
+conversion after the renderer update; it does not yet distinguish endpoint,
+snapshot/order or cleanup rejection within that conversion. The selection
+adapter itself was uninstrumented in the captured run.
+For this transition, the exception precedes `selectionBridge.write`, so it is
+not a failure returned by the browser caret-installation call.
+
+The follow-up `BREDITOR_QUEUE_SELECTION=1` option reuses the existing boundary
+recorder at 17 selection rejection sites, without wrapping successful numeric
+predicates or rereading generated getters. The original selection module is
+recovered byte-for-byte by removing the diagnostic wrappers in its regression
+test. Its records use `wasm_selection_adapter` stage names in the shared
+`projection` recorder field; the manifest explicitly identifies this extra
+instrumentation.
+
+This is a different scenario from the previous no-echo Redo Paste fault; a
+shared root cause is not yet established. The injected observer test is also
+separate from this natural reproduction. No production fix is claimed.
+See the [adapter-throw evidence record](qualification/2026-10-02-webkit-adapter-throw.json).
+
+### Required Link property omission captured separately
+
+The cold-selection follow-up was also **159 passed / 1 failed**, but its failure
+was different: formatted clipboard repeat 1, cycle 17, first Undo after
+cut/caret/typing. The first marker is the historical `projection:reject:405`.
+This time the required-property snapshot shows the mismatch: the Link contract
+requires `example/href` and `example/open-in-new-window`; both the validator's
+copied array and its accepted array contain only the string-valued `href`.
+Their captured lengths are one, while the contract length is two. The resulting
+exception is `Wasm projection update is invalid`, not a selection exception.
+
+The original properties array and generated property count were not captured,
+so this does not yet show whether the property was omitted upstream or lost
+while the validator copied the array. The existing failure-only observer now
+also snapshots the local source array through own data descriptors, with no
+Wasm rereads or property values retained. Tests distinguish source/copied/
+accepted lengths `1/1/1`, `2/1/1` and `2/2/1`.
+
+All **259 diagnostic tests** and browser type checking pass. Six deliberately
+injected constructor/selection rejection controls pass across Chromium,
+Firefox and WebKit; each trace records the expected site and leaves the mounted
+editor live. These are observer controls, not reproductions or fixes for either
+natural fault. The shared evidence record above retains both failures separately.
+The unchanged production projection/selection adapter suites also pass **86
+tests**, including the existing exhaustive 64 required/optional/supplied
+property combinations. The required-property rejection is correct for the
+captured copied array; the unexplained part is where the property disappeared.
+The source-array follow-up passed **40 formatted clipboard/Link cases** with
+unchanged assertions and zero retries. It captured no additional rejected
+array, so the source/copy boundary and the separate selection rejection remain
+open. Passing this differently instrumented sample is not a production fix.

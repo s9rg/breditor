@@ -13,8 +13,19 @@ export function instrumentProjectionValidation(code: string, id: string, recorde
   const edits: { start: number; end: number; text: string }[] = [];
   const sites: { stage: string; line: number; function: string }[] = [];
   let requiredSites = 0;
+  function hasRecordBinding(node: ESTree.Node): boolean {
+    if (node.type === "VariableDeclarator" && node.id.type === "Identifier" && node.id.name === "record") return true;
+    if (node.type === "FunctionDeclaration" || node.type === "FunctionExpression" || node.type === "ArrowFunctionExpression") return false;
+    return Object.values(node).some(value => (Array.isArray(value) ? value : [value]).some(child =>
+      child !== null && typeof child === "object" && "type" in child && "start" in child && "end" in child && hasRecordBinding(child as ESTree.Node)));
+  }
   function visit(node: ESTree.Node, functionName = "<method>"): void {
-    if (node.type === "FunctionDeclaration") functionName = node.id?.name ?? "<anonymous>";
+    if (node.type === "FunctionDeclaration") {
+      functionName = node.id?.name ?? "<anonymous>";
+      if (options.requiredProperty && functionName === "validateFormatDetails" &&
+          !node.params.some(param => param.type === "Identifier" && param.name === "record") &&
+          (node.body === null || !hasRecordBinding(node.body))) throw new Error("Required projection property source record binding drift");
+    }
     if (options.requiredProperty && functionName === "validateFormatDetails" && node.type === "WhileStatement" &&
         code.slice(node.test.start, node.test.end) === "contractIndex < formatContract.properties.length") {
       const check = node.body.type === "BlockStatement" && node.body.body.length === 2 &&
@@ -30,7 +41,7 @@ export function instrumentProjectionValidation(code: string, id: string, recorde
       requiredSites++;
       sites.push({ stage, line, function: functionName });
       edits.push({ start: value.start, end: value.end,
-        text: `__breditorRequiredProperty(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), format, contractIndex, formatContract, propertyArray, properties)` });
+        text: `__breditorRequiredProperty(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), format, contractIndex, formatContract, propertyArray, properties, record)` });
       return;
     }
     if (node.type === "ReturnStatement" && node.argument) {

@@ -16,7 +16,7 @@ it("does not invoke getters, bounds arrays, and contains descriptor traps", () =
   const get = vi.fn(() => { throw new Error("getter called"); });
   const contract = Object.defineProperty({}, "properties", { get });
   const item = Object.defineProperties({}, { name: { get }, value: { get } });
-  expect(snapshotRequiredProperty("example/link", 0, contract, { values: [item] }, []))
+  expect(snapshotRequiredProperty("example/link", 0, contract, { values: [item] }, [], contract))
     .toMatchObject({ supplied: { items: [{ name: "unknown", valueType: "undefined" }] } });
   expect(get).not.toHaveBeenCalled();
   expect(snapshotRequiredProperty("example/link", 0, {}, { values: new Array(33) }, []))
@@ -24,3 +24,15 @@ it("does not invoke getters, bounds arrays, and contains descriptor traps", () =
   expect(snapshotRequiredProperty("example/link", 0, new Proxy({}, { getOwnPropertyDescriptor: get }), {}, []))
     .toEqual({ unreadable: true });
 });
+
+it.each([[1, 1, 1], [2, 1, 1], [2, 2, 1]])(
+  "distinguishes source, copied and accepted property lengths %s/%s/%s",
+  (sourceLength, suppliedLength, acceptedLength) => {
+    const all = [{ name: "example/href", value: "private URL" }, { name: "example/open-in-new-window", value: false }];
+    const snapshot = snapshotRequiredProperty("example/link", 1, { properties: all },
+      { values: all.slice(0, suppliedLength) }, all.slice(0, acceptedLength), { properties: all.slice(0, sourceLength) });
+    expect(snapshot).toMatchObject({ source: { length: { decimal: String(sourceLength) } },
+      supplied: { length: { decimal: String(suppliedLength) } }, accepted: { length: { decimal: String(acceptedLength) } } });
+    expect(JSON.stringify(snapshot)).not.toContain("private URL");
+  },
+);

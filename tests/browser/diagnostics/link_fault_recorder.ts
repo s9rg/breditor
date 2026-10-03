@@ -72,11 +72,11 @@ export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoin
     return original;
   }
   function requiredProperty<T>(stage: string, original: T, format: unknown, contractIndex: unknown,
-    contract: unknown, propertyArray: unknown, accepted: unknown): T {
+    contract: unknown, propertyArray: unknown, accepted: unknown, sourceRecord?: unknown): T {
     record(stage, original);
     try {
       if (requiredProperties.length < 8 && /^projection:reject:[0-9]+$/.test(stage)) {
-        const snapshot = JSON.stringify({ stage, ...snapshotRequiredProperty(format, contractIndex, contract, propertyArray, accepted) });
+        const snapshot = JSON.stringify({ stage, ...snapshotRequiredProperty(format, contractIndex, contract, propertyArray, accepted, sourceRecord) });
         requiredProperties.push(snapshot);
         emitRequired?.(JSON.parse(snapshot));
       }

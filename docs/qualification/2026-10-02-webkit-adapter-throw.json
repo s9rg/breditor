@@ -1,0 +1,144 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "d33f621",
+  "status": "two-natural-failures-localized-no-production-fix",
+  "shippingCodeChanged": false,
+  "observer": {
+    "setting": "BREDITOR_QUEUE_ADAPTER_THROWS=1",
+    "description": "Wrap only existing throw operands in the emitted command adapter. Preserve queue stop mode, successful calls, predicates, thrown identity and one-time operand evaluation. Retain closed reasons and package stack coordinates only.",
+    "adapterSourceSha256": "d5d15596440f78fa263574ba0928c0678ac885fd4bd5bc57d46be23ec45c3421",
+    "throwSites": 96,
+    "unitCoverage": ["exact emitted-source restoration", "unchanged success path", "same thrown identity", "one operand evaluation", "operand exceptions not mislabeled", "sink failure containment", "configuration opt-in and rejection of invalid settings"]
+  },
+  "ordinaryWorkflowControls": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_ADAPTER_THROWS=1 BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-lifecycle.spec.ts --grep 'clipboard none echoes' --trace=on --output=target/playwright-adapter-throw-controls-20261002",
+    "browsers": ["chromium", "firefox", "webkit"], "passed": 3, "failed": 0, "elapsedSeconds": 8.9,
+    "log": "/tmp/breditor-adapter-throw-controls-20261002.log",
+    "logSha256": "77bb35192dd7db6afe919936500f886be22ee6d6697f3bc8e3ec0cd45a190687",
+    "allThreeTraceRecordersAndMapsVerified": true,
+    "recorderSha1": "1745124624e2a432e2b6531d4b22bd2c998922ab",
+    "mapSha1": "54f9695b4af64ea86dbd3f20caf1c8923f205356",
+    "moduleCount": 9, "queueMode": "stop", "adapterThrowSitesOnly": true
+  },
+  "mixedThrowCapture": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_ADAPTER_THROWS=1 BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/editor.spec.ts tests/browser/clipboard-boundary.spec.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --grep 'copy, cut, and paste use guarded|repeated cuts and immediate caret|clipboard .* echoes preserve|clipboard (crossParagraph|boundaryOnly|rejected paste)|a warm Link owner retains|formatted clipboard, Link history' --project=webkit --repeat-each=10 --max-failures=2 --output=target/playwright-adapter-throw-mixed-20261002",
+    "passed": 159, "failed": 1, "timeouts": 0, "retries": 0, "durationReported": "4.1m",
+    "log": "/tmp/breditor-adapter-throw-mixed-20261002.log",
+    "logSha256": "08039eb6d33468a7b46733af7374471e542d42002b0e71218e4e65fa5929c7cd"
+  },
+  "naturalFailure": {
+    "test": "clipboard crossParagraphHtml backward ranges retain Unicode, empty paragraphs and atomic history",
+    "repeatIndex": 2,
+    "stage": "replacement and typing history",
+    "check": "owner faulted", "revision": "17",
+    "ownerStatus": { "phase": "faulted", "reason": "toolbarDispatchFailed" },
+    "toolbarCommand": "history", "toolbarOperation": "redo",
+    "firstThrowSite": "wasm_command_adapter:throw:1321",
+    "reason": "Wasm semantic selection is invalid",
+    "rethrowSites": ["wasm_command_adapter:throw:1251", "wasm_command_adapter:throw:572"],
+    "queueSite": "command_queue:stop:265",
+    "queueReason": "command_queue.executor_threw",
+    "projectionFailureRecordersEmpty": true,
+    "selectionAdapterInstrumented": false,
+    "selectionAdapterSourceSha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb",
+    "trace": "target/playwright-adapter-throw-mixed-20261002/clipboard-boundary-clipboa-d92cc-ragraphs-and-atomic-history-webkit-repeat2/trace.zip",
+    "traceSha256": "5f704ba97730f4ee6751cb8dac6bda8887d9f66006a9b94804534425df11baed",
+    "recorderSha1": "7773a0ebbdd39ce2f256df8c83f8aab2d83d66ea",
+    "mapSha1": "8ed66a446f7f8a27d6615dc8634254e34355ce23",
+    "verifiedModuleCount": 9
+  },
+  "coldSelectionCapture": {
+    "setting": "BREDITOR_QUEUE_SELECTION=1",
+    "requires": "BREDITOR_QUEUE_PROJECTION=1 to expose the shared boundary recorder",
+    "sites": 17,
+    "numericPredicatesWrapped": false,
+    "description": "Reuse the existing rejection/endpoint recorder only on failed selection paths, retaining already captured endpoint locals. No repeated generated getters. Selection records appear in the existing projection field, identified by wasm_selection_adapter stage names.",
+    "unitCoverage": ["exact emitted-source restoration", "no successful endpoint or numeric observation", "single failed endpoint capture", "reject invalid setting", "require visible shared recorder"]
+  },
+  "injectedConstructorControl": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_ADAPTER_THROWS=1 BREDITOR_QUEUE_SELECTION=1 BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.adapter-throw.config.ts --trace=on --output=target/playwright-adapter-throw-positive-20261002",
+    "note": "At this invocation the control config contained only the constructor test. A separate selection control was added afterward.",
+    "browsers": ["chromium", "firefox", "webkit"], "passed": 3, "failed": 0, "elapsedSeconds": 5.3,
+    "log": "/tmp/breditor-adapter-throw-positive-20261002.log",
+    "logSha256": "fd6f5a9edb26bd1d8a6e306889c5289ad03b222c1f9c00e3ba62d9cbccc6435d",
+    "expectedStage": "wasm_command_adapter:throw:56", "mountedEditorStayedLive": true,
+    "mapSha1": "82bd021a018679926156ffb2c37e1f04cc641601",
+    "chromiumFirefoxRecorderSha1": "a6e8e45dca4a909d312da48ac91ab0fc6c9b2aa3",
+    "webkitRecorderSha1": "f3e6db2119f13cf24b3ee53f42b695e930ae928d",
+    "allThreeTraceRecordersAndMapsVerified": true
+  },
+  "mixedColdSelectionCapture": {
+    "commandDifference": "Same 160-case mixedThrowCapture command, with BREDITOR_QUEUE_SELECTION=1 and output=target/playwright-cold-selection-mixed-20261002.",
+    "passed": 159, "failed": 1, "timeouts": 0, "retries": 0, "durationReported": "3.7m",
+    "log": "/tmp/breditor-cold-selection-mixed-20261002.log",
+    "logSha256": "fee81291535307ef3605ea25cb02d234f6e6dc7196be40164b5b34ed42c4dc69",
+    "failure": {
+      "test": "formatted clipboard, Link history, and immediate caret moves preserve one warm owner",
+      "repeatIndex": 1, "cycle": 17, "stage": "history after cut/caret 1 Undo",
+      "firstProjectionRejection": "projection:reject:405",
+      "subsequentProjectionSites": ["projection:reject:295", "projection:reject:70", "wasm_projection_adapter:failure:488"],
+      "firstThrowSite": "wasm_command_adapter:throw:1218", "reason": "Wasm projection update is invalid",
+      "requiredPropertySnapshot": {
+        "format": "example/link", "contractIndexDecimal": "1", "contractIndexBits": "3ff0000000000000",
+        "contractLengthDecimal": "2", "contractLengthBits": "4000000000000000",
+        "contract": ["example/href required", "example/open-in-new-window required"],
+        "suppliedLengthDecimal": "1", "suppliedLengthBits": "3ff0000000000000",
+        "supplied": ["example/href string"],
+        "acceptedLengthDecimal": "1", "acceptedLengthBits": "3ff0000000000000",
+        "accepted": ["example/href string"],
+        "sourceArrayCaptured": false
+      },
+      "trace": "target/playwright-cold-selection-mixed-20261002/formatted-clipboard-lifecy-0c645-ves-preserve-one-warm-owner-webkit-repeat1/trace.zip",
+      "traceSha256": "19ebaddecb4278db3a4723387e1e4ebda197497628d13ab8a31725f51a40f745",
+      "recorderSha1": "2ecbee1a189ec42c5e755e7de4d676dcb455b41b",
+      "mapSha1": "b45826f340cc57bea8ed72d7505ede3385ae5b89",
+      "note": "This is a required-property projection rejection, not a reproduction of the selection rejection. The copied and accepted arrays contain only href. Original array contents, generated property count and raw Wasm snapshot were not captured."
+    }
+  },
+  "requiredPropertySourceCapture": {
+    "description": "At the existing required-property rejection only, capture the original local record.properties array alongside the validator's copied propertyArray.values and accepted properties. This distinguishes an upstream omission from copying/validation loss without changing successful reads or rereading Wasm getters.",
+    "manifestFlag": "requiredPropertySourceCapture",
+    "privacy": "Closed format/property names, scalar types, lengths and numeric bits only; no property values or URLs.",
+    "unitControls": ["source/copied/accepted lengths 1/1/1", "source/copied/accepted lengths 2/1/1", "source/copied/accepted lengths 2/2/1", "source accessors not invoked", "full emitted-source restoration"]
+  },
+  "injectedRejectionControls": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_ADAPTER_THROWS=1 BREDITOR_QUEUE_SELECTION=1 BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.adapter-throw.config.ts --trace=on --output=target/playwright-rejection-positive-controls-20261002",
+    "browsers": ["chromium", "firefox", "webkit"], "passed": 6, "failed": 0, "elapsedSeconds": 8.1,
+    "cases": ["dummy constructor alias rejection", "dummy selection/generation alias rejection"],
+    "expectedStages": ["wasm_command_adapter:throw:56", "wasm_selection_adapter:failure:19"],
+    "mountedEditorsStayedLive": true, "selectionGeneratedGetterAccesses": 0,
+    "allSixTraceRecordersAndMapsVerified": true,
+    "mapSha1": "9ab5f2007d449ac94817ba23d5bee15dd50b4cc5",
+    "selectionRecorderSha1": "b52eec1d7b1cc13146e1b7449646721432071450",
+    "log": "/tmp/breditor-rejection-positive-controls-20261002.log",
+    "logSha256": "78c0e8f6b254a4a071c87297cb938de9ffb5be32000e4ac52bf8b18cf8544988"
+  },
+  "requiredPropertySourceFollowup": {
+    "command": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_ADAPTER_THROWS=1 BREDITOR_QUEUE_SELECTION=1 BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1 playwright test -c playwright.queue-diagnostics.config.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --project=webkit --repeat-each=20 --max-failures=1 --output=target/playwright-property-source-followup-20261002",
+    "passed": 40, "failed": 0, "retries": 0, "durationReported": "2.8m",
+    "log": "/tmp/breditor-property-source-followup-20261002.log",
+    "logSha256": "51313e0d30cfb7e2b8cdbf5f0d49e4d1324bf7fb67df425ebe4a4a7dcf26ef42",
+    "note": "No rejected source array was captured. This is a passing follow-up with different instrumentation and test scope, not a fix or proof that either natural failure disappeared."
+  },
+  "validation": {
+    "productionAdapterContracts": { "passed": 86, "failed": 0, "files": 2,
+      "command": "vitest run src/wasm_projection_adapter.test.ts src/wasm_selection_adapter.test.ts (from packages/breditor-browser)",
+      "log": "/tmp/breditor-selection-projection-contracts-20261002.log",
+      "logSha256": "4a4da47a33ef4fd84f7a4d074347a8272a5c14e426c93cd35be170260c86d731",
+      "note": "Includes the existing exhaustive 64 required/optional versus supplied-property combinations. The missing-required-property rejection is expected for that input; these tests do not explain why the property disappeared." },
+    "diagnosticTests": { "passed": 259, "failed": 0, "files": 45,
+      "log": "/tmp/breditor-adapter-capture-verified-units-20261002.log",
+      "logSha256": "96bf04210938b7f977c2010c5ff54b1fdff2febe668eadeef25598750f7af4a4" },
+    "browserTypecheck": { "passed": true,
+      "log": "/tmp/breditor-adapter-capture-verified-types-20261002.log",
+      "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" }
+  },
+  "interpretation": [
+    "This is a naturally reproduced owner failure, not the separate deliberately injected observer control.",
+    "The first explicit exception follows a failed consumeSemanticSelectionWithCleanup result, after renderer.update. Rethrows and queue shutdown are consequences, not separate faults.",
+    "The captured failure occurs before selectionBridge.write is called for this transition. It is not a rejection returned by the browser caret-installation call.",
+    "The failing selection-adapter rejection branch remains unknown in this capture; invalid endpoint metadata, snapshot/order validation and cleanup paths are not yet distinguished.",
+    "The earlier no-echo Redo Paste failure was a different test. A common root cause has not been demonstrated.",
+    "No validation was weakened, no retry added and no production fix claimed."
+  ]
+}

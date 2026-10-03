@@ -3,17 +3,25 @@ import { createHash } from "node:crypto";
 import { mergeConfig, type Plugin } from "vite";
 import base from "./vite.browser.config";
 import { instrumentQueueFaults } from "./tests/browser/diagnostics/queue_fault_instrumentation";
+import { instrumentAdapterThrows } from "./tests/browser/diagnostics/adapter_throw_instrumentation";
 import { instrumentDeliveryFaults } from "./tests/browser/diagnostics/delivery_fault_instrumentation";
 import { instrumentLinkFaults } from "./tests/browser/diagnostics/link_fault_instrumentation";
 import { instrumentClipboardRoutes } from "./tests/browser/diagnostics/clipboard_route_instrumentation";
 import { instrumentProjectionValidation } from "./tests/browser/diagnostics/projection_validation_instrumentation";
 
 const recorder = fileURLToPath(new URL("./tests/browser/diagnostics/queue_fault_recorder.ts", import.meta.url));
+const adapterThrowsSetting = process.env["BREDITOR_QUEUE_ADAPTER_THROWS"] ?? "0";
+if (adapterThrowsSetting !== "0" && adapterThrowsSetting !== "1") throw new Error("BREDITOR_QUEUE_ADAPTER_THROWS must be 0 or 1");
+const adapterThrowsEnabled = adapterThrowsSetting === "1";
 const deliveryRecorder = fileURLToPath(new URL("./tests/browser/diagnostics/delivery_fault_recorder.ts", import.meta.url));
 const projectionRecorder = fileURLToPath(new URL("./tests/browser/diagnostics/link_fault_recorder.ts", import.meta.url));
 const projectionSetting = process.env["BREDITOR_QUEUE_PROJECTION"] ?? "0";
 if (projectionSetting !== "0" && projectionSetting !== "1") throw new Error("BREDITOR_QUEUE_PROJECTION must be 0 or 1");
 const projectionEnabled = projectionSetting === "1";
+const selectionSetting = process.env["BREDITOR_QUEUE_SELECTION"] ?? "0";
+if (selectionSetting !== "0" && selectionSetting !== "1") throw new Error("BREDITOR_QUEUE_SELECTION must be 0 or 1");
+const selectionEnabled = selectionSetting === "1";
+if (selectionEnabled && !projectionEnabled) throw new Error("Selection rejection capture requires BREDITOR_QUEUE_PROJECTION=1");
 const validationSetting = process.env["BREDITOR_QUEUE_PROJECTION_VALIDATION"] ?? "0";
 if (validationSetting !== "0" && validationSetting !== "1") throw new Error("BREDITOR_QUEUE_PROJECTION_VALIDATION must be 0 or 1");
 const validationEnabled = validationSetting === "1";
@@ -56,7 +64,7 @@ const diagnostic: Plugin = {
     }
     const validation = validationEnabled ? instrumentProjectionValidation(code, id, projectionRecorder, { requiredProperty: true }) : null;
     if (validation !== null) {
-      manifest.set("projection", { instrumented: true, rejectionReturnsOnly: true, requiredPropertyCapture: true,
+      manifest.set("projection", { instrumented: true, rejectionReturnsOnly: true, requiredPropertyCapture: true, requiredPropertySourceCapture: true,
         sourceSha256: validation.sourceSha256, sites: validation.sites });
       return { code: validation.code, map: null };
     }
@@ -69,10 +77,25 @@ const diagnostic: Plugin = {
         childResultCapture: true, impactRejections: true, impactStateCapture: true, sourceSha256: output.sourceSha256, sites: output.sites });
       return { code: output.code, map: null };
     }
+    if (selectionEnabled && id.endsWith("/breditor-browser/dist/wasm_selection_adapter.js")) {
+      // Share the boundary recorder, but touch only selection rejection sites.
+      // Do not wrap the successful isU32 predicate or repeat generated getters.
+      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: false });
+      if (output === null) throw new Error("Selection diagnostic module was not recognized");
+      manifest.set("wasm_selection_adapter", { instrumented: true, rejectionSitesOnly: true,
+        numericPredicates: false, sourceSha256: output.sourceSha256, sites: output.sites });
+      return { code: output.code, map: null };
+    }
     const delivery = deliveryEnabled ? instrumentDeliveryFaults(code, id, deliveryRecorder) : null;
     if (delivery !== null) {
       manifest.set("browser_editor", { instrumented: true, sourceSha256: delivery.sourceSha256, sites: delivery.sites });
       return { code: delivery.code, map: null };
+    }
+    const adapterThrows = adapterThrowsEnabled ? instrumentAdapterThrows(code, id, recorder) : null;
+    if (adapterThrows !== null) {
+      manifest.set("wasm_command_adapter", { instrumented: true, throwSitesOnly: true,
+        sourceSha256: adapterThrows.sourceSha256, sites: adapterThrows.sites });
+      return { code: adapterThrows.code, map: null };
     }
     const name = untouched.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
     if (name) manifest.set(name, { instrumented: false, sourceSha256: createHash("sha256").update(code).digest("hex") });
