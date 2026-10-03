@@ -89,11 +89,37 @@ complete result document, and derives an exact inverse. Source guards include
 the whole edited block; unchanged siblings are not guarded.
 
 This is **in-memory only**: all current codecs reject this new primitive.
-Typing actions, its explicit durable recipe, Enter/delete behavior and browser
-exposure remain unfinished. The first milestone is therefore still in progress.
+Its explicit durable recipe, Enter/delete behavior and browser exposure remain
+unfinished. The first milestone is therefore still in progress.
 No fresh browser, bundle-size or full release qualification is claimed for
 this isolated core checkpoint.
 
 The [first-slice verification record](qualification/2026-10-03-heading-text-block-splice.json)
 records nine focused tests, 10,000 seeded Unicode cases, both core unit-suite
 configurations, existing paragraph-splice integration tests and strict linting.
+
+## Heading typing action
+
+`action/builtins/insert_text_block_text.rs` adds an opt-in
+`InsertTextBlockTextAction` under `breditor/insert-text-block-text`. It uses the
+existing bounded insert-text input contract without changing the base action
+registry. Paragraphs and heading ranks 1–6 are editable in the experimental
+text-block profile. Typing preserves the rank and typed inline formats, consumes
+pending formats, publishes a canonical caret and offers the existing typing
+merge group for adjacent insertions.
+
+Collapsed typing uses pending formats when present, then focus affinity at a
+format seam. Type-over uses the first spatially selected run independently of
+forward/backward direction. Full-tree preview counts untouched siblings and the
+heading rank property before enabling the action. Undo restores the exact source
+selection and pending formats; stale preparations cannot destroy a redo branch.
+
+Cross-block replacement is explicitly disabled, not flattened into a paragraph.
+The action is not in the browser/default registry and its text edit still cannot
+be saved in any current operation/session format. Durable encoding is the next
+integration dependency: V4 is a closed language, so adding a new tag silently is
+not acceptable. Settle the remaining heading edit recipe set together before
+introducing the next explicit format, rather than issuing a format per command.
+
+See the [typing verification record](qualification/2026-10-03-heading-typing-action.json)
+for current evidence. These core checks are not browser feature qualification.

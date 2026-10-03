@@ -15,15 +15,15 @@ The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
 Experimental Rust work now includes guarded paragraph/heading conversion with
 exact selection preservation and undo/redo. It is behind
 `experimental-structural-properties`; the browser demo remains paragraph-only.
-Experimental V4 codecs can persist heading operations, atomic transaction
+Experimental V4 codecs can persist heading-kind operations, atomic transaction
 requests and complete retained undo/redo sessions. Commit/local-log integration
 and browser heading support remain pending. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
-later. A guarded text-block splice is under experimental development; it is not
-yet connected to typing actions, durable formats or the browser.
+later. A guarded text-block splice and opt-in heading typing action are under
+experimental development; neither has durable-format or browser support yet.
 
 ## Run the browser demo
 

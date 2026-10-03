@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "6f180783099a70ed45a766e7a6d569cf5d515ea3",
+  "status": "Opt-in heading typing action verified; feature-expansion goal remains in progress",
+  "scope": "Experimental Rust in-memory heading typing; no browser or durable-format enablement",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "action": "breditor/insert-text-block-text",
+    "input": "Existing breditor/insert-text-input version 1",
+    "supported": "Same direct-root paragraph or heading, including empty headings",
+    "formatting": "Pending formats then focus affinity for collapsed typing; first spatially selected run for type-over",
+    "history": "Exact selection and pending-format restoration; adjacent typing merge; stale preparation preserves redo",
+    "limits": "Authoritative complete result preview including siblings and heading properties",
+    "unsupported": "Cross-block replacement, persisted text-block splices and browser registration",
+    "previousFormats": "V1–V4 unchanged and still reject textBlockSplice"
+  },
+  "verification": {
+    "focusedTestsPassed": 9,
+    "propertyCases": 10000,
+    "propertySeed": 20261003,
+    "focusedCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib --locked insert_text_block_text_tests",
+    "coreAllFeatureUnitTestsPassed": 805,
+    "coreDefaultUnitTestsPassed": 697,
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "initialFailure": "First focused run: 6 passed, 1 failed. A test expected rejection for a two-byte insertion with a two-byte per-leaf limit, but the new formatted leaf fit exactly. Corrected the fixture to a one-byte limit, removed conditional fixture skipping, and added a separate heading/property budget test. Final focused and whole-core suites pass.",
+    "freshFullReleaseRun": false,
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "published": false
+  },
+  "next": [
+    "Complete heading edit recipe set and explicit durable format decision",
+    "Heading formatting, Enter and boundary deletion",
+    "Durable session replay and reload with redo",
+    "Structural Wasm profile, renderer, toolbar",
+    "Flat lists; nesting deferred by user"
+  ],
+  "evidence": [
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_text.rs",
+      "sha256": "06f33d176b6cc26685cb3ab24f5bb0fd14cfbe80c3f71de5361ac368f1716768"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_text_tests.rs",
+      "sha256": "918fc67327dd4960c4bfe7ef827e3193c6d35667c4a8653e80b008049000ae91"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-typing-focused.log",
+      "sha256": "a74669168731d09004601560e940873bc6e729a39426a22a66f5787f4b6a8a2d"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-typing-core.log",
+      "sha256": "855c66c1f7b0536526ff8ce9e24a11308f11e8a65cbc3113d6823730c897f359"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-typing-default.log",
+      "sha256": "2b1d9e54bf6e8f601562ee79360d0b2f40c56fef06e27df7b838178b6b103b88"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-typing-clippy.log",
+      "sha256": "ee3d0861ffb11625fee7dd56d16cf3409958c6877e591f6ff0fdb6962f45fc6e"
+    }
+  ]
+}

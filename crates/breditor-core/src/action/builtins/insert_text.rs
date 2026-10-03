@@ -419,19 +419,19 @@ fn map_insert_cross_source_error(error: CrossParagraphTextSourceError) -> Action
     }
 }
 
-fn source_range(state: &EditorState) -> Result<&RangeSelection, ActionFault> {
+pub(super) fn source_range(state: &EditorState) -> Result<&RangeSelection, ActionFault> {
     let Some(Selection::Range(range)) = state.selection() else {
         return Err(fault("breditor/insert-text-selection-fault"));
     };
     Ok(range)
 }
 
-enum ReplacementError {
+pub(super) enum ReplacementError {
     Capacity,
     Invariant,
 }
 
-fn replacement_fragment(
+pub(super) fn replacement_fragment(
     input: &InsertTextInput,
     formats: FormatSet,
 ) -> Result<TextFragment, ReplacementError> {
@@ -442,7 +442,7 @@ fn replacement_fragment(
     }
 }
 
-fn concat_result(
+pub(super) fn concat_result(
     prefix: &TextFragment,
     replacement: &TextFragment,
     suffix: &TextFragment,

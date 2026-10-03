@@ -11,6 +11,10 @@ mod inline_format_properties_state;
 mod insert_paragraph_break;
 mod insert_plain_text;
 mod insert_text;
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_text_block_text;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod insert_text_block_text_tests;
 mod set_inline_format;
 mod set_inline_format_input;
 #[cfg(feature = "experimental-structural-properties")]
@@ -18,6 +22,8 @@ mod set_text_block_kind;
 mod support;
 mod toggle_inline_format;
 mod toggle_strong;
+#[cfg(feature = "experimental-structural-properties")]
+pub use insert_text_block_text::{InsertTextBlockTextAction, insert_text_block_text_action_id};
 #[cfg(feature = "experimental-structural-properties")]
 pub use set_text_block_kind::SetTextBlockKindAction;
 

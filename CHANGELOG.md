@@ -6,11 +6,16 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add opt-in experimental paragraph/heading typing through its own named action,
+  preserving rank, typed formats, canonical caret and exact merged undo/redo.
+  Cross-block replacements reject explicitly. The shipping browser/base registry
+  is unchanged; durable heading-text history is not enabled yet.
+
 - Start the desktop feature-expansion goal: headings first, then flat lists.
   Add an experimental guarded text-block splice preserving heading rank and
   typed inline formats with exact in-memory undo/redo. Existing paragraph
-  operations are unchanged; the new primitive has no action/browser exposure
-  or durable encoding yet, and existing codecs reject it explicitly.
+  operations are unchanged; the new primitive has no browser exposure or durable
+  encoding yet, and existing codecs reject it explicitly.
 
 - Add experimental Session Checkpoint V4 for complete retained heading history,
   exact undo/redo cursor and editor values, revision, capacity and open merge
