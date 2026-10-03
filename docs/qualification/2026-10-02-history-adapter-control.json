@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "f37858a",
+  "status": "passing-history-reduction-and-layout-comparison-no-production-fix",
+  "shippingCodeChanged": false,
+  "historyReduction": {
+    "description": "One real Wasm engine, history capacity 20, cycles through Link apply/undo/redo, forward/backward cut, caret move, typing, and six undo/redo operations. The production projection and selection adapters consume each generated view once. Every transition checks text, Highlight, both Link properties including false, and selection coordinates.",
+    "schedules": ["synchronous cycles", "one task yield after each cycle"],
+    "cyclesPerCase": 300, "projectionUpdatesPerCase": 4200, "selectionChecksPerCase": 4200,
+    "crossBrowser": {
+      "command": "playwright test -c playwright.impact-contract.config.ts tests/browser/diagnostics/history-adapter.spec.ts --trace=on --output=target/playwright-history-adapter-controls-20261002",
+      "browsers": ["chromium", "firefox", "webkit"], "passed": 6, "failed": 0, "retries": 0, "durationSeconds": 27,
+      "log": "/tmp/breditor-history-adapter-controls-20261002.log",
+      "logSha256": "3dc4a3e9edd8e342acd599486194f12a990e680502ca03d8b0b5226c22688c17"
+    },
+    "webkitStress": {
+      "command": "playwright test -c playwright.impact-contract.config.ts tests/browser/diagnostics/history-adapter.spec.ts --project=webkit --repeat-each=10 --trace=on --output=target/playwright-history-adapter-webkit-20261002",
+      "passed": 20, "failed": 0, "retries": 0, "durationReported": "1.0m",
+      "log": "/tmp/breditor-history-adapter-webkit-20261002.log",
+      "logSha256": "76764a940e5ac1ba4aff2ca85237cb9abb630005658e8cf9a3d162f5134a0525"
+    },
+    "totalProjectionUpdates": 109200, "totalSelectionChecks": 109200,
+    "all26ResultAttachmentsVerified": true,
+    "syncResultSha1": "1c5bd90a8fc56ad3fcd3d745d0a86c02a3223615",
+    "taskResultSha1": "08aae414c575fc783b952e219896f72e9c7a19fc",
+    "representativeWebkitTraceSha256": "757865bfaf5c5193acb5587c9f04fb5971e56fed6c48062e890ef300e2303ba6",
+    "limits": [
+      "No DOM, renderer, toolbar, queue, copy serialization or clipboard echo events are present.",
+      "Deletion and typing use core actions directly. This is a reduction, not an exact reproduction of browser routing or handle lifetimes.",
+      "Passing cannot prove that browser event handling is necessary for the original intermittent fault."
+    ]
+  },
+  "fixtureCorrection": {
+    "description": "The initial Chromium run incorrectly expected redo-cut to restore offset 0. The actual caret is offset 9: the intervening state-only caret move updates the cut entry's after-boundary. The probe expectation was corrected, not the production core.",
+    "source": "crates/breditor-core/src/session/history.rs: observe_state_only",
+    "existingContract": "state_only_commit_updates_both_adjacent_history_boundaries",
+    "coordinateLog": "/tmp/breditor-history-adapter-coordinates-20261002.log",
+    "coordinateLogSha256": "4984bcef0145c9d19a3690105e1399dde3829da12c9187ad050246bebb1bb1b3",
+    "naturalWebkitReproduction": false
+  },
+  "mixedSourceCaptureFollowup": {
+    "commandReference": "Same mixed command and environment as mixedFollowups in 2026-10-02-projection-validator-control.json, with output below.",
+    "output": "target/playwright-property-source-mixed-third-20261002",
+    "passed": 160, "failed": 0, "retries": 0, "durationReported": "3.8m",
+    "log": "/tmp/breditor-property-source-mixed-third-20261002.log",
+    "logSha256": "0df46aa7350e0a850294e82b517f41d2f1a22a37c8885974441403f128ff150c"
+  },
+  "layoutComparison": {
+    "setting": "BREDITOR_QUEUE_PROPERTY_SOURCE=0",
+    "description": "Default 1 retains the current source-array observer. Setting 0 removes only the record argument from the existing required-property rejection call, restoring the earlier seven-argument call layout. All other rejection sites, successful predicates and production code remain unchanged. This is not a byte-identical reconstruction of every older diagnostic module.",
+    "injectedControls": {
+      "passed": 2, "failed": 0, "browser": "webkit", "durationSeconds": 2.3,
+      "log": "/tmp/breditor-property-layout-controls-20261002.log",
+      "logSha256": "bccb4c016198ecb5a38da9744abca276a4ec12990317acfdd0426b3740023bd0",
+      "bothMapsVerified": true, "moduleCount": 9,
+      "mapSha1": "bac16bdfc43933ae6ee37006a58f7ceae4e5a72d",
+      "requiredPropertySourceCapture": false
+    },
+    "mixedRun": {
+      "commandReference": "Same 160-case mixed command as mixedSourceCaptureFollowup, additionally set BREDITOR_QUEUE_PROPERTY_SOURCE=0 and use output below.",
+      "output": "target/playwright-property-layout-mixed-20261002",
+      "log": "/tmp/breditor-property-layout-mixed-20261002.log",
+      "logSha256": "aecd11fd53bf8b1014606e9c94df485703273537fb66e6f5c8ccc5fb39f3d117",
+      "passed": 160, "failed": 0, "retries": 0, "durationReported": "3.8m",
+      "interpretation": "The earlier call layout did not reproduce either natural fault in this sample. Source-capture instrumentation has not been established as the reason later runs pass. Both earlier failures remain unresolved."
+    }
+  },
+  "verification": {
+    "rustHistory": { "command": "cargo test -p breditor-core --test session_history_contracts", "passed": 15, "failed": 0,
+      "log": "/tmp/breditor-history-boundary-contracts-20261002.log",
+      "logSha256": "85f1fd3dbf649074428776f017ceabb3417d986c0a05d56f48e724a8eb086590" },
+    "diagnostics": { "passed": 267, "files": 47,
+      "log": "/tmp/breditor-history-layout-units-20261002.log",
+      "logSha256": "b3e8ee34c6eb200bbf2338dc56de5e19059b37405957d0e0e2128152443f60ad" },
+    "browserTypes": { "passed": true, "log": "/tmp/breditor-history-layout-types-20261002.log",
+      "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" }
+  }
+}

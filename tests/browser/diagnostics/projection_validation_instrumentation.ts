@@ -5,7 +5,7 @@ import { parseSync, type ESTree } from "rolldown/utils";
  * No successful predicate is wrapped, and no projection payload is recorded.
  */
 export function instrumentProjectionValidation(code: string, id: string, recorder: string,
-  options: { requiredProperty?: boolean } = {}) {
+  options: { requiredProperty?: boolean; requiredPropertySource?: boolean } = {}) {
   if (!id.endsWith("/breditor-browser/dist/projection.js")) return null;
   if (code.includes("__breditorProjectionReject")) throw new Error("Projection validation diagnostic already installed");
   const parsed = parseSync(id, code);
@@ -22,7 +22,7 @@ export function instrumentProjectionValidation(code: string, id: string, recorde
   function visit(node: ESTree.Node, functionName = "<method>"): void {
     if (node.type === "FunctionDeclaration") {
       functionName = node.id?.name ?? "<anonymous>";
-      if (options.requiredProperty && functionName === "validateFormatDetails" &&
+      if (options.requiredProperty && options.requiredPropertySource !== false && functionName === "validateFormatDetails" &&
           !node.params.some(param => param.type === "Identifier" && param.name === "record") &&
           (node.body === null || !hasRecordBinding(node.body))) throw new Error("Required projection property source record binding drift");
     }
@@ -41,7 +41,7 @@ export function instrumentProjectionValidation(code: string, id: string, recorde
       requiredSites++;
       sites.push({ stage, line, function: functionName });
       edits.push({ start: value.start, end: value.end,
-        text: `__breditorRequiredProperty(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), format, contractIndex, formatContract, propertyArray, properties, record)` });
+        text: `__breditorRequiredProperty(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), format, contractIndex, formatContract, propertyArray, properties${options.requiredPropertySource === false ? "" : ", record"})` });
       return;
     }
     if (node.type === "ReturnStatement" && node.argument) {

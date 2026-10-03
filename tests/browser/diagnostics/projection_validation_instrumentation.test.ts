@@ -45,9 +45,9 @@ it("records only existing rejection returns and preserves result identity and pr
   expect(observe).toHaveBeenCalledTimes(3);
 });
 
-it.each([false, true])("round-trips the entire emitted projection module (required-property capture=%s)", requiredProperty => {
+it.each([[false, true], [true, true], [true, false]])("round-trips the emitted projection module (required=%s, source=%s)", (requiredProperty, requiredPropertySource) => {
   const source = readFileSync(new URL("../../../packages/breditor-browser/dist/projection.js", import.meta.url), "utf8");
-  const output = instrumentProjectionValidation(source, id, "/recorder.js", { requiredProperty })!;
+  const output = instrumentProjectionValidation(source, id, "/recorder.js", { requiredProperty, requiredPropertySource })!;
   const body = output.code.split("\n").slice(1).join("\n");
   const parsed = parseSync(id, body);
   expect(parsed.errors).toEqual([]);
@@ -73,6 +73,17 @@ it.each([false, true])("round-trips the entire emitted projection module (requir
   for (const name of ["createProfiledDocumentProjection", "validateProfiledProjection", "validateFormatDetails", "validateSnapshot", "exactDataRecord", "readExactBoundedArray"]) {
     expect(output.sites.some(site => site.function === name), name).toBe(true);
   }
+});
+
+it("restores the earlier seven-argument rejection call without reading a source binding", () => {
+  const source = readFileSync(new URL("../../../packages/breditor-browser/dist/projection.js", import.meta.url), "utf8");
+  const current = instrumentProjectionValidation(source, id, "/recorder.js", { requiredProperty: true })!;
+  const earlier = instrumentProjectionValidation(source, id, "/recorder.js",
+    { requiredProperty: true, requiredPropertySource: false })!;
+  expect(earlier.code).toBe(current.code.replace("formatContract, propertyArray, properties, record)",
+    "formatContract, propertyArray, properties)"));
+  expect(earlier.sites).toEqual(current.sites);
+  expect(earlier.sourceSha256).toBe(current.sourceSha256);
 });
 
 it("captures required-property locals only after the original check rejects", () => {

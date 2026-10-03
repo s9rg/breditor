@@ -26,6 +26,10 @@ const validationSetting = process.env["BREDITOR_QUEUE_PROJECTION_VALIDATION"] ??
 if (validationSetting !== "0" && validationSetting !== "1") throw new Error("BREDITOR_QUEUE_PROJECTION_VALIDATION must be 0 or 1");
 const validationEnabled = validationSetting === "1";
 if (validationEnabled && !projectionEnabled) throw new Error("Projection validation capture requires BREDITOR_QUEUE_PROJECTION=1");
+// Compare the earlier rejection-call layout without changing shipping code.
+const propertySourceSetting = process.env["BREDITOR_QUEUE_PROPERTY_SOURCE"] ?? "1";
+if (propertySourceSetting !== "0" && propertySourceSetting !== "1") throw new Error("BREDITOR_QUEUE_PROPERTY_SOURCE must be 0 or 1");
+const propertySourceEnabled = propertySourceSetting === "1";
 const clipboardRecorder = fileURLToPath(new URL("./tests/browser/diagnostics/clipboard_route_recorder.ts", import.meta.url));
 const clipboardSetting = process.env["BREDITOR_QUEUE_CLIPBOARD"] ?? "0";
 if (clipboardSetting !== "0" && clipboardSetting !== "1") throw new Error("BREDITOR_QUEUE_CLIPBOARD must be 0 or 1");
@@ -62,9 +66,10 @@ const diagnostic: Plugin = {
       manifest.set("browser_event_router", { instrumented: true, sourceSha256: clipboard.sourceSha256, sites: clipboard.sites });
       return { code: clipboard.code, map: null };
     }
-    const validation = validationEnabled ? instrumentProjectionValidation(code, id, projectionRecorder, { requiredProperty: true }) : null;
+    const validation = validationEnabled ? instrumentProjectionValidation(code, id, projectionRecorder,
+      { requiredProperty: true, requiredPropertySource: propertySourceEnabled }) : null;
     if (validation !== null) {
-      manifest.set("projection", { instrumented: true, rejectionReturnsOnly: true, requiredPropertyCapture: true, requiredPropertySourceCapture: true,
+      manifest.set("projection", { instrumented: true, rejectionReturnsOnly: true, requiredPropertyCapture: true, requiredPropertySourceCapture: propertySourceEnabled,
         sourceSha256: validation.sourceSha256, sites: validation.sites });
       return { code: validation.code, map: null };
     }

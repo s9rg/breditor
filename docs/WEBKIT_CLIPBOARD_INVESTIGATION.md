@@ -2921,3 +2921,42 @@ optimization behavior. No production workaround or fix was made.
 
 Commands, hashes and limits are in the
 [validator-control evidence record](qualification/2026-10-02-projection-validator-control.json).
+
+### Cut/caret/type history through production adapters without DOM
+
+The earlier adapter-only control covered Link Apply/Undo/Redo, but not the
+cut/caret/type sequence from the natural failure. A separate control now keeps
+one real Wasm engine warm for 300 cycles with history capacity 20. It alternates
+forward/backward cut selections, moves the caret, types, and replays six history
+steps. Every transition consumes production projection and selection adapters
+and verifies text, Highlight, both Link properties (including false), and exact
+selection coordinates. Synchronous and task-yielding variants are separate cases.
+
+The first Chromium calibration failed because the test incorrectly expected
+Redo Cut to restore offset zero. `History::observe_state_only` updates adjacent
+history boundaries after a caret move, so the correct redo caret is the moved
+offset, nine in this fixture. The existing
+`state_only_commit_updates_both_adjacent_history_boundaries` test confirms that
+contract; all **15 Rust session-history tests** pass. Only the probe expectation
+was corrected. This was not a production bug or a natural WebKit reproduction.
+
+The corrected control passed **six cross-browser cases** and **20 additional
+WebKit cases**: **109,200 projection updates and 109,200 selection checks**.
+All 26 trace result attachments were verified. This narrows the reduction gap,
+but does not prove browser event handling is necessary: clipboard routing,
+rendering, queues, serialization and production handle-lifetime ordering remain
+outside this control. Another source-capture mixed batch passed **160 cases**.
+
+To test whether added observation changes reproduction, the diagnostic-only
+`BREDITOR_QUEUE_PROPERTY_SOURCE=0` setting restores the earlier seven-argument
+required-property rejection call. The default remains one, retaining source
+array capture. The call site is the only generated-source difference between
+these modes; successful predicates stay untouched. Two injected WebKit controls
+verify the source-capture-disabled manifest. They do not reproduce the fault.
+All **267 diagnostic tests** and browser type checking pass.
+The earlier-call-layout mixed comparison also passed **160 cases**, with no
+retries. This sample does not establish that the source capture suppresses the
+fault. Neither natural failure repeated, and no production fix is claimed.
+
+Commands, calibration details and evidence are in the
+[history-adapter record](qualification/2026-10-02-history-adapter-control.json).
