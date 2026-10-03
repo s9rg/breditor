@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "24bd888",
+  "status": "logger-free-stress-passed-candidate-not-promoted-size-budget-exceeded",
+  "productionCodeChanged": false,
+  "experiment": {
+    "mode": "bits",
+    "logging": false,
+    "description": "Only the exact selection isU32 body is replaced. No hot predicate observers, queue logging, browser recorders or Rust changes. HTTP identity metadata is fetched after each workload.",
+    "originalSelectionSha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb",
+    "candidateSelectionSha256": "62ac2d396379f737bdd20c614033b49f74a47028c20c999e29d38ae4b6a2325d",
+    "servedResponseSha256": "f61ffd88a2ce05dca9722f7e8394bf44f304ad7e50ddcbd744900a93472e3c7f",
+    "servedResponseCheck": "A direct GET of the selection module on the active test server contains the bit guard and no numeric-predicate or selection-point observer wrappers. Playwright's saved network record had no JavaScript response body; this is a separate server-response check, not a trace-body attestation."
+  },
+  "clipboard": {
+    "command": "playwright test -c playwright.selection-u32-candidate.config.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --output=target/playwright-selection-u32-logger-free-20261003",
+    "passed": 300, "failed": 0, "retries": 0, "durationReported": "3.6m",
+    "auditedManifestAttachments": 300,
+    "manifestSha1": "79697292c6b2669467b330fcb96b7cb84d02abfa",
+    "log": "/tmp/breditor-selection-u32-logger-free-20261003.log",
+    "logSha256": "74ece57baf9a86afd68c904b50e314f80cc392b9511dd2b040f71467853896e3"
+  },
+  "selectionRestore": {
+    "command": "playwright test -c playwright.selection-u32-candidate.config.ts --grep 'restored selection' --project=webkit --repeat-each=40 --output=target/playwright-selection-u32-restore-20261003",
+    "passed": 40, "failed": 0, "retries": 0, "durationReported": "7.6m",
+    "restoresPerCase": 10000, "readsPerCase": 30000,
+    "totalRestores": 400000, "totalReads": 1200000,
+    "auditedManifestAttachments": 40,
+    "manifestSha1": "79697292c6b2669467b330fcb96b7cb84d02abfa",
+    "log": "/tmp/breditor-selection-u32-restore-20261003.log",
+    "logSha256": "b19e9bdae33bf60484b1c6c97bea8742372ae9c38ce72a1cb1eac97936d4b418"
+  },
+  "predicateCost": {
+    "command": "playwright test -c playwright.selection-u32-cost.config.ts --repeat-each=3 --trace=on --output=target/playwright-selection-u32-cost-20261003",
+    "passed": 9, "failed": 0, "retries": 0, "durationSeconds": 13.3,
+    "method": "Blank browser realm, both exact function bodies compiled before measurement. Float64Array inputs, 1000000 calls per timed arm, two warmups per arm, nine alternating-order pairs per workload, three independent cases per engine. No concurrent Breditor stress/build jobs; unrelated host activity is not controlled.",
+    "correctness": "Every arm must match an independent accepted-input count; invalid samples fail the test rather than contribute timings.",
+    "rawSamples": "selection-u32-cost.json attachment in each of the nine retained traces",
+    "summaryUnits": "Approximate nanoseconds per input; medians of the three per-case medians. Rounded values reflect clock quantization, not nanosecond clock precision.",
+    "summaries": [
+      { "engine": "chromium", "workload": "commonCoordinates", "original": 6.7, "candidate": 6.8, "pairedDelta": 0.2 },
+      { "engine": "chromium", "workload": "mixedBoundaries", "original": 7.4, "candidate": 8.1, "pairedDelta": 0.7 },
+      { "engine": "firefox", "workload": "commonCoordinates", "original": 7, "candidate": 12, "pairedDelta": 5 },
+      { "engine": "firefox", "workload": "mixedBoundaries", "original": 6, "candidate": 10, "pairedDelta": 4 },
+      { "engine": "webkit", "workload": "commonCoordinates", "original": 1, "candidate": 3, "pairedDelta": 2 },
+      { "engine": "webkit", "workload": "mixedBoundaries", "original": 2, "candidate": 22, "pairedDelta": 19 }
+    ],
+    "log": "/tmp/breditor-selection-u32-cost-20261003.log",
+    "logSha256": "9943cbe295fdd18c3fab97e7fe6323b55aecb714e5f81013e59aec11cbc8f0e5"
+  },
+  "referenceAppSize": {
+    "commands": [
+      "BREDITOR_SELECTION_U32=original vite build -c vite.selection-u32-size.config.ts",
+      "BREDITOR_SELECTION_U32=bits vite build -c vite.selection-u32-size.config.ts"
+    ],
+    "gzipLevel": 9,
+    "javascriptGzipBudget": 225000,
+    "original": {
+      "output": "target/selection-u32-size-original",
+      "javascriptBytes": 862319, "javascriptGzipBytes": 224974,
+      "javascriptSha256": "6dd83f4049488b40e308877f06aacf70aefea7fc9e2350726ee4e8062c5519fc",
+      "matchesCurrentDemoBytes": true,
+      "logSha256": "2d3e769232684e38de4e4ca86d0c21b4019a6255e124eecd7e79baa60bd5b547"
+    },
+    "candidate": {
+      "output": "target/selection-u32-size-bits",
+      "javascriptBytes": 862552, "javascriptGzipBytes": 225136,
+      "javascriptSha256": "6fb74ea3e22bb98bb6d09c5075b0970d5eb0f0ed8d8d53650072775bb68cda96",
+      "logSha256": "27b412d8c845685235b81deece2c116b640620e3d59f89bc7788886b4b6987a1"
+    },
+    "deltaJavaScriptBytes": 233,
+    "deltaGzipBytes": 162,
+    "candidateOverBudgetBytes": 136,
+    "budgetChanged": false,
+    "currentDemoOverwritten": false
+  },
+  "crossBrowserControls": {
+    "candidate": {
+      "command": "playwright test -c playwright.selection-u32-candidate.config.ts --output=target/playwright-selection-u32-logger-free-controls-20261003",
+      "passed": 24, "failed": 0, "retries": 0, "durationSeconds": 48.4,
+      "coverage": "Six clipboard boundary cases, rejected paste, and 10000-restores stress in each of Chromium, Firefox and WebKit.",
+      "logSha256": "14301007e59aa4aecc1510a367ece959ae53da609ba0976e395b6528f7d9c05f"
+    },
+    "original": {
+      "command": "BREDITOR_SELECTION_U32=original playwright test -c playwright.selection-u32-candidate.config.ts --grep 'clipboard boundaryOnly backward' --output=target/playwright-selection-u32-original-controls-20261003",
+      "passed": 3, "failed": 0, "retries": 0, "durationSeconds": 5.7,
+      "scope": "Smoke check for the unmodified control and metadata path, not matched original-arm stress or evidence that the original bug is resolved.",
+      "logSha256": "90724f8eb62f2315683cd1b2bca115f727ff5522a129c4acb36aee9027f76013"
+    }
+  },
+  "verification": {
+    "diagnosticTests": { "passed": 322, "files": 60, "logSha256": "378c150a0eb3da325b99a09603ad8a623fc9d1fa60e87e11a56cb15088738701" },
+    "browserTypecheck": { "passed": true, "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" },
+    "shippingSelectionModuleSha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb",
+    "shippingWasmGlueSha256": "ce762e9873eb41b3d85e503a68f4fc7a98df8c0a4083058bdcc37c0504a65ce3",
+    "shippingWasmSha256": "579f5bc83fd69d364bfd4dbaf12a8f4389b0ed6af93bf16f0931f28d98225109",
+    "shippingArtifactsUnchanged": true
+  },
+  "limits": [
+    "This is a candidate compatibility change, not a repair to WebKit itself. Earlier numeric and JavaScript-only failures remain valid evidence.",
+    "The clipboard workload uses real DOM selections and controlled clipboard events, not the system clipboard.",
+    "These runs do not qualify native Safari, iOS, or every numeric predicate in the application.",
+    "The timing comparison is an isolated indirect-call microbenchmark, not production editor latency or a performance pass/fail threshold.",
+    "A candidate passing stress does not invalidate the historical original-guard failures or establish that every WebKit failure has the same cause.",
+    "Generated output and traces are local ignored artifacts. Preserve their recorded bytes before rebuilding into the same directories."
+  ]
+}

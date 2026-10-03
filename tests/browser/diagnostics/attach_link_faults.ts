@@ -1,10 +1,12 @@
 import { expect, type Page, type TestInfo } from "@playwright/test";
 import { attachStartupRejections } from "./attach_startup_rejections";
+import { attachSelectionU32Candidate } from "./attach_selection_u32_candidate";
 
 /** Add evidence to broad suites only in the explicitly selected diagnostic runs.
  * Ordinary release tests keep their existing teardown and browser call schedule.
  */
 export async function attachConfiguredLinkFaults(page: Page, testInfo: TestInfo): Promise<void> {
+  await attachSelectionU32Candidate(page, testInfo);
   const config = testInfo.config.configFile?.split(/[\\/]/).pop();
   if (config !== "playwright.queue-diagnostics.config.ts" &&
       config !== "playwright.link-diagnostics.config.ts" &&

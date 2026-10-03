@@ -3521,3 +3521,32 @@ tests** and browser typechecking pass. Production JS/Wasm hashes remain
 unchanged. This is a bounded candidate result: changing execution layout can
 mask an intermittent engine fault. Logger-free stress, performance and package
 size checks remain necessary before considering production adoption.
+
+### 2026-10-03: logger-free bit-guard stress and cost qualification
+
+The candidate now passes **300 clipboard cases without diagnostic wrappers or
+browser logging**, followed by **40 selection-restore cases: 400,000 restores
+and 1,200,000 exact selection reads**. Both batches use ordinary optimization,
+unchanged deadlines and zero retries. All 340 retained identity attachments
+were audited. The separate logger-free plugin changes only the exact guard;
+its metadata is fetched over HTTP after the workload. Another **24 controls**
+cover clipboard, rejected paste and restores across all three engines. Three
+original-mode smoke controls also pass; they are not a matched baseline stress
+comparison and do not invalidate the earlier original-guard failure.
+
+The isolated paired microbenchmark passes its correctness checks in nine runs
+across Chromium, Firefox and WebKit. The bit guard is slower: WebKit's common
+coordinate workload has about **2 ns additional cost per check**, while its
+mixed boundary/invalid-number workload has about **19 ns additional cost**.
+These are approximate paired medians with coarse browser clocks, not editor
+latency measurements. Raw samples are retained, and no timing threshold is used
+to hide slow results. No Breditor stress/build job ran concurrently with timing.
+
+Identical isolated reference-app builds establish a **233-byte minified JS /
+162-byte gzip increase**. The baseline exactly matches the existing demo. The
+candidate totals **225,136 gzipped bytes**, exceeding the unchanged 225,000-byte
+limit by **136 bytes**. Therefore it remains opt-in; this checkpoint does not
+promote it to production or silently raise the budget. Shipping JS, Wasm and
+demo artifacts remain unchanged. All 322 diagnostic tests and browser
+typechecking pass. See the [logger-free qualification record](qualification/2026-10-03-selection-u32-logger-free.json)
+for commands, source identities, raw timing locations and limitations.

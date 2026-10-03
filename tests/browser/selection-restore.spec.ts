@@ -1,9 +1,14 @@
 import { expect, test as base } from "@playwright/test";
+import { attachSelectionU32Candidate } from "./diagnostics/attach_selection_u32_candidate";
 
 const test = base.extend<{ restoreIterations: number; productionSelectionProbe: boolean; startupDiagnostics: boolean }>({
   restoreIterations: [3_000, { option: true }],
   productionSelectionProbe: [false, { option: true }],
   startupDiagnostics: [false, { option: true }],
+});
+
+test.afterEach(async ({ page }, testInfo) => {
+  await attachSelectionU32Candidate(page, testInfo);
 });
 
 test("restored selection coordinates retain presence, zero offsets, and direction", async ({ page, restoreIterations, productionSelectionProbe, startupDiagnostics }, testInfo) => {
