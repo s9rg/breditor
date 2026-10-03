@@ -2751,3 +2751,37 @@ the application or test body ran. No new metadata rejection was observed.
 Browser repetition was stopped because startup itself was unreliable. The
 next full-editor capture should run after host recovery; no application fix
 is claimed by the reduced controls or the new regression coverage.
+
+### Recovered-host comparison and adapter-only reduction
+
+On the next attempt the host's load averages had fallen to 4.76/5.31/6.98.
+The full-editor WebKit control passed in 6.7 seconds. Its nine-module map
+confirmed both metadata and required-property captures, and its timing record
+completed all 300 yields with no pending timer or slow span; maximum timer
+wait was 12 ms. The following full-editor batches passed **60 instrumented**
+and **40 uninstrumented** cases with unchanged assertions, deadlines and zero
+retries. No new rejected metadata was captured. These passing samples do not
+prove that instrumentation is neutral or that host load caused the old faults.
+
+The isolation controls now include a middle layer:
+`tests/browser/harness/impact_adapter_probe.ts` sends real generated Wasm
+updates through the unchanged production descriptor and projection adapters,
+without DOM rendering, toolbar dispatch, command queue or timers. It does not
+pre-read update metadata; the adapter owns reads and cleanup. Each cycle checks
+Link Apply/Undo/Redo against expected values while retaining text and Highlight.
+The raw control remains separate and unchanged.
+
+Both reductions passed in Chromium, Firefox and WebKit (**six cases**, 900
+updates each). The adapter-only Node smoke check passed, as did browser type
+checking. A further **30 WebKit adapter-only repetitions** passed, totaling
+27,000 validated updates. Run the focused control with:
+
+```sh
+playwright test -c playwright.impact-contract.config.ts tests/browser/diagnostics/impact-adapter.spec.ts --project=webkit --repeat-each=30
+```
+
+This creates three levels for future comparison—raw boundary, production
+validators, and full editor—but has not reproduced the prior fault outside
+the full-editor evidence. No production implementation was changed or fix
+claimed. Full commands and log hashes are in the
+[recovered-host validation record](qualification/2026-10-02-recovered-impact-validation.json).
