@@ -1,4 +1,4 @@
-//! Same-block typing for the experimental paragraph/heading profile.
+//! Typing for the experimental paragraph/heading profile.
 
 use super::{
     INSERT_TEXT_HISTORY_GROUP_NAME, InsertTextAction, InsertTextInput,
@@ -30,7 +30,7 @@ pub fn insert_text_block_text_action_id() -> ActionId {
     ))
 }
 
-/// Inserts exact text within one direct-root paragraph or heading.
+/// Inserts exact text within or across direct-root paragraphs and headings.
 ///
 /// Uses the existing bounded [`InsertTextInput`] contract. Collapsed typing uses
 /// pending formats, otherwise focus affinity; type-over uses the first spatially
@@ -38,8 +38,9 @@ pub fn insert_text_block_text_action_id() -> ActionId {
 /// preserves block kind/rank, and puts a Before-affinity caret after the insertion.
 /// Adjacent typing offers the normal typing history group.
 ///
-/// Cross-block ranges are explicitly disabled until their retained-kind policy
-/// and structural primitive are implemented. This action is opt-in, feature-gated,
+/// Cross-block replacement retains the spatial start block kind and first
+/// selected run's formats. A text-empty structural selection uses the surviving
+/// left seam, then right seam, then plain text. This action is opt-in, feature-gated,
 /// absent from base/browser registries, and not yet durably serializable.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct InsertTextBlockTextAction;
@@ -65,11 +66,11 @@ fn evaluate(state: &EditorState, input: &InsertTextInput) -> Result<ActionDecisi
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
-    if !range.is_same_paragraph() {
-        return Ok(disabled("breditor/unsupported-cross-block-selection"));
-    }
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
+    }
+    if !range.is_same_paragraph() {
+        return super::insert_text_block_structure::evaluate(state, input, &range);
     }
     let path = range.start().paragraph_path();
     let (guard, source) = text_block_source(state, path)?;

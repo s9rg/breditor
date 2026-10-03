@@ -12,6 +12,10 @@ mod delete_text_block_forward;
 #[cfg(feature = "experimental-structural-properties")]
 mod delete_text_block_selection;
 #[cfg(feature = "experimental-structural-properties")]
+mod delete_text_block_structure;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod delete_text_block_structure_tests;
+#[cfg(feature = "experimental-structural-properties")]
 mod delete_text_block_support;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod delete_text_block_tests;
@@ -41,6 +45,10 @@ mod insert_text_block_break;
 pub use insert_text_block_break::{InsertTextBlockBreakAction, insert_text_block_break_action_id};
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod insert_text_block_break_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod insert_text_block_structure;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod insert_text_block_structure_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod insert_text_block_text;
 #[cfg(all(test, feature = "experimental-structural-properties"))]

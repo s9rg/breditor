@@ -224,7 +224,7 @@ fn every_deletion_action_uses_exact_spatial_selection_not_grapheme_expansion() -
 }
 
 #[test]
-fn interior_cluster_carets_and_unsupported_boundaries_are_disabled() -> TestResult {
+fn interior_cluster_carets_and_document_boundaries_are_disabled() -> TestResult {
     let context = context(DocumentLimits::default())?;
     let before = state(
         &context,
@@ -240,12 +240,9 @@ fn interior_cluster_carets_and_unsupported_boundaries_are_disabled() -> TestResu
             matches!(evaluation.decision(), ActionDecision::Disabled(reason) if reason.code().as_str() == "breditor/caret-not-grapheme-boundary")
         );
     }
-    for (index, offset, backward, code) in [
-        (0, 0, true, "breditor/at-document-start"),
-        (1, 1, false, "breditor/at-document-end"),
-        (0, 1, false, "breditor/unsupported-block-boundary"),
-        (1, 0, true, "breditor/unsupported-block-boundary"),
-    ] {
+    for (index, offset, backward, code) in
+        [(0, 0, true, "breditor/at-document-start"), (1, 1, false, "breditor/at-document-end")]
+    {
         let before = state(
             &context,
             vec![block(heading(1)?, "a", formats()?)?, block(heading(2)?, "b", formats()?)?],
@@ -336,7 +333,7 @@ fn repeated_directional_deletion_merges_and_stale_preparation_preserves_redo() -
 }
 
 #[test]
-fn selection_deletion_is_an_independent_history_event_and_cross_block_rejects() -> TestResult {
+fn same_and_cross_block_selection_deletion_are_independent_history_events() -> TestResult {
     let context = context(DocumentLimits::default())?;
     for cross in [false, true] {
         let before = state(
@@ -353,16 +350,10 @@ fn selection_deletion_is_an_independent_history_event_and_cross_block_rejects() 
             DeleteTextBlockForwardAction.evaluate(&before, &())?,
             DeleteTextBlockSelectionAction.evaluate(&before, &())?,
         ] {
-            if cross {
-                assert!(
-                    matches!(evaluation.decision(), ActionDecision::Disabled(reason) if reason.code().as_str() == "breditor/unsupported-cross-block-selection")
-                );
-            } else {
-                let ActionDecision::Enabled(plan) = evaluation.decision() else {
-                    return Err("selection unexpectedly disabled".into());
-                };
-                assert_eq!(plan.history(), &crate::transaction::HistoryIntent::Record);
-            }
+            let ActionDecision::Enabled(plan) = evaluation.decision() else {
+                return Err("selection unexpectedly disabled".into());
+            };
+            assert_eq!(plan.history(), &crate::transaction::HistoryIntent::Record);
         }
     }
     Ok(())

@@ -1,5 +1,6 @@
-//! Shared same-block deletion semantics; boundary joins remain a separate primitive.
+//! Shared heading/paragraph deletion routing and same-block grapheme semantics.
 use super::{
+    delete_text_block_structure,
     grapheme_boundary::{
         grapheme_boundary_at_or_after, grapheme_boundary_at_or_before, next_grapheme_boundary,
         previous_grapheme_boundary,
@@ -35,14 +36,20 @@ pub(super) fn evaluate(
         Ok(range) => range,
         Err(reason) => return Ok(ActionDecision::Disabled(reason)),
     };
-    if !range.is_same_paragraph() {
-        return Ok(disabled("breditor/unsupported-cross-block-selection"));
-    }
     if range.is_collapsed() && matches!(direction, Deletion::Selection) {
         return Ok(disabled("breditor/collapsed-selection"));
     }
     if let Some(decision) = require_operation_budget(state, 1) {
         return Ok(decision);
+    }
+    if !range.is_same_paragraph() {
+        let root_range = delete_text_block_structure::root_range(
+            range.start().paragraph_path(),
+            range.start().offset(),
+            range.end().paragraph_path(),
+            range.end().offset(),
+        )?;
+        return delete_text_block_structure::delete(state, &root_range, Deletion::Selection);
     }
     let path = range.start().paragraph_path();
     let (guard, source) = text_block_source(state, path)?;
@@ -52,11 +59,15 @@ pub(super) fn evaluate(
         match direction {
             Deletion::Backward => {
                 if start == TextOffset::ZERO {
-                    return Ok(disabled(if path.last_index() == Some(0) {
-                        "breditor/at-document-start"
-                    } else {
-                        "breditor/unsupported-block-boundary"
-                    }));
+                    let index = path
+                        .last_index()
+                        .ok_or_else(|| fault("breditor/text-block-join-path-fault"))?;
+                    let Some(previous) = index.checked_sub(1) else {
+                        return Ok(disabled("breditor/at-document-start"));
+                    };
+                    let previous = crate::position::NodePath::try_from_indices(vec![previous])
+                        .map_err(|_| fault("breditor/text-block-join-path-fault"))?;
+                    return delete_text_block_structure::join(state, &previous, direction);
                 }
                 let Some(previous) = previous_grapheme_boundary(&source, start)? else {
                     return Ok(disabled("breditor/caret-not-grapheme-boundary"));
@@ -65,23 +76,7 @@ pub(super) fn evaluate(
             }
             Deletion::Forward => {
                 if end == source.utf16_len() {
-                    let count = state
-                        .document()
-                        .root()
-                        .as_element()
-                        .ok_or_else(|| fault("breditor/text-block-source-fault"))?
-                        .children()
-                        .len();
-                    let index = path
-                        .last_index()
-                        .ok_or_else(|| fault("breditor/text-block-source-fault"))?;
-                    return Ok(disabled(
-                        if u64::from(index) + 1 == u64::try_from(count).unwrap_or(u64::MAX) {
-                            "breditor/at-document-end"
-                        } else {
-                            "breditor/unsupported-block-boundary"
-                        },
-                    ));
+                    return delete_text_block_structure::join(state, path, direction);
                 }
                 let Some(next) = next_grapheme_boundary(&source, end)? else {
                     return Ok(disabled("breditor/caret-not-grapheme-boundary"));

@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "61ea8520b96abbbb9679492b7520ab1e30228089",
+  "status": "Cross-block heading action checkpoint verified; beta goal remains active",
+  "scope": "Experimental Rust action behavior only; shipping browser registration and durable formats unchanged",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "retainedKind": "Spatial left/start block kind for boundary joins, selected deletion and type-over, including an empty left block",
+    "selection": "Exact scalar range for extended deletion, independent of direction; result caret at spatial start",
+    "joins": "Backward/forward boundary deletion snaps newly formed grapheme clusters after/before respectively; document extremes stay disabled",
+    "typing": "First selected run formats in spatial order, including middle blocks; text-empty selections fall back left seam, right seam, then plain; result caret after insertion with Before affinity",
+    "history": "Extended deletion records independently; boundary repeats offer directional merge; typing offers typing merge; exact source kinds/selection/pending values restored",
+    "publication": "One guarded TextBlockReplace with complete result validation",
+    "remaining": "Formatting commands, durable text-block replay, browser profile/renderer/toolbar, flat lists and desktop qualification"
+  },
+  "verification": {
+    "focusedTestsPassed": 69,
+    "newStructuralDeletionTests": 6,
+    "newCrossTypingTests": 4,
+    "joinCombinations": 392,
+    "propertyTests": 7,
+    "casesPerProperty": 10000,
+    "propertySeed": 20261003,
+    "focusedCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib --locked text_block",
+    "coreAllFeatureUnitTestsPassed": 836,
+    "coreDefaultUnitTestsPassed": 697,
+    "legacyEditingIntegrationTestsPassed": 26,
+    "legacyCommand": "cargo test -p breditor-core --all-features --locked --test delete_typed_format_contracts --test delete_forward_selection_contracts --test delete_backward_cross_paragraph_contracts --test insert_text_cross_paragraph_contracts",
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": "Initial strict lint found an unnecessary by-value argument, an oversized helper and filter_map(...).next(). Refactored to borrowing, separate format-source discovery and find_map. Focused behavioral runs passed.",
+    "freshFullReleaseRun": false,
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "published": false
+  },
+  "evidence": [
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_structure.rs",
+      "sha256": "389d097d5a5a58234ba7137d776495092e0bc0812b2c93e6021c9f42a83d61fc"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_structure_tests.rs",
+      "sha256": "983af2387e6c0b28f1cd3fa9fe3f611948e151562fffa2757fa6121a5605bd52"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_structure.rs",
+      "sha256": "065d945ebbf4c1134b373d7d8f55f19f0234f02aeabcc55ff10448e7d0544c7b"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_structure_tests.rs",
+      "sha256": "150f3d0722af67734e928d92ffb8675100657020b9f8340167a03c23243fd453"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-cross-edit-focused.log",
+      "sha256": "70f1246f5728e0be4652d55e02f0b7ce8e096f5b052a3991a582db9c163f92c9"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-cross-edit-core.log",
+      "sha256": "f699df1821d9ed9316e012c9801a55e7109d518a7a1e3e4d00b8a2af1d661317"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-cross-edit-default.log",
+      "sha256": "c9076ce527bc8274471d14a70df415275ff183a7106050819ecbd2da42ffb8d9"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-cross-edit-clippy.log",
+      "sha256": "2948cd43f68a3d2bd0949c177b9f750cddf41e441f6f654fc0e02a88e3bbb0bb"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-cross-edit-legacy.log",
+      "sha256": "c70c1ab732ca55f811404da3c5863b8e1c826e1a5e8a5ed44d683a3fd9bed769"
+    }
+  ]
+}

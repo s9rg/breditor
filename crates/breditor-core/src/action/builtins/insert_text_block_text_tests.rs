@@ -225,7 +225,10 @@ fn unsupported_states_are_disabled_without_mutation() -> TestResult {
         )),
         None,
     )?;
-    assert_disabled(&cross, "breditor/unsupported-cross-block-selection")?;
+    assert!(matches!(
+        InsertTextBlockTextAction.evaluate(&cross, &InsertTextInput::try_new("x")?)?.decision(),
+        ActionDecision::Enabled(_)
+    ));
     let base = EditorContext::new(CompiledSchema::breditor_base(), DocumentLimits::default());
     let before = state(
         &base,

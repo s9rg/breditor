@@ -46,8 +46,9 @@ integration milestone; retain any failed run rather than hiding it with retries.
 - Enter at the start or middle produces two headings of the same rank (an empty
   left heading at the start). Enter at the end
   produces a paragraph. Enter in an empty heading converts it to a paragraph.
-- Join/delete policy must explicitly choose the retained block kind. It must
-  never discard text or change rank as an accidental side effect.
+- Join/delete and cross-block type-over retain the spatial left/start block's
+  kind, even when that block is empty. Undo restores every original kind/rank.
+  No text or rank is discarded as an accidental side effect.
 - No new paragraph/heading semantics are retrofitted into old operation tags or
   old schema fingerprints. New primitives remain gated until their durable
   encoding and replay tests are available.
@@ -90,8 +91,9 @@ complete result document, and derives an exact inverse. Source guards include
 the whole edited block; unchanged siblings are not guarded.
 
 This is **in-memory only**: all current codecs reject this new primitive.
-Its explicit durable recipe, Enter/delete behavior and browser exposure remain
-unfinished. The first milestone is therefore still in progress.
+Its explicit durable recipe and browser exposure remain unfinished. Later
+checkpoints below add typing, Enter, deletion and structural action behavior;
+formatting commands still keep the first milestone in progress.
 No fresh browser, bundle-size or full release qualification is claimed for
 this isolated core checkpoint.
 
@@ -115,7 +117,8 @@ forward/backward direction. Full-tree preview counts untouched siblings and the
 heading rank property before enabling the action. Undo restores the exact source
 selection and pending formats; stale preparations cannot destroy a redo branch.
 
-Cross-block replacement is explicitly disabled, not flattened into a paragraph.
+Cross-block replacement now retains the spatial start block's kind; it does not
+flatten a heading into a paragraph. See the cross-block checkpoint below.
 The action is not in the browser/default registry and its text edit still cannot
 be saved in any current operation/session format. Durable encoding is the next
 integration dependency: V4 is a closed language, so adding a new tag silently is
@@ -149,12 +152,11 @@ The new shared text-block source/preview helper is also used by heading typing;
 its behavior is covered by the whole-core regression suite. Existing paragraph
 actions, base registration and all durable formats remain unchanged.
 
-**Still unfinished:** cross-block deletion actions and boundary-join actions,
-formatting commands, durable text-edit sessions, browser integration, flat lists
-and desktop/native qualification. Start/end of the entire document return their
-normal disabled states; internal block boundaries explicitly report unsupported
-until the structural edit primitive is ready. This is not a finished editing
-profile and must not be exposed as one.
+**Still unfinished:** formatting commands, durable text-edit sessions, browser
+integration, flat lists and desktop/native qualification. Start/end of the entire
+document return their normal disabled states; internal boundaries now join through
+the structural primitive. This is not a finished editing profile and must not be
+exposed as one.
 
 See [deletion qualification](qualification/2026-10-03-heading-deletion-actions.json)
 for the reproducible test commands and measured boundary.
@@ -188,10 +190,35 @@ existing durable languages, including V4, explicitly continue rejecting it.
   incorrectly exceed a budget. Source fragments and the complete final tree
   still undergo validation, including duplicated rank/link properties.
 
-Join mechanics now have operation-level coverage across all 49 paragraph/heading
-kind pairs. The next step is to connect boundary and cross-block deletion actions
-to this primitive with an explicit left-kind retention policy, then formatting
-and durable session replay. This checkpoint still does not enable headings in
-the browser or qualify a beta release.
+Join mechanics have operation-level coverage across all 49 paragraph/heading
+kind pairs and are now connected to boundary/cross-block editing actions below.
+Formatting and durable session replay remain next. This does not enable headings
+in the browser or qualify a beta release.
 
 See [structural-break qualification](qualification/2026-10-03-heading-structural-break.json).
+
+## Cross-block editing checkpoint
+
+Backward/forward deletion now joins adjacent blocks at a boundary. Selected
+deletion works across any contiguous direct-root paragraph/heading span. Both
+retain the spatial left block's kind, including an empty left heading; backward
+and forward deletion do not choose different retained kinds. Selected deletion
+uses the exact scalar range and an independent history event. Boundary joins
+offer the existing directional merge group and snap newly formed grapheme
+clusters using the same directional caret policy as local deletion.
+
+Typing over a cross-block selection uses one `TextBlockReplace`, retains the
+spatial start kind, consumes pending formats and places the caret after the
+inserted text with Before affinity. Its inherited format is the first spatially
+selected run, including complete middle blocks when boundary fragments are empty.
+For a text-empty structural selection, inheritance falls back to the surviving
+left run, then right run, then plain text. Direction does not change this choice.
+
+The tests exercise 392 boundary-join combinations (49 kind pairs, four empty/nonempty
+side combinations and two directions), mixed-format type-over, selected deletion,
+regional-indicator seam snapping, bounded-result rejection, merged history and
+stale preparation/redo safety. Seven text-block property tests run 10,000 seeded
+cases each. Exact retained-kind and selection recovery is still **in-memory**;
+this does not yet claim durable text-block history or browser support.
+
+See [cross-edit qualification](qualification/2026-10-03-heading-cross-edit.json).

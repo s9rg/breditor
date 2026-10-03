@@ -23,8 +23,9 @@ and browser heading support remain pending. See
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
 later. Guarded text-block editing and opt-in heading typing, deletion and Enter
-actions are under experimental development. They have no durable-format or
-browser support yet; boundary/cross-block deletion actions remain unfinished.
+actions now support boundary joins and cross-block selections in experimental
+Rust. They still have no durable-format or browser support; heading formatting
+commands and the end-to-end profile remain unfinished.
 
 ## Run the browser demo
 

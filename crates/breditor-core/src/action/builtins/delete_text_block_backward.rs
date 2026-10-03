@@ -15,8 +15,9 @@ use crate::{
 ///
 /// Extended selections form an independent history event. Rank, surviving typed
 /// formats and pending formats are preserved exactly; undo restores the original
-/// directional selection. Cross-block ranges and boundary joins are not yet
-/// supported. Opt-in only: no default/browser registration or durable recipe.
+/// directional selection. Cross-block deletion and boundary joins retain the
+/// spatial left block's kind; undo restores both kinds. Opt-in only: no
+/// default/browser registration or durable recipe.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DeleteTextBlockBackwardAction;
 

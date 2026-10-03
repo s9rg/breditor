@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Connect experimental heading deletion to boundary joins and cross-block
+  selected deletion. Add cross-block type-over with spatial format inheritance.
+  Both retain the left/start kind; undo restores all original kinds and exact
+  selections. Preserve directional grapheme snapping, limits, merged history
+  and stale-preparation safety. Browser/default registration and durable formats
+  are unchanged.
+
 - Add an atomic experimental text-block replacement with complete kind/text
   guards and an inverse restoring each original paragraph/heading kind. Add a
   separately named Enter action for splitting headings, leaving empty headings,
