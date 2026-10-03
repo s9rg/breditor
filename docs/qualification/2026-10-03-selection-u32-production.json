@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "d727288",
+  "status": "targeted-production-mitigation-qualified-not-an-engine-repair",
+  "reproducedFailure": {
+    "record": "docs/qualification/2026-10-03-post-token-numeric-checks.json",
+    "observation": "The original value <= 4_294_967_295 operand returned false for captured integer 6 (float64 bits 4018000000000000) after 112 passing WebKit clipboard cases.",
+    "caveat": "This locates the failing JavaScript predicate, not the exact JavaScriptCore native instruction."
+  },
+  "change": {
+    "source": "packages/breditor-browser/src/wasm_selection_adapter.ts",
+    "scope": "Only the Wasm selection adapter's u32 admission predicate changed; Rust, generated Wasm and the public ABI did not.",
+    "algorithm": "After Number.isSafeInteger, the big-endian float64 high 16 bits reject values at or above 2^32 (0x41f0). The negative-zero pattern 0x8000 remains accepted. The captured double is never compared to the upper bound.",
+    "controls": "The test-only Vite transform can restore the exact previous guard or the earlier full-bit candidate. Compact mode serves the unmodified shipping module."
+  },
+  "contract": {
+    "nodeDifferential": "1,000,000 deterministic IEEE-754 patterns, 100,000 sampled u32 values and fractional neighbors, exponent boundaries, both zeros, and foreign values passed",
+    "browserOracle": {
+      "command": "playwright test tests/browser/selection-u32-production-oracle.spec.ts --output=target/playwright-selection-u32-production-oracle-matrix-20261003",
+      "engines": ["chromium", "firefox", "webkit"],
+      "passed": 3,
+      "fixturesPerEngine": 30,
+      "anchorAndFocusChecksPerEngine": 12000,
+      "checks": "Exact built-adapter handoff, rejected types, no input coercion, single cleanup and no Wasm request"
+    }
+  },
+  "webkit": {
+    "compactCandidateClipboard": {
+      "command": "BREDITOR_SELECTION_U32=compact playwright test -c playwright.selection-u32-candidate.config.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --max-failures=1 --output=target/playwright-selection-u32-compact-20261003",
+      "passed": 300,
+      "retries": 0,
+      "duration": "4.3m"
+    },
+    "unchangedProductionClipboard": {
+      "command": "playwright test tests/browser/clipboard-boundary.spec.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --max-failures=1 --output=target/playwright-selection-u32-production-clipboard-20261003",
+      "passed": 300,
+      "retries": 0,
+      "duration": "3.7m"
+    },
+    "productionRestore": {
+      "command": "BREDITOR_SELECTION_U32=compact playwright test -c playwright.selection-u32-candidate.config.ts --grep 'restored selection' --project=webkit --repeat-each=40 --max-failures=1 --output=target/playwright-selection-u32-production-restore-20261003",
+      "passed": 40,
+      "retries": 0,
+      "restores": 400000,
+      "selectionReads": 1200000,
+      "duration": "7.0m",
+      "servedSource": "Unchanged production module; the plugin attached source-identity metadata after each workload"
+    },
+    "boundaryHistory": {
+      "command": "playwright test -c playwright.adapter-reduction.config.ts --grep boundary-only --project=webkit --repeat-each=60 --max-failures=1 --output=target/playwright-adapter-reduction-production-20261003",
+      "passed": 120,
+      "retries": 0,
+      "duration": "3.3m"
+    },
+    "directValidator": "6 passed with playwright.projection-validator.config.ts, repeat-each=3",
+    "historicalOriginalControl": "1 logger-free WebKit smoke and 1 operand-instrumented queue WebKit smoke passed; these verify source substitution, not resolution of the historical fault",
+    "historicalControlBuilds": "Original and full-bit alternatives both built as isolated Vite artifacts, without replacing the production demo"
+  },
+  "release": {
+    "command": "npm run verify:release",
+    "passed": "all 17 gates",
+    "browserMatrix": "165 passed across Chromium, Firefox and WebKit",
+    "reactDemoMatrix": "39 passed across Chromium, Firefox and WebKit",
+    "diagnosticUnitTests": "331 passed in 62 files",
+    "referenceAppJavascriptGzipBytes": 224954,
+    "referenceAppJavascriptGzipLimit": 225000,
+    "budgetRaised": false,
+    "published": false
+  },
+  "artifactsSha256": {
+    "selectionAdapter": "1ba247ad5a049ba0143e8968cf9b4dbe6fcac34e937199006a345957119ef513",
+    "wasmGlue": "ce762e9873eb41b3d85e503a68f4fc7a98df8c0a4083058bdcc37c0504a65ce3",
+    "wasm": "579f5bc83fd69d364bfd4dbaf12a8f4389b0ed6af93bf16f0931f28d98225109",
+    "referenceAppJavascript": "6539a3f6f1f8b9a4d4d198cb668bc4680517702f2be520a9732f0358b16d30d7"
+  },
+  "isolatedPredicateCost": {
+    "command": "playwright test -c playwright.selection-u32-cost.config.ts --repeat-each=3 --trace=on --output=target/playwright-selection-u32-production-cost-20261003",
+    "passed": 9,
+    "method": "One million calls per arm, nine alternating-order pairs per case, three cases per engine and workload; raw samples are in trace attachments.",
+    "medianPairedDeltaNsPerCheck": {
+      "chromium": { "commonCoordinates": -0.3, "mixedBoundaries": 0.1 },
+      "firefox": { "commonCoordinates": 3, "mixedBoundaries": 2 },
+      "webkit": { "commonCoordinates": 1, "mixedBoundaries": 0 }
+    },
+    "caveat": "Coarse browser clocks and an isolated microbenchmark; these are not editor latency measurements or a performance pass threshold."
+  },
+  "evidenceRetention": "Passed counts and durations above were transcribed from the observed Playwright run output. Playwright retains per-case traces for the compact candidate and restore runs. The ordinary production clipboard and browser oracle output directories retain passed status only, so their counts cannot be independently reconstructed from those directories alone.",
+  "limits": [
+    "This avoids the reproduced upper-bound comparison in one selection adapter; it does not repair JavaScriptCore or prove every WebKit fault shares that cause.",
+    "Other browser numeric validators remain unchanged; these runs did not reproduce a failure at those sites.",
+    "Clipboard cases use controlled browser events, not the operating-system clipboard.",
+    "Playwright WebKit was covered, but native Safari and iOS Simulator were not independently qualified.",
+    "Finite no-retry runs cannot prove an intermittent symptom will never recur."
+  ]
+}

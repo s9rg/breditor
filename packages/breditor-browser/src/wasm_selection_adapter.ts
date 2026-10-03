@@ -405,6 +405,15 @@ function isRangeOrder(value: unknown): value is BaseRangeOrder {
   return value === "collapsed" || value === "forward" || value === "backward";
 }
 
+// WebKit has intermittently misclassified a captured small integer at the
+// floating u32 upper-bound comparison. Inspect the double's high word instead:
+// 0x41f0 begins at 2^32, and 0x8000 is negative zero. The safe-integer guard
+// rejects fractions and foreign values without input coercion. Under standard
+// built-ins, the scratch writes and reads are synchronous and non-reentrant.
+const __breditorSelectionU32Compact = new DataView(new ArrayBuffer(8));
 function isU32(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 4_294_967_295;
+  if (!Number.isSafeInteger(value)) return false;
+  __breditorSelectionU32Compact.setFloat64(0, value as number, false);
+  const high = __breditorSelectionU32Compact.getUint16(0, false);
+  return high < 0x41f0 || high === 0x8000;
 }

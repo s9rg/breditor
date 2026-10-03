@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { parseSync } from "rolldown/utils";
 import { replaceSelectionU32WithBits, selectionU32BitsCandidate } from "./selection_u32_bits_candidate";
+import { selectionU32Original } from "./selection_u32_production_transform";
 
 const candidate = new Function(`${selectionU32BitsCandidate}; return isU32;`)() as (value: unknown) => boolean;
 const original = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 0xffffffff;
@@ -52,8 +52,8 @@ it("rejects foreign values without coercion or proxy access", () => {
   expect(calls).toBe(0);
 });
 
-it("changes only the exact production selection predicate and rejects source drift", () => {
-  const code = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_selection_adapter.js", import.meta.url), "utf8");
+it("changes only the historical selection predicate and rejects source drift", () => {
+  const code = `const unrelated = true;\n${selectionU32Original}\n`;
   const output = replaceSelectionU32WithBits(code);
   expect(parseSync("candidate.js", output).errors).toEqual([]);
   expect(output.replace(selectionU32BitsCandidate, `function isU32(value) {

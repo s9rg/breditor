@@ -20,10 +20,8 @@ createRoot(root).render(
         <p className="eyebrow">Rust core · WebAssembly runtime · React shell</p>
         <h1>Breditor</h1>
         <p className="hero-copy">
-          A small, real browser editor built on a typed document tree and
-          semantic commands. This page runs a complete eleven-control formatting
-          showcase through the Rust core, including Highlight, safe Link,
-          bounded Text size, RGB24 text color, and Clear formatting.
+          A real browser editor with a typed document tree and semantic commands.
+          Try eleven Rust-powered formatting controls.
         </p>
       </header>
 
@@ -36,8 +34,8 @@ createRoot(root).render(
           <p>
             Select some text, then combine Bold, Italic, Strikethrough, Code,
             Highlight, Text size, Text color, or the Link form—or clear the
-            complete inline format set in one step. Undo and Redo replay the
-            same semantic operations through the Rust-owned editor state.
+            complete inline format set in one step. Undo and Redo replay through
+            Rust-owned editor state.
           </p>
         </div>
 
@@ -70,9 +68,8 @@ createRoot(root).render(
       <SessionBackupImporter primaryModifier={primaryModifier} />
 
       <footer className="architecture-note">
-        React owns the frame and empty mounts. Breditor owns the declarative
-        toolbar, typed Link, Text Size, and RGB24 forms, and editable DOM. The
-        canonical document AST and history live behind the WebAssembly boundary.
+        React owns the frame; Breditor owns the toolbar, typed forms, and
+        editable DOM. The document AST and history live in WebAssembly.
       </footer>
     </main>
   </StrictMode>,

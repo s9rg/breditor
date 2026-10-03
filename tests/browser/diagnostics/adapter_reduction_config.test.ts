@@ -15,7 +15,8 @@ it.each(["projection", "wasm_projection_adapter", "wasm_selection_adapter"])(
     expect(output).not.toBeNull();
     expect(parseSync(id, output.code).errors).toEqual([]);
     if (module === "wasm_selection_adapter") {
-      expect(output.code).toContain('numeric:265:operand:2');
+      expect(output.code).toContain("return __breditorNumericPredicate");
+      expect(output.code).not.toContain(":operand:");
     } else if (module === "wasm_projection_adapter") {
       expect(output.code).toContain("return __breditorNumericPredicate");
       expect(output.code).toContain("__breditorImpactRejection");

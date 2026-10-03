@@ -1,5 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import { parseSync } from "rolldown/utils";
+import { selectionU32Original } from "./selection_u32_production_transform";
 import { instrumentLinkFaults } from "./link_fault_instrumentation";
 import { createLinkFaultRecorder } from "./link_fault_recorder";
 
@@ -188,13 +190,23 @@ it("refuses operand capture when the numeric shape drifts or its parent is disab
     { numericOperands: true, numericPredicates: false })).toThrow("requires numeric predicates");
 });
 
-it("maps each production numeric operand to the exact source expression", () => {
-  const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_selection_adapter.js", import.meta.url), "utf8");
-  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_selection_adapter"),
+it("maps each historical bound-comparison operand to the exact source expression", () => {
+  const output = instrumentLinkFaults(selectionU32Original, id.replace("wasm_command_adapter", "wasm_selection_adapter"),
     "/recorder.js", { numericPredicates: true, numericOperands: true })!;
   expect(output.sites.filter(site => site.stage.includes(":operand:")).map(site => site.expression)).toEqual([
     "Number.isSafeInteger(value)", "value >= 0", "value <= 4_294_967_295",
   ]);
+});
+
+it("captures the production selection guard's early and final returns without legacy operands", () => {
+  const source = readFileSync(new URL("../../../packages/breditor-browser/dist/wasm_selection_adapter.js", import.meta.url), "utf8");
+  const output = instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_selection_adapter"),
+    "/recorder.js", { numericPredicates: true, numericOperands: false })!;
+  expect(output.sites.filter(site => site.stage.includes(":numeric:"))).toHaveLength(2);
+  expect(output.sites.some(site => site.stage.includes(":operand:"))).toBe(false);
+  expect(parseSync("selection-instrumented.js", output.code).errors).toEqual([]);
+  expect(() => instrumentLinkFaults(source, id.replace("wasm_command_adapter", "wasm_selection_adapter"),
+    "/recorder.js", { numericPredicates: true, numericOperands: true })).toThrow("Expected three numeric predicate operands");
 });
 
 it("captures bounded loop-count bits separately from numeric return transport", () => {

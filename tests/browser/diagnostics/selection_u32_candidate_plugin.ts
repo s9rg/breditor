@@ -1,16 +1,16 @@
 import { createHash } from "node:crypto";
 import type { Plugin } from "vite";
-import { replaceSelectionU32WithBits } from "./selection_u32_bits_candidate";
+import { transformSelectionU32Production, type SelectionU32Mode } from "./selection_u32_production_transform";
 
-export function selectionU32Mode(value = process.env["BREDITOR_SELECTION_U32"] ?? "bits"): "original" | "bits" {
-  if (value !== "original" && value !== "bits") throw new Error("BREDITOR_SELECTION_U32 must be original or bits");
+export function selectionU32Mode(value = process.env["BREDITOR_SELECTION_U32"] ?? "compact"): SelectionU32Mode {
+  if (value !== "original" && value !== "bits" && value !== "compact") throw new Error("BREDITOR_SELECTION_U32 must be original, bits, or compact");
   return value;
 }
 
 /** Exact guard substitution only: no browser recorders, wrappers or logging.
  * Server/build metadata records which bytes were used, outside the workload.
  */
-export function selectionU32CandidatePlugin(mode: "original" | "bits"): Plugin {
+export function selectionU32CandidatePlugin(mode: SelectionU32Mode): Plugin {
   let module: { originalSha256: string; executedSha256: string } | null = null;
   const hash = (value: string) => createHash("sha256").update(value).digest("hex");
   const manifest = () => JSON.stringify({ mode, logging: false, module });
@@ -18,10 +18,9 @@ export function selectionU32CandidatePlugin(mode: "original" | "bits"): Plugin {
     name: "breditor-selection-u32-logger-free", enforce: "pre",
     transform(code, id) {
       if (!id.endsWith("/breditor-browser/dist/wasm_selection_adapter.js")) return null;
-      const candidate = replaceSelectionU32WithBits(code); // Check source drift in both arms.
-      const executed = mode === "bits" ? candidate : code;
+      const executed = transformSelectionU32Production(code, mode);
       module = { originalSha256: hash(code), executedSha256: hash(executed) };
-      return mode === "bits" ? { code: executed, map: null } : null;
+      return mode === "compact" ? null : { code: executed, map: null };
     },
     configureServer(server) {
       server.middlewares.use((request, response, next) => {

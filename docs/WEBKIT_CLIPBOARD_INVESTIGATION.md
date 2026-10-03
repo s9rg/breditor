@@ -3550,3 +3550,33 @@ promote it to production or silently raise the budget. Shipping JS, Wasm and
 demo artifacts remain unchanged. All 322 diagnostic tests and browser
 typechecking pass. See the [logger-free qualification record](qualification/2026-10-03-selection-u32-logger-free.json)
 for commands, source identities, raw timing locations and limitations.
+
+### 2026-10-03: compact high-word guard promoted and qualified
+
+The old selection-adapter upper-bound comparison is now replaced in production
+by a primitive-only IEEE-754 high-word check. `Number.isSafeInteger` still
+rejects fractions and foreign inputs; the high 16 bits reject `2^32` and larger
+without comparing the captured double against that bound. Negative zero remains
+accepted. The recorded original failure for captured integer `6` remains the
+reproduction; this change does not identify or repair JavaScriptCore itself.
+
+The smaller guard first passed **300 logger-free WebKit clipboard cases** as an
+opt-in candidate, then **300 more on the unchanged production module** after a
+normal build. The production module passed **40 restore cases** (400,000 restores
+and 1.2 million selection reads), **120 boundary/history diagnostic cases**, six
+direct WebKit validator checks, and a per-value selection-handoff oracle in all
+three browser engines. Every batch used zero retries. The historical guard is
+retained only as an explicit source-identified diagnostic control.
+
+All **17 local release gates passed**, including 165 browser and 39 React demo
+cases across Chromium, Firefox and WebKit. The reference app stays below the
+unchanged 225,000-byte gzip budget at **224,954 bytes**; a small reduction in
+redundant demo copy supplies the necessary headroom. Rust, generated Wasm and
+the public ABI did not change. No package was published. Exact commands,
+artifact identities, isolated cost samples and limitations are in the
+[production qualification record](qualification/2026-10-03-selection-u32-production.json).
+
+This is a **targeted compatibility fix**, not a declaration that every WebKit
+numeric fault is resolved. Other browser validators remain unchanged, and
+native Safari, iOS Simulator and system-clipboard qualification are still
+separate work.

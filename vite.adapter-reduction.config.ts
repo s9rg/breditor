@@ -20,10 +20,10 @@ const diagnostic: Plugin = {
     const projection = id.endsWith("/breditor-browser/dist/wasm_projection_adapter.js");
     if (!selection && !projection) return null;
     const output = instrumentLinkFaults(code, id, recorder, { numericPredicates: true,
-      numericOperands: selection, projectionChild: projection, projectionImpact: projection, impactState: projection, projectionTextRun: projection });
+      numericOperands: false, projectionChild: projection, projectionImpact: projection, impactState: projection, projectionTextRun: projection });
     if (!output) throw new Error("Adapter reduction source not recognized");
     modules.set(output.module, { sourceSha256: output.sourceSha256, sites: output.sites,
-      numericPredicates: true, numericOperands: selection, projectionTextRun: projection });
+      numericPredicates: true, numericOperands: false, projectionTextRun: projection });
     return { code: output.code, map: null };
   },
   configureServer(server) {
