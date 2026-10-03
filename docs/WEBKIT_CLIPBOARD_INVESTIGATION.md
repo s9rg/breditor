@@ -3330,3 +3330,71 @@ unqualified despite the targeted count-return repair.
 Direct/path-aliased package reproducibility, runtime integrity and all release
 size budgets also pass. Generated-glue tests explicitly retain zero for plain
 text and undefined for element, missing and maximum-u32 indexes.
+
+### 2026-10-03: bounded Rust-token candidate and independent selection control
+
+Rebuilt the opt-in Rust-token candidate on top of `81aa678` so it includes the
+format-count transport fix. The old candidate artifacts were preserved before
+rebuilding. The unbounded candidate passed **60 WebKit history cases**, but had
+an undesirable input cost: rejecting a 16 MiB primitive string grew a fresh
+engine's Wasm memory by **16,842,752 bytes**.
+
+The candidate now transports only primitive strings of at most eight UTF-16
+code units, then matches the exact tokens inside Rust. The host guard does not
+classify tokens, coerce objects, or read object properties. At most 24 UTF-8
+bytes can be copied. The same oversized input now returns the same error with
+**zero memory growth**. This remains behind `candidate-rust-selection-tokens`;
+production still uses the original admission path.
+
+Added `selection_token_probe.ts`, importing only Wasm, with two controls:
+
+- 8,000 selection commands per case over mixed text/children points and both
+  affinities. Every accepted selection is checked against durable state JSON,
+  including exact kind, path, offset and affinity. No projection getters,
+  browser adapters, history operations, editing or clipboard are involved.
+- 56 invalid-token calls spanning all four token slots, primitive mismatches,
+  oversized strings, boxed strings, a getter/conversion trap and a revoked
+  proxy. Each rejection must leave the checkpoint unchanged, invoke no hooks,
+  permit a subsequent valid command, and avoid proportional Wasm allocation.
+
+Chromium, Firefox and WebKit pass all **9 control cases**. Each browser records
+56 rejections, zero conversion calls and zero memory growth. The bounded
+candidate passes **120 repeated WebKit cases** with Rust rejection logging,
+then **120 more without that logger**. Each batch includes 60 history cases
+(114,000 commands) and 60 raw-selection cases (480,000 commands). History still
+uses the existing instrumented JS adapters; the raw-selection cases do not.
+Native/Wasm/TypeScript validation ran concurrently during part of the second
+batch. The unchanged, logger-free baseline also passes **80 cases** in its
+comparison batch: these passing candidate runs are **not proof** that the
+earlier intermittent admission fault has been eliminated.
+
+Reproduce the logger-free candidate build and batch with:
+
+```sh
+bash scripts/build-selection-input-diagnostic.sh --rust-tokens --without-input-observer
+BREDITOR_SELECTION_TOKENS=rust BREDITOR_RUST_SELECTION_INPUTS=off \
+  playwright test -c playwright.selection-input-diagnostic.config.ts \
+  --grep 'boundary-only|without projection or history' --project=webkit \
+  --repeat-each=30 --output=target/playwright-bounded-token-unobserved-local
+```
+
+For the baseline, omit `--rust-tokens`, select `BREDITOR_SELECTION_TOKENS=js`,
+and use a separate output directory. Both builds stay outside distribution
+files. `--without-input-observer` selects a separately named `-unobserved`
+artifact; the served manifest records the observer setting and both hashes.
+Observer-specific tests skip when the Rust observer is disabled.
+
+**Release gate:** the candidate's editor class declarations remain unchanged,
+but its `InitOutput` allocator aliases change: the three `__wbindgen_export*`
+names rotate between malloc, realloc and free signatures. The baseline built
+with the same script exactly matches the frozen declaration. ABI 5 pins these
+low-level signatures too, so the candidate is **not promoted**, and the frozen
+baseline is not weakened or regenerated to accept it. A compatible transport
+or an explicitly reviewed ABI transition is still required.
+
+Formatting, **67 native tests**, **25 Wasm tests**, strict native/Wasm Clippy,
+**300 diagnostic tests**, browser typechecking and the candidate's generated
+binding runtime contract all pass. Production files and ABI 5 remain unchanged.
+The [qualification record](qualification/2026-10-03-bounded-selection-tokens.json)
+retains artifact hashes, allocation observations and both clean comparison
+batches. WebKit is still unqualified; no failure was retried or hidden.

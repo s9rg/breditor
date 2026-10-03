@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Local-only instrumented artifact. Never writes packages/breditor-wasm/dist.
+# Local-only diagnostic/candidate artifact. Never writes packages/breditor-wasm/dist.
 set -euo pipefail
 task_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
 task_variant="selection-input-diagnostic"
@@ -14,8 +14,14 @@ if [[ "${1:-}" == "--format-count" ]]; then
   task_features+=",diagnostic-projection-format-count"
   shift
 fi
+if [[ "${1:-}" == "--without-input-observer" ]]; then
+  task_variant+="-unobserved"
+  task_features="${task_features#diagnostic-selection-inputs}"
+  task_features="${task_features#,}"
+  shift
+fi
 if [[ "$#" != 0 ]]; then
-  printf 'usage: bash scripts/build-selection-input-diagnostic.sh [--rust-tokens] [--format-count]\n' >&2
+  printf 'usage: bash scripts/build-selection-input-diagnostic.sh [--rust-tokens] [--format-count] [--without-input-observer]\n' >&2
   exit 1
 fi
 task_output="${task_root}/target/${task_variant}/pkg"

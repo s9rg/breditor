@@ -54,9 +54,9 @@ fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorEr
     #[cfg(feature = "candidate-rust-selection-tokens")]
     {
         // Keep the closed-token comparison inside Wasm instead of importing a
-        // JavaScript Boolean for each equality. as_string rejects boxed values
-        // and objects without invoking user conversion hooks.
-        match value.as_string().as_deref() {
+        // JavaScript Boolean for each equality. The transport rejects boxed
+        // values and bounds the copy without invoking user conversion hooks.
+        match super::token_input::read(value).as_deref() {
             Some("text") => Ok(SelectionPointKind::Text),
             Some("children") => Ok(SelectionPointKind::Children),
             _ => Err(invalid_point_kind()),
@@ -75,7 +75,7 @@ fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorEr
 fn parse_js_affinity(value: &JsValue) -> Result<Affinity, BreditorError> {
     #[cfg(feature = "candidate-rust-selection-tokens")]
     {
-        match value.as_string().as_deref() {
+        match super::token_input::read(value).as_deref() {
             Some("before") => Ok(Affinity::Before),
             Some("after") => Ok(Affinity::After),
             _ => Err(invalid_affinity()),

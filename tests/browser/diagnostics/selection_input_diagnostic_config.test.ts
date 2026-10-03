@@ -21,3 +21,13 @@ it("the opt-in build does not replace distribution files", () => {
   expect(script).toContain('CARGO_TARGET_DIR="${task_root}/target/selection-input-diagnostic/cargo"');
   expect(script.split("\n").filter(line => !line.startsWith("#")).join("\n")).not.toContain("packages/breditor-wasm/dist");
 });
+
+it("supports a separately named artifact without Rust input logging", () => {
+  const script = readFileSync(new URL("../../../scripts/build-selection-input-diagnostic.sh", import.meta.url), "utf8");
+  expect(script).toContain('"--without-input-observer"');
+  expect(script).toContain('task_variant+="-unobserved"');
+  expect(script).toContain('task_features="${task_features#diagnostic-selection-inputs}"');
+  const config = readFileSync(new URL("../../../vite.selection-input-diagnostic.config.ts", import.meta.url), "utf8");
+  expect(config).toContain('process.env["BREDITOR_RUST_SELECTION_INPUTS"] ?? "on"');
+  expect(config).toContain('inputObserver === "off" ? "-unobserved" : ""');
+});

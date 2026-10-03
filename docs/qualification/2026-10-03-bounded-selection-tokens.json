@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "81aa678",
+  "status": "candidate-only; not a confirmed fix or production promotion",
+  "retries": 0,
+  "maxFailures": 1,
+  "change": "Bound primitive tokens to eight UTF-16 code units before copying to Rust; retain exact Rust token matching and unchanged error codes.",
+  "unboundedCandidate": {
+    "backup": "/tmp/breditor-selection-token-unbounded.P0ibs0/pkg",
+    "jsSha256": "97f9fc3425d44e7e49e441b5eb9234706b8f767d391a679279345dd5038be041",
+    "wasmSha256": "b98151b0ea8039187152dad671a8be64ebce35b1aca45826bdf9f6c15190d0b6",
+    "output": "target/playwright-rust-tokens-current-20261003",
+    "historyCasesPassed": 60,
+    "logSha256": "a5de393318f39af3504633d32471c7a9f82e59daf7f82e182a58e9b643578b5d"
+  },
+  "allocationControl": {
+    "input": "16,777,216 x characters as anchor point kind on a fresh base-schema engine",
+    "bothErrors": "breditor_wasm.invalid_selection_point_kind",
+    "unboundedMemoryBefore": 1245184,
+    "unboundedMemoryAfter": 18087936,
+    "unboundedMemoryGrowth": 16842752,
+    "boundedMemoryBefore": 1245184,
+    "boundedMemoryAfter": 1245184,
+    "boundedMemoryGrowth": 0
+  },
+  "boundedObserved": {
+    "jsSha256": "0e2fc4047c2f1af7dd71608172a64bf8751050f57f3bb26220484f24e20f07ac",
+    "wasmSha256": "34debba56c04656410c94d142cdc7cd5db841f5e67de5c50c8ea1d78a35f99c8",
+    "output": "target/playwright-bounded-token-stress-20261003",
+    "passed": 120,
+    "failed": 0,
+    "historyCases": 60,
+    "historyCommands": 114000,
+    "rawSelectionCases": 60,
+    "rawSelectionCommands": 480000,
+    "durationReported": "2.1m",
+    "logSha256": "d6c7d76344dcbf1143d72bb190518bedc25a93a70425ad47c37030282198e861"
+  },
+  "boundedUnobserved": {
+    "jsSha256": "001c8085015c47e30654128dc5cc9289d9cd11848c3c5f0548123305a5fdaabd",
+    "wasmSha256": "edb5a32bb0c618ef7e9af217767cdba8a96bc83b9b427771f381078f7853c679",
+    "output": "target/playwright-bounded-token-unobserved-20261003",
+    "passed": 120,
+    "failed": 0,
+    "historyCases": 60,
+    "historyCommands": 114000,
+    "rawSelectionCases": 60,
+    "rawSelectionCommands": 480000,
+    "rustInputObserver": false,
+    "durationReported": "2.1m",
+    "logSha256": "751b8a57d80aa707494380479f2d92b45697147553ec301596360c183b10b34e",
+    "limit": "History still uses instrumented JS adapters; raw selection fixture imports only Wasm. Rust/TypeScript validation ran concurrently during part of this run."
+  },
+  "baselineUnobserved": {
+    "jsSha256": "ab34c8bb34d89347487622f3044eb7e4012a183013a10e8946c4aad152d4169d",
+    "wasmSha256": "44eed551f05b5e66f35f2c0ba76c937eda6280290665d8e29bcf60d5c4db06a6",
+    "output": "target/playwright-selection-baseline-unobserved-20261003",
+    "passed": 80,
+    "failed": 0,
+    "historyCases": 40,
+    "rawSelectionCases": 40,
+    "rustInputObserver": false,
+    "durationReported": "1.4m",
+    "logSha256": "01e53d87877be729062cf36c201837261d74783e3c9cb23be2525c97aad774b3",
+    "limit": "The unchanged baseline also passes this batch. Candidate passes do not prove elimination of the previously captured intermittent fault."
+  },
+  "crossBrowserControls": {
+    "output": "target/playwright-bounded-token-controls-20261003",
+    "browsers": ["chromium", "firefox", "webkit"],
+    "passed": 9,
+    "rejectionsPerBrowser": 56,
+    "conversionHooksPerBrowser": 0,
+    "memoryGrowthPerBrowser": 0,
+    "rejectionAttachmentSha1": "d47f597fc607854b7c3331c00fde97d8bb11bf2f",
+    "logSha256": "ea0caef0466cfdbd74aea4f9c3e5966d48e1e0e018b4f78c5d11e53fb5670630"
+  },
+  "compatibilityGate": {
+    "editorClassDeclarationsUnchanged": true,
+    "candidateFullDeclarationMatchesFrozenAbi5": false,
+    "baselineFullDeclarationMatchesFrozenAbi5": true,
+    "candidateRawExportChanges": [
+      "__wbindgen_export: free (u32,u32,u32)->void becomes malloc (u32,u32)->u32",
+      "__wbindgen_export2: malloc becomes realloc (u32,u32,u32,u32)->u32",
+      "__wbindgen_export3: realloc becomes free"
+    ],
+    "decision": "Do not change the frozen ABI baseline or promote this candidate. Resolve low-level compatibility before release."
+  },
+  "validation": {
+    "nativeTests": 67,
+    "wasmTests": 25,
+    "diagnosticTests": 300,
+    "nativeAndWasmStrictClippy": "passed",
+    "rustFormatting": "passed",
+    "browserTypecheck": "passed",
+    "candidateGeneratedGlueRuntime": "passed",
+    "productionAbi5Baseline": "passed",
+    "logSha256": "f5daa9919e18c7674f82b5aded0d3fdec3a4dfaa5fa9eda2b2711c648eb7be71",
+    "productionArtifactsChanged": false,
+    "webkitQualified": false
+  }
+}

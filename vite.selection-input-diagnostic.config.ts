@@ -10,8 +10,10 @@ const selectionTokens = process.env["BREDITOR_SELECTION_TOKENS"] ?? "js";
 if (selectionTokens !== "js" && selectionTokens !== "rust") throw new Error("Invalid selection token mode");
 const rustFormatCount = process.env["BREDITOR_RUST_FORMAT_COUNT"] ?? "off";
 if (rustFormatCount !== "off" && rustFormatCount !== "on") throw new Error("Invalid Rust format-count observer mode");
+const inputObserver = process.env["BREDITOR_RUST_SELECTION_INPUTS"] ?? "on";
+if (inputObserver !== "off" && inputObserver !== "on") throw new Error("Invalid Rust selection observer mode");
 const variant = (selectionTokens === "rust" ? "selection-rust-token-candidate" : "selection-input-diagnostic") +
-  (rustFormatCount === "on" ? "-count" : "");
+  (rustFormatCount === "on" ? "-count" : "") + (inputObserver === "off" ? "-unobserved" : "");
 const diagnosticPath = fileURLToPath(new URL(`./target/${variant}/pkg/breditor_wasm.js`, import.meta.url));
 const recorderPath = fileURLToPath(new URL("./tests/browser/diagnostics/wasm_equality_recorder.ts", import.meta.url));
 const mode = process.env["BREDITOR_SELECTION_EQUALITY"] ?? "off";
@@ -25,7 +27,7 @@ export default defineConfig({ ...base,
   plugins: [...base.plugins ?? [], { name: "breditor-wasm-equality-input", enforce: "pre",
     transform(code, id) {
       if (id !== diagnosticPath) return null;
-      manifest = { mode, selectionTokens, formatCount, rustFormatCount, moduleUrl: `/@fs${diagnosticPath}`, sourceSha256: createHash("sha256").update(code).digest("hex"),
+      manifest = { mode, selectionTokens, inputObserver, formatCount, rustFormatCount, moduleUrl: `/@fs${diagnosticPath}`, sourceSha256: createHash("sha256").update(code).digest("hex"),
         wasmSha256: createHash("sha256").update(readFileSync(diagnosticPath.replace(/\.js$/, "_bg.wasm"))).digest("hex") };
       if (mode === "off" && formatCount === "off") return null;
       let output = mode === "off" ? code : instrumentWasmEquality(code, recorderPath, mode).code;

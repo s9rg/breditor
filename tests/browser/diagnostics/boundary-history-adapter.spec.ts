@@ -63,7 +63,8 @@ test.afterEach(async ({ page }, testInfo) => {
 });
 
 test("Rust input observer distinguishes missing nodes and kind mismatches", async ({ page }, testInfo) => {
-  test.skip(!testInfo.config.configFile?.endsWith("playwright.selection-input-diagnostic.config.ts"), "requires isolated Rust diagnostic build");
+  test.skip(!testInfo.config.configFile?.endsWith("playwright.selection-input-diagnostic.config.ts") ||
+    process.env["BREDITOR_RUST_SELECTION_INPUTS"] === "off", "requires isolated Rust input observer");
   await page.goto("/impact-contract/");
   const result = await page.evaluate(async () => {
     const url = "/boundary_history_adapter_probe.ts";
@@ -78,7 +79,8 @@ test("Rust input observer distinguishes missing nodes and kind mismatches", asyn
 });
 
 test("Rust input observer preserves errors when the host logger throws", async ({ page }, testInfo) => {
-  test.skip(!testInfo.config.configFile?.endsWith("playwright.selection-input-diagnostic.config.ts"), "requires isolated Rust diagnostic build");
+  test.skip(!testInfo.config.configFile?.endsWith("playwright.selection-input-diagnostic.config.ts") ||
+    process.env["BREDITOR_RUST_SELECTION_INPUTS"] === "off", "requires isolated Rust input observer");
   await page.goto("/impact-contract/");
   const result = await page.evaluate(async () => {
     const url = "/boundary_history_adapter_probe.ts";
