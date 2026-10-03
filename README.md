@@ -14,10 +14,10 @@ history is in the [Changelog](CHANGELOG.md).
 The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
 Experimental Rust work now includes guarded paragraph/heading conversion with
 exact selection preservation and undo/redo. It is behind
-`experimental-structural-properties`; the browser demo remains paragraph-only,
-and durable heading history is still pending. Experimental V4 codecs can
-persist individual heading operations and atomic transaction requests, but not
-whole sessions yet. See
+`experimental-structural-properties`; the browser demo remains paragraph-only.
+Experimental V4 codecs can persist heading operations, atomic transaction
+requests and complete retained undo/redo sessions. Commit/local-log integration
+and browser heading support remain pending. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
 ## Run the browser demo

@@ -416,17 +416,27 @@ mod runtime_codec_v2_tests;
 mod schema_binding_encoding;
 mod session_checkpoint_encoding_v2;
 mod session_checkpoint_encoding_v3;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_encoding_v4;
 mod session_checkpoint_entries_v1;
 mod session_checkpoint_entries_v2;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_entries_v3;
 mod session_checkpoint_error;
 mod session_checkpoint_json;
 mod session_checkpoint_json_v2;
 mod session_checkpoint_json_v3;
 #[cfg(test)]
 mod session_checkpoint_json_v3_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_json_v4;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod session_checkpoint_json_v4_tests;
 mod session_checkpoint_limits;
 mod session_checkpoint_v2_error;
 mod session_checkpoint_v3_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod session_checkpoint_v4_error;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod structural_codec_test_support;
 mod transaction_error;
@@ -868,6 +878,10 @@ pub use session_checkpoint_json_v2::{
 pub use session_checkpoint_json_v3::{
     SESSION_CHECKPOINT_V3_FORMAT_VERSION, SessionCheckpointJsonCodecV3,
 };
+#[cfg(feature = "experimental-structural-properties")]
+pub use session_checkpoint_json_v4::{
+    SESSION_CHECKPOINT_V4_FORMAT_VERSION, SessionCheckpointJsonCodecV4,
+};
 pub use session_checkpoint_limits::{
     DEFAULT_SESSION_CHECKPOINT_MAX_AGGREGATE_FORWARD_OPERATIONS,
     DEFAULT_SESSION_CHECKPOINT_MAX_HISTORY_CAPACITY, DEFAULT_SESSION_CHECKPOINT_MAX_RETAINED_NODES,
@@ -877,6 +891,8 @@ pub use session_checkpoint_limits::{
 };
 pub use session_checkpoint_v2_error::SessionCheckpointV2CodecError;
 pub use session_checkpoint_v3_error::SessionCheckpointV3CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use session_checkpoint_v4_error::SessionCheckpointV4CodecError;
 pub use transaction_error::{
     TransactionCodecError, TransactionRecordError, TransactionRecordErrorCode,
     TransactionRecordLocation,

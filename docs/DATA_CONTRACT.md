@@ -1518,7 +1518,8 @@ their historical meanings.
 
 Experimental heading-kind operations use a separately versioned, feature-gated
 [operation V4 envelope](OPERATION_V4.md) and [transaction V4 requests](TRANSACTION_V4.md).
-Neither extends the V1–V3 paragraph-operation languages or provides durable heading session history.
+Neither extends the V1–V3 paragraph-operation languages. Complete retained heading
+history uses the separate [session checkpoint V4](SESSION_CHECKPOINT_V4.md).
 The contracts below retain their existing paragraph-only scope.
 
 Alpha.2 makes `TextSplice` property-aware: capture, validation, application,

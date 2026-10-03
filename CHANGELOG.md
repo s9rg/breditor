@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add experimental Session Checkpoint V4 for complete retained heading history,
+  exact undo/redo cursor and editor values, revision, capacity and open merge
+  group. Decode derives inverse recipes and proves both replay directions for
+  every entry, including the redo branch; host aggregate history limits remain
+  enforced. This does not enable browser headings or alter older session formats.
+
 - Add feature-gated V4 transaction requests for sequential heading operations,
   exact snapshot binding, selection/pending-format updates and history metadata.
   A borrowed count pass rejects over-budget arrays before operation construction;

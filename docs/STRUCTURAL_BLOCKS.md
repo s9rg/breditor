@@ -174,12 +174,13 @@ Runtime undo/redo and reconstruction from already-proved in-memory checkpoint
 parts are covered. Document V2 can retain these schema-validated element
 properties. **Durable heading history is deferred:** operation, transaction,
 commit and session codecs V1–V3 reject the new operation on either history
-branch. They are not widened with a new tag. A separately versioned durable
-recipe and its replay/size limits are the next checkpoint before storage or
-Wasm/browser exposure. The first piece now exists as the experimental singular
+branch. They are not widened with a new tag. Separate durable recipes and
+replay/size limits precede storage or Wasm/browser exposure. These now include
+the experimental singular
 [operation V4 codec](OPERATION_V4.md). The separate [transaction V4
-codec](TRANSACTION_V4.md) now supports atomic request persistence. Commit and
-session-history formats have not yet advanced.
+codec](TRANSACTION_V4.md) supports atomic request persistence, and
+[Session Checkpoint V4](SESSION_CHECKPOINT_V4.md) preserves the retained undo/redo
+history. Commit and local-log formats have not yet advanced.
 
 ## Structural transactions and action files
 
@@ -319,8 +320,8 @@ and integer-admission property checks at the larger fixed-seed count. Run the sa
 filter with `--no-default-features` to check the shipped configuration separately.
 
 The singular heading-operation format is implemented as experimental V4. The
-next implementation slice is durable session history, followed by
-heading-aware text editing, Wasm projection and UI.
+session checkpoint now preserves retained heading history. Commit/local-log
+integration and heading-aware text editing, Wasm projection and UI remain pending.
 List-wide numbering validation remains required before lists. WebKit evidence
 is tracked separately in `WEBKIT_CLIPBOARD_INVESTIGATION.md`.
 
@@ -343,8 +344,8 @@ Rust implementation and regression checks, not browser heading support.
    check the default, nonstructural configuration independently.
 4. `npm run verify:release` checks the full Rust and shipped browser paths.
 
-The next durable-format checkpoint must round-trip heading changes on both undo
-and redo branches, replay from an independent decoded state, reject stale source
-guards and malformed ranks atomically, enforce operation/history/byte limits,
-and retain all old format rejection tests. A browser toolbar is not enabled by
-passing these Rust-only checks.
+The [Session Checkpoint V4](SESSION_CHECKPOINT_V4.md) tests round-trip heading
+changes on both undo and redo branches, replay from an independent decoded
+state, reject stale source guards and malformed ranks, enforce
+operation/history/byte limits, and retain old format rejection tests.
+A browser toolbar is not enabled by passing these Rust-only checks.

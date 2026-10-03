@@ -2,7 +2,7 @@
 
 Status: feature-gated Rust transaction requests, behind
 `experimental-structural-properties`. Not enabled in the shipped Wasm/browser
-profile. This is not yet a complete persisted heading-session format.
+profile. Complete session persistence is a separate [V4 checkpoint](SESSION_CHECKPOINT_V4.md).
 
 ## Envelope and payload contract
 
@@ -79,10 +79,10 @@ an entire session's history cursor or undo/redo branches.
 
 ## Remaining durability work
 
-Session Checkpoint V4 still needs to encode chronological forward recipes,
-retain the undo/redo cursor and current revision, and reconstruct each boundary
-with locally derived inverses. It must enforce aggregate history limits and
-prove forward/inverse replay before publishing a restored session. Existing
+The separate Session Checkpoint V4 now encodes chronological forward recipes,
+retains the undo/redo cursor and current revision, and reconstructs each boundary
+with locally derived inverses. It enforces aggregate history limits and proves
+forward/inverse replay before publishing a restored session. Existing
 Commit V3 and Session Checkpoint V3 reject heading operations; they are not
 extended by this checkpoint. Commit and local-log formats remain separate work.
 
