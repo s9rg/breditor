@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "cbdbeb1ef6b635c294ea6af5fd8bd1c58265147b",
+  "status": "Initial core slice of feature-expansion beta verified; heading milestone remains in progress",
+  "goal": "Desktop headings, then flat bullet/numbered lists; nesting follows later",
+  "scope": "Feature-gated in-memory text-block splice, not a browser or durable-format release",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "guard": "Complete direct-root source paragraph/heading including rank and typed formats; unrelated siblings excluded",
+    "publication": "Canonical shared text slicing, full result document validation, existing text relocation and exact locally derived inverse",
+    "durableEncoding": false,
+    "existingCodecs": "All existing operation codecs including V4 reject this primitive",
+    "oldParagraphSemantics": "Unchanged"
+  },
+  "verification": {
+    "focusedTestsPassed": 9,
+    "propertyCases": 10000,
+    "propertySeed": 20261003,
+    "focusedCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --lib --all-features --locked text_block_splice",
+    "coreAllFeatureUnitTestsPassed": 796,
+    "coreDefaultUnitTestsPassed": 697,
+    "legacySpliceIntegrationTestsPassed": 5,
+    "legacyCommand": "cargo test -p breditor-core --all-features --locked --test text_splice_properties --test text_splice_fast_path_contracts",
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustfmt": "Passed",
+    "freshFullReleaseRun": false,
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "published": false
+  },
+  "next": [
+    "Versioned durable text-block edit recipe and session replay",
+    "Heading-aware typing/formatting actions",
+    "Heading Enter and boundary deletion behavior",
+    "Explicit structural Wasm/profile, semantic browser projection and toolbar"
+  ],
+  "evidence": [
+    {
+      "path": "crates/breditor-core/src/operation/text_block_splice.rs",
+      "sha256": "dce8c4e971a4d4c7f2c1c75516b26910fe4f69e2b748e858f961224c0391a7c1"
+    },
+    {
+      "path": "crates/breditor-core/src/operation/text_block_splice_tests.rs",
+      "sha256": "925bf3eec0fc0b2e7d113d81600272880d9e44f6131f48985f541166da0bb6d2"
+    },
+    {
+      "path": "/private/tmp/breditor-text-block-splice-final.log",
+      "sha256": "02ba6eabec9feff4ea52c87247d0233de8944828b48d2076bdd5f23385aba1b3"
+    },
+    {
+      "path": "/private/tmp/breditor-feature-expansion-core.log",
+      "sha256": "cccab8a9fc5406ad4a6eb0712e3a018d492db2fc534f61466d197c266dbb23ea"
+    },
+    {
+      "path": "/private/tmp/breditor-feature-expansion-default.log",
+      "sha256": "4e611aeed021489c9d17de1f125bd5f8ce1f6103f66c25654615ab855ead4881"
+    },
+    {
+      "path": "/private/tmp/breditor-feature-expansion-clippy.log",
+      "sha256": "3b4d50b6489468cb52723eac724dda0d079bb35a8d67189e3eb0f797348c3bfb"
+    },
+    {
+      "path": "/private/tmp/breditor-feature-expansion-legacy-splice.log",
+      "sha256": "332241a5f1571fabfe2f383194d32027655041304d666f44943894ae74ee3f46"
+    }
+  ]
+}

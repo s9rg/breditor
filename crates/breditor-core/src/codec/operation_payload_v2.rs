@@ -108,7 +108,9 @@ pub(crate) fn encode_operation_payload_v2(
     // A new runtime operation must never silently extend the old wire union.
     Ok(match operation {
         #[cfg(feature = "experimental-structural-properties")]
-        Operation::TextBlockKindChange(_) => return Err(operation.kind()),
+        Operation::TextBlockKindChange(_) | Operation::TextBlockSplice(_) => {
+            return Err(operation.kind());
+        }
         Operation::TextSplice(operation) => OperationRecordV2::TextSplice {
             range: TextRangeRecordV1 {
                 container_path: operation.range().container_path().to_vec(),

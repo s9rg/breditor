@@ -183,7 +183,7 @@ impl TextSplice {
     }
 }
 
-fn fragments_have_identical_text(left: &TextFragment, right: &TextFragment) -> bool {
+pub(super) fn fragments_have_identical_text(left: &TextFragment, right: &TextFragment) -> bool {
     left.text_bytes() == right.text_bytes()
         && left
             .iter()
@@ -240,7 +240,7 @@ fn ensure_schema_support(context: &EditorContext) -> Result<(), TextSpliceApplyE
     }
 }
 
-fn validate_fragment(
+pub(super) fn validate_fragment(
     context: &EditorContext,
     role: FragmentRole,
     fragment: &TextFragment,
@@ -341,7 +341,7 @@ fn ensure_text_children(
     Ok(())
 }
 
-fn container_length(
+pub(super) fn container_length(
     element: &ElementNode,
     path: &NodePath,
 ) -> Result<TextOffset, TextSpliceApplyError> {
@@ -358,7 +358,7 @@ fn container_length(
     Ok(length)
 }
 
-fn validate_range_boundary(
+pub(super) fn validate_range_boundary(
     element: &ElementNode,
     requested: TextOffset,
     length: TextOffset,
@@ -393,7 +393,7 @@ fn validate_range_boundary(
     Ok(())
 }
 
-fn extract_fragment(
+pub(super) fn extract_fragment(
     element: &ElementNode,
     start: TextOffset,
     end: TextOffset,
@@ -426,7 +426,7 @@ fn extract_fragment(
     Ok(TextFragment::try_from_runs(runs)?)
 }
 
-fn build_result_children(
+pub(super) fn build_result_children(
     element: &ElementNode,
     start: TextOffset,
     end: TextOffset,

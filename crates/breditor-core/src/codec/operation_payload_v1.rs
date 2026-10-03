@@ -117,7 +117,7 @@ pub(crate) fn encode_operation_payload_v1(
     validate_operation_payload_v1(operation, context)?;
     Ok(match operation {
         #[cfg(feature = "experimental-structural-properties")]
-        Operation::TextBlockKindChange(_) => {
+        Operation::TextBlockKindChange(_) | Operation::TextBlockSplice(_) => {
             return Err(OperationValidationError::UnsupportedSchema {
                 kind: operation.kind(),
                 schema: context.schema().id().clone(),

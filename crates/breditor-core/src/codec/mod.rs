@@ -438,7 +438,7 @@ mod session_checkpoint_v3_error;
 #[cfg(feature = "experimental-structural-properties")]
 mod session_checkpoint_v4_error;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
-mod structural_codec_test_support;
+pub(crate) mod structural_codec_test_support;
 mod transaction_error;
 mod transaction_json;
 mod transaction_json_v2;

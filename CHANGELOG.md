@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Start the desktop feature-expansion goal: headings first, then flat lists.
+  Add an experimental guarded text-block splice preserving heading rank and
+  typed inline formats with exact in-memory undo/redo. Existing paragraph
+  operations are unchanged; the new primitive has no action/browser exposure
+  or durable encoding yet, and existing codecs reject it explicitly.
+
 - Add experimental Session Checkpoint V4 for complete retained heading history,
   exact undo/redo cursor and editor values, revision, capacity and open merge
   group. Decode derives inverse recipes and proves both replay directions for

@@ -106,6 +106,10 @@ pub enum OperationRootChildSpanRole {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationValidationError {
+    /// An experimental text-block splice failed static validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    TextBlockSplice(#[from] super::TextBlockSpliceError),
     /// An experimental block-kind change failed context-static validation.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]
@@ -541,6 +545,8 @@ pub(crate) fn validate_operation(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     match operation {
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::TextBlockSplice(operation) => operation.validate(context).map_err(Into::into),
         #[cfg(feature = "experimental-structural-properties")]
         Operation::TextBlockKindChange(operation) => {
             operation.validate(context).map_err(Into::into)

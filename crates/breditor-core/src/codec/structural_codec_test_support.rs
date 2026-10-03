@@ -19,15 +19,15 @@ use crate::{
 };
 use std::error::Error;
 
-pub(super) type TestResult = Result<(), Box<dyn Error>>;
+pub(crate) type TestResult = Result<(), Box<dyn Error>>;
 
-pub(super) fn name(value: &str) -> Result<QualifiedName, Box<dyn Error>> {
+pub(crate) fn name(value: &str) -> Result<QualifiedName, Box<dyn Error>> {
     Ok(QualifiedName::try_new(value)?)
 }
-pub(super) fn heading(rank: u32) -> Result<TextBlockKind, Box<dyn Error>> {
+pub(crate) fn heading(rank: u32) -> Result<TextBlockKind, Box<dyn Error>> {
     Ok(TextBlockKind::Heading(HeadingLevel::try_new(rank)?))
 }
-pub(super) fn extensions() -> Result<ExtensionSet, Box<dyn Error>> {
+pub(crate) fn extensions() -> Result<ExtensionSet, Box<dyn Error>> {
     let kind = name("example/link")?;
     let contract = InlineFormatPropertyContractV1::try_new(
         kind.clone(),
@@ -46,14 +46,14 @@ pub(super) fn extensions() -> Result<ExtensionSet, Box<dyn Error>> {
     )?;
     Ok(ExtensionSet::try_new(vec![manifest], ExtensionLimits::default())?)
 }
-pub(super) fn context(limits: DocumentLimits) -> Result<EditorContext, Box<dyn Error>> {
+pub(crate) fn context(limits: DocumentLimits) -> Result<EditorContext, Box<dyn Error>> {
     let schema = CompiledSchema::try_compile_text_block_profile(
         SchemaId::new(name("example/headings")?, SchemaVersion::one()),
         &extensions()?,
     )?;
     Ok(EditorContext::new(schema, limits))
 }
-pub(super) fn formats() -> Result<FormatSet, Box<dyn Error>> {
+pub(crate) fn formats() -> Result<FormatSet, Box<dyn Error>> {
     Ok(FormatSet::try_from_formats(vec![
         Format::new(name("breditor/strong")?, PropertyMap::default()),
         Format::new(
@@ -65,7 +65,7 @@ pub(super) fn formats() -> Result<FormatSet, Box<dyn Error>> {
         ),
     ])?)
 }
-pub(super) fn block(
+pub(crate) fn block(
     kind: TextBlockKind,
     text: &str,
     formats: FormatSet,
@@ -87,7 +87,7 @@ pub(super) fn block(
     };
     Ok(NodeRef::element(ElementNode::try_new(name(kind)?, None, properties, children)?))
 }
-pub(super) fn state(
+pub(crate) fn state(
     context: &EditorContext,
     blocks: Vec<NodeRef>,
     selection: impl Into<Option<Selection>>,
@@ -109,7 +109,7 @@ pub(super) fn state(
     )?)
 }
 
-pub(super) fn fixture() -> Result<(EditorContext, EditorState, Operation), Box<dyn Error>> {
+pub(crate) fn fixture() -> Result<(EditorContext, EditorState, Operation), Box<dyn Error>> {
     let context = context(DocumentLimits::default())?;
     let selected = Selection::Range(RangeSelection::new(
         Point::Text {

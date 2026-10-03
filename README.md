@@ -20,6 +20,11 @@ requests and complete retained undo/redo sessions. Commit/local-log integration
 and browser heading support remain pending. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
+The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
+end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
+later. A guarded text-block splice is under experimental development; it is not
+yet connected to typing actions, durable formats or the browser.
+
 ## Run the browser demo
 
 The React demo loads the packaged Text Size Showcase profile, its canonical

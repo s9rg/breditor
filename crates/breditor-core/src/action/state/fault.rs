@@ -159,6 +159,26 @@ pub enum ActionStateTransactionFault {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateOperationFault {
+    /// Experimental structural text editing requires the text-block schema.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block splice schema is unsupported")]
+    TextBlockSpliceUnsupportedSchema,
+    /// Experimental structural text target is invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block splice target is invalid")]
+    TextBlockSpliceInvalidTarget,
+    /// Experimental structural text source guard is stale.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block splice source guard is stale")]
+    TextBlockSpliceExpectedMismatch,
+    /// Experimental structural text document proof does not match.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block splice document proof differs")]
+    TextBlockSpliceDocumentProof,
+    /// Experimental structural text violates schema or resource limits.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block splice validation failed")]
+    TextBlockSpliceValidation,
     /// The experimental text-block schema capability was absent.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("block-kind unsupported schema")]
@@ -725,6 +745,18 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::TextBlockSplice(source) => {
+            use crate::operation::TextBlockSpliceError as E;
+            match source {
+                E::UnsupportedSchema => ActionStateOperationFault::TextBlockSpliceUnsupportedSchema,
+                E::InvalidTarget => ActionStateOperationFault::TextBlockSpliceInvalidTarget,
+                E::ExpectedMismatch => ActionStateOperationFault::TextBlockSpliceExpectedMismatch,
+                E::DocumentProof(_) => ActionStateOperationFault::TextBlockSpliceDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::TextBlockSpliceValidation,
+                E::Text(error) => project_operation_error(OperationApplyError::TextSplice(error)),
+            }
+        }
         #[cfg(feature = "experimental-structural-properties")]
         OperationApplyError::TextBlockKindChange(source) => {
             use crate::operation::TextBlockKindChangeError as E;

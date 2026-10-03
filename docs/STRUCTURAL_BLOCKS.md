@@ -8,6 +8,9 @@ durable formats, Wasm ABI and browser renderer are unchanged. Links already
 exist as typed inline formatting and must continue to work inside future blocks.
 
 This document records the next implementation decisions and acceptance gates.
+The active [feature-expansion beta plan](FEATURE_EXPANSION_BETA.md) prioritizes
+end-to-end headings and flat lists; nested lists and additional local-log work
+are deferred from that beta unless required by its selected persistence path.
 It does not silently widen the contracts in `DATA_CONTRACT.md`, `WASM_ABI.md`
 or `V0_3_SCOPE.md`.
 
