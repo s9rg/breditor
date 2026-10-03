@@ -238,7 +238,7 @@ fn validate_replacement_shape(
     Ok(())
 }
 
-fn derive_replacement(
+pub(super) fn derive_replacement(
     range: &RootTextRange,
     expected: &[TextFragment],
     replacement: &[TextFragment],
@@ -583,10 +583,10 @@ fn map_publication_error(error: LocalParagraphStructureError) -> RootTextReplace
     }
 }
 
-struct DerivedReplacement {
-    result: Vec<TextFragment>,
-    removed: Vec<TextFragment>,
-    inverse_range: RootTextRange,
+pub(super) struct DerivedReplacement {
+    pub(super) result: Vec<TextFragment>,
+    pub(super) removed: Vec<TextFragment>,
+    pub(super) inverse_range: RootTextRange,
 }
 
 /// Identifies which operation slice failed deterministic fragment validation.

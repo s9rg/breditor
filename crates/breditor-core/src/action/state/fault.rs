@@ -159,6 +159,30 @@ pub enum ActionStateTransactionFault {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateOperationFault {
+    /// Experimental structural replacement schema is unsupported.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block replacement schema is unsupported")]
+    TextBlockReplaceUnsupportedSchema,
+    /// Experimental structural replacement target is invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block replacement target is invalid")]
+    TextBlockReplaceInvalidTarget,
+    /// Experimental structural replacement root child limit exceeded.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block replacement root child limit exceeded")]
+    TextBlockReplaceRootChildLimit,
+    /// Experimental structural replacement source guard is stale.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block replacement source guard is stale")]
+    TextBlockReplaceExpectedMismatch,
+    /// Experimental structural replacement document proof differs.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block replacement document proof differs")]
+    TextBlockReplaceDocumentProof,
+    /// Experimental structural replacement schema or resource validation failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("text-block replacement schema or resource validation failed")]
+    TextBlockReplaceValidation,
     /// Experimental structural text editing requires the text-block schema.
     #[cfg(feature = "experimental-structural-properties")]
     #[error("text-block splice schema is unsupported")]
@@ -745,6 +769,23 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::TextBlockReplace(source) => {
+            use crate::operation::TextBlockReplaceError as E;
+            match source {
+                E::UnsupportedSchema => {
+                    ActionStateOperationFault::TextBlockReplaceUnsupportedSchema
+                }
+                E::InvalidTarget => ActionStateOperationFault::TextBlockReplaceInvalidTarget,
+                E::RootChildLimit => ActionStateOperationFault::TextBlockReplaceRootChildLimit,
+                E::ExpectedMismatch => ActionStateOperationFault::TextBlockReplaceExpectedMismatch,
+                E::DocumentProof(_) => ActionStateOperationFault::TextBlockReplaceDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::TextBlockReplaceValidation,
+                E::Text(error) => project_operation_error(OperationApplyError::RootTextReplace(
+                    RootTextReplaceApplyError::Contract(error),
+                )),
+            }
+        }
         #[cfg(feature = "experimental-structural-properties")]
         OperationApplyError::TextBlockSplice(source) => {
             use crate::operation::TextBlockSpliceError as E;

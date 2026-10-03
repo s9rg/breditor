@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "e26fcbf6d7e209c8c4a7cfe721b54f76329f0529",
+  "status": "Guarded structural replacement and heading Enter verified in Rust; beta goal remains in progress",
+  "scope": "Experimental operation and opt-in action only; no shipping browser or durable-format changes",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "operation": "TextBlockReplace",
+    "action": "breditor/insert-text-block-break",
+    "guards": "Complete intersected source blocks including each kind, rank, text and typed formats",
+    "replacement": "Nonempty sequence of typed text-block fragments; source prefix attaches to first, suffix to last",
+    "inverse": "Locally derived and restores every original block kind independently",
+    "publication": "One atomic full-document validated result; no temporary split/delete state",
+    "enter": "Start/middle retain heading rank on both sides; at end right becomes paragraph; empty heading converts to paragraph without extra block",
+    "selectedEnter": "Retains start/end kinds spatially, except empty right suffix becomes paragraph; middle blocks removed",
+    "history": "One independent record; exact source selection, document and pending formats restored",
+    "oldFormats": "Operation V1–V4 still reject the new primitive; no new wire tag admitted",
+    "remaining": "Boundary/cross-block deletion action wiring, heading formatting, durable replay, browser integration, flat lists and desktop qualification"
+  },
+  "verification": {
+    "focusedTestsPassed": 59,
+    "newOperationTests": 7,
+    "newEnterActionTests": 4,
+    "propertyTests": 5,
+    "casesPerProperty": 10000,
+    "propertySeed": 20261003,
+    "focusedCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib --locked text_block",
+    "coreAllFeatureUnitTestsPassed": 826,
+    "coreDefaultUnitTestsPassed": 697,
+    "legacyStructuralIntegrationTestsPassed": 33,
+    "legacyCommand": "cargo test -p breditor-core --all-features --locked --test root_text_replace_contracts --test root_text_replace_properties --test root_text_replace_relocation_contracts --test insert_paragraph_break_cross_paragraph_contracts",
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": [
+      "Corrected compile-time API assumptions: immutable Children uses checked element access/iteration rather than slice indexing; codec encoding uses a bound codec instance.",
+      "Two focused runs each reported 58 passed and one fixture-construction failure (ParagraphSpanOverflow). The range contract rejects any u32::MAX end because publication needs an exclusive end. Final fixture separately asserts that constructor rejection and tests the maximum representable huge span (end u32::MAX - 1) against capture before allocation. Final seeded and core suites pass."
+    ],
+    "freshFullReleaseRun": false,
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "published": false
+  },
+  "evidence": [
+    {
+      "path": "crates/breditor-core/src/operation/text_block_replace.rs",
+      "sha256": "f03b0e1bf369e6a990557feef9719e61192f97fe8baf6ff4c565ee27bdffb4d1"
+    },
+    {
+      "path": "crates/breditor-core/src/operation/text_block_replace_tests.rs",
+      "sha256": "d0833174fd7812787d937a3b012d56d0cbfca325d159813b36d772659f8b34dd"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_break.rs",
+      "sha256": "56505ee4243949ef8ea7ad1538dd4c2c20275ea53a8a83016733a546f8adafa2"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_break_tests.rs",
+      "sha256": "7043f1636b5352c6bee7e4d3ee48991d066fe6bebf000b37036c7c8671c0ca83"
+    },
+    {
+      "path": "/private/tmp/breditor-structural-break-focused.log",
+      "sha256": "8187e4af7fcb66c126ff62c63bd4d7daf93a3a88eb43dd4723a8d06682c492cd"
+    },
+    {
+      "path": "/private/tmp/breditor-structural-break-core.log",
+      "sha256": "4d168166f235332ee8b96a1dfa17db27131837452d758fd4505606b8bad286c8"
+    },
+    {
+      "path": "/private/tmp/breditor-structural-break-default.log",
+      "sha256": "4fdc4850eb48aa726910000f85d1641569ae5597eae95835dd8a516ec526f678"
+    },
+    {
+      "path": "/private/tmp/breditor-structural-break-legacy.log",
+      "sha256": "8cc7c7b1ac23e242447184bdf864b42b8d4d77cb472ae1d0586addcb12fcf8cc"
+    },
+    {
+      "path": "/private/tmp/breditor-structural-break-clippy.log",
+      "sha256": "780f09e2aaf43917e54f91ccba3d440cf8ea32edb4855e6fa493d36b562e2f71"
+    }
+  ]
+}

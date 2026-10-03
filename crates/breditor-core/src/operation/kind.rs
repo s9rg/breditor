@@ -17,7 +17,8 @@ use super::OperationValidationError;
 /// The returned string is the lower-camel-case diagnostic name and, for these
 /// four paragraph-operation variants, the operation V1 wire tag. The experimental
 /// structural kinds have no V1–V3 wire tag; operation V4 admits block-kind
-/// changes only. Text-block splices currently have no durable encoding.
+/// changes only. Text-block splices and structural replacements currently have
+/// no durable encoding.
 /// Adding a runtime kind is an
 /// additive Rust API change, but does not silently extend the closed V1 wire
 /// union; admitting a new tag requires an explicit format-version decision.
@@ -25,6 +26,9 @@ use super::OperationValidationError;
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum OperationKind {
+    /// Experimental structural text replacement with explicit paragraph/heading kinds.
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockReplace,
     /// Experimental text edit inside a guarded paragraph or heading.
     #[cfg(feature = "experimental-structural-properties")]
     TextBlockSplice,
@@ -47,6 +51,8 @@ impl OperationKind {
     pub const fn as_str(self) -> &'static str {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockReplace => "textBlockReplace",
+            #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockSplice => "textBlockSplice",
             Self::TextSplice => "textSplice",
             Self::ParagraphSplit => "paragraphSplit",
@@ -65,6 +71,9 @@ impl OperationKind {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operation {
+    /// Experimental structural edit preserving complete source kind guards.
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockReplace(super::TextBlockReplace),
     /// Experimental text edit preserving the guarded block kind and rank.
     #[cfg(feature = "experimental-structural-properties")]
     TextBlockSplice(super::TextBlockSplice),
@@ -111,6 +120,8 @@ impl Operation {
     pub const fn kind(&self) -> OperationKind {
         match self {
             #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockReplace(_) => OperationKind::TextBlockReplace,
+            #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockSplice(_) => OperationKind::TextBlockSplice,
             Self::TextSplice(_) => OperationKind::TextSplice,
             Self::ParagraphSplit(_) => OperationKind::ParagraphSplit,
@@ -147,6 +158,10 @@ impl Operation {
         document: &Document,
     ) -> Result<AppliedOperation, OperationApplyError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockReplace(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
             #[cfg(feature = "experimental-structural-properties")]
             Self::TextBlockSplice(operation) => {
                 operation.apply(context, document).map_err(Into::into)
@@ -185,6 +200,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// An experimental structural text-block replacement failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    TextBlockReplace(#[from] super::TextBlockReplaceError),
     /// An experimental text-block splice failed.
     #[cfg(feature = "experimental-structural-properties")]
     #[error(transparent)]

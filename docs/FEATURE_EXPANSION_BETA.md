@@ -43,7 +43,8 @@ integration milestone; retain any failed run rather than hiding it with retries.
 
 - Changing kind preserves text, inline formats, selection direction/affinity
   and pending formats. A range ending at the next block's start excludes it.
-- Enter in the middle produces two headings of the same rank. Enter at the end
+- Enter at the start or middle produces two headings of the same rank (an empty
+  left heading at the start). Enter at the end
   produces a paragraph. Enter in an empty heading converts it to a paragraph.
 - Join/delete policy must explicitly choose the retained block kind. It must
   never discard text or change rank as an accidental side effect.
@@ -148,7 +149,7 @@ The new shared text-block source/preview helper is also used by heading typing;
 its behavior is covered by the whole-core regression suite. Existing paragraph
 actions, base registration and all durable formats remain unchanged.
 
-**Still unfinished:** cross-block deletion and boundary joins, heading Enter,
+**Still unfinished:** cross-block deletion actions and boundary-join actions,
 formatting commands, durable text-edit sessions, browser integration, flat lists
 and desktop/native qualification. Start/end of the entire document return their
 normal disabled states; internal block boundaries explicitly report unsupported
@@ -157,3 +158,40 @@ profile and must not be exposed as one.
 
 See [deletion qualification](qualification/2026-10-03-heading-deletion-actions.json)
 for the reproducible test commands and measured boundary.
+
+## Atomic structural replacement and Enter
+
+`TextBlockReplace` adds a guarded edit across direct-root text blocks. Its
+nonempty replacement sequence supplies explicit paragraph/heading kinds and
+inserted text. The surviving source prefix attaches to the first replacement
+and the suffix to the last. Full source nodes guard kinds, ranks, text and typed
+formats. The inverse restores each source kind independently. Unchanged siblings
+are not guarded, but count toward full result validation.
+
+The operation shares the established, pure root-text slicing and relocation
+logic; it does not apply paragraph operations under a heading schema. All
+existing durable languages, including V4, explicitly continue rejecting it.
+
+`InsertTextBlockBreakAction` now uses that operation for one atomic Enter:
+
+- A nonempty heading splits at the caret into same-rank headings. At its start,
+  the left heading is empty; at its end, the new right block is a paragraph.
+- An empty heading converts to one paragraph without adding a block. An empty
+  paragraph instead splits into two paragraphs.
+- Selected content is removed exactly. The left result retains the spatial
+  start block's kind; the right retains the end block's kind unless its surviving
+  suffix is empty, in which case it becomes a paragraph. This also applies to
+  backward and cross-block selections; middle selected blocks are removed.
+- The caret moves to the resulting right block's start, or stays in the converted
+  empty block. Pending formats survive. Each Enter is one independent undo event.
+- Publication is atomic: there is no temporary delete/split state that could
+  incorrectly exceed a budget. Source fragments and the complete final tree
+  still undergo validation, including duplicated rank/link properties.
+
+Join mechanics now have operation-level coverage across all 49 paragraph/heading
+kind pairs. The next step is to connect boundary and cross-block deletion actions
+to this primitive with an explicit left-kind retention policy, then formatting
+and durable session replay. This checkpoint still does not enable headings in
+the browser or qualify a beta release.
+
+See [structural-break qualification](qualification/2026-10-03-heading-structural-break.json).

@@ -6,6 +6,13 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add an atomic experimental text-block replacement with complete kind/text
+  guards and an inverse restoring each original paragraph/heading kind. Add a
+  separately named Enter action for splitting headings, leaving empty headings,
+  and replacing cross-block selections. Preserve pending formats and exact
+  history without intermediate publication. Old durable formats remain closed;
+  browser headings and boundary-deletion action wiring are still pending.
+
 - Add three separately named experimental heading deletion actions: backward,
   forward and exact selected-range deletion. Preserve ranks, typed formats and
   exact undo/redo; reuse pinned grapheme segmentation across formatting seams

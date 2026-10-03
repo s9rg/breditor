@@ -9,7 +9,13 @@ mod relocation;
 mod root_text_range;
 mod root_text_replace;
 #[cfg(feature = "experimental-structural-properties")]
+mod text_block_replace;
+#[cfg(feature = "experimental-structural-properties")]
+pub use text_block_replace::{TextBlockReplace, TextBlockReplaceError};
+#[cfg(feature = "experimental-structural-properties")]
 mod text_block_kind_change;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod text_block_replace_tests;
 #[cfg(feature = "experimental-structural-properties")]
 mod text_block_splice;
 #[cfg(all(test, feature = "experimental-structural-properties"))]

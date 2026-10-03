@@ -22,9 +22,9 @@ and browser heading support remain pending. See
 
 The active [feature-expansion beta goal](docs/FEATURE_EXPANSION_BETA.md) is
 end-to-end headings followed by flat bullet/numbered lists. Nested lists follow
-later. A guarded text-block splice and opt-in heading typing/deletion actions
-are under experimental development; they have no durable-format or browser
-support yet, and cross-block deletion and heading Enter remain unfinished.
+later. Guarded text-block editing and opt-in heading typing, deletion and Enter
+actions are under experimental development. They have no durable-format or
+browser support yet; boundary/cross-block deletion actions remain unfinished.
 
 ## Run the browser demo
 

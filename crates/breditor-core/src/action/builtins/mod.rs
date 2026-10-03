@@ -36,6 +36,12 @@ mod insert_paragraph_break;
 mod insert_plain_text;
 mod insert_text;
 #[cfg(feature = "experimental-structural-properties")]
+mod insert_text_block_break;
+#[cfg(feature = "experimental-structural-properties")]
+pub use insert_text_block_break::{InsertTextBlockBreakAction, insert_text_block_break_action_id};
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod insert_text_block_break_tests;
+#[cfg(feature = "experimental-structural-properties")]
 mod insert_text_block_text;
 #[cfg(all(test, feature = "experimental-structural-properties"))]
 mod insert_text_block_text_tests;
