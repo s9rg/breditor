@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "1ae06f9",
+  "status": "explicit-JS-formatCount-transport-implemented; broader-WebKit-faults-remain",
+  "retries": 0,
+  "maxFailures": 1,
+  "fixture": { "file": "tests/browser/harness/projection_count_probe.ts", "roundsPerCase": 10000,
+    "countChecksPerCase": 110000, "lifetimes": ["retained", "renewed"],
+    "oracles": ["strict", "same-value", "decimal"],
+    "excludes": ["history operations", "selection operations", "browser adapters", "DOM editing", "clipboard"] },
+  "originalProduction": {
+    "backup": "/tmp/breditor-format-count-baseline.2Ogve3/dist",
+    "jsSha256": "300a3496e3ec02bf87524417ab5f1a6ddfd2488a1a4b1db73a00e27e4c32f536",
+    "wasmSha256": "64e0374e247681f0655fa8cb33fe4c2f87b819a83eed321d910f10aa1e994e4d"
+  },
+  "historyFollowups": [
+    { "output": "target/playwright-rust-return-followup-20261003", "passed": 15, "failed": 1, "unrun": 104,
+      "failure": "selection node 6 upper-bound operand recorded false", "logSha256": "35095c70d52f78a860b2b2dcb88b646a3d49d5920bacceefc59cfbedebb17d51" },
+    { "output": "target/playwright-rust-return-sync-followup-20261003", "passed": 60, "failed": 0,
+      "logSha256": "2db7f81a32147eedfa5d0bdb318fbe8b9c9eb360053aa6c1b45aa11bc45502d3" }
+  ],
+  "fixedProjectionProductionFailure": {
+    "output": "target/playwright-fixed-count-baseline-20261003", "passed": 16, "failed": 1, "unrun": 23,
+    "round": 875, "index": 6, "lifetime": "retained", "count": "undefined", "expected": 1,
+    "networkContainsBrowserAdapters": false,
+    "logSha256": "c3030b65c5240f0d76de6e2315ac9213f1242b248271557bc56d79a6296188cf",
+    "traceSha256": "1527b2a6551ebec8998329da73d8c4a4bfb310f57ccbfd1d739ea15789160df4"
+  },
+  "combinedCheckDiagnostic": {
+    "output": "target/playwright-fixed-count-rust-record-20261003", "passed": 0, "failed": 1, "unrun": 59,
+    "round": 8401, "index": 3, "rustCount": 0, "rawReturn": 0, "decoded": 0,
+    "limit": "Original rejecting leaf was not named; the count recorded correctly.",
+    "logSha256": "e20bfbea8b979b59571b1a083f6ac2bb8a66a570e1fb9904316807c73871486e"
+  },
+  "sameValueComparisonFailure": {
+    "output": "target/playwright-fixed-count-samevalue-20261003", "passed": 7, "failed": 1, "unrun": 32,
+    "round": 8977, "index": 2, "lifetime": "renewed", "rejected": "count",
+    "rustCount": 1, "rawReturn": 1, "decoded": 1, "expected": 1,
+    "actualAndExpectedBits": "3ff0000000000000", "coldSameValue": true,
+    "logSha256": "303307d992364d8fd7c34fe54b705ce8d27ccaabe36795619fa8543cd5f0a27e",
+    "traceSha256": "0fffb9b8af81f000e9352917f822c547723935225c2b8f9249a9645d21db92db"
+  },
+  "explicitCandidateStrictFailure": {
+    "output": "target/playwright-explicit-count-candidate-20261003", "passed": 0, "failed": 1, "unrun": 79,
+    "round": 5936, "index": 2, "lifetime": "retained", "rejected": "count",
+    "rustCount": 1, "decoded": 1, "expected": 1, "actualAndExpectedBits": "3ff0000000000000",
+    "logSha256": "ecaca8fa869614a146555985565bdb7ca7a1e81e33426c14ae296b3ab88f2b02",
+    "traceSha256": "6b44a327ad8e60811d116076c69e6e4fe1df7c4546a62415d805d9c58bdf421a",
+    "limit": "Count transport change does not fix the independent equal-number comparison failure."
+  },
+  "capturedReturnContradiction": {
+    "output": "target/playwright-fixed-count-decimal-20261003", "passed": 2, "failed": 1, "unrun": 57,
+    "round": 8602, "index": 3, "lifetime": "retained", "oracle": "decimal", "rejected": "count-type",
+    "kind": "text", "textMatches": true, "rustCount": 0, "rawReturn": 9007199254740991, "decoded": "undefined",
+    "diagnosticJsSha256": "430c47283da4794fc3453c853d293ec752492769449e7e69d23bf1c3cfc523b3",
+    "diagnosticWasmSha256": "10cb59351072e353a190f1f810f9de2dbb625513bc5f823e40bda9db13c9ce05",
+    "attachmentSha1": "2b5f65030c657f20cb36abed3a376baca9124ad8",
+    "logSha256": "ccbe6421ce60898c154e10f0c2d2a782a8bff2d421abf1595e893b483902c9b1",
+    "traceSha256": "89e85fd684742e3de68423cd90f9dd14250bd4db939278fcfee325fe85f345b3"
+  },
+  "targetedCandidate": {
+    "output": "target/playwright-explicit-count-decimal-20261003", "passed": 60, "failed": 0,
+    "jsSha256": "1e354c8f81cf601b1e27547798e70dcf56be2c943d8884e86daa40432773319c",
+    "wasmSha256": "5654db22b71a116f43724af2d034829a3ac4c2fb63a9dfdbe99da249518cf1bd",
+    "logSha256": "60a2b3a76ae5f98e5d13cb0e07aa9c4308705f6a42dbf2ed2563ca0856a8e4d4"
+  },
+  "targetedProduction": {
+    "output": "target/playwright-format-count-fixed-production-20261003", "passed": 60, "failed": 0,
+    "countChecks": 6600000, "oracle": "decimal", "instrumentation": "none",
+    "jsSha256": "ab34c8bb34d89347487622f3044eb7e4012a183013a10e8946c4aad152d4169d",
+    "wasmSha256": "9b67411ffd1d0cea4c6009ef49ae26945ed0146167fed5e12a12f5d57b1b0899",
+    "logSha256": "12900c4757b172321fb6b3369bedaeffe6ae890415eb3fcd29c750d65a3b0ffb"
+  },
+  "remainingProductionHistoryFailure": {
+    "output": "target/playwright-format-count-fixed-history-20261003",
+    "passed": 17, "failed": 1, "unrun": 22, "durationSeconds": 27.6,
+    "cycle": 33, "stage": "reselect backward boundary", "code": "breditor_wasm.invalid_selection_node",
+    "anchor": ["children", 4, 0, "after"], "focus": ["text", 3, 2, "before"],
+    "adapterRecorderEmpty": true, "rustAdmissionLogging": false,
+    "logSha256": "f44524494e3b8e60f4e22c5ecb5b220a03d7459971f659093c17380e2c7eced6",
+    "traceSha256": "fa0ff991d53cc181b17ccae74fb5ac599187d5b1c9c91fb8fe22256301f2bb59"
+  },
+  "validation": { "oldBindingFailsNewGuard": true, "newBindingPassesGuard": true,
+    "nativeTests": 67, "nativeRetainedCountChecks": 110000, "wasmBoundaryTests": 25,
+    "diagnosticTests": 296, "chromiumFirefoxCases": 16,
+    "packageReproducibilityAndRuntimeChecks": "passed", "releaseSizeBudgets": "passed",
+    "publicApiChanged": false, "abiVersion": 5, "durableFormatsChanged": false,
+    "webkitQualified": false }
+}

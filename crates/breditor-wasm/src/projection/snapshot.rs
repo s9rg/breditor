@@ -34,6 +34,18 @@ pub struct BreditorProjection {
 }
 
 impl BreditorProjection {
+    /// Returns the canonical format count for a text leaf.
+    #[must_use]
+    pub fn format_count(&self, index: u32) -> Option<u32> {
+        let count = self
+            .node(index)
+            .and_then(|record| record.node().as_text())
+            .and_then(|text| u32::try_from(text.formats().len()).ok());
+        #[cfg(feature = "diagnostic-projection-format-count")]
+        super::format_count_diagnostics::record(index, count);
+        count
+    }
+
     pub(crate) fn from_state(generation: CompiledProfileGeneration, state: &EditorState) -> Self {
         let mut nodes = Vec::new();
         append_preorder(state.document().root(), &mut nodes);
@@ -175,15 +187,13 @@ impl BreditorProjection {
 
     /// Returns the canonical format count for a text leaf.
     #[must_use]
-    #[wasm_bindgen(js_name = formatCount)]
-    pub fn format_count(&self, index: u32) -> Option<u32> {
-        let count = self
-            .node(index)
-            .and_then(|record| record.node().as_text())
-            .and_then(|text| u32::try_from(text.formats().len()).ok());
-        #[cfg(feature = "diagnostic-projection-format-count")]
-        super::format_count_diagnostics::record(index, count);
-        count
+    #[wasm_bindgen(js_name = formatCount, unchecked_return_type = "number | undefined")]
+    pub fn format_count_js(&self, index: u32) -> wasm_bindgen::JsValue {
+        // Rust recorded Some(0) while the optional-u32 ABI returned its f64
+        // absence marker in WebKit. Transport explicit JS values instead;
+        // keep the native Option contract and all validation unchanged.
+        self.format_count(index)
+            .map_or(wasm_bindgen::JsValue::UNDEFINED, wasm_bindgen::JsValue::from)
     }
 
     /// Returns one text leaf's qualified semantic format type.

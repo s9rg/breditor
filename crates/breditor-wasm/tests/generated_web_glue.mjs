@@ -26,6 +26,13 @@ for (const key of ["oldChildStart", "oldChildEnd", "newChildStart", "newChildEnd
     `${key}: optional numeric sentinel decoding must not return`);
 }
 
+// The fixed-projection WebKit reduction captured Rust Some(0) followed by the
+// raw optional-number absence marker. Keep formatCount on explicit JS values,
+// just like the projection-update coordinates above; native Option is unchanged.
+assert.equal(typeof api.BreditorProjection.prototype.formatCount, "function");
+assert.doesNotMatch(Function.prototype.toString.call(api.BreditorProjection.prototype.formatCount), /===|!==|\?/,
+  "formatCount: optional numeric sentinel decoding must not return");
+
 const EMPTY_DOCUMENT_JSON = JSON.stringify({
   format: "breditor/document",
   formatVersion: 1,
@@ -1867,6 +1874,10 @@ assert.equal(rawProjection.nodeKind(0), "element");
 assert.equal(rawProjection.elementType(1), "breditor/paragraph");
 assert.equal(rawProjection.childAt(1, 0), 2);
 assert.equal(rawProjection.text(2), "a");
+assert.equal(rawProjection.formatCount(2), 0);
+assert.equal(rawProjection.formatCount(0), undefined);
+assert.equal(rawProjection.formatCount(99), undefined);
+assert.equal(rawProjection.formatCount(4_294_967_295), undefined);
 assert.equal(rawProjection.nodeKind(99), undefined);
 rawProjection.free();
 

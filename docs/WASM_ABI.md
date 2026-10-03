@@ -7,6 +7,14 @@ sentinels. Their public signatures and semantics, native Rust accessors, ABI 5,
 and all durable generations are unchanged. See the
 [WebKit regression evidence](WEBKIT_ACTION_STATE_REGRESSION.md).
 
+The projection-update optional coordinates and `BreditorProjection.formatCount`
+also use explicit JS number/undefined transport. The count reduction captured
+Rust `Some(0)` followed by the raw optional-f64 absence marker on WebKit. The
+native `Option<u32>` accessor is retained; the JS signature, ABI 5 and durable
+formats are unchanged. This removes that count-return path, not the separately
+observed WebKit numeric-comparison faults. See the
+[format-count evidence](qualification/2026-10-03-projection-count-transport.json).
+
 Status: the unpublished `0.3.0-alpha.22` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while

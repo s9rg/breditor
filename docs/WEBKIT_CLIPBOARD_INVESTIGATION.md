@@ -3228,3 +3228,105 @@ Final validation: **45 native Rust tests**, **25 Wasm boundary tests**,
 linting, and both production/candidate generated-glue contracts pass. All eight
 recorded artifact hashes were compared with their files. This validates the
 diagnostic infrastructure and existing contracts, not WebKit qualification.
+
+### 2026-10-03: fixed-projection reproduction and format-count transport fix
+
+Further history capture first stopped on the already-known selection bound
+failure (`6 <= u32::MAX` observed false): 15 passes, one failure. A separate
+sync-only history run passed 60 cases. Neither captured the missing-count path.
+
+`projection_count_probe.ts` now removes history, selections, profile/browser
+adapters and all editor UI. It creates a base-schema document matching the
+four-paragraph shape, including bold/plain runs and an empty paragraph. Each
+round reads kind, text and format count for ten nodes plus one absent index.
+The retained variant reuses one immutable projection; the renewed variant
+creates a projection each round. The engine/document never changes. Each case
+checks 110,000 counts across 10,000 rounds. Network evidence and tests exclude
+browser-adapter/reference-profile modules.
+
+The **unchanged production package** failed after 16 passes: retained projection,
+round 875, text node 6 returned `undefined` instead of one format. Thus history
+and selection operations are not required for a missing count.
+
+The first combined-check diagnostic failed while the recorded count was correct
+at zero; it did not name the rejecting leaf. The fixture now names that leaf and
+offers three distinct controls, without retries or validator changes:
+
+- `strict`: ordinary inequality;
+- `same-value`: `Object.is`;
+- `decimal`: type plus decimal-string comparison for this fixed 0/1/undefined
+  fixture only, not a general-purpose production validator.
+
+The SameValue run failed after seven passes on count `1` versus `1`, with equal
+IEEE words `3ff0000000000000`, Rust count one, raw return one, decoded one and a
+true cold SameValue recheck. An explicit-JS-value experiment also failed its
+first strict case on equal ones. Neither changing the oracle to SameValue nor
+changing count transport fixes the separate comparison class.
+
+#### Captured missing-count path
+
+The decimal control then caught the actual missing value after two passes,
+retained projection, round 8602, node 3:
+
+- Node kind and text were correct.
+- Rust's last-return record was **`{"index":3,"count":0}`**.
+- The immediately corresponding raw Wasm return was **9007199254740991**.
+- Its original JS decoder returned **`undefined`**.
+
+This localizes the contradiction between Rust's recorded `Option` and the
+exported optional-f64 return, before the JS sentinel decoder. It does not name
+the faulty engine/compiler instruction or establish a general wasm-bindgen bug.
+The raw marker and correct decoder must not be confused with the separate
+numeric predicate failures.
+
+#### Narrow production fix and scope
+
+`BreditorProjection::format_count` stays a native `Option<u32>` accessor. The
+exported `format_count_js` maps it to a real JS number or `JsValue::UNDEFINED`,
+matching the already-established explicit transport for projection-update
+coordinates. No validator is weakened, failed read retried, or missing format
+count treated as zero. Public TS, ABI 5, document/history formats and raw-index
+admission semantics remain unchanged.
+
+The temporary explicit-value experiment passed 60 decimal cases. The actual
+rebuilt **production package**, with no Rust/JS diagnostic transforms, separately
+passed **60 cases / 6,600,000 count checks**. Chromium and Firefox passed all
+three oracles and the complete boundary-history cases: **16 cases**. This is
+targeted evidence for the count-return change, not general WebKit qualification.
+
+The generated-glue regression guard fails the old package and passes the new
+one, preventing optional-number sentinel decoding from returning to this getter.
+A native regression checks 110,000 counts and missing indexes after the engine
+has been dropped, confirming retained-snapshot ownership. The reviewed API and
+generated-glue contracts pass without declaration or ABI changes.
+
+Production reproduction command:
+
+```sh
+playwright test -c playwright.impact-contract.config.ts \
+  --grep 'fixed projection.*decimal' --project=webkit --repeat-each=30 --trace=on
+```
+
+The old optional-number observer remains for archived/pre-fix artifacts; its
+source guard intentionally rejects the new explicit-value getter. To recreate
+the old return-path capture, use the `1ae06f9` source with the new fixed-projection
+fixture, or the preserved diagnostic artifact hashes in the evidence record.
+Do not overwrite a baseline artifact during a live test. Old production assets
+were copied to `/tmp/breditor-format-count-baseline.2Ogve3/dist` before rebuilding.
+
+All intermediate failures, the equal-value control failure, and the targeted
+passes are retained in the
+[format-count evidence record](qualification/2026-10-03-projection-count-transport.json).
+
+The post-fix full-history diagnostic passes **17 cases**, then rejects the valid
+backward selection at cycle 33 (`children,4,0,after` to `text,3,2,before`) with
+`breditor_wasm.invalid_selection_node`. Its adapter recorder is empty; this
+production run did not enable Rust kind-admission logging. The known selection
+admission issue remains separate and open. Final validation also passes **67
+native tests**, **25 Wasm boundary tests**, **296 diagnostic tests**, browser
+typechecking, the reviewed API comparison and strict Rust linting. WebKit remains
+unqualified despite the targeted count-return repair.
+
+Direct/path-aliased package reproducibility, runtime integrity and all release
+size budgets also pass. Generated-glue tests explicitly retain zero for plain
+text and undefined for element, missing and maximum-u32 indexes.
