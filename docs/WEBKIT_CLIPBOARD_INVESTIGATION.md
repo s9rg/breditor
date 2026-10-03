@@ -2895,3 +2895,29 @@ The source-array follow-up passed **40 formatted clipboard/Link cases** with
 unchanged assertions and zero retries. It captured no additional rejected
 array, so the source/copy boundary and the separate selection rejection remain
 open. Passing this differently instrumented sample is not a production fix.
+
+### JavaScript-only property-validator control and mixed follow-ups
+
+Two further mixed WebKit batches passed **160 cases each** with the cold source-
+array and selection observers enabled, zero retries and no new natural failure.
+Neither the missing property's origin nor the selection rejection branch was
+captured. These passes leave both earlier failures open.
+
+A separate diagnostic configuration now exposes the actual production
+`validateFormatDetails` function by appending one export to its emitted module;
+all existing source bytes and shipping exports stay unchanged. The test passes
+ordinary JavaScript arrays directly to that validator, without initializing
+Wasm or mounting an editor. It alternates true/false, required/optional boolean
+contracts, and present/absent properties. It verifies that valid copies retain
+both properties, including false, while missing required properties are rejected.
+
+The final control passed **15 browser cases / 600,000 validations**, five cases
+each in Chromium, Firefox and WebKit. All trace result attachments were checked;
+the tests observed no Wasm requests. The **261 diagnostic unit tests** and browser
+type checking also pass. This rules out a straightforward false-value omission
+in this reduced workload, not a context-dependent failure in the full editor.
+Calling an exposed private function changes its callers and may change engine
+optimization behavior. No production workaround or fix was made.
+
+Commands, hashes and limits are in the
+[validator-control evidence record](qualification/2026-10-02-projection-validator-control.json).

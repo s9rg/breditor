@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-02",
+  "baseCommit": "ad0088b",
+  "status": "passing-reduction-and-mixed-followups-no-production-fix",
+  "shippingCodeChanged": false,
+  "mixedFollowups": {
+    "environment": "BREDITOR_QUEUE_CAPTURE=stop BREDITOR_QUEUE_ADAPTER_THROWS=1 BREDITOR_QUEUE_SELECTION=1 BREDITOR_QUEUE_DELIVERY=1 BREDITOR_QUEUE_PROJECTION=1 BREDITOR_QUEUE_PROJECTION_VALIDATION=1 BREDITOR_QUEUE_CLIPBOARD=1",
+    "command": "playwright test -c playwright.queue-diagnostics.config.ts tests/browser/editor.spec.ts tests/browser/clipboard-boundary.spec.ts tests/browser/clipboard-lifecycle.spec.ts tests/browser/formatted-clipboard-lifecycle.spec.ts tests/browser/link-history-lifecycle.spec.ts --grep 'copy, cut, and paste use guarded|repeated cuts and immediate caret|clipboard .* echoes preserve|clipboard (crossParagraph|boundaryOnly|rejected paste)|a warm Link owner retains|formatted clipboard, Link history' --project=webkit --repeat-each=10 --max-failures=1",
+    "runs": [
+      {
+        "output": "target/playwright-property-source-mixed-next-20261002",
+        "log": "/tmp/breditor-property-source-mixed-next-20261002.log",
+        "logSha256": "a34f90ea3b3aa1279f1e7f9592f839bda4c39ae6feed4955ddd5380079c0c0b1",
+        "passed": 160, "failed": 0, "retries": 0, "durationReported": "3.8m"
+      },
+      {
+        "output": "target/playwright-property-source-mixed-second-20261002",
+        "log": "/tmp/breditor-property-source-mixed-second-20261002.log",
+        "logSha256": "e16141521f9c845b8f3adf4300ee27df59db819c14cf8aa98ee126315576a4b8",
+        "passed": 160, "failed": 0, "retries": 0, "durationReported": "3.8m"
+      }
+    ],
+    "interpretation": "Neither natural fault repeated. No new rejected source/copied/accepted array or selection rejection branch was captured. Different instrumentation can affect reproduction; these passes do not establish a fix."
+  },
+  "javascriptOnlyControl": {
+    "command": "playwright test -c playwright.projection-validator.config.ts --repeat-each=5 --output=target/playwright-js-validator-final-20261002",
+    "description": "A dedicated Vite test build appends an export to the real production projection module. All existing source bytes, including validateFormatDetails and readExactBoundedArray, remain unchanged. Ordinary browser configuration and shipping exports are not modified.",
+    "sourceSha256": "5a03bbf5d7547405a513981ee9357f430817f8e5e48a305d073c056a80854ccc",
+    "input": "Synthetic Link properties in ordinary JS arrays. href bounds match the reference profile: 1..2048 UTF-8 bytes. Alternate false/true and required/optional boolean contracts; separately reject required omission and accept optional omission. Check copied values, length, ownership and freezing.",
+    "browsers": ["chromium", "firefox", "webkit"],
+    "passed": 15, "failed": 0, "retries": 0, "durationSeconds": 20.5,
+    "cyclesPerCase": 10000, "validationsPerCase": 40000, "totalValidations": 600000,
+    "wasmRequestsObserved": 0,
+    "all15TraceResultAttachmentsVerified": true,
+    "resultAttachmentSha1": "2a69a3f1c1823b697de109a87e3daf9c327d05f0",
+    "log": "/tmp/breditor-js-validator-final-20261002.log",
+    "logSha256": "60d47a876e15b6dc61b496ec02107463f086b54d20297b9211282056de2a8ef3",
+    "representativeTraceSha256": {
+      "chromium": "51253121475478aa1e10dd349c85b82810b7f90c33e9f4e3b80a2bd7518d6d4e",
+      "firefox": "131f688ec9e8ce5c3305d48e09062bfdfc9061c9a600e363ce716c73ca7cf493",
+      "webkit": "c68a08e44e81a45e123c811925f7c76cd0cd56bf4b029ca748514a5d3b229438"
+    },
+    "limitations": [
+      "This calls the property validator directly; it does not exercise Wasm property enumeration, outer projection validation, selection, clipboard, rendering or history.",
+      "Exposing the private function and changing its callers can change optimization behavior even though its source body is unchanged.",
+      "Passing does not exonerate the validator in the original workload or prove that Rust, Wasm or WebKit caused either failure.",
+      "No production workaround, validation weakening or retry was introduced."
+    ]
+  },
+  "verification": {
+    "diagnosticTests": { "passed": 261, "files": 46,
+      "log": "/tmp/breditor-validator-control-units-20261002.log",
+      "logSha256": "18f403b4aaac1f0b603ca3031b94365bbc8d8eaf96c067e0813d5c6abb0ea280" },
+    "browserTypecheck": { "passed": true,
+      "log": "/tmp/breditor-validator-control-types-20261002.log",
+      "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" }
+  },
+  "nextEvidenceNeeded": [
+    "A natural required-property rejection with original source, copied and accepted arrays captured together.",
+    "A natural selection-conversion failure with its first selection-adapter rejection site."
+  ]
+}
