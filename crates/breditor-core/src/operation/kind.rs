@@ -15,8 +15,8 @@ use super::OperationValidationError;
 /// Stable discriminator for one built-in operation contract.
 ///
 /// The returned string is the lower-camel-case diagnostic name and, for these
-/// four paragraph-operation variants, the operation V1 wire tag. Experimental
-/// structural kinds are diagnostic names only, not V1–V3 wire tags.
+/// four paragraph-operation variants, the operation V1 wire tag. The experimental
+/// structural kind has no V1–V3 wire tag; operation V4 admits it explicitly.
 /// Adding a runtime kind is an
 /// additive Rust API change, but does not silently extend the closed V1 wire
 /// union; admitting a new tag requires an explicit format-version decision.

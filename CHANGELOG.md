@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add a feature-gated V4 singular operation codec for guarded heading changes.
+  Reuse strict document-tree admission for source fragments, check exact target
+  kinds and ranks with bounded borrowed parsing, and preserve typed formatting
+  through independent-context forward/inverse replay. V1–V3 stay closed; durable
+  heading transaction/session history and browser exposure remain pending.
+
 - Add an experimental Rust paragraph/heading-kind schema, guarded same-count
   operation and separately documented selection-driven action. Changes preserve
   typed inline formats, exact directional selection and pending formats through

@@ -823,7 +823,8 @@ no supported package-root compatibility promise:
   storage-root, local-log storage-generation, selected-storage normalization,
   and schema-admission formats and state machines, including their experimental
   V2 generations and the property-preserving Rust-only V3 operation/state/
-  transaction/commit/session generations;
+  transaction/commit/session generations, plus the feature-gated singular
+  heading-operation V4 codec (not a durable heading-session format);
 - internal renderer generations, AST/DOM map identity, engine observations,
   history stamps, delivery tokens, queue receipts, storage attempt IDs, writer
   epochs, replay tombstones, and other process-local identities; and

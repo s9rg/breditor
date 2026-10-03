@@ -86,7 +86,8 @@ impl Serialize for SchemaEncoding<'_> {
     }
 }
 
-struct NodeEncoding<'a>(&'a NodeRef);
+/// Shared canonical tree encoding for documents and validated source guards.
+pub(super) struct NodeEncoding<'a>(pub(super) &'a NodeRef);
 
 impl Serialize for NodeEncoding<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

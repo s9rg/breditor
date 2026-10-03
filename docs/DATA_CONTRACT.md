@@ -1516,6 +1516,11 @@ their historical meanings.
 
 ## Text operation contract
 
+Experimental heading-kind operations use a separately versioned, feature-gated
+[operation V4 envelope](OPERATION_V4.md). That singular codec does not extend the
+V1–V3 paragraph-operation languages or provide durable heading session history.
+The contracts below retain their existing paragraph-only scope.
+
 Alpha.2 makes `TextSplice` property-aware: capture, validation, application,
 inverse generation, relocation, undo/redo, and V3 replay retain complete typed
 format instances. Same-paragraph set, insert/type-over, selection deletion,

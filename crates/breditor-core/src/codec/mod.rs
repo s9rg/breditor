@@ -390,16 +390,24 @@ mod operation_json_v2_tests;
 mod operation_json_v3;
 #[cfg(test)]
 mod operation_json_v3_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_json_v4;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod operation_json_v4_tests;
 mod operation_payload_v1;
 mod operation_payload_v2;
 #[cfg(test)]
 mod operation_payload_v2_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_payload_v3;
 mod operation_preflight;
 mod operation_preflight_v2;
 mod operation_sequence_v1;
 mod operation_sequence_v2;
 mod operation_v2_error;
 mod operation_v3_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_v4_error;
 mod property_payload;
 #[cfg(test)]
 mod runtime_codec_v2_tests;
@@ -828,8 +836,12 @@ pub use operation_error::{
 pub use operation_json::{OPERATION_FORMAT, OPERATION_FORMAT_VERSION, OperationJsonCodec};
 pub use operation_json_v2::{OPERATION_V2_FORMAT_VERSION, OperationJsonCodecV2};
 pub use operation_json_v3::{OPERATION_V3_FORMAT_VERSION, OperationJsonCodecV3};
+#[cfg(feature = "experimental-structural-properties")]
+pub use operation_json_v4::{OPERATION_V4_FORMAT_VERSION, OperationJsonCodecV4};
 pub use operation_v2_error::OperationV2CodecError;
 pub use operation_v3_error::OperationV3CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use operation_v4_error::OperationV4CodecError;
 pub use session_checkpoint_error::{
     RetainedResourceKind, SessionCheckpointApplicationError, SessionCheckpointApplicationErrorCode,
     SessionCheckpointCodecError, SessionCheckpointRecordError, SessionCheckpointRecordErrorCode,

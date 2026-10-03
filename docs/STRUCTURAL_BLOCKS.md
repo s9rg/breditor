@@ -176,7 +176,9 @@ properties. **Durable heading history is deferred:** operation, transaction,
 commit and session codecs V1–V3 reject the new operation on either history
 branch. They are not widened with a new tag. A separately versioned durable
 recipe and its replay/size limits are the next checkpoint before storage or
-Wasm/browser exposure.
+Wasm/browser exposure. The first piece now exists as the experimental singular
+[operation V4 codec](OPERATION_V4.md); transaction, commit and session-history
+formats have not yet advanced.
 
 ## Structural transactions and action files
 
@@ -315,8 +317,9 @@ Prefix it with `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261002` to run the gram
 and integer-admission property checks at the larger fixed-seed count. Run the same schema
 filter with `--no-default-features` to check the shipped configuration separately.
 
-The next implementation slice is the explicit durable heading-operation/history
-generation, followed by heading-aware text editing, Wasm projection and UI.
+The singular heading-operation format is implemented as experimental V4. The
+next implementation slice is durable transaction/session history, followed by
+heading-aware text editing, Wasm projection and UI.
 List-wide numbering validation remains required before lists. WebKit evidence
 is tracked separately in `WEBKIT_CLIPBOARD_INVESTIGATION.md`.
 
