@@ -3576,7 +3576,14 @@ the public ABI did not change. No package was published. Exact commands,
 artifact identities, isolated cost samples and limitations are in the
 [production qualification record](qualification/2026-10-03-selection-u32-production.json).
 
+After the local fix commit (`5a6e57a`), native Safari 26.6.2 also passed ten
+visible batches using the minified production selection-stress fixture:
+**100,000 checkpoint restores and 300,000 selection reads**. SafariDriver could
+not create a session because “Allow remote automation” is disabled; that
+setting was not changed. The observed page reported 10/10 passed. This is a
+bounded native selection check, not an automated Safari clipboard test.
+
 This is a **targeted compatibility fix**, not a declaration that every WebKit
 numeric fault is resolved. Other browser validators remain unchanged, and
-native Safari, iOS Simulator and system-clipboard qualification are still
+native Safari system-clipboard and iOS Simulator qualification are still
 separate work.

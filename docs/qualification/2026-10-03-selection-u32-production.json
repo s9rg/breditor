@@ -56,6 +56,19 @@
     "historicalOriginalControl": "1 logger-free WebKit smoke and 1 operand-instrumented queue WebKit smoke passed; these verify source substitution, not resolution of the historical fault",
     "historicalControlBuilds": "Original and full-bit alternatives both built as isolated Vite artifacts, without replacing the production demo"
   },
+  "nativeSafari": {
+    "browser": "Safari 26.6.2 (21624.5.1.11.3) on macOS 26.6.2",
+    "commit": "5a6e57a",
+    "buildCommand": "./node_modules/.bin/vite build --config vite.selection-stress.config.ts",
+    "serveMethod": "Local Vite preview at http://127.0.0.1:4285/",
+    "method": "Opened the built selection-stress page in native Safari and invoked its real breditorSelectionProbe(10000) ten sequential times from Web Inspector; Safari's visible page ended at 10/10 passed.",
+    "passedBatches": 10,
+    "restoredCheckpoints": 100000,
+    "selectionReads": 300000,
+    "minifiedFixtureJavascriptSha256": "db9cb8080d71f7deb020168be466966b8046949cf609d92ed3aed6fe67868e0f",
+    "wasmSha256": "579f5bc83fd69d364bfd4dbaf12a8f4389b0ed6af93bf16f0931f28d98225109",
+    "limitation": "A bounded visible native-engine selection-restoration check, not native clipboard or iOS qualification. SafariDriver session creation required the disabled Allow remote automation setting; that system setting was not changed."
+  },
   "release": {
     "command": "npm run verify:release",
     "passed": "all 17 gates",
@@ -84,12 +97,12 @@
     },
     "caveat": "Coarse browser clocks and an isolated microbenchmark; these are not editor latency measurements or a performance pass threshold."
   },
-  "evidenceRetention": "Passed counts and durations above were transcribed from the observed Playwright run output. Playwright retains per-case traces for the compact candidate and restore runs. The ordinary production clipboard and browser oracle output directories retain passed status only, so their counts cannot be independently reconstructed from those directories alone.",
+  "evidenceRetention": "Playwright passed counts and durations above were transcribed from observed run output. Playwright retains per-case traces for the compact candidate and restore runs. The ordinary production clipboard and browser oracle output directories retain passed status only, so their counts cannot be independently reconstructed from those directories alone. The native Safari count was observed on the visible page, not recorded as a WebDriver trace.",
   "limits": [
     "This avoids the reproduced upper-bound comparison in one selection adapter; it does not repair JavaScriptCore or prove every WebKit fault shares that cause.",
     "Other browser numeric validators remain unchanged; these runs did not reproduce a failure at those sites.",
     "Clipboard cases use controlled browser events, not the operating-system clipboard.",
-    "Playwright WebKit was covered, but native Safari and iOS Simulator were not independently qualified.",
+    "Native Safari selection restoration was qualified in a bounded run; native Safari system-clipboard behavior and iOS Simulator were not independently qualified.",
     "Finite no-retry runs cannot prove an intermittent symptom will never recur."
   ]
 }
