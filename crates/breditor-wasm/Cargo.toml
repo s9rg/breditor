@@ -11,6 +11,13 @@ publish = false
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# Local investigation only. Default/release packaging never enables this.
+diagnostic-selection-inputs = []
+diagnostic-projection-format-count = []
+# Unqualified local candidate; deliberately excluded from default packaging.
+candidate-rust-selection-tokens = []
+
 [dependencies]
 breditor-core = { path = "../breditor-core", version = "=0.3.0-alpha.22" }
 serde.workspace = true

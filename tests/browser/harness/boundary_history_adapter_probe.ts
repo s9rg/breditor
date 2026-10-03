@@ -7,6 +7,50 @@ import { REFERENCE_FORMATTING_EMPTY_DOCUMENT_JSON, REFERENCE_FORMATTING_PROFILE_
 type Coordinate = readonly [paragraph: number, utf16Offset: number];
 type Runs = readonly (readonly (readonly [text: string, strong: boolean])[])[];
 
+/** Verify the optional Rust-side record against present zero and absent counts. */
+export async function probeProjectionCountDiagnostic() {
+  await initialize();
+  const document = JSON.parse(REFERENCE_FORMATTING_EMPTY_DOCUMENT_JSON);
+  document.root.children[0].children = [{ kind: "text", text: "x", formats: [] }];
+  const owner = bootstrapWasmEngine(wasm, { kind: "document", lineageId: "projection-count-control",
+    documentJson: JSON.stringify(document), historyCapacity: 20,
+    semanticProfile: { bootstrapJson: REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON, formatVersion: 2 } });
+  if (!owner.ok) throw new Error(owner.error.code);
+  const read = owner.engine.projection(owner.observation);
+  const projection = read.takeProjection();
+  read.free();
+  try {
+    if (!projection) throw new Error("missing count control projection");
+    return [2, 1, 99].map(index => {
+      const value = projection.formatCount(index);
+      const record = (wasm as unknown as { debugLastProjectionFormatCount(): string }).debugLastProjectionFormatCount();
+      return { value: value ?? null, type: typeof value, rust: JSON.parse(record) };
+    });
+  } finally { projection?.free(); owner.observation.free(); owner.engine.free(); }
+}
+
+/** Deliberate invalid-input control. Errors must preserve both their public codes
+ * and the engine's ability to accept the next valid command. */
+export async function probeRejectedSelectionInputs(): Promise<string[]> {
+  await initialize();
+  const owner = bootstrapWasmEngine(wasm, { kind: "document", lineageId: "selection-input-control",
+    documentJson: REFERENCE_FORMATTING_EMPTY_DOCUMENT_JSON, historyCapacity: 20,
+    semanticProfile: { bootstrapJson: REFERENCE_FORMATTING_PROFILE_BOOTSTRAP_JSON, formatVersion: 2 } });
+  if (!owner.ok) throw new Error(owner.error.code);
+  const results: string[] = [];
+  try {
+    for (const [kind, index] of [["text", 1], ["children", 99], ["children", 1]] as const) {
+      const command = owner.engine.setRangeSelection(owner.observation, kind, index, 0, "after",
+        "children", 1, 0, "after");
+      try {
+        const error = command.error;
+        try { results.push(error?.code ?? command.status); } finally { error?.free(); }
+      } finally { command.free(); }
+    }
+    return results;
+  } finally { owner.observation.free(); owner.engine.free(); }
+}
+
 /** Boundary-only clipboard history reduced to real core commands and production
  * adapters. Keeps four paragraphs, an empty block, split strong runs, backward
  * ranges and identical replacement; excludes DOM, clipboard, toolbar and queue.

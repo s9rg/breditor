@@ -1,4 +1,6 @@
 mod clear_selection;
+#[cfg(feature = "diagnostic-selection-inputs")]
+mod input_diagnostics;
 mod node_index;
 mod read_selection;
 mod scalar_input;

@@ -45,6 +45,8 @@ pub use profile::{
     BreditorCompiledProfile, BreditorCompiledProfileDescriptor, BreditorCompiledProfileResult,
     BreditorProfileGeneration,
 };
+#[cfg(feature = "diagnostic-projection-format-count")]
+pub use projection::debug_last_projection_format_count;
 pub use projection::{BreditorProjection, BreditorProjectionResult, BreditorProjectionUpdate};
 pub use selection::{BreditorSelection, BreditorSelectionResult};
 pub use string_result::BreditorStringResult;

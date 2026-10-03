@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "2f82ef6",
+  "status": "boolean-return-admission-discrepancy-captured; candidate-not-qualified",
+  "productionArtifactsChanged": false,
+  "productionJsSha256": "300a3496e3ec02bf87524417ab5f1a6ddfd2488a1a4b1db73a00e27e4c32f536",
+  "productionWasmSha256": "64e0374e247681f0655fa8cb33fe4c2f87b819a83eed321d910f10aa1e994e4d",
+  "policy": { "retries": 0, "maxFailures": 1, "fixture": "boundary-only no-DOM history", "cyclesPerCase": 100 },
+  "baselineDiagnosticBuild": {
+    "features": ["diagnostic-selection-inputs"],
+    "jsSha256": "8b2996fe42136397eff9ec6529795adbbc6cdc702546bd3ddc28eddb3c150d94",
+    "wasmSha256": "c88c81050d47a97e33784ee56543eb4756b9e93855a700b0da8ec452a0bd2be1"
+  },
+  "rustOnlyCapture": {
+    "output": "target/playwright-rust-selection-repro-20261003",
+    "passed": 21, "failed": 1, "unrun": 38, "durationSeconds": 36.3,
+    "schedule": "task", "repeat": 10, "cycle": 37, "stage": "reselect backward boundary",
+    "input": { "kind": "children", "nodeIndex": 4, "offset": 0, "affinity": "after" },
+    "rust": { "kind": "text", "nodeIndex": 4, "offset": 0, "found": "element" },
+    "logSha256": "8dac07dc97d88d0209476571e6ba51dbdf2f46dfe49f106d089d17614ff98527",
+    "traceSha256": "420500d30255ac9c15bfa1f9761ea1ccf27a94f409c048b32b3c5f1982035fe5"
+  },
+  "inlineEqualityCapture": {
+    "output": "target/playwright-rust-inline-repro-20261003",
+    "passed": 22, "failed": 1, "unrun": 37, "durationSeconds": 38.5,
+    "schedule": "sync", "repeat": 11, "cycle": 51, "stage": "reselect backward boundary",
+    "lastComparisons": [["children", "text", false], ["after", "before", false], ["after", "after", true]],
+    "rust": { "kind": "text", "nodeIndex": 4, "offset": 0, "found": "element" },
+    "logSha256": "16a172594a6dc7e73baff0ab673517fde859fa60953be1b5b4701bea2acd4ff9",
+    "traceSha256": "589ffbcc6159433c092ccdb77c5be3134e163899ce52bdb45a965be2379c15ab",
+    "equalityAttachmentSha1": "9f1dd329dc58e2788ac243b72524240a1d9c416c",
+    "rustAttachmentSha1": "739868efb521aab7aac64fc41daadceef67dba1e",
+    "limit": "Captured JS false and Rust text branch disagree; no precise engine instruction or shared cause of other faults established."
+  },
+  "helperCallObserver": {
+    "firstOutput": "target/playwright-rust-equality-repro-20261003",
+    "passed": 0, "failed": 1, "unrun": 59,
+    "failure": { "cycle": 28, "stage": "undo typing", "nodeIndex": 9, "textType": "string", "formatCount": "undefined" },
+    "logSha256": "1b0bd785937d263a47e63d2c7f627b4c4b52d14124884a194fe8c26547171721",
+    "followupOutput": "target/playwright-rust-equality-followup-20261003",
+    "followupPassed": 60,
+    "followupLogSha256": "b781adbc370f70a76ba7db9414a1523bd47833e12b3dc4bb260ee2f1c168832d"
+  },
+  "rustTokenCandidate": {
+    "enabledByDefault": false,
+    "jsSha256": "3501e6fcde1b5fbb27cc081a40d5a302f8fb334845f3b2902ab9f38ef77d5357",
+    "wasmSha256": "aeabe527b6065514247e406a5f235d62bd26e2a2377a9985f5aa7ca25c2dba58",
+    "output": "target/playwright-rust-token-repro-20261003",
+    "passed": 8, "failed": 1, "unrun": 91, "durationSeconds": 15.8,
+    "failure": { "cycle": 98, "stage": "bold Right", "nodeIndex": 3, "textType": "string", "formatCount": "undefined" },
+    "logSha256": "5b05956128ba6dca7dd762e144bd75ef95899ac2ad56055b1dd467716924fd39",
+    "traceSha256": "492f6180296e84486b7521ee5252ec42bf7958ab716a2b55517f86a026df8a20",
+    "limits": ["Not a complete WebKit fix", "Additional string allocation and invalid primitive-string size policy require review"]
+  },
+  "rawFormatCountCapture": {
+    "output": "target/playwright-rust-count-repro-20261003",
+    "passed": 9, "failed": 1, "unrun": 50, "durationSeconds": 16.8,
+    "failure": { "cycle": 36, "stage": "redo second bold", "nodeIndex": 9,
+      "rawWasmReturn": 9007199254740991, "decoded": "undefined", "textType": "string" },
+    "logSha256": "a816bd7090eff5e3ef7427ddf9ed1e09b83317ffb55d2d24f2f550d8d0546453",
+    "traceSha256": "5a05653b4dcd561b1cef4a52857c34c43ee9b6abee84b995369218bf74dce076",
+    "attachmentSha1": "3d1475752c840d4ab9282144ec3516f90ac0dbce",
+    "limit": "This decoder correctly decoded the raw absence marker. Rust's pre-lowering Option was not recorded in this failure."
+  },
+  "validation": {
+    "nativeRustTests": 45,
+    "wasmBoundaryTests": 25,
+    "diagnosticTests": 295,
+    "browserTypecheck": "passed",
+    "defaultRustClippy": "passed",
+    "allFeaturesWasmClippy": "passed",
+    "productionGeneratedGlue": "passed",
+    "candidateGeneratedGlue": "passed",
+    "finalObserverControlsAcrossThreeBrowsers": 9,
+    "finalChromiumFirefoxHistoryCases": 4,
+    "artifactHashesChecked": 8,
+    "webkitQualified": false
+  },
+  "rustFormatCountFollowup": {
+    "output": "target/playwright-rust-return-repro-20261003",
+    "passed": 60, "failed": 0,
+    "jsSha256": "430c47283da4794fc3453c853d293ec752492769449e7e69d23bf1c3cfc523b3",
+    "wasmSha256": "10cb59351072e353a190f1f810f9de2dbb625513bc5f823e40bda9db13c9ce05",
+    "logSha256": "f41090dbea645894332bb03dc2923c5ef5480ea8d372052771e6956f9cb2f89c",
+    "limit": "No failure reproduced under the deeper Rust recorder; not evidence of repair."
+  }
+}

@@ -177,9 +177,13 @@ impl BreditorProjection {
     #[must_use]
     #[wasm_bindgen(js_name = formatCount)]
     pub fn format_count(&self, index: u32) -> Option<u32> {
-        self.node(index)
+        let count = self
+            .node(index)
             .and_then(|record| record.node().as_text())
-            .and_then(|text| u32::try_from(text.formats().len()).ok())
+            .and_then(|text| u32::try_from(text.formats().len()).ok());
+        #[cfg(feature = "diagnostic-projection-format-count")]
+        super::format_count_diagnostics::record(index, count);
+        count
     }
 
     /// Returns one text leaf's qualified semantic format type.

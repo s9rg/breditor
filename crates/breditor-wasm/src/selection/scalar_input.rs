@@ -51,6 +51,18 @@ pub(super) fn point_from_js_scalars(
 }
 
 fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorError> {
+    #[cfg(feature = "candidate-rust-selection-tokens")]
+    {
+        // Keep the closed-token comparison inside Wasm instead of importing a
+        // JavaScript Boolean for each equality. as_string rejects boxed values
+        // and objects without invoking user conversion hooks.
+        match value.as_string().as_deref() {
+            Some("text") => Ok(SelectionPointKind::Text),
+            Some("children") => Ok(SelectionPointKind::Children),
+            _ => Err(invalid_point_kind()),
+        }
+    }
+    #[cfg(not(feature = "candidate-rust-selection-tokens"))]
     if value == "text" {
         Ok(SelectionPointKind::Text)
     } else if value == "children" {
@@ -61,6 +73,15 @@ fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorEr
 }
 
 fn parse_js_affinity(value: &JsValue) -> Result<Affinity, BreditorError> {
+    #[cfg(feature = "candidate-rust-selection-tokens")]
+    {
+        match value.as_string().as_deref() {
+            Some("before") => Ok(Affinity::Before),
+            Some("after") => Ok(Affinity::After),
+            _ => Err(invalid_affinity()),
+        }
+    }
+    #[cfg(not(feature = "candidate-rust-selection-tokens"))]
     if value == "before" {
         Ok(Affinity::Before)
     } else if value == "after" {
@@ -77,7 +98,11 @@ fn point_from_admitted_scalars(
     offset: u32,
     affinity: Affinity,
 ) -> Result<Point, BreditorError> {
-    let node = semantic_node_at(document, node_index).ok_or_else(invalid_node)?;
+    let node = semantic_node_at(document, node_index).ok_or_else(|| {
+        #[cfg(feature = "diagnostic-selection-inputs")]
+        report_rejected_node(kind, node_index, offset, None);
+        invalid_node()
+    })?;
 
     match (kind, node.kind()) {
         (SelectionPointKind::Text, NodeKind::Text) => {
@@ -87,8 +112,26 @@ fn point_from_admitted_scalars(
             Ok(Point::Children { parent_path: node.path().clone(), child_index: offset, affinity })
         }
         (SelectionPointKind::Text, NodeKind::Element)
-        | (SelectionPointKind::Children, NodeKind::Text) => Err(invalid_node()),
+        | (SelectionPointKind::Children, NodeKind::Text) => {
+            #[cfg(feature = "diagnostic-selection-inputs")]
+            report_rejected_node(kind, node_index, offset, Some(node.kind()));
+            Err(invalid_node())
+        }
     }
+}
+
+#[cfg(feature = "diagnostic-selection-inputs")]
+fn report_rejected_node(
+    kind: SelectionPointKind,
+    node_index: u32,
+    offset: u32,
+    found: Option<NodeKind>,
+) {
+    let kind = match kind {
+        SelectionPointKind::Text => "text",
+        SelectionPointKind::Children => "children",
+    };
+    super::input_diagnostics::rejected_node(kind, node_index, offset, found);
 }
 
 #[cfg(test)]

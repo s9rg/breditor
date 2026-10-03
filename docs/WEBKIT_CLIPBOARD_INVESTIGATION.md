@@ -3134,3 +3134,97 @@ tests** and browser type checking pass. No green WebKit qualification is claimed
 
 Commands and bounded follow-up results are in the
 [boundary-history evidence record](qualification/2026-10-03-boundary-history-reduction.json).
+
+### 2026-10-03: Rust admission disagrees with the captured JS comparison
+
+The next reduction adds **opt-in local diagnostics**, not a shipping fix. The
+production JS/Wasm hashes remain unchanged. `diagnostic-selection-inputs` logs
+only rejected admitted kind/index/offset and the original node-lookup outcome;
+it does not retry or serialize document text. Logger exceptions are caught.
+Deliberate kind-mismatch/missing-node controls and a throwing-host-logger control
+pass in Chromium, Firefox and WebKit.
+
+With only Rust rejection logging, WebKit passes 21 cases, then fails at cycle 37,
+`reselect backward boundary`. JS sends `children,4,0,after`; Rust reports
+`text,4,0` and finds an **element**. This is not an out-of-range node index.
+
+An inline sixteen-entry recorder of the generated strict-equality import then
+captures the same failure after 22 passing cases, cycle 51. Its final three
+comparisons are:
+
+- `children === text`: **false**
+- `after === before`: **false**
+- `after === after`: **true**
+
+The `children === children` check was not called for this endpoint. Rust again
+reports the admitted kind as `text` at element index 4. Both operand lookups and
+the comparison execute once; the recorded result is returned unchanged. This
+narrows the observed discrepancy to the JS Boolean return/Wasm admission branch.
+It does **not** identify the faulty WebKit instruction or prove that every
+previous numeric/projection failure shares this cause. Instrumentation can
+affect execution: a heavier helper-call recorder had a separate format-count
+failure, then a bounded follow-up of 60 passing cases.
+
+#### Unqualified Rust-token candidate
+
+The non-default `candidate-rust-selection-tokens` feature copies primitive kind
+and affinity strings into Rust and matches the closed tokens there, avoiding the
+imported JS Boolean equality path. Existing generated-glue contract tests pass,
+including rejection of boxed strings and conversion-hook objects. However, the
+candidate is **not qualified or promoted**: its history run passes eight cases
+then stops at a separate projection fault. It also adds string allocations,
+including copies of invalid primitive strings; cost and input-size policy need
+review before any production adoption. It is not a WebKit engine fix.
+
+#### Format-count return evidence
+
+The candidate's failure is a string-valued text node with an absent format count.
+An inline getter recorder narrows a follow-up failure (nine passes, cycle 36,
+`redo second bold`, node 9): the **raw Wasm return is already
+9007199254740991**, and the generated decoder correctly returns `undefined`.
+Thus this occurrence is not explained by the decoder taking the wrong branch.
+The exact Rust `Option<u32>` before lowering was not yet recorded in that run.
+
+The separate `diagnostic-projection-format-count` feature stores the last
+`(index, Option<u32>)` in a fixed-size Rust cell, without a host call or allocation
+in the getter. Its extra diagnostic export returns scalar-only JSON on demand.
+Zero/element/missing controls pass in all three browsers. The instrumented history
+follow-up passes 60 cases without reproducing the fault, so the Rust-versus-raw
+return discrepancy remains unconfirmed. Chromium/Firefox pass four final history
+controls. A clean instrumented run is not a repaired-browser claim.
+
+#### Reproduction configuration
+
+Builds are isolated under `target/`; none replace `packages/breditor-wasm/dist`:
+
+```sh
+bash scripts/build-selection-input-diagnostic.sh
+BREDITOR_SELECTION_EQUALITY=inline playwright test \
+  -c playwright.selection-input-diagnostic.config.ts \
+  --grep boundary-only --project=webkit --repeat-each=30
+
+bash scripts/build-selection-input-diagnostic.sh --rust-tokens
+BREDITOR_SELECTION_TOKENS=rust BREDITOR_PROJECTION_FORMAT_COUNT=inline \
+  playwright test -c playwright.selection-input-diagnostic.config.ts \
+  --grep boundary-only --project=webkit --repeat-each=30
+
+bash scripts/build-selection-input-diagnostic.sh --rust-tokens --format-count
+BREDITOR_SELECTION_TOKENS=rust BREDITOR_RUST_FORMAT_COUNT=on \
+  BREDITOR_PROJECTION_FORMAT_COUNT=inline \
+  playwright test -c playwright.selection-input-diagnostic.config.ts \
+  --grep boundary-only --project=webkit --repeat-each=30
+```
+
+The default equality mode is `off`; `calls` and `inline` are explicit alternatives.
+Every run stops at its first failure, uses no retries, and attaches build hashes,
+observer modes and bounded records to its trace. Use a distinct output directory
+for every run to preserve evidence. All observations here use the no-DOM fixture;
+no system clipboard access or browser-engine patch is involved.
+
+See the [Rust boundary evidence record](qualification/2026-10-03-rust-selection-boundary.json).
+
+Final validation: **45 native Rust tests**, **25 Wasm boundary tests**,
+**295 diagnostic tests**, browser typechecking, default and all-feature Wasm
+linting, and both production/candidate generated-glue contracts pass. All eight
+recorded artifact hashes were compared with their files. This validates the
+diagnostic infrastructure and existing contracts, not WebKit qualification.
