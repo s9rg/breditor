@@ -260,6 +260,8 @@ impl RelocationStep {
 /// One primitive operation's point-relocation law.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum RelocationStepMap {
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockKindIdentity,
     TextSplice(TextSpliceMap),
     ParagraphSplit(ParagraphSplitMap),
     ParagraphJoin(ParagraphJoinMap),
@@ -274,6 +276,8 @@ impl RelocationStepMap {
         point: &Point,
     ) -> Result<PointRelocation, RelocationError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockKindIdentity => Ok(PointRelocation::Exact(point.clone())),
             Self::TextSplice(map) => map.relocate(before, after, point),
             Self::ParagraphSplit(map) => map.relocate(before, after, point),
             Self::ParagraphJoin(map) => map.relocate(before, after, point),

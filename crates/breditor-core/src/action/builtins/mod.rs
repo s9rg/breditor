@@ -13,9 +13,13 @@ mod insert_plain_text;
 mod insert_text;
 mod set_inline_format;
 mod set_inline_format_input;
+#[cfg(feature = "experimental-structural-properties")]
+mod set_text_block_kind;
 mod support;
 mod toggle_inline_format;
 mod toggle_strong;
+#[cfg(feature = "experimental-structural-properties")]
+pub use set_text_block_kind::SetTextBlockKindAction;
 
 pub use clear_inline_formats::{
     CLEAR_INLINE_FORMATS_ACTION_NAME, ClearInlineFormatsAction, clear_inline_formats_action_id,

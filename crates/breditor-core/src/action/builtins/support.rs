@@ -56,6 +56,19 @@ fn map_text_position_error(
     }
 }
 
+#[cfg(feature = "experimental-structural-properties")]
+pub(super) fn require_text_block_range(
+    state: &EditorState,
+) -> Result<Result<TextRangeSelection, DisabledReason>, ActionFault> {
+    if !state.context().schema().supports_text_block_kind_operations() {
+        return Ok(Err(disabled_reason("breditor/unsupported-schema")));
+    }
+    match normalize_range_selection(state) {
+        Ok(range) => Ok(Ok(range)),
+        Err(error) => map_text_position_error(error),
+    }
+}
+
 pub(super) fn require_operation_budget(
     state: &EditorState,
     required: usize,

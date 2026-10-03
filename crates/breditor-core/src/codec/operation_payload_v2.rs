@@ -94,8 +94,21 @@ pub(crate) fn decode_operation_payload_v2(
 }
 
 /// Projects one checked runtime operation into a property-preserving payload.
-pub(crate) fn encode_operation_payload_v2(operation: &Operation) -> OperationRecordV2 {
-    match operation {
+#[cfg_attr(
+    not(feature = "experimental-structural-properties"),
+    allow(
+        clippy::unnecessary_wraps,
+        reason = "Keep one fallible interface across features; structural kinds have no V2 payload."
+    )
+)]
+pub(crate) fn encode_operation_payload_v2(
+    operation: &Operation,
+) -> Result<OperationRecordV2, OperationKind> {
+    // V3 envelopes permanently retain this paragraph-only primitive language.
+    // A new runtime operation must never silently extend the old wire union.
+    Ok(match operation {
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::TextBlockKindChange(_) => return Err(operation.kind()),
         Operation::TextSplice(operation) => OperationRecordV2::TextSplice {
             range: TextRangeRecordV1 {
                 container_path: operation.range().container_path().to_vec(),
@@ -131,7 +144,7 @@ pub(crate) fn encode_operation_payload_v2(operation: &Operation) -> OperationRec
                 .map(fragment_record_from_runtime)
                 .collect(),
         },
-    }
+    })
 }
 
 fn text_range_from_record(record: TextRangeRecordV1) -> Result<TextRange, OperationRecordError> {

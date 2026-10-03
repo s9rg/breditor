@@ -6,6 +6,18 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add an experimental Rust paragraph/heading-kind schema, guarded same-count
+  operation and separately documented selection-driven action. Changes preserve
+  typed inline formats, exact directional selection and pending formats through
+  atomic transactions and undo/redo. Older durable codecs reject heading history;
+  the default Wasm/browser editor remains paragraph-only.
+
+- Replace the reproduced selection-adapter u32 upper-bound comparison with an
+  equivalent high-word check. Production WebKit stress, native Safari selection
+  stress and all 17 release gates passed at the shipping checkpoint. This is a
+  targeted compatibility fix; native system-clipboard/iOS checks remain scoped
+  separately. See `docs/qualification/2026-10-03-selection-u32-production.json`.
+
 - Transport optional projection-update indexes as explicit JavaScript numbers
   or `undefined`, removing generated floating-point absence-sentinel decoding.
   A WebKit Redo exposed that sentinel as a real index. Native Rust signatures,

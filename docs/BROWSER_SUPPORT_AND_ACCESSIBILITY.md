@@ -1,12 +1,17 @@
 # Browser support and accessibility gate
 
-Status, October 1: the unpublished `0.3.0-alpha.22` checkpoint passes all 17
-local release gates, including 159 browser and 39 demo cases. Safari/WebKit
-remains **experimental**, not unconditionally release-qualified: the saved
-JavaScript-only numerical probe still fails on independently installed WebKit
-2359 with normal JIT settings (one failure in ten fresh-browser attempts).
-The historical selection-endpoint rejection also remains unresolved. Passing
-editor tests and bounded native smoke checks do not establish an engine fix.
+Most recent completed shipping qualification, October 3: the unpublished
+`0.3.0-alpha.22` source plus selection fix `5a6e57a` passes all 17 local release
+gates, including 165 browser and 39 demo cases. The reproduced selection-u32
+upper-bound rejection now has a targeted compatibility fix: 300 production
+WebKit clipboard cases and 400,000 restores pass, as do 100,000 additional
+restores in native Safari 26.6.2. See the
+[production selection qualification](qualification/2026-10-03-selection-u32-production.json).
+Safari/WebKit remains **experimental** beyond this bounded evidence. The
+historical JavaScript-only engine counterexamples are not repaired by changing
+one application predicate; fresh native system-clipboard and iOS checks remain
+necessary for broader claims. Experimental Rust heading work does not extend
+the browser feature/support boundary.
 
 The tested desktop-browser baseline is the exact Playwright matrix
 locked by this repository: Chromium, Firefox, and WebKit. `npm run test:browser`

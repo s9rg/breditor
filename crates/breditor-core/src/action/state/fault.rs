@@ -159,6 +159,30 @@ pub enum ActionStateTransactionFault {
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
 pub enum ActionStateOperationFault {
+    /// The experimental text-block schema capability was absent.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("block-kind unsupported schema")]
+    TextBlockKindUnsupportedSchema,
+    /// The experimental block-kind span was invalid.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("block-kind invalid span")]
+    TextBlockKindInvalidSpan,
+    /// A block-kind guard was not a valid text block.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("block-kind invalid target")]
+    TextBlockKindInvalidTarget,
+    /// A block-kind source guard no longer matched.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("block-kind expected mismatch")]
+    TextBlockKindExpectedMismatch,
+    /// A block-kind source lacked the active document proof.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("block-kind document proof mismatch")]
+    TextBlockKindDocumentProof,
+    /// A block-kind guard or result failed validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error("block-kind invalid result")]
+    TextBlockKindValidation,
     /// A text-splice value violated its construction contract.
     #[error("text-splice contract")]
     TextSpliceContract,
@@ -701,6 +725,18 @@ fn project_transaction_error(error: TransactionApplyError) -> ActionStateTransac
 #[allow(clippy::too_many_lines)]
 fn project_operation_error(error: OperationApplyError) -> ActionStateOperationFault {
     match error {
+        #[cfg(feature = "experimental-structural-properties")]
+        OperationApplyError::TextBlockKindChange(source) => {
+            use crate::operation::TextBlockKindChangeError as E;
+            match source {
+                E::UnsupportedSchema => ActionStateOperationFault::TextBlockKindUnsupportedSchema,
+                E::InvalidSpan => ActionStateOperationFault::TextBlockKindInvalidSpan,
+                E::InvalidTarget => ActionStateOperationFault::TextBlockKindInvalidTarget,
+                E::ExpectedMismatch => ActionStateOperationFault::TextBlockKindExpectedMismatch,
+                E::DocumentProof(_) => ActionStateOperationFault::TextBlockKindDocumentProof,
+                E::Validation(_) => ActionStateOperationFault::TextBlockKindValidation,
+            }
+        }
         OperationApplyError::TextSplice(source) => match source {
             TextSpliceApplyError::Contract(_) => ActionStateOperationFault::TextSpliceContract,
             TextSpliceApplyError::SchemaMismatch { .. }

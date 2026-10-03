@@ -48,16 +48,26 @@ impl Serialize for OperationSequenceEncodingV2<'_> {
     {
         let mut sequence = serializer.serialize_seq(Some(self.operations.len()))?;
         for (operation_index, operation) in self.operations.iter().enumerate() {
-            if let Err(source) = operation.validate(self.context) {
-                *self.validation_error.borrow_mut() = Some(IndexedOperationValidationError {
-                    operation_index: usize_to_u64(operation_index),
-                    source,
-                });
-                return Err(<S::Error as serde::ser::Error>::custom(
-                    "transaction V3 operation validation failed",
-                ));
-            }
-            sequence.serialize_element(&encode_operation_payload_v2(operation))?;
+            let record = match operation.validate(self.context).and_then(|()| {
+                encode_operation_payload_v2(operation).map_err(|kind| {
+                    crate::operation::OperationValidationError::UnsupportedSchema {
+                        kind,
+                        schema: self.context.schema().id().clone(),
+                    }
+                })
+            }) {
+                Ok(record) => record,
+                Err(source) => {
+                    *self.validation_error.borrow_mut() = Some(IndexedOperationValidationError {
+                        operation_index: usize_to_u64(operation_index),
+                        source,
+                    });
+                    return Err(<S::Error as serde::ser::Error>::custom(
+                        "transaction V3 operation validation failed",
+                    ));
+                }
+            };
+            sequence.serialize_element(&record)?;
         }
         sequence.end()
     }

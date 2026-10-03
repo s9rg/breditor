@@ -47,7 +47,8 @@ fn every_primitive_fragment_role_preserves_properties() -> TestResult {
     ];
 
     for operation in operations {
-        let record = encode_operation_payload_v2(&operation);
+        let record =
+            encode_operation_payload_v2(&operation).map_err(|_| "unsupported operation")?;
         assert_eq!(decode_operation_payload_v2(record)?, operation);
     }
     Ok(())

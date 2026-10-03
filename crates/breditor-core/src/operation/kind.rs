@@ -15,7 +15,9 @@ use super::OperationValidationError;
 /// Stable discriminator for one built-in operation contract.
 ///
 /// The returned string is the lower-camel-case diagnostic name and, for these
-/// four variants, the operation V1 wire tag. Adding a runtime kind is an
+/// four paragraph-operation variants, the operation V1 wire tag. Experimental
+/// structural kinds are diagnostic names only, not V1–V3 wire tags.
+/// Adding a runtime kind is an
 /// additive Rust API change, but does not silently extend the closed V1 wire
 /// union; admitting a new tag requires an explicit format-version decision.
 /// Callers should retain a fallback when matching this non-exhaustive enum.
@@ -30,6 +32,9 @@ pub enum OperationKind {
     ParagraphJoin,
     /// A guarded replacement across direct-root paragraphs.
     RootTextReplace,
+    /// Experimental same-count paragraph/heading kind replacement.
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockKindChange,
 }
 
 impl OperationKind {
@@ -41,6 +46,8 @@ impl OperationKind {
             Self::ParagraphSplit => "paragraphSplit",
             Self::ParagraphJoin => "paragraphJoin",
             Self::RootTextReplace => "rootTextReplace",
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockKindChange => "textBlockKindChange",
         }
     }
 }
@@ -60,6 +67,9 @@ pub enum Operation {
     ParagraphJoin(ParagraphJoin),
     /// Replace one guarded text range across direct-root base paragraphs.
     RootTextReplace(RootTextReplace),
+    /// Experimental same-count paragraph/heading kind replacement.
+    #[cfg(feature = "experimental-structural-properties")]
+    TextBlockKindChange(super::TextBlockKindChange),
 }
 
 impl From<TextSplice> for Operation {
@@ -95,6 +105,8 @@ impl Operation {
             Self::ParagraphSplit(_) => OperationKind::ParagraphSplit,
             Self::ParagraphJoin(_) => OperationKind::ParagraphJoin,
             Self::RootTextReplace(_) => OperationKind::RootTextReplace,
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockKindChange(_) => OperationKind::TextBlockKindChange,
         }
     }
 
@@ -124,6 +136,10 @@ impl Operation {
         document: &Document,
     ) -> Result<AppliedOperation, OperationApplyError> {
         match self {
+            #[cfg(feature = "experimental-structural-properties")]
+            Self::TextBlockKindChange(operation) => {
+                operation.apply(context, document).map_err(Into::into)
+            }
             Self::TextSplice(operation) => operation.apply(context, document).map_err(Into::into),
             Self::ParagraphSplit(operation) => {
                 operation.apply(context, document).map_err(Into::into)
@@ -154,6 +170,10 @@ pub(crate) struct AppliedChange {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationApplyError {
+    /// An experimental block-kind change failed.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    TextBlockKindChange(#[from] super::TextBlockKindChangeError),
     /// A text-splice contract or application rule failed.
     #[error(transparent)]
     TextSplice(#[from] TextSpliceApplyError),

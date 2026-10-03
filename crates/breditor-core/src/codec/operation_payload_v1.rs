@@ -116,6 +116,13 @@ pub(crate) fn encode_operation_payload_v1(
 ) -> Result<OperationRecordV1, OperationValidationError> {
     validate_operation_payload_v1(operation, context)?;
     Ok(match operation {
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::TextBlockKindChange(_) => {
+            return Err(OperationValidationError::UnsupportedSchema {
+                kind: operation.kind(),
+                schema: context.schema().id().clone(),
+            });
+        }
         Operation::TextSplice(operation) => OperationRecordV1::TextSplice {
             range: TextRangeRecordV1 {
                 container_path: operation.range().container_path().to_vec(),

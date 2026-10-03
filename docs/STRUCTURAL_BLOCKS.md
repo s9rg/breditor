@@ -1,8 +1,9 @@
 # Structural blocks: heading and list contract
 
-Status: experimental Rust values, private child grammar, and opt-in closed
-integer element-property contracts. Headings
-and lists are **not yet editable features**. The paragraph-only schema, existing fingerprints,
+Status: experimental Rust values, private child grammar, opt-in closed
+integer element-property contracts, and a guarded Rust paragraph/heading-kind
+operation. Headings and lists are **not yet browser editing features**.
+The default paragraph-only schema, existing fingerprints,
 durable formats, Wasm ABI and browser renderer are unchanged. Links already
 exist as typed inline formatting and must continue to work inside future blocks.
 
@@ -74,7 +75,8 @@ The private schema compiler now supports bounded alternatives and ordered child
 groups. Its test-only structural fixture proves these tree shapes, including
 nested lists; it is **not** a complete heading/list schema. Exact closed element-
 property contracts for heading rank and ordered-list start are implemented
-behind `experimental-structural-properties`, not admitted by a public profile.
+behind `experimental-structural-properties`. Only the experimental text-block
+profile described below admits headings; there is no public list profile.
 A generic "properties allowed" Boolean is insufficient for those blocks.
 
 The child-grammar contract is deliberately restricted:
@@ -95,8 +97,9 @@ The child-grammar contract is deliberately restricted:
   alternative set or multi-group sequence selects compiler-contract version 3;
   both group bounds and ordering enter its fingerprint.
 
-No public structural schema factory, manifest contribution, durable action,
-Wasm export or browser feature was added. The private shape fixture deliberately
+That child-grammar checkpoint added no public structural schema factory,
+manifest contribution, durable action, Wasm export or browser feature. The
+later experimental text-block factory is described below. The shape fixture deliberately
 omits heading/list properties. Structural schemas fail all three existing
 paragraph-only operation capability checks.
 
@@ -138,12 +141,50 @@ Do not open the paragraph schema to unknown elements as an interim shortcut.
 Do not expose a schema that permits new blocks to an editor while its editing
 operations still assume that every root child is a paragraph.
 
+## Experimental block-kind operation
+
+The `experimental-structural-properties` feature now exposes
+`CompiledSchema::try_compile_text_block_profile`, a separate sealed direct-root
+paragraph/heading schema with extension-owned inline formats. Its complete
+grammar, closed heading rank and ordinary canonicality laws are checked before
+the compiler grants the block-kind capability. Existing paragraph-only
+operations still reject this schema; the feature does not enable a usable
+heading editor or change the shipped Wasm/browser profile.
+
+`operation/text_block_kind_change.rs` owns `TextBlockKindChange`. A nonempty
+contiguous root-child span carries complete expected source nodes and one
+checked destination kind per block. The operation changes kind/rank while
+retaining the exact text children, including typed Link properties. Source
+guards, document proof, bounds and complete result budgets are checked before
+publication. The inverse keeps each original kind/rank independently. Paths,
+text offsets, child-boundary points, direction, affinity and pending formats
+are preserved. Full result validation is intentionally linear in the bounded
+document; no incremental structural proof is claimed.
+
+`action/builtins/set_text_block_kind.rs` owns `SetTextBlockKindAction`. Each
+registration has a fixed checked target and takes no input. Spatially ordered
+selection endpoints determine the root span; an end at the next block's start
+excludes that block. The action reports active/mixed/inactive state even when
+resource limits disable it. An already-uniform target is disabled without a
+revision or history entry; a changing action produces one transaction and undo
+unit. Stale preparations and late failures leave the session and redo branch
+unchanged.
+
+Runtime undo/redo and reconstruction from already-proved in-memory checkpoint
+parts are covered. Document V2 can retain these schema-validated element
+properties. **Durable heading history is deferred:** operation, transaction,
+commit and session codecs V1–V3 reject the new operation on either history
+branch. They are not widened with a new tag. A separately versioned durable
+recipe and its replay/size limits are the next checkpoint before storage or
+Wasm/browser exposure.
+
 ## Structural transactions and action files
 
-Implement actions separately with descriptive files and documented inputs:
-`set_text_block_kind`, `wrap_list`, `unwrap_list`, `indent_list_item`,
-`outdent_list_item`, and the list-item split behavior of paragraph insertion.
-These names describe planned Rust modules, not a newly frozen wire protocol.
+Implement actions separately with descriptive files and documented inputs.
+`set_text_block_kind` is implemented experimentally. Planned modules include
+`wrap_list`, `unwrap_list`, `indent_list_item`, `outdent_list_item`, and the
+list-item split behavior of paragraph insertion. These names do not establish
+a newly frozen wire protocol.
 
 Each action must prepare against the exact current state, validate all targets
 and final budgets, and produce one atomic core transaction. There is no
@@ -219,8 +260,10 @@ containers, with host-controlled visual styles and accessible control names.
 Clipboard plain-text serialization needs explicit list/heading boundary rules;
 rich paste remains unsupported until a separate validated import contract exists.
 
-There are only 49 bytes of JavaScript gzip headroom in the verified demo build
-(224,951 / 225,000 bytes). The default Wasm binary is 1,608,759 / 1,610,000 bytes.
+The October 3 block-kind checkpoint has only 47 bytes of JavaScript gzip
+headroom in the demo build (224,953 / 225,000 bytes). The default Wasm binary
+is 1,609,363 / 1,610,000 bytes. The experimental feature is still excluded;
+shared compiler/codec refactoring can affect generated default-build bytes.
 Structural UI work therefore needs a measured bundle plan (for example,
 separately loaded optional controls) before adoption. Do not silently raise
 limits or delete correctness checks to fit a new feature.
@@ -231,7 +274,8 @@ limits or delete correctness checks to fit a new feature.
 2. Closed structural grammar and fingerprint parity: implemented privately;
    required integer element properties are opt-in and tested. A complete public
    structural profile and cross-child numbering laws are still pending.
-3. Guarded block-kind replacement, exact selection relocation and inverse replay.
+3. Guarded block-kind replacement, exact selection relocation and inverse replay:
+   implemented behind the experimental feature, including the configured action.
 4. Heading action/state, durable recipes, Wasm descriptor and browser projection.
 5. Heading toolbar and Enter/delete/clipboard behavior across three engines.
 6. List wrapping/unwrapping, item split/merge, nesting and ordinal preservation.
@@ -271,6 +315,32 @@ Prefix it with `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261002` to run the gram
 and integer-admission property checks at the larger fixed-seed count. Run the same schema
 filter with `--no-default-features` to check the shipped configuration separately.
 
-The next implementation slice is guarded block-kind replacement and exact
-selection/history laws, with list-wide numbering validation before lists. This checkpoint
-does not resolve the independent WebKit numerical fault.
+The next implementation slice is the explicit durable heading-operation/history
+generation, followed by heading-aware text editing, Wasm projection and UI.
+List-wide numbering validation remains required before lists. WebKit evidence
+is tracked separately in `WEBKIT_CLIPBOARD_INVESTIGATION.md`.
+
+## Reproduce the block-kind checkpoint
+
+The [October 3 verification record](qualification/2026-10-03-heading-kind-operation.json)
+records 20 focused tests, 10,000 seeded history cases, 1,616 workspace/doc tests,
+697 default-feature unit tests, and all 17 release gates passing, including
+165 browser and 39 demo cases with zero retries. This qualifies the bounded
+Rust implementation and regression checks, not browser heading support.
+
+1. `cargo test -p breditor-core --lib --all-features --locked text_block_kind`
+   checks source guards, atomic failure, ranks, selection, typed inline formats,
+   action state, undo/redo, in-memory reconstruction and legacy codec rejection.
+2. `PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --lib --all-features --locked randomized_block_kind_history_restores_exact_tree_and_selection`
+   checks randomized mixed ranks, Unicode and selection direction through exact
+   inverse replay.
+3. `cargo test -p breditor-core --lib --no-default-features --locked` and
+   `cargo clippy -p breditor-core --lib --no-default-features --locked -- -D warnings`
+   check the default, nonstructural configuration independently.
+4. `npm run verify:release` checks the full Rust and shipped browser paths.
+
+The next durable-format checkpoint must round-trip heading changes on both undo
+and redo branches, replay from an independent decoded state, reject stale source
+guards and malformed ranks atomically, enforce operation/history/byte limits,
+and retain all old format rejection tests. A browser toolbar is not enabled by
+passing these Rust-only checks.

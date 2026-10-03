@@ -8,9 +8,17 @@ mod paragraph_support;
 mod relocation;
 mod root_text_range;
 mod root_text_replace;
+#[cfg(feature = "experimental-structural-properties")]
+mod text_block_kind_change;
 mod text_range;
 mod text_splice;
 mod validation;
+#[cfg(feature = "experimental-structural-properties")]
+pub(crate) use text_block_kind_change::block_kind;
+#[cfg(feature = "experimental-structural-properties")]
+pub use text_block_kind_change::{TextBlockKindChange, TextBlockKindChangeError};
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod text_block_kind_change_tests;
 
 pub use change_set::{Change, ChangeSet, ChildRange, ChildrenChange, TextChange};
 pub use kind::{Operation, OperationApplyError, OperationKind};

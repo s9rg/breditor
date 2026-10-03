@@ -11,6 +11,13 @@ also contains deeper experimental Rust storage and replay research. The exact
 support boundary is in [Compatibility](docs/COMPATIBILITY.md), and release
 history is in the [Changelog](CHANGELOG.md).
 
+The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
+Experimental Rust work now includes guarded paragraph/heading conversion with
+exact selection preservation and undo/redo. It is behind
+`experimental-structural-properties`; the browser demo remains paragraph-only,
+and durable heading history needs a new codec generation. See
+[Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
+
 ## Run the browser demo
 
 The React demo loads the packaged Text Size Showcase profile, its canonical

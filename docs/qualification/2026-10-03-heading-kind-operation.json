@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "81a18eb1f0ffc463dabafe26a610cb97fe85f23c",
+  "packageVersion": "0.3.0-alpha.22",
+  "status": "Experimental Rust block-kind checkpoint verified; all 17 shipping release gates passed",
+  "scope": "Guarded direct-root paragraph/heading kind changes, selection-driven action, exact in-memory history; no browser heading support",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "enabledInShippedWasm": false,
+    "schema": "Separate sealed text-block profile with exact compiler-granted capability and required integer heading rank 1..6",
+    "operation": "TextBlockKindChange: nonempty contiguous root-child span, full source-node guards, one checked destination kind per source block",
+    "action": "SetTextBlockKindAction: configured no-input target, spatial selection span, excludes later block at zero-offset end",
+    "preserved": ["text nodes", "typed inline properties", "selection encoding and direction", "affinity", "pending formats"],
+    "history": "One atomic undo unit; exact per-block inverse; stale or rejected changes preserve state and redo; new accepted edits replace redo",
+    "validation": "Fragment validation plus full bounded result-tree validation; no incremental structural proof shortcut",
+    "actionState": "Active/mixed/inactive remains accurate when resource limits disable an action; uniform-target no-op is disabled",
+    "documentCodec": "Document V2 retains validated heading properties",
+    "durableOperationHistory": "Deferred: V1-V3 operation/history codecs reject the new operation, including either session history branch",
+    "checkpointTestBoundary": "Reconstruction from already-proved in-memory checkpoint parts, not a durable heading-session round trip"
+  },
+  "rustVerification": {
+    "focusedTestsPassed": 20,
+    "focusedCommand": "cargo test -p breditor-core --lib --all-features --locked text_block_kind -- --nocapture",
+    "propertyCases": 10000,
+    "propertySeed": 20261003,
+    "propertyCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --lib --all-features --locked randomized_block_kind_history_restores_exact_tree_and_selection",
+    "propertyScope": "Mixed original ranks, destination kind, block count, Unicode, forward/backward selection and exact inverse/redo",
+    "defaultUnitTestsPassed": 697,
+    "defaultCommand": "cargo test -p breditor-core --lib --no-default-features --locked",
+    "workspaceAndDocTestsPassed": 1616,
+    "workspaceFailed": 0,
+    "workspaceIgnored": 0,
+    "lint": "All-feature workspace/all-target Clippy and no-default-feature core library Clippy passed with warnings denied",
+    "defaultLintCorrection": "Initial default lint rejected an unnecessary Result when the structural feature was off; a narrowly feature-gated documented allowance preserves one fallible codec interface. Final default lint passed.",
+    "rustdoc": "All-feature workspace documentation passed with warnings denied",
+    "format": "Passed, including a final check after the lint annotation"
+  },
+  "releaseVerification": {
+    "command": "PATH=\"/Users/s/.cargo/bin:/Users/s/code/breditor/node_modules/.bin:$PATH\" npm run verify:release",
+    "exitCode": 0,
+    "all17GatesPassed": true,
+    "wasmTargetTestsPassed": 25,
+    "browserRuntimeUnitTestsPassed": 1440,
+    "referenceUnitTestsPassed": 57,
+    "demoUnitTestsPassed": 33,
+    "diagnosticUnitTestsPassed": 331,
+    "browserMatrix": {"passed": 165, "failed": 0, "retries": 0},
+    "demoMatrix": {"passed": 39, "failed": 0, "retries": 0},
+    "engines": ["Chromium", "Firefox", "WebKit"],
+    "wasmAbi": "227 signatures and generation 5 unchanged",
+    "packageConsumers": "Direct/path-aliased reproducibility, isolated tarball consumers and clean supported-root reference consumers passed",
+    "published": false
+  },
+  "sizeBytes": {
+    "defaultWasm": {"actual": 1609363, "maximum": 1610000},
+    "defaultDemoWasmGzip": {"actual": 451029, "maximum": 452000},
+    "defaultDemoJavascriptGzip": {"actual": 224953, "maximum": 225000},
+    "wasmTarball": {"actual": 522189, "maximum": 525000},
+    "budgetsRaised": false,
+    "note": "Shared compiler/codec refactoring changes default artifact bytes even with experimental structural code excluded"
+  },
+  "limitations": [
+    "No heading-aware text splice, Enter, delete, join or clipboard contract yet; existing paragraph-only operations reject the structural schema",
+    "No heading toolbar, browser renderer or Wasm profile exposure",
+    "No durable heading operation, transaction, commit, session checkpoint or local-log replay format",
+    "No list editing or list-wide numbering validation",
+    "Full result validation and complete source guards intentionally favor correctness over incremental performance",
+    "No fresh native Safari system-clipboard, native Chrome or iOS qualification in this checkpoint",
+    "Passing the browser matrix rechecks the targeted application compatibility fix; it does not establish a WebKit engine repair",
+    "Only 47 JavaScript gzip bytes and 637 Wasm bytes of shipping budget headroom remain"
+  ],
+  "evidence": [
+    {"path": "crates/breditor-core/src/operation/text_block_kind_change.rs", "sha256": "eb1c661f729da03f8ea79a4fd52ad883d3631f9cc9363b1edee855e9b9ff114f"},
+    {"path": "crates/breditor-core/src/operation/text_block_kind_change_tests.rs", "sha256": "f8d67b15cfa6517087e44afd676b6e018605cca870b647352bf86f04273abac5"},
+    {"path": "crates/breditor-core/src/action/builtins/set_text_block_kind.rs", "sha256": "ca315368ff1d0126f2a631dd64edf775b123779b11ebb4bd9b2d042eab767637"},
+    {"path": "crates/breditor-core/src/schema/text_block_profile.rs", "sha256": "57f6b13fda6b15df2931d3c07141469696e62f93579c25387cd08bb46e12e8ed"},
+    {"path": "/private/tmp/breditor-heading-release-20261003.log", "sha256": "395f8e4b26082e3d723f12cc6c96d378e2dec047170640a1cf16a01110b974c0"},
+    {"path": "/private/tmp/breditor-heading-default-20261003.log", "sha256": "eda5c8b854eae05b9f659612803d7094f633ec62dff77b8fbf75139145a255d1"},
+    {"path": "/private/tmp/breditor-heading-default-clippy-20261003.log", "sha256": "aef403364ca5b1127b8c635427a35f4ca279f5c16cae22d3c0deac6f90e15ae4"}
+  ]
+}

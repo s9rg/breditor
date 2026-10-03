@@ -309,6 +309,14 @@ pub(super) fn compile_base_text_profile(
     schema_id: SchemaId,
     extensions: &ExtensionSet,
 ) -> Result<CompiledSchema, SchemaCompilationError> {
+    compile(base_text_profile_spec(schema_id, extensions)?, CompilerLimits::default())
+        .map_err(|_| SchemaCompilationError::InternalInvariant)
+}
+
+fn base_text_profile_spec(
+    schema_id: SchemaId,
+    extensions: &ExtensionSet,
+) -> Result<SchemaSpec, SchemaCompilationError> {
     if schema_id.name().namespace() == "breditor" {
         return Err(SchemaCompilationError::ReservedSchemaName { name: schema_id.name().clone() });
     }
@@ -372,8 +380,16 @@ pub(super) fn compile_base_text_profile(
             property_contract,
         },
     ));
-    compile(spec, CompilerLimits::default()).map_err(|_| SchemaCompilationError::InternalInvariant)
+    Ok(spec)
 }
+
+#[cfg(feature = "experimental-structural-properties")]
+#[path = "text_block_profile.rs"]
+mod text_block_profile;
+#[cfg(feature = "experimental-structural-properties")]
+pub(super) use text_block_profile::{
+    compile_text_block_profile, supports_text_block_kind_operations,
+};
 
 fn supports_base_text_structure(definition: &CompiledSchemaDefinition) -> bool {
     let base = base_spec();

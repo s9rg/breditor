@@ -106,6 +106,10 @@ pub enum OperationRootChildSpanRole {
 #[non_exhaustive]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum OperationValidationError {
+    /// An experimental block-kind change failed context-static validation.
+    #[cfg(feature = "experimental-structural-properties")]
+    #[error(transparent)]
+    TextBlockKindChange(#[from] super::TextBlockKindChangeError),
     /// A base-text operation has no semantics under this compiled schema.
     #[error("{kind:?} does not support schema {schema}")]
     UnsupportedSchema {
@@ -537,6 +541,10 @@ pub(crate) fn validate_operation(
     context: &EditorContext,
 ) -> Result<(), OperationValidationError> {
     match operation {
+        #[cfg(feature = "experimental-structural-properties")]
+        Operation::TextBlockKindChange(operation) => {
+            operation.validate(context).map_err(Into::into)
+        }
         Operation::TextSplice(operation) => validate_text_splice(operation, context),
         Operation::ParagraphSplit(operation) => validate_paragraph_split(operation, context),
         Operation::ParagraphJoin(operation) => validate_paragraph_join(operation, context),

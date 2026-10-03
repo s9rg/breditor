@@ -122,7 +122,12 @@ impl OperationJsonCodecV3 {
         operation.validate(&self.context)?;
         let record = OperationRecordEnvelopeV3 {
             binding: self.context.schema().durable_binding(),
-            operation: encode_operation_payload_v2(operation),
+            operation: encode_operation_payload_v2(operation).map_err(|kind| {
+                crate::operation::OperationValidationError::UnsupportedSchema {
+                    kind,
+                    schema: self.context.schema().id().clone(),
+                }
+            })?,
         };
         let maximum = self.context.limits().max_json_bytes();
         let mut byte_counter = JsonByteCounter::new(maximum);

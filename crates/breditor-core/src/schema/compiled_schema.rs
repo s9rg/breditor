@@ -27,7 +27,14 @@ pub struct CompiledSchema {
     supports_text_splice_operations: bool,
     supports_paragraph_structure_operations: bool,
     supports_base_text_operations: bool,
+    #[cfg(feature = "experimental-structural-properties")]
+    text_block_kind_capability: Option<TextBlockKindCapability>,
 }
+
+/// Presence records the compiler's exact experimental structural-language proof.
+#[cfg(feature = "experimental-structural-properties")]
+#[derive(Clone)]
+struct TextBlockKindCapability;
 
 /// Cloneable crate-private handle to one process-local schema-proof allocation.
 ///
@@ -85,6 +92,25 @@ impl CompiledSchema {
         compile_base_text_profile(schema_id, extensions)
     }
 
+    /// Compiles the experimental direct-root paragraph/heading language.
+    ///
+    /// This feature-gated Rust research surface admits only block-kind changes;
+    /// existing paragraph-only editing operations reject it. It is not a
+    /// browser profile. Existing V1–V3 operation/history codecs cannot encode
+    /// its new operations. Inline-format extensions retain their exact contracts.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SchemaCompilationError`] for the same reserved identities,
+    /// duplicate formats and aggregate limits as the base-text compiler.
+    #[cfg(feature = "experimental-structural-properties")]
+    pub fn try_compile_text_block_profile(
+        schema_id: SchemaId,
+        extensions: &ExtensionSet,
+    ) -> Result<Self, SchemaCompilationError> {
+        super::compiler::compile_text_block_profile(schema_id, extensions)
+    }
+
     /// Returns a test-only schema with the base selector and different content meaning.
     ///
     /// This narrow factory exists only so crate tests can prove that a matching
@@ -102,6 +128,10 @@ impl CompiledSchema {
         let supports_paragraph_structure_operations =
             supports_paragraph_structure_operations(&definition);
         let supports_base_text_operations = supports_base_text_operations(&definition);
+        #[cfg(feature = "experimental-structural-properties")]
+        let text_block_kind_capability =
+            super::compiler::supports_text_block_kind_operations(&definition)
+                .then_some(TextBlockKindCapability);
         Self {
             definition,
             fingerprint,
@@ -109,6 +139,8 @@ impl CompiledSchema {
             supports_text_splice_operations,
             supports_paragraph_structure_operations,
             supports_base_text_operations,
+            #[cfg(feature = "experimental-structural-properties")]
+            text_block_kind_capability,
         }
     }
 
@@ -282,6 +314,11 @@ impl CompiledSchema {
     /// capability queries above.
     pub(crate) const fn supports_base_text_operations(&self) -> bool {
         self.supports_base_text_operations
+    }
+
+    #[cfg(feature = "experimental-structural-properties")]
+    pub(crate) const fn supports_text_block_kind_operations(&self) -> bool {
+        self.text_block_kind_capability.is_some()
     }
 }
 
