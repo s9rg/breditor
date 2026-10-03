@@ -15,6 +15,18 @@ formats are unchanged. This removes that count-return path, not the separately
 observed WebKit numeric-comparison faults. See the
 [format-count evidence](qualification/2026-10-03-projection-count-transport.json).
 
+Selection token admission now uses private integer codes from a strict host
+string match, instead of importing one Boolean per token comparison. Public
+callers still supply exact primitive strings; numeric codes, boxed strings and
+coercible objects are rejected. Rust validates the point-kind/affinity domain
+before constructing the point. This avoids token copies into Wasm and preserves
+the complete ABI-5 declaration, including allocator exports. The default
+`selection-token-codes` feature is enabled in ordinary builds; diagnostic builds
+explicitly disable defaults to retain the old Boolean path as a comparison.
+This is a targeted transport mitigation, not a claim that WebKit's separately
+observed numeric-comparison faults are fixed. See the
+[selection-token evidence](qualification/2026-10-03-selection-token-codes.json).
+
 Status: the unpublished `0.3.0-alpha.22` source checkpoint uses ABI generation
 `5` for the exact matching browser/Wasm pair. It retains the explicitly
 selected typed-profile and Session-V3 path introduced in alpha.3 while

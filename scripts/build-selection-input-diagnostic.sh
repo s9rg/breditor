@@ -8,6 +8,10 @@ if [[ "${1:-}" == "--rust-tokens" ]]; then
   task_variant="selection-rust-token-candidate"
   task_features+=",candidate-rust-selection-tokens"
   shift
+elif [[ "${1:-}" == "--token-codes" ]]; then
+  task_variant="selection-coded-token-candidate"
+  task_features+=",selection-token-codes"
+  shift
 fi
 if [[ "${1:-}" == "--format-count" ]]; then
   task_variant+="-count"
@@ -21,14 +25,14 @@ if [[ "${1:-}" == "--without-input-observer" ]]; then
   shift
 fi
 if [[ "$#" != 0 ]]; then
-  printf 'usage: bash scripts/build-selection-input-diagnostic.sh [--rust-tokens] [--format-count] [--without-input-observer]\n' >&2
+  printf 'usage: bash scripts/build-selection-input-diagnostic.sh [--rust-tokens|--token-codes] [--format-count] [--without-input-observer]\n' >&2
   exit 1
 fi
 task_output="${task_root}/target/${task_variant}/pkg"
 [[ "$(wasm-bindgen --version)" == "wasm-bindgen 0.2.127" ]]
 mkdir -p -- "${task_output}"
 CARGO_TARGET_DIR="${task_root}/target/selection-input-diagnostic/cargo" \
-  cargo build --manifest-path "${task_root}/Cargo.toml" --locked --package breditor-wasm \
+  cargo build --manifest-path "${task_root}/Cargo.toml" --locked --package breditor-wasm --no-default-features \
   --profile wasm-release --target wasm32-unknown-unknown --features "${task_features}"
 wasm-bindgen "${task_root}/target/selection-input-diagnostic/cargo/wasm32-unknown-unknown/wasm-release/breditor_wasm.wasm" \
   --target web --typescript --remove-name-section --remove-producers-section \

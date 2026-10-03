@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "d7ad312",
+  "status": "ABI-compatible integer token transport enabled by default; broader WebKit qualification remains open",
+  "retries": 0,
+  "maxFailures": 1,
+  "rationale": "Remove the JS Boolean-to-Wasm selection-comparison handoff captured earlier, without Rust string copies or allocator export changes. Exact engine fault origin is not established.",
+  "inputContract": {
+    "publicTokens": ["text", "children", "before", "after"],
+    "privateHostCodes": { "invalid": 0, "text": 1, "children": 2, "before": 3, "after": 4 },
+    "numericCodesAcceptedFromCallers": false,
+    "rustChecksFieldDomain": true,
+    "coercionOrObjectPropertyAccess": false,
+    "tokenStringCopyIntoWasm": false,
+    "observationAndCoordinateChecksChanged": false
+  },
+  "previousProduction": {
+    "backup": "/tmp/breditor-selection-code-baseline.VXKTLM/dist",
+    "jsSha256": "ab34c8bb34d89347487622f3044eb7e4012a183013a10e8946c4aad152d4169d",
+    "wasmSha256": "9b67411ffd1d0cea4c6009ef49ae26945ed0146167fed5e12a12f5d57b1b0899"
+  },
+  "initialCandidate": {
+    "output": "target/playwright-coded-token-stress-20261003",
+    "jsSha256": "ce762e9873eb41b3d85e503a68f4fc7a98df8c0a4083058bdcc37c0504a65ce3",
+    "wasmSha256": "23356fb419b6dd21cb48a76ff75d2c8384da014b05c6f42048222bfa55fb6d50",
+    "passed": 120,
+    "historyCases": 60,
+    "rawSelectionCases": 60,
+    "rustObserver": false,
+    "historyJsAdapterInstrumentation": true,
+    "logSha256": "48b45514f40f3eda78a9d2fdf6209541deda93cfa488355d818a17ca59212a97",
+    "crossBrowserControlsPassed": 9,
+    "controlLogSha256": "3f303e16815317d960bf42e127f0e25720d8a8997a28e529cfd564067a12a378"
+  },
+  "packageBuildCorrection": {
+    "initialFailure": "strict five-file allowlist rejected the leftover inline-JS source snippet",
+    "initialFailureLogSha256": "9b84551075f53266a0f15b961ccf314b5119d6aec7e0ce734f8b82f610bf82b6",
+    "oldDistributionPreservedOnFailure": true,
+    "repair": "Separate temporary wasm-bindgen inputs from distribution staging; bundle the inline helper, copy only three reviewed companion artifacts, and retain the exact four-artifact plus notice allowlist.",
+    "successfulBuildLogSha256": "1f33e50fd6039a669bc4f9f1481333c691260f8a88dd194180ee48831a753eb2"
+  },
+  "production": {
+    "jsSha256": "ce762e9873eb41b3d85e503a68f4fc7a98df8c0a4083058bdcc37c0504a65ce3",
+    "wasmSha256": "579f5bc83fd69d364bfd4dbaf12a8f4389b0ed6af93bf16f0931f28d98225109",
+    "wasmBytes": 1608322,
+    "output": "target/playwright-coded-token-production-20261003",
+    "passed": 150,
+    "failed": 0,
+    "durationReported": "2.3m",
+    "historyCases": 60,
+    "historyCommands": 114000,
+    "rawSelectionCases": 60,
+    "rawSelectionCommands": 480000,
+    "invalidInputCases": 30,
+    "rejectionsPerCase": 80,
+    "conversionCallsPerCase": 0,
+    "wasmMemoryGrowthPerCase": 0,
+    "instrumentation": "none; ordinary production package and adapters",
+    "logSha256": "f7dd56dc251411e815e3d2558353ee88d3cf9d3f3e014f58fe667d71fc993a79"
+  },
+  "productionChromiumFirefox": {
+    "output": "target/playwright-coded-token-production-controls-20261003",
+    "passed": 10,
+    "logSha256": "3a7293fcf2c5f0a008058a99f0eed9e639fe84da471bd5d422fabd25e624c82d"
+  },
+  "productionClipboard": {
+    "output": "target/playwright-coded-token-clipboard-20261003",
+    "passed": 42,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "scope": "real DOM selections; controlled clipboard events; backward/forward boundaries, rejected paste, delayed echoes, formatted history, Link history and caret liveness",
+    "systemClipboardUsed": false,
+    "logSha256": "ac8df8c7573bdbdffd5ed949af31daac523ec1eb55f3d48ab4b072935a40fea3"
+  },
+  "projectionRegression": {
+    "output": "target/playwright-coded-token-projection-20261003",
+    "passed": 18,
+    "countChecks": 1980000,
+    "browsers": ["chromium", "firefox", "webkit"],
+    "oracles": ["strict", "same-value", "decimal"],
+    "logSha256": "7c1d633954096e667ed51dabdd0eedb6c5b68129249e57f66e78a7d8cfb4250a"
+  },
+  "validation": {
+    "nativeTests": 67,
+    "wasmTests": 25,
+    "diagnosticTests": 303,
+    "nativeAndWasmStrictClippy": "passed",
+    "alternateRustStringCandidateClippy": "passed",
+    "rustFormatting": "passed",
+    "browserTypecheck": "passed",
+    "generatedBindingRuntime": "passed",
+    "fullFrozenDeclaration": "byte-identical",
+    "abiVersion": 5,
+    "durableFormatsChanged": false,
+    "workspaceBuild": "passed",
+    "directAndPathAliasedPackageReproducibility": "passed",
+    "freshReleaseSizeBudgets": "passed",
+    "referenceApplicationGzipBytes": 224974,
+    "releaseLogSha256": "bced4c6dac35b5cd18c615af9d60c60861d033f7cd292a0fb64b93c0f6a3ab10",
+    "logSha256": "1fd20740c1cdeae1dcca7f3e16a97abae5bcf64c5093cb938f9fe44478787507",
+    "webkitFullyQualified": false
+  },
+  "limits": [
+    "The prior unchanged baseline also passed 80 comparison cases; clean batches alone do not prove elimination of an intermittent fault.",
+    "This removes the captured Boolean admission path, not the independent numeric comparison failures or the underlying engine defect.",
+    "Playwright WebKit and synthetic clipboard tests are not new native Safari or iOS/system clipboard qualification."
+  ]
+}

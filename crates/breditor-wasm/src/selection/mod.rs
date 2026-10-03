@@ -7,7 +7,9 @@ mod scalar_input;
 mod set_range_selection;
 mod snapshot;
 mod snapshot_result;
-#[cfg(feature = "candidate-rust-selection-tokens")]
+#[cfg(feature = "selection-token-codes")]
+mod token_code;
+#[cfg(all(feature = "candidate-rust-selection-tokens", not(feature = "selection-token-codes")))]
 mod token_input;
 
 pub use snapshot::BreditorSelection;

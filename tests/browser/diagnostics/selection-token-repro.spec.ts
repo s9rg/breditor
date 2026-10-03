@@ -8,7 +8,7 @@ test("raw selection tokens reject invalid inputs without large copies", async ({
     return probe.probeSelectionTokenRejections();
   });
   await testInfo.attach("selection-token-rejections.json", { body: JSON.stringify(result), contentType: "application/json" });
-  expect(result.rejections).toBe(56);
+  expect(result.rejections).toBe(80);
   expect(result.conversionCalls).toBe(0);
   // Allow one allocator page for small error/checkpoint results, never the
   // 16 MiB copy that the unbounded candidate performed before rejecting.

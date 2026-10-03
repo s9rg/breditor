@@ -3398,3 +3398,71 @@ binding runtime contract all pass. Production files and ABI 5 remain unchanged.
 The [qualification record](qualification/2026-10-03-bounded-selection-tokens.json)
 retains artifact hashes, allocation observations and both clean comparison
 batches. WebKit is still unqualified; no failure was retried or hidden.
+
+### 2026-10-03: ABI-compatible integer token transport enabled by default
+
+Resolved the previous candidate's compatibility gate without changing the
+frozen ABI declaration. Selection admission now uses a private integer token
+code rather than copying a string into Rust or importing one Boolean for each
+comparison. A strict JavaScript switch maps the four exact primitive strings;
+Rust admits only point-kind codes in kind fields and affinity codes in affinity
+fields. The public method still accepts strings, not codes. Boxed strings,
+proxies, numeric values and conversion objects remain invalid. Observation
+ordering, coordinate validation, errors and atomic mutation checks are unchanged.
+
+The default `selection-token-codes` feature enables this path in ordinary
+packages. Local comparison builds use `--no-default-features` explicitly, so
+the diagnostic build's `js` mode still exercises the original Boolean path.
+`--token-codes` / `BREDITOR_SELECTION_TOKENS=codes` selects the integer path;
+the separate bounded Rust-string experiment remains available but is not used
+by the default package.
+
+The initial logger-free candidate passes **120 repeated WebKit cases** and
+**9 cross-browser controls**. Its complete generated declaration matches ABI 5
+byte-for-byte. The first ordinary package build correctly rejects an extra
+wasm-bindgen inline-JavaScript source snippet, preserving the previous
+distribution. The build now generates raw bindings in a separate temporary
+input directory, bundles the helper into the single JS entry, and stages only
+the three reviewed companion artifacts. The strict four-artifact plus Rust
+notice allowlist and byte-for-byte declaration check remain intact.
+
+The resulting **production package**, with no diagnostic transforms, passes:
+
+- **150 WebKit cases:** 60 history cases (114,000 commands), 60 raw-selection
+  cases (480,000 commands), and 30 invalid-input cases. Rejection coverage now
+  includes private numeric codes and wrong-field tokens: 80 calls per case,
+  with unchanged checkpoints and a subsequent successful valid command.
+- **10 matching Chromium/Firefox controls**.
+- **42 clipboard/caret/history integration cases across all three engines**,
+  including backwards boundaries, rejected paste, echo timing and Link history.
+  These use real DOM selections and controlled events, not the system clipboard.
+- **18 fixed-projection regressions**, all three comparison oracles and both
+  snapshot lifetimes in all three engines: 1,980,000 count checks.
+
+Rust formatting, 67 native tests, 25 Wasm tests, strict linting (including the
+retained Rust-string comparison mode), 303 diagnostic tests, browser
+typechecking, generated-glue runtime tests and the frozen ABI comparison pass.
+The production Wasm is 1,608,322 bytes. No durable format or ABI generation is
+changed. No browser failure was retried or suppressed in these batches.
+
+Reproduce the uninstrumented repeated production batch after an ordinary build:
+
+```sh
+playwright test -c playwright.impact-contract.config.ts \
+  --grep 'boundary-only|raw selection tokens' --project=webkit \
+  --repeat-each=30 --trace=on --output=target/playwright-token-production-local
+```
+
+This is a **targeted production mitigation**, not a claim that the underlying
+WebKit fault is repaired. The original Boolean handoff is no longer used for
+selection tokens. The earlier unrelated numeric-comparison contradictions
+remain open, and the prior baseline's 80 passing cases remain part of the
+record. No new native Safari/iOS qualification is implied. Artifact identities,
+the packaging failure and all completed batches are retained in the
+[integer-token evidence](qualification/2026-10-03-selection-token-codes.json).
+
+Final workspace build, direct/path-aliased package reproducibility, declaration
+and runtime integrity checks also pass. All freshly rebuilt release size
+budgets pass, including the reference app's 224,974-byte gzipped JavaScript
+(225,000-byte limit). The final distribution hashes match the exact production
+artifact used in the browser batches above.

@@ -12,6 +12,9 @@ publish = false
 crate-type = ["cdylib", "rlib"]
 
 [features]
+default = ["selection-token-codes"]
+# Production token transport. Opt out only for the local legacy comparison.
+selection-token-codes = []
 # Local investigation only. Default/release packaging never enables this.
 diagnostic-selection-inputs = []
 diagnostic-projection-format-count = []

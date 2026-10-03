@@ -7,12 +7,14 @@ import { instrumentWasmEquality } from "./tests/browser/diagnostics/wasm_equalit
 import { instrumentWasmFormatCount } from "./tests/browser/diagnostics/wasm_format_count_instrumentation";
 
 const selectionTokens = process.env["BREDITOR_SELECTION_TOKENS"] ?? "js";
-if (selectionTokens !== "js" && selectionTokens !== "rust") throw new Error("Invalid selection token mode");
+if (selectionTokens !== "js" && selectionTokens !== "rust" && selectionTokens !== "codes") throw new Error("Invalid selection token mode");
 const rustFormatCount = process.env["BREDITOR_RUST_FORMAT_COUNT"] ?? "off";
 if (rustFormatCount !== "off" && rustFormatCount !== "on") throw new Error("Invalid Rust format-count observer mode");
 const inputObserver = process.env["BREDITOR_RUST_SELECTION_INPUTS"] ?? "on";
 if (inputObserver !== "off" && inputObserver !== "on") throw new Error("Invalid Rust selection observer mode");
-const variant = (selectionTokens === "rust" ? "selection-rust-token-candidate" : "selection-input-diagnostic") +
+const tokenVariant = selectionTokens === "rust" ? "selection-rust-token-candidate" :
+  selectionTokens === "codes" ? "selection-coded-token-candidate" : "selection-input-diagnostic";
+const variant = tokenVariant +
   (rustFormatCount === "on" ? "-count" : "") + (inputObserver === "off" ? "-unobserved" : "");
 const diagnosticPath = fileURLToPath(new URL(`./target/${variant}/pkg/breditor_wasm.js`, import.meta.url));
 const recorderPath = fileURLToPath(new URL("./tests/browser/diagnostics/wasm_equality_recorder.ts", import.meta.url));

@@ -42,7 +42,7 @@ export async function probeSelectionTokenRejections() {
     [Symbol.toPrimitive]() { conversionCalls++; throw new Error("unexpected conversion"); } };
   const revoked = Proxy.revocable({}, {});
   revoked.revoke();
-  const invalid = [undefined, null, false, 0, 0n, Symbol("text"), new String("text"), trapped, revoked.proxy,
+  const invalid = [undefined, null, false, 0, 1, 2, 3, 4, 0n, Symbol("text"), new String("text"), trapped, revoked.proxy,
     "text\0", "childrenx", "before\0", "\ud800", "x".repeat(16_777_216)];
   type SetRange = typeof engine.setRangeSelection;
   const invoke = engine.setRangeSelection.bind(engine) as (expected: Parameters<SetRange>[0],
@@ -52,7 +52,8 @@ export async function probeSelectionTokenRejections() {
     const before = checkpoint();
     const memoryBefore = exports.memory.buffer.byteLength;
     for (const slot of [0, 3, 4, 7]) {
-      for (const [index, value] of invalid.entries()) {
+      const wrongDomain = slot === 0 || slot === 4 ? ["before", "after"] : ["text", "children"];
+      for (const [index, value] of [...invalid, ...wrongDomain].entries()) {
         const inputs: unknown[] = ["text", 2, 0, "after", "text", 2, 0, "after"];
         inputs[slot] = value;
         const command = invoke(observation, ...inputs);

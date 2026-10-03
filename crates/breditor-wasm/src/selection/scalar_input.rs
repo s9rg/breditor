@@ -51,7 +51,18 @@ pub(super) fn point_from_js_scalars(
 }
 
 fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorError> {
-    #[cfg(feature = "candidate-rust-selection-tokens")]
+    #[cfg(feature = "selection-token-codes")]
+    {
+        match super::token_code::read(value) {
+            super::token_code::TEXT => Ok(SelectionPointKind::Text),
+            super::token_code::CHILDREN => Ok(SelectionPointKind::Children),
+            _ => Err(invalid_point_kind()),
+        }
+    }
+    #[cfg(all(
+        feature = "candidate-rust-selection-tokens",
+        not(feature = "selection-token-codes")
+    ))]
     {
         // Keep the closed-token comparison inside Wasm instead of importing a
         // JavaScript Boolean for each equality. The transport rejects boxed
@@ -62,7 +73,10 @@ fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorEr
             _ => Err(invalid_point_kind()),
         }
     }
-    #[cfg(not(feature = "candidate-rust-selection-tokens"))]
+    #[cfg(not(any(
+        feature = "candidate-rust-selection-tokens",
+        feature = "selection-token-codes"
+    )))]
     if value == "text" {
         Ok(SelectionPointKind::Text)
     } else if value == "children" {
@@ -73,7 +87,18 @@ fn parse_js_point_kind(value: &JsValue) -> Result<SelectionPointKind, BreditorEr
 }
 
 fn parse_js_affinity(value: &JsValue) -> Result<Affinity, BreditorError> {
-    #[cfg(feature = "candidate-rust-selection-tokens")]
+    #[cfg(feature = "selection-token-codes")]
+    {
+        match super::token_code::read(value) {
+            super::token_code::BEFORE => Ok(Affinity::Before),
+            super::token_code::AFTER => Ok(Affinity::After),
+            _ => Err(invalid_affinity()),
+        }
+    }
+    #[cfg(all(
+        feature = "candidate-rust-selection-tokens",
+        not(feature = "selection-token-codes")
+    ))]
     {
         match super::token_input::read(value).as_deref() {
             Some("before") => Ok(Affinity::Before),
@@ -81,7 +106,10 @@ fn parse_js_affinity(value: &JsValue) -> Result<Affinity, BreditorError> {
             _ => Err(invalid_affinity()),
         }
     }
-    #[cfg(not(feature = "candidate-rust-selection-tokens"))]
+    #[cfg(not(any(
+        feature = "candidate-rust-selection-tokens",
+        feature = "selection-token-codes"
+    )))]
     if value == "before" {
         Ok(Affinity::Before)
     } else if value == "after" {

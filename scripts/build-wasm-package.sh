@@ -36,6 +36,7 @@ readonly wasm_path_checker="${repository_root}/scripts/wasm-path-leaks.mjs"
 readonly publication_lock_root="${repository_root}/target"
 readonly publication_lock_directory="${publication_lock_root}/breditor-wasm-dist.lock"
 generated_directory=""
+binding_directory=""
 publication_lock_acquired=0
 
 fail() {
@@ -53,6 +54,16 @@ readonly cargo_target_logical_directory
 readonly cargo_target_physical_directory
 
 cleanup() {
+  if [[ -n "${binding_directory}" ]]; then
+    case "${binding_directory}" in
+      "${cargo_target_directory}"/wasm-bindgen.*)
+        rm -rf -- "${binding_directory}"
+        ;;
+      *)
+        printf 'build-wasm-package: refusing to remove unexpected binding path: %s\n' "${binding_directory}" >&2
+        ;;
+    esac
+  fi
   if [[ -n "${generated_directory}" ]]; then
     case "${generated_directory}" in
       "${cargo_target_directory}"/wasm-package.*)
@@ -195,16 +206,21 @@ readonly compiled_wasm="${cargo_target_physical_directory}/wasm32-unknown-unknow
   fail "Cargo did not produce the expected module: ${compiled_wasm}"
 
 printf 'build-wasm-package: generating package with %s\n' "${expected_version_output}"
+# Keep bundler inputs (including inline-JS snippets) separate from the strict
+# distribution allowlist. Only the bundled entry and three reviewed artifacts
+# enter generated_directory; raw snippets are cleaned with this temporary input.
+binding_directory="$(mktemp -d "${cargo_target_directory}/wasm-bindgen.XXXXXX")" ||
+  fail "could not create the temporary binding input directory"
 "${wasm_bindgen_executable}" "${compiled_wasm}" \
   --target web \
   --typescript \
   --remove-name-section \
   --remove-producers-section \
-  --out-dir "${generated_directory}" \
+  --out-dir "${binding_directory}" \
   --out-name breditor_wasm
 
-readonly generated_javascript="${generated_directory}/breditor_wasm.js"
-readonly minified_javascript="${generated_directory}/breditor_wasm.min.js"
+readonly generated_javascript="${binding_directory}/breditor_wasm.js"
+readonly minified_javascript="${generated_directory}/breditor_wasm.js"
 [[ -f "${generated_javascript}" ]] ||
   fail "wasm-bindgen did not produce breditor_wasm.js"
 
@@ -218,7 +234,10 @@ printf 'build-wasm-package: minifying JavaScript glue with %s\n' "${required_rol
   --logLevel silent >/dev/null
 [[ -f "${minified_javascript}" ]] ||
   fail "Rolldown did not produce minified JavaScript glue"
-mv -- "${minified_javascript}" "${generated_javascript}"
+for generated_name in breditor_wasm.d.ts breditor_wasm_bg.wasm breditor_wasm_bg.wasm.d.ts
+do
+  cp -- "${binding_directory}/${generated_name}" "${generated_directory}/${generated_name}"
+done
 
 for generated_name in \
   breditor_wasm.d.ts \
