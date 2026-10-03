@@ -1,0 +1,132 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "e19b34299ac3fa8ea2ba71f630ea4e94edac9502",
+  "status": "upper-bound-failure-reproduced-bit-guard-candidate-passes-bounded-batch-not-shipping",
+  "productionCodeChanged": false,
+  "productionArtifacts": {
+    "javascriptSha256": "ce762e9873eb41b3d85e503a68f4fc7a98df8c0a4083058bdcc37c0504a65ce3",
+    "wasmSha256": "579f5bc83fd69d364bfd4dbaf12a8f4389b0ed6af93bf16f0931f28d98225109"
+  },
+  "runtimeInventory": {
+    "os": "macOS 26.6.2 (25G83)",
+    "architecture": "arm64",
+    "playwright": "1.62.1",
+    "configuredWebkitRevision": "2336",
+    "configuredBrowserVersion": "26.5",
+    "adjacentJavaScriptCoreSha256": "7f5f6858e7c990f616850c129757548483f56041f9cc7acff2771581ecfa903d",
+    "matchesEarlierFailureRecord": "2026-09-26-captured-tiers-native.json",
+    "scope": "Configured installation and on-disk framework inventory, not native loaded-image attestation. No browser update explains the matching file identities; runtime conditions may still differ."
+  },
+  "fixedProjection": {
+    "command": "playwright test -c playwright.impact-contract.config.ts --grep 'fixed projection.*same-value' --project=webkit --repeat-each=30 --trace=on --output=target/playwright-post-token-samevalue-20261003",
+    "passed": 60,
+    "failed": 0,
+    "retries": 0,
+    "durationReported": "1.5m",
+    "retainedCases": 30,
+    "renewedCases": 30,
+    "totalCountChecks": 6600000,
+    "auditedResultAttachments": 60,
+    "instrumented": false,
+    "log": "/tmp/breditor-post-token-samevalue-20261003.log",
+    "logSha256": "426d2bf91b9696166d54aa5ceb7fcee04d872c078db8f529e170db80cf3ebbbf"
+  },
+  "preservedJavaScriptOnly": {
+    "command": "BREDITOR_NUMBER_VARIANT=js-cold-minimal BREDITOR_COMPARISON=captured playwright test -c playwright.comparison-capture.config.ts --project=webkit --repeat-each=20 --trace=on --output=target/playwright-post-token-js-comparison-20261003",
+    "passed": 20,
+    "failed": 0,
+    "retries": 0,
+    "durationReported": "3.0m",
+    "jscTier": "normal",
+    "iterationsPerCase": 10000,
+    "readsPerCase": 20000,
+    "wasmRequests": 0,
+    "originalModuleSha256": "bb0387bfa73e13eec77611ca9b8cfcb70cbbd51f8f99a18d066ca2ceb88f277b",
+    "executedModuleSha256": "5c3a807f10be6723bd4be5dfe3df758e81d64f144410993a17a48c45770fa855",
+    "auditedSourceAttachments": 20,
+    "rejectionAttachments": 0,
+    "log": "/tmp/breditor-post-token-js-comparison-20261003.log",
+    "logSha256": "ea75527c2c011114ac85eba8373bb42b2479a35782babc8c70d0d734173e0a2e"
+  },
+  "instrumentedAdapter": {
+    "command": "playwright test -c playwright.adapter-reduction.config.ts --grep boundary-only --project=webkit --repeat-each=60 --trace=on --output=target/playwright-post-token-adapter-20261003",
+    "passed": 120,
+    "failed": 0,
+    "retries": 0,
+    "durationReported": "3.0m",
+    "syncCases": 60,
+    "taskCases": 60,
+    "commands": 228000,
+    "targetSelectionChecks": 12000,
+    "auditedTraces": 120,
+    "allAdapterAndRustRecordersEmpty": true,
+    "allManifestsMatch": true,
+    "manifestSha1": "b07229196991198cdf675627b5c8b71073be3e36",
+    "selectionNumericOperandsEnabled": true,
+    "log": "/tmp/breditor-post-token-adapter-20261003.log",
+    "logSha256": "17bd3108d294a704ea1f22aa4f6e09c4187e1e7f956881804fafd8e89572b2c4"
+  },
+  "fullClipboardOriginalGuard": {
+    "command": "playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-boundary.spec.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --max-failures=1 --trace=on --output=target/playwright-post-token-clipboard-operands-20261003",
+    "environment": {
+      "BREDITOR_QUEUE_CAPTURE": "stop", "BREDITOR_QUEUE_ADAPTER_THROWS": "1",
+      "BREDITOR_QUEUE_SELECTION": "1", "BREDITOR_QUEUE_SELECTION_NUMERIC": "1",
+      "BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS": "1", "BREDITOR_QUEUE_DELIVERY": "1",
+      "BREDITOR_QUEUE_PROJECTION": "1", "BREDITOR_QUEUE_PROJECTION_VALIDATION": "1",
+      "BREDITOR_QUEUE_CLIPBOARD": "1"
+    },
+    "passed": 112, "failed": 1, "unrun": 187, "retries": 0, "durationReported": "1.4m",
+    "scenario": "crossParagraphHtml backward, repeat18, replacement and typing history: redo typing, revision17",
+    "firstThrow": "wasm_command_adapter:throw:1321",
+    "point": { "kind": "text", "nodeIndex": 6, "offset": 4, "affinity": "before" },
+    "originalOperand": { "stage": "wasm_selection_adapter:numeric:265:operand:2",
+      "expression": "value <= 4_294_967_295", "result": false,
+      "capturedValue": 6, "capturedBits": "4018000000000000",
+      "laterRechecks": { "safeInteger": true, "nonnegative": true, "withinU32": true } },
+    "log": "/tmp/breditor-post-token-clipboard-operands-20261003.log",
+    "logSha256": "8fcf3972e7c722836a6544e7f0f14d120514c5f642117323d8ed8fe43c5b042d",
+    "trace": "target/playwright-post-token-clipboard-operands-20261003/clipboard-boundary-clipboa-d92cc-ragraphs-and-atomic-history-webkit-repeat18/trace.zip",
+    "traceSha256": "c373749ed7dce6ba7c45954a9097de72a218e343c9ec1aca45ef23a5a0c1700e",
+    "recorderSha1": "05fc0d45f8bb42d51cf0971566b872eb664fab7d",
+    "manifestSha1": "a878123446e712c477c5677634f1558a99755c80"
+  },
+  "diagnosticBitGuard": {
+    "command": "playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-boundary.spec.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --max-failures=1 --trace=on --output=target/playwright-selection-u32-bits-20261003",
+    "environmentBase": "fullClipboardOriginalGuard.environment",
+    "environmentOverrides": { "BREDITOR_QUEUE_SELECTION_U32": "bits", "BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS": "0" },
+    "passed": 300, "failed": 0, "retries": 0, "durationReported": "3.6m",
+    "auditedTraces": 300,
+    "allQueueDeliveryAndProjectionFaultRecordersEmpty": true,
+    "allCandidateIdentitiesMatch": true,
+    "manifestSha1": "234260b8249dd748d2c85e75072227e5a89f90ca",
+    "originalSelectionSourceSha256": "ed95c5bd66703110b8b08b3d3fdea1e1a7493bd47781744b8eb31c9cacf726eb",
+    "candidateSelectionSourceSha256": "62ac2d396379f737bdd20c614033b49f74a47028c20c999e29d38ae4b6a2325d",
+    "log": "/tmp/breditor-selection-u32-bits-20261003.log",
+    "logSha256": "fe74363f3067f4cbcde5129c1c7873b810f058e08d518191ac7eef091f7ad042",
+    "crossBrowserControls": {
+      "command": "Same candidate environment and test grep, all three projects, one repetition, --output=target/playwright-selection-u32-bits-controls-20261003",
+      "passed": 18, "failed": 0, "retries": 0, "durationSeconds": 13.3,
+      "logSha256": "c9eadd0737edc0657ebcd7964932c8c98d68f962d657f550d289821da1bae6d4"
+    }
+  },
+  "verification": {
+    "diagnosticTests": { "passed": 319, "files": 59,
+      "logSha256": "ec59481662c9f4f8f3328ab9a5d93572d52e7fc5a1483f8194de704ba8de7dc4" },
+    "browserTypecheck": "passed",
+    "cleanHistoryAssertionControls": {
+      "command": "playwright test -c playwright.adapter-reduction.config.ts --grep boundary-only --trace=on --output=target/playwright-clean-history-evidence-control-20261003",
+      "passed": 6, "failed": 0, "retries": 0, "durationSeconds": 11.9,
+      "browsers": ["chromium", "firefox", "webkit"],
+      "logSha256": "8ddce7e20c3580e64e547b6600e0f6a51de20af46453ce820a501d3df2af9d07"
+    },
+    "productionArtifactHashesUnchangedAtEnd": true
+  },
+  "limits": [
+    "The historical JavaScript-only counterexamples are independent of the selection token transport. These passing batches do not invalidate them.",
+    "Instrumentation and post-workload assertions are diagnostics, not engine fixes. Ordinary production fixtures retain their existing workload.",
+    "The bit-guard candidate changes execution layout as well as number validation. A clean batch does not establish the underlying cause or guarantee a permanent workaround.",
+    "The candidate is not enabled in production. Logger-free stress, performance and package-size qualification remain before any promotion decision.",
+    "No native Safari, iOS, physical clipboard, or instruction-level qualification was performed.",
+    "Traces and logs are local artifacts. Only the evidence summary is committed."
+  ]
+}

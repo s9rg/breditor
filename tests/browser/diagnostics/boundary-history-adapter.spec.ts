@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { fileURLToPath } from "node:url";
+import { assertCleanBoundaryHistoryEvidence } from "./boundary_history_evidence";
 
 const rustReports = new WeakMap<object, string[]>();
 test.beforeEach(async ({ page }) => {
@@ -57,6 +58,11 @@ test.afterEach(async ({ page }, testInfo) => {
     const map = await page.request.get("/adapter-reduction-map.json");
     await testInfo.attach("adapter-reduction-map.json", { body: await map.body(), contentType: "application/json" });
     expect(map.ok(), "all three adapter diagnostic modules must be installed").toBe(true);
+    // Retain all evidence first. Deliberate invalid-input tests have
+    // expected rejections; only the valid history workload requires silence.
+    if (testInfo.attachments.some(attachment => attachment.name === "boundary-history-result.json")) {
+      assertCleanBoundaryHistoryEvidence(result, rustReports.get(page));
+    }
   } catch (error) {
     if (testInfo.status === testInfo.expectedStatus) throw error;
   }

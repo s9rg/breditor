@@ -8,6 +8,7 @@ import { instrumentDeliveryFaults } from "./tests/browser/diagnostics/delivery_f
 import { instrumentLinkFaults } from "./tests/browser/diagnostics/link_fault_instrumentation";
 import { instrumentClipboardRoutes } from "./tests/browser/diagnostics/clipboard_route_instrumentation";
 import { instrumentProjectionValidation } from "./tests/browser/diagnostics/projection_validation_instrumentation";
+import { replaceSelectionU32WithBits } from "./tests/browser/diagnostics/selection_u32_bits_candidate";
 
 const recorder = fileURLToPath(new URL("./tests/browser/diagnostics/queue_fault_recorder.ts", import.meta.url));
 const adapterThrowsSetting = process.env["BREDITOR_QUEUE_ADAPTER_THROWS"] ?? "0";
@@ -30,6 +31,11 @@ const selectionOperandsSetting = process.env["BREDITOR_QUEUE_SELECTION_NUMERIC_O
 if (selectionOperandsSetting !== "0" && selectionOperandsSetting !== "1") throw new Error("BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS must be 0 or 1");
 const selectionOperandsEnabled = selectionOperandsSetting === "1";
 if (selectionOperandsEnabled && !selectionNumericEnabled) throw new Error("Selection operand capture requires BREDITOR_QUEUE_SELECTION_NUMERIC=1");
+const selectionU32 = process.env["BREDITOR_QUEUE_SELECTION_U32"] ?? "original";
+if (selectionU32 !== "original" && selectionU32 !== "bits") throw new Error("BREDITOR_QUEUE_SELECTION_U32 must be original or bits");
+if (selectionU32 === "bits" && (!selectionEnabled || selectionOperandsEnabled)) {
+  throw new Error("Selection bits candidate requires selection capture and disables original operand capture");
+}
 const validationSetting = process.env["BREDITOR_QUEUE_PROJECTION_VALIDATION"] ?? "0";
 if (validationSetting !== "0" && validationSetting !== "1") throw new Error("BREDITOR_QUEUE_PROJECTION_VALIDATION must be 0 or 1");
 const validationEnabled = validationSetting === "1";
@@ -93,10 +99,13 @@ const diagnostic: Plugin = {
     if (selectionEnabled && id.endsWith("/breditor-browser/dist/wasm_selection_adapter.js")) {
       // Numeric observation is a separate opt-in: it wraps predicate returns
       // and can affect optimization even though only false results are retained.
-      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: selectionNumericEnabled, numericOperands: selectionOperandsEnabled });
+      const originalSourceSha256 = createHash("sha256").update(code).digest("hex");
+      const input = selectionU32 === "bits" ? replaceSelectionU32WithBits(code) : code;
+      const output = instrumentLinkFaults(input, id, projectionRecorder, { numericPredicates: selectionNumericEnabled, numericOperands: selectionOperandsEnabled });
       if (output === null) throw new Error("Selection diagnostic module was not recognized");
       manifest.set("wasm_selection_adapter", { instrumented: true, rejectionSitesOnly: !selectionNumericEnabled,
-        numericPredicates: selectionNumericEnabled, numericOperands: selectionOperandsEnabled, sourceSha256: output.sourceSha256, sites: output.sites });
+        numericPredicates: selectionNumericEnabled, numericOperands: selectionOperandsEnabled, selectionU32,
+        originalSourceSha256, sourceSha256: output.sourceSha256, sites: output.sites });
       return { code: output.code, map: null };
     }
     const delivery = deliveryEnabled ? instrumentDeliveryFaults(code, id, deliveryRecorder) : null;

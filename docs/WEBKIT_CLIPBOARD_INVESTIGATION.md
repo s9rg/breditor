@@ -3466,3 +3466,58 @@ and runtime integrity checks also pass. All freshly rebuilt release size
 budgets pass, including the reference app's 224,974-byte gzipped JavaScript
 (225,000-byte limit). The final distribution hashes match the exact production
 artifact used in the browser batches above.
+
+### 2026-10-03: numeric upper-bound failure reproduced after token transport fix
+
+The ordinary integer-token production build first passes another **60 WebKit
+fixed-projection cases**, with 6,600,000 count checks. The preserved captured
+JavaScript-only comparison passes **20 cases**. Source attachments from all
+20 traces match the original and transformed hashes from the earlier failing
+reproduction. The configured WebKit revision is still 2336; the adjacent
+JavaScriptCore binary's SHA-256 also matches the earlier failure inventory.
+This is an on-disk inventory, not native loaded-image attestation.
+
+The instrumented, DOM-free history adapter passes **120 cases / 228,000
+commands**. All 120 saved traces were audited: exact workload counters, empty
+adapter and Rust fault recorders, and the same three-module manifest with
+selection operand capture enabled. The test now also requires empty recorders
+after a successful history workload; previously it attached them without this
+assertion. Deliberate invalid-input tests are excluded. Attachments are retained
+before assertions, and an existing primary test failure is not replaced.
+
+However, the full clipboard reproduction **fails again: 112 passed, one failed,
+187 unrun, zero retries**. Backward HTML paste followed by replacement/typing
+history faults on redo typing, revision 17, repeat 18. The original
+`value <= 4_294_967_295` operand returns false for captured node index **6**
+(`4018000000000000`). Later safe-integer, nonnegative and upper-bound checks
+all return true. The endpoint is `text,6,4,before`; the first command-adapter
+throw reports an invalid semantic selection. This confirms that the shipping
+token fix did not remove the independent numeric-validation symptom. It does
+not identify the exact native instruction responsible.
+
+An opt-in `BREDITOR_QUEUE_SELECTION_U32=bits` experiment replaces only the exact
+selection `isU32` body in the diagnostic server. It uses the number's IEEE-754
+sign, exponent and fractional bits instead of comparing the input double with
+an upper bound. Both zeros retain their existing acceptance; non-numbers are
+rejected without conversion. The default remains `original`, source drift
+fails closed, and the manifest records both original and candidate hashes.
+The original three-operand observer must be disabled for this different body;
+whole-return rejection capture remains available. Nothing in the shipping
+packages, Rust core or ABI is changed.
+
+Candidate unit checks cover exponent boundaries, 100,000 deterministic bit
+patterns, 10,000 distributed u32 integers and their fractional neighbors, and
+foreign inputs including revoked proxies. These tests establish sampled
+contract equivalence, not a browser-engine repair. The retained first-failure
+trace and all completed batches are described in the
+[post-token numeric evidence](qualification/2026-10-03-post-token-numeric-checks.json).
+
+The instrumented bit-guard candidate passes **300 WebKit clipboard cases**
+with zero retries. All 300 retained traces have matching candidate identities
+and empty queue, delivery and projection fault recorders. Another **18
+cross-browser clipboard controls** pass. The new clean-history assertion passes
+six adapter controls across Chromium, Firefox and WebKit; all **319 diagnostic
+tests** and browser typechecking pass. Production JS/Wasm hashes remain
+unchanged. This is a bounded candidate result: changing execution layout can
+mask an intermittent engine fault. Logger-free stress, performance and package
+size checks remain necessary before considering production adoption.
