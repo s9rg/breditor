@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("production projection adapters preserve Link history without a DOM owner", async ({ page }, testInfo) => {
-  await page.goto("/impact-contract.html");
+  await page.goto("/impact-contract/");
   const encoded = await page.evaluate(async () => {
     const url = "/impact_adapter_probe.ts";
     const probe = await import(url) as typeof import("../harness/impact_adapter_probe");

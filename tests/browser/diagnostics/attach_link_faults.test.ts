@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Page, TestInfo } from "@playwright/test";
-import { attachLinkFaults } from "./attach_link_faults";
+import { attachConfiguredLinkFaults, attachLinkFaults } from "./attach_link_faults";
 
 vi.mock("@playwright/test", async () => ({ expect: (await import("vitest")).expect }));
 afterEach(() => vi.unstubAllEnvs());
@@ -25,6 +25,24 @@ function fixture(status = "passed") {
 }
 
 describe("queue and delivery evidence attachments", () => {
+  it.each([undefined, "/repo/playwright.config.ts", "/repo/not-playwright.queue-diagnostics.config.ts"])(
+    "does not touch ordinary browser teardown for %s", async configFile => {
+      const f = fixture();
+      Object.assign(f.info.config, { configFile });
+      await attachConfiguredLinkFaults(f.page as unknown as Page, f.info as unknown as TestInfo);
+      expect(f.page.evaluate).not.toHaveBeenCalled();
+      expect(f.page.request.get).not.toHaveBeenCalled();
+      expect(f.info.attach).not.toHaveBeenCalled();
+    });
+
+  it.each(["/repo/playwright.queue-diagnostics.config.ts", "C:\\repo\\playwright.link-diagnostics.config.ts"])(
+    "captures evidence for the exact diagnostic configuration %s", async configFile => {
+      const f = fixture();
+      f.info.config.configFile = configFile;
+      await attachConfiguredLinkFaults(f.page as unknown as Page, f.info as unknown as TestInfo);
+      expect(f.info.attach.mock.calls.map(([name]) => name)).toEqual(["link-faults.json", "link-diagnostic-map.json"]);
+    });
+
   it("saves the recorder before requesting the map", async () => {
     const f = fixture();
     await f.run();

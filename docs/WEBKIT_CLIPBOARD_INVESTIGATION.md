@@ -2785,3 +2785,46 @@ validators, and full editor—but has not reproduced the prior fault outside
 the full-editor evidence. No production implementation was changed or fix
 claimed. Full commands and log hashes are in the
 [recovered-host validation record](qualification/2026-10-02-recovered-impact-validation.json).
+
+### Mixed workload: Redo Paste faults after expected text appears
+
+The broader instrumented WebKit workload reproduced another owner fault:
+**79 passed / 1 failed**, with no timeouts. In `clipboard none echoes`, repeat
+2, cycle 0, Redo Paste faulted the owner with `toolbarDispatchFailed`. The
+queue recorded an executor exception; the projection, child, required-property
+and impact rejection recorders were all empty. Copy, Cut and Paste had each
+completed normally. The test had already checked the expected DOM text before
+its liveness assertion failed, so selection restoration or cleanup after
+rendering is worth investigating. That is a hypothesis, not a root cause.
+
+The stop-only observer cannot preserve the original exception. Repeating the
+same 80-case workload with the existing catch observer passed all cases. This
+does not close the fault or establish that the two observers are equivalent.
+Another **60 focused catch-observer repetitions** and **30 focused deep-Link
+diagnostic repetitions** passed. The latter includes selection/command-adapter
+rejection sites but also changes hot numeric predicates. Both focused batches
+exclude the seven clipboard-boundary cases that preceded the mixed-run failure;
+they cannot rule out an effect from the preceding workload.
+A subsequent **160-case catch-observer batch** restored that seven-case prefix
+before the no-echo scenario, twenty times, and passed. The new evidence hooks
+also add after-test browser/map calls compared with the captured failing batch;
+neither this result nor the other passes isolates observer effects.
+
+This investigation also reproduced and fixed an evidence gap: two of the five
+mixed-workload suites did not attach the installed recorder and source map.
+Their new awaited hooks run only for exact diagnostic configurations, and the
+editor captures evidence before fixture cleanup. The coverage regression was
+**2 failed / 3 passed** before the fix. All **245 diagnostic tests** and browser
+type checking now pass. Six actual Chrome/Firefox/WebKit controls passed, and
+every trace was inspected: complete nine-module map, retained clipboard routes,
+and empty failure recorders. Ordinary configurations add no browser calls.
+The same six cases also pass under the ordinary, uninstrumented configuration.
+
+The full diagnostic suite also caught the opt-in impact probe's HTML file in
+the ordinary harness entry directory. It now lives under `impact-contract/`;
+the three ordinary Vite entries and their existing assertion remain unchanged.
+Both relocated probes passed in all three engines, with all six result
+attachments confirming 900 updates each.
+No shipping implementation, timeout or validation rule was changed. Commands,
+failure trace identities and verification results are in the
+[Redo Paste evidence record](qualification/2026-10-02-redo-paste-evidence.json).

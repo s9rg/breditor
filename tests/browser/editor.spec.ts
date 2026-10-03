@@ -1,6 +1,7 @@
 import { expect, test as base, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { SHADOW_COUNTER_FIELDS, type ShadowCounterSnapshot } from "./harness/shadow_counter_snapshot";
+import { attachConfiguredLinkFaults } from "./diagnostics/attach_link_faults";
 
 const test = base.extend<{ directCounterTransport: boolean }>({
   directCounterTransport: [false, { option: true }],
@@ -204,11 +205,16 @@ test.beforeEach(async ({ page }) => {
   await openEditor(page);
 });
 
-test.afterEach(async ({ page }) => {
-  await page.evaluate(() => {
-    window.__breditorHarness?.cleanupReferenceFormatting();
-    window.__breditorHarness?.cleanupReferenceShowcase();
-  });
+test.afterEach(async ({ page }, testInfo) => {
+  try {
+    // Capture the terminal state before fixture disposal can change evidence.
+    await attachConfiguredLinkFaults(page, testInfo);
+  } finally {
+    await page.evaluate(() => {
+      window.__breditorHarness?.cleanupReferenceFormatting();
+      window.__breditorHarness?.cleanupReferenceShowcase();
+    });
+  }
 });
 
 test("Unicode insertion and scalar-safe backward deletion", async ({ page }) => {

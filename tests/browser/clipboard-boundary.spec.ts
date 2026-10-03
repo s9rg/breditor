@@ -1,5 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { clipboardBoundaryProbe } from "./harness/clipboard_boundary_probe";
+import { attachConfiguredLinkFaults } from "./diagnostics/attach_link_faults";
+
+test.afterEach(async ({ page }, testInfo) => {
+  await attachConfiguredLinkFaults(page, testInfo);
+});
 
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
