@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "1c5fe94",
+  "status": "no-dom-reproduction-with-projection-and-selection-command-faults",
+  "shippingCodeChanged": false,
+  "fixture": {
+    "description": "Four paragraphs with an empty block, Unicode and mixed strong runs. Fresh engine per cycle. Backward boundary delete, Undo/Redo, identical CRLF replacement, typing, and history replay through real Rust commands and unchanged production projection/selection adapters.",
+    "excluded": ["mounted editor owner", "DOM renderer", "clipboard events", "toolbar", "command queue"],
+    "cyclesPerCase": 100, "commandsPerCase": 1900, "updatesPerCase": 1800,
+    "selectionsPerCase": 1900, "targetUndoPointsPerCase": 100,
+    "targetPoint": { "kind": "text", "nodeIndex": 6, "offset": 0, "affinity": "after" },
+    "schedules": ["sync", "task"],
+    "calibration": { "browser": "chromium", "passed": 2, "failed": 0,
+      "logSha256": "5517d060a27047d566aafd58f3dfb8946bca5654a061f3007d5c37e7db8198b1" }
+  },
+  "uninstrumentedMatrix": {
+    "command": "playwright test -c playwright.impact-contract.config.ts tests/browser/diagnostics/boundary-history-adapter.spec.ts --repeat-each=5 --trace=on --output=target/playwright-boundary-history-matrix-20261003",
+    "passed": 20, "failed": 1, "unrun": 9, "retries": 0, "durationSeconds": 37.7,
+    "passingBrowsers": ["chromium", "firefox"],
+    "failure": { "browser": "webkit", "schedule": "sync", "cycle": 30,
+      "stage": "select Right", "error": "projection.invalid_update" },
+    "logSha256": "6312fa3a7ce45edb1d83247d1863323436f8d598c6b7896838d7b2fa467e22b8",
+    "traceSha256": "72037d6c25e774f2ca1c924068db677bf38c2e436ad538da712913c222ad75f2"
+  },
+  "firstDiagnostic": {
+    "command": "playwright test -c playwright.adapter-reduction.config.ts --project=webkit --repeat-each=10 --output=target/playwright-boundary-history-diagnostic-20261003",
+    "passed": 9, "failed": 1, "unrun": 10, "retries": 0, "durationSeconds": 16.8,
+    "failure": { "schedule": "task", "repeat": 4, "cycle": 96, "stage": "paste seed",
+      "sites": ["wasm_projection_adapter:failure:303", "wasm_projection_adapter:failure:488"],
+      "childError": "projection.invalid_shape", "numericRejections": [],
+      "guard": "typeof text !== string OR formatCount absent OR invalid index OR formatCount > 32" },
+    "logSha256": "8cde8048ac851ddab8aa24cd4b5977f818dd33dcafbcb6fb282f158020c3128b",
+    "traceSha256": "151f8926a0c39b7b276656fc166c5f46deedc561a1fbac361d62e4f1276cb66a",
+    "recorderSha1": "5d3506392869fb423e9c761e4bdcf056dcc0e50b",
+    "manifestSha1": "f0a21baf804a08db95ff231fb8b668c4efcb59eb",
+    "limit": "The text type and format count were not captured in this first diagnostic run."
+  },
+  "formatCountCaptureFollowups": [
+    {
+      "output": "target/playwright-boundary-history-run-capture-20261003",
+      "passed": 11, "failed": 1, "unrun": 28, "retries": 0, "durationSeconds": 19.2,
+      "failure": { "schedule": "task", "cycle": 10, "stage": "select empty", "status": "error", "code": "not captured" },
+      "recorderEmpty": true,
+      "logSha256": "dcc4aa0322aac94ddd96208d8b2783590c8464a7d1061aea7ce323c840edbc05"
+    },
+    {
+      "output": "target/playwright-boundary-history-run-capture-next-20261003",
+      "passed": 16, "failed": 1, "unrun": 23, "retries": 0, "durationSeconds": 28.7,
+      "failure": { "schedule": "sync", "cycle": 86, "stage": "select empty", "status": "error", "code": "breditor_wasm.invalid_selection_node" },
+      "recorderEmpty": true,
+      "logSha256": "bfa6fecafbe7ea8b2c6dc0d501c255e27526ed342a70dd55b5f67e61a2fe2249"
+    }
+  ],
+  "selectionInputCapture": {
+    "command": "playwright test -c playwright.adapter-reduction.config.ts --project=webkit --repeat-each=20 --output=target/playwright-boundary-history-input-capture-20261003",
+    "passed": 30, "failed": 1, "unrun": 9, "retries": 0, "durationSeconds": 51.7,
+    "failure": { "schedule": "sync", "repeat": 15, "cycle": 36,
+      "stage": "reselect backward boundary", "code": "breditor_wasm.invalid_selection_node",
+      "input": { "anchorPointKind": "children", "anchorNodeIndex": 4, "anchorOffset": 0, "anchorAffinity": "after",
+        "focusPointKind": "text", "focusNodeIndex": 3, "focusOffset": 2, "focusAffinity": "before" } },
+    "recorderEmpty": true,
+    "logSha256": "fc66b0a706195743c470494db2cf9a2c9df21cc07760120a5f78ef9f6ba88302",
+    "traceSha256": "7e52048580690ff615fba0fca068f743b19dccfa6f98b3dd3966b031bd0281d0",
+    "recorderSha1": "94f022a7eed027e4a0c59e5d50a70ee947ffb422",
+    "manifestSha1": "b07229196991198cdf675627b5c8b71073be3e36",
+    "interpretation": "These captured input coordinates match the validated projection just restored by Undo. This captures JavaScript arguments, not Rust's admitted node index/kind."
+  },
+  "verification": {
+    "diagnostics": { "passed": 288, "files": 50,
+      "logSha256": "ff12126c81d7ddcbac3dacdf2593d9817bdcd4e1f823beabd6a8eee0c60b1c29" },
+    "browserTypes": { "passed": true,
+      "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" },
+    "finalControls": {
+      "command": "playwright test -c playwright.adapter-reduction.config.ts --project=chromium --project=firefox --output=target/playwright-boundary-history-final-controls-20261003",
+      "passed": 4, "failed": 0, "retries": 0, "durationSeconds": 7.7,
+      "allFourTracesVerified": true, "recordersEmpty": true, "threeModulesInstalled": true,
+      "projectionTextRunCaptureEnabled": true,
+      "logSha256": "97cb3d99119dfac9fbaa4960f6b0ec2e8467774274865a289a2959f5f25d294f"
+    }
+  },
+  "limits": [
+    "No production fix is claimed; Safari/WebKit remains experimental.",
+    "These reduced faults do not require clipboard or DOM editing, but have not been equated with the previously captured selection upper-bound fault.",
+    "The format-count observer has not yet captured a failing text type/count; later runs stopped at command errors first.",
+    "The diagnostic build wraps hot numeric predicates and may change optimization. The original matrix failed without those observers.",
+    "The probe accesses projection/selection directly and does not reproduce every handle-lifetime detail of BreditorWasmCommandAdapter.",
+    "All traces/logs are local evidence; only their summaries are committed."
+  ]
+}

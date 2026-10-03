@@ -11,6 +11,7 @@ export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoin
   const children: (ReturnType<typeof snapshotProjectionChild> & { stage: string })[] = [];
   const requiredProperties: string[] = [];
   const impacts: string[] = [];
+  const textRuns: unknown[] = [];
   let omitted = 0;
   function record<T>(stage: string, original: T): T {
     try {
@@ -94,10 +95,23 @@ export function createLinkFaultRecorder(emit?: (stage: string) => void, emitPoin
     } catch { /* Preserve rejection even if observation or emission fails. */ }
     return original;
   }
-  return { record, point, contentResult, loop, numericPredicate, childResult, requiredProperty, impactRejection, snapshot: () => ({ format: "breditor/link-faults", version: 1,
+  function textRun<T>(stage: string, original: T, index: unknown, textType: string, count: unknown): T {
+    record(stage, original);
+    try {
+      if (textRuns.length < 8 && /^wasm_projection_adapter:failure:[0-9]+$/.test(stage)) {
+        textRuns.push(Object.freeze({ stage, index: numberSnapshot(index),
+          textType: ["string", "undefined", "object", "boolean", "number", "bigint", "symbol", "function"].includes(textType)
+            ? textType : "unknown",
+          formatCount: numberSnapshot(count),
+          laterAboveLimit: typeof count === "number" ? count > 32 : undefined }));
+      }
+    } catch { /* Do not replace the original rejection or reread generated values. */ }
+    return original;
+  }
+  return { record, point, contentResult, loop, numericPredicate, childResult, requiredProperty, impactRejection, textRun, snapshot: () => ({ format: "breditor/link-faults", version: 1,
     events: [...events], points: [...points], loops: [...loops], numeric: [...numeric],
     children: children.map(child => ({ ...child })), requiredProperties: requiredProperties.map(value => JSON.parse(value) as unknown),
-    impacts: impacts.map(value => JSON.parse(value) as unknown), omitted }) };
+    impacts: impacts.map(value => JSON.parse(value) as unknown), textRuns: [...textRuns], omitted }) };
 }
 
 /** These are subsequent observations, not the original predicate's results. */
@@ -127,4 +141,5 @@ export const recordNumericPredicate = recorder.numericPredicate;
 export const recordProjectionChild = recorder.childResult;
 export const recordRequiredProperty = recorder.requiredProperty;
 export const recordImpactRejection = recorder.impactRejection;
+export const recordProjectionTextRun = recorder.textRun;
 export const readLinkFaults = recorder.snapshot;

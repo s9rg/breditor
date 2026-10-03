@@ -5,7 +5,7 @@ const modules = ["browser_editor", "browser_event_router", "command_queue", "was
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
 export function instrumentLinkFaults(code: string, id: string, recorder: string,
-  options: { numericPredicates?: boolean; numericOperands?: boolean; projectionChild?: boolean; projectionImpact?: boolean; impactState?: boolean } = {}) {
+  options: { numericPredicates?: boolean; numericOperands?: boolean; projectionChild?: boolean; projectionImpact?: boolean; impactState?: boolean; projectionTextRun?: boolean } = {}) {
   if (options.numericOperands && options.numericPredicates === false) throw new Error("Numeric operand capture requires numeric predicates");
   if (options.impactState && !options.projectionImpact) throw new Error("Impact state requires impact rejection capture");
   const module = modules.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
@@ -17,8 +17,26 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
   const sites: { stage: string; line: number; expression?: string }[] = [];
   let childSites = 0;
   let impactSites = 0;
+  let textRunSites = 0;
   function visit(node: ESTree.Node, parent?: ESTree.Node, functionName?: string): void {
     if (node.type === "FunctionDeclaration") functionName = node.id?.name;
+    if (options.projectionTextRun && module === "wasm_projection_adapter" && functionName === "readSemanticProjection" &&
+        node.type === "IfStatement" && code.slice(node.test.start, node.test.end).replace(/\s+/g, " ") ===
+        'typeof text !== "string" || formatCount === undefined || !isIndex(formatCount) || formatCount > 32') {
+      const statement = node.consequent.type === "BlockStatement" && node.consequent.body.length === 1
+        ? node.consequent.body[0] : undefined;
+      if (statement?.type !== "ReturnStatement" || statement.argument?.type !== "CallExpression" ||
+          statement.argument.callee.type !== "Identifier" || statement.argument.callee.name !== "projectionFailure") {
+        throw new Error("Projection text-run rejection shape drift");
+      }
+      const value = statement.argument;
+      const line = code.slice(0, value.start).split("\n").length;
+      const stage = `${module}:failure:${line}`;
+      sites.push({ stage, line }); textRunSites++;
+      edits.push({ start: value.start, end: value.end,
+        text: `__breditorProjectionTextRun(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), runIndex, typeof text, formatCount)` });
+      return;
+    }
     if (options.projectionImpact && module === "wasm_projection_adapter" && functionName === "readSemanticImpact" &&
         node.type === "Literal" && node.value === null &&
         (parent?.type === "ReturnStatement" || parent?.type === "ConditionalExpression")) {
@@ -167,6 +185,9 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
     }
   }
   visit(parsed.program);
+  if (options.projectionTextRun && module === "wasm_projection_adapter" && textRunSites !== 1) {
+    throw new Error("Expected one projection text-run rejection");
+  }
   if (options.projectionImpact && module === "wasm_projection_adapter" && impactSites === 0) {
     throw new Error("Expected projection impact rejection sites");
   }
@@ -179,5 +200,5 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
     transformed = transformed.slice(0, edit.start) + edit.text + transformed.slice(edit.end);
   }
   return { module, sourceSha256: createHash("sha256").update(code).digest("hex"), sites,
-    code: `import { recordLinkThrow as __breditorLinkThrow, recordSelectionPoint as __breditorSelectionPoint, recordNumericPredicate as __breditorNumericPredicate, recordProjectionChild as __breditorProjectionChild, recordImpactRejection as __breditorImpactRejection } from ${JSON.stringify(recorder)};\n${transformed}` };
+    code: `import { recordLinkThrow as __breditorLinkThrow, recordSelectionPoint as __breditorSelectionPoint, recordNumericPredicate as __breditorNumericPredicate, recordProjectionChild as __breditorProjectionChild, recordImpactRejection as __breditorImpactRejection, recordProjectionTextRun as __breditorProjectionTextRun } from ${JSON.stringify(recorder)};\n${transformed}` };
 }

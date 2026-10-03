@@ -3070,3 +3070,67 @@ clipboard control confirms the updated map includes the three exact operand
 expressions and leaves the recorder empty on success.
 
 See the [upper-bound evidence record](qualification/2026-10-03-selection-upper-bound.json).
+
+### Four-paragraph history reduction reproduces faults without DOM editing
+
+The earlier history adapter control used one paragraph. A new reduction keeps
+the full boundary-only case's four paragraphs, canonical empty block, Unicode,
+split strong runs, backward boundary selection, deletion, identical CRLF
+replacement, typing, and Undo/Redo sequence. Every cycle creates a fresh engine
+and consumes real projection and selection handles through the production
+adapters. Every transition checks exact paragraph/run text and strong state,
+both selection endpoints, and the specific Undo point `(text, 6, 0, after)`.
+No editor owner, DOM renderer, clipboard event, toolbar, or command queue is
+mounted. Sync and task-yielding schedules are separate tests.
+
+Each successful case covers **100 cycles, 1,900 commands, 1,800 projection
+updates, 1,900 selection checks and 100 target Undo points**. The extra command
+is an unchanged reselection, which must have no projection update. Two Chromium
+calibration cases passed without changing expected results. The repeated
+three-engine matrix then passed all **20 Chromium/Firefox cases**, but its first
+WebKit case failed at cycle 30, `select Right`, with `projection.invalid_update`.
+Nine further cases did not run. This is an uninstrumented reproduction of a
+projection fault, not yet the previously captured selection upper-bound fault.
+
+A dedicated diagnostic build observes only `projection`,
+`wasm_projection_adapter`, and `wasm_selection_adapter`. It retains source
+hashes and does not instrument the queue or command adapter. The first WebKit
+batch stopped at **9 passed / 1 failed / 10 unrun**, at cycle 96, `paste seed`.
+The first rejection was `wasm_projection_adapter:failure:303`, in the guard
+checking text type, presence/integer validity of format count, and its limit of
+32. The outer update rejected the child with `projection.invalid_shape`.
+There was no rejected `isIndex` return in that trace. The actual text type and
+format count were not captured yet, so no particular operand is blamed.
+
+A failure-only observer now snapshots that guard's already-captured run index,
+text **type only**, and format count. It records no document text and never
+rereads a generated getter. Tests verify return identity, no observation on
+success, no coercion, bounded retention, and fail-closed source-shape checks.
+
+Two follow-ups encountered a different error before that guard: the initial
+`select empty` command returned `error`. The first stopped at **11 passed /
+1 failed / 28 unrun**, cycle 10, before the command's error code was captured.
+The next stopped at **16 passed / 1 failed / 23 unrun**, cycle 86, and recorded
+`breditor_wasm.invalid_selection_node`. The diagnostic recorder was empty in
+both cases. Error handles are now read once and freed, and rejected selection
+commands retain their existing fixture scalar arguments without retrying.
+
+The scalar-capture follow-up stopped at **30 passed / 1 failed / 9 unrun**,
+cycle 36, `reselect backward boundary`. The same error code accompanied
+`anchor=(children,4,0,after)` and `focus=(text,3,2,before)`. These coordinates
+match the checked projection just restored by Undo: paragraph zero has two
+text runs at indexes 2/3 and the empty paragraph is index 4. This establishes
+the JavaScript call arguments, not which index/kind Rust admitted internally.
+The recorder again contained no projection/selection-validator rejection.
+
+These results show that the observed reduced-workload faults do not require
+clipboard routing or DOM editing. They do not establish a shared cause with
+the original upper-bound comparison, nor prove a Rust logic defect. The
+format-count and initial-selection errors remain separate until their values
+are captured. Shipping code and browser support status are unchanged.
+Final Chromium/Firefox controls pass **four cases**, with all counters and
+three-module diagnostic maps verified and empty recorders. All **288 diagnostic
+tests** and browser type checking pass. No green WebKit qualification is claimed.
+
+Commands and bounded follow-up results are in the
+[boundary-history evidence record](qualification/2026-10-03-boundary-history-reduction.json).
