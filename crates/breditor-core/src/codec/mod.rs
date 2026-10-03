@@ -404,6 +404,8 @@ mod operation_preflight;
 mod operation_preflight_v2;
 mod operation_sequence_v1;
 mod operation_sequence_v2;
+#[cfg(feature = "experimental-structural-properties")]
+mod operation_sequence_v3;
 mod operation_v2_error;
 mod operation_v3_error;
 #[cfg(feature = "experimental-structural-properties")]
@@ -425,6 +427,8 @@ mod session_checkpoint_json_v3_tests;
 mod session_checkpoint_limits;
 mod session_checkpoint_v2_error;
 mod session_checkpoint_v3_error;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod structural_codec_test_support;
 mod transaction_error;
 mod transaction_json;
 mod transaction_json_v2;
@@ -433,10 +437,16 @@ mod transaction_json_v2_tests;
 mod transaction_json_v3;
 #[cfg(test)]
 mod transaction_json_v3_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod transaction_json_v4;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod transaction_json_v4_tests;
 mod transaction_payload_v1;
 mod transaction_payload_v2;
 mod transaction_v2_error;
 mod transaction_v3_error;
+#[cfg(feature = "experimental-structural-properties")]
+mod transaction_v4_error;
 
 pub use commit_error::{
     CommitApplicationError, CommitApplicationErrorCode, CommitCodecError, CommitRecordError,
@@ -876,5 +886,9 @@ pub use transaction_json::{
 };
 pub use transaction_json_v2::{TRANSACTION_REQUEST_V2_FORMAT_VERSION, TransactionJsonCodecV2};
 pub use transaction_json_v3::{TRANSACTION_REQUEST_V3_FORMAT_VERSION, TransactionJsonCodecV3};
+#[cfg(feature = "experimental-structural-properties")]
+pub use transaction_json_v4::{TRANSACTION_REQUEST_V4_FORMAT_VERSION, TransactionJsonCodecV4};
 pub use transaction_v2_error::TransactionV2CodecError;
 pub use transaction_v3_error::TransactionV3CodecError;
+#[cfg(feature = "experimental-structural-properties")]
+pub use transaction_v4_error::TransactionV4CodecError;

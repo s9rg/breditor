@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add feature-gated V4 transaction requests for sequential heading operations,
+  exact snapshot binding, selection/pending-format updates and history metadata.
+  A borrowed count pass rejects over-budget arrays before operation construction;
+  indexed payload errors remain typed. Replay uses existing atomic application
+  and history laws. Complete heading session persistence remains pending.
+
 - Add a feature-gated V4 singular operation codec for guarded heading changes.
   Reuse strict document-tree admission for source fragments, check exact target
   kinds and ranks with bounded borrowed parsing, and preserve typed formatting

@@ -15,8 +15,9 @@ The current source version is `0.3.0-alpha.22` with additional unreleased fixes.
 Experimental Rust work now includes guarded paragraph/heading conversion with
 exact selection preservation and undo/redo. It is behind
 `experimental-structural-properties`; the browser demo remains paragraph-only,
-and durable heading history is still pending. An experimental V4 codec can
-persist individual heading operations, but not whole sessions yet. See
+and durable heading history is still pending. Experimental V4 codecs can
+persist individual heading operations and atomic transaction requests, but not
+whole sessions yet. See
 [Structural blocks](docs/STRUCTURAL_BLOCKS.md) for the current boundary.
 
 ## Run the browser demo

@@ -177,8 +177,9 @@ commit and session codecs V1–V3 reject the new operation on either history
 branch. They are not widened with a new tag. A separately versioned durable
 recipe and its replay/size limits are the next checkpoint before storage or
 Wasm/browser exposure. The first piece now exists as the experimental singular
-[operation V4 codec](OPERATION_V4.md); transaction, commit and session-history
-formats have not yet advanced.
+[operation V4 codec](OPERATION_V4.md). The separate [transaction V4
+codec](TRANSACTION_V4.md) now supports atomic request persistence. Commit and
+session-history formats have not yet advanced.
 
 ## Structural transactions and action files
 
@@ -318,7 +319,7 @@ and integer-admission property checks at the larger fixed-seed count. Run the sa
 filter with `--no-default-features` to check the shipped configuration separately.
 
 The singular heading-operation format is implemented as experimental V4. The
-next implementation slice is durable transaction/session history, followed by
+next implementation slice is durable session history, followed by
 heading-aware text editing, Wasm projection and UI.
 List-wide numbering validation remains required before lists. WebKit evidence
 is tracked separately in `WEBKIT_CLIPBOARD_INVESTIGATION.md`.

@@ -1,8 +1,10 @@
 # Experimental operation V4
 
 Status: singular Rust operation codec, behind `experimental-structural-properties`.
-Not enabled in the shipped Wasm package. This is not a session-checkpoint,
-transaction, commit, local-log or browser editing feature.
+Not enabled in the shipped Wasm package. A separate experimental
+[transaction V4 codec](TRANSACTION_V4.md) now groups these payloads with snapshot,
+selection and metadata contracts. Session-checkpoint, commit, local-log and
+browser heading support remain pending.
 
 ## Version and binding
 
@@ -98,9 +100,9 @@ runtime undo/redo behavior is unchanged.
 
 V1–V3 transaction, commit and session codecs still reject heading operations on
 either history branch. Do not save only the document and call that preserved
-heading history. The next checkpoints must add explicitly versioned transaction
-and session formats with aggregate operation/history/byte budgets, cursor and
-revision checks, bidirectional replay proof, retained redo and exact selection/
+heading history. Transaction V4 now supplies the atomic request layer. The next
+checkpoint must add a versioned session format with aggregate history/byte
+budgets, cursor and revision checks, bidirectional replay proof, retained redo and exact selection/
 pending-format restoration. Local-log formats remain separate follow-up work.
 
 ## Reproduction
