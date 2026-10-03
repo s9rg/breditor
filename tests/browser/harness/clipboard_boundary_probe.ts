@@ -200,13 +200,16 @@ export async function clipboardBoundaryProbe(options: {
     paragraphs(boundaryOnly ? [seed[0]!, "!", seed[2]!, seed[3]!] : ["LeftQ🙂", "", "終e\u0301! & <tag>", "尾"]);
     const afterTyping = exported("documentJson");
     assert(!redoEnabled(), "typing retained stale redo branch");
-    stage = "replacement and typing history";
+    stage = "replacement and typing history: undo typing";
     click("Undo");
     assert(exported("documentJson") === afterPaste, "typing coalesced with paste");
+    stage = "replacement and typing history: undo replacement";
     click("Undo");
     assert(exported("documentJson") === (boundaryOnly ? beforeSecondBold : original), "second undo reached wrong content-history entry");
+    stage = "replacement and typing history: redo replacement";
     click("Redo");
     assert(exported("documentJson") === afterPaste, "paste redo differs");
+    stage = "replacement and typing history: redo typing";
     click("Redo");
     assert(exported("documentJson") === afterTyping, "typing redo differs");
   } catch {

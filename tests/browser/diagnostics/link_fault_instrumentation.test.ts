@@ -164,6 +164,30 @@ it("records content failures without reading return objects or changing results"
   expect(recorder.snapshot().events).toEqual(["wasm_document_json:result:10", "wasm_document_json:result:11"]);
 });
 
+it.each([0, 1, 2, 3])("operand capture preserves order, single evaluation and short circuit (%s)", stop => {
+  const output = instrumentLinkFaults("function isU32(value) { return a(value) && b(value) && c(value); }",
+    id.replace("wasm_command_adapter", "wasm_selection_adapter"), "/recorder.js",
+    { numericPredicates: true, numericOperands: true })!;
+  const run = new Function("__breditorNumericPredicate", "a", "b", "c",
+    output.code.split("\n").slice(1).join("\n") + "\nreturn isU32(6);");
+  const calls: number[] = [];
+  const checks = [0, 1, 2].map(index => () => { calls.push(index); return index !== stop; });
+  const recorder = createLinkFaultRecorder();
+  expect(run(recorder.numericPredicate, ...checks)).toBe(stop === 3);
+  expect(calls).toEqual([0, 1, 2].slice(0, stop + 1));
+  expect(recorder.snapshot().numeric.map(entry => entry.stage)).toEqual(stop === 3 ? [] : [
+    `wasm_selection_adapter:numeric:1:operand:${stop}`, "wasm_selection_adapter:numeric:1",
+  ]);
+});
+
+it("refuses operand capture when the numeric shape drifts or its parent is disabled", () => {
+  const selectionId = id.replace("wasm_command_adapter", "wasm_selection_adapter");
+  expect(() => instrumentLinkFaults("function isU32(value) { return check(value); }", selectionId,
+    "/recorder.js", { numericOperands: true })).toThrow("Expected three numeric predicate operands");
+  expect(() => instrumentLinkFaults("", selectionId, "/recorder.js",
+    { numericOperands: true, numericPredicates: false })).toThrow("requires numeric predicates");
+});
+
 it("captures bounded loop-count bits separately from numeric return transport", () => {
   const emit = vi.fn(() => { throw new Error("sink unavailable"); });
   const recorder = createLinkFaultRecorder(undefined, undefined, emit);

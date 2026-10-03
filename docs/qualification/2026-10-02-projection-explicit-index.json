@@ -1,0 +1,123 @@
+{
+  "date": "2026-10-02",
+  "completedDate": "2026-10-03",
+  "baseCommit": "153f497",
+  "status": "projection-sentinel-path-removed-selection-fault-still-reproduces",
+  "shippingCodeChanged": true,
+  "scope": "Five optional projection-update index bindings now return explicit JsValue numbers or undefined. Native Rust Option signatures, public TypeScript declarations and ABI version 5 remain unchanged.",
+  "commonCommand": "playwright test -c playwright.queue-diagnostics.config.ts tests/browser/clipboard-boundary.spec.ts --grep 'clipboard (crossParagraph|boundaryOnly)' --project=webkit --repeat-each=50 --max-failures=1",
+  "commonEnvironment": {
+    "BREDITOR_QUEUE_CAPTURE": "stop",
+    "BREDITOR_QUEUE_ADAPTER_THROWS": "1",
+    "BREDITOR_QUEUE_SELECTION": "1",
+    "BREDITOR_QUEUE_DELIVERY": "1",
+    "BREDITOR_QUEUE_PROJECTION": "1",
+    "BREDITOR_QUEUE_PROJECTION_VALIDATION": "1",
+    "BREDITOR_QUEUE_CLIPBOARD": "1"
+  },
+  "baseline": {
+    "passed": 179, "failed": 1, "unrun": 120, "retries": 0,
+    "output": "target/playwright-selection-boundary-focused-20261002",
+    "log": "/tmp/breditor-selection-boundary-focused-20261002.log",
+    "logSha256": "2b96df894619dc8c12fc5ece84cbbf6a602f38a2e7423fe075f5a0f42af2519d",
+    "traceSha256": "bf31fe708f38ff1336efb08c0e956e6deb6eff1265e4e2d313a175c18b068132",
+    "recorderSha1": "5e8828fe6cf6cbf41e9dc3ca18df081d8e447a34",
+    "manifestSha1": "a5fbf425d1a2337bfb5d8f1bbf361bcf9f190744",
+    "scenario": "boundaryOnly backward, repeat29, history redo, revision17",
+    "firstThrow": "wasm_command_adapter:throw:1218",
+    "rejection": "wasm_projection_adapter:impact:505",
+    "snapshot": {
+      "impact": "textContainers", "affectedParagraphCount": 1,
+      "oldChildStart": 9007199254740991, "oldChildStartBits": "433fffffffffffff",
+      "oldChildEnd": "undefined", "newChildStart": "undefined", "newChildEnd": "undefined"
+    },
+    "interpretation": "Captured oldChildStart equals the generated optional-u32 absence sentinel. Rejecting range metadata on textContainers is correct. The original getter comparison's machine state was not captured.",
+    "preservedArtifacts": "/tmp/breditor-projection-baseline.D0ERtR",
+    "glueSha256": "f3595a4690f94c560677f11de9587fe01e8483cb9231c6936b72c850215270c2",
+    "wasmSha256": "2884d556ff22073e83031ed3c256dc6c08643bc781687f9df883961f49e6d406"
+  },
+  "candidate": {
+    "glueSha256": "300a3496e3ec02bf87524417ab5f1a6ddfd2488a1a4b1db73a00e27e4c32f536",
+    "wasmSha256": "64e0374e247681f0655fa8cb33fe4c2f87b819a83eed321d910f10aa1e994e4d",
+    "generatedGetterChange": "oldChildStart previously decoded value === 2**53 - 1; now it retrieves an explicit externref JS value without numeric absence comparison.",
+    "firstFollowup": {
+      "passed": 7, "failed": 1, "unrun": 292, "retries": 0,
+      "output": "target/playwright-projection-explicit-focused-20261002",
+      "log": "/tmp/breditor-projection-explicit-focused-20261002.log",
+      "logSha256": "85f48bda3ce2d22ec06ac2b3f9df8373e66d7bb857c2edd5eeea87890a65389b",
+      "traceSha256": "9746d1686a4bf6e46ba724e7e07983ba7884cd5ca82e007eb179c8ac5474fbf9",
+      "recorderSha1": "c7a1d6d55945aa35d53409080c536549f6699084",
+      "scenario": "crossParagraphHtml forward, repeat1, cut history undo, revision9",
+      "rejection": "wasm_selection_adapter:point:190",
+      "point": { "kind": "text", "nodeIndex": 2, "offset": 4, "affinity": "before" },
+      "interpretation": "Separate selection rejection; later numeric rechecks pass. No original predicate return captured in this mode."
+    },
+    "operandFollowup": {
+      "extraEnvironment": { "BREDITOR_QUEUE_SELECTION_NUMERIC": "1", "BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS": "1" },
+      "passed": 300, "failed": 0, "retries": 0, "durationReported": "3.5m",
+      "output": "target/playwright-selection-operands-focused-20261002",
+      "log": "/tmp/breditor-selection-operands-focused-20261002.log",
+      "logSha256": "1ca6d73226ea1544e1cd22e412690552f9ba8f63c161bf4e7d3c01a72b2422c5",
+      "interpretation": "No failing operand captured. Passing under this different call layout does not resolve the numeric-return counterexample."
+    },
+    "numericReturnFollowup": {
+      "extraEnvironment": { "BREDITOR_QUEUE_SELECTION_NUMERIC": "1" },
+      "passed": 174, "failed": 1, "unrun": 125, "retries": 0,
+      "output": "target/playwright-selection-numeric-focused-20261002",
+      "log": "/tmp/breditor-selection-numeric-focused-20261002.log",
+      "logSha256": "986ba3e02639878b33a2e3113e5ef19cafce47ad56859dfdc7f479db4ed001ae",
+      "traceSha256": "7467ed87d67a97fb0cef756fd672b6f023ab748efacc2de52119c4fc622d614e",
+      "recorderSha1": "dea2fb33b1c70c47a65a966cf8c16148dd5ad2ae",
+      "manifestSha1": "4f0e7dce7d6e5742d4e768389a9102175630334f",
+      "scenario": "crossParagraph forward, repeat29, redo typing, revision17",
+      "point": { "kind": "text", "nodeIndex": 6, "offset": 4, "affinity": "before" },
+      "numeric": { "stage": "wasm_selection_adapter:numeric:265", "originalResult": false,
+        "value": 6, "bits": "4018000000000000", "laterRechecksAllPass": true },
+      "interpretation": "Original compound isU32 predicate returned false. This does not yet distinguish safe-integer, lower-bound and upper-bound checks."
+    }
+  },
+  "verification": {
+    "ordinaryClipboard": {
+      "command": "playwright test tests/browser/clipboard-boundary.spec.ts --output=target/playwright-projection-explicit-ordinary-20261003",
+      "passed": 21, "failed": 0, "retries": 0, "durationSeconds": 13.6,
+      "browsers": ["chromium", "firefox", "webkit"], "diagnosticObservers": false,
+      "logSha256": "13e3ce778e8e8c433db64ed061e2b53d163e4e174cbe922a2cb04645657d7ae9"
+    },
+    "browserContracts": {
+      "command": "playwright test -c playwright.impact-contract.config.ts --trace=on --output=target/playwright-projection-explicit-contracts-20261003",
+      "passed": 12, "failed": 0, "retries": 0, "durationSeconds": 32.8,
+      "browsers": ["chromium", "firefox", "webkit"], "all12ResultAttachmentsVerified": true,
+      "rawMetadataUpdates": 2700, "adaptedLinkUpdates": 2700,
+      "historyUpdates": 25200, "historySelections": 25200,
+      "logSha256": "8b81a53d5c4fcde4f31274214f026d36283b2161a55590ffe7b70a6b1c07871f"
+    },
+    "operandManifestControl": {
+      "command": "Same environment as operandFollowup; one WebKit clipboard crossParagraph forward case with --trace=on --output=target/playwright-selection-operands-manifest-20261003",
+      "passed": 1, "failed": 0, "retries": 0,
+      "manifestSha1": "56edeec17504826eebf88675cbf14fde07d8d9f2",
+      "numericPredicates": true, "numericOperands": true, "threeOperandSitesVerified": true,
+      "recorderEmpty": true,
+      "logSha256": "fd45a903d583e9798645c8dd2d6eb3911fe92e962c6b2e97a6bab35e1bc4cdb3"
+    },
+    "rustBoundary": { "command": "cargo test -p breditor-wasm --test wasm_boundary", "passed": 21,
+      "logSha256": "666271895ea7510986a6e88f5c30b7ac6910d3ddd2e1f667d4a0ca20b87892db" },
+    "reviewedApi": { "command": "./scripts/check-wasm-api.sh", "passed": true,
+      "logSha256": "79648cc4ab52518061e560add557caa1bcb43045941a6d11d52531479692eb31" },
+    "generatedGlue": { "passed": true, "additionalChecks": "rootSplice zero and absent fields, none absent fields, each 256 times before and after takeProjection",
+      "baselineStructuralGuardFails": true,
+      "negativeControlLogSha256": "f4052065303918a812f21f38c496664ec7db33eb17b742028471673abbc04dc7",
+      "limit": "Structural negative control, not a deterministic natural WebKit reproduction." },
+    "diagnostics": { "passed": 278, "files": 47,
+      "logSha256": "af01a431bcac74c924d485e824ce0b3f2ee907f741b19503acb22b0f89b4c789" },
+    "browserTypes": { "passed": true,
+      "logSha256": "83500ee3fb55b0580e1bad04fe6d89824bbc8cc856a24c4098510bc08f05bcc2" },
+    "rustFormat": { "command": "cargo fmt --check", "passed": true }
+  },
+  "limitations": [
+    "Safari/WebKit remains experimental; no engine fix or complete editor fix is claimed.",
+    "The missing required Link boolean property remains separately unresolved.",
+    "Numeric return and operand observers wrap hot paths and may change engine optimization. Defaults leave numeric predicates untouched.",
+    "Selection operand diagnostics preserve short circuit order and evaluate each original operand once; only false results are retained.",
+    "Ignored trace artifacts and temporary logs are local evidence, not included in the source commit."
+  ]
+}

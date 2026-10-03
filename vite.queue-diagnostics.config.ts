@@ -22,6 +22,14 @@ const selectionSetting = process.env["BREDITOR_QUEUE_SELECTION"] ?? "0";
 if (selectionSetting !== "0" && selectionSetting !== "1") throw new Error("BREDITOR_QUEUE_SELECTION must be 0 or 1");
 const selectionEnabled = selectionSetting === "1";
 if (selectionEnabled && !projectionEnabled) throw new Error("Selection rejection capture requires BREDITOR_QUEUE_PROJECTION=1");
+const selectionNumericSetting = process.env["BREDITOR_QUEUE_SELECTION_NUMERIC"] ?? "0";
+if (selectionNumericSetting !== "0" && selectionNumericSetting !== "1") throw new Error("BREDITOR_QUEUE_SELECTION_NUMERIC must be 0 or 1");
+const selectionNumericEnabled = selectionNumericSetting === "1";
+if (selectionNumericEnabled && !selectionEnabled) throw new Error("Selection numeric capture requires BREDITOR_QUEUE_SELECTION=1");
+const selectionOperandsSetting = process.env["BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS"] ?? "0";
+if (selectionOperandsSetting !== "0" && selectionOperandsSetting !== "1") throw new Error("BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS must be 0 or 1");
+const selectionOperandsEnabled = selectionOperandsSetting === "1";
+if (selectionOperandsEnabled && !selectionNumericEnabled) throw new Error("Selection operand capture requires BREDITOR_QUEUE_SELECTION_NUMERIC=1");
 const validationSetting = process.env["BREDITOR_QUEUE_PROJECTION_VALIDATION"] ?? "0";
 if (validationSetting !== "0" && validationSetting !== "1") throw new Error("BREDITOR_QUEUE_PROJECTION_VALIDATION must be 0 or 1");
 const validationEnabled = validationSetting === "1";
@@ -83,12 +91,12 @@ const diagnostic: Plugin = {
       return { code: output.code, map: null };
     }
     if (selectionEnabled && id.endsWith("/breditor-browser/dist/wasm_selection_adapter.js")) {
-      // Share the boundary recorder, but touch only selection rejection sites.
-      // Do not wrap the successful isU32 predicate or repeat generated getters.
-      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: false });
+      // Numeric observation is a separate opt-in: it wraps predicate returns
+      // and can affect optimization even though only false results are retained.
+      const output = instrumentLinkFaults(code, id, projectionRecorder, { numericPredicates: selectionNumericEnabled, numericOperands: selectionOperandsEnabled });
       if (output === null) throw new Error("Selection diagnostic module was not recognized");
-      manifest.set("wasm_selection_adapter", { instrumented: true, rejectionSitesOnly: true,
-        numericPredicates: false, sourceSha256: output.sourceSha256, sites: output.sites });
+      manifest.set("wasm_selection_adapter", { instrumented: true, rejectionSitesOnly: !selectionNumericEnabled,
+        numericPredicates: selectionNumericEnabled, numericOperands: selectionOperandsEnabled, sourceSha256: output.sourceSha256, sites: output.sites });
       return { code: output.code, map: null };
     }
     const delivery = deliveryEnabled ? instrumentDeliveryFaults(code, id, deliveryRecorder) : null;

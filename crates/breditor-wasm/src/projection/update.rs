@@ -1,5 +1,5 @@
 use breditor_core::{profile::CompiledProfileGeneration, transaction::Commit};
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::prelude::{JsValue, wasm_bindgen};
 
 use crate::BreditorProfileGeneration;
 
@@ -22,6 +22,36 @@ pub struct BreditorProjectionUpdate {
 }
 
 impl BreditorProjectionUpdate {
+    /// Returns an affected paragraph index to native Rust callers.
+    #[must_use]
+    pub fn affected_paragraph_index(&self, index: u32) -> Option<u32> {
+        self.impact.affected_paragraphs().get(index as usize).copied()
+    }
+
+    /// Returns the source range start to native Rust callers.
+    #[must_use]
+    pub fn old_child_start(&self) -> Option<u32> {
+        self.impact.root_splice().map(|range| range.0)
+    }
+
+    /// Returns the source range end to native Rust callers.
+    #[must_use]
+    pub fn old_child_end(&self) -> Option<u32> {
+        self.impact.root_splice().map(|range| range.1)
+    }
+
+    /// Returns the result range start to native Rust callers.
+    #[must_use]
+    pub fn new_child_start(&self) -> Option<u32> {
+        self.impact.root_splice().map(|range| range.2)
+    }
+
+    /// Returns the result range end to native Rust callers.
+    #[must_use]
+    pub fn new_child_end(&self) -> Option<u32> {
+        self.impact.root_splice().map(|range| range.3)
+    }
+
     pub(crate) fn from_commit(generation: CompiledProfileGeneration, commit: &Commit) -> Self {
         Self {
             generation: generation.clone(),
@@ -88,37 +118,39 @@ impl BreditorProjectionUpdate {
 
     /// Returns one affected direct-root paragraph index.
     #[must_use]
-    #[wasm_bindgen(js_name = affectedParagraphIndex)]
-    pub fn affected_paragraph_index(&self, index: u32) -> Option<u32> {
-        self.impact.affected_paragraphs().get(index as usize).copied()
+    #[wasm_bindgen(js_name = affectedParagraphIndex, unchecked_return_type = "number | undefined")]
+    pub fn affected_paragraph_index_js(&self, index: u32) -> JsValue {
+        self.affected_paragraph_index(index).map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the root-splice source range start, when applicable.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = oldChildStart)]
-    pub fn old_child_start(&self) -> Option<u32> {
-        self.impact.root_splice().map(|range| range.0)
+    #[wasm_bindgen(getter, js_name = oldChildStart, unchecked_return_type = "number | undefined")]
+    pub fn old_child_start_js(&self) -> JsValue {
+        // Return explicit absence, not wasm-bindgen's optional-u32 f64 sentinel.
+        // WebKit exposed that sentinel as MAX_SAFE_INTEGER during history Redo.
+        self.old_child_start().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the root-splice source range end, when applicable.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = oldChildEnd)]
-    pub fn old_child_end(&self) -> Option<u32> {
-        self.impact.root_splice().map(|range| range.1)
+    #[wasm_bindgen(getter, js_name = oldChildEnd, unchecked_return_type = "number | undefined")]
+    pub fn old_child_end_js(&self) -> JsValue {
+        self.old_child_end().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the root-splice result range start, when applicable.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = newChildStart)]
-    pub fn new_child_start(&self) -> Option<u32> {
-        self.impact.root_splice().map(|range| range.2)
+    #[wasm_bindgen(getter, js_name = newChildStart, unchecked_return_type = "number | undefined")]
+    pub fn new_child_start_js(&self) -> JsValue {
+        self.new_child_start().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Returns the root-splice result range end, when applicable.
     #[must_use]
-    #[wasm_bindgen(getter, js_name = newChildEnd)]
-    pub fn new_child_end(&self) -> Option<u32> {
-        self.impact.root_splice().map(|range| range.3)
+    #[wasm_bindgen(getter, js_name = newChildEnd, unchecked_return_type = "number | undefined")]
+    pub fn new_child_end_js(&self) -> JsValue {
+        self.new_child_end().map_or(JsValue::UNDEFINED, JsValue::from)
     }
 
     /// Removes and returns the complete final projection exactly once.

@@ -6,6 +6,14 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Transport optional projection-update indexes as explicit JavaScript numbers
+  or `undefined`, removing generated floating-point absence-sentinel decoding.
+  A WebKit Redo exposed that sentinel as a real index. Native Rust signatures,
+  public TypeScript declarations and ABI version stay unchanged. Generated-glue
+  checks guard zero/absence and metadata after child transfer. Separate WebKit
+  selection-validator and Link-property faults remain under investigation;
+  this does not qualify Safari/WebKit for production.
+
 - Start the experimental Rust structural-block value contract: checked heading
   ranks, text-block/list kinds and overflow-checked positive list numbering.
   These values do not yet admit headings or lists into documents or expose new

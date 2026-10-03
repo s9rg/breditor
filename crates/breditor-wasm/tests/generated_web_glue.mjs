@@ -16,6 +16,16 @@ const api = await import(pathToFileURL(modulePath).href);
 const browser = await import(pathToFileURL(browserModulePath).href);
 api.initSync({ module: readFileSync(wasmPath) });
 
+// These optional indexes must transport an actual JS undefined, not decode an
+// f64 sentinel with a numeric comparison. A real WebKit Redo exposed that marker.
+for (const key of ["oldChildStart", "oldChildEnd", "newChildStart", "newChildEnd", "affectedParagraphIndex"]) {
+  const descriptor = Object.getOwnPropertyDescriptor(api.BreditorProjectionUpdate.prototype, key);
+  const binding = descriptor?.get ?? descriptor?.value;
+  assert.equal(typeof binding, "function", `${key}: generated binding missing`);
+  assert.doesNotMatch(Function.prototype.toString.call(binding), /===|!==|\?/,
+    `${key}: optional numeric sentinel decoding must not return`);
+}
+
 const EMPTY_DOCUMENT_JSON = JSON.stringify({
   format: "breditor/document",
   formatVersion: 1,
@@ -1957,6 +1967,50 @@ projectionObservation.free();
 projectionSuccessor.free();
 projectionEngine.free();
 projectionGeneration.free();
+
+// The explicit-JS-value transport must preserve present zero as well as absence.
+// Exercise rootSplice and state-only metadata before and after child transfer.
+const transportFactory = api.BreditorEngine.fromSessionCheckpointJson(SELECTED_CHECKPOINT_JSON);
+const transportEngine = transportFactory.takeEngine();
+transportFactory.free();
+const transportBefore = transportEngine.observation();
+const transportSplit = transportEngine.executeStringAction(transportBefore,
+  "breditor/insert-plain-text", "first\nsecond", true);
+assert.equal(transportSplit.status, "committed");
+const transportAfter = transportSplit.observation();
+const transportRoot = transportSplit.projectionUpdate();
+function assertRootTransport() {
+  assert.equal(transportRoot.impact, "rootSplice");
+  assert.equal(transportRoot.affectedParagraphCount, 0);
+  assert.equal(transportRoot.affectedParagraphIndex(0), undefined);
+  assert.equal(transportRoot.affectedParagraphIndex(0xffffffff), undefined);
+  assert.deepEqual([transportRoot.oldChildStart, transportRoot.oldChildEnd,
+    transportRoot.newChildStart, transportRoot.newChildEnd], [0, 1, 0, 2]);
+}
+for (let i = 0; i < 256; i++) assertRootTransport();
+transportRoot.takeProjection().free();
+for (let i = 0; i < 256; i++) assertRootTransport();
+transportRoot.free();
+transportSplit.free();
+transportBefore.free();
+const transportPending = transportEngine.executeNoInputAction(transportAfter, "breditor/toggle-strong", true);
+assert.equal(transportPending.status, "committed");
+const transportNone = transportPending.projectionUpdate();
+function assertNoneTransport() {
+  assert.equal(transportNone.impact, "none");
+  assert.equal(transportNone.affectedParagraphCount, 0);
+  assert.equal(transportNone.affectedParagraphIndex(0), undefined);
+  for (const key of ["oldChildStart", "oldChildEnd", "newChildStart", "newChildEnd"]) {
+    assert.equal(transportNone[key], undefined, `${key}: state-only range must be absent`);
+  }
+}
+for (let i = 0; i < 256; i++) assertNoneTransport();
+transportNone.takeProjection().free();
+for (let i = 0; i < 256; i++) assertNoneTransport();
+transportNone.free();
+transportPending.free();
+transportAfter.free();
+transportEngine.free();
 
 // A fabricated or freed class instance passes wasm-bindgen's JavaScript
 // `instanceof` check but fails during Rust ABI conversion. Conversion happens

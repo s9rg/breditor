@@ -2960,3 +2960,67 @@ fault. Neither natural failure repeated, and no production fix is claimed.
 
 Commands, calibration details and evidence are in the
 [history-adapter record](qualification/2026-10-02-history-adapter-control.json).
+
+### Projection absence sentinel and independently captured selection rejection
+
+A focused 300-case cross-paragraph/boundary-only clipboard batch stopped at
+**179 passed / 1 failed / 120 unrun**, with zero retries. Backward boundary-only
+Redo failed at revision 17. The captured projection impact was `textContainers`,
+affected paragraph count one, but `oldChildStart` was **9007199254740991**
+(bits `433fffffffffffff`), while the other three range fields were absent. The
+projection adapter correctly rejects range metadata on this impact kind.
+
+That number is wasm-bindgen's optional-u32 absence marker. The baseline getter
+called the Wasm export then decoded absence using `value === 2**53 - 1`.
+The capture establishes a leaked marker in the adapter's snapshot, not the
+machine state of the original comparison. The Rust projection update now
+returns explicit `JsValue::UNDEFINED` or a number for its five optional-index
+bindings, following the already-established selection snapshot transport.
+Native Rust methods still return `Option<u32>`. Public TypeScript declarations
+and ABI version 5 are unchanged; no input validation is weakened or retried.
+
+A generated-glue structural guard fails against the preserved baseline and
+passes against the candidate: these bindings no longer decode a numeric
+sentinel. Additional checks distinguish zero from absence for `rootSplice` and
+`none`, before and after child projection transfer; existing tests cover
+`textContainers`. The native Wasm boundary suite passes **21 tests**, generated
+glue passes, and the reviewed Wasm API/ABI check passes. The structural negative
+control is not a deterministic reproduction of the intermittent engine fault.
+
+The candidate's first focused follow-up stopped at **7 passed / 1 failed / 292
+unrun**. This was a different rejection: selection `readPoint` during Undo at
+revision 9, with captured text point `(nodeIndex=2, offset=4, affinity=before)`.
+All later numeric checks passed. The new operation-specific history stage
+labels identify Undo/Redo typing versus replacement without changing assertions.
+
+An opt-in numeric-return observer then stopped at **174 passed / 1 failed / 125
+unrun**. Redo typing at revision 17 rejected a text point `(6, 4, before)`.
+Unlike the earlier snapshots, this trace records the original `isU32(6)` result
+as **false**. The captured value has exact bits `4018000000000000`; subsequent
+safe-integer/nonnegative/u32 checks are all true. This localizes the rejection
+to the JavaScript compound numeric predicate but does not yet identify which
+of its three operands failed, or prove one root cause for all earlier faults.
+
+`BREDITOR_QUEUE_SELECTION_NUMERIC=1` records original predicate returns;
+`BREDITOR_QUEUE_SELECTION_NUMERIC_OPERANDS=1` additionally observes each
+evaluated operand, preserving short circuit order and one evaluation. Both are
+off by default and confined to the diagnostic build. They wrap hot calls and
+can affect optimization even though only false results are retained. Unit
+tests verify short circuiting, single evaluation, shape-drift failure, and
+explicit configuration. Browser type checking and **278 diagnostic tests**
+pass. The earlier missing required Link property remains separately open.
+
+The operand-level follow-up passed **300 cases** with zero retries, so it did
+not identify a failing leaf. This passing sample uses a different hot-call
+layout and does not erase the original false numeric return. The ordinary
+clipboard-boundary suite, with these observers disabled, also passed **21 cases**
+across Chromium, Firefox and WebKit. This is bounded regression coverage, not
+proof that the intermittent selection rejection has been repaired.
+The candidate also passes **12 cross-browser raw-metadata, production-adapter
+and history cases**: 2,700 raw metadata updates, 2,700 adapted Link updates,
+25,200 history updates and 25,200 history selection checks. All 12 result
+attachments were inspected. A separate traced WebKit control confirms the
+three operand sites are installed and the recorder stays empty on success.
+
+Commands, artifact hashes and follow-up results are recorded in the
+[explicit-index transport evidence](qualification/2026-10-02-projection-explicit-index.json).

@@ -5,7 +5,8 @@ const modules = ["browser_editor", "browser_event_router", "command_queue", "was
 
 /** Test-build-only throw-site capture. Never serializes errors or user content. */
 export function instrumentLinkFaults(code: string, id: string, recorder: string,
-  options: { numericPredicates?: boolean; projectionChild?: boolean; projectionImpact?: boolean; impactState?: boolean } = {}) {
+  options: { numericPredicates?: boolean; numericOperands?: boolean; projectionChild?: boolean; projectionImpact?: boolean; impactState?: boolean } = {}) {
+  if (options.numericOperands && options.numericPredicates === false) throw new Error("Numeric operand capture requires numeric predicates");
   if (options.impactState && !options.projectionImpact) throw new Error("Impact state requires impact rejection capture");
   const module = modules.find(name => id.endsWith(`/breditor-browser/dist/${name}.js`));
   if (module === undefined) return null;
@@ -67,8 +68,33 @@ export function instrumentLinkFaults(code: string, id: string, recorder: string,
       const line = code.slice(0, node.start).split("\n").length;
       const stage = `${module}:numeric:${line}`;
       sites.push({ stage, line });
+      let expression = code.slice(value.start, value.end);
+      if (options.numericOperands) {
+        // Wrap each evaluated leaf once, retaining native && short circuiting.
+        // This observes hot predicates and is deliberately diagnostic-only.
+        const leaves: ESTree.Node[] = [];
+        function collect(part: ESTree.Node): void {
+          if (part.type === "LogicalExpression" && part.operator === "&&") {
+            collect(part.left);
+            collect(part.right);
+          } else leaves.push(part);
+        }
+        collect(value);
+        if (leaves.length !== 3) throw new Error("Expected three numeric predicate operands");
+        for (const [index, leaf] of leaves.entries()) {
+          sites.push({ stage: `${stage}:operand:${index}`, line });
+        }
+        for (let index = leaves.length - 1; index >= 0; index--) {
+          const leaf = leaves[index]!;
+          const start = leaf.start - value.start;
+          const end = leaf.end - value.start;
+          expression = expression.slice(0, start) +
+            `__breditorNumericPredicate(${JSON.stringify(`${stage}:operand:${index}`)}, (${code.slice(leaf.start, leaf.end)}), value)` +
+            expression.slice(end);
+        }
+      }
       edits.push({ start: value.start, end: value.end,
-        text: `__breditorNumericPredicate(${JSON.stringify(stage)}, (${code.slice(value.start, value.end)}), value)` });
+        text: `__breditorNumericPredicate(${JSON.stringify(stage)}, (${expression}), value)` });
       return;
     }
     if (node.type === "CallExpression" && node.callee.type === "Identifier" &&
