@@ -5,6 +5,30 @@ mod clear_inline_formatting;
 mod delete_backward;
 mod delete_forward;
 mod delete_selection;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_text_block_backward;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_text_block_forward;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_text_block_selection;
+#[cfg(feature = "experimental-structural-properties")]
+mod delete_text_block_support;
+#[cfg(all(test, feature = "experimental-structural-properties"))]
+mod delete_text_block_tests;
+#[cfg(feature = "experimental-structural-properties")]
+mod text_block_support;
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_text_block_backward::{
+    DeleteTextBlockBackwardAction, delete_text_block_backward_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_text_block_forward::{
+    DeleteTextBlockForwardAction, delete_text_block_forward_action_id,
+};
+#[cfg(feature = "experimental-structural-properties")]
+pub use delete_text_block_selection::{
+    DeleteTextBlockSelectionAction, delete_text_block_selection_action_id,
+};
 mod format_strong;
 mod grapheme_boundary;
 mod inline_format_properties_state;

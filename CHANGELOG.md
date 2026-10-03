@@ -6,6 +6,12 @@ its durable formats and Wasm transport.
 
 ## Unreleased
 
+- Add three separately named experimental heading deletion actions: backward,
+  forward and exact selected-range deletion. Preserve ranks, typed formats and
+  exact undo/redo; reuse pinned grapheme segmentation across formatting seams
+  and directional caret snapping. Cross-block joins, persistence and browser
+  registration remain pending; shipping paragraph actions are unchanged.
+
 - Add opt-in experimental paragraph/heading typing through its own named action,
   preserving rank, typed formats, canonical caret and exact merged undo/redo.
   Cross-block replacements reject explicitly. The shipping browser/base registry

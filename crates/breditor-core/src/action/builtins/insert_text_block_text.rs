@@ -8,17 +8,15 @@ use super::{
         fragment_range_parts, require_operation_budget, require_text_block_range,
         strict_relocation,
     },
+    text_block_support::{preview_splice, text_block_source},
 };
 use crate::{
     action::{
         Action, ActionDecision, ActionEvaluation, ActionFault, ActionId, ActionPlan,
         ActionStateSpec,
     },
-    document::{TextFragment, TextRun},
     identity::QualifiedName,
-    operation::{
-        Operation, TextBlockSplice, TextBlockSpliceError, TextRange, TextSpliceApplyError,
-    },
+    operation::{Operation, TextBlockSplice, TextRange},
     position::Affinity,
     state::EditorState,
     transaction::{HistoryIntent, PendingFormatsUpdate, SelectionUpdate},
@@ -74,20 +72,7 @@ fn evaluate(state: &EditorState, input: &InsertTextInput) -> Result<ActionDecisi
         return Ok(decision);
     }
     let path = range.start().paragraph_path();
-    let guard =
-        state.document().node_at(path).map_err(|_| fault("breditor/text-block-source-fault"))?;
-    let element = guard.as_element().ok_or_else(|| fault("breditor/text-block-source-fault"))?;
-    let runs = element
-        .children()
-        .iter()
-        .map(|node| {
-            node.as_text()
-                .map(TextRun::from_text_node)
-                .ok_or_else(|| fault("breditor/text-block-source-fault"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let source =
-        TextFragment::try_from_runs(runs).map_err(|_| fault("breditor/text-block-source-fault"))?;
+    let (guard, source) = text_block_source(state, path)?;
     let (prefix, selected, suffix) =
         fragment_range_parts(&source, range.start().offset(), range.end().offset())?;
     let formats = if range.is_collapsed() {
@@ -117,25 +102,12 @@ fn evaluate(state: &EditorState, input: &InsertTextInput) -> Result<ActionDecisi
     let operation = TextBlockSplice::try_new(
         TextRange::try_new(path.clone(), range.start().offset(), range.end().offset())
             .map_err(|_| fault("breditor/insert-text-range-fault"))?,
-        guard.clone(),
+        guard,
         replacement,
     )
     .map_err(|_| fault("breditor/text-block-splice-fault"))?;
-    // Authoritative full-tree preview counts the heading property and untouched
-    // siblings. Execution still rechecks the complete source guard atomically.
-    if let Err(error) = operation.apply(state.context(), state.document()) {
-        return match error {
-            TextBlockSpliceError::Validation(_)
-            | TextBlockSpliceError::Text(
-                TextSpliceApplyError::FragmentRunCountLimit { .. }
-                | TextSpliceApplyError::FragmentTotalTextBytesLimit { .. }
-                | TextSpliceApplyError::FragmentTextBytesLimit { .. }
-                | TextSpliceApplyError::FragmentFormatCountLimit { .. }
-                | TextSpliceApplyError::FragmentPropertyValueCountLimit { .. }
-                | TextSpliceApplyError::FragmentPropertyStringBytesLimit { .. },
-            ) => Ok(disabled("breditor/result-limit-exceeded")),
-            _ => Err(fault("breditor/text-block-splice-preview-fault")),
-        };
+    if let Some(decision) = preview_splice(state, &operation)? {
+        return Ok(decision);
     }
     let caret = range
         .start()

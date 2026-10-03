@@ -123,3 +123,37 @@ introducing the next explicit format, rather than issuing a format per command.
 
 See the [typing verification record](qualification/2026-10-03-heading-typing-action.json)
 for current evidence. These core checks are not browser feature qualification.
+
+## Heading deletion actions
+
+Three opt-in actions now have separate documented files:
+`DeleteTextBlockBackwardAction`, `DeleteTextBlockForwardAction` and
+`DeleteTextBlockSelectionAction`. They edit the same paragraph/heading profile
+as typing and preserve its kind/rank, typed inline formats and pending formats.
+
+- A collapsed Backspace/Delete removes one extended grapheme cluster using the
+  existing pinned Unicode segmentation. Formatting seams are not boundaries.
+  A protocol caret inside a cluster is disabled instead of deleting guessed text.
+- If deletion creates a new cluster across its seam, backward deletion snaps
+  the result caret after that cluster; forward deletion snaps before it.
+- Selected deletion removes the exact scalar-aligned spatial range, regardless
+  of direction, without grapheme expansion. All three actions use this same
+  selection policy and an independent history event for extended selections.
+- Repeated directional deletion offers the existing directional merge group.
+  Undo/redo restore exact document, selection and pending formats.
+- Full-tree preview still applies: even deletion can exceed a leaf limit when
+  previously separated same-format runs become one canonical leaf.
+
+The new shared text-block source/preview helper is also used by heading typing;
+its behavior is covered by the whole-core regression suite. Existing paragraph
+actions, base registration and all durable formats remain unchanged.
+
+**Still unfinished:** cross-block deletion and boundary joins, heading Enter,
+formatting commands, durable text-edit sessions, browser integration, flat lists
+and desktop/native qualification. Start/end of the entire document return their
+normal disabled states; internal block boundaries explicitly report unsupported
+until the structural edit primitive is ready. This is not a finished editing
+profile and must not be exposed as one.
+
+See [deletion qualification](qualification/2026-10-03-heading-deletion-actions.json)
+for the reproducible test commands and measured boundary.

@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "5646e0a5bf73c99c07acd0d6abecc63c15c3d4a7",
+  "status": "Same-block heading deletion qualified in Rust; beta goal remains in progress",
+  "scope": "Experimental, opt-in actions; no browser or durable-format enablement",
+  "contract": {
+    "feature": "experimental-structural-properties",
+    "enabledByDefault": false,
+    "actions": [
+      "breditor/delete-text-block-backward",
+      "breditor/delete-text-block-forward",
+      "breditor/delete-text-block-selection"
+    ],
+    "supported": "Direct-root paragraph and heading ranks 1–6; collapsed grapheme deletion and exact scalar-aligned selected deletion",
+    "graphemes": "Existing pinned segmentation across formatting runs; interior-cluster protocol carets disabled; new seam cluster snaps forward for backward deletion and backward for forward deletion",
+    "history": "Directional repeats merge; extended selections record independently; exact document, directional selection and pending formats restored",
+    "limits": "Complete source guard and authoritative full-tree preview; canonical seam merging may exceed per-leaf limits even during deletion",
+    "unsupported": "Internal block-boundary joins and cross-block selections explicitly disabled",
+    "durableEncoding": false,
+    "shippingParagraphActions": "Unchanged"
+  },
+  "verification": {
+    "focusedTestsPassed": 10,
+    "propertyCases": 10000,
+    "propertySeed": 20261003,
+    "focusedCommand": "PROPTEST_CASES=10000 PROPTEST_RNG_SEED=20261003 cargo test -p breditor-core --all-features --lib --locked delete_text_block_tests",
+    "coreAllFeatureUnitTestsPassed": 815,
+    "coreDefaultUnitTestsPassed": 697,
+    "legacyDeletionIntegrationTestsPassed": 20,
+    "legacyCommand": "cargo test -p breditor-core --all-features --locked --test delete_typed_format_contracts --test delete_forward_selection_contracts --test delete_backward_cross_paragraph_contracts",
+    "clippy": "Workspace all-target all-feature passed with warnings denied",
+    "rustfmt": "Passed",
+    "diffCheck": "Passed",
+    "developmentCorrections": [
+      "Initial fixture compile error: TextNode constructor required owned String; corrected test helper.",
+      "First core lint pass requested positive if/else ordering; corrected without changing deletion behavior. No focused behavioral failure."
+    ],
+    "freshFullReleaseRun": false,
+    "freshBrowserRun": false,
+    "freshBundleSizeMeasurements": false,
+    "published": false
+  },
+  "next": [
+    "Guarded structural text-block replacement and retained-kind contract for Enter/joins",
+    "Heading formatting and cross-block editing actions",
+    "Explicit durable recipe generation and retained-session replay",
+    "Structural browser profile and demo integration",
+    "Flat lists and desktop/native qualification"
+  ],
+  "evidence": [
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_backward.rs",
+      "sha256": "d370bdcddf0d18e46613b83cb145656676d9cd20dbe3829694737ebba1bd0046"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_forward.rs",
+      "sha256": "390e46086861c5554354c4d99e299e3414114eb96631d8c6bec94035a9aa4e32"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_selection.rs",
+      "sha256": "28ac95529648d0e6a6c39add826d03c8fde59845fb3cc12714ce90c4613fcfaa"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_support.rs",
+      "sha256": "6cb0046a59b1c0cd97f1eca701f5bd05aa27bfb93bb4af3059689846c840d70b"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/delete_text_block_tests.rs",
+      "sha256": "590ea6c3400273f51ff93e736b8770d3a33602b0a5f0e6b0b495282f103497f8"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/text_block_support.rs",
+      "sha256": "37bc38d1d2f0c1a78c7c2f040d24a5418919f131b93e645fed8a16828d9c8fff"
+    },
+    {
+      "path": "crates/breditor-core/src/action/builtins/insert_text_block_text.rs",
+      "sha256": "c55da90ad0fcd5dcb3036a3b473d0e262b60ea56f104fec1adcffae6accc2657"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-deletion-focused.log",
+      "sha256": "3309b3cc6858f02f144686c9b1e3b039203560238a3c5a205923b427a5687ae7"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-deletion-core.log",
+      "sha256": "ee421065f98b2ba2b216101e5a5d1101d0a048a51fa6ebfb5fa7b94516e19ba0"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-deletion-default.log",
+      "sha256": "0731dee7575ed9b3699e6a52ac4f4c536148fe5c9831605ce4777382628a87f9"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-deletion-clippy.log",
+      "sha256": "73b064da9c9f182123dd85d9b3b8518ab746c301a0fd7e59a1c4ff2d2c570ad4"
+    },
+    {
+      "path": "/private/tmp/breditor-heading-deletion-legacy.log",
+      "sha256": "8c4ab7285ccac94997cc043801f7319bcabe0ff9f5297639049f9b63f062d9b1"
+    }
+  ]
+}
